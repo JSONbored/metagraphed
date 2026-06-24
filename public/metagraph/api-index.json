@@ -54,14 +54,14 @@
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -103,6 +103,13 @@
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -159,7 +166,21 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "economics",
+      "path": "/metagraph/economics.json",
+      "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -173,7 +194,7 @@
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -187,7 +208,7 @@
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -303,6 +324,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
@@ -320,6 +348,90 @@
       "id": "subnet-trajectory",
       "path": "/metagraph/subnets/{netuid}/trajectory.json",
       "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-metagraph",
+      "path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-neuron",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "schema_ref": "#/components/schemas/NeuronDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-validators",
+      "path": "/metagraph/subnets/{netuid}/validators.json",
+      "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-neuron-history",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-history",
+      "path": "/metagraph/subnets/{netuid}/history.json",
+      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-summary",
+      "path": "/metagraph/accounts/{ss58}.json",
+      "schema_ref": "#/components/schemas/AccountSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-events",
+      "path": "/metagraph/accounts/{ss58}/events.json",
+      "schema_ref": "#/components/schemas/AccountEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-subnets",
+      "path": "/metagraph/accounts/{ss58}/subnets.json",
+      "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
       "storage_tier": "r2"
     },
     {
@@ -390,7 +502,7 @@
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -460,7 +572,7 @@
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-06.1",
@@ -502,7 +614,7 @@
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     }
   ],
   "base_path": "/api/v1",
@@ -564,7 +676,8 @@
         {
           "name": "netuids",
           "schema": {
-            "pattern": "^\\d+(,\\d+)*$",
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
             "type": "string"
           }
         },
@@ -631,6 +744,103 @@
               "root",
               "application"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -778,6 +988,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -920,6 +1137,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -997,6 +1221,13 @@
         {
           "name": "provider",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1142,6 +1373,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1280,6 +1518,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1389,6 +1634,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1487,6 +1739,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1570,6 +1829,13 @@
               "provider-claimed",
               "registry-observed"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1719,6 +1985,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -1773,6 +2046,214 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/coverage-depth.json",
+      "cache": "standard",
+      "description": "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+      "id": "coverage-depth",
+      "method": "GET",
+      "path": "/api/v1/coverage-depth",
+      "public": true,
+      "query_collection": "coverage-depth",
+      "query_filter_names": [
+        "netuid",
+        "tier",
+        "agent_status",
+        "blocker_level"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "tier",
+          "schema": {
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "agent_status",
+          "schema": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "blocker_level",
+          "schema": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "agent_status",
+              "blocker_level",
+              "name",
+              "netuid",
+              "priority_score",
+              "score",
+              "tier"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/economics.json",
+      "cache": "standard",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+      "id": "economics",
+      "method": "GET",
+      "path": "/api/v1/economics",
+      "public": true,
+      "query_collection": "economics",
+      "query_filter_names": [
+        "netuid",
+        "registration_allowed"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "registration_allowed",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "alpha_price_tao",
+              "emission_share",
+              "max_stake_tao",
+              "max_uids",
+              "max_validators",
+              "miner_count",
+              "miner_readiness",
+              "name",
+              "netuid",
+              "open_slots",
+              "registration_cost_tao",
+              "subnet_volume_tao",
+              "total_stake_tao",
+              "validator_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/registry-summary.json",
@@ -1851,6 +2332,13 @@
               "manifested",
               "probed"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -1939,6 +2427,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2019,6 +2514,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2090,6 +2592,13 @@
         {
           "name": "review_state",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2226,6 +2735,13 @@
               "placeholder",
               "empty"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2374,6 +2890,13 @@
               "generic-openapi-or-custom",
               "stream-adapter"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2588,6 +3111,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -2737,6 +3267,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -2979,6 +3516,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3055,6 +3599,13 @@
               "failed",
               "unknown"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3180,8 +3731,16 @@
               "timeout",
               "transient",
               "unsupported",
-              "unsafe"
+              "unsafe",
+              "wrong-chain"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3299,8 +3858,16 @@
               "timeout",
               "transient",
               "unsupported",
-              "unsafe"
+              "unsafe",
+              "wrong-chain"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3350,9 +3917,21 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/health/trends.json",
+      "cache": "short",
+      "description": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+      "id": "health-trends-bulk",
+      "method": "GET",
+      "path": "/api/v1/health/trends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",
       "cache": "short",
-      "description": "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+      "description": "Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).",
       "id": "subnet-health-trends",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/health/trends",
@@ -3420,6 +3999,249 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "cache": "short",
+      "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+      "id": "subnet-metagraph",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/metagraph",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "validator_permit",
+          "schema": {
+            "enum": [
+              "true"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "cache": "short",
+      "description": "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+      "id": "subnet-neuron",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/neurons/{uid}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/validators.json",
+      "cache": "short",
+      "description": "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+      "id": "subnet-validators",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/validators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "cache": "short",
+      "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-neuron-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/history.json",
+      "cache": "short",
+      "description": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "id": "subnet-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}.json",
+      "cache": "short",
+      "description": "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.",
+      "id": "account-summary",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/events.json",
+      "cache": "short",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "id": "account-events",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/subnets.json",
+      "cache": "short",
+      "description": "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
+      "id": "account-subnets",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/subnets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/blocks.json",
+      "cache": "short",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+      "id": "blocks-feed",
+      "method": "GET",
+      "path": "/api/v1/blocks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}.json",
+      "cache": "short",
+      "description": "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+      "id": "block-detail",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+      "id": "extrinsics-feed",
+      "method": "GET",
+      "path": "/api/v1/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics/{hash}.json",
+      "cache": "short",
+      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+      "id": "extrinsic-detail",
+      "method": "GET",
+      "path": "/api/v1/extrinsics/{hash}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",
       "cache": "short",
       "description": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
@@ -3445,7 +4267,7 @@
     {
       "artifact_path": "/metagraph/registry/leaderboards.json",
       "cache": "standard",
-      "description": "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
       "id": "registry-leaderboards",
       "method": "GET",
       "path": "/api/v1/registry/leaderboards",
@@ -3460,7 +4282,12 @@
               "healthiest",
               "fastest-rpc",
               "most-complete",
-              "fastest-growing"
+              "most-enriched",
+              "fastest-growing",
+              "open-slots",
+              "cheapest-registration",
+              "highest-emission",
+              "validator-headroom"
             ],
             "type": "string"
           }
@@ -3478,7 +4305,7 @@
     {
       "artifact_path": "/metagraph/rpc/usage.json",
       "cache": "short",
-      "description": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+      "description": "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
       "id": "rpc-usage",
       "method": "GET",
       "path": "/api/v1/rpc/usage",
@@ -3540,6 +4367,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3591,6 +4425,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3658,6 +4499,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -3802,6 +4650,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -3885,6 +4740,13 @@
               "subtensor-wss",
               "archive"
             ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },
@@ -4013,6 +4875,13 @@
           }
         },
         {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
           "name": "limit",
           "schema": {
             "maximum": 1000,
@@ -4116,6 +4985,13 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
             "type": "string"
           }
         },

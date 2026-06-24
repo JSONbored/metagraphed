@@ -9,6 +9,7 @@
     "official-source-repo",
     "official-website"
   ],
+  "contact": "support@chutes.ai",
   "curation": {
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
@@ -39,6 +40,9 @@
   "notes": "Reviewed overlay for SN64 using the official Chutes website, docs, source repositories, app catalog, and public pricing endpoint. The pricing endpoint is GET-backed; HEAD behavior is not authoritative for that API.",
   "schema_version": 1,
   "slug": "sn-64",
+  "social": {
+    "x": "https://x.com/chutes_ai"
+  },
   "source_repo": "https://github.com/chutesai/chutes",
   "status": "active",
   "surfaces": [
@@ -278,6 +282,89 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/64"],
       "url": "https://taomarketcap.com/subnets/64"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-64-chutes-sdk-examples",
+      "kind": "example",
+      "name": "Chutes code examples",
+      "notes": "Official Chutes examples — model invocation quickstarts (Chroma, DeepSeek R1).",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "HEAD"
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "source_urls": ["https://github.com/chutesai/chutes"],
+      "url": "https://github.com/chutesai/chutes/tree/main/examples"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact",
+      "kind": "data-artifact",
+      "name": "Chutes community data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/gpu_count_history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai",
+      "kind": "data-artifact",
+      "name": "Chutes community boosted data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jaso0n0818"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/boosted"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-data-artifact-api-chutes-ai-2",
+      "kind": "data-artifact",
+      "name": "Chutes utilization data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jaso0n0818"
+      },
+      "source_urls": ["https://api.chutes.ai/openapi.json"],
+      "url": "https://api.chutes.ai/chutes/utilization"
     }
   ],
   "website_url": "https://chutes.ai/"

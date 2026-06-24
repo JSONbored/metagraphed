@@ -12,7 +12,8 @@ claude mcp add --transport http metagraphed https://api.metagraph.sh/mcp
 ```
 
 No MCP host? Everything is also a plain `GET`/`POST` over HTTPS — see "REST
-fallback" at the bottom.
+fallback" at the bottom. For copyable REST/npm/Python/MCP examples, use
+`https://api.metagraph.sh/agent-workflows.md`.
 
 ---
 
@@ -41,15 +42,23 @@ Ground rules:
 Your tools (metagraphed MCP server):
 
 - `find_subnet_for_task` — natural-language → the best-fit subnets for a goal.
+- `list_subnets` — compact registry index when you need every subnet.
 - `find_subnets_by_capability` / `search_subnets` — discover by capability/keyword.
 - `how_do_i_call` — concrete call instructions for one subnet: each callable
   service's base_url, auth, schema availability, and live health.
+- `verify_integration` — live-probe one catalogued surface or a subnet's primary
+  surface before wiring.
 - `get_fixture` — a real, sanitized request/response sample for a no-auth GET
   service (what it actually returns, not just what the schema claims).
 - `get_api_schema` — the captured OpenAPI/Swagger spec for a surface.
 - `list_subnet_apis` / `get_agent_catalog` / `get_subnet` — the per-subnet
   callable-service catalog (base_url, auth, snippets, health, eligibility).
-- `get_subnet_health` — live 2-minute health for a subnet's surfaces.
+- `get_subnet_health` — live 15-minute health for a subnet's surfaces.
+- `get_subnet_economics` — registration cost, open slots, stake, emission split,
+  and validator/miner counts for one subnet (where to register/mine/validate).
+- `get_subnet_trajectory` — a subnet's week-over-week growth/contraction trend.
+- `get_subnet_metagraph` / `list_subnet_validators` / `get_neuron` — the per-UID
+  on-chain snapshot: every neuron, validators ranked by stake, or one UID.
 - `get_best_rpc_endpoint` — a healthy public Subtensor RPC endpoint.
 - `semantic_search` / `ask` — vector search + grounded, cited answers over the
   whole registry.
@@ -89,6 +98,7 @@ meta }` envelope — read `data`:
   to mainnet.
 
 Machine entrypoints: `https://api.metagraph.sh/llms.txt` (index),
+`/agent-workflows.md` (task-oriented REST/npm/Python/MCP examples),
 `/metagraph/openapi.json` (full contract), `/api/v1/agent-resources` (this
 file's machine index — every AI resource in one JSON), `/skills/bittensor/SKILL.md`
 (drop-in skill).

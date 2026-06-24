@@ -1,7 +1,9 @@
 import path from "node:path";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
+  artifactContentHash,
   buildTimestamp,
   readJson,
   repoRoot,
@@ -84,7 +86,13 @@ for (const artifact of validationManifest.artifacts) {
 console.log(stableStringify(summary));
 
 async function buildManifest(generatedAt = buildTimestamp()) {
-  const version = generatedAt.replace(/[:.]/g, "-");
+  // The R2 immutable run prefix must stay UNIQUE per publish even though
+  // generated_at is a deterministic epoch marker (issue #349) — otherwise every
+  // publish would collide on runs/1970.../ and lose atomic-swap safety. The publish
+  // workflow sets METAGRAPH_RUN_ID to a unique per-run value; local/dev builds fall
+  // back to the generated_at stamp (deterministic, fine with no remote history).
+  const runId = process.env.METAGRAPH_RUN_ID || generatedAt;
+  const version = runId.replace(/[:.]/g, "-").replace(/[^A-Za-z0-9._-]/g, "-");
   const publicRoot = path.join(repoRoot, "public/metagraph");
   const r2Root = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
   const files = await listManifestArtifactFiles({ publicRoot, r2Root });
@@ -102,6 +110,8 @@ async function buildManifest(generatedAt = buildTimestamp()) {
       latest_key: `latest/${relative}`,
       path: `/metagraph/${relative}`,
       sha256: sha256Hex(raw),
+      // Delta-skip hash (generated_at normalized out); integrity stays on sha256.
+      content_sha256: artifactContentHash(relative, raw),
       size_bytes: fileStat.size,
       storage_tier: artifactStorageTierForRelativePath(relative),
     });
@@ -109,7 +119,7 @@ async function buildManifest(generatedAt = buildTimestamp()) {
   artifacts.sort((a, b) => a.path.localeCompare(b.path));
   return {
     schema_version: 1,
-    contract_version: "2026-06-06.1",
+    contract_version: CONTRACT_VERSION,
     generated_at: generatedAt,
     bucket_binding: "METAGRAPH_ARCHIVE",
     bucket_name: "metagraphed-artifacts",

@@ -31,6 +31,11 @@ const env = {
 const steps = [
   ["discover-candidates", ["scripts/discover-candidates.mjs", "--write"]],
   ["verify-candidates", ["scripts/verify-candidates.mjs", "--write"]],
+  // The provenance review queue is a pure transform of the candidates +
+  // verification just refreshed above; regenerate it in lockstep so the publish's
+  // `npm run validate` (which drift-checks the committed queue) sees a consistent
+  // state instead of failing whenever discovery finds something new.
+  ["review-queue", ["scripts/review-queue.mjs", "--write"]],
 ];
 
 for (const [label, args] of steps) {

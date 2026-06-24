@@ -65,5 +65,7 @@
       },
       "notes": "Official ItsAI source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/ai_detection" },
+  "contact": "support@its-ai.org"
 }

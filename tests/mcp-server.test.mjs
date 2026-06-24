@@ -16,6 +16,10 @@ import { handleRequest } from "../workers/api.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
+// Fresh prober run time for live KV fixtures — resolveLiveHealth rejects a
+// health:current whose last_run_at is older than the 25-min freshness window.
+const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
+
 // Build injectable deps with controlled artifact + KV responses.
 function makeDeps(artifacts = {}, kv = {}) {
   return {
@@ -742,6 +746,107 @@ describe("MCP tools (injected deps)", () => {
         openapi: "3.1.0",
       },
       "/metagraph/registry-summary.json": { completeness: 0.42 },
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        coverage_depth_version: 1,
+        rows: [
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            tier: "machine-usable",
+            score: 77,
+            priority_score: 86,
+            agent_status: "callable",
+            blocker_level: "none",
+            top_gap_codes: ["missing-fixture", "partial-schema-coverage"],
+            top_gaps: [
+              {
+                code: "missing-fixture",
+                severity: "missing-data",
+                field: "fixtures",
+                next_action: "capture a sanitized fixture",
+              },
+              {
+                code: "partial-schema-coverage",
+                severity: "missing-data",
+                field: "schemas",
+                next_action: "capture remaining schemas",
+              },
+            ],
+            recommended_next_action: "capture a sanitized fixture",
+            dimensions: {
+              callable_service_count: 13,
+              service_kinds: ["openapi", "subnet-api"],
+              schema_service_count: 12,
+              schema_missing_count: 1,
+              fixture_available_count: 0,
+              fixture_status_counts: { missing: 13 },
+              example_count: 0,
+              sdk_count: 0,
+              candidate_operational_count: 3,
+              official_surface_count: 0,
+              provider_claimed_surface_count: 15,
+            },
+          },
+          {
+            netuid: 31,
+            slug: "recall",
+            name: "Recall",
+            tier: "missing-interface",
+            score: 18,
+            priority_score: 67,
+            agent_status: "blocked",
+            blocker_level: "missing-data",
+            top_gap_codes: ["missing-callable-service"],
+            top_gaps: [
+              {
+                code: "missing-callable-service",
+                severity: "missing-data",
+                field: "surfaces",
+                next_action: "find an official callable surface",
+              },
+            ],
+            recommended_next_action: "find an official callable surface",
+            dimensions: {
+              callable_service_count: 0,
+              service_kinds: [],
+              schema_service_count: 0,
+              schema_missing_count: 0,
+              fixture_available_count: 0,
+              fixture_status_counts: {},
+              example_count: 0,
+              sdk_count: 0,
+              candidate_operational_count: 0,
+              official_surface_count: 0,
+              provider_claimed_surface_count: 0,
+            },
+          },
+        ],
+        ranked_queue: [
+          {
+            rank: 1,
+            netuid: 7,
+            tier: "machine-usable",
+            score: 77,
+            priority_score: 86,
+            severity: "missing-data",
+            top_gap_codes: ["missing-fixture", "partial-schema-coverage"],
+            recommended_next_action: "capture a sanitized fixture",
+          },
+          {
+            rank: 2,
+            netuid: 31,
+            tier: "missing-interface",
+            score: 18,
+            priority_score: 67,
+            severity: "missing-data",
+            top_gap_codes: ["missing-callable-service"],
+            recommended_next_action: "find an official callable surface",
+          },
+        ],
+      },
       "/metagraph/rpc/pools.json": {
         pools: {
           0: {
@@ -811,6 +916,12 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(out.results[0].netuid, 7);
     assert.ok(out.results[0].url.includes("/api/v1/subnets/7/overview"));
     assert.ok(out.results.every((r) => r.netuid !== null));
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.count, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 5);
+    assert.equal(out.next_offset, null);
   });
 
   test("search_subnets clamps the limit and reports zero matches", async () => {
@@ -819,7 +930,45 @@ describe("MCP tools (injected deps)", () => {
       { query: "nonexistentxyz", limit: 999 },
       { deps },
     );
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
+    // An out-of-range limit clamps to the 50 max, not the raw 999.
+    assert.equal(out.limit, 50);
+  });
+
+  test("search_subnets limit:0 falls back to the default, not a single result", async () => {
+    // tools/call does not enforce inputSchema `minimum:1`, so limit:0 reaches
+    // clampLimit. It must fall back to the default (10), not clamp up to 1 — a
+    // query matching two subnets returns both, not one.
+    const res = await callTool(
+      "search_subnets",
+      { query: "data compute", limit: 0 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(
+      out.results.length >= 2,
+      `expected >=2 results (fallback), got ${out.results.length}`,
+    );
+  });
+
+  test("search_subnets malformed limit values fall back to the default", async () => {
+    // tools/call passes raw JSON arguments to handlers, so clampLimit must not
+    // coerce schema-invalid values like true or "1" into a one-result limit.
+    for (const limit of [true, "1", [1], { toString: null }]) {
+      const res = await callTool(
+        "search_subnets",
+        { query: "data compute", limit },
+        { deps },
+      );
+      const out = res.body.result.structuredContent;
+      assert.ok(
+        out.results.length >= 2,
+        `expected fallback for limit ${JSON.stringify(limit)}, got ${out.results.length}`,
+      );
+    }
   });
 
   test("search_subnets requires a non-empty query", async () => {
@@ -843,6 +992,11 @@ describe("MCP tools (injected deps)", () => {
       "number",
       "find_subnets_by_capability results must carry integration_readiness",
     );
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 10);
+    assert.equal(out.next_offset, null);
   });
 
   test("find_subnets_by_capability with no match returns empty", async () => {
@@ -852,7 +1006,10 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     // netuid 12 has gpu but callable_count 0 -> excluded
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
   });
 
   test("get_subnet returns the overview artifact", async () => {
@@ -1024,6 +1181,257 @@ describe("MCP tools (injected deps)", () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
   });
+
+  test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
+    const res = await callTool(
+      "list_enrichment_targets",
+      { limit: 1 },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.targets[0].netuid, 7);
+    assert.equal(out.targets[0].rank, 1);
+    assert.equal(
+      out.targets[0].top_gap_codes.includes("missing-fixture"),
+      true,
+    );
+    assert.equal(out.targets[0].dimensions.callable_service_count, 13);
+    assert.match(out.note, /not live uptime/);
+  });
+
+  test("list_enrichment_targets filters by gap and returns a netuid row", async () => {
+    const filtered = await callTool(
+      "list_enrichment_targets",
+      { gap_code: "missing-callable-service" },
+      { deps },
+    );
+    const out = filtered.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.targets[0].netuid, 31);
+
+    const row = await callTool(
+      "list_enrichment_targets",
+      { netuid: 7, severity: "missing-data" },
+      { deps },
+    );
+    const rowOut = row.body.result.structuredContent;
+    assert.equal(rowOut.targets[0].netuid, 7);
+    assert.equal(rowOut.targets[0].rank, null);
+  });
+
+  test("list_enrichment_targets reports missing coverage-depth artifact", async () => {
+    const missingDeps = makeDeps({});
+    const res = await callTool(
+      "list_enrichment_targets",
+      {},
+      { deps: missingDeps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No resource/);
+  });
+
+  const opportunityDeps = makeDeps({
+    "/metagraph/economics.json": {
+      captured_at: "2026-06-20T00:00:00Z",
+      subnets: [
+        {
+          netuid: 10,
+          slug: "ten",
+          name: "Ten",
+          open_slots: 200,
+          max_uids: 256,
+          registration_cost_tao: 1,
+          registration_allowed: true,
+          emission_share: 0.1,
+          total_stake_tao: 5000,
+          validator_count: 10,
+          miner_count: 46,
+          max_validators: 64,
+        },
+        {
+          netuid: 11,
+          slug: "eleven",
+          name: "Eleven",
+          open_slots: 50,
+          registration_cost_tao: 0.5,
+          registration_allowed: true,
+          emission_share: 0.3,
+          total_stake_tao: 9000,
+          validator_count: 60,
+          miner_count: 18,
+          max_validators: 64,
+        },
+      ],
+    },
+  });
+
+  test("find_subnet_opportunities ranks the economic boards", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { limit: 10 },
+      { deps: opportunityDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.with_economics_count, 2);
+    assert.equal(out.observed_at, "2026-06-20T00:00:00Z");
+    // Only the four economic boards are returned (no operational boards).
+    assert.deepEqual(Object.keys(out.boards).sort(), [
+      "cheapest-registration",
+      "highest-emission",
+      "open-slots",
+      "validator-headroom",
+    ]);
+    assert.deepEqual(
+      out.boards["open-slots"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.deepEqual(
+      out.boards["highest-emission"].map((e) => e.netuid),
+      [11, 10],
+    );
+  });
+
+  test("find_subnet_opportunities filters to a single board", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { board: "cheapest-registration", limit: 1 },
+      { deps: opportunityDeps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(Object.keys(out.boards), ["cheapest-registration"]);
+    assert.equal(out.boards["cheapest-registration"].length, 1);
+    assert.equal(out.boards["cheapest-registration"][0].netuid, 11);
+  });
+
+  test("find_subnet_opportunities rejects an unknown board", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      { board: "bogus" },
+      { deps: opportunityDeps },
+    );
+    assert.equal(res.body.result.isError, true);
+  });
+
+  test("find_subnet_opportunities reports a missing economics artifact", async () => {
+    const res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      { deps: makeDeps({}) },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No resource/);
+  });
+
+  test("find_subnet_opportunities tolerates an economics artifact with no subnets", async () => {
+    // No subnets array -> empty boards; observed_at falls back to generated_at.
+    let res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      {
+        deps: makeDeps({
+          "/metagraph/economics.json": { generated_at: "2026-06-19T00:00:00Z" },
+        }),
+      },
+    );
+    let out = res.body.result.structuredContent;
+    assert.equal(out.with_economics_count, 0);
+    assert.equal(out.observed_at, "2026-06-19T00:00:00Z");
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.deepEqual(out.boards[key], []);
+    }
+
+    // Neither captured_at nor generated_at -> observed_at is null.
+    res = await callTool(
+      "find_subnet_opportunities",
+      {},
+      { deps: makeDeps({ "/metagraph/economics.json": {} }) },
+    );
+    assert.equal(res.body.result.structuredContent.observed_at, null);
+  });
+});
+
+// keyword-search.test.mjs covers the scoring matrix; here we only prove both
+// tools are wired to it — substring noise is gone and the precise target wins.
+describe("MCP keyword discovery relevance", () => {
+  const deps = makeDeps({
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 1,
+          slug: "targon",
+          title: "Targon",
+          subtitle: "AI inference network",
+          tokens: ["ai", "inference", "llm"],
+        },
+        {
+          // "Brain" / "domain" only contain "ai" as a mid-word substring — the
+          // old includes() ranking surfaced these for a query of "ai".
+          type: "subnet",
+          netuid: 2,
+          slug: "braintrust",
+          title: "BrainTrust",
+          subtitle: "domain registrar",
+          tokens: ["brain", "domain", "captain"],
+        },
+      ],
+    },
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        {
+          netuid: 1,
+          slug: "targon",
+          name: "Targon",
+          categories: ["ai", "inference"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+        {
+          netuid: 2,
+          slug: "braintrust",
+          name: "BrainTrust",
+          categories: ["brain", "domain"],
+          service_kinds: ["subnet-api"],
+          callable_count: 5,
+          integration_readiness: 90,
+        },
+      ],
+    },
+  });
+
+  test('search_subnets: "ai" matches the real AI subnet, not "brain"/"domain"', async () => {
+    const res = await callTool("search_subnets", { query: "ai" }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
+
+  test("search_subnets: an exact name match wins outright", async () => {
+    const res = await callTool("search_subnets", { query: "targon" }, { deps });
+    assert.equal(res.body.result.structuredContent.results[0].netuid, 1);
+  });
+
+  test('find_subnets_by_capability: "ai" excludes the substring-only subnet', async () => {
+    const res = await callTool(
+      "find_subnets_by_capability",
+      { capability: "ai" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.results.map((r) => r.netuid),
+      [1],
+    );
+  });
 });
 
 describe("MCP edge cases", () => {
@@ -1064,7 +1472,7 @@ describe("MCP edge cases", () => {
     assert.equal(res.body.result.isError, true);
   });
 
-  test("a readArtifact rejection surfaces as a JSON-RPC internal error", async () => {
+  test("a readArtifact rejection is a sanitized isError result (no internal leak)", async () => {
     const throwingDeps = {
       readArtifact() {
         return Promise.reject(new Error("kv exploded"));
@@ -1074,8 +1482,40 @@ describe("MCP edge cases", () => {
       },
     };
     const res = await callTool("registry_summary", {}, { deps: throwingDeps });
+    // A non-toolError stays inside the tool-result contract (isError, not a
+    // -32603 transport error) and must not echo the raw internal message.
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "internal_error",
+    );
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
+  });
+
+  test("a non-toolError from a protocol method is a sanitized -32603 (no leak)", async () => {
+    // resources/read -> readResource -> loadArtifactData; a raw readArtifact
+    // rejection is a non-toolError that reaches dispatchMessage's internal-error
+    // path, which must withhold the raw message (not just tool calls).
+    const throwingDeps = {
+      readArtifact() {
+        return Promise.reject(new Error("kv exploded"));
+      },
+      readHealthKv() {
+        return Promise.resolve(null);
+      },
+    };
+    const res = await rpc(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "resources/read",
+        params: { uri: "metagraph://subnet/7" },
+      },
+      { deps: throwingDeps },
+    );
     assert.equal(res.body.error.code, -32603);
-    assert.ok(res.body.error.message.includes("kv exploded"));
+    assert.equal(res.body.error.message, "Internal error.");
+    assert.ok(!JSON.stringify(res.body).includes("kv exploded"));
   });
 
   test("artifact failure without code/message uses default messaging", async () => {
@@ -1367,6 +1807,63 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.ok(out.results.every((r) => r.netuid !== 8));
   });
 
+  test("find_subnet_for_task surfaces a callable subnet ranked beyond the non-callable pool", async () => {
+    // Regression: callability must be filtered BEFORE the rank pool is
+    // truncated. Here 51 non-callable subnets tie with (and, by the ascending
+    // netuid tiebreak, out-rank) the single callable subnet 999, pushing it to
+    // pool position 52 — past the hard-coded poolSize of 50. Filtering after the
+    // slice would drop it and falsely report "no callable subnet matched".
+    const documents = [];
+    for (let netuid = 1; netuid <= 51; netuid += 1) {
+      documents.push({
+        id: `subnet:${netuid}`,
+        type: "subnet",
+        netuid,
+        slug: `sn-${netuid}`,
+        title: "Data tool",
+        tokens: ["data"],
+        categories: ["data"],
+      });
+    }
+    documents.push({
+      id: "subnet:999",
+      type: "subnet",
+      netuid: 999,
+      slug: "sn-999",
+      title: "Data tool",
+      tokens: ["data"],
+      categories: ["data"],
+    });
+    const fixture = {
+      "/metagraph/search.json": { documents },
+      "/metagraph/agent-catalog.json": {
+        subnets: [
+          {
+            netuid: 999,
+            name: "Callable data API",
+            slug: "sn-999",
+            categories: ["data"],
+            integration_readiness: 60,
+            callable_count: 3,
+            service_kinds: ["subnet-api"],
+            base_url: "https://api.example.io",
+            health: "operational",
+          },
+        ],
+      },
+    };
+    const res = await callTool(
+      "find_subnet_for_task",
+      { task: "data", limit: 5 },
+      { deps: makeDeps(fixture) },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.discovery, "keyword");
+    assert.equal(out.count, 1);
+    assert.equal(out.results[0].netuid, 999);
+    assert.equal(out.note, undefined);
+  });
+
   test("find_subnet_for_task notes when nothing callable matches", async () => {
     const res = await callTool(
       "find_subnet_for_task",
@@ -1426,6 +1923,8 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.deepEqual(out.services[0].auth.schemes, ["apiKey"]);
     assert.equal(out.services[0].schema.available, true);
     assert.match(out.services[0].schema.fetch_with, /get_api_schema/);
+    assert.equal(out.services[0].fixture.available, false);
+    assert.equal(out.services[0].fixture.status, "missing");
     // ready-to-run snippets (#351): curl/python/typescript for a first call
     assert.ok(out.services[0].snippets, "expected integration snippets");
     assert.match(
@@ -1436,6 +1935,38 @@ describe("MCP goal-shaped tools (find_subnet_for_task + how_do_i_call)", () => {
     assert.match(out.services[0].snippets.python, /import requests/);
     assert.match(out.services[0].snippets.typescript, /await fetch/);
     assert.ok(out.next_steps.some((s) => /get_subnet_health/.test(s)));
+  });
+
+  test("how_do_i_call surfaces fixture fetch instructions when available", async () => {
+    const fixtureDetail = structuredClone(callDetail);
+    const service =
+      fixtureDetail["/metagraph/agent-catalog/7.json"].services[0];
+    service.fixture = {
+      captured_at: "2026-06-18T00:00:00.000Z",
+      request: { method: "GET", url: "https://api.data.io" },
+      response: { status: 200, content_type: "application/json" },
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+    };
+    service.fixture_status = {
+      status: "available",
+      reason: null,
+      artifact_path: "/metagraph/fixtures/sn-7-api.json",
+      captured_at: "2026-06-18T00:00:00.000Z",
+    };
+
+    const res = await callTool(
+      "how_do_i_call",
+      { netuid: 7 },
+      { deps: makeDeps(fixtureDetail) },
+    );
+
+    const out = res.body.result.structuredContent;
+    assert.equal(out.services[0].fixture.available, true);
+    assert.equal(
+      out.services[0].fixture.fetch_with,
+      "get_fixture with surface_id sn-7-api",
+    );
+    assert.ok(out.next_steps.some((s) => /get_fixture/.test(s)));
   });
 
   test("how_do_i_call regenerates snippets without cleartext credentials", async () => {
@@ -1784,10 +2315,18 @@ describe("MCP goal-shaped tools — branch coverage", () => {
 
   test("find_subnet_for_task tolerates a catalog with no subnets field", async () => {
     const env = aiEnvWithMatches([1, 2]);
+    // Semantic hits that aren't callable (empty catalog) now fall through to
+    // keyword discovery, so search.json must be present (empty here) — still 0.
     const res = await callTool(
       "find_subnet_for_task",
       { task: "anything" },
-      { deps: makeDeps({ "/metagraph/agent-catalog.json": {} }), env },
+      {
+        deps: makeDeps({
+          "/metagraph/agent-catalog.json": {},
+          "/metagraph/search.json": { documents: [] },
+        }),
+        env,
+      },
     );
     assert.equal(res.body.result.structuredContent.count, 0);
   });
@@ -1811,7 +2350,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       ],
     };
     const liveKv = {
-      last_run_at: "2026-06-13T00:00:00.000Z",
+      last_run_at: FRESH_RUN,
       surfaces: [
         {
           surface_id: "7:subnet-api:x",
@@ -1835,7 +2374,7 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       const out = res.body.result.structuredContent;
       assert.equal(out.surfaces[0].status, "failed");
       assert.equal(out.summary.status, "failed");
-      assert.equal(out.operational_observed_at, "2026-06-13T00:00:00.000Z");
+      assert.equal(out.operational_observed_at, FRESH_RUN);
     });
 
     test("list_subnet_apis overlays live health + recomputes callable", async () => {
@@ -1849,6 +2388,49 @@ describe("MCP goal-shaped tools — branch coverage", () => {
       assert.equal(out.services[0].health.stale, false);
       assert.equal(out.services[0].eligibility.callable, false);
       assert.equal(out.health_source, "live-cron-prober");
+    });
+
+    test("find_subnet_for_task overlays live health onto ranked results", async () => {
+      const deps = makeDeps(
+        {
+          "/metagraph/search.json": {
+            documents: [
+              {
+                type: "subnet",
+                netuid: 7,
+                slug: "x",
+                title: "X",
+                tokens: ["bitcoin", "data"],
+              },
+            ],
+          },
+          "/metagraph/agent-catalog.json": {
+            subnets: [
+              {
+                netuid: 7,
+                slug: "x",
+                name: "X",
+                categories: ["bitcoin"],
+                service_kinds: ["subnet-api"],
+                callable_count: 3,
+                integration_readiness: 80,
+              },
+            ],
+          },
+        },
+        { "health:current": liveKv },
+      );
+      const res = await callTool(
+        "find_subnet_for_task",
+        { task: "bitcoin" },
+        { deps },
+      );
+      const match = res.body.result.structuredContent.results.find(
+        (r) => r.netuid === 7,
+      );
+      assert.ok(match, "subnet 7 should rank for the task");
+      // health reflects the LIVE probe ("failed"), not the build-time stub.
+      assert.equal(match.health, "failed");
     });
 
     test("cold KV → static current-health is NOT served (live-only); reports unknown", async () => {
@@ -1968,5 +2550,702 @@ describe("list_subnets", () => {
     ).body.result.structuredContent;
     assert.equal(byDomain.total, 1);
     assert.equal(byDomain.subnets[0].netuid, 8);
+  });
+
+  test("sort by integration_readiness desc returns the most ready first + echoes order", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 0, 8],
+    );
+    assert.equal(out.sort, "integration_readiness");
+    assert.equal(out.order, "desc");
+  });
+
+  test("sort defaults to ascending when order is omitted", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [8, 0, 7],
+    );
+    assert.equal(out.order, "asc");
+  });
+
+  test("sort by name uses string comparison", async () => {
+    const out = (await callTool("list_subnets", { sort: "name" }, { deps }))
+      .body.result.structuredContent;
+    // Allways (7), Parked (8), root (0)
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 8, 0],
+    );
+  });
+
+  test("no sort preserves source order and reports sort/order null", async () => {
+    const out = (await callTool("list_subnets", {}, { deps })).body.result
+      .structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [0, 7, 8],
+    );
+    assert.equal(out.sort, null);
+    assert.equal(out.order, null);
+  });
+
+  test("rejects an unknown sort field or order value", async () => {
+    const badSort = await callTool("list_subnets", { sort: "bogus" }, { deps });
+    assert.equal(badSort.body.result.isError, true);
+    assert.ok(badSort.body.result.content[0].text.includes("sort"));
+    const badOrder = await callTool(
+      "list_subnets",
+      { sort: "netuid", order: "sideways" },
+      { deps },
+    );
+    assert.equal(badOrder.body.result.isError, true);
+    assert.ok(badOrder.body.result.content[0].text.includes("order"));
+  });
+
+  test("unscored subnets sort last and equal values tie-break by netuid", async () => {
+    const tieDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 5, name: "E", integration_readiness: 50 },
+          { netuid: 3, name: "C", integration_readiness: 50 },
+          { netuid: 2, name: "B", integration_readiness: 80 },
+          { netuid: 9, name: "I" }, // no integration_readiness → null
+          { netuid: 1, name: "A" }, // no integration_readiness → null
+        ],
+      },
+    });
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps: tieDeps },
+      )
+    ).body.result.structuredContent;
+    // 80 first; the two 50s tie → netuid asc (3,5); the nulls sort last → netuid
+    // asc (1,9), even under desc.
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [2, 3, 5, 1, 9],
+    );
+  });
+
+  test("a scored subnet sorts before an unscored one for either input order", async () => {
+    // Reversing the input flips which side of the comparator the null lands on,
+    // so both nulls-last branches are exercised; the result is the same.
+    for (const subnets of [
+      [
+        { netuid: 1, name: "A", integration_readiness: 10 },
+        { netuid: 2, name: "B" },
+      ],
+      [
+        { netuid: 2, name: "B" },
+        { netuid: 1, name: "A", integration_readiness: 10 },
+      ],
+    ]) {
+      const out = (
+        await callTool(
+          "list_subnets",
+          { sort: "integration_readiness" },
+          { deps: makeDeps({ "/metagraph/subnets.json": { subnets } }) },
+        )
+      ).body.result.structuredContent;
+      assert.deepEqual(
+        out.subnets.map((s) => s.netuid),
+        [1, 2],
+      );
+    }
+  });
+});
+
+// The keyword search tools share the list_subnets pagination contract: page
+// through a match set larger than one page and confirm every ranked item is
+// reachable and next_offset clears at the end.
+describe("search tools pagination", () => {
+  const MATCH_COUNT = 60; // > the 50-per-page cap, so paging is mandatory
+  const searchDocs = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    type: "subnet",
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    title: `Pageable ${i + 1}`,
+    subtitle: "pageable subnet",
+    tokens: ["pageable"],
+  }));
+  const catalogSubnets = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    name: `Pageable ${i + 1}`,
+    categories: ["pageable"],
+    service_kinds: ["subnet-api"],
+    callable_count: 1,
+    // Distinct readiness => a total order with no ties to depend on.
+    integration_readiness: MATCH_COUNT - i,
+  }));
+  const deps = makeDeps({
+    "/metagraph/search.json": { documents: searchDocs },
+    "/metagraph/agent-catalog.json": { subnets: catalogSubnets },
+  });
+
+  // Walk every page by following next_offset; returns the concatenated results
+  // and the (offset, next_offset) cursor sequence seen.
+  async function walkAll(tool, baseArgs, limit) {
+    const all = [];
+    const cursors = [];
+    let offset = 0;
+    let total = null;
+    // Guard well above the real page count so a cursor bug fails fast instead
+    // of looping forever.
+    for (let guard = 0; guard < 100; guard += 1) {
+      const out = (
+        await callTool(tool, { ...baseArgs, offset, limit }, { deps })
+      ).body.result.structuredContent;
+      total = out.total;
+      assert.equal(out.offset, offset, `${tool}: echoes the requested offset`);
+      assert.equal(out.limit, limit, `${tool}: echoes the requested limit`);
+      assert.equal(
+        out.count,
+        out.results.length,
+        `${tool}: count equals the page length`,
+      );
+      all.push(...out.results);
+      cursors.push({ offset: out.offset, next_offset: out.next_offset });
+      if (out.next_offset === null) break;
+      assert.equal(
+        out.next_offset,
+        offset + out.results.length,
+        `${tool}: next_offset is the cursor for the following page`,
+      );
+      offset = out.next_offset;
+    }
+    return { all, cursors, total };
+  }
+
+  for (const { tool, args } of [
+    { tool: "search_subnets", args: { query: "pageable" } },
+    { tool: "find_subnets_by_capability", args: { capability: "pageable" } },
+  ]) {
+    test(`${tool} pages the whole match set; next_offset clears at the end`, async () => {
+      const { all, cursors, total } = await walkAll(tool, args, 50);
+      // total is the full match count, independent of the per-page cap.
+      assert.equal(total, MATCH_COUNT);
+      // Two pages (60 matches, 50 cap) prove items past page one are reachable.
+      assert.deepEqual(cursors, [
+        { offset: 0, next_offset: 50 },
+        { offset: 50, next_offset: null },
+      ]);
+      // Every match reached exactly once: no drops, no duplicates across pages.
+      assert.equal(all.length, MATCH_COUNT);
+      assert.equal(new Set(all.map((r) => r.netuid)).size, MATCH_COUNT);
+    });
+
+    test(`${tool} offset past the end returns an empty terminal page`, async () => {
+      const out = (
+        await callTool(
+          tool,
+          { ...args, offset: MATCH_COUNT, limit: 10 },
+          { deps },
+        )
+      ).body.result.structuredContent;
+      assert.equal(out.total, MATCH_COUNT);
+      assert.equal(out.offset, MATCH_COUNT);
+      assert.equal(out.count, 0);
+      assert.equal(out.results.length, 0);
+      assert.equal(out.next_offset, null);
+    });
+  }
+});
+
+// Optional fields are absent on some real subnets, so the result mappers fall
+// back: search subtitle -> null, and capability categories/service_kinds -> [],
+// integration_readiness -> null. Exercise those fallback branches directly.
+describe("search tools — absent optional fields fall back", () => {
+  const deps = makeDeps({
+    // A matching search doc with no subtitle.
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 5,
+          slug: "sparse",
+          title: "Sparse",
+          tokens: ["sparse"],
+        },
+      ],
+    },
+    // A matching catalog subnet (matched via name/slug) with no categories,
+    // service_kinds, or integration_readiness.
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        { netuid: 9, slug: "sparsecap", name: "Sparsecap", callable_count: 3 },
+      ],
+    },
+  });
+
+  test("search_subnets maps a missing subtitle to description: null", async () => {
+    const out = (
+      await callTool("search_subnets", { query: "sparse" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    assert.equal(out.results[0].netuid, 5);
+    assert.equal(out.results[0].description, null);
+  });
+
+  test("find_subnets_by_capability defaults absent categories/service_kinds/readiness", async () => {
+    const out = (
+      await callTool(
+        "find_subnets_by_capability",
+        { capability: "sparsecap" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    const [match] = out.results;
+    assert.equal(match.netuid, 9);
+    assert.deepEqual(match.categories, []);
+    assert.deepEqual(match.service_kinds, []);
+    assert.equal(match.integration_readiness, null);
+  });
+});
+
+describe("MCP economics + metagraph data tools", () => {
+  // One valid live economics blob: contract matches, captured_at fresh, the row
+  // count matches the summary, and emission_share sums to ~1 (resolveLiveEconomics
+  // rejects a blob that fails any of these, falling through to the R2 artifact).
+  const ECON_ROW = {
+    netuid: 7,
+    name: "Allways",
+    slug: "allways",
+    emission_share: 1,
+    registration_cost_tao: 0.5,
+    registration_allowed: true,
+    open_slots: 3,
+    miner_readiness: 80,
+    validator_count: 12,
+    miner_count: 200,
+    total_stake_tao: 1000,
+    max_stake_tao: 5000,
+    alpha_price_tao: 0.06,
+  };
+  const ECON_BLOB = {
+    contract_version: "test-contract",
+    captured_at: FRESH_RUN,
+    schema_version: 1,
+    network: "finney",
+    summary: {
+      with_economics_count: 1,
+      subnet_count: 1,
+      registration_open_count: 1,
+    },
+    subnets: [ECON_ROW],
+  };
+
+  test("get_subnet_economics serves the live KV economics tier (KV-primary)", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps({}, { "economics:current": ECON_BLOB }),
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-kv");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.economics.open_slots, 3);
+    assert.equal(out.economics.registration_cost_tao, 0.5);
+    assert.equal(out.summary.with_economics_count, 1);
+    assert.equal(out.captured_at, FRESH_RUN);
+  });
+
+  test("get_subnet_economics falls back to the committed R2 artifact when KV is cold", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.economics.netuid, 7);
+  });
+
+  test("get_subnet_economics falls back to R2 when the KV blob is off-contract", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps(
+          { "/metagraph/economics.json": ECON_BLOB },
+          { "economics:current": ECON_BLOB },
+        ),
+        // mcpContractVersion mismatches the blob's contract_version → KV rejected.
+        env: { METAGRAPH_CONTRACT_VERSION: "different-contract" },
+      },
+    );
+    assert.equal(res.body.result.structuredContent.source, "r2-fallback");
+  });
+
+  test("get_subnet_economics returns economics:null for a subnet with no row", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 999 },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.economics, null);
+    assert.equal(out.source, "r2-fallback");
+  });
+
+  test("get_subnet_economics null-fills captured_at and summary when the snapshot omits them", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      {
+        deps: makeDeps(
+          {
+            "/metagraph/economics.json": {
+              subnets: [{ netuid: 7, open_slots: 1 }],
+            },
+          },
+          {},
+        ),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.captured_at, null);
+    assert.equal(out.summary, null);
+    assert.equal(out.economics.netuid, 7);
+  });
+
+  test("get_subnet_economics surfaces not_found when neither tier has data", async () => {
+    const res = await callTool(
+      "get_subnet_economics",
+      { netuid: 7 },
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
+  // mirroring the metagraph-neurons unit-test fixtures.
+  const ROW = {
+    uid: 0,
+    hotkey: "5Hk1",
+    coldkey: "5Co1",
+    active: 1,
+    validator_permit: 1,
+    rank: 1,
+    trust: 0.5,
+    validator_trust: 0.99,
+    consensus: 0.4,
+    incentive: 0.1,
+    dividends: 0.2,
+    emission_tao: 22.1,
+    stake_tao: 1000.5,
+    registered_at_block: 6702485,
+    is_immunity_period: 0,
+    axon: "1.2.3.4:8091",
+    block_number: 8454388,
+    captured_at: 1750000000000,
+  };
+  const MINER = { ...ROW, uid: 5, validator_permit: 0, hotkey: "5Hk5" };
+  const SNAPSHOTS = [
+    {
+      snapshot_date: "2026-06-01",
+      completeness_score: 90,
+      surface_count: 10,
+      endpoint_count: 12,
+      validator_count: 8,
+      miner_count: 100,
+      total_stake_tao: 500,
+      alpha_price_tao: 0.05,
+      emission_share: 0.04,
+    },
+    {
+      snapshot_date: "2026-06-10",
+      completeness_score: 97,
+      surface_count: 13,
+      endpoint_count: 15,
+      validator_count: 12,
+      miner_count: 200,
+      total_stake_tao: 1000,
+      alpha_price_tao: 0.06,
+      emission_share: 0.05,
+    },
+  ];
+
+  // D1 binding honoring the loaders' WHERE clauses (neurons + subnet_snapshots).
+  function metagraphD1({ neurons = [], snapshots = [] } = {}) {
+    return {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            return {
+              all() {
+                if (sql.includes("FROM neurons")) {
+                  let r = neurons;
+                  if (sql.includes("validator_permit = 1")) {
+                    r = r.filter((x) => x.validator_permit === 1);
+                  }
+                  if (sql.includes("AND uid = ?")) {
+                    r = r.filter((x) => x.uid === params[1]);
+                  }
+                  return Promise.resolve({ results: r });
+                }
+                if (sql.includes("FROM subnet_snapshots")) {
+                  return Promise.resolve({ results: snapshots });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+  const d1Env = {
+    METAGRAPH_HEALTH_DB: metagraphD1({
+      neurons: [ROW, MINER],
+      snapshots: SNAPSHOTS,
+    }),
+  };
+
+  test("get_subnet_metagraph returns every neuron with booleans coerced", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.block_number, 8454388);
+    assert.equal(typeof out.captured_at, "string");
+    assert.equal(out.neurons[0].validator_permit, true);
+    assert.equal(out.neurons[0].is_immunity_period, false);
+  });
+
+  test("get_subnet_metagraph with validator_permit returns only validators", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7, validator_permit: true },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 1);
+    assert.equal(out.neurons[0].uid, 0);
+  });
+
+  test("get_subnet_metagraph rejects a non-boolean validator_permit", async () => {
+    const res = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7, validator_permit: "yes" },
+      { env: d1Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /boolean/);
+  });
+
+  test("list_subnet_validators returns permit-holders ranked by stake", async () => {
+    const res = await callTool(
+      "list_subnet_validators",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.validators[0].validator_permit, true);
+  });
+
+  test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
+    const present = await callTool(
+      "get_neuron",
+      { netuid: 7, uid: 0 },
+      { env: d1Env },
+    );
+    assert.equal(present.body.result.structuredContent.neuron.uid, 0);
+    const absent = await callTool(
+      "get_neuron",
+      { netuid: 7, uid: 999 },
+      { env: d1Env },
+    );
+    assert.equal(absent.body.result.structuredContent.neuron, null);
+  });
+
+  test("get_neuron requires a non-negative uid", async () => {
+    const res = await callTool("get_neuron", { netuid: 7 }, { env: d1Env });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /uid/);
+  });
+
+  test("get_subnet_trajectory computes the time series + deltas (sorted ascending)", async () => {
+    const res = await callTool(
+      "get_subnet_trajectory",
+      { netuid: 7 },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].date, "2026-06-01");
+    assert.equal(out.points[1].validator_count, 12);
+    assert.equal(out.deltas["7d"].completeness_score, 7);
+  });
+
+  test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
+    const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
+    assert.equal(meta.body.result.isError, false);
+    assert.equal(meta.body.result.structuredContent.neuron_count, 0);
+    assert.deepEqual(meta.body.result.structuredContent.neurons, []);
+
+    const vals = await callTool("list_subnet_validators", { netuid: 7 });
+    assert.equal(vals.body.result.structuredContent.validator_count, 0);
+
+    const neuron = await callTool("get_neuron", { netuid: 7, uid: 0 });
+    assert.equal(neuron.body.result.structuredContent.neuron, null);
+
+    const traj = await callTool("get_subnet_trajectory", { netuid: 7 });
+    assert.equal(traj.body.result.structuredContent.point_count, 0);
+  });
+
+  test("the D1 runner swallows a query error and a missing result set", async () => {
+    // A bound DB whose .all() throws must be caught and yield an empty payload.
+    const throwingEnv = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all() {
+              throw new Error("d1 unavailable");
+            },
+          }),
+        }),
+      },
+    };
+    const thrown = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: throwingEnv },
+    );
+    assert.equal(thrown.body.result.isError, false);
+    assert.equal(thrown.body.result.structuredContent.neuron_count, 0);
+
+    // A result object with no `results` array falls back to [] (no throw).
+    const noResultsEnv = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({ bind: () => ({ all: () => Promise.resolve({}) }) }),
+      },
+    };
+    const empty = await callTool(
+      "get_subnet_metagraph",
+      { netuid: 7 },
+      { env: noResultsEnv },
+    );
+    assert.equal(empty.body.result.structuredContent.neuron_count, 0);
+  });
+
+  test("the data tools reject a negative netuid", async () => {
+    for (const name of [
+      "get_subnet_economics",
+      "get_subnet_trajectory",
+      "get_subnet_metagraph",
+      "list_subnet_validators",
+    ]) {
+      const res = await callTool(name, { netuid: -1 }, { env: d1Env });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `${name} must reject netuid -1`,
+      );
+    }
+  });
+});
+
+describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
+  // INVARIANT: a malformed argument must surface as a tools/call RESULT with
+  // isError:true + a stable `invalid_params` code (so an agent branches on the
+  // code), NOT as a thrown transport error or a 500. These exercise the
+  // optionalEnum / requireString / clampLimit validators across several tools.
+
+  test("optionalEnum rejects an out-of-set value with an invalid_params result", async () => {
+    const res = await callTool("list_enrichment_targets", {
+      tier: "not-a-real-tier",
+    });
+    assert.equal(res.status, 200, "transport stays 200; the error is in-band");
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /must be one of/);
+  });
+
+  test("optionalEnum rejects a non-string value the same way", async () => {
+    const res = await callTool("find_subnet_opportunities", { board: 7 });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("requireString rejects a blank/whitespace-only required arg", async () => {
+    for (const args of [{ query: "   " }, { query: "" }, { query: 42 }]) {
+      const res = await callTool("search_subnets", args);
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+      assert.match(res.body.result.content[0].text, /non-empty string/);
+    }
+  });
+
+  test("an unknown tool name is a typed isError result, not a transport error", async () => {
+    // Regression: callTool must return an isError result for an unknown tool
+    // (the dispatcher never throws a -32603 for it).
+    const res = await callTool("definitely_not_a_tool", {});
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown tool/);
+    // A non-string name is handled the same way (no crash on `.get`).
+    const res2 = await rpc({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name: 123, arguments: {} },
+    });
+    assert.equal(res2.body.result.isError, true);
+  });
+
+  test("an unknown JSON-RPC method is a typed method-not-found, not a throw", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/teleport",
+      params: {},
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.error.code, -32601);
   });
 });

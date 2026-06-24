@@ -106,5 +106,7 @@
       },
       "notes": "Official Targon source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/targoncompute" },
+  "contact": "devs@manifold.inc"
 }

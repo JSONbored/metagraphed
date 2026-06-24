@@ -1,0 +1,9 @@
+# Minimal Docker build context for the realtime streamer image (#1361) — security
+# + speed. Only the streamer's sources are needed; never ship .git, node_modules,
+# build artifacts, or any env/secret files into the build context.
+*
+!deploy/
+!deploy/streamer.Dockerfile
+!scripts/
+!scripts/fetch-events.py
+!scripts/stream-events.py

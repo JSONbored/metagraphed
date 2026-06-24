@@ -1,6 +1,6 @@
 // Live operational-health cron prober.
 //
-// Runs in the Worker on a 2-minute Cron Trigger (workers/api.mjs `scheduled()`):
+// Runs in the Worker on a 15-minute Cron Trigger (workers/api.mjs `scheduled()`):
 // loads the committed operational-surfaces.json list, probes each surface with
 // the shared isomorphic core (src/health-probe-core.mjs) under bounded
 // concurrency, then writes:
@@ -11,22 +11,49 @@
 //   - KV health:meta     (last_run_at + counts → freshness + self-monitoring)
 //
 // Everything is injected (db, kv, loadSurfaces, probe, now) so the whole run is
-// unit-testable without a live runtime. Decoupled from the 6h build: a stale
+// unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
 import {
   isUnsafePublicUrl,
   mapLimit,
+  okLatencyMs,
   probeSurface as coreProbeSurface,
+  rollupSubnetStatus,
 } from "./health-probe-core.mjs";
+import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import {
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+  KV_HEALTH_RPC_POOL,
+} from "./kv-keys.mjs";
 
-export const KV_HEALTH_CURRENT = "health:current";
-export const KV_HEALTH_RPC_POOL = "health:rpc-pool";
-export const KV_HEALTH_META = "health:meta";
+// Re-export so existing importers (workers/api.mjs, mcp-server, discovery) keep
+// resolving the KV health keys through the prober; the names now live in kv-keys.
+export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 const PROBE_CONCURRENCY = 8;
+// Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
+// headroom). Early signal to raise concurrency or shard before runs overlap.
+const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
 const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Cloudflare D1 batch() calls are capped (~100 statements per batch). Chunk large
+// probe/snapshot writes so a growing surface/subnet catalog cannot fail silently.
+export const D1_STATEMENTS_PER_BATCH = 50;
+
+export async function runD1StatementBatches(
+  db,
+  statements,
+  batchSize = D1_STATEMENTS_PER_BATCH,
+) {
+  if (!statements.length) return { ok: true, batches: 0 };
+  for (let i = 0; i < statements.length; i += batchSize) {
+    await db.batch(statements.slice(i, i + batchSize));
+  }
+  return { ok: true, batches: Math.ceil(statements.length / batchSize) };
+}
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];
@@ -90,25 +117,32 @@ function ipv4Octets(value) {
   return octets.every((n) => n !== null) ? octets : null;
 }
 
+function isUnsafeIpv4(octets) {
+  const [a, b, c, d] = octets;
+  return (
+    a === 0 ||
+    a === 10 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && c === 0) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224 ||
+    (a === 255 && b === 255 && c === 255 && d === 255)
+  );
+}
+
 function isUnsafeIpAddress(value) {
   const host = normalizedHostname(value);
   const v4 = ipv4Octets(host);
-  if (v4) {
-    const [a, b, c, d] = v4;
-    return (
-      a === 0 ||
-      a === 10 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 0 && c === 0) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224 ||
-      (a === 255 && b === 255 && c === 255 && d === 255)
-    );
-  }
+  if (v4) return isUnsafeIpv4(v4);
+  // IPv4-mapped (::ffff:a.b.c.d), IPv4-compatible (::a.b.c.d), 6to4 (2002::/16),
+  // and NAT64 (64:ff9b::/96) tunnel a v4 address that the prefix checks below
+  // can't see — re-check the embedded v4 against the same private ranges.
+  const embedded = ipv6EmbeddedIpv4(host);
+  if (embedded && isUnsafeIpv4(embedded)) return true;
   return (
     host === "::" ||
     host === "::1" ||
@@ -116,7 +150,9 @@ function isUnsafeIpAddress(value) {
     host.startsWith("64:ff9b:1:") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879): the whole
+    // fe80::–feff: reserved range, matching the webhook guard (issue #1538).
+    /^fe[89a-f][0-9a-f]:/i.test(host) ||
     host.startsWith("ff")
   );
 }
@@ -259,9 +295,11 @@ export function workerWebSocketConnector(fetchImpl = fetch) {
     });
 }
 
-// Read the committed operational-surfaces.json (dual tier) via the ASSETS
-// binding, falling back to R2. Returns the surfaces array (empty on failure —
-// the run then no-ops rather than throwing).
+// Read the operational-surfaces.json (DUAL tier — committed + R2-mirrored) via
+// the ASSETS binding, falling back to R2. It is committed precisely so this read
+// never depends on the data publish (see artifact-storage.mjs): a publish outage
+// must not freeze the live health prober. Returns the surfaces array (empty on
+// failure — the run then no-ops rather than throwing).
 export async function loadOperationalSurfaces(env) {
   // ASSETS first (committed, always present in the deployed Worker).
   try {
@@ -280,7 +318,13 @@ export async function loadOperationalSurfaces(env) {
   try {
     if (env.METAGRAPH_ARCHIVE?.get) {
       const prefix = env.METAGRAPH_R2_LATEST_PREFIX || "latest/";
-      const key = `${prefix}metagraph/operational-surfaces.json`;
+      // R2 artifact keys are FLAT under the prefix (latest/<file>.json), NOT
+      // latest/metagraph/<file>.json — the manifest's latest_key is
+      // "latest/operational-surfaces.json". The "/metagraph/" segment is only
+      // the public HTTP path, not the R2 key. This fallback went unexercised
+      // until #1017 made operational-surfaces.json R2-only; the stray
+      // "metagraph/" segment then 404'd every read and silently froze the prober.
+      const key = `${prefix}operational-surfaces.json`;
       const object = await env.METAGRAPH_ARCHIVE.get(key);
       if (object) {
         const body = JSON.parse(await object.text());
@@ -291,13 +335,6 @@ export async function loadOperationalSurfaces(env) {
     // fall through to empty
   }
   return [];
-}
-
-function rollupStatus({ ok, degraded, failed, unknown, total }) {
-  if (total === 0 || unknown === total) return "unknown";
-  if (failed === 0 && degraded === 0) return "ok";
-  if (ok > 0 || degraded > 0) return "degraded";
-  return "failed";
 }
 
 function summarizeGroup(rows) {
@@ -312,17 +349,23 @@ function summarizeGroup(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus({ ...counts, total: rows.length }),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,
     failed_count: counts.failed,
     unknown_count: counts.unknown,
-    last_checked: iso(lastChecked) || null,
-    last_ok: iso(lastOk) || null,
+    // Guard the 0 sentinel before iso(): iso(0) is the truthy epoch string
+    // "1970-01-01T00:00:00.000Z", so `iso(0) || null` would report a fake last_ok
+    // for a subnet whose surfaces have never probed OK. (last_checked is always
+    // set from runAt, but guard it the same way for symmetry.)
+    last_checked: lastChecked ? iso(lastChecked) : null,
+    last_ok: lastOk ? iso(lastOk) : null,
     avg_latency_ms: latencies.length
       ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
       : null,
+    // How many surfaces backed the mean (a 1-reading mean vs a 300-reading one).
+    latency_sample_count: latencies.length,
   };
 }
 
@@ -354,15 +397,22 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   const priorStatus = new Map();
   if (db) {
     try {
+      const keys = surfaces.map((s) => s.surface_key || s.surface_id);
       const ids = surfaces.map((s) => s.surface_id);
-      const placeholders = ids.map(() => "?").join(",");
+      const keyPlaceholders = keys.map(() => "?").join(",");
+      const idPlaceholders = ids.map(() => "?").join(",");
       const { results } = await db
         .prepare(
-          `SELECT surface_id, last_ok, consecutive_failures FROM surface_status WHERE surface_id IN (${placeholders})`,
+          `SELECT surface_id, surface_key, last_ok, consecutive_failures
+           FROM surface_status
+           WHERE surface_key IN (${keyPlaceholders})
+              OR surface_id IN (${idPlaceholders})`,
         )
-        .bind(...ids)
+        .bind(...keys, ...ids)
         .all();
-      for (const row of results || []) priorStatus.set(row.surface_id, row);
+      for (const row of results || []) {
+        priorStatus.set(row.surface_key || row.surface_id, row);
+      }
     } catch {
       // First run / cold table — treat all as having no prior state.
     }
@@ -395,18 +445,33 @@ export async function runHealthProber(env, ctx, overrides = {}) {
       };
     }
     const ok = base.status === "ok";
-    const prior = priorStatus.get(surface.surface_id);
+    const stableLookupKey = surface.surface_key || surface.surface_id;
+    const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
-    const consecutiveFailures = ok ? 0 : (prior?.consecutive_failures ?? 0) + 1;
+    // The sustained-down breaker protects the public RPC pool from repeatedly
+    // routing to unusable endpoints. For RPC surfaces, any non-ok prober run
+    // counts toward that eviction threshold because `degraded` includes
+    // auth-required, rate-limited, transient, and timeout outcomes that are not
+    // necessarily usable by the proxy. Non-RPC degraded runs remain soft signals
+    // and reset the hard-failure streak.
+    const countsTowardBreaker =
+      base.status === "failed" ||
+      (surface.kind === "subtensor-rpc" && base.status !== "ok");
+    const consecutiveFailures = countsTowardBreaker
+      ? (prior?.consecutive_failures ?? 0) + 1
+      : 0;
     return {
       surface_id: surface.surface_id,
+      // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.
+      surface_key: surface.surface_key ?? null,
       netuid: surface.netuid,
       kind: surface.kind,
       provider: surface.provider || null,
       url: surface.url,
       status: base.status,
       classification: base.classification || null,
-      latency_ms: Number.isFinite(base.latency_ms) ? base.latency_ms : null,
+      // Success-only: failures store null latency (counted in uptime, not latency).
+      latency_ms: okLatencyMs(base.status, base.latency_ms),
       status_code: Number.isInteger(base.status_code) ? base.status_code : null,
       archive_support: base.archive_support ?? null,
       latest_block: safeRpcBlockNumber(base.latest_block),
@@ -418,33 +483,56 @@ export async function runHealthProber(env, ctx, overrides = {}) {
 
   sanitizeRpcLatestBlocks(probed);
 
-  await persistToD1(db, probed, runAt);
+  const d1Persist = await persistToD1(db, probed, runAt);
   await persistToKv(kv, probed, runAt);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  const durationMs = now() - runAt;
+  // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
+  // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
+  // this threshold is the early signal to raise PROBE_CONCURRENCY or shard
+  // surfaces across firings before runs start overlapping / getting killed.
+  if (durationMs > PROBE_WALLTIME_WARN_MS) {
+    console.warn(
+      `prober wall-time ${durationMs}ms for ${probed.length} surfaces exceeds the ${PROBE_WALLTIME_WARN_MS}ms warn threshold (15-min cron limit) — raise PROBE_CONCURRENCY or shard surfaces.`,
+    );
+  }
   return {
     ok: true,
     probed: probed.length,
     counts,
     run_at: iso(runAt),
-    duration_ms: now() - runAt,
+    duration_ms: durationMs,
+    d1_persisted: d1Persist.ok === true,
   };
 }
 
 async function persistToD1(db, probed, runAt) {
-  if (!db?.prepare) return;
+  if (!db?.prepare) return { ok: false, reason: "unavailable" };
   try {
     const checkStmt = db.prepare(
       `INSERT INTO surface_checks
-       (surface_id, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (surface_id, surface_key, netuid, kind, status, classification, latency_ms, status_code, ok, checked_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
+    // #1005: surface_status now keys latest rows on surface_key, so a display
+    // id/slug rename updates the alias in-place instead of creating a new latest
+    // row and resetting breaker continuity.
     const statusStmt = db.prepare(
       `INSERT INTO surface_status
-       (surface_id, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (surface_id, surface_key, netuid, kind, url, provider, status, classification, latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(surface_key) WHERE surface_key IS NOT NULL DO UPDATE SET
+         surface_id=excluded.surface_id,
+         netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
+         provider=excluded.provider, status=excluded.status,
+         classification=excluded.classification, latency_ms=excluded.latency_ms,
+         status_code=excluded.status_code, last_checked=excluded.last_checked,
+         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
+         updated_at=excluded.updated_at
        ON CONFLICT(surface_id) DO UPDATE SET
+         surface_key=excluded.surface_key,
          netuid=excluded.netuid, kind=excluded.kind, url=excluded.url,
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
@@ -457,6 +545,7 @@ async function persistToD1(db, probed, runAt) {
       statements.push(
         checkStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.status,
@@ -468,6 +557,7 @@ async function persistToD1(db, probed, runAt) {
         ),
         statusStmt.bind(
           row.surface_id,
+          row.surface_key,
           row.netuid,
           row.kind,
           row.url,
@@ -483,9 +573,12 @@ async function persistToD1(db, probed, runAt) {
         ),
       );
     }
-    await db.batch(statements);
+    return await runD1StatementBatches(db, statements);
   } catch {
-    // D1 unavailable / schema cold: KV still gets written so serving stays live.
+    // D1 unavailable / schema cold: KV still gets written so serving stays live,
+    // but surface the split so operators can spot analytics drift.
+    console.warn("health prober: D1 persist failed; KV snapshot still updated");
+    return { ok: false, reason: "batch_failed" };
   }
 }
 
@@ -496,6 +589,7 @@ async function persistToKv(kv, probed, runAt) {
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
+    surface_key: row.surface_key,
     netuid: row.netuid,
     kind: row.kind,
     provider: row.provider,
@@ -584,51 +678,63 @@ function utcDayBounds(ms) {
   };
 }
 
-// Durable daily uptime rollup (PR3). Aggregates the raw 2-minute surface_checks
+// Durable daily uptime rollup (PR3). Aggregates the raw 15-minute surface_checks
 // for a UTC day into ONE row per (surface, day) in surface_uptime_daily —
 // retained indefinitely for long-term uptime analytics — so the 30-day raw
 // prune never loses history. MUST run before pruneHealthHistory. Rolls up today
 // + yesterday each hour (the post-midnight fire finalizes the prior day; upsert
-// keeps it idempotent). No-ops when D1 is unbound/cold.
+// keeps it idempotent). No-ops when D1 is unbound/cold. Latency is rolled up
+// success-only with its sample count, plus the day's exact p50/p95/p99 so tail
+// latency survives the raw prune (percentiles can't be rebuilt from a mean).
 export async function rollupDailyUptime(env, overrides = {}) {
   const now = overrides.now || (() => Date.now());
   const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { rolled: false };
   const runAt = now();
   const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  const conflictColumns = `
+       surface_id = excluded.surface_id,
+       surface_key = excluded.surface_key,
+       netuid = excluded.netuid,
+       samples = excluded.samples,
+       ok_count = excluded.ok_count,
+       uptime_ratio = excluded.uptime_ratio,
+       avg_latency_ms = excluded.avg_latency_ms,
+       latency_samples = excluded.latency_samples,
+       p50_latency_ms = excluded.p50_latency_ms,
+       p95_latency_ms = excluded.p95_latency_ms,
+       p99_latency_ms = excluded.p99_latency_ms,
+       status = excluded.status,
+       updated_at = excluded.updated_at`;
   const stmt = db.prepare(
-    `INSERT INTO surface_uptime_daily
-       (surface_id, netuid, day, samples, ok_count, uptime_ratio,
-        avg_latency_ms, status, updated_at)
+    `${rankedChecksCte("checked_at >= ? AND checked_at < ?")}
+     INSERT INTO surface_uptime_daily
+       (surface_id, surface_key, netuid, day, samples, ok_count, uptime_ratio,
+        latency_samples, avg_latency_ms, p50_latency_ms, p95_latency_ms,
+        p99_latency_ms, status, updated_at)
      SELECT
-       surface_id,
+       MAX(surface_id) AS surface_id,
+       surface_key,
        netuid,
        ? AS day,
        COUNT(*) AS samples,
        SUM(ok) AS ok_count,
        ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
-       CAST(ROUND(AVG(latency_ms)) AS INTEGER) AS avg_latency_ms,
+       ${latencyStatColumns({ roundedAvg: true, includeMinMax: false })},
        CASE
          WHEN SUM(ok) = COUNT(*) THEN 'ok'
          WHEN SUM(ok) = 0 THEN 'failed'
          ELSE 'degraded'
        END AS status,
        ? AS updated_at
-     FROM surface_checks
-     WHERE checked_at >= ? AND checked_at < ?
-     GROUP BY surface_id, netuid
-     ON CONFLICT(surface_id, day) DO UPDATE SET
-       netuid = excluded.netuid,
-       samples = excluded.samples,
-       ok_count = excluded.ok_count,
-       uptime_ratio = excluded.uptime_ratio,
-       avg_latency_ms = excluded.avg_latency_ms,
-       status = excluded.status,
-       updated_at = excluded.updated_at`,
+     FROM ranked
+     GROUP BY surface_key, netuid
+     ON CONFLICT(surface_key, day) WHERE surface_key IS NOT NULL DO UPDATE SET${conflictColumns}
+     ON CONFLICT(surface_id, day) DO UPDATE SET${conflictColumns}`,
   );
   try {
     await db.batch(
-      days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
+      days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
     return { rolled: true, days: days.map((d) => d.date) };
   } catch {
@@ -683,19 +789,50 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     : [];
   if (!profiles.length) return { ok: false, reason: "no_profiles" };
 
+  // Per-subnet economics for the time series (#1307). Best-effort: a missing
+  // economics artifact just leaves those columns null (structural trajectory
+  // still records).
+  let economicsResult;
+  try {
+    economicsResult = await readArtifact(env, "/metagraph/economics.json");
+  } catch {
+    economicsResult = null;
+  }
+  const economicsByNetuid = new Map(
+    (Array.isArray(economicsResult?.data?.subnets)
+      ? economicsResult.data.subnets
+      : []
+    ).map((row) => [row.netuid, row]),
+  );
+
   const date = new Date(now()).toISOString().slice(0, 10);
   const capturedAt = now();
+  // The structural columns + captured_at are owned by the first same-day fire.
+  // The economics columns can arrive late (economics.json is pure chain state
+  // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
+  // would freeze a NULL-economics first fire and the 23 later hourly fires could
+  // never backfill it — a permanent gap in the trajectory series. Backfill them
+  // with COALESCE(existing, excluded): a later fire fills a NULL, but a later
+  // NULL can never wipe an earlier fire's good value.
   const stmt = db.prepare(
     `INSERT INTO subnet_snapshots
        (netuid, snapshot_date, completeness_score, surface_count,
-        endpoint_count, monitored_count, candidate_count, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT (netuid, snapshot_date) DO NOTHING`,
+        endpoint_count, monitored_count, candidate_count,
+        validator_count, miner_count, total_stake_tao, alpha_price_tao,
+        emission_share, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
+       validator_count = COALESCE(subnet_snapshots.validator_count, excluded.validator_count),
+       miner_count = COALESCE(subnet_snapshots.miner_count, excluded.miner_count),
+       total_stake_tao = COALESCE(subnet_snapshots.total_stake_tao, excluded.total_stake_tao),
+       alpha_price_tao = COALESCE(subnet_snapshots.alpha_price_tao, excluded.alpha_price_tao),
+       emission_share = COALESCE(subnet_snapshots.emission_share, excluded.emission_share)`,
   );
   const statements = profiles
     .filter((profile) => Number.isInteger(profile.netuid))
-    .map((profile) =>
-      stmt.bind(
+    .map((profile) => {
+      const econ = economicsByNetuid.get(profile.netuid) || {};
+      return stmt.bind(
         profile.netuid,
         date,
         profile.completeness_score ?? null,
@@ -703,12 +840,17 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
         profile.endpoint_count ?? null,
         profile.monitored_endpoint_count ?? null,
         profile.candidate_count ?? null,
+        econ.validator_count ?? null,
+        econ.miner_count ?? null,
+        econ.total_stake_tao ?? null,
+        econ.alpha_price_tao ?? null,
+        econ.emission_share ?? null,
         capturedAt,
-      ),
-    );
+      );
+    });
   if (!statements.length) return { ok: false, reason: "no_rows" };
   try {
-    await db.batch(statements);
+    await runD1StatementBatches(db, statements);
     return { ok: true, date, rows: statements.length };
   } catch {
     return { ok: false, reason: "write_failed" };

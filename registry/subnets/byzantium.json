@@ -1,19 +1,6 @@
 {
-  "schema_version": 1,
-  "netuid": 76,
-  "name": "Byzantium",
-  "slug": "sn-76",
-  "status": "active",
   "categories": ["baseline-curated", "identity-reviewed", "official-website"],
-  "dashboard_url": "https://taomarketcap.com/subnets/76",
-  "website_url": "https://www.byzantiumai.net/",
-  "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
-    "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 3,
     "gap_notes": [
       "No verified docs site yet.",
       "No verified source repository yet.",
@@ -21,26 +8,65 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 3,
+    "verified_at": "2026-06-08T09:25:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/76",
+  "name": "Byzantium",
+  "netuid": 76,
+  "notes": "Reviewed overlay for SN76 using the official Byzantium website and universal TaoMarketCap dashboard. Public docs/API/common-path candidates currently 404 and are not promoted.",
+  "schema_version": 1,
+  "slug": "sn-76",
+  "social": {
+    "x": "https://x.com/byzantiumai"
+  },
+  "source_repo": "https://github.com/byzantiumaitao-arch/byzantium",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-76-byzantium-website",
-      "name": "Byzantium website",
-      "kind": "website",
-      "url": "https://www.byzantiumai.net/",
-      "provider": "byzantium",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://www.byzantiumai.net/"],
+      "id": "sn-76-byzantium-website",
+      "kind": "website",
+      "name": "Byzantium website",
+      "notes": "Official Byzantium website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Byzantium website."
+      "provider": "byzantium",
+      "public_safe": true,
+      "source_urls": ["https://www.byzantiumai.net/"],
+      "url": "https://www.byzantiumai.net/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-76-byzantium-source-repo",
+      "kind": "source-repo",
+      "name": "Byzantium community source-repo",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "byzantium",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/safe-scan-ai/cancer-ai"],
+      "url": "https://github.com/safe-scan-ai/cancer-ai"
     }
-  ]
+  ],
+  "website_url": "https://www.byzantiumai.net/"
 }

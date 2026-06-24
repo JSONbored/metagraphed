@@ -40,6 +40,9 @@
   "notes": "Pilot manifest. This tracks public-safe registry concepts only; validator credential flows and private scoring internals are out of scope.",
   "schema_version": 1,
   "slug": "gittensor",
+  "social": {
+    "x": "https://x.com/gittensor_io"
+  },
   "source_repo": "https://github.com/entrius/gittensor",
   "status": "active",
   "surfaces": [
@@ -201,6 +204,184 @@
       "provider": "gittensory",
       "public_safe": true,
       "url": "https://gittensory.aethereal.dev/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-dashboard",
+      "kind": "dashboard",
+      "name": "Gittensor public dashboard",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["https://gittensor.io/"],
+      "url": "https://gittensor.io/dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact",
+      "kind": "data-artifact",
+      "name": "Gittensor network statistics dashboard API",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/dash/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounties",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/issues"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io-2",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounty statistics",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/issues/stats"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io-3",
+      "kind": "data-artifact",
+      "name": "Gittensor languages data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jaso0n0818"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/languages"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io-4",
+      "kind": "data-artifact",
+      "name": "Gittensor master repository list",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/dash/repos"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-openapi",
+      "kind": "openapi",
+      "name": "Gittensor API OpenAPI schema",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.gittensor.io/swagger-json",
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/swagger-json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-subnet-api",
+      "kind": "subnet-api",
+      "name": "Gittensor community subnet-api",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/miners"
     }
   ],
   "website_url": "https://gittensor.io/"

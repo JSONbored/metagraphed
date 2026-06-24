@@ -11,7 +11,7 @@
   },
   "license": "AGPL-3.0-or-later",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.23.0"
   },
   "scripts": {
     "validate": "node scripts/validate.mjs",
@@ -31,6 +31,10 @@
     "curate:baseline:dry-run": "node scripts/curate-baseline.mjs --dry-run",
     "review:promote": "node scripts/promote-reviewed.mjs --write",
     "review:promote:dry-run": "node scripts/promote-reviewed.mjs --dry-run",
+    "review:queue": "node scripts/review-queue.mjs --write",
+    "review:queue:dry-run": "node scripts/review-queue.mjs --dry-run",
+    "economics:refresh": "node scripts/refresh-economics.mjs --write",
+    "economics:refresh:dry-run": "node scripts/refresh-economics.mjs --dry-run",
     "schemas:snapshot": "node scripts/snapshot-openapi.mjs --write",
     "schemas:snapshot:dry-run": "node scripts/snapshot-openapi.mjs --dry-run",
     "capture:fixtures": "node scripts/capture-fixtures.mjs --write",
@@ -44,6 +48,7 @@
     "scan:public-safety": "node scripts/scan-public-safety.mjs",
     "validate:schemas": "node scripts/validate-schemas.mjs",
     "validate:api": "node scripts/validate-api.mjs",
+    "validate:committed-seed": "node scripts/validate-committed-seed.mjs",
     "validate:mcp": "node scripts/validate-mcp.mjs",
     "validate:ai": "node scripts/validate-ai-routes.mjs",
     "validate:openapi": "node scripts/validate-openapi.mjs",
@@ -55,6 +60,8 @@
     "contract:summary": "node scripts/contract-change-summary.mjs",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:readme-catalog": "node scripts/generate-registry-readme-section.mjs --check",
+    "readme:catalog": "node scripts/generate-registry-readme-section.mjs",
     "validate:adapters": "node scripts/validate-adapters.mjs",
     "assert:probe-health": "node scripts/assert-published-probe-health.mjs",
     "validate:intake": "node scripts/validate-intake.mjs",
@@ -69,9 +76,12 @@
     "submission:pr": "node scripts/submission-pr.mjs",
     "submission:comment": "node scripts/submission-comment.mjs",
     "candidate:new": "node scripts/candidate-new.mjs",
+    "surface:add": "node scripts/surface-add.mjs",
+    "subnet:new": "node scripts/subnet-new.mjs",
     "enrich:issues": "node scripts/enrichment-issues.mjs --write",
     "enrich:issues:dry-run": "node scripts/enrichment-issues.mjs --dry-run",
     "validate:candidate": "node scripts/validate-candidate.mjs",
+    "validate:surface": "node scripts/validate-surface.mjs",
     "provider:new": "node scripts/provider-new.mjs",
     "providers:list": "node scripts/list-providers.mjs",
     "r2:manifest": "node scripts/r2-manifest.mjs --write",
@@ -81,6 +91,10 @@
     "r2:download": "node scripts/r2-download.mjs --write",
     "r2:upload:dry-run": "node scripts/r2-upload.mjs --dry-run",
     "r2:upload": "node scripts/r2-upload.mjs --write",
+    "changelog:publish": "node scripts/build-changelog.mjs",
+    "changelog:publish:dry-run": "node scripts/build-changelog.mjs --dry-run",
+    "surface-aliases:publish": "node scripts/build-surface-aliases.mjs",
+    "surface-aliases:publish:dry-run": "node scripts/build-surface-aliases.mjs --dry-run",
     "kv:publish:dry-run": "node scripts/kv-publish-pointer.mjs --dry-run",
     "kv:publish": "node scripts/kv-publish-pointer.mjs --write",
     "webhooks:dispatch:dry-run": "node scripts/dispatch-webhooks.mjs --dry-run",
@@ -96,19 +110,22 @@
     "test:coverage": "vitest run --coverage",
     "submission-gate:health": "node scripts/submission-gate-health.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
-    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs",
-    "endpoint:ops:brief": "node scripts/endpoint-ops-brief.mjs"
+    "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
+  },
+  "dependencies": {
+    "graphql": "^17.0.1",
+    "workers-og": "^0.0.27"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "eslint": "^10.5.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.4",
-    "vitest": "^4.1.8",
-    "wrangler": "4.100.0"
+    "vitest": "^4.1.9",
+    "wrangler": "4.102.0"
   },
   "overrides": {
     "esbuild": "^0.28.1",

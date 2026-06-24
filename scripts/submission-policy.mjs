@@ -1,6 +1,7 @@
 import {
   clusterDomainFromUrl,
   flattenSurfaces,
+  MULTI_TENANT_HOST_SUFFIXES,
   normalizePublicHttpUrl,
   normalizePublicUrl,
   registrySurfaceKey,
@@ -28,6 +29,30 @@ const PROVIDER_KINDS = new Set([
   "data-provider",
   "docs-provider",
   "registry",
+]);
+
+const PROVIDER_SCHEMA_FIELDS = new Set([
+  "schema_version",
+  "id",
+  "name",
+  "kind",
+  "website_url",
+  "docs_url",
+  "github_url",
+  "logo_url",
+  "social",
+  "team_url",
+  "contact_url",
+  "authority",
+  "public_notes",
+  "notes",
+]);
+
+const PROVIDER_SOCIAL_SCHEMA_FIELDS = new Set([
+  "x",
+  "telegram",
+  "reddit",
+  "youtube",
 ]);
 
 const STATUS_REPORT_TYPES = new Set([
@@ -72,6 +97,25 @@ const CANDIDATE_VERIFICATION_CLASSIFICATIONS = new Set([
   "content-mismatch",
 ]);
 
+const CANDIDATE_AUTH_FIELDS = new Set([
+  "scheme",
+  "location",
+  "name",
+  "value_format",
+  "token_url",
+  "scopes_note",
+]);
+const CANDIDATE_AUTH_SCHEMES = new Set([
+  "none",
+  "bearer",
+  "api-key",
+  "basic",
+  "oauth2",
+  "custom",
+]);
+const CANDIDATE_AUTH_LOCATIONS = new Set(["header", "query", "cookie"]);
+const PLACEHOLDER_VALUE_FORMAT = /<[^<>]+>/;
+
 const CANDIDATE_SCHEMA_FIELDS = new Set([
   "schema_version",
   "id",
@@ -87,9 +131,11 @@ const CANDIDATE_SCHEMA_FIELDS = new Set([
   "confidence",
   "provider",
   "auth_required",
+  "auth",
   "public_safe",
   "verification",
   "rate_limit_notes",
+  "rate_limit",
   "review_notes",
 ]);
 
@@ -226,6 +272,7 @@ export function buildIssueIntakeReport({
 
   const auth = normalizeAuth(
     fields["does this interface require authentication?"] ||
+      fields["does this endpoint require authentication?"] ||
       fields.auth_required,
   );
   if (auth.value === null) {
@@ -240,16 +287,17 @@ export function buildIssueIntakeReport({
     );
   }
 
-  const unsafeText = unsafeTextReasons(
-    [
-      fields["rate limits or access notes"],
-      fields["public rate limits or access notes"],
-      fields.evidence,
-      fields["public url"],
-      fields["source url"],
-    ].join("\n"),
+  errors.push(
+    ...unsafeTextReasons(
+      [
+        fields["rate limits or access notes"],
+        fields["public rate limits or access notes"],
+        fields.evidence,
+        fields["public url"],
+        fields["source url"],
+      ].join("\n"),
+    ).map((error) => error.message),
   );
-  errors.push(...unsafeText);
 
   const subnet = native.subnets.find(
     (candidate) => candidate.netuid === netuid,
@@ -538,31 +586,22 @@ export function buildPrSubmissionReport({
     };
   }
 
-  if (errors.length === 0 && scope.scope === "direct-candidate") {
+  if (
+    errors.length === 0 &&
+    (scope.scope === "direct-candidate" || scope.scope === "direct-pair")
+  ) {
     const extracted = extractSingleCandidate(candidateDocument);
     errors.push(...extracted.errors);
     candidate = extracted.candidate;
   }
 
-  if (errors.length === 0 && scope.scope === "direct-provider") {
+  if (
+    errors.length === 0 &&
+    (scope.scope === "direct-provider" || scope.scope === "direct-pair")
+  ) {
     const extracted = extractSingleProvider(providerDocument);
     errors.push(...extracted.errors);
     provider = extracted.provider;
-  }
-
-  if (candidate) {
-    const deterministic = validateCandidateForSubmission({
-      candidate,
-      document: candidateDocument,
-      submitter,
-      native,
-      providers,
-      existingCandidates,
-      existingSubnets,
-    });
-    errors.push(...deterministic.errors);
-    manual_reasons.push(...deterministic.manual_reasons);
-    warnings.push(...deterministic.warnings);
   }
 
   if (provider) {
@@ -577,6 +616,42 @@ export function buildPrSubmissionReport({
     warnings.push(...deterministic.warnings);
   }
 
+  if (candidate) {
+    // Atomic provider+candidate pair: the inline provider counts as registered
+    // for the candidate's provider checks, so a first-time team can land its
+    // debut provider + first surface in one PR. Both files are community-authored
+    // and loaded as first-class once merged (loadProviders reads
+    // registry/providers/community/), so the candidate's provider resolves at
+    // build/serve time without a prior, separately-reviewed provider PR.
+    const isPair = provider && scope.scope === "direct-pair";
+    const providersForCandidate = isPair ? [...providers, provider] : providers;
+    const deterministic = validateCandidateForSubmission({
+      candidate,
+      document: candidateDocument,
+      submitter,
+      native,
+      providers: providersForCandidate,
+      existingCandidates,
+      existingSubnets,
+    });
+    errors.push(...deterministic.errors);
+    manual_reasons.push(...deterministic.manual_reasons);
+    warnings.push(...deterministic.warnings);
+    // The inline provider's identity is self-asserted by the same submitter, so
+    // it cannot vouch for the candidate's ownership the way a previously-reviewed
+    // provider does. Surface that to the reviewer as an advisory signal (it must
+    // independently verify the debut provider's identity) — never auto-cleared.
+    if (isPair && candidate.provider === provider.id) {
+      manual_reasons.push(
+        "debut provider+candidate pair — provider identity is self-asserted in the same PR; verify the provider is the real operator before trusting owner-match",
+      );
+    }
+  }
+
+  // Deterministic risk signals are review-routing gates for direct PR intake:
+  // schema-invalid submissions require contributor fixes, schema-valid submissions
+  // with high-trust/manual signals require maintainer review, and only the
+  // remaining low-risk submissions go to the autonomous private reviewer.
   const publicState =
     errors.length > 0
       ? "fix_required"
@@ -606,9 +681,8 @@ export function buildPrSubmissionReport({
     provider,
     publish_allowed: false,
     auto_merge_eligible: false,
-    private_review_required:
-      publicState === "submit_pr" || publicState === "manual_review",
-    blocking: publicState === "fix_required",
+    private_review_required: publicState === "submit_pr",
+    blocking: publicState !== "submit_pr",
     terminal_recommendation: terminalRecommendation,
     review_marker: SUBMISSION_REVIEW_MARKER,
     labels: {
@@ -657,11 +731,16 @@ export function classifyPrScope(changedFiles) {
   }
 
   const submissionFileCount = candidateFiles.length + providerFiles.length;
-  if (submissionFileCount !== 1) {
+  // Allowed shapes: exactly one candidate, exactly one provider, OR an atomic
+  // provider+candidate PAIR (one of each) so a first-time team can land its debut
+  // provider + first surface together without a prior, separately-reviewed
+  // provider PR. Anything else is out-of-shape.
+  const isPair = candidateFiles.length === 1 && providerFiles.length === 1;
+  if (submissionFileCount !== 1 && !isPair) {
     errors.push({
       category: "unsupported-shape",
       message:
-        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file",
+        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file, or an atomic provider+candidate pair (one of each)",
     });
   }
 
@@ -678,7 +757,11 @@ export function classifyPrScope(changedFiles) {
   }
 
   return {
-    scope: providerFiles.length === 1 ? "direct-provider" : "direct-candidate",
+    scope: isPair
+      ? "direct-pair"
+      : providerFiles.length === 1
+        ? "direct-provider"
+        : "direct-candidate",
     candidateFiles,
     providerFiles,
     errors,
@@ -832,6 +915,157 @@ function validateCandidateSchemaShape(candidate) {
       message: "candidate source_type must be a string",
     });
   }
+  if (candidate.auth !== undefined && candidate.auth !== null) {
+    if (typeof candidate.auth !== "object" || Array.isArray(candidate.auth)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate auth must be an object or null",
+      });
+    } else {
+      if (candidate.auth.scheme === undefined) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is required",
+        });
+      }
+      for (const field of Object.keys(candidate.auth)) {
+        if (!CANDIDATE_AUTH_FIELDS.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} is not allowed`,
+          });
+        }
+      }
+      if (
+        candidate.auth.scheme !== undefined &&
+        !CANDIDATE_AUTH_SCHEMES.has(candidate.auth.scheme)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.scheme is unsupported",
+        });
+      }
+      if (
+        candidate.auth.location !== undefined &&
+        !CANDIDATE_AUTH_LOCATIONS.has(candidate.auth.location)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.location is unsupported",
+        });
+      }
+      for (const field of ["name", "scopes_note"]) {
+        if (
+          candidate.auth[field] !== undefined &&
+          typeof candidate.auth[field] !== "string"
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate auth.${field} must be a string`,
+          });
+        }
+      }
+      if (
+        candidate.auth.value_format !== undefined &&
+        (typeof candidate.auth.value_format !== "string" ||
+          !PLACEHOLDER_VALUE_FORMAT.test(candidate.auth.value_format))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.value_format must be a placeholder string",
+        });
+      }
+      if (
+        candidate.auth.token_url !== undefined &&
+        (typeof candidate.auth.token_url !== "string" ||
+          !normalizePublicHttpUrl(candidate.auth.token_url))
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate auth.token_url must be a public HTTP(S) URL",
+        });
+      }
+    }
+  }
+  if (candidate.rate_limit !== undefined) {
+    if (
+      !candidate.rate_limit ||
+      typeof candidate.rate_limit !== "object" ||
+      Array.isArray(candidate.rate_limit)
+    ) {
+      errors.push({
+        category: "unsupported-shape",
+        message: "candidate rate_limit must be an object",
+      });
+    } else {
+      const allowedRateLimitFields = new Set([
+        "requests",
+        "window",
+        "burst",
+        "scope",
+        "cost_notes",
+      ]);
+      for (const field of ["requests", "window"]) {
+        if (candidate.rate_limit[field] === undefined) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is required`,
+          });
+        }
+      }
+      for (const field of Object.keys(candidate.rate_limit)) {
+        if (!allowedRateLimitFields.has(field)) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} is not allowed`,
+          });
+        }
+      }
+      for (const field of ["requests", "burst"]) {
+        if (
+          candidate.rate_limit[field] !== undefined &&
+          (!Number.isInteger(candidate.rate_limit[field]) ||
+            candidate.rate_limit[field] < 0)
+        ) {
+          errors.push({
+            category: "unsupported-shape",
+            message: `candidate rate_limit.${field} must be a non-negative integer`,
+          });
+        }
+      }
+      if (
+        candidate.rate_limit.window !== undefined &&
+        (typeof candidate.rate_limit.window !== "string" ||
+          candidate.rate_limit.window.length === 0)
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.window is required",
+        });
+      }
+      if (
+        candidate.rate_limit.scope !== undefined &&
+        !["per-key", "per-ip", "global", "unknown"].includes(
+          candidate.rate_limit.scope,
+        )
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.scope is unsupported",
+        });
+      }
+      if (
+        candidate.rate_limit.cost_notes !== undefined &&
+        typeof candidate.rate_limit.cost_notes !== "string"
+      ) {
+        errors.push({
+          category: "unsupported-shape",
+          message: "candidate rate_limit.cost_notes must be a string",
+        });
+      }
+    }
+  }
+
   for (const field of ["rate_limit_notes", "review_notes"]) {
     if (
       candidate[field] !== undefined &&
@@ -890,10 +1124,15 @@ const normIdentToken = (value) =>
   String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+const isMultiTenantClusterDomain = (domain) =>
+  typeof domain === "string" &&
+  [...MULTI_TENANT_HOST_SUFFIXES].some((suffix) =>
+    domain.toLowerCase().endsWith(`.${suffix}`),
+  );
 
 /** Owner token(s) a URL claims — a code host (github/gitlab/bitbucket) contributes its ORG; any other
- *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars (a 1-3 char slug
- *  matches anywhere). */
+ *  host contributes its registrable-domain label. Normalized to alnum, ≥4 chars except short
+ *  multi-tenant labels, which are still tenant-controlled owner claims and must not disappear. */
 export function urlOwnerTokens(value) {
   if (typeof value !== "string" || !value) return [];
   let url;
@@ -906,12 +1145,18 @@ export function urlOwnerTokens(value) {
   const out = [];
   if (CODE_HOST_RE.test(host)) {
     const org = url.pathname.replace(/^\/+/, "").split("/")[0];
-    if (org) out.push(normIdentToken(org));
+    const token = normIdentToken(org);
+    if (token.length >= 4) out.push(token);
   } else {
     const domain = clusterDomainFromUrl(value);
-    if (domain) out.push(normIdentToken(domain.split(".")[0]));
+    if (domain) {
+      const token = normIdentToken(domain.split(".")[0]);
+      if (token.length >= 4 || isMultiTenantClusterDomain(domain)) {
+        out.push(token);
+      }
+    }
   }
-  return out.filter((token) => token.length >= 4);
+  return out.filter(Boolean);
 }
 
 /** Identity tokens for a candidate's declared provider — its name, id, and the owner tokens of its
@@ -1109,9 +1354,13 @@ export function validateCandidateForSubmission({
     );
   }
   if (!providerIds.has(candidate.provider)) {
+    // Non-terminal: a brand-new team's debut surface references a provider that
+    // isn't registered yet. Don't auto-close — tell the contributor to include
+    // the provider in the SAME PR (an atomic provider+candidate pair), which the
+    // gate accepts and counts as registered. A contributor fix, never a maintainer.
     errors.push({
-      category: "unsupported-shape",
-      message: `candidate provider ${candidate.provider || "<missing>"} is not registered`,
+      category: "provider-not-registered",
+      message: `candidate provider ${candidate.provider || "<missing>"} is not registered — include its registry/providers/community/<id>.json in the same PR`,
     });
   }
   // Placeholder/example identity URLs (example.com, github.com/username/repo, "deprecated") are never
@@ -1196,6 +1445,16 @@ export function validateCandidateForSubmission({
     }),
   );
 
+  const idDuplicate = existingCandidates.find(
+    (existing) => existing.id === candidate.id,
+  );
+  if (idDuplicate) {
+    errors.push({
+      category: "duplicate",
+      message: `candidate id duplicates existing candidate ${idDuplicate.id}`,
+    });
+  }
+
   if (normalizedUrl && candidate.kind && Number.isInteger(candidate.netuid)) {
     const locator = registrySurfaceKey({
       netuid: candidate.netuid,
@@ -1245,6 +1504,12 @@ export function validateProviderForSubmission({
   const teamUrl = normalizePublicUrl(provider?.team_url);
   const contactUrl = normalizePublicUrl(provider?.contact_url);
   const logoUrl = normalizePublicHttpUrl(provider?.logo_url);
+  const socialEntries =
+    provider?.social &&
+    typeof provider.social === "object" &&
+    !Array.isArray(provider.social)
+      ? Object.entries(provider.social)
+      : [];
 
   if (!provider || typeof provider !== "object") {
     return {
@@ -1257,6 +1522,23 @@ export function validateProviderForSubmission({
       warnings,
       manual_reasons,
     };
+  }
+
+  for (const field of Object.keys(provider)) {
+    if (!PROVIDER_SCHEMA_FIELDS.has(field)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider ${field} is not allowed`,
+      });
+    }
+  }
+  for (const [key] of socialEntries) {
+    if (!PROVIDER_SOCIAL_SCHEMA_FIELDS.has(key)) {
+      errors.push({
+        category: "unsupported-shape",
+        message: `provider social.${key} is not allowed`,
+      });
+    }
   }
 
   if (provider.schema_version !== 1) {
@@ -1303,6 +1585,19 @@ export function validateProviderForSubmission({
       });
     } else if (provider[field] && provider[field] !== normalized) {
       warnings.push(`provider ${field} will be normalized by registry tooling`);
+    }
+  }
+  for (const [key, value] of socialEntries) {
+    const normalized = normalizePublicHttpUrl(value);
+    if (!normalized) {
+      errors.push({
+        category: "private-or-unsafe-url",
+        message: `provider social.${key} is invalid or unsafe`,
+      });
+    } else if (value !== normalized) {
+      warnings.push(
+        `provider social.${key} will be normalized by registry tooling`,
+      );
     }
   }
   if (!["community", "provider-claimed"].includes(provider.authority)) {

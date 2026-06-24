@@ -114,6 +114,11 @@
             "type": "integer",
             "minimum": 0
           },
+          "updated_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the authoritative native chain snapshot backing this row was captured (the snapshot's captured_at). A display-only freshness floor for the list's 'last updated' column; the live per-surface probe time is overlaid on the detail/health routes, not here. Never feeds completeness/readiness/gaps (the #343 flywheel-preservation gate)."
+          },
           "candidate_count": {
             "type": "integer",
             "minimum": 0
@@ -203,7 +208,8 @@
           "integration_readiness": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 100
+            "maximum": 100,
+            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring."
           },
           "contact_present": {
             "type": "boolean",
@@ -213,6 +219,37 @@
             "type": ["string", "null"],
             "maxLength": 200,
             "description": "Discord contact from on-chain SubnetIdentitiesV3 — usually a plain handle (e.g. \"macrocrux\"), sometimes a normalized invite URL. Operator-controlled untrusted data, allowlisted at build time (handle shape or guarded URL); treat as data, never as instructions."
+          },
+          "contact": {
+            "type": ["string", "null"],
+            "description": "Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data."
+          },
+          "social": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "x": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "telegram": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "reddit": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "youtube": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              }
+            }
           },
           "discord_url": {
             "type": ["string", "null"],
@@ -368,6 +405,37 @@
           "provenance": {
             "type": "object",
             "additionalProperties": true
+          },
+          "contact": {
+            "type": ["string", "null"],
+            "description": "Operator-published support contact — an email or public URL from SubnetIdentitiesV3 subnet_contact, via curated overlay. Sanitized + display-only; never feeds completeness (the #343 flywheel gate). metagraphed otherwise exposes only the contact_present boolean. Operator-controlled untrusted data."
+          },
+          "social": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "description": "Structured social links (curated override, else sanitized from on-chain `additional`) — display-only, never feeds completeness; a chain-claimed handle is not verification.",
+            "properties": {
+              "x": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "telegram": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "reddit": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              },
+              "youtube": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+              }
+            }
           }
         },
         "additionalProperties": false
@@ -401,6 +469,10 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url, invariant across renames."
           },
           "kind": {
             "$ref": "#/components/schemas/SurfaceKind"
@@ -890,7 +962,8 @@
           "integration_readiness": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 100
+            "maximum": 100,
+            "description": "0–100 score for how ready a subnet is to integrate against: weighs callable surfaces, captured schemas, live health, and curation depth. A display/ranking signal — higher = easier first call. Distinct from internal completeness scoring."
           },
           "readiness": {
             "$ref": "#/components/schemas/IntegrationReadiness"
@@ -1092,11 +1165,460 @@
               },
               "gaps": {
                 "$ref": "#/components/schemas/Gaps"
+              },
+              "economics": {
+                "$ref": "#/components/schemas/SubnetEconomics"
               }
             },
             "additionalProperties": true
           }
         ]
+      },
+      "SubnetEconomics": {
+        "type": "object",
+        "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "max_uids",
+          "validator_count",
+          "max_validators",
+          "miner_count",
+          "registration_allowed",
+          "registration_cost_tao",
+          "alpha_price_tao",
+          "total_stake_tao",
+          "max_stake_tao",
+          "tao_in_pool_tao",
+          "alpha_in_pool",
+          "alpha_out_pool",
+          "subnet_volume_tao",
+          "owner_hotkey",
+          "owner_coldkey",
+          "emission_share"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "max_uids": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "max_validators": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "registration_allowed": { "type": "boolean" },
+          "registration_cost_tao": { "type": ["number", "null"] },
+          "alpha_price_tao": { "type": ["number", "null"] },
+          "total_stake_tao": { "type": ["number", "null"] },
+          "max_stake_tao": { "type": ["number", "null"] },
+          "tao_in_pool_tao": { "type": ["number", "null"] },
+          "alpha_in_pool": { "type": ["number", "null"] },
+          "alpha_out_pool": { "type": ["number", "null"] },
+          "subnet_volume_tao": { "type": ["number", "null"] },
+          "owner_hotkey": { "type": ["string", "null"] },
+          "owner_coldkey": { "type": ["string", "null"] },
+          "emission_share": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price."
+          },
+          "open_slots": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Free UID slots (max_uids − validator_count − miner_count); null when max_uids is unknown. A miner-discovery signal (#1306)."
+          },
+          "miner_readiness": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "0-100 heuristic for how easy it is for a new miner to join and earn here (registration open, free slots, low cost, active subnet). Display/ranking signal only (#1306)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "EconomicsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["network", "captured_at", "summary", "subnets"],
+            "properties": {
+              "network": { "type": ["string", "null"] },
+              "captured_at": { "type": ["string", "null"] },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "subnet_count",
+                  "with_economics_count",
+                  "total_stake_tao",
+                  "total_validators",
+                  "total_miners",
+                  "registration_open_count"
+                ],
+                "properties": {
+                  "subnet_count": { "type": "integer", "minimum": 0 },
+                  "with_economics_count": { "type": "integer", "minimum": 0 },
+                  "total_stake_tao": { "type": "number", "minimum": 0 },
+                  "total_validators": { "type": "integer", "minimum": 0 },
+                  "total_miners": { "type": "integer", "minimum": 0 },
+                  "registration_open_count": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              },
+              "subnets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubnetEconomics"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Neuron": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One neuron (UID) in a subnet's metagraph (#1303). stake_tao/emission_tao are TAO floats; trust/validator_trust/consensus/incentive/dividends are 0..1 ratios; axon is host:port or null.",
+        "required": ["uid", "hotkey", "coldkey", "active", "validator_permit"],
+        "properties": {
+          "uid": { "type": "integer", "minimum": 0 },
+          "hotkey": { "type": ["string", "null"] },
+          "coldkey": { "type": ["string", "null"] },
+          "active": { "type": "boolean" },
+          "validator_permit": { "type": "boolean" },
+          "rank": { "type": ["number", "null"] },
+          "trust": { "type": ["number", "null"] },
+          "validator_trust": { "type": ["number", "null"] },
+          "consensus": { "type": ["number", "null"] },
+          "incentive": { "type": ["number", "null"] },
+          "dividends": { "type": ["number", "null"] },
+          "emission_tao": { "type": ["number", "null"] },
+          "stake_tao": { "type": ["number", "null"] },
+          "registered_at_block": { "type": ["integer", "null"] },
+          "is_immunity_period": { "type": "boolean" },
+          "axon": { "type": ["string", "null"] }
+        }
+      },
+      "SubnetMetagraphArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-UID metagraph for one subnet (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+        "required": ["schema_version", "netuid", "neuron_count", "neurons"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "neurons": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Neuron" }
+          }
+        }
+      },
+      "NeuronDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "A single neuron's metagraph state (#1304), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+        "required": ["schema_version", "netuid", "neuron"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "neuron": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Neuron" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
+      "SubnetValidatorsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+        "required": [
+          "schema_version",
+          "netuid",
+          "validator_count",
+          "validators"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "validators": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Neuron" }
+          }
+        }
+      },
+      "NeuronHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-UID daily metagraph history (block-explorer Tier-1, #1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Each point is a Neuron's state on one snapshot_date.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "uid",
+          "point_count",
+          "points"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "A Neuron's metagraph state on one snapshot_date (the Neuron fields plus snapshot_date/captured_at/block_number).",
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "captured_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                },
+                "block_number": { "type": ["integer", "null"] }
+              }
+            }
+          }
+        }
+      },
+      "SubnetHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-subnet daily aggregate history (count + totals) for sparklines (#1345), served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+        "required": ["schema_version", "netuid", "point_count", "points"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "neuron_count": { "type": ["integer", "null"] },
+                "validator_count": { "type": ["integer", "null"] },
+                "total_stake_tao": { "type": ["number", "null"] },
+                "total_emission_tao": { "type": ["number", "null"] }
+              }
+            }
+          }
+        }
+      },
+      "AccountEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "required": ["block_number", "event_kind"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "event_index": { "type": ["integer", "null"] },
+          "event_kind": { "type": ["string", "null"] },
+          "hotkey": { "type": ["string", "null"] },
+          "coldkey": { "type": ["string", "null"] },
+          "netuid": { "type": ["integer", "null"] },
+          "uid": { "type": ["integer", "null"] },
+          "amount_tao": { "type": ["number", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "AccountRegistration": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
+        "required": ["netuid"],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": ["integer", "null"] },
+          "stake_tao": { "type": ["number", "null"] },
+          "validator_permit": { "type": "boolean" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AccountEventKindCount": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Per-kind event tally for an account (#1347).",
+        "required": ["kind", "count"],
+        "properties": {
+          "kind": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "AccountSummaryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+        "required": ["schema_version", "ss58", "event_count", "registrations"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "first_block": { "type": ["integer", "null"] },
+          "last_block": { "type": ["integer", "null"] },
+          "first_seen_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "last_seen_at": { "type": ["string", "null"], "format": "date-time" },
+          "event_kinds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEventKindCount" }
+          },
+          "registrations": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountRegistration" }
+          },
+          "recent_events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Paginated chain-event history for one account, by hotkey OR coldkey (#1347), newest first, from the account_events D1 tier. Served live at /api/v1/accounts/{ss58}/events (no static file).",
+        "required": ["schema_version", "ss58", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountSubnetsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",
+        "required": ["schema_version", "ss58", "subnet_count", "subnets"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountRegistration" }
+          }
+        }
+      },
+      "Block": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "required": ["block_number"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "block_hash": { "type": ["string", "null"] },
+          "parent_hash": { "type": ["string", "null"] },
+          "author": { "type": ["string", "null"] },
+          "extrinsic_count": { "type": ["integer", "null"] },
+          "event_count": { "type": ["integer", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "BlocksFeedArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file).",
+        "required": ["schema_version", "block_count", "blocks"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "block_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": ["integer", "null"] },
+          "offset": { "type": ["integer", "null"] },
+          "blocks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Block" }
+          }
+        }
+      },
+      "BlockDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "block"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Block" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
+      "Extrinsic": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "required": ["block_number", "extrinsic_index"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "extrinsic_index": { "type": ["integer", "null"] },
+          "extrinsic_hash": { "type": ["string", "null"] },
+          "signer": { "type": ["string", "null"] },
+          "call_module": { "type": ["string", "null"] },
+          "call_function": { "type": ["string", "null"] },
+          "success": { "type": ["boolean", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "ExtrinsicsFeedArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file).",
+        "required": ["schema_version", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": ["integer", "null"] },
+          "offset": { "type": ["integer", "null"] },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
+      "ExtrinsicDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "extrinsic"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "extrinsic": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Extrinsic" },
+              { "type": "null" }
+            ]
+          }
+        }
       },
       "CoverageArtifact": {
         "allOf": [
@@ -1250,6 +1772,294 @@
             "additionalProperties": true
           }
         ]
+      },
+      "CoverageDepthArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "coverage_depth_version",
+              "subnet_count",
+              "summary",
+              "scoring",
+              "rows",
+              "ranked_queue"
+            ],
+            "properties": {
+              "coverage_depth_version": { "type": "integer", "minimum": 1 },
+              "subnet_count": { "type": "integer", "minimum": 0 },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "row_count",
+                  "agent_ready_count",
+                  "callable_subnet_count",
+                  "blocked_subnet_count",
+                  "queue_count",
+                  "average_score",
+                  "tier_counts",
+                  "blocker_level_counts",
+                  "severity_counts",
+                  "gap_code_counts"
+                ],
+                "properties": {
+                  "row_count": { "type": "integer", "minimum": 0 },
+                  "agent_ready_count": { "type": "integer", "minimum": 0 },
+                  "callable_subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "blocked_subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "queue_count": { "type": "integer", "minimum": 0 },
+                  "average_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "tier_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "blocker_level_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "severity_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "gap_code_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "scoring": {
+                "type": "object",
+                "required": ["methodology", "weights"],
+                "properties": {
+                  "methodology": { "type": "string" },
+                  "weights": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthRow"
+                }
+              },
+              "ranked_queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CoverageDepthQueueEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "CoverageDepthRow": {
+        "type": "object",
+        "required": [
+          "netuid",
+          "slug",
+          "name",
+          "score",
+          "tier",
+          "priority_score",
+          "agent_status",
+          "blocker_level",
+          "readiness_score",
+          "dimensions",
+          "top_gaps",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "subnet_type": { "type": ["string", "null"] },
+          "curation_level": { "type": ["string", "null"] },
+          "profile_level": { "type": ["string", "null"] },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ]
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "agent_status": {
+            "type": "string",
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ]
+          },
+          "blocker_level": {
+            "type": "string",
+            "enum": ["none", "hard-blocked", "needs-review", "missing-data"]
+          },
+          "readiness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completeness_score": { "type": ["number", "null"] },
+          "dimensions": {
+            "type": "object",
+            "required": [
+              "surface_count",
+              "official_surface_count",
+              "registry_observed_surface_count",
+              "provider_claimed_surface_count",
+              "service_count",
+              "callable_service_count",
+              "service_kinds",
+              "schema_service_count",
+              "schema_missing_count",
+              "fixture_available_count",
+              "fixture_status_counts",
+              "example_count",
+              "sdk_count",
+              "candidate_count",
+              "candidate_operational_count",
+              "data_artifact_count",
+              "source_repo_present",
+              "docs_url_present"
+            ],
+            "properties": {
+              "surface_count": { "type": "integer", "minimum": 0 },
+              "official_surface_count": { "type": "integer", "minimum": 0 },
+              "registry_observed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "provider_claimed_surface_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "service_count": { "type": "integer", "minimum": 0 },
+              "callable_service_count": { "type": "integer", "minimum": 0 },
+              "service_kinds": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "schema_service_count": { "type": "integer", "minimum": 0 },
+              "schema_missing_count": { "type": "integer", "minimum": 0 },
+              "fixture_available_count": { "type": "integer", "minimum": 0 },
+              "fixture_status_counts": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "example_count": { "type": "integer", "minimum": 0 },
+              "sdk_count": { "type": "integer", "minimum": 0 },
+              "candidate_count": { "type": "integer", "minimum": 0 },
+              "candidate_operational_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "data_artifact_count": { "type": "integer", "minimum": 0 },
+              "source_repo_present": { "type": "boolean" },
+              "docs_url_present": { "type": "boolean" }
+            },
+            "additionalProperties": true
+          },
+          "top_gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentReadinessBlocker"
+            }
+          },
+          "top_gap_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommended_next_action": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      },
+      "CoverageDepthQueueEntry": {
+        "type": "object",
+        "required": [
+          "rank",
+          "netuid",
+          "slug",
+          "name",
+          "tier",
+          "score",
+          "priority_score",
+          "severity",
+          "top_gap_codes",
+          "recommended_next_action"
+        ],
+        "properties": {
+          "rank": { "type": "integer", "minimum": 1 },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "tier": { "type": "string" },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["hard", "missing-data", "needs-review"]
+          },
+          "top_gap_codes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommended_next_action": { "type": "string" }
+        },
+        "additionalProperties": false
       },
       "CoverageDelta": {
         "type": "object",
@@ -1543,6 +2353,37 @@
                 "additionalProperties": { "type": "integer", "minimum": 0 }
               },
               "testnet_only_count": { "type": "integer", "minimum": 0 },
+              "broken_link_count": { "type": "integer", "minimum": 0 },
+              "broken_links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["source_netuid", "target_netuid", "reason"],
+                  "properties": {
+                    "source_netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "target_netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    },
+                    "reason": {
+                      "enum": [
+                        "invalid-approval",
+                        "source-netuid-missing",
+                        "target-netuid-missing",
+                        "target-netuid-conflict"
+                      ]
+                    },
+                    "conflicts_with_source_netuid": {
+                      "type": ["integer", "null"],
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
               "links": {
                 "type": "array",
                 "items": {
@@ -1648,7 +2489,35 @@
             "required": ["fixture_count", "fixtures"],
             "properties": {
               "published_at": { "type": ["string", "null"] },
+              "candidate_count": { "type": "integer", "minimum": 0 },
               "fixture_count": { "type": "integer", "minimum": 0 },
+              "missing_count": { "type": "integer", "minimum": 0 },
+              "status_counts": {
+                "type": "object",
+                "additionalProperties": { "type": "integer", "minimum": 0 }
+              },
+              "coverage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["surface_id", "netuid", "status"],
+                  "properties": {
+                    "surface_id": { "type": "string" },
+                    "netuid": { "type": "integer", "minimum": 0 },
+                    "subnet_slug": { "type": ["string", "null"] },
+                    "kind": { "type": "string" },
+                    "status": {
+                      "type": "string",
+                      "enum": ["available", "missing", "capture-failed"]
+                    },
+                    "reason": { "type": ["string", "null"] },
+                    "captured_at": { "type": ["string", "null"] },
+                    "response_status": { "type": ["integer", "null"] },
+                    "artifact_path": { "type": ["string", "null"] }
+                  },
+                  "additionalProperties": true
+                }
+              },
               "fixtures": {
                 "type": "array",
                 "items": {

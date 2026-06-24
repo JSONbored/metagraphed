@@ -47,6 +47,14 @@ Tensorplex `subnet-docs`, and Taopedia articles. Set `GITHUB_TOKEN` or
 refreshes; scheduled sync and publish workflows already pass `GITHUB_TOKEN`
 from GitHub Actions.
 
+Discovery also probes every known base origin (discovered project websites
+plus existing `subnet-api`/`docs` surfaces) for an OpenAPI/Swagger spec at
+conventional paths, registering an `openapi` candidate only on a validated
+document. These are read-only `GET`s with a per-request timeout, a 2 MiB body
+cap, and the private-IP/unsafe-URL block, run at concurrency 8 and
+short-circuiting on the first hit per origin — so each refresh makes live
+requests to all known origins.
+
 Live health probes are only written when explicitly enabled:
 
 ```bash
@@ -117,15 +125,16 @@ METAGRAPH_ALLOW_R2_DOWNLOAD=1 npm run r2:download
   "freshness": {
     "published_at": "…",
     "age_hours": 1.2,
-    "max_age_hours": 12,
+    "max_age_hours": 48,
     "stale": false
   }
 }
 ```
 
-- `published_at` comes from the KV `metagraph:latest` pointer, which the scheduled
-  refresh advances every ~6h.
-- When the data is older than `max_age_hours` (default 12 — two missed 6h refreshes;
+- `published_at` comes from the KV `metagraph:latest` pointer, which the
+  event-driven data publish (ADR 0007) advances on each human-input registry merge
+  and at least once daily (the 07:17 UTC floor).
+- When the data is older than `max_age_hours` (default 48 — two missed daily floors;
   override with `METAGRAPH_HEALTH_MAX_AGE_HOURS`), `status` becomes `degraded` and the
   route returns **HTTP 503**. Point an uptime monitor at `https://api.metagraph.sh/health`
   so a silently-broken data-refresh pages instead of serving stale data unnoticed.

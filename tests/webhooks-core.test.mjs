@@ -32,8 +32,38 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("::ffff:10.0.0.1"), false);
   });
 
+  test("the rest of the fe00::/8 reserved range → false", () => {
+    // Only fe80 was blocked before; the rest of fe00::/8 (none of it is global
+    // unicast, which is 2000::/3) was wrongly classified as public. Notably
+    // fec0::/10 is deprecated site-local — a real internal range, and URL
+    // parsing does not compress it away (unlike loopback).
+    assert.equal(isPublicWebhookAddress("fec0::1"), false);
+    assert.equal(isPublicWebhookAddress("fe00::1"), false);
+    assert.equal(isPublicWebhookAddress("feff::1"), false);
+  });
+
   test("public IPv6 → true", () => {
     assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
+  });
+
+  test("IPv4 tunnelled inside an IPv6 literal → false", () => {
+    // IPv4-compatible (deprecated); the URL parser re-serialises ::127.0.0.1 to
+    // ::7f00:1, so both spellings must be caught.
+    assert.equal(isPublicWebhookAddress("::127.0.0.1"), false);
+    assert.equal(isPublicWebhookAddress("::7f00:1"), false);
+    assert.equal(isPublicWebhookAddress("::192.168.1.1"), false);
+    // 6to4 (2002::/16) wrapping a private/loopback v4.
+    assert.equal(isPublicWebhookAddress("2002:7f00:1::"), false);
+    assert.equal(isPublicWebhookAddress("2002:a00:1::"), false); // 10.0.0.1
+    // NAT64 (64:ff9b::/96) wrapping a private/loopback v4.
+    assert.equal(isPublicWebhookAddress("64:ff9b::7f00:1"), false);
+    assert.equal(isPublicWebhookAddress("64:ff9b::c0a8:101"), false); // 192.168.1.1
+  });
+
+  test("an IPv6 form wrapping a PUBLIC v4 stays public", () => {
+    // 6to4 / NAT64 of 8.8.8.8 is genuinely routable — don't over-block.
+    assert.equal(isPublicWebhookAddress("2002:808:808::"), true);
+    assert.equal(isPublicWebhookAddress("64:ff9b::808:808"), true);
   });
 
   test("private IPv4 literals → false", () => {
@@ -80,6 +110,14 @@ describe("isPublicWebhookUrl", () => {
 
   test("rejects a private IPv4 literal host", () => {
     assert.equal(isPublicWebhookUrl("https://169.254.169.254/x"), false);
+  });
+
+  test("rejects a v4 loopback tunnelled through an IPv6 literal host", () => {
+    // The URL parser normalises [::127.0.0.1] → [::7f00:1]; the SSRF guard must
+    // still see the embedded loopback rather than treating it as public IPv6.
+    assert.equal(isPublicWebhookUrl("https://[::127.0.0.1]/x"), false);
+    assert.equal(isPublicWebhookUrl("https://[2002:7f00:1::]/x"), false);
+    assert.equal(isPublicWebhookUrl("https://[64:ff9b::7f00:1]/x"), false);
   });
 
   test("allows a public IPv4 literal host", () => {
@@ -319,6 +357,19 @@ describe("buildChangeEvent + eventMatchesFilters", () => {
   test("netuid filter: matches only on an affected netuid", () => {
     assert.equal(eventMatchesFilters(event, { netuids: [7] }), true);
     assert.equal(eventMatchesFilters(event, { netuids: [99] }), false);
+  });
+
+  test("an explicit empty allowlist matches nothing (not everything)", () => {
+    // normalizeFilters preserves `[]`, so these are reachable subscriptions.
+    // An empty allowlist allows zero items → no event matches.
+    assert.equal(eventMatchesFilters(event, { kinds: [] }), false);
+    assert.equal(eventMatchesFilters(event, { netuids: [] }), false);
+    assert.equal(eventMatchesFilters(event, { netuids: [], kinds: [] }), false);
+    // An empty allowlist on one facet rejects even when the other would match.
+    assert.equal(
+      eventMatchesFilters(event, { netuids: [7], kinds: [] }),
+      false,
+    );
   });
 });
 

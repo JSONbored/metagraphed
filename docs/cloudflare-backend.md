@@ -7,7 +7,7 @@ Metagraphed uses Cloudflare as the serving, cache, and artifact-history layer. G
 - Workers serve `metagraph.sh/api/v1/*` and `metagraph.sh/metagraph/*.json` routes over canonical artifact paths so API consumers get consistent CORS, cache headers, storage-tier headers, and R2 fallback.
 - Workers Static Assets serve compact checked-in artifacts from `public/metagraph`.
 - R2 stores high-churn/detail artifacts staged under `dist/metagraph-r2/metagraph`, plus current artifact copies under `latest/`; versioned artifact history under `runs/{generated_at}/` is opt-in for publish jobs that set `METAGRAPH_R2_UPLOAD_HISTORY=1`.
-- KV stores small latest pointers, feature flags, endpoint-pool summaries, and source-freshness summaries when configured.
+- KV stores the small publish pointer plus the live tiers: the 15-minute prober's health snapshots and the live economics blob.
 - D1 is not used for canonical registry truth in v1.
 - The read-only RPC proxy/load-balancer prototype exists behind `METAGRAPH_ENABLE_RPC_PROXY=false`; write and unsafe RPC methods remain blocked by default.
 
@@ -50,7 +50,8 @@ Worker responses include CORS, cache-control, ETags, and `x-metagraph-contract-v
 - R2 binding: `METAGRAPH_ARCHIVE`
 - Static assets binding: `ASSETS`
 - Optional KV binding: `METAGRAPH_CONTROL`
-- KV keys: `metagraph:latest`, `metagraph:feature-flags`, `metagraph:endpoint-pools`, `metagraph:source-freshness`
+- KV keys: `metagraph:latest` (publish pointer); `health:current` / `health:rpc-pool` / `health:meta` (15-minute prober live tier); `economics:current` (live economics tier)
+- D1 health migrations live in `migrations/`. `0006_surface_key_rekey.sql` must be applied before deploying the prober cutover that upserts `surface_status` and `surface_uptime_daily` by stable `surface_key`.
 
 If no KV binding is configured, the Worker falls back to `METAGRAPH_R2_LATEST_PREFIX` for R2 reads. R2-tier artifacts are read from R2 first; static fallback is only allowed when `METAGRAPH_ALLOW_R2_STATIC_FALLBACK=true` is set for local migration/testing.
 

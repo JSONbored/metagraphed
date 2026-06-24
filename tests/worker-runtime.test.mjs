@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import worker, { handleRequest } from "../workers/api.mjs";
 
 const env = createLocalArtifactEnv();
@@ -71,11 +72,12 @@ describe("Worker runtime", () => {
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.meta.published_at, publishedAt);
-    // generated_at stays the deterministic content marker, distinct from it.
-    assert.notEqual(body.meta.generated_at, publishedAt);
+    // generated_at is now served LIVE as the real publish time (serve-time overlay);
+    // the baked epoch marker (issue #349) is never exposed to consumers.
+    assert.equal(body.meta.generated_at, publishedAt);
   });
 
-  test("/api/v1/build populates the body's published_at from the KV pointer (generated_at stays the marker)", async () => {
+  test("/api/v1/build serves published_at + generated_at from the KV pointer (live, not the baked marker)", async () => {
     const publishedAt = "2026-06-12T21:06:24.956Z";
     const controlEnv = {
       ...env,
@@ -98,11 +100,85 @@ describe("Worker runtime", () => {
     // the real publish pointer so a body-reading agent sees genuine freshness.
     assert.equal(body.data.published_at, publishedAt);
     assert.equal(body.meta.published_at, publishedAt);
-    // generated_at is the build marker and must NOT be clobbered by the
-    // published_at overlay. It is epoch-0 in deterministic/CI builds but the real
-    // build time in a production refresh, so assert the invariant (distinct from
-    // the overlaid published_at), not a fixed fixture value (#349).
-    assert.notEqual(body.data.generated_at, publishedAt);
+    // generated_at is served LIVE as the real publish time (serve-time overlay), so
+    // a body-reading agent sees the true date, not the baked epoch marker (#349).
+    assert.equal(body.data.generated_at, publishedAt);
+  });
+
+  test("/api/v1/economics serves the live KV blob (meta.source: live-kv)", async () => {
+    const liveBlob = {
+      schema_version: 1,
+      contract_version: CONTRACT_VERSION,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      captured_at: new Date(Date.now() - 60_000).toISOString(), // fresh
+      network: "finney",
+      summary: { subnet_count: 1, with_economics_count: 1 },
+      subnets: [{ netuid: 7, slug: "x", name: "X", emission_share: 1 }],
+    };
+    const liveEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key, options) {
+          if (key === "economics:current") {
+            assert.equal(options?.type, "json");
+            return liveBlob;
+          }
+          return null;
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      liveEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "live-kv");
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(body.data.summary.with_economics_count, 1);
+  });
+
+  test("/api/v1/economics falls back to the R2 artifact when KV is cold (meta.source: r2-fallback)", async () => {
+    // Base env has no METAGRAPH_CONTROL → resolveLiveEconomics returns null →
+    // the committed R2 economics.json serves, exactly as before this tier existed.
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2-fallback");
+    assert.ok(Array.isArray(body.data.subnets));
+  });
+
+  test("/api/v1/economics rejects a stale KV blob and falls back to R2", async () => {
+    const staleEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "economics:current") {
+            return {
+              schema_version: 1,
+              contract_version: CONTRACT_VERSION,
+              captured_at: "2020-01-01T00:00:00.000Z", // way past the 8h window
+              summary: { with_economics_count: 1 },
+              subnets: [{ netuid: 7, emission_share: 1 }],
+            };
+          }
+          return null;
+        },
+      },
+    };
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/economics"),
+      staleEnv,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.source, "r2-fallback");
   });
 
   test("/.well-known/mcp/server-card.json overlays published_at from the KV pointer", async () => {
@@ -324,25 +400,20 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).endpoints[0].id, "local-fallback");
   });
 
-  test("serves coverage/subnets R2-first with a committed-asset fallback", async () => {
-    const committed = {
-      schema_version: 1,
-      generated_at: "1970-01-01T00:00:00.000Z",
-      native_snapshot_captured_at: "2026-06-14T09:03:28.000Z",
-    };
+  test("serves coverage/subnets from R2 (R2-only, no committed copy)", async () => {
     const fresh = {
       schema_version: 1,
       generated_at: "1970-01-01T00:00:00.000Z",
       native_snapshot_captured_at: "2026-06-14T14:06:28.000Z",
     };
 
-    // R2 warm → the fresh published copy wins over the stale committed asset.
+    // subnets/coverage are R2-only (#1003): R2 warm → the published copy serves.
     const warm = await handleRequest(
       new Request("https://metagraph.sh/metagraph/coverage.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -365,13 +436,15 @@ describe("Worker runtime", () => {
       "2026-06-14T14:06:28.000Z",
     );
 
-    // R2 cold → fall back to the committed baseline (local/dev/CI).
+    // R2 cold → 404. There is no committed copy to fall back to anymore, and the
+    // static-asset fallback is opt-in (METAGRAPH_ALLOW_R2_STATIC_FALLBACK),
+    // covered by the local-mode test above.
     const cold = await handleRequest(
       new Request("https://metagraph.sh/metagraph/subnets.json"),
       {
         ASSETS: {
           async fetch() {
-            return Response.json(committed);
+            return new Response("not found", { status: 404 });
           },
         },
         METAGRAPH_ARCHIVE: {
@@ -382,11 +455,7 @@ describe("Worker runtime", () => {
       },
       {},
     );
-    assert.equal(cold.status, 200);
-    assert.equal(
-      cold.headers.get("x-metagraph-artifact-source"),
-      "static-assets",
-    );
+    assert.equal(cold.status, 404);
   });
 
   test("serves metagraph latest as an R2-backed raw artifact", async () => {
@@ -525,6 +594,23 @@ describe("Worker runtime", () => {
     assert.equal(cached.status, 304);
     assert.equal(await cached.text(), "");
 
+    // The raw artifact path revalidates too (a separate call site from the
+    // envelope path); `*` matches any current representation.
+    const raw = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json"),
+      env,
+      {},
+    );
+    const rawConditional = await handleRequest(
+      new Request("https://metagraph.sh/metagraph/subnets/7.json", {
+        headers: { "if-none-match": "*" },
+      }),
+      env,
+      {},
+    );
+    assert.ok(raw.headers.get("etag"));
+    assert.equal(rawConditional.status, 304);
+
     const options = await handleRequest(
       new Request("https://metagraph.sh/api/v1/contracts", {
         method: "OPTIONS",
@@ -557,6 +643,7 @@ describe("Worker runtime", () => {
       ["/api/v1/subnets?cursor=nope", "cursor"],
       ["/api/v1/subnets?order=sideways", "order"],
       ["/api/v1/subnets?sort=nope", "sort"],
+      ["/api/v1/subnets?fields=netuid,nope", "fields"],
       ["/api/v1/subnets?netuid=nope", "netuid"],
       ["/api/v1/subnets?subnet_type=nope", "subnet_type"],
     ];
@@ -585,6 +672,29 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.pagination.collection, "subnets");
     assert.equal(body.meta.pagination.limit, 1);
     assert.equal(body.meta.pagination.sort, "netuid");
+  });
+
+  test("projects list rows with ?fields while preserving pagination and filters", async () => {
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/subnets?domain=inference&fields=netuid,name,slug&limit=2&sort=netuid",
+      ),
+      env,
+      {},
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.meta.pagination.collection, "subnets");
+    assert.ok(body.meta.pagination.returned > 0);
+    assert.ok(body.meta.pagination.returned <= 2);
+    assert.deepEqual(body.meta.projection.fields, ["netuid", "name", "slug"]);
+    assert.equal(body.data.subnets.length, body.meta.pagination.returned);
+    assert.deepEqual(Object.keys(body.data.subnets[0]).sort(), [
+      "name",
+      "netuid",
+      "slug",
+    ]);
+    assert.equal("categories" in body.data.subnets[0], false);
   });
 
   test("returns deterministic API errors", async () => {
@@ -1285,9 +1395,13 @@ describe("Worker runtime", () => {
           ),
       ],
       [
+        // identity_promotion is a transient, drainable queue — once every
+        // subnet's source-repo identity is curated it is legitimately empty
+        // (as the SN20/53/89/95… enrichment did). Assert the filter only ever
+        // returns matching profiles, not that any remain.
         "https://metagraph.sh/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
         (body) =>
-          body.data.profiles.length > 0 &&
+          Array.isArray(body.data.profiles) &&
           body.data.profiles.every((profile) =>
             profile.identity_promotion_kinds.includes("source-repo"),
           ),
@@ -1365,6 +1479,7 @@ describe("Worker runtime", () => {
       "https://metagraph.sh/api/v1/subnets?cursor=-1",
       "https://metagraph.sh/api/v1/subnets?order=sideways",
       "https://metagraph.sh/api/v1/subnets?sort=unknown_field",
+      "https://metagraph.sh/api/v1/subnets?fields=netuid,unknown_field",
       "https://metagraph.sh/api/v1/subnets?netuid=not-a-number",
       "https://metagraph.sh/api/v1/subnets?coverage_level=fake",
       "https://metagraph.sh/api/v1/candidates?state=approved",
@@ -1385,6 +1500,95 @@ describe("Worker runtime", () => {
         "invalid_query",
       );
       assert.equal((await response.json()).error.code, "invalid_query");
+    }
+  });
+
+  test("canonicalizes overlay cache keys for ignored query parameters", async () => {
+    const store = new Map();
+    const cachePutKeys = [];
+    let r2Gets = 0;
+    const originalCaches = globalThis.caches;
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          return store.get(request.url)?.clone();
+        },
+        async put(request, response) {
+          cachePutKeys.push(request.url);
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    const endpointArtifact = {
+      schema_version: 1,
+      generated_at: "1970-01-01T00:00:00.000Z",
+      endpoints: [
+        {
+          id: "endpoint-cache",
+          kind: "axon",
+          netuid: 1,
+          provider: "cache-test",
+          status: "ok",
+          surface_id: "surface-cache",
+        },
+      ],
+    };
+    const overlayEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-18T00:00:00.000Z" };
+          }
+          if (key === "health:current") {
+            return {
+              last_run_at: "2026-06-18T00:00:00.000Z",
+              surfaces: [],
+              subnets: [],
+            };
+          }
+          return null;
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          r2Gets += 1;
+          assert.equal(key, "latest/endpoints.json");
+          return {
+            async json() {
+              return endpointArtifact;
+            },
+          };
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+    try {
+      const first = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/endpoints?junk=a"),
+        overlayEnv,
+        ctx,
+      );
+      await Promise.resolve();
+      const second = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/endpoints?junk=b"),
+        overlayEnv,
+        ctx,
+      );
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.equal(await second.text(), await first.text());
+      assert.equal(
+        r2Gets,
+        1,
+        "ignored query params must not bust overlay cache",
+      );
+      assert.equal(store.size, 1, "ignored query params share one cache entry");
+      assert.deepEqual(cachePutKeys, [
+        "https://edge-cache.metagraph.sh/overlay/mainnet/2026-06-06.1/2026-06-18T00%3A00%3A00.000Z/api/v1/endpoints",
+      ]);
+    } finally {
+      globalThis.caches = originalCaches;
     }
   });
 
@@ -1555,6 +1759,11 @@ describe("Agent discovery surfaces", () => {
       context["service-doc"][0].href,
       "https://api.metagraph.sh/llms.txt",
     );
+    assert.ok(
+      context["service-doc"].some(
+        (entry) => entry.href === "https://api.metagraph.sh/agent-workflows.md",
+      ),
+    );
     assert.equal(context.status[0].href, "https://api.metagraph.sh/health");
   });
 
@@ -1669,5 +1878,29 @@ describe("Agent discovery surfaces", () => {
     const tools = await response.json();
     assert.equal(Array.isArray(tools), true);
     assert.ok(tools.length >= 14);
+  });
+
+  test("routes /api/v1/icon to the icon proxy (allowlist-gated, no fetch on miss)", async () => {
+    let fetched = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetched = true;
+      return new Response("", { status: 200 });
+    };
+    try {
+      // A syntactically valid host that is NOT in the artifact/env allowlist:
+      // the proxy fails closed with a 404 and never reaches an upstream fetch.
+      const response = await handleRequest(
+        new Request(
+          "https://api.metagraph.sh/api/v1/icon?host=definitely-not-allowlisted.example",
+        ),
+        env,
+        {},
+      );
+      assert.equal(response.status, 404);
+      assert.equal(fetched, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
   });
 });

@@ -5,6 +5,8 @@
 // `applyQueryFilters` is the single public entry; the rest are internal helpers.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 
+const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 export function applyQueryFilters(
   data,
   url,
@@ -31,6 +33,12 @@ export function applyQueryFilters(
 }
 
 function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
+  const csvWantedByKey = new Map(
+    Object.keys(csvFilters)
+      .filter((key) => params.has(key))
+      .map((key) => [key, new Set(params.get(key).split(","))]),
+  );
+
   return rows.filter((row) =>
     keys.every((key) => {
       if (!params.has(key)) {
@@ -40,13 +48,7 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
       // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid).
       const csvField = csvFilters[key];
       if (csvField) {
-        const wanted = new Set(
-          expected
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
-        );
-        return wanted.has(String(row[csvField]));
+        return csvWantedByKey.get(key)?.has(String(row[csvField])) ?? false;
       }
       // Array-membership filter over the UNION of one or more array fields
       // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
@@ -67,26 +69,61 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
   );
 }
 
+// Inclusive numeric range filter: for each configured field F, `?min_F=` keeps
+// rows where row[F] >= n and `?max_F=` keeps rows where row[F] <= n. A row whose
+// F is absent / non-numeric can't satisfy a bound, so it is excluded once any
+// bound on F is set. Validation (validateListQuery) has already confirmed every
+// present min_/max_ param is a finite number, so Number() here is safe.
+function rangeFilterRows(rows, params, rangeFields) {
+  const bounds = [];
+  for (const field of rangeFields) {
+    const min = params.get(`min_${field}`);
+    if (min !== null) bounds.push({ field, limit: Number(min), kind: "min" });
+    const max = params.get(`max_${field}`);
+    if (max !== null) bounds.push({ field, limit: Number(max), kind: "max" });
+  }
+  if (bounds.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    bounds.every(({ field, limit, kind }) => {
+      const value = row[field];
+      if (typeof value !== "number") {
+        return false;
+      }
+      return kind === "min" ? value >= limit : value <= limit;
+    }),
+  );
+}
+
 function applyListTransform(data, params, config) {
   const queryError = validateListQuery(params, config);
   if (queryError) {
     return { error: queryError };
   }
   const key = config.data_key;
+  const projection = parseProjection(params, data[key], key);
+  if (projection.error) {
+    return { error: projection.error };
+  }
   const filterKeys = Object.keys(config.filters);
-  const filtered = filterRows(
-    searchRows(data[key], params, config.search_keys),
+  const filtered = rangeFilterRows(
+    filterRows(
+      searchRows(data[key], params, config.search_keys),
+      params,
+      filterKeys,
+      config.csv_filters,
+      config.array_filters,
+    ),
     params,
-    filterKeys,
-    config.csv_filters,
-    config.array_filters,
+    config.range_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);
   return {
     data: {
       ...data,
-      [key]: paginated.rows,
+      [key]: projectRows(paginated.rows, projection.fields),
     },
     meta: {
       pagination: {
@@ -99,6 +136,9 @@ function applyListTransform(data, params, config) {
         sort: paginated.sort,
         order: paginated.order,
       },
+      ...(projection.fields
+        ? { projection: { fields: projection.fields } }
+        : {}),
     },
   };
 }
@@ -151,7 +191,10 @@ function paginateRows(rows, params) {
     cursor,
     limit,
     nextCursor: next < rows.length ? next : null,
-    order: params.get("order") === "desc" ? "desc" : "asc",
+    // sortRows only orders when a `sort` key is present, so without one the rows
+    // are in source order — reporting "desc" here would misdescribe them.
+    order:
+      params.get("sort") && params.get("order") === "desc" ? "desc" : "asc",
     rows: shouldPage ? rows.slice(cursor, next) : rows,
     sort: params.get("sort") || null,
   };
@@ -213,6 +256,12 @@ function validateListQuery(params, config) {
         message: `${key} is not supported for this route.`,
       };
     }
+    if (schema.maxLength && value.length > schema.maxLength) {
+      return {
+        parameter: key,
+        message: `${key} is too long.`,
+      };
+    }
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
       return {
         parameter: key,
@@ -221,7 +270,82 @@ function validateListQuery(params, config) {
     }
   }
 
+  for (const field of config.range_filters) {
+    for (const bound of ["min", "max"]) {
+      const key = `${bound}_${field}`;
+      if (params.has(key) && numberParam(params.get(key)) === null) {
+        return {
+          parameter: key,
+          message: `${key} must be a number.`,
+        };
+      }
+    }
+  }
+
   return null;
+}
+
+function parseProjection(params, rows, dataKey) {
+  if (!params.has("fields")) {
+    return { fields: null };
+  }
+  const requested = params.get("fields").split(",");
+  if (
+    requested.length === 0 ||
+    requested.some((field) => !FIELD_NAME_PATTERN.test(field))
+  ) {
+    return {
+      error: {
+        parameter: "fields",
+        message:
+          "fields must be a comma-separated list of row field names, e.g. netuid,name,slug.",
+      },
+    };
+  }
+
+  // A field is "known" if it appears on at least one row, so correctness needs
+  // the union of all rows' keys (collections can be heterogeneous). But the
+  // common case — every requested field present on the first row — only needs
+  // one row. Scan lazily: drop each requested field as a row reveals it and stop
+  // the moment all are resolved. On the largest collection (~1160 endpoints) a
+  // valid ?fields= request now touches ~1 row instead of materializing every
+  // row's keys; an unsupported field still scans to the end to confirm it truly
+  // appears on no row. Behaviour is identical to the prior full-union check.
+  const fields = [...new Set(requested)];
+  const unresolved = new Set(fields);
+  for (const row of rows) {
+    if (unresolved.size === 0) break;
+    if (row && typeof row === "object" && !Array.isArray(row)) {
+      for (const key of Object.keys(row)) unresolved.delete(key);
+    }
+  }
+  if (unresolved.size > 0) {
+    const unknown = [...unresolved];
+    return {
+      error: {
+        parameter: "fields",
+        message: `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${dataKey}: ${unknown.join(", ")}.`,
+      },
+    };
+  }
+
+  return { fields };
+}
+
+function projectRows(rows, fields) {
+  if (!fields) {
+    return rows;
+  }
+  return rows.map((row) => {
+    if (!row || typeof row !== "object" || Array.isArray(row)) {
+      return row;
+    }
+    return Object.fromEntries(
+      fields
+        .filter((field) => Object.hasOwn(row, field))
+        .map((field) => [field, row[field]]),
+    );
+  });
 }
 
 function integerParam(value) {
@@ -233,4 +357,14 @@ function integerParam(value) {
   }
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+// A finite decimal (optional sign, optional fraction) for range-filter bounds —
+// e.g. "5", "-3", "360.5". Rejects blanks, exponents, hex, and Infinity/NaN so a
+// bound is always a plain, predictable number. Returns the number or null.
+function numberParam(value) {
+  if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
+    return null;
+  }
+  return Number(value);
 }

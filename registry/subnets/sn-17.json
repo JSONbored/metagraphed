@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "netuid": 17,
+  "name": "404—GEN",
+  "slug": "sn-17",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [],
+  "social": {
+    "x": "https://x.com/404gen_"
+  },
+  "contact": "404@404.xyz",
+  "source_repo": "https://github.com/404-Repo/404-gen-subnet",
+  "website_url": "https://www.404.xyz/"
+}

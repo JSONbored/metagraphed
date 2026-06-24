@@ -9,6 +9,7 @@ import {
 } from "../src/health-serving.mjs";
 import { writeSubnetSnapshot } from "../src/health-prober.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 // --- Pure format helpers ----------------------------------------------------
@@ -145,8 +146,22 @@ describe("formatLeaderboards", () => {
       { netuid: 2, min_latency_ms: 120 },
     ],
     mostComplete: [
-      { netuid: 1, slug: "one", name: "One", completeness_score: 80 },
-      { netuid: 2, slug: "two", name: "Two", completeness_score: 95 },
+      {
+        netuid: 1,
+        slug: "one",
+        name: "One",
+        completeness_score: 80,
+        surface_count: 12,
+        operational_interface_count: 4,
+      },
+      {
+        netuid: 2,
+        slug: "two",
+        name: "Two",
+        completeness_score: 95,
+        surface_count: 6,
+        operational_interface_count: 1,
+      },
     ],
     growthRows: [
       { netuid: 1, delta: 5 },
@@ -165,8 +180,22 @@ describe("formatLeaderboards", () => {
     assert.equal(out.boards.healthiest[0].name, "One");
     assert.equal(out.boards["fastest-rpc"][0].netuid, 2); // lowest latency
     assert.equal(out.boards["most-complete"][0].netuid, 2); // 95
+    assert.equal(out.boards["most-enriched"][0].netuid, 1); // 12 surfaces > 6
+    assert.equal(out.boards["most-enriched"][0].surface_count, 12);
     assert.equal(out.boards["fastest-growing"][0].netuid, 1); // +5 only positive
     assert.equal(out.boards["fastest-growing"].length, 1);
+  });
+  test("most-enriched excludes zero-surface subnets", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      mostComplete: [
+        { netuid: 1, slug: "one", name: "One", surface_count: 3 },
+        { netuid: 9, slug: "nine", name: "Nine", surface_count: 0 },
+      ],
+      board: "most-enriched",
+    });
+    assert.equal(out.boards["most-enriched"].length, 1);
+    assert.equal(out.boards["most-enriched"][0].netuid, 1);
   });
   test("filters to a single board and respects limit cap", () => {
     const out = formatLeaderboards({
@@ -183,6 +212,241 @@ describe("formatLeaderboards", () => {
     assert.equal(
       out.boards.healthiest.some((e) => e.netuid === 3),
       false,
+    );
+  });
+
+  // Economic opportunity boards. Rows mirror the live economics tier.
+  const economicsRows = [
+    {
+      netuid: 10,
+      slug: "ten",
+      name: "Ten",
+      open_slots: 200,
+      max_uids: 256,
+      registration_cost_tao: 1,
+      registration_allowed: true,
+      emission_share: 0.1,
+      total_stake_tao: 5000,
+      validator_count: 10,
+      miner_count: 46,
+      max_validators: 64,
+    },
+    {
+      netuid: 11,
+      slug: "eleven",
+      name: "Eleven",
+      open_slots: 50,
+      max_uids: 128,
+      registration_cost_tao: 0.5,
+      registration_allowed: true,
+      emission_share: 0.3,
+      total_stake_tao: 9000,
+      validator_count: 60,
+      miner_count: 18,
+      max_validators: 64,
+    },
+    {
+      // Full + registration closed + zero validator headroom → excluded from
+      // open-slots, cheapest-registration, and validator-headroom (but still has
+      // emission, so it shows on highest-emission).
+      netuid: 12,
+      slug: "twelve",
+      name: "Twelve",
+      open_slots: 0,
+      max_uids: 64,
+      registration_cost_tao: 100,
+      registration_allowed: false,
+      emission_share: 0.05,
+      total_stake_tao: 1000,
+      validator_count: 64,
+      miner_count: 0,
+      max_validators: 64,
+    },
+    {
+      // No economics: every metric is null/missing → excluded from all boards.
+      netuid: 13,
+      slug: "thirteen",
+      name: "Thirteen",
+      open_slots: null,
+      registration_cost_tao: null,
+      registration_allowed: true,
+      emission_share: null,
+      total_stake_tao: null,
+      validator_count: null,
+      miner_count: null,
+      max_validators: null,
+    },
+  ];
+
+  test("ranks the four economic boards from the economics tier", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      economicsRows,
+      board: null,
+      limit: 10,
+    });
+    // open-slots: most room first; full + unknown excluded.
+    assert.deepEqual(
+      out.boards["open-slots"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.equal(out.boards["open-slots"][0].open_slots, 200);
+    assert.equal(out.boards["open-slots"][0].name, "Ten");
+    // cheapest-registration: lowest cost first; closed + unknown-cost excluded.
+    assert.deepEqual(
+      out.boards["cheapest-registration"].map((e) => e.netuid),
+      [11, 10],
+    );
+    assert.equal(
+      out.boards["cheapest-registration"][0].registration_cost_tao,
+      0.5,
+    );
+    // highest-emission: largest share first; only null-emission excluded.
+    assert.deepEqual(
+      out.boards["highest-emission"].map((e) => e.netuid),
+      [11, 10, 12],
+    );
+    // validator-headroom: max_validators - validator_count, desc; zero excluded.
+    assert.deepEqual(
+      out.boards["validator-headroom"].map((e) => e.netuid),
+      [10, 11],
+    );
+    assert.equal(out.boards["validator-headroom"][0].validator_headroom, 54);
+  });
+
+  test("economic boards are null-safe when the economics tier is cold", () => {
+    const out = formatLeaderboards({ ...inputs, board: null, limit: 10 });
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.deepEqual(out.boards[key], [], `${key} must be empty, not absent`);
+    }
+    // The operational boards are unaffected by the absent economics tier.
+    assert.ok(out.boards.healthiest.length > 0);
+  });
+
+  test("a single economic board honours the limit cap", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      economicsRows,
+      board: "highest-emission",
+      limit: 1,
+    });
+    assert.deepEqual(Object.keys(out.boards), ["highest-emission"]);
+    assert.equal(out.boards["highest-emission"].length, 1);
+    assert.equal(out.boards["highest-emission"][0].netuid, 11);
+  });
+
+  test("economic boards break metric ties by tiebreak then netuid, nulls last", () => {
+    const ranked = (board, rows) =>
+      formatLeaderboards({
+        ...inputs,
+        board,
+        limit: 10,
+        economicsRows: rows,
+      }).boards[board].map((entry) => entry.netuid);
+
+    // open-slots all tie at 100: cheaper cost first, equal cost breaks on netuid,
+    // unknown cost (Infinity) ranks last. netuid 2 is in subnetMeta, so its
+    // identity resolves from the map rather than the row.
+    const openSlots = formatLeaderboards({
+      ...inputs,
+      board: "open-slots",
+      limit: 10,
+      economicsRows: [
+        {
+          netuid: 30,
+          open_slots: 100,
+          registration_cost_tao: 5,
+          registration_allowed: true,
+        },
+        {
+          netuid: 2,
+          open_slots: 100,
+          registration_cost_tao: 5,
+          registration_allowed: true,
+        },
+        {
+          netuid: 31,
+          open_slots: 100,
+          registration_cost_tao: null,
+          registration_allowed: true,
+        },
+        {
+          netuid: 32,
+          open_slots: 100,
+          registration_cost_tao: 1,
+          registration_allowed: true,
+        },
+      ],
+    }).boards["open-slots"];
+    assert.deepEqual(
+      openSlots.map((e) => e.netuid),
+      [32, 2, 30, 31],
+    );
+    assert.equal(openSlots.find((e) => e.netuid === 2).name, "Two");
+
+    // cheapest-registration tie at cost 2: more open slots first, unknown last.
+    assert.deepEqual(
+      ranked("cheapest-registration", [
+        {
+          netuid: 30,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: 10,
+        },
+        {
+          netuid: 31,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: null,
+        },
+        {
+          netuid: 32,
+          registration_cost_tao: 2,
+          registration_allowed: true,
+          open_slots: 99,
+        },
+      ]),
+      [32, 30, 31],
+    );
+
+    // highest-emission tie at 0.2: higher stake first, unknown last.
+    assert.deepEqual(
+      ranked("highest-emission", [
+        { netuid: 30, emission_share: 0.2, total_stake_tao: 100 },
+        { netuid: 31, emission_share: 0.2, total_stake_tao: null },
+        { netuid: 32, emission_share: 0.2, total_stake_tao: 999 },
+      ]),
+      [32, 30, 31],
+    );
+
+    // validator-headroom tie at 10: higher emission first, unknown last.
+    assert.deepEqual(
+      ranked("validator-headroom", [
+        {
+          netuid: 30,
+          max_validators: 20,
+          validator_count: 10,
+          emission_share: 0.1,
+        },
+        {
+          netuid: 31,
+          max_validators: 30,
+          validator_count: 20,
+          emission_share: null,
+        },
+        {
+          netuid: 32,
+          max_validators: 15,
+          validator_count: 5,
+          emission_share: 0.5,
+        },
+      ]),
+      [32, 30, 31],
     );
   });
 });
@@ -290,6 +554,57 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.date, "2026-06-10");
     assert.equal(db.calls.batched[0].length, 2);
   });
+  test("chunks large subnet snapshot writes into bounded D1 batches", async () => {
+    const db = fakeBatchDb();
+    const manyProfiles = {
+      ok: true,
+      data: {
+        profiles: Array.from({ length: 55 }, (_, netuid) => ({
+          netuid,
+          completeness_score: 90,
+          surface_count: 1,
+          endpoint_count: 1,
+          monitored_endpoint_count: 1,
+          candidate_count: 0,
+        })),
+      },
+    };
+    const r = await writeSubnetSnapshot(
+      {},
+      {
+        db,
+        readArtifact: reader(manyProfiles),
+        now: () => Date.UTC(2026, 5, 10),
+      },
+    );
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 55);
+    assert.equal(db.calls.batched.length, 2);
+    assert.equal(db.calls.batched[0].length, 50);
+    assert.equal(db.calls.batched[1].length, 5);
+  });
+  test("still writes structural rows when optional economics read throws", async () => {
+    const db = fakeBatchDb();
+    const r = await writeSubnetSnapshot(
+      {},
+      {
+        db,
+        readArtifact: (_env, path) => {
+          if (path === "/metagraph/economics.json") {
+            throw new Error("malformed economics artifact");
+          }
+          return Promise.resolve(profiles);
+        },
+        now: () => Date.UTC(2026, 5, 10),
+      },
+    );
+
+    assert.equal(r.ok, true);
+    assert.equal(r.rows, 2);
+    assert.equal(db.calls.batched[0].length, 2);
+    assert.equal(db.calls.batched[0][0].__params[7], null);
+    assert.equal(db.calls.batched[0][0].__params[11], null);
+  });
   test("returns write_failed when the batch throws", async () => {
     const db = {
       prepare: () => ({ bind: () => ({}) }),
@@ -300,6 +615,46 @@ describe("writeSubnetSnapshot", () => {
       { db, readArtifact: reader(profiles) },
     );
     assert.equal(r.reason, "write_failed");
+  });
+  test("backfills NULL economics via COALESCE DO UPDATE, not DO NOTHING", async () => {
+    let captured = "";
+    const db = {
+      prepare(sql) {
+        captured = sql;
+        return { bind: () => ({}) };
+      },
+      batch: (s) => Promise.resolve(s.map(() => ({}))),
+    };
+    await writeSubnetSnapshot(
+      {},
+      { db, readArtifact: reader(profiles), now: () => Date.UTC(2026, 5, 10) },
+    );
+    // A later same-day fire backfills economics rather than freezing the row.
+    assert.match(
+      captured,
+      /ON CONFLICT \(netuid, snapshot_date\) DO UPDATE SET/,
+    );
+    assert.doesNotMatch(captured, /DO NOTHING/);
+    // Each economics column is COALESCE(existing, excluded): fills a NULL, but a
+    // later NULL can never wipe an earlier fire's good value.
+    for (const col of [
+      "validator_count",
+      "miner_count",
+      "total_stake_tao",
+      "alpha_price_tao",
+      "emission_share",
+    ]) {
+      assert.match(
+        captured,
+        new RegExp(
+          `${col} = COALESCE\\(subnet_snapshots\\.${col}, excluded\\.${col}\\)`,
+        ),
+      );
+    }
+    // Structural columns + captured_at stay owned by the first fire (not in SET).
+    for (const col of ["completeness_score", "surface_count", "captured_at"]) {
+      assert.doesNotMatch(captured, new RegExp(`${col}\\s*=`));
+    }
   });
 });
 
@@ -319,11 +674,33 @@ function analyticsD1() {
     },
   };
 }
+function captureD1Env(queries) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            queries.push({ sql, params });
+            return {
+              all: () => Promise.resolve({ results: rowsForSql(sql) }),
+            };
+          },
+        };
+      },
+    },
+  };
+}
 function rowsForSql(sql) {
   if (sql.includes("WITH ranked")) {
+    // Shared ok-latency CTE backs BOTH the percentiles and the trends routes, so
+    // the fixture row carries uptime (total/ok_count) AND the latency stats.
     return [
       {
         surface_id: "s1",
+        total: 100,
+        ok_count: 98,
+        latency_samples: 96,
         samples: 100,
         p50: 120,
         p95: 400,
@@ -337,7 +714,7 @@ function rowsForSql(sql) {
   if (sql.includes("SUM(ok) AS ok_count")) {
     return [{ surface_id: "s1", total: 100, ok_count: 98 }];
   }
-  if (sql.includes("WITH failures") || sql.includes("failures AS")) {
+  if (sql.includes("WITH checks") || sql.includes("checks AS")) {
     return [
       {
         netuid: 7,
@@ -402,16 +779,36 @@ describe("analytics routes (cold local D1)", () => {
     );
     assert.deepEqual(body.data.surfaces, []);
   });
-  test("incidents rejects unsupported query parameters", async () => {
-    for (const query of ["window=bogus", "window=7d&cacheBust=x"]) {
+  test("D1 analytics routes reject non-canonical query strings before D1", async () => {
+    const cases = [
+      ["/api/v1/subnets/7/health/percentiles?window=bogus", "window"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&cacheBust=x", "cacheBust"],
+      ["/api/v1/subnets/7/health/incidents?window=7d&window=7d", "window"],
+      ["/api/v1/subnets/7/trajectory?x=random", "x"],
+      ["/api/v1/subnets/7/health/trends?bogus=x", "bogus"],
+      ["/api/v1/registry/leaderboards?limit=10&x=random", "x"],
+      ["/api/v1/registry/leaderboards?limit=10&limit=10", "limit"],
+    ];
+    for (const [path, parameter] of cases) {
       const { status, body } = await getJson(
-        `https://api.metagraph.sh/api/v1/subnets/7/health/incidents?${query}`,
+        `https://api.metagraph.sh${path}`,
         env,
       );
-      assert.equal(status, 400);
+      assert.equal(status, 400, path);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, parameter);
     }
   });
+  test("invalid window value names the bad value and valid options in the error", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
+      env,
+    );
+    assert.ok(body.error.message.includes("90d"), body.error.message);
+    assert.ok(body.error.message.includes("7d"), body.error.message);
+    assert.ok(body.error.message.includes("30d"), body.error.message);
+  });
+
   test("trajectory returns empty-but-valid", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/trajectory",
@@ -443,15 +840,107 @@ describe("analytics routes (cold local D1)", () => {
       hungEnv,
     );
     assert.equal(trends.status, 200);
+    const bulkTrends = await getJson(
+      "https://api.metagraph.sh/api/v1/health/trends",
+      hungEnv,
+    );
+    assert.equal(bulkTrends.status, 200);
+    assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
   });
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
+    const profileEnv = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        get: async () => ({
+          json: async () => ({
+            profiles: [
+              {
+                netuid: 7,
+                slug: "sn-7",
+                name: "Subnet 7",
+                completeness_score: 88,
+              },
+            ],
+          }),
+        }),
+      },
+    });
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/registry/leaderboards",
-      env,
+      profileEnv,
     );
     assert.equal(typeof body.data.boards, "object");
     assert.ok(body.data.boards["most-complete"].length > 0);
     assert.deepEqual(body.data.boards.healthiest, []);
+  });
+  test("leaderboards surfaces economic boards from the committed economics tier", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards",
+      env,
+    );
+    // open-slots / cheapest-registration / highest-emission / validator-headroom
+    // project from the R2 economics.json fallback in this cold-D1 env.
+    for (const key of [
+      "open-slots",
+      "cheapest-registration",
+      "highest-emission",
+      "validator-headroom",
+    ]) {
+      assert.ok(Array.isArray(body.data.boards[key]), key);
+    }
+    const openSlots = body.data.boards["open-slots"];
+    assert.ok(
+      openSlots.length > 0,
+      "committed economics yields open-slot subnets",
+    );
+    // Descending by open_slots; each entry carries the miner decision fields.
+    assert.ok(openSlots[0].open_slots >= (openSlots[1]?.open_slots ?? 0));
+    assert.equal(typeof openSlots[0].netuid, "number");
+    assert.ok("registration_cost_tao" in openSlots[0]);
+  });
+  test("leaderboards filters to a single economic board", async () => {
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=highest-emission&limit=5",
+      env,
+    );
+    assert.deepEqual(Object.keys(body.data.boards), ["highest-emission"]);
+    assert.ok(body.data.boards["highest-emission"].length <= 5);
+  });
+  test("leaderboards economic boards prefer the live economics KV blob", async () => {
+    // A fresh, on-contract, integrity-valid blob makes resolveLiveEconomics win,
+    // so the boards project from KV rather than the committed R2 economics.json.
+    const liveEnv = {
+      ...env,
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key !== "economics:current") return null;
+          return {
+            schema_version: 1,
+            contract_version: CONTRACT_VERSION,
+            captured_at: new Date(Date.now() - 60_000).toISOString(),
+            summary: { with_economics_count: 1 },
+            subnets: [
+              {
+                netuid: 777,
+                slug: "live",
+                name: "Live",
+                open_slots: 5,
+                registration_cost_tao: 1,
+                registration_allowed: true,
+                emission_share: 1,
+              },
+            ],
+          };
+        },
+      },
+    };
+    const { body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=open-slots",
+      liveEnv,
+    );
+    assert.deepEqual(
+      body.data.boards["open-slots"].map((e) => e.netuid),
+      [777],
+    );
   });
   test("leaderboards rejects an unknown board", async () => {
     const { status, body } = await getJson(
@@ -469,50 +958,85 @@ describe("analytics routes (fake D1 with data)", () => {
     METAGRAPH_HEALTH_DB: analyticsD1(),
   };
   test("percentiles surfaces p95 from D1", async () => {
+    const queries = [];
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d",
-      env,
+      captureD1Env(queries),
     );
     assert.equal(body.data.surfaces[0].latency_ms.p95, 400);
+    assert.match(
+      queries[0].sql,
+      /PARTITION BY COALESCE\(surface_key, surface_id\)/,
+    );
+    assert.match(queries[0].sql, /GROUP BY surface_key/);
+    // Surfaces with no healthy-latency reading are excluded (no all-null rows).
+    assert.match(queries[0].sql, /HAVING MAX\(lat_cnt\) > 0/);
   });
   test("incidents computes uptime + incidents from D1", async () => {
+    const queries = [];
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      env,
+      captureD1Env(queries),
     );
     assert.equal(body.data.surfaces[0].uptime_ratio, 0.98);
     assert.equal(body.data.surfaces[0].incident_count, 1);
+    assert.match(
+      queries[0].sql,
+      /GROUP BY COALESCE\(surface_key, surface_id\)/,
+    );
+    assert.match(queries[1].sql, /PARTITION BY surface_key/);
+    assert.doesNotMatch(
+      queries[1].sql,
+      /WHERE netuid = \? AND checked_at >= \? AND ok = 0/,
+    );
+    assert.match(
+      queries[1].sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(queries[1].sql, /FROM grouped\n {7}WHERE ok = 0/);
   });
   test("incidents SQL uses a hard incident row cap", async () => {
     const queries = [];
-    const envWithCapture = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql) {
-          return {
-            bind(...params) {
-              queries.push({ sql, params });
-              return {
-                all: () => Promise.resolve({ results: rowsForSql(sql) }),
-              };
-            },
-          };
-        },
-      },
-    };
     const { status } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
-      envWithCapture,
+      captureD1Env(queries),
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH failures"),
+      query.sql.includes("WITH checks"),
     );
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
     // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
     assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
     assert.equal(incidentQuery.params.at(-2), 2);
+  });
+
+  test("trends and uptime SQL group by stable surface key", async () => {
+    const queries = [];
+    const envWithCapture = captureD1Env(queries);
+    await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
+      envWithCapture,
+    );
+    await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/uptime",
+      envWithCapture,
+    );
+    // Trends rolls raw checks through the shared ok-latency CTE, which coalesces
+    // surface_key ?? surface_id once, then groups on that stable key.
+    const trendsSql =
+      queries.find((query) => query.sql.includes("FROM ranked"))?.sql || "";
+    assert.match(
+      trendsSql,
+      /COALESCE\(surface_key, surface_id\) AS surface_key/,
+    );
+    assert.match(trendsSql, /GROUP BY surface_key/);
+    assert.match(
+      queries.find((query) => query.sql.includes("FROM surface_uptime_daily"))
+        ?.sql || "",
+      /GROUP BY COALESCE\(surface_key, surface_id\), day/,
+    );
   });
 
   test("global incidents SQL bounds source rows before window grouping", async () => {
@@ -538,9 +1062,15 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(status, 200);
     const incidentQuery = queries.find((query) =>
-      query.sql.includes("WITH recent_failures"),
+      query.sql.includes("WITH recent_checks"),
     );
     assert.ok(incidentQuery.sql.includes("ORDER BY checked_at DESC"));
+    assert.doesNotMatch(incidentQuery.sql, /WHERE checked_at >= \? AND ok = 0/);
+    assert.match(
+      incidentQuery.sql,
+      /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
+    );
+    assert.match(incidentQuery.sql, /FROM grouped\n {5}WHERE ok = 0/);
     assert.ok(incidentQuery.sql.includes("LIMIT ?"));
     assert.equal(incidentQuery.params[1], 5000);
     assert.equal(incidentQuery.params.at(-1), 1000);

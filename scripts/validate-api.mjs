@@ -5,8 +5,8 @@ import path from "node:path";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import {
-  artifactFilePath,
   createLocalArtifactEnv,
+  latestArtifactDate,
   readJson,
   repoRoot,
 } from "./lib.mjs";
@@ -23,13 +23,14 @@ const ajv = new Ajv2020({
 addFormats(ajv);
 
 const env = createLocalArtifactEnv();
-// health/latest.json is no longer generated (live-only health). The
-// health/history artifact is keyed by the build's generated_at date in the
-// deterministic (no-live-probe) build that validate/CI run, so derive the date
-// from a stable committed artifact's generated_at.
-const latestHealthHistoryDate = String(
-  (await readJson(artifactFilePath("subnets.json"))).generated_at,
-).slice(0, 10);
+// health/latest.json is no longer generated (live-only health). Daily
+// health-history snapshots are R2-only locally, so validate against the newest
+// staged/public snapshot instead of inferring a date from an unrelated artifact.
+const latestHealthHistoryDate = await latestArtifactDate("health/history");
+assert.ok(
+  latestHealthHistoryDate,
+  "validate:api requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` before validating the API",
+);
 
 const checks = [
   ["/api/v1", (body) => assert.equal(Array.isArray(body.data.routes), true)],
@@ -44,6 +45,15 @@ const checks = [
       assert.equal(body.data.netuid, 7);
       assert.equal(typeof body.data.windows, "object");
       assert.equal(typeof body.data.windows["7d"].samples, "number");
+    },
+  ],
+  [
+    "/api/v1/health/trends",
+    (body) => {
+      assert.equal(body.data.source, "live-cron-prober");
+      assert.equal(typeof body.data.windows, "object");
+      assert.equal(Array.isArray(body.data.windows["7d"].subnets), true);
+      assert.equal(typeof body.data.windows["7d"].subnet_count, "number");
     },
   ],
   [
@@ -69,6 +79,100 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/neurons/0/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.uid, 0);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/metagraph",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.neurons), true);
+      assert.equal(typeof body.data.neuron_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/neurons/0",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      // Cold harness (no D1) → neuron present but null; never 404.
+      assert.equal("neuron" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/subnets/7/validators",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    (body) => {
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal(typeof body.data.event_count, "number");
+      assert.equal(Array.isArray(body.data.registrations), true);
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/events",
+    (body) => {
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.subnet_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks",
+    (body) => {
+      assert.equal(Array.isArray(body.data.blocks), true);
+      assert.equal(typeof body.data.block_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal("block" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    `/api/v1/extrinsics/0x${"a".repeat(64)}`,
+    (body) => {
+      assert.equal(body.data.ref, `0x${"a".repeat(64)}`);
+      assert.equal("extrinsic" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -88,6 +192,8 @@ const checks = [
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
       assert.equal(typeof body.data.summary.total_requests, "number");
+      assert.equal(typeof body.data.bucket_granularity, "string");
+      assert.equal(Array.isArray(body.data.buckets), true);
       assert.equal(Array.isArray(body.data.endpoints), true);
       assert.equal(Array.isArray(body.data.networks), true);
     },
@@ -218,6 +324,36 @@ const checks = [
       assert.equal(Number.isInteger(body.data.chain_subnet_count), true),
   ],
   [
+    "/api/v1/coverage-depth?tier=machine-usable&limit=3",
+    (body) => {
+      assert.equal(Number.isInteger(body.data.subnet_count), true);
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(body.data.rows.length <= 3, true);
+      assert.equal(
+        body.data.rows.every((row) => row.tier === "machine-usable"),
+        true,
+      );
+      assert.equal(Array.isArray(body.data.ranked_queue), true);
+    },
+  ],
+  [
+    "/api/v1/economics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(Number.isInteger(body.data.summary.total_validators), true);
+      // Rows are ordered by emission share, highest first.
+      assert.equal(
+        body.data.subnets.every(
+          (row, i) =>
+            i === 0 ||
+            (row.emission_share ?? -1) <=
+              (body.data.subnets[i - 1].emission_share ?? -1),
+        ),
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/curation?coverage_level=probed",
     (body) =>
       assert.equal(
@@ -271,9 +407,12 @@ const checks = [
     },
   ],
   [
+    // identity_promotion is a drainable queue — once every subnet's source-repo
+    // identity is curated it is legitimately empty. Assert the filter only ever
+    // returns matching profiles, not that any remain.
     "/api/v1/review/profile-completeness?identity_promotion_kinds=source-repo&sort=identity_promotion_kind_count&order=desc",
     (body) => {
-      assert.equal(body.data.profiles.length > 0, true);
+      assert.equal(Array.isArray(body.data.profiles), true);
       assert.equal(
         body.data.profiles.every((profile) =>
           profile.identity_promotion_kinds.includes("source-repo"),
@@ -547,6 +686,28 @@ assert.equal(
   blockedRpc.status,
   403,
   "unsafe RPC methods must be blocked when proxy flag is enabled",
+);
+
+// #358: surface verify-now endpoint. A valid-format but unknown surface_id 404s
+// at lookup, before any outbound probe, so this exercises routing + the error
+// envelope without a network call. The probe/mapping path is covered by
+// tests/surface-verify.test.mjs.
+const verifyMissing = await handleRequest(
+  new Request(
+    "https://metagraph.sh/api/v1/surfaces/zzz-not-a-real-surface/verify",
+  ),
+  env,
+  {},
+);
+assert.equal(
+  verifyMissing.status,
+  404,
+  "verify on an unknown surface_id should 404 before probing",
+);
+assert.equal(
+  verifyMissing.headers.get("x-metagraph-error-code"),
+  "surface_not_found",
+  "verify 404 should carry the surface_not_found error code",
 );
 
 const r2Fallback = await handleRequest(

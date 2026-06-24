@@ -39,6 +39,38 @@ compareComponent(
 );
 compareComponent("SubnetType", QUERY_ENUMS.subnetType);
 
+// These enums are surfaced as inline property enums on response components
+// rather than standalone schema components, so they need an explicit
+// component.property path. Each guards a contract surface that compareComponent
+// (which only resolves top-level components) left unchecked.
+comparePropertyEnum("SubnetProfile", "profile_level", QUERY_ENUMS.profileLevel);
+comparePropertyEnum("CoverageDepthRow", "tier", QUERY_ENUMS.coverageDepthTier);
+comparePropertyEnum(
+  "AgentReadinessStatus",
+  "status",
+  QUERY_ENUMS.agentReadinessStatus,
+);
+comparePropertyEnum(
+  "AgentReadinessStatus",
+  "blocker_level",
+  QUERY_ENUMS.agentBlockerLevel,
+);
+comparePropertyEnum(
+  "EndpointIncident",
+  "severity",
+  QUERY_ENUMS.endpointIncidentSeverity,
+);
+comparePropertyEnum(
+  "EndpointIncident",
+  "state",
+  QUERY_ENUMS.endpointIncidentState,
+);
+comparePropertyEnum(
+  "ReviewAdapterCandidate",
+  "recommended_adapter_kind",
+  QUERY_ENUMS.recommendedAdapterKind,
+);
+
 compareSchemaEnum(
   "candidate-surface kind",
   candidateSchema.properties.kind.enum,
@@ -71,6 +103,22 @@ function compareComponent(
     (value) => !schemaOnlyValues.has(value),
   );
   compareSchemaEnum(componentName, schemaValues, queryValues);
+}
+
+function comparePropertyEnum(
+  componentName,
+  propertyName,
+  queryValues,
+  schemaOnlyValues = new Set(),
+) {
+  const schemaValues = (
+    componentSchemas[componentName]?.properties?.[propertyName]?.enum || []
+  ).filter((value) => !schemaOnlyValues.has(value));
+  compareSchemaEnum(
+    `${componentName}.${propertyName}`,
+    schemaValues,
+    queryValues,
+  );
 }
 
 function compareSchemaEnum(label, schemaValues = [], queryValues = []) {

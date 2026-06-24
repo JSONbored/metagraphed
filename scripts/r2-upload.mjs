@@ -69,7 +69,7 @@ if (process.env.METAGRAPH_ALLOW_R2_UPLOAD !== "1") {
 const remoteManifestResult = forceUpload
   ? { status: "not-checked", manifest: null }
   : getRemoteManifest(manifest.bucket_name, "latest/r2-manifest.json");
-const remoteManifestByPath = new Map(
+const remoteManifestShaByPath = new Map(
   (remoteManifestResult.manifest?.artifacts ?? []).map((artifact) => [
     artifact.path,
     artifact.sha256,
@@ -86,7 +86,7 @@ for (const artifact of plannedArtifacts) {
   const changed =
     forceUpload ||
     remoteManifestResult.status !== "found" ||
-    remoteManifestByPath.get(artifact.path) !== artifact.sha256;
+    remoteManifestShaByPath.get(artifact.path) !== artifact.sha256;
   if (changed) {
     changedArtifactCount += 1;
     artifactUploadJobs.push(
@@ -254,7 +254,15 @@ function buildControlArtifacts(manifest) {
       content_type: "application/json; charset=utf-8",
       key: `${manifest.run_prefix}build-summary.json`,
       latest_key: "latest/build-summary.json",
-      local_path: path.join(repoRoot, "public/metagraph/build-summary.json"),
+      // build-summary.json is R2-only (#1003): the build writes it to the R2
+      // staging tier, not public/metagraph/. Read it from staging like the full
+      // r2-manifest.json above — the old public/ path was left stale by #1003
+      // and broke every publish at the control-artifact upload step.
+      local_path: path.join(
+        repoRoot,
+        R2_STAGING_RELATIVE_ROOT,
+        "build-summary.json",
+      ),
       path: "/metagraph/build-summary.json",
     },
   ];

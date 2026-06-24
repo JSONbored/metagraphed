@@ -102,5 +102,9 @@
       },
       "notes": "Official Platform Network source repository. The repository describes Platform as a Bittensor subnet for decentralized collaborative AI research."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/platformnet"
+  },
+  "contact": "platform@cortex.foundation"
 }

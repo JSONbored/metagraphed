@@ -66,5 +66,7 @@
       },
       "notes": "Official AdTAO source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/ppcrebel" },
+  "contact": "sn21@adtao.io"
 }

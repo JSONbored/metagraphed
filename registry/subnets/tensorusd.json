@@ -87,5 +87,9 @@
       },
       "notes": "Official TensorUSD source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/tensorusd"
+  },
+  "contact": "admin@tensorusd.com"
 }

@@ -36,13 +36,16 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/profiles/{netuid}.json`: per-subnet public-safe profile detail. R2-backed.
 - `/metagraph/surfaces.json`: curated public surfaces only.
 - `/metagraph/surfaces/{netuid}.json`: curated public surfaces for one subnet. R2-backed.
-- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations.
-- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed.
+- `/metagraph/surface-aliases.json`: publish-time deprecated `surface_id` alias map for renamed surfaces. The deterministic build emits an empty placeholder; Cloudflare publish fills it from the previous R2 `surfaces.json` + prior alias map before upload.
+- `/metagraph/endpoints.json`: generalized endpoint/resource registry derived from curated surfaces and probe observations. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- `/metagraph/endpoints/{netuid}.json`: generalized endpoint/resource registry for one subnet. R2-backed. Endpoint `id` values derive from stable `surface_key` values; `surface_id` remains the human-readable surface alias.
+- Live health overlays, trends, percentiles, incidents, and uptime rollups join/group by `surface_key` when present and keep `surface_id` as the served display alias, so display-name/slug renames do not split probe history.
 - `/metagraph/candidates.json`: unpromoted candidate surfaces from public discovery. R2-backed.
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
 - `/metagraph/coverage.json`: count parity and coverage levels.
+- `/metagraph/economics.json`: per-subnet validator/economic metrics (counts, stake, registration cost, alpha price, emission share).
 - `/metagraph/curation.json`: curation state for every active subnet.
 - `/metagraph/gaps.json`: missing public interface facets by subnet.
 - `/metagraph/verification/latest.json`: latest candidate verification results. R2-backed.
@@ -54,6 +57,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/evidence/{netuid}.json`: public evidence ledger claims for one subnet. R2-backed.
 - `/metagraph/overview/{netuid}.json`: composed per-subnet overview (profile + health + curation + gaps + counts). R2-backed.
 - `/metagraph/registry-summary.json`: registry-wide summary (completeness, top subnets, level counts, latest changes). R2-backed.
+- `/metagraph/coverage-depth.json`: machine-usable coverage depth scorecard with one row per subnet, blocker/gap summaries, and a ranked enrichment queue. R2-backed.
 - `/metagraph/lineage.json`: cross-network subnet lineage — maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence, plus the testnet-only (deploying-soon) count.
 - `/metagraph/fixtures.json`: index of captured live request/response fixtures (which surfaces carry a sanitized sample).
 - `/metagraph/agent-resources.json`: machine index of every AI resource — the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.
@@ -65,19 +69,32 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/badges/{netuid}.json`: badge data for future metagraph.sh renderers. R2-backed.
 - `/metagraph/rpc-endpoints.json`: Bittensor base-layer RPC/WSS endpoint registry and probe status.
 - `/metagraph/rpc/pools.json`: endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing.
-- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures.
-- `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 2-minute Cloudflare cron health prober; the prober's input list, served from the committed assets.
+- `/metagraph/endpoint-pools.json`: generalized endpoint pool scoring for future read-only routing; pool entries include `surface_id` and `surface_key` when backed by catalogued surfaces.
+- `/metagraph/endpoint-incidents.json`: probe-derived endpoint incident summary and active endpoint failures; incidents include the human `surface_id` alias plus stable `surface_key`.
+- `/metagraph/operational-surfaces.json`: operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the 15-minute Cloudflare cron health prober; the prober's R2-backed input list.
 - `/metagraph/agent-catalog.json`: compact index of subnets exposing callable services for AI agents (per subnet: service kinds + callable count). Committed.
 - `/metagraph/agent-catalog/{netuid}.json`: per-subnet agent capability catalog — each callable service with base URL, auth, machine-readable schema, and build-time health/eligibility. R2-backed.
+- `/metagraph/health/trends.json`: schema for the compact all-subnet 7d/30d daily uptime + latency trend matrix served live from D1 at `GET /api/v1/health/trends` (no static file is written).
 - `/metagraph/health/trends/{netuid}.json`: schema for the computed 7d/30d uptime + latency trends served live from D1 at `GET /api/v1/subnets/{netuid}/health/trends` (no static file is written).
 - `/metagraph/health/percentiles/{netuid}.json`: schema for per-surface latency percentiles (p50/p95/p99) served live from D1 at `GET /api/v1/subnets/{netuid}/health/percentiles` (no static file).
 - `/metagraph/health/incidents/{netuid}.json`: schema for per-surface SLA + reconstructed downtime incidents served live from D1 at `GET /api/v1/subnets/{netuid}/health/incidents` (no static file).
 - `/metagraph/subnets/{netuid}/trajectory.json`: schema for the week-over-week structural trajectory served live from D1 at `GET /api/v1/subnets/{netuid}/trajectory` (no static file).
 - `/metagraph/subnets/{netuid}/uptime.json`: schema for the long-term daily uptime history per operational surface (90d/1y window), served live from the `surface_uptime_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/uptime` (no static file).
+- `/metagraph/subnets/{netuid}/metagraph.json`: schema for the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/metagraph` (no static file).
+- `/metagraph/subnets/{netuid}/neurons/{uid}.json`: schema for a single neuron's metagraph state served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/neurons/{uid}` (no static file).
+- `/metagraph/subnets/{netuid}/validators.json`: schema for a subnet's validators (validator_permit) ranked by stake, served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/validators` (no static file).
+- `/metagraph/subnets/{netuid}/neurons/{uid}/history.json`: schema for a UID's per-day metagraph time series served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/neurons/{uid}/history` (no static file).
+- `/metagraph/subnets/{netuid}/history.json`: schema for a subnet's per-day metagraph history (one snapshot/day) served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/history` (no static file).
+- `/metagraph/accounts/{ss58}.json`: schema for a cross-subnet account summary (chain-event aggregates joined to current registrations), served live from the `account_events` + `neurons` D1 tiers at `GET /api/v1/accounts/{ss58}` (no static file).
+- `/metagraph/accounts/{ss58}/events.json`: schema for an account's paginated chain-event history, served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/events` (no static file).
+- `/metagraph/accounts/{ss58}/subnets.json`: schema for the subnets where an account's hotkey is currently registered, served live from the `neurons` D1 tier at `GET /api/v1/accounts/{ss58}/subnets` (no static file).
+- `/metagraph/blocks.json`: schema for the recent-block feed (newest first) of the block explorer, served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks` (no static file).
+- `/metagraph/blocks/{ref}.json`: schema for per-block detail (by numeric `block_number` or `0x` `block_hash`), served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks/{ref}` (no static file).
+- `/metagraph/extrinsics.json`: schema for the recent-extrinsic feed (newest first) of the block explorer, served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics` (no static file).
+- `/metagraph/extrinsics/{hash}.json`: schema for per-extrinsic detail (by `0x` `extrinsic_hash`), served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics/{hash}` (no static file).
 - `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
-- `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards served live from D1 + registry projections at `GET /api/v1/registry/leaderboards` (no static file).
-- `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file).
+- `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — served live from D1 + registry projections + the economics tier at `GET /api/v1/registry/leaderboards` (no static file).
+- `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
 - `/metagraph/schemas/{surface_id}.json`: captured machine-readable OpenAPI/Swagger schema snapshot detail. R2-backed.
@@ -105,6 +122,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/agent-catalog`: list subnets exposing callable services for AI agents (compact index: service kinds + callable count per subnet).
 - `/api/v1/agent-catalog/{netuid}`: fetch one subnet's agent capability catalog — each callable service with base URL, auth, machine-readable schema, and health/eligibility.
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
+- `/api/v1/coverage-depth`: fetch the machine-usable scorecard and ranked enrichment queue for prioritizing schema, fixture, example, provenance, and review work.
 - `/api/v1/lineage`: fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
 - `/api/v1/fixtures`: fetch the index of captured live request/response fixtures (per-surface samples are at `/metagraph/fixtures/{surface_id}.json`, also via the `get_fixture` MCP tool).
 - `/api/v1/agent-resources`: fetch the AI-resources index (the copyable agent at `/agent.md`, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs).
@@ -112,8 +130,20 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}/health/incidents`: fetch SLA (uptime ratio) + reconstructed downtime incidents per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/trajectory`: fetch the week-over-week structural trajectory (completeness + counts) from daily snapshots (live from D1).
 - `/api/v1/subnets/{netuid}/uptime`: fetch long-term daily uptime history per operational surface over a 90d/1y window (live from the `surface_uptime_daily` D1 rollup).
-- `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|fastest-growing`, or omit for all).
-- `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry).
+- `/api/v1/subnets/{netuid}/metagraph`: fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon); `?validator_permit=true` for validators only (live from the `neurons` D1 tier).
+- `/api/v1/subnets/{netuid}/neurons/{uid}`: fetch a single neuron's metagraph state by UID (live from the `neurons` D1 tier; 200 with `neuron:null` when cold/absent).
+- `/api/v1/subnets/{netuid}/validators`: fetch the validators (validator_permit) ranked by stake (live from the `neurons` D1 tier).
+- `/api/v1/subnets/{netuid}/neurons/{uid}/history`: fetch a UID's per-day metagraph time series over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
+- `/api/v1/subnets/{netuid}/history`: fetch a subnet's per-day metagraph history over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
+- `/api/v1/accounts/{ss58}`: fetch a cross-subnet account summary (chain-event aggregates joined to current registrations + stake) for a hotkey or coldkey (live from the `account_events` + `neurons` D1 tiers).
+- `/api/v1/accounts/{ss58}/events`: fetch an account's paginated chain-event history, newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
+- `/api/v1/accounts/{ss58}/subnets`: fetch the subnets where an account's hotkey is currently registered (live from the `neurons` D1 tier).
+- `/api/v1/blocks`: fetch the recent-block feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` (live from the first-party `blocks` D1 tier).
+- `/api/v1/blocks/{ref}`: fetch per-block detail by numeric `block_number` or `0x` `block_hash` (live from the first-party `blocks` D1 tier; 200 with `block:null` when cold/unknown).
+- `/api/v1/extrinsics`: fetch the recent-extrinsic feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` / optional `?block=<n>` (live from the first-party `extrinsics` D1 tier).
+- `/api/v1/extrinsics/{hash}`: fetch per-extrinsic detail by `0x` `extrinsic_hash` (live from the first-party `extrinsics` D1 tier; 200 with `extrinsic:null` when cold/unknown).
+- `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|most-enriched|fastest-growing|open-slots|cheapest-registration|highest-emission|validator-headroom`, or omit for all). The four economic boards rank cross-subnet miner/validator opportunity from the economics tier; pairs with the `find_subnet_opportunities` MCP tool.
+- `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
 - `/api/v1/endpoints`: list generalized endpoint resources and monitored public surfaces.
@@ -124,6 +154,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/providers/{slug}`: fetch per-provider detail.
 - `/api/v1/providers/{slug}/endpoints`: list endpoint resources for one provider or operator.
 - `/api/v1/coverage`: fetch registry coverage summary.
+- `/api/v1/economics`: list per-subnet validator/economic metrics, ordered by emission share.
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
 - `/api/v1/review/gaps`: fetch contributor-targeted subnet gap priorities.
@@ -136,6 +167,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/health`: fetch global health summary.
 - `/api/v1/health/history/{date}`: fetch compact daily health history.
 - `/api/v1/subnets/{netuid}/health`: fetch health detail for one subnet.
+- `/api/v1/health/trends`: fetch compact all-subnet 7d/30d daily uptime and latency trends (live from D1).
 - `/api/v1/freshness`: fetch freshness and staleness state.
 - `/api/v1/source-health`: fetch upstream source health.
 - `/api/v1/evidence`: fetch public evidence ledger.
@@ -209,14 +241,16 @@ The RPC proxy route is intentionally disabled unless `METAGRAPH_ENABLE_RPC_PROXY
 
 ## Change-Feed Webhooks + SSE
 
-metagraph.sh regenerates its dataset on a ~6h schedule (ADR 0001), so the realtime surface is a **change feed**: a notification within seconds of each publish, not a sub-second tail. These routes live outside the artifact contract (dynamic, KV-backed) and degrade to `503 webhooks_unavailable` when the `METAGRAPH_CONTROL` KV binding is absent.
+metagraph.sh regenerates its dataset on an event-driven publish — on each human-input registry merge, plus a daily floor (ADR 0007) — so the realtime surface is a **change feed**: a notification within seconds of each publish, not a sub-second tail. These routes live outside the artifact contract (dynamic, KV-backed) and degrade to `503 webhooks_unavailable` when the `METAGRAPH_CONTROL` KV binding is absent.
 
 - `POST /api/v1/webhooks/subscriptions` — register `{ url, filters?: { netuids?: integer[], kinds?: ("subnets"|"artifacts")[] }, secret? }`. The `url` must be a public `https://` endpoint (private/loopback/link-local hosts and non-default ports are rejected). Returns `{ id, secret, ... }` once; the secret is never echoed again.
-- `GET /api/v1/webhooks/subscriptions/{id}` — fetch a subscription's public view (no secret).
+- `GET /api/v1/webhooks/subscriptions/{id}` — fetch a subscription's public view (no secret), including a `delivery` health summary (`status` `ok`/`retrying`/`dead_letter`, `pending`/`dead_letter` counts, and a `last_failure` with attempt count, reason, and next-attempt time).
 - `DELETE /api/v1/webhooks/subscriptions/{id}` — delete; requires the secret in the `x-metagraph-webhook-secret` header.
-- `GET /api/v1/events` — thin SSE change feed: emits the current change snapshot (derived from `changelog.json` + the KV `latest` pointer) as one `event: snapshot`, with `retry: 300000` advising a 5-minute reconnect. There is no value in holding a connection across the 6h cadence.
+- `GET /api/v1/events` — thin SSE change feed: emits the current change snapshot (derived from `changelog.json` + the KV `latest` pointer) as one `event: snapshot`, with `retry: 300000` advising a 5-minute reconnect. There is no value in holding a connection open between publishes.
 
-At publish time the dispatcher reads `changelog.json`, matches each subscription's filters, and `POST`s the change event signed with `HMAC-SHA256` (hex) over the raw body in the `x-metagraph-signature` header. Subscriptions auto-expire after 180 days of inactivity. The SSRF guard is best-effort and cannot prevent DNS rebinding; the dispatcher runs on GitHub-hosted runners with no access to the project's network, which bounds the residual risk.
+At publish time the dispatcher reads `changelog.json`, matches each subscription's filters, and `POST`s the change event signed with `HMAC-SHA256` (hex) over the raw body in the `x-metagraph-signature` header. Each delivery also carries `x-metagraph-event-id` (stable per event content) and `x-metagraph-idempotency-key` (stable per subscription + event), so subscribers can dedupe retries safely.
+
+Delivery is **at-least-once**. Within a run a transient failure (network/timeout/5xx/429) is retried with short backoff; if it still fails it is parked per-(subscription, event) under the `webhooks:delivery:<id>:<event_id>` KV prefix and re-attempted on subsequent publish runs with bounded exponential spacing (5 min → 12 h). Each publish redelivery sweep is budgeted to a limited key sample, 64 attempts per run, and 8 attempts per subscription. After 8 failed rounds — or on a deterministic rejection (4xx/redirect) — the delivery becomes a dead letter, surfaced via the `delivery` summary on GET. Successful (re)delivery clears the parked record. Parked records (like subscriptions) auto-expire after 180 days. The SSRF guard is best-effort and cannot prevent DNS rebinding; the dispatcher runs on GitHub-hosted runners with no access to the project's network, which bounds the residual risk.
 
 ## Remote MCP Server (AI agents)
 

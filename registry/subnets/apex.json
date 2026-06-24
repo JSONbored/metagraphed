@@ -88,5 +88,7 @@
       },
       "notes": "Official Apex source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/macrocosmosai" },
+  "contact": "support@macrocosmos.ai"
 }

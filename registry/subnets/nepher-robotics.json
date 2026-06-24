@@ -10,6 +10,7 @@
     "robotics",
     "tournament"
   ],
+  "contact": "contact@nepher.ai",
   "curation": {
     "gap_notes": [
       "No verified SSE/event stream yet.",
@@ -40,6 +41,9 @@
   "notes": "Reviewed overlay for SN49 using the official Nepher Robotics README, website, docs, tournament app, and OpenAPI-backed tournament API.",
   "schema_version": 1,
   "slug": "sn-49",
+  "social": {
+    "x": "https://x.com/nepher_robotics"
+  },
   "source_repo": "https://github.com/nepher-ai/nepher-subnet",
   "status": "active",
   "surfaces": [
@@ -218,6 +222,28 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/49"],
       "url": "https://taomarketcap.com/subnets/49"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-49-nepher-robotics-data-artifact",
+      "kind": "data-artifact",
+      "name": "Nepher Robotics community data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nepher-robotics",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://tournament-api.nepher.ai/openapi.json"],
+      "url": "https://tournament-api.nepher.ai/api/v1/tournaments/active/list"
     }
   ],
   "website_url": "https://nepher.ai"

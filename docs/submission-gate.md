@@ -14,12 +14,16 @@ marker comment, no Discord notification, and no AI content verdict.
 
 ## Public States
 
-- `submit_pr`: the submission shape is valid and ready for private review.
+- `submit_pr`: the submission shape is valid, has no deterministic manual-review signals, and is ready for private review.
 - `fix_required`: the submission is malformed, unsafe, duplicate, or out of
   scope.
 - `route_away`: the PR is not a direct UGC submission and should use normal
   backend review.
-- `manual_review`: the submission may be useful but needs human judgment.
+- `manual_review`: deterministic preflight or the **private reviewer** requires
+  human judgment. Direct PRs with high-trust/manual signals (for example
+  provider profiles, authenticated APIs, base-layer RPC/WSS/archive endpoints,
+  ownership mismatches, or non-independent proof sources) are routed here instead
+  of the autonomous merge lane.
 
 ## Labels
 
@@ -39,12 +43,20 @@ The stable marker comment is:
 
 ## Direct PR Shape
 
-Direct UGC PRs must change exactly one candidate or provider review file:
+Direct UGC PRs must change exactly one candidate or provider review file, OR an
+atomic provider+candidate **pair** (one of each):
 
 ```text
 registry/candidates/community/<slug>.json
 registry/providers/community/<slug>.json
 ```
+
+The atomic pair is the **debut lane**: a first-time team registers its provider
+and lands its first surface in a single PR. The inline provider counts as
+registered for the candidate's checks, so no prior, separately-reviewed provider
+PR is required. (Submitting a candidate alone that references an unregistered
+provider is a non-terminal `fix_required` asking you to add the provider in the
+same PR — it is never auto-closed.)
 
 The file must contain exactly one candidate:
 
@@ -73,11 +85,26 @@ The file must contain exactly one candidate:
       "auth_required": false,
       "public_safe": true,
       "rate_limit_notes": "",
+      "rate_limit": {
+        "requests": 60,
+        "window": "60s",
+        "scope": "per-ip"
+      },
       "review_notes": "Community-submitted public interface candidate."
     }
   ]
 }
 ```
+
+`rate_limit` is **optional** and integration-only — include it only when the
+provider documents concrete limits. `requests` + `window` are required when the
+object is present; `burst`, `scope` (`per-key` / `per-ip` / `global` /
+`unknown`), and `cost_notes` are optional. metagraphed never enforces the limit
+and it does not feed completeness — it's a machine-readable hint so agents and
+SDKs can pace their calls. Leave it off when you only have prose, and use
+`rate_limit_notes` for that.
+
+`auth` is the same idea for credentials — `{ scheme, location?, name?, value_format?, token_url?, scopes_note? }` (only `scheme` is required: `none` / `bearer` / `api-key` / `basic` / `oauth2` / `custom`). It is auto-derived from a captured OpenAPI's `securitySchemes`, so curate it only to override or when no spec is captured. It drives the copy-paste auth header/param in the generated snippets. **Placeholders only — never a real key or token.**
 
 Provider profile review files must contain exactly one provider profile:
 
@@ -115,9 +142,10 @@ App after required public checks pass. Public preflight only decides whether a
 submission is shaped correctly enough for private review; it does not expose AI
 scoring, thresholds, prompts, examples, corpus weights, or model internals.
 
-Direct provider profile PRs always route to manual/private review. They are
-useful, but they identify operators and can affect future endpoint trust, so
-they are not direct-merge content.
+Direct provider profile PRs route to `manual_review` with the `provider profile
+submissions require review` signal. They identify operators and can affect future
+endpoint trust, so deterministic preflight keeps them out of the autonomous merge
+lane until a maintainer reviews the identity claim.
 
 Maintainer automation branches such as `codex/*` are ignored before D1 state,
 labels, comments, AI review, or Discord notifications. Direct UGC examples
@@ -139,7 +167,11 @@ The public gate accepts or routes:
 - adapter requests and evidence/provenance corrections.
 
 Base-layer RPC/WSS/archive claims, unknown providers, authenticated APIs,
-adapter requests, and conflicting source claims route to manual/private review.
+adapter requests, and conflicting source claims are handed to the autonomous
+reviewer with advisory risk signals (`manual_reasons`) rather than pre-routed to
+a maintainer. These are the highest-trust surfaces, so the reviewer scrutinizes
+them hardest and defaults to close/escalate when evidence is thin — but the
+public preflight no longer forces a human gate on the whole class.
 
 Endpoint and status submissions can create candidates, reports, or re-probe
 work. They cannot directly set observed uptime, latency, status, health class,
@@ -166,11 +198,15 @@ The private `metagraphed-submission-gate` should run on Cloudflare:
 The public workflow job `metagraphed-submission-gate` only runs deterministic
 preflight. It must not publish, merge, or expose private review details.
 
-The private runtime makes the final UGC decision. For low-risk direct candidate
-PRs, the AI reviewer returns a strict public-safe verdict object. Deterministic
-hard guards still win over AI: unsafe URLs, secrets, private endpoints,
-duplicates, generated artifact edits, unsupported file shapes, base-layer
-RPC/archive claims, and authenticated surfaces cannot be merged automatically.
+The private runtime makes the final UGC decision for schema-valid submissions
+that are routed as `submit_pr`, returning a strict public-safe verdict object.
+Deterministic hard guards still win over AI and block the PR at preflight
+(`fix_required`): unsafe/private URLs, secrets, duplicates, generated-artifact
+edits, and unsupported file shapes cannot reach the reviewer at all. Higher-trust
+classes — base-layer RPC/WSS/archive claims, authenticated surfaces, owner
+mismatches, non-independent proof sources, atomic debut provider+candidate pairs,
+and provider profiles — are deterministic manual-review routes: they are
+schema-valid, but cannot enter the autonomous merge lane.
 
 Production GitHub writes must use a GitHub App installation token. A fallback
 `GITHUB_TOKEN` can exist for emergency/local testing only when the private

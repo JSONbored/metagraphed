@@ -13,14 +13,12 @@ const write = args.has("--write");
 const manifest = await readJson(
   path.join(repoRoot, "public/metagraph/r2-manifest.json"),
 );
-const buildSummary = await readJson(
-  path.join(repoRoot, "public/metagraph/build-summary.json"),
-);
+// build-summary.json is R2-only (#1003); resolve via artifactFilePath (dist/).
+// r2-manifest.json stays committed (publish infra), read from public/ above.
+const buildSummary = await readJson(artifactFilePath("build-summary.json"));
 // Tier-aware: freshness.json is R2-only (ADR 0001), so resolve it through
 // artifactFilePath (dist/) rather than a hardcoded public/ path.
 const freshness = await readJson(artifactFilePath("freshness.json"));
-const endpointPools = await readJson(artifactFilePath("endpoint-pools.json"));
-const sourceHealth = await readJson(artifactFilePath("source-health.json"));
 
 const pointer = {
   contract_version: manifest.contract_version,
@@ -29,52 +27,23 @@ const pointer = {
   // build stamp). The Worker surfaces this as meta.published_at so consumers
   // read true freshness instead of the epoch content marker.
   published_at: buildSummary.published_at || null,
-  latest_prefix: manifest.latest_prefix,
+  // The Worker resolves live artifacts through latest_prefix. Point it at the
+  // immutable run prefix so a failed pointer write after R2 upload keeps the
+  // previous pointer on the previous run's artifacts, instead of mixing stale
+  // metadata with newly overwritten latest/ objects.
+  latest_prefix: manifest.run_prefix,
   run_prefix: manifest.run_prefix,
   manifest_hash: hashJson(manifest),
   artifact_count: manifest.artifact_count,
   native_snapshot_captured_at: freshness.summary.native_snapshot_captured_at,
   health_surface_count: freshness.summary.health_surface_count,
 };
-const featureFlags = {
-  contract_version: manifest.contract_version,
-  generated_at: manifest.generated_at,
-  d1_enabled: false,
-  owned_nodes_enabled: false,
-  rpc_proxy_enabled: false,
-  rpc_proxy_feature_flag: "METAGRAPH_ENABLE_RPC_PROXY",
-  rpc_proxy_requires_waf: true,
-  rpc_proxy_requires_rate_limit: true,
-};
-const endpointPoolStatus = {
-  contract_version: manifest.contract_version,
-  generated_at: endpointPools.generated_at,
-  pools: (endpointPools.pools || []).map((pool) => ({
-    id: pool.id,
-    kind: pool.kind,
-    endpoint_count: pool.endpoint_count,
-    eligible_count: pool.eligible_count,
-    best_endpoint_id: pool.best_endpoint_id,
-  })),
-};
-const sourceFreshness = {
-  contract_version: manifest.contract_version,
-  generated_at: freshness.generated_at,
-  freshness: freshness.summary,
-  source_health: sourceHealth.summary,
-};
-// Order matters: metagraph:latest is the pointer the Worker reads to resolve the
-// live R2 run, so it is written LAST. The sidecar records (feature-flags,
-// endpoint-pools, source-freshness) go first, so a mid-sequence wrangler failure
-// (process.exit in putKv) can never leave the pointer advanced ahead of its
-// sidecars — the Worker keeps serving the previous, internally-consistent run
-// until the final pointer write succeeds.
-const kvEntries = [
-  ["metagraph:feature-flags", featureFlags],
-  ["metagraph:endpoint-pools", endpointPoolStatus],
-  ["metagraph:source-freshness", sourceFreshness],
-  ["metagraph:latest", pointer],
-];
+// metagraph:latest is the ONLY KV control record: the pointer the Worker reads to
+// resolve the live immutable R2 run prefix. (The former feature-flags /
+// endpoint-pools / source-freshness sidecars were written here every publish but
+// read by nothing — Worker, UI, or otherwise — so they were removed; reintroduce
+// such a blob only together with its reader so it can't drift unread.)
+const kvEntries = [["metagraph:latest", pointer]];
 
 if (!write) {
   console.log(

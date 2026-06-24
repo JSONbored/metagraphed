@@ -46,6 +46,7 @@ export const QUERY_ENUMS = {
     "transient",
     "unsupported",
     "unsafe",
+    "wrong-chain",
   ],
   healthStatus: ["ok", "degraded", "failed", "unknown"],
   providerAuthority: [
@@ -84,6 +85,22 @@ export const QUERY_ENUMS = {
     "disabled",
     "rejected",
   ],
+  coverageDepthTier: [
+    "agent-ready",
+    "machine-usable",
+    "candidate-review",
+    "needs-evidence",
+    "hard-blocked",
+    "missing-interface",
+  ],
+  agentReadinessStatus: [
+    "callable",
+    "base-layer",
+    "candidate",
+    "needs-evidence",
+    "blocked",
+  ],
+  agentBlockerLevel: ["none", "hard-blocked", "needs-review", "missing-data"],
   endpointIncidentSeverity: ["critical", "warning", "info"],
   endpointIncidentState: ["active", "resolved"],
   recommendedAdapterKind: [
@@ -112,6 +129,10 @@ export const QUERY_ENUMS = {
 
 const integerSchema = { type: "integer", minimum: 0 };
 const textSchema = { type: "string" };
+const fieldListSchema = {
+  type: "string",
+  pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+};
 
 export const API_QUERY_COLLECTIONS = {
   candidates: queryCollection("candidates", {
@@ -134,6 +155,24 @@ export const API_QUERY_COLLECTIONS = {
     },
     sort: ["coverage_level", "curation_level", "name", "netuid"],
   }),
+  "coverage-depth": queryCollection("rows", {
+    filters: {
+      netuid: integerSchema,
+      tier: enumSchema(QUERY_ENUMS.coverageDepthTier),
+      agent_status: enumSchema(QUERY_ENUMS.agentReadinessStatus),
+      blocker_level: enumSchema(QUERY_ENUMS.agentBlockerLevel),
+    },
+    search: ["name", "slug", "top_gap_codes", "recommended_next_action"],
+    sort: [
+      "agent_status",
+      "blocker_level",
+      "name",
+      "netuid",
+      "priority_score",
+      "score",
+      "tier",
+    ],
+  }),
   "curated-surfaces": queryCollection("surfaces", {
     filters: {
       netuid: integerSchema,
@@ -145,6 +184,29 @@ export const API_QUERY_COLLECTIONS = {
   documents: queryCollection("documents", {
     search: ["title", "subtitle", "slug", "tokens"],
     sort: ["kind", "netuid", "slug", "title"],
+  }),
+  economics: queryCollection("subnets", {
+    filters: {
+      netuid: integerSchema,
+      registration_allowed: enumSchema(["true", "false"]),
+    },
+    search: ["name", "slug"],
+    sort: [
+      "alpha_price_tao",
+      "emission_share",
+      "max_stake_tao",
+      "max_uids",
+      "max_validators",
+      "miner_count",
+      "miner_readiness",
+      "name",
+      "netuid",
+      "open_slots",
+      "registration_cost_tao",
+      "subnet_volume_tao",
+      "total_stake_tao",
+      "validator_count",
+    ],
   }),
   endpoints: queryCollection("endpoints", {
     filters: {
@@ -502,13 +564,18 @@ export const API_QUERY_COLLECTIONS = {
     arrayFilters: { domain: ["categories", "derived_categories"] },
     filters: {
       netuid: integerSchema,
-      netuids: { type: "string", pattern: "^\\d+(,\\d+)*$" },
+      netuids: {
+        type: "string",
+        maxLength: 767,
+        pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+      },
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       domain: enumSchema(DOMAIN_TAGS),
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
+    search: ["name", "slug"],
     sort: [
       "block",
       "candidate_count",
@@ -521,6 +588,16 @@ export const API_QUERY_COLLECTIONS = {
       "probed_surface_count",
       "status",
       "subnet_type",
+      "surface_count",
+      "tempo",
+    ],
+    // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    rangeFilters: [
+      "block",
+      "candidate_count",
+      "mechanism_count",
+      "participant_count",
+      "probed_surface_count",
       "surface_count",
       "tempo",
     ],
@@ -619,6 +696,12 @@ export const PUBLIC_ARTIFACTS = [
     "SurfacesArtifact",
   ),
   artifact(
+    "surface-aliases",
+    "/metagraph/surface-aliases.json",
+    "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+    "SurfaceAliasesArtifact",
+  ),
+  artifact(
     "surfaces-subnet",
     "/metagraph/surfaces/{netuid}.json",
     "Curated public interface surfaces for one subnet.",
@@ -665,6 +748,18 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/coverage.json",
     "Registry coverage counts and source precedence.",
     "CoverageArtifact",
+  ),
+  artifact(
+    "coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+    "CoverageDepthArtifact",
+  ),
+  artifact(
+    "economics",
+    "/metagraph/economics.json",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+    "EconomicsArtifact",
   ),
   artifact(
     "registry-summary",
@@ -783,8 +878,14 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "health-trends",
     "/metagraph/health/trends/{netuid}.json",
-    "Computed 7d/30d uptime + latency trends for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
+    "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
     "HealthTrendsArtifact",
+  ),
+  artifact(
+    "health-trends-bulk",
+    "/metagraph/health/trends.json",
+    "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live from D1 at /api/v1/health/trends (no static file).",
+    "BulkHealthTrendsArtifact",
   ),
   artifact(
     "health-percentiles",
@@ -805,6 +906,78 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTrajectoryArtifact",
   ),
   artifact(
+    "subnet-metagraph",
+    "/metagraph/subnets/{netuid}/metagraph.json",
+    "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+    "SubnetMetagraphArtifact",
+  ),
+  artifact(
+    "subnet-neuron",
+    "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+    "A single neuron's metagraph state by UID, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+    "NeuronDetailArtifact",
+  ),
+  artifact(
+    "subnet-validators",
+    "/metagraph/subnets/{netuid}/validators.json",
+    "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+    "SubnetValidatorsArtifact",
+  ),
+  artifact(
+    "subnet-neuron-history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+    "NeuronHistoryArtifact",
+  ),
+  artifact(
+    "subnet-history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+    "SubnetHistoryArtifact",
+  ),
+  artifact(
+    "account-summary",
+    "/metagraph/accounts/{ss58}.json",
+    "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+    "AccountSummaryArtifact",
+  ),
+  artifact(
+    "account-events",
+    "/metagraph/accounts/{ss58}/events.json",
+    "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events (no static file).",
+    "AccountEventsArtifact",
+  ),
+  artifact(
+    "account-subnets",
+    "/metagraph/accounts/{ss58}/subnets.json",
+    "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
+    "AccountSubnetsArtifact",
+  ),
+  artifact(
+    "blocks-feed",
+    "/metagraph/blocks.json",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "BlocksFeedArtifact",
+  ),
+  artifact(
+    "block-detail",
+    "/metagraph/blocks/{ref}.json",
+    "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+    "BlockDetailArtifact",
+  ),
+  artifact(
+    "extrinsics-feed",
+    "/metagraph/extrinsics.json",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
+    "extrinsic-detail",
+    "/metagraph/extrinsics/{hash}.json",
+    "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "ExtrinsicDetailArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -819,13 +992,13 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
-    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+    "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
     "RpcUsageArtifact",
   ),
   artifact(
@@ -855,7 +1028,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "operational-surfaces",
     "/metagraph/operational-surfaces.json",
-    "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 2-minute scheduled prober.",
+    "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 15-minute scheduled prober.",
     "OperationalSurfacesArtifact",
   ),
   artifact(
@@ -1150,6 +1323,26 @@ export const API_ROUTES = [
     ["registry"],
   ),
   route(
+    "coverage-depth",
+    "GET",
+    "/api/v1/coverage-depth",
+    "/metagraph/coverage-depth.json",
+    "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
+    "standard",
+    ["registry", "review", "api-dx"],
+    listQuery("coverage-depth"),
+  ),
+  route(
+    "economics",
+    "GET",
+    "/api/v1/economics",
+    "/metagraph/economics.json",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+    "standard",
+    ["subnets"],
+    listQuery("economics"),
+  ),
+  route(
     "registry-summary",
     "GET",
     "/api/v1/registry/summary",
@@ -1314,11 +1507,20 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "health-trends-bulk",
+    "GET",
+    "/api/v1/health/trends",
+    "/metagraph/health/trends.json",
+    "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+    "short",
+    ["health", "analytics"],
+  ),
+  route(
     "subnet-health-trends",
     "GET",
     "/api/v1/subnets/{netuid}/health/trends",
     "/metagraph/health/trends/{netuid}.json",
-    "Fetch 7d/30d uptime and latency trends for one subnet's operational surfaces (computed live from D1).",
+    "Fetch 7d/30d uptime and success-only latency trends (mean + p50/p95/p99 tail + healthy-sample count) per operational surface for one subnet (computed live from D1).",
     "short",
     ["health", "subnets"],
     [],
@@ -1358,6 +1560,165 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-metagraph",
+    "GET",
+    "/api/v1/subnets/{netuid}/metagraph",
+    "/metagraph/subnets/{netuid}/metagraph.json",
+    "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
+    "short",
+    ["subnets", "analytics"],
+    [{ name: "validator_permit", schema: { type: "string", enum: ["true"] } }],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-neuron",
+    "GET",
+    "/api/v1/subnets/{netuid}/neurons/{uid}",
+    "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+    "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "uid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
+    "subnet-validators",
+    "GET",
+    "/api/v1/subnets/{netuid}/validators",
+    "/metagraph/subnets/{netuid}/validators.json",
+    "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-neuron-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/neurons/{uid}/history",
+    "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+    "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "uid", schema: { type: "integer", minimum: 0 } },
+    ],
+  ),
+  route(
+    "subnet-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/history",
+    "/metagraph/subnets/{netuid}/history.json",
+    "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "account-summary",
+    "GET",
+    "/api/v1/accounts/{ss58}",
+    "/metagraph/accounts/{ss58}.json",
+    "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events + neurons D1 tiers.",
+    "short",
+    ["accounts", "analytics"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-events",
+    "GET",
+    "/api/v1/accounts/{ss58}/events",
+    "/metagraph/accounts/{ss58}/events.json",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-subnets",
+    "GET",
+    "/api/v1/accounts/{ss58}/subnets",
+    "/metagraph/accounts/{ss58}/subnets.json",
+    "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
+    "short",
+    ["accounts", "subnets"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "blocks-feed",
+    "GET",
+    "/api/v1/blocks",
+    "/metagraph/blocks.json",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "block-detail",
+    "GET",
+    "/api/v1/blocks/{ref}",
+    "/metagraph/blocks/{ref}.json",
+    "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "extrinsics-feed",
+    "GET",
+    "/api/v1/extrinsics",
+    "/metagraph/extrinsics.json",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+    "short",
+    ["extrinsics", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "extrinsic-detail",
+    "GET",
+    "/api/v1/extrinsics/{hash}",
+    "/metagraph/extrinsics/{hash}.json",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+    "short",
+    ["extrinsics", "analytics"],
+    [],
+    [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
     "subnet-uptime",
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
@@ -1373,9 +1734,9 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing) computed live from D1 + registry projections. Omit `board` for all boards.",
+    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
     "standard",
-    ["registry", "analytics"],
+    ["registry", "analytics", "subnets"],
     [
       {
         name: "board",
@@ -1385,7 +1746,12 @@ export const API_ROUTES = [
             "healthiest",
             "fastest-rpc",
             "most-complete",
+            "most-enriched",
             "fastest-growing",
+            "open-slots",
+            "cheapest-registration",
+            "highest-emission",
+            "validator-headroom",
           ],
         },
       },
@@ -1398,7 +1764,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/rpc/usage",
     "/metagraph/rpc/usage.json",
-    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, and the per-endpoint request distribution — over a 7d or 30d window (computed live from D1 telemetry).",
+    "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
     "short",
     ["rpc", "analytics", "operations"],
     [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
@@ -1745,14 +2111,23 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
       title: "Metagraphed API",
       version: CONTRACT_VERSION,
       description:
-        "Backend API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces.",
+        "Public, read-only API over canonical Metagraphed registry artifacts for " +
+        "Bittensor subnet interfaces. **No authentication** — every operation is an " +
+        "unauthenticated GET. Responses use a stable JSON envelope " +
+        "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
+        "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
+        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
+        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production",
+        description: "Production (mainnet; prefix /testnet/ for testnet data)",
       },
     ],
+    // The API is intentionally public + unauthenticated; an empty top-level
+    // security requirement is the OpenAPI signal that no scheme applies (#743).
+    security: [],
     paths,
     components: {
       schemas: {
@@ -1792,15 +2167,25 @@ export function artifactPathFromTemplate(template, params = {}) {
 export function compileRoutePattern(pathTemplate) {
   const tokenized = pathTemplate
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
+    .replace(/\{uid\}/g, "__METAGRAPH_UID__")
+    .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
-    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
+    // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__")
+    // Block-explorer {hash} (#1345 second slice): a 0x extrinsic_hash.
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
+    .replace(/__METAGRAPH_UID__/g, "(?<uid>\\d+)")
+    .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -1859,6 +2244,10 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: each field F here accepts `min_F` and `max_F` query
+    // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
+    // hand-rolled min_readiness the MCP list_subnets tool did.
+    range_filters: options.rangeFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -1881,12 +2270,22 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
+  const rangeParameters = config.range_filters.flatMap((field) => [
+    { name: `min_${field}`, schema: { type: "number" } },
+    { name: `max_${field}`, schema: { type: "number" } },
+  ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      ...rangeParameters,
+      {
+        name: "fields",
+        schema: fieldListSchema,
+      },
       {
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 1000 },

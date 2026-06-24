@@ -1,25 +1,32 @@
 // Live operational-health serving helpers.
 //
-// Pure functions that overlay the 2-minute cron snapshot (KV health:current /
+// Pure functions that overlay the 15-minute cron snapshot (KV health:current /
 // health:rpc-pool / health:meta, written by src/health-prober.mjs) onto the 6h
 // static artifacts. Every helper returns null when the live store is cold/absent
 // so the caller (workers/api.mjs) falls back to the static artifact — keeping
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability } from "./reliability.mjs";
+import { computeReliability, scoreFromStats } from "./reliability.mjs";
+import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import { dailyLatencyColumns } from "./health-sql.mjs";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
-const D1_HEALTH_FALLBACK_MAX_AGE_MS = 10 * 60 * 1000;
+// Must exceed the probe cadence (15 min) so a live D1 health row is never treated
+// as stale just because the next probe hasn't run yet. 25 min = cadence + a
+// one-missed-run buffer. (KV health:current has no TTL, so this only bounds the
+// D1 fallback path.)
+const D1_HEALTH_FALLBACK_MAX_AGE_MS = 25 * 60 * 1000;
 
 // Pool-eligibility hysteresis (cosmos.directory-style "don't flap"): an RPC
 // endpoint is only dropped from the proxy pool after this many CONSECUTIVE
-// failed 2-min probes, so a single transient blip (~2-4 min) doesn't evict an
-// otherwise-healthy node. cosmos.directory tolerates ~10 errors before removal;
-// at a 2-min cadence, 4 (~8 min) is a conservative middle that still removes
-// genuinely-down nodes promptly. Env-overridable.
+// failed probes, so a single transient blip doesn't evict an otherwise-healthy
+// node. At the 15-min probe cadence, 2 (~30 min sustained-down) removes genuinely
+// dead nodes while the RPC proxy still fails over per-request in the meantime.
+// Env-overridable.
 const POOL_SUSTAINED_DOWN_FAILURES = Math.max(
   1,
-  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 4,
+  Number(globalThis.process?.env?.METAGRAPH_POOL_SUSTAINED_DOWN_FAILURES) || 2,
 );
 
 const OPERATIONAL_KINDS = new Set([
@@ -33,6 +40,28 @@ const OPERATIONAL_KINDS = new Set([
 
 function isBaseLayerEndpoint(kind) {
   return kind === "subtensor-rpc" || kind === "subtensor-wss";
+}
+
+function surfaceLookupKey(row) {
+  return row?.surface_key || row?.surface_id || null;
+}
+
+function addLiveSurfaceRow(map, row) {
+  const key = surfaceLookupKey(row);
+  if (key) map.set(key, row);
+  // Fallback for pre-#1005 artifacts/caches that only carry surface_id. Do not
+  // overwrite a stable-key match when an id happens to collide.
+  if (row?.surface_id && !map.has(row.surface_id)) {
+    map.set(row.surface_id, row);
+  }
+}
+
+function liveRowForSurface(map, surface) {
+  return (
+    (surface?.surface_key ? map.get(surface.surface_key) : null) ||
+    (surface?.surface_id ? map.get(surface.surface_id) : null) ||
+    null
+  );
 }
 
 function endpointPoolEligibility(endpoint) {
@@ -65,13 +94,6 @@ export function parseLive(raw) {
   }
 }
 
-function rollupStatus(counts, total) {
-  if (total === 0 || counts.unknown === total) return "unknown";
-  if ((counts.failed || 0) === 0 && (counts.degraded || 0) === 0) return "ok";
-  if ((counts.ok || 0) > 0 || (counts.degraded || 0) > 0) return "degraded";
-  return "failed";
-}
-
 function latestIso(values) {
   let best = null;
   for (const value of values) {
@@ -89,7 +111,7 @@ export function summarizeRows(rows) {
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
-    status: rollupStatus(counts, rows.length),
+    status: rollupSubnetStatus({ ...counts, total: rows.length }),
     surface_count: rows.length,
     ok_count: counts.ok,
     degraded_count: counts.degraded,
@@ -100,6 +122,7 @@ export function summarizeRows(rows) {
     avg_latency_ms: latencies.length
       ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
       : null,
+    latency_sample_count: latencies.length,
   };
 }
 
@@ -108,16 +131,18 @@ export function summarizeRows(rows) {
 // rows are never preserved. Returns null when there is no live snapshot.
 export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
   if (!liveCurrent || !Array.isArray(liveCurrent.surfaces)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   for (const row of liveCurrent.surfaces) {
-    if (row.netuid === netuid) liveById.set(row.surface_id, row);
+    if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
-  if (liveById.size === 0) return null;
+  if (liveBySurface.size === 0) return null;
 
   const merged = [];
-  for (const [id, live] of liveById) {
+  for (const live of new Map(
+    [...liveBySurface.values()].map((row) => [surfaceLookupKey(row), row]),
+  ).values()) {
     merged.push({
-      surface_id: id,
+      surface_id: live.surface_id,
       netuid,
       kind: live.kind,
       provider: live.provider,
@@ -251,7 +276,7 @@ export function mergeFreshness(staticFreshness, liveMeta) {
               timestamp: liveMeta.last_run_at,
               status: "current",
               stale_behavior: "warn",
-              notes: "Operational surfaces are probed live every ~2 minutes.",
+              notes: "Operational surfaces are probed live every ~15 minutes.",
             }
           : source,
       )
@@ -268,31 +293,42 @@ export function mergeFreshness(staticFreshness, liveMeta) {
 }
 
 // Format D1 GROUP BY aggregates into a trends payload. `windows` maps a label to
-// an array of per-surface aggregate rows {surface_id, total, ok_count, avg_latency_ms}.
+// an array of per-surface aggregate rows {surface_id, surface_key?, total,
+// ok_count, avg_latency_ms, latency_samples, p50, p95, p99}. SQL groups by stable
+// surface_key and keeps surface_id as the current display alias. Latency is
+// success-only: avg_latency_ms / the p50/p95/p99 tail describe healthy probes,
+// and latency_sample_count says how many backed them (0 ⇒ no healthy reading).
 export function formatTrends({ netuid, observedAt, windows }) {
   const formatWindow = (rows) => {
     let total = 0;
     let okCount = 0;
+    let latencySampleTotal = 0;
     const perSurface = [];
     for (const row of rows) {
       const rowTotal = Number(row.total) || 0;
       const rowOk = Number(row.ok_count) || 0;
+      const latencySamples = Number(row.latency_samples) || 0;
       total += rowTotal;
       okCount += rowOk;
+      latencySampleTotal += latencySamples;
       perSurface.push({
         surface_id: row.surface_id,
         samples: rowTotal,
         uptime_ratio: rowTotal ? Number((rowOk / rowTotal).toFixed(4)) : null,
-        avg_latency_ms:
-          row.avg_latency_ms == null
-            ? null
-            : Math.round(Number(row.avg_latency_ms)),
+        avg_latency_ms: roundInt(row.avg_latency_ms),
+        latency_sample_count: latencySamples,
+        latency_ms: {
+          p50: roundInt(row.p50),
+          p95: roundInt(row.p95),
+          p99: roundInt(row.p99),
+        },
       });
     }
     perSurface.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
     return {
       samples: total,
       uptime_ratio: total ? Number((okCount / total).toFixed(4)) : null,
+      latency_sample_count: latencySampleTotal,
       surfaces: perSurface,
     };
   };
@@ -309,15 +345,110 @@ export function formatTrends({ netuid, observedAt, windows }) {
   };
 }
 
+// Format all-subnet daily aggregates for the matrix UI. This intentionally
+// keeps the bulk contract subnet-level instead of per-surface to bound payload
+// size while still exposing enough data for sparklines and uptime sorting.
+export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
+  const formatWindow = (rows, days) => {
+    const bySubnet = new Map();
+    for (const row of rows || []) {
+      const netuid = Number(row.netuid);
+      const date = String(row.date || "");
+      if (
+        !Number.isInteger(netuid) ||
+        netuid < 0 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      ) {
+        continue;
+      }
+      const samples = Math.max(0, Number(row.total) || 0);
+      const okCount = Math.max(0, Number(row.ok_count) || 0);
+      const latencyRaw =
+        row.avg_latency_ms == null ? null : Number(row.avg_latency_ms);
+      const avgLatency = Number.isFinite(latencyRaw)
+        ? Math.round(latencyRaw)
+        : null;
+      // Healthy readings behind this day's mean — weight by these, not total
+      // samples. Legacy rows lack the count, so fall back to total samples.
+      const latencyCount = !Number.isFinite(latencyRaw)
+        ? 0
+        : row.latency_samples == null
+          ? samples
+          : Math.max(0, Number(row.latency_samples) || 0);
+
+      let entry = bySubnet.get(netuid);
+      if (!entry) {
+        entry = {
+          netuid,
+          samples: 0,
+          okCount: 0,
+          latencyTotal: 0,
+          latencySamples: 0,
+          points: [],
+        };
+        bySubnet.set(netuid, entry);
+      }
+
+      entry.samples += samples;
+      entry.okCount += okCount;
+      if (Number.isFinite(latencyRaw) && latencyCount > 0) {
+        entry.latencyTotal += latencyRaw * latencyCount;
+        entry.latencySamples += latencyCount;
+      }
+      entry.points.push({
+        date,
+        samples,
+        uptime_ratio: samples ? round4(okCount / samples) : null,
+        avg_latency_ms: avgLatency,
+        latency_sample_count: latencyCount,
+      });
+    }
+
+    const subnets = [...bySubnet.values()]
+      .map((entry) => ({
+        netuid: entry.netuid,
+        samples: entry.samples,
+        uptime_ratio: entry.samples
+          ? round4(entry.okCount / entry.samples)
+          : null,
+        avg_latency_ms: entry.latencySamples
+          ? Math.round(entry.latencyTotal / entry.latencySamples)
+          : null,
+        latency_sample_count: entry.latencySamples,
+        points: entry.points.sort((a, b) => a.date.localeCompare(b.date)),
+      }))
+      .sort((a, b) => a.netuid - b.netuid);
+
+    return {
+      days: Number(days) || 0,
+      granularity: "1d",
+      subnet_count: subnets.length,
+      subnets,
+    };
+  };
+
+  const windowsOut = {};
+  for (const [label, rows] of Object.entries(windows || {})) {
+    windowsOut[label] = formatWindow(rows, windowDays[label]);
+  }
+  return {
+    schema_version: 1,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    windows: windowsOut,
+  };
+}
+
 // --- AI-4 historical analytics (pure transforms over D1 query rows) ---------
 
-// A gap larger than this between consecutive failing checks (probe cadence is
-// ~2 min) ends one incident and starts another. Used by the gap-island SQL in
-// the incidents handler.
-export const INCIDENT_GAP_MS = 6 * 60 * 1000;
+// A gap larger than this between consecutive failing checks ends one incident and
+// starts another. Must exceed the probe cadence (15 min) so consecutive failed
+// probes group into a single incident; 30 min = cadence + one missed-run buffer.
+// Used by the gap-island SQL in the incidents handler.
+export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 
 // Minimum consecutive failed probes for a gap-island to count as an incident.
-// A single failed probe that recovers on the next (~2 min later) is transient
+// A single failed probe that recovers on the next (~15 min later) is transient
 // noise — a momentary timeout / rate-limit / 5xx — not downtime, and it
 // dominated the ledger (~76% of rows were single-sample, zero-duration). This
 // mirrors the Cosmos liveness model: an isolated missed block is tolerated;
@@ -333,13 +464,15 @@ function roundInt(value) {
 }
 
 // p50/p95/p99 + avg/min/max latency per surface, computed in SQL (one row per
-// surface). `rows`: [{ surface_id, samples, p50, p95, p99, avg_latency_ms,
-// min_latency_ms, max_latency_ms }].
+// stable surface). `rows`: [{ surface_id, surface_key?, samples, p50, p95, p99,
+// avg_latency_ms, min_latency_ms, max_latency_ms }].
 export function formatPercentiles({ netuid, window, observedAt, rows }) {
   const surfaces = (rows || [])
     .map((row) => ({
       surface_id: row.surface_id,
-      samples: Number(row.samples) || 0,
+      // `latency_samples` (shared latency-stat column); legacy callers still pass
+      // `samples`. This is the count of healthy readings behind the percentiles.
+      samples: Number(row.latency_samples ?? row.samples) || 0,
       latency_ms: {
         p50: roundInt(row.p50),
         p95: roundInt(row.p95),
@@ -364,8 +497,9 @@ export function formatPercentiles({ netuid, window, observedAt, rows }) {
 // `totals`: one aggregate row { total, ok_count, failover_count, cache_hits,
 // avg_latency_ms }. `latency`: one row { p50, p95 } (window percentiles).
 // `endpointRows`/`networkRows`: per-endpoint / per-network breakdowns ordered by
-// request volume. Cold/unmigrated D1 yields a schema-stable zeroed payload (every
-// arg may be empty/undefined), so the route never errors before the table exists.
+// request volume. `bucketRows`: bounded time buckets for heatmaps. Cold/
+// unmigrated D1 yields a schema-stable zeroed payload (every arg may be
+// empty/undefined), so the route never errors before the table exists.
 export function formatRpcUsage({
   window,
   observedAt,
@@ -373,6 +507,8 @@ export function formatRpcUsage({
   latency,
   endpointRows,
   networkRows,
+  bucketRows,
+  bucketGranularity,
 }) {
   const total = Number(totals?.total) || 0;
   const okCount = Number(totals?.ok_count) || 0;
@@ -384,6 +520,7 @@ export function formatRpcUsage({
   return {
     schema_version: 1,
     window: window || null,
+    bucket_granularity: bucketGranularity || null,
     observed_at: observedAt || null,
     source: "rpc-proxy",
     summary: {
@@ -424,11 +561,23 @@ export function formatRpcUsage({
         error_rate: ratioOf(requests - ok, requests),
       };
     }),
+    buckets: (bucketRows || [])
+      .map((row) => {
+        const ts = Number(row.ts);
+        if (!Number.isFinite(ts)) return null;
+        return {
+          ts: Math.trunc(ts),
+          requests: Number(row.requests) || 0,
+          errors: Math.max(0, Number(row.errors) || 0),
+          avg_latency_ms: roundInt(row.avg_latency_ms),
+        };
+      })
+      .filter(Boolean),
   };
 }
 
-// SLA + downtime incidents per surface. `slaRows`: [{ surface_id, total,
-// ok_count }]. `incidentRows`: [{ surface_id, started_at, ended_at,
+// SLA + downtime incidents per surface. `slaRows`: [{ surface_id, surface_key?,
+// total, ok_count }]. `incidentRows`: [{ surface_id, surface_key?, started_at, ended_at,
 // failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).
 // `maxIncidents` is a defensive API cap so flapping endpoints cannot force the
 // formatter to materialize unbounded incident arrays.
@@ -449,7 +598,8 @@ export function formatIncidents({
     if (acceptedIncidents >= incidentLimit) {
       break;
     }
-    const list = incidentsBySurface.get(row.surface_id) || [];
+    const key = surfaceLookupKey(row);
+    const list = incidentsBySurface.get(key) || [];
     const startedAt = Number(row.started_at);
     const endedAt = Number(row.ended_at);
     list.push({
@@ -459,14 +609,14 @@ export function formatIncidents({
       failed_samples: Number(row.failed_samples) || 0,
     });
     acceptedIncidents += 1;
-    incidentsBySurface.set(row.surface_id, list);
+    incidentsBySurface.set(key, list);
   }
 
   const surfaces = (slaRows || [])
     .map((row) => {
       const total = Number(row.total) || 0;
       const okCount = Number(row.ok_count) || 0;
-      const incidents = incidentsBySurface.get(row.surface_id) || [];
+      const incidents = incidentsBySurface.get(surfaceLookupKey(row)) || [];
       const downtimeMs = incidents.reduce((sum, i) => sum + i.duration_ms, 0);
       return {
         surface_id: row.surface_id,
@@ -490,7 +640,7 @@ export function formatIncidents({
 }
 
 // Global, cross-subnet incident ledger from the same gap-island grouping as
-// formatIncidents, but keyed by netuid + surface_id and listing ONLY surfaces
+// formatIncidents, but keyed by netuid + stable surface identity and listing ONLY surfaces
 // that had an incident in the window (a "what's been down lately" feed, not a
 // full SLA table). `incidentRows`: [{ netuid, surface_id, started_at, ended_at,
 // failed_samples }], already capped + ordered by the SQL.
@@ -510,7 +660,7 @@ export function formatGlobalIncidents({
       break;
     }
     const netuid = Number(row.netuid);
-    const key = `${netuid}/${row.surface_id}`;
+    const key = `${netuid}/${surfaceLookupKey(row)}`;
     const entry = bySurface.get(key) || {
       netuid,
       surface_id: row.surface_id,
@@ -553,18 +703,141 @@ export function formatGlobalIncidents({
   };
 }
 
+// A finite number, or null — coerces economic metrics that may be missing or NaN.
+function finiteOrNull(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+// Cross-subnet economic opportunity boards: where the open slots are, what they
+// cost, where the emission is, and where a validator permit is still attainable.
+// Each board is a spec run through the shared `economicBoard` pipeline below, so
+// adding one is a table entry, not a code path. `metric` is the sort key (null
+// drops the row); `eligible` filters the projected entry; `project` shapes it.
+const ECONOMIC_BOARD_SPECS = [
+  {
+    // Most room to register a new neuron — the miner's first question.
+    key: "open-slots",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.open_slots),
+    project: (row, openSlots) => ({
+      open_slots: openSlots,
+      max_uids: finiteOrNull(row.max_uids),
+      registration_cost_tao: finiteOrNull(row.registration_cost_tao),
+      registration_allowed: row.registration_allowed === true,
+    }),
+    eligible: (entry) => entry.open_slots > 0,
+    // Cheaper entry breaks ties (unknown cost ranks last).
+    tiebreak: (a, b) =>
+      (a.registration_cost_tao ?? Infinity) -
+      (b.registration_cost_tao ?? Infinity),
+  },
+  {
+    // Cheapest way in, among subnets whose registration is actually open.
+    key: "cheapest-registration",
+    direction: "asc",
+    metric: (row) =>
+      row.registration_allowed === true
+        ? finiteOrNull(row.registration_cost_tao)
+        : null,
+    project: (row, cost) => ({
+      registration_cost_tao: cost,
+      open_slots: finiteOrNull(row.open_slots),
+      registration_allowed: true,
+    }),
+    // Drop subnets known to be full; keep unknown-capacity ones (open_slots null).
+    eligible: (entry) => entry.open_slots == null || entry.open_slots > 0,
+    // More open slots breaks ties.
+    tiebreak: (a, b) => (b.open_slots ?? -1) - (a.open_slots ?? -1),
+  },
+  {
+    // Where the emission is concentrated — the yield signal.
+    key: "highest-emission",
+    direction: "desc",
+    metric: (row) => finiteOrNull(row.emission_share),
+    project: (row, emissionShare) => ({
+      emission_share: emissionShare,
+      total_stake_tao: finiteOrNull(row.total_stake_tao),
+      validator_count: finiteOrNull(row.validator_count),
+      miner_count: finiteOrNull(row.miner_count),
+    }),
+    eligible: (entry) => entry.emission_share > 0,
+    tiebreak: (a, b) => (b.total_stake_tao ?? -1) - (a.total_stake_tao ?? -1),
+  },
+  {
+    // Open validator permits — the validator's first question.
+    key: "validator-headroom",
+    direction: "desc",
+    metric: (row) => {
+      const max = finiteOrNull(row.max_validators);
+      const have = finiteOrNull(row.validator_count);
+      return max != null && have != null && max > 0
+        ? Math.max(0, max - have)
+        : null;
+    },
+    project: (row, headroom) => ({
+      validator_headroom: headroom,
+      validator_count: finiteOrNull(row.validator_count),
+      max_validators: finiteOrNull(row.max_validators),
+      emission_share: finiteOrNull(row.emission_share),
+    }),
+    eligible: (entry) => entry.validator_headroom > 0,
+    // More emission per open permit breaks ties.
+    tiebreak: (a, b) => (b.emission_share ?? -1) - (a.emission_share ?? -1),
+  },
+];
+
+export const ECONOMIC_LEADERBOARD_BOARDS = ECONOMIC_BOARD_SPECS.map(
+  (spec) => spec.key,
+);
+
 export const LEADERBOARD_BOARDS = [
   "healthiest",
   "fastest-rpc",
   "most-complete",
+  "most-enriched",
   "fastest-growing",
+  ...ECONOMIC_LEADERBOARD_BOARDS,
 ];
+
+// Project one economic board from economics rows: map → identity-merge → metric
+// gate → eligibility → rank (board direction, then board tiebreak, then netuid
+// for total determinism) → cap. Null-safe end to end: a missing `rows` yields []
+// and a row whose metric is null never reaches the board.
+function economicBoard(rows, metaFor, cap, spec) {
+  const direction = spec.direction === "asc" ? 1 : -1;
+  return (rows || [])
+    .map((row) => {
+      const metric = spec.metric(row);
+      if (metric == null) return null;
+      const meta = metaFor(row.netuid);
+      const entry = {
+        netuid: row.netuid,
+        slug: meta.slug ?? row.slug ?? null,
+        name: meta.name ?? row.name ?? null,
+        ...spec.project(row, metric),
+      };
+      return spec.eligible(entry) ? { metric, entry } : null;
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        direction * (a.metric - b.metric) ||
+        (spec.tiebreak ? spec.tiebreak(a.entry, b.entry) : 0) ||
+        a.entry.netuid - b.entry.netuid,
+    )
+    .slice(0, cap)
+    .map((item) => item.entry);
+}
 
 // Assemble registry leaderboards from already-query-shaped inputs:
 // healthRows [{netuid, total, ok_count, avg_latency_ms}], rpcRows
 // [{netuid, min_latency_ms}], mostComplete [{netuid, slug, name,
-// completeness_score}], growthRows [{netuid, delta}]. `subnetMeta` is a
-// Map(netuid -> {slug, name}).
+// completeness_score, surface_count, operational_interface_count}], growthRows
+// [{netuid, delta}], economicsRows (live economics tier rows: netuid, slug,
+// name, open_slots, registration_cost_tao, emission_share, validator/miner
+// counts, max_validators, …). `subnetMeta` is a Map(netuid -> {slug, name}).
+// The economic boards are null-safe: an empty/absent economicsRows leaves each
+// economic board as [] rather than omitting it.
 export function formatLeaderboards({
   board,
   limit,
@@ -573,6 +846,7 @@ export function formatLeaderboards({
   rpcRows,
   mostComplete,
   growthRows,
+  economicsRows,
   subnetMeta,
 }) {
   const cap = Math.max(1, Math.min(100, Number(limit) || 20));
@@ -619,6 +893,26 @@ export function formatLeaderboards({
     .sort((a, b) => (b.completeness_score ?? -1) - (a.completeness_score ?? -1))
     .slice(0, cap);
 
+  // Enrichment depth: how much curation/discovery has fleshed out a subnet's
+  // surface area (the flywheel output), ranked by total surfaces then callable
+  // (operational) interface depth. Distinct from completeness (which weights
+  // identity + required kinds) and readiness (which weights live callability).
+  const enrichedBoard = (mostComplete || [])
+    .map((row) => ({
+      netuid: row.netuid,
+      slug: row.slug ?? null,
+      name: row.name ?? null,
+      surface_count: Number(row.surface_count) || 0,
+      operational_interface_count: Number(row.operational_interface_count) || 0,
+    }))
+    .filter((entry) => entry.surface_count > 0)
+    .sort(
+      (a, b) =>
+        b.surface_count - a.surface_count ||
+        b.operational_interface_count - a.operational_interface_count,
+    )
+    .slice(0, cap);
+
   const fastestGrowing = (growthRows || [])
     .map((row) => ({
       netuid: row.netuid,
@@ -632,11 +926,18 @@ export function formatLeaderboards({
     .sort((a, b) => b.completeness_delta - a.completeness_delta)
     .slice(0, cap);
 
+  const economicBoards = {};
+  for (const spec of ECONOMIC_BOARD_SPECS) {
+    economicBoards[spec.key] = economicBoard(economicsRows, metaFor, cap, spec);
+  }
+
   const allBoards = {
     healthiest,
     "fastest-rpc": fastestRpc,
     "most-complete": completeBoard,
+    "most-enriched": enrichedBoard,
     "fastest-growing": fastestGrowing,
+    ...economicBoards,
   };
   const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
 
@@ -658,6 +959,13 @@ export function formatTrajectory({ netuid, rows }) {
       completeness_score: row.completeness_score ?? null,
       surface_count: row.surface_count ?? null,
       endpoint_count: row.endpoint_count ?? null,
+      // Economic time series (#1307) — null on rows captured before the columns
+      // existed / when economics was unavailable that day.
+      validator_count: row.validator_count ?? null,
+      miner_count: row.miner_count ?? null,
+      total_stake_tao: row.total_stake_tao ?? null,
+      alpha_price_tao: row.alpha_price_tao ?? null,
+      emission_share: row.emission_share ?? null,
     }))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
@@ -687,6 +995,24 @@ export function formatTrajectory({ netuid, rows }) {
   };
 }
 
+// One subnet's trajectory from the daily snapshots, via the injected `d1` runner
+// (shared by the REST route and the MCP tool). DESC keeps the most-recent window
+// — formatTrajectory re-sorts ascending, and ASC + LIMIT would freeze on the
+// oldest 400 days once history exceeds the cap. Cold D1 → [] → empty trajectory.
+export async function loadSubnetTrajectory(d1, netuid) {
+  const rows = await d1(
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
+     FROM subnet_snapshots
+     WHERE netuid = ?
+     ORDER BY snapshot_date DESC
+     LIMIT 400`,
+    [netuid],
+  );
+  return formatTrajectory({ netuid, rows });
+}
+
 function diff(now, then) {
   if (now == null || then == null) return null;
   return Number(now) - Number(then);
@@ -714,41 +1040,66 @@ function shiftDate(isoDate, days) {
 // {surface_id, day, samples, ok_count, uptime_ratio, avg_latency_ms, status}.
 // Groups by surface, sorts days ascending, and rolls a window-wide uptime_ratio
 // from the summed ok_count/samples (exact, not an average of ratios).
-export function formatUptime({ netuid, window, rows, now = null }) {
-  const reliability = computeReliability(rows, { window: window || null, now });
+export function formatUptime({
+  netuid,
+  window,
+  observedAt = null,
+  rows,
+  now = null,
+}) {
+  const reliabilityRows = (rows || []).map((row) => ({
+    ...row,
+    surface_id: surfaceLookupKey(row),
+  }));
+  const reliability = computeReliability(reliabilityRows, {
+    window: window || null,
+    now,
+  });
   const bySurface = new Map();
   for (const row of rows || []) {
-    const list = bySurface.get(row.surface_id) || [];
-    list.push({
+    const key = surfaceLookupKey(row);
+    if (!key) continue;
+    const entry = bySurface.get(key) || {
+      surface_id: row.surface_id,
+      days: [],
+    };
+    entry.surface_id = row.surface_id || entry.surface_id;
+    entry.days.push({
       day: row.day,
       samples: Number(row.samples) || 0,
       ok_count: Number(row.ok_count) || 0,
       uptime_ratio: row.uptime_ratio == null ? null : Number(row.uptime_ratio),
-      avg_latency_ms:
-        row.avg_latency_ms == null
-          ? null
-          : Math.round(Number(row.avg_latency_ms)),
+      avg_latency_ms: roundInt(row.avg_latency_ms),
+      latency_sample_count: Number(row.latency_samples) || 0,
+      latency_ms: {
+        p50: roundInt(row.p50),
+        p95: roundInt(row.p95),
+        p99: roundInt(row.p99),
+      },
       status: row.status || "unknown",
     });
-    bySurface.set(row.surface_id, list);
+    bySurface.set(key, entry);
   }
   const surfaces = [...bySurface.entries()]
-    .map(([surfaceId, days]) => {
+    .map(([surfaceKey, entry]) => {
+      const { days } = entry;
       days.sort((a, b) => String(a.day).localeCompare(String(b.day)));
       const samples = days.reduce((sum, d) => sum + d.samples, 0);
       const okCount = days.reduce((sum, d) => sum + d.ok_count, 0);
       return {
-        surface_id: surfaceId,
+        surface_id: entry.surface_id || surfaceKey,
         day_count: days.length,
         samples,
         uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
-        reliability: reliability.surfaces[surfaceId] || null,
+        reliability: reliability.surfaces[surfaceKey] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
           day: d.day,
           samples: d.samples,
           uptime_ratio: d.uptime_ratio,
           avg_latency_ms: d.avg_latency_ms,
+          latency_sample_count: d.latency_sample_count,
+          latency_ms: d.latency_ms,
           status: d.status,
         })),
       };
@@ -758,6 +1109,7 @@ export function formatUptime({ netuid, window, rows, now = null }) {
     schema_version: 1,
     netuid,
     window: window || null,
+    observed_at: observedAt || null,
     source: "live-cron-prober",
     reliability: reliability.subnet,
     surfaces,
@@ -785,9 +1137,15 @@ export async function loadSubnetReliability({
   try {
     const result = await db
       .prepare(
-        `SELECT surface_id, day, samples, ok_count, avg_latency_ms
+        `SELECT MAX(surface_id) AS surface_id,
+                COALESCE(surface_key, surface_id) AS surface_key,
+                day,
+                SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                ${dailyLatencyColumns({ roundedAvg: true })}
          FROM surface_uptime_daily
          WHERE netuid = ? AND day >= ?
+         GROUP BY COALESCE(surface_key, surface_id), day
          ORDER BY day DESC
          LIMIT ?`,
       )
@@ -798,6 +1156,50 @@ export async function loadSubnetReliability({
       window: `${windowDays}d`,
       now: computedAt,
     }).subnet;
+  } catch {
+    return null;
+  }
+}
+
+// Sample-weighted reliability score over one or many subnets in a single
+// aggregate query, so a provider spanning dozens of subnets stays one D1
+// round-trip. Returns the scoreFromStats shape (no per-surface breakdown the
+// badge doesn't need), or null when D1 is unbound/cold or has no history.
+export async function loadReliabilityAggregate({
+  db,
+  netuids,
+  windowDays = 30,
+  now = null,
+}) {
+  // Keep only integer netuids (no coercion, so Number(null) can't slip in as
+  // subnet 0), then dedupe so the IN-list has no repeats.
+  const ids = [...new Set((netuids || []).filter((n) => Number.isInteger(n)))];
+  if (!db?.prepare || ids.length === 0) {
+    return null;
+  }
+  const nowMs = now ? Date.parse(now) : Date.now();
+  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const placeholders = ids.map(() => "?").join(",");
+  try {
+    const row = await db
+      .prepare(
+        `SELECT SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                ${dailyLatencyColumns({ roundedAvg: true })}
+         FROM surface_uptime_daily
+         WHERE netuid IN (${placeholders}) AND day >= ?`,
+      )
+      .bind(...ids, cutoff)
+      .first();
+    return scoreFromStats({
+      samples: Number(row?.samples) || 0,
+      okCount: Number(row?.ok_count) || 0,
+      avgLatencyMs:
+        row?.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+      latencySamples: Number(row?.latency_samples) || 0,
+    });
   } catch {
     return null;
   }
@@ -814,6 +1216,7 @@ export async function loadSubnetReliability({
 function liveFromD1Rows(rows) {
   const surfaces = rows.map((r) => ({
     surface_id: r.surface_id,
+    surface_key: r.surface_key ?? null,
     netuid: r.netuid,
     kind: r.kind,
     provider: r.provider,
@@ -858,14 +1261,27 @@ function liveFromD1Rows(rows) {
 export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
   if (typeof readHealthKv === "function" && env) {
     try {
-      const current = await readHealthKv(env, "health:current");
+      const current = await readHealthKv(env, KV_HEALTH_CURRENT);
       // The prober writes surfaces + subnets + summary; accept any live snapshot
-      // that carries the per-surface or per-subnet rows the overlays consume.
+      // that carries the per-surface or per-subnet rows the overlays consume —
+      // but freshness-gate it exactly like the D1 fallback below. KV health:current
+      // has NO TTL, so without this a wedged prober would serve its last snapshot
+      // as fresh forever. last_run_at older than the window → skip → fall through
+      // to the (freshness-gated) D1 path → null (caller serves `unknown`). A
+      // missing/unparseable last_run_at is treated as fresh (back-compat: a wedged
+      // prober still emits its real last_run_at, so the stale case is covered).
       if (
         current &&
         (Array.isArray(current.surfaces) || Array.isArray(current.subnets))
       ) {
-        return { ...current, health_source: "live-cron-prober" };
+        const currentTime = typeof now === "function" ? now() : Date.now();
+        const lastRun = Date.parse(current.last_run_at);
+        if (
+          !Number.isFinite(lastRun) ||
+          lastRun >= currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS
+        ) {
+          return { ...current, health_source: "live-cron-prober" };
+        }
       }
     } catch {
       // fall through to D1
@@ -879,7 +1295,7 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
       const { results } = await database
         .prepare(
           `SELECT surface_id, netuid, kind, provider, url, status, classification,
-                  latency_ms, status_code, last_checked, last_ok
+                  surface_key, latency_ms, status_code, last_checked, last_ok
            FROM surface_status
            WHERE last_checked >= ?`,
         )
@@ -893,6 +1309,76 @@ export async function resolveLiveHealth({ readHealthKv, env, db, now } = {}) {
     }
   }
   return null;
+}
+
+// Live economics freshness window. Economics is refreshed on its own schedule
+// (refresh-economics.yml, ~3h), independent of the DATA publish, so its acceptable
+// age is sized to that cadence (~hours) — NOT the 25-minute health window. A KV blob
+// older than this is treated as cold and the committed R2 economics.json serves.
+export const ECONOMICS_FRESHNESS_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
+// Live economics tier: return the KV 'economics:current' blob (byte-identical to
+// the built economics.json) when it is present, on-contract, fresh, and passes
+// integrity invariants — else null so the caller serves the committed R2 artifact.
+// KV-primary / R2-fallback: the blob is served verbatim (never reconstructed), so
+// the cross-subnet emission_share + summary are never re-derived in the Worker.
+// Pure given readHealthKv + now.
+export async function resolveLiveEconomics({
+  readHealthKv,
+  env,
+  contractVersion,
+  now,
+} = {}) {
+  if (typeof readHealthKv !== "function" || !env) return null;
+  let blob;
+  try {
+    blob = await readHealthKv(env, KV_ECONOMICS_CURRENT);
+  } catch {
+    return null;
+  }
+  if (!blob || typeof blob !== "object" || Array.isArray(blob)) return null;
+  // On-contract only: a blob built under an older contract may predate a schema
+  // change — fall through to the (also-versioned) R2 artifact + stale-contract path.
+  if (
+    contractVersion &&
+    blob.contract_version &&
+    blob.contract_version !== contractVersion
+  ) {
+    return null;
+  }
+  // Freshness: reject a stale blob (writer wedged) so R2 takes over.
+  const capturedMs = Date.parse(blob.captured_at);
+  if (!Number.isFinite(capturedMs)) return null;
+  const currentMs = typeof now === "function" ? now() : Date.now();
+  if (currentMs - capturedMs > ECONOMICS_FRESHNESS_MAX_AGE_MS) return null;
+  // Integrity: row count must match the summary and the cross-subnet
+  // emission_share must still sum to ~1 — a partial/corrupt write never serves.
+  const rows = Array.isArray(blob.subnets) ? blob.subnets : null;
+  if (!rows) return null;
+  const expected = blob.summary?.with_economics_count;
+  if (Number.isInteger(expected) && rows.length !== expected) return null;
+  const emissionSum = rows.reduce(
+    (sum, row) =>
+      sum + (typeof row.emission_share === "number" ? row.emission_share : 0),
+    0,
+  );
+  if (rows.length > 0 && Math.abs(emissionSum - 1) > 0.001) return null;
+  return { data: blob, source: "live-kv" };
+}
+
+// Attach the per-subnet economics row from the live economics blob onto a
+// subnet-detail artifact at serve time (#1308), so /api/v1/subnets/{netuid}
+// carries validator/miner counts, registration, stake and alpha price without a
+// second call to /api/v1/economics. Null-safe: when the live economics store is
+// cold/stale (resolveLiveEconomics → null) or the subnet has no economics row,
+// the detail is returned unchanged (no `economics` field).
+export function overlaySubnetEconomics(detail, economicsBlob, netuid) {
+  if (!detail || typeof detail !== "object") return detail;
+  const rows = economicsBlob?.subnets;
+  if (!Array.isArray(rows)) return detail;
+  const row = rows.find((entry) => entry?.netuid === netuid);
+  if (!row) return detail;
+  return { ...detail, economics: row };
 }
 
 // Overlay the live per-subnet operational rollup onto a composed overview
@@ -919,12 +1405,12 @@ export function overlayOverviewHealth(staticOverview, live, netuid) {
 // public-safe subset at build time, so structural callability is implied.
 export function overlayCatalogDetail(staticDetail, live, netuid) {
   if (!live || !Array.isArray(live.surfaces)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   for (const row of live.surfaces) {
-    if (row.netuid === netuid) liveById.set(row.surface_id, row);
+    if (row.netuid === netuid) addLiveSurfaceRow(liveBySurface, row);
   }
   const services = (staticDetail?.services || []).map((service) => {
-    const row = liveById.get(service.surface_id) || null;
+    const row = liveRowForSurface(liveBySurface, service);
     const status = row ? row.status : "unknown";
     const classification = row
       ? row.classification
@@ -952,9 +1438,19 @@ export function overlayCatalogDetail(staticDetail, live, netuid) {
       },
     };
   });
+  // #357: readiness_verified — only true when a catalogued surface was actually
+  // probed healthy ("ok") by the live cron, so an agent never treats a
+  // catalogued-but-dead API as ready. Computed from the same rows that drive
+  // per-service health; absent on the static artifact (no live truth there).
+  const readinessVerified = services.some(
+    (service) => service.health?.status === "ok",
+  );
   return {
     ...staticDetail,
     services,
+    readiness: staticDetail?.readiness
+      ? { ...staticDetail.readiness, readiness_verified: readinessVerified }
+      : staticDetail?.readiness,
     operational_observed_at: live.last_run_at || null,
     health_source: live.health_source || "live-cron-prober",
   };
@@ -1052,12 +1548,12 @@ function countEndpointStatuses(endpoints) {
 // carries no endpoints array (the caller then serves it untouched).
 export function overlayArtifactEndpoints(staticData, live) {
   if (!staticData || !Array.isArray(staticData.endpoints)) return null;
-  const liveById = new Map();
+  const liveBySurface = new Map();
   if (live && Array.isArray(live.surfaces)) {
-    for (const row of live.surfaces) liveById.set(row.surface_id, row);
+    for (const row of live.surfaces) addLiveSurfaceRow(liveBySurface, row);
   }
   const endpoints = staticData.endpoints.map((endpoint) =>
-    overlayEndpointHealth(endpoint, liveById.get(endpoint.surface_id) || null),
+    overlayEndpointHealth(endpoint, liveRowForSurface(liveBySurface, endpoint)),
   );
   const result = {
     ...staticData,

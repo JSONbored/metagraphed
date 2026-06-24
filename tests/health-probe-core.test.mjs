@@ -15,9 +15,38 @@ import {
   probeSubtensorWss,
   probeSurface,
   probeUrl,
+  rollupSubnetStatus,
   statusForClassification,
   summarizeRpcProbe,
 } from "../src/health-probe-core.mjs";
+
+describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
+  test("empty / all-unknown → unknown", () => {
+    assert.equal(rollupSubnetStatus({ total: 0 }), "unknown");
+    assert.equal(rollupSubnetStatus({ unknown: 3, total: 3 }), "unknown");
+  });
+  test("no failed and no degraded → ok (even with unknowns present)", () => {
+    assert.equal(rollupSubnetStatus({ ok: 2, total: 2 }), "ok");
+    assert.equal(rollupSubnetStatus({ ok: 1, unknown: 1, total: 2 }), "ok");
+  });
+  test("any ok or degraded alongside a failure → degraded", () => {
+    assert.equal(
+      rollupSubnetStatus({ ok: 1, failed: 1, total: 2 }),
+      "degraded",
+    );
+    assert.equal(
+      rollupSubnetStatus({ degraded: 1, failed: 1, total: 2 }),
+      "degraded",
+    );
+  });
+  test("only failures/unknowns (no ok, no degraded) → failed", () => {
+    assert.equal(rollupSubnetStatus({ failed: 2, total: 2 }), "failed");
+    assert.equal(
+      rollupSubnetStatus({ failed: 1, unknown: 1, total: 2 }),
+      "failed",
+    );
+  });
+});
 
 // Minimal Response-like stub for an injected fetch.
 function fakeResponse({
@@ -66,12 +95,36 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks fec0::/10 deprecated site-local IPv6 (issue #1538)", () => {
+    for (const url of [
+      "http://[fec0::1]/x",
+      "https://[fed0:1:2::3]/x",
+      "http://[feff::1]/x",
+      "http://[fe80::1]/x", // link-local still blocked
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
+  test("blocks a private v4 tunnelled inside an IPv6 literal host", () => {
+    for (const url of [
+      "http://[::ffff:169.254.169.254]/latest", // IPv4-mapped metadata IP
+      "http://[::127.0.0.1]/x", // IPv4-compatible loopback
+      "http://[2002:7f00:1::]/x", // 6to4 loopback
+      "http://[2002:a00:1::]/x", // 6to4 of 10.0.0.1
+      "http://[64:ff9b::a9fe:a9fe]/x", // NAT64 of 169.254.169.254
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
   test("allows public http(s)/ws(s)", () => {
     for (const url of [
       "https://entrypoint-finney.opentensor.ai",
       "http://example.com/api",
       "wss://lite.chain.opentensor.ai:443",
       "https://172.15.0.1/x", // just outside the private 172.16-31 range
+      "https://[2002:808:808::]/x", // 6to4 of public 8.8.8.8 stays allowed
     ]) {
       assert.equal(isUnsafePublicUrl(url), false, url);
     }
@@ -922,6 +975,20 @@ describe("parseBlockNumber", () => {
   test("non-string/number number field returns null", () => {
     assert.equal(parseBlockNumber({ number: { nested: true } }), null);
     assert.equal(parseBlockNumber({}), null);
+  });
+  test("malformed numeric string returns null, not NaN", () => {
+    assert.equal(parseBlockNumber({ number: "0x" }), null);
+    assert.equal(parseBlockNumber({ number: "0xZZ" }), null);
+    assert.equal(parseBlockNumber({ number: "" }), null);
+  });
+  test("non-finite or non-integer number field returns null", () => {
+    assert.equal(parseBlockNumber({ number: NaN }), null);
+    assert.equal(parseBlockNumber({ number: Infinity }), null);
+    assert.equal(parseBlockNumber({ number: 1.5 }), null);
+  });
+  test("genesis block 0 is preserved", () => {
+    assert.equal(parseBlockNumber({ number: 0 }), 0);
+    assert.equal(parseBlockNumber({ number: "0x0" }), 0);
   });
 });
 

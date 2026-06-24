@@ -8,11 +8,18 @@ import {
   OPERATIONAL_SURFACES_PATH,
   pruneHealthHistory,
   rollupDailyUptime,
+  runD1StatementBatches,
+  D1_STATEMENTS_PER_BATCH,
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.mjs";
 import { handleScheduled } from "../workers/api.mjs";
+import {
+  EMBEDDING_SYNC_CRON,
+  EVENTS_LOAD_CRON,
+  HEALTH_PRUNE_CRON,
+} from "../workers/config.mjs";
 
 describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
   // DoH JSON mock: maps host → { A: [...], AAAA: [...] }.
@@ -87,6 +94,31 @@ describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
     assert.equal(await guard("https://v6.example.com/x"), true);
   });
 
+  test("blocks an fec0::/10 site-local AAAA answer (issue #1538)", async () => {
+    for (const aaaa of ["fec0::1", "fed0:1:2::3", "feff::1"]) {
+      const guard = workerResolvedUrlSafetyGuard({
+        fetchImpl: dohFetch({ "evil.example.com": { AAAA: [aaaa] } }),
+      });
+      assert.equal(await guard("https://evil.example.com/x"), true, aaaa);
+    }
+  });
+
+  test("blocks an AAAA answer that tunnels a private v4 (mapped/6to4/NAT64)", async () => {
+    // A rebinding answer can hide a loopback/link-local target inside an IPv6
+    // literal; the guard must decode the embedded v4 and block it.
+    for (const aaaa of [
+      "::ffff:169.254.169.254", // IPv4-mapped link-local (cloud metadata)
+      "::127.0.0.1", // IPv4-compatible loopback
+      "2002:7f00:1::", // 6to4 loopback
+      "64:ff9b::a00:1", // NAT64 of 10.0.0.1
+    ]) {
+      const guard = workerResolvedUrlSafetyGuard({
+        fetchImpl: dohFetch({ "evil.example.com": { AAAA: [aaaa] } }),
+      });
+      assert.equal(await guard("https://evil.example.com/x"), true, aaaa);
+    }
+  });
+
   test("allows a hostname that resolves to a public IP", async () => {
     const guard = workerResolvedUrlSafetyGuard({
       fetchImpl: dohFetch({ "ok.example.com": { A: ["93.184.216.34"] } }),
@@ -124,7 +156,7 @@ function makeDb({ priorStatus = [] } = {}) {
     binds,
     async all() {
       calls.selects.push({ sql, binds });
-      if (/FROM surface_status WHERE surface_id IN/.test(sql)) {
+      if (/FROM surface_status/.test(sql)) {
         return { results: priorStatus };
       }
       return { results: [] };
@@ -209,6 +241,7 @@ const RPC_CALLS = [
 const SURFACES = [
   {
     surface_id: "sn7-api",
+    surface_key: "srf-sn7apikey000000",
     netuid: 7,
     kind: "subnet-api",
     url: "https://api.example.dev",
@@ -222,6 +255,7 @@ const SURFACES = [
   },
   {
     surface_id: "opentensor-finney-rpc",
+    surface_key: "srf-rootrpckey00000",
     netuid: 0,
     kind: "subtensor-rpc",
     url: "https://entrypoint-finney.opentensor.ai",
@@ -256,7 +290,12 @@ describe("runHealthProber", () => {
   test("writes D1 batch + the three KV snapshots with correct shapes", async () => {
     const db = makeDb({
       priorStatus: [
-        { surface_id: "sn7-api", last_ok: 1000, consecutive_failures: 2 },
+        {
+          surface_id: "sn7-api-old",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
       ],
     });
     const kv = makeKv();
@@ -285,6 +324,25 @@ describe("runHealthProber", () => {
     // One batch with 4 statements (2 surfaces × {check insert, status upsert}).
     assert.equal(db.calls.batches.length, 1);
     assert.equal(db.calls.batches[0].length, 4);
+
+    // #1005: both the append-only time-series and the latest-row upsert carry the
+    // stable surface_key (binds[1]) so D1 history re-keys onto the rename-stable
+    // identity. surface_checks binds: [surface_id, surface_key, netuid, ...].
+    assert.match(
+      db.calls.selects[0].sql,
+      /WHERE surface_key IN \(\?,\?\)\s+OR surface_id IN \(\?,\?\)/,
+    );
+    assert.deepEqual(db.calls.selects[0].binds, [
+      "srf-sn7apikey000000",
+      "srf-rootrpckey00000",
+      "sn7-api",
+      "opentensor-finney-rpc",
+    ]);
+    const checkInsert = db.calls.batches[0].find(
+      (s) =>
+        /INSERT INTO surface_checks/.test(s.sql) && s.binds[0] === "sn7-api",
+    );
+    assert.equal(checkInsert.binds[1], "srf-sn7apikey000000");
 
     const current = kv.json(KV_HEALTH_CURRENT);
     assert.equal(current.summary.surface_count, 2);
@@ -381,7 +439,12 @@ describe("runHealthProber", () => {
   test("bumps consecutive_failures from prior state for the breaker", async () => {
     const db = makeDb({
       priorStatus: [
-        { surface_id: "sn7-api", last_ok: 1000, consecutive_failures: 2 },
+        {
+          surface_id: "sn7-api-before-rename",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
       ],
     });
     await runHealthProber(
@@ -401,9 +464,108 @@ describe("runHealthProber", () => {
       /INSERT INTO surface_status/.test(s.sql),
     );
     const apiUpsert = upserts.find((s) => s.binds[0] === "sn7-api");
-    // binds: [surface_id, netuid, kind, url, provider, status, classification,
-    //         latency_ms, status_code, last_checked, last_ok, consec, updated_at]
-    assert.equal(apiUpsert.binds[11], 3);
+    // binds: [surface_id, surface_key, netuid, kind, url, provider, status,
+    //   classification, latency_ms, status_code, last_checked, last_ok, consec,
+    //   updated_at] — #1005 added surface_key at index 1, shifting the rest by 1.
+    assert.match(
+      apiUpsert.sql,
+      /ON CONFLICT\(surface_key\) WHERE surface_key IS NOT NULL/,
+    );
+    assert.match(apiUpsert.sql, /ON CONFLICT\(surface_id\) DO UPDATE SET/);
+    assert.equal(apiUpsert.binds[1], "srf-sn7apikey000000");
+    assert.equal(apiUpsert.binds[12], 3);
+  });
+
+  test("a degraded non-RPC run resets the breaker", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "sn7-api",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    // The subnet-api surface probes `degraded` (e.g. rate-limited), not failed.
+    const degradedProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          }
+        : {
+            status: "degraded",
+            classification: "rate-limited",
+            latency_ms: null,
+            status_code: 429,
+          };
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedProbe,
+        probeOptions: {},
+      },
+    );
+    const apiUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "sn7-api");
+    // binds[12] = consecutive_failures: a degraded run must NOT bump 2 -> 3; it
+    // resets to 0 so a persistently-degraded (still-usable) endpoint is not
+    // evicted from the RPC pool by the sustained-down breaker.
+    assert.equal(apiUpsert.binds[12], 0);
+  });
+
+  test("a degraded RPC run accrues toward pool eviction", async () => {
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "opentensor-finney-rpc",
+          surface_key: "srf-rootrpckey00000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    const degradedRpcProbe = async (input) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "degraded",
+            classification: "auth-required",
+            latency_ms: null,
+            status_code: 401,
+          }
+        : {
+            status: "ok",
+            classification: "live",
+            latency_ms: 42,
+            status_code: 200,
+          };
+
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => SURFACES,
+        probeSurface: degradedRpcProbe,
+        probeOptions: {},
+      },
+    );
+
+    const rpcUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "opentensor-finney-rpc");
+    assert.equal(rpcUpsert.binds[12], 3);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {
@@ -478,6 +640,75 @@ describe("handleScheduled dispatch", () => {
     const probeResult = await handleScheduled({ cron: "*/2 * * * *" }, {});
     assert.equal(probeResult.ok, false);
     assert.equal(probeResult.reason, "no-operational-surfaces");
+  });
+
+  test("non-fast-load crons never drain the staged R2 files (audit #9)", async () => {
+    // INVARIANT: only the EVENTS_LOAD_CRON tick owns the unlocked staged
+    // read-modify-write drain. Every other cron (prune/embedding/prober) must NOT
+    // call loadStagedNeurons / loadStagedEvents — running them on concurrent ticks
+    // let one invocation clobber a freshly-staged file via the delete path. We prove
+    // it by tracking R2 .get keys and asserting the two staged keys are never read.
+    const STAGED_KEYS = [
+      "metagraph/neurons-pending.json",
+      "events/account-events-pending.json",
+    ];
+    for (const cron of [
+      HEALTH_PRUNE_CRON,
+      EMBEDDING_SYNC_CRON,
+      "*/15 * * * *", // the prober tick (any cron that is not EVENTS_LOAD_CRON)
+    ]) {
+      const getKeys = [];
+      const env = {
+        METAGRAPH_HEALTH_DB: makeDb(),
+        // A tracking bucket: any staged-key read would push it here. Incidental,
+        // non-staged reads (e.g. the prober's surface fallback) are allowed and
+        // return null so the path stays a clean no-op.
+        METAGRAPH_ARCHIVE: {
+          async get(key) {
+            getKeys.push(key);
+            return null;
+          },
+        },
+        // A signing key is REQUIRED for loadStagedNeurons to even reach its
+        // bucket.get — present here so the guard can't mask a regression where the
+        // loader is wrongly invoked on this tick.
+        METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
+      };
+      await handleScheduled({ cron }, env, {});
+      for (const stagedKey of STAGED_KEYS) {
+        assert.ok(
+          !getKeys.includes(stagedKey),
+          `cron ${cron} must not read staged key ${stagedKey}`,
+        );
+      }
+    }
+  });
+
+  test("fast-load cron drains BOTH staged files then returns the marker (audit #9)", async () => {
+    // REGRESSION: the EVENTS_LOAD_CRON tick must still run both loaders (one R2 .get
+    // per staged key) AND early-return the fast-load marker without falling through
+    // to the prober/prune.
+    const getKeys = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          getKeys.push(key);
+          return null; // nothing staged → each loader no-ops after its read
+        },
+      },
+      METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
+    };
+    const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
+    assert.deepEqual(result, { ok: true, fast_load: true });
+    assert.ok(
+      getKeys.includes("metagraph/neurons-pending.json"),
+      "loadStagedNeurons read its staged key on the fast-load tick",
+    );
+    assert.ok(
+      getKeys.includes("events/account-events-pending.json"),
+      "loadStagedEvents read its staged key on the fast-load tick",
+    );
   });
 });
 
@@ -695,7 +926,7 @@ describe("loadOperationalSurfaces", () => {
       METAGRAPH_R2_LATEST_PREFIX: "live/",
       METAGRAPH_ARCHIVE: {
         get: async (key) => {
-          assert.equal(key, "live/metagraph/operational-surfaces.json");
+          assert.equal(key, "live/operational-surfaces.json");
           return { text: async () => JSON.stringify(surfacesBody) };
         },
       },
@@ -708,7 +939,7 @@ describe("loadOperationalSurfaces", () => {
     const env = {
       METAGRAPH_ARCHIVE: {
         get: async (key) => {
-          assert.equal(key, "latest/metagraph/operational-surfaces.json");
+          assert.equal(key, "latest/operational-surfaces.json");
           return { text: async () => JSON.stringify(surfacesBody) };
         },
       },
@@ -1010,9 +1241,50 @@ describe("persistToD1 via runHealthProber", () => {
       },
     );
     assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, false);
     // KV write happened despite the D1 batch throwing.
     assert.ok(kv.json(KV_HEALTH_CURRENT));
   });
+
+  test("chunks large D1 persists into bounded batches", async () => {
+    const db = makeDb();
+    const surfaces = Array.from({ length: 30 }, (_, i) => ({
+      ...SURFACES[0],
+      surface_id: `sn-api-${i}`,
+      surface_key: `srf-key-${String(i).padStart(14, "0")}`,
+    }));
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 1,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => surfaces,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.d1_persisted, true);
+    assert.equal(db.calls.batches.length, 2);
+    assert.equal(db.calls.batches[0].length, D1_STATEMENTS_PER_BATCH);
+    assert.equal(db.calls.batches[1].length, 10);
+  });
+});
+
+test("runD1StatementBatches splits statements at the D1 cap", async () => {
+  const batches = [];
+  const db = {
+    batch: async (statements) => {
+      batches.push(statements.length);
+    },
+  };
+  const statements = Array.from({ length: 55 }, (_, i) => i);
+  const result = await runD1StatementBatches(db, statements);
+  assert.equal(result.ok, true);
+  assert.equal(result.batches, 2);
+  assert.deepEqual(batches, [50, 5]);
 });
 
 describe("persistToKv via runHealthProber", () => {
@@ -1150,10 +1422,40 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.status, "unknown");
     assert.equal(subnet.unknown_count, 2);
     assert.equal(subnet.avg_latency_ms, null);
-    // No surface ever went ok → lastOk stays at the 0 epoch sentinel (iso(0)),
-    // which is truthy so the `|| null` fallback does not fire.
-    assert.equal(subnet.last_ok, new Date(0).toISOString());
+    // No surface ever went ok → last_ok is null ("never"), not the 1970 epoch.
+    // (iso(0) is the truthy string "1970-01-01T00:00:00.000Z", so the old
+    // `iso(lastOk) || null` reported a fabricated last-healthy timestamp here.)
+    assert.equal(subnet.last_ok, null);
     assert.equal(subnet.last_checked, new Date(5000).toISOString());
+  });
+
+  test("a zero checked-at timestamp reports last_checked null, not the epoch", async () => {
+    // Same 0-sentinel guard as last_ok, on the last_checked field: with the
+    // clock at the Unix epoch every row's checked_at_ms is 0, so lastChecked
+    // stays 0. `iso(0)` is the truthy "1970-01-01T00:00:00.000Z", so the field
+    // must be guarded (`lastChecked ? iso(lastChecked) : null`) to report null.
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 0,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [buildSurface("z1", 13)],
+        probeSurface: async () => ({
+          status: "unknown",
+          classification: null,
+          latency_ms: null,
+        }),
+        probeOptions: {},
+      },
+    );
+    const subnet = kv
+      .json(KV_HEALTH_CURRENT)
+      .subnets.find((s) => s.netuid === 13);
+    assert.equal(subnet.last_checked, null);
+    assert.equal(subnet.last_ok, null);
   });
 
   test("mixed ok+failed subnet rolls up to degraded with avg latency", async () => {
@@ -1182,9 +1484,93 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.status, "degraded");
     assert.equal(subnet.ok_count, 1);
     assert.equal(subnet.failed_count, 1);
-    // Average of 100 and 300.
-    assert.equal(subnet.avg_latency_ms, 200);
+    // Latency is success-only: the failed surface's 300ms is excluded, so the
+    // mean is the lone healthy reading (100) — NOT (100+300)/2 — and exactly one
+    // sample backed it.
+    assert.equal(subnet.avg_latency_ms, 100);
+    assert.equal(subnet.latency_sample_count, 1);
     assert.equal(subnet.last_ok, new Date(6000).toISOString());
+  });
+
+  test("failures (fast, timed-out, unsafe) never pollute the latency mean", async () => {
+    // Regression for issue 4: a fast-fail stored 0ms and a timeout stored its
+    // elapsed time, so both leaked into AVG(latency_ms) while a thrown probe's
+    // null was excluded — the mean silently blended them. Now every failure is
+    // excluded uniformly: the mean is the single healthy 100ms reading.
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 7000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [
+          buildSurface("ok", 55),
+          buildSurface("timeout", 55),
+          buildSurface("unsafe", 55),
+          buildSurface("threw", 55),
+        ],
+        probeSurface: async (input) =>
+          ({
+            ok: { status: "ok", classification: "live", latency_ms: 100 },
+            timeout: {
+              status: "degraded",
+              classification: "timeout",
+              latency_ms: 8000,
+            },
+            unsafe: {
+              status: "failed",
+              classification: "unsafe",
+              latency_ms: 0,
+            },
+            threw: {
+              status: "failed",
+              classification: "dead",
+              latency_ms: null,
+            },
+          })[input.id],
+        probeOptions: {},
+      },
+    );
+    const current = kv.json(KV_HEALTH_CURRENT);
+    const subnet = current.subnets.find((s) => s.netuid === 55);
+    assert.equal(subnet.avg_latency_ms, 100);
+    assert.equal(subnet.latency_sample_count, 1);
+    // Stored per-surface latency is null for every non-ok probe.
+    const byId = new Map(current.surfaces.map((s) => [s.surface_id, s]));
+    assert.equal(byId.get("ok").latency_ms, 100);
+    assert.equal(byId.get("timeout").latency_ms, null);
+    assert.equal(byId.get("unsafe").latency_ms, null);
+    assert.equal(byId.get("threw").latency_ms, null);
+  });
+
+  test("all-failed subnet reports a null latency mean and zero latency samples", async () => {
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 7500,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [
+          buildSurface("x1", 66),
+          buildSurface("x2", 66),
+        ],
+        probeSurface: async () => ({
+          status: "failed",
+          classification: "timeout",
+          latency_ms: 9000,
+        }),
+        probeOptions: {},
+      },
+    );
+    const subnet = kv
+      .json(KV_HEALTH_CURRENT)
+      .subnets.find((s) => s.netuid === 66);
+    assert.equal(subnet.avg_latency_ms, null);
+    assert.equal(subnet.latency_sample_count, 0);
   });
 
   test("all-failed subnet rolls up to failed", async () => {
@@ -1329,16 +1715,28 @@ describe("rollupDailyUptime (durable daily history)", () => {
     const stmts = db.calls.batches[0];
     assert.equal(stmts.length, 2);
     assert.match(stmts[0].sql, /INSERT INTO surface_uptime_daily/);
-    assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\)/);
-    // binds: [day, updated_at, dayStart, dayEnd]
+    // Latency is rolled up via the shared ok-latency ranking CTE → success-only
+    // mean + sample count + p50/p95/p99 stored for long-term tail latency.
+    assert.match(stmts[0].sql, /WITH ranked AS/);
+    assert.match(stmts[0].sql, /latency_samples/);
+    assert.match(stmts[0].sql, /p50_latency_ms/);
+    assert.match(stmts[0].sql, /p99_latency_ms/);
+    assert.match(stmts[0].sql, /GROUP BY surface_key, netuid/);
+    assert.match(
+      stmts[0].sql,
+      /ON CONFLICT\(surface_key, day\) WHERE surface_key IS NOT NULL/,
+    );
+    assert.match(stmts[0].sql, /ON CONFLICT\(surface_id, day\) DO UPDATE SET/);
+    // binds: [dayStart, dayEnd, day, updated_at] — the CTE's checked_at window
+    // binds lead the statement, then `? AS day` / `? AS updated_at`.
     assert.deepEqual(stmts[0].binds, [
-      "2026-06-13",
-      fixedNow,
       Date.UTC(2026, 5, 13),
       Date.UTC(2026, 5, 14),
+      "2026-06-13",
+      fixedNow,
     ]);
-    assert.equal(stmts[1].binds[0], "2026-06-12");
-    assert.equal(stmts[1].binds[2], Date.UTC(2026, 5, 12));
+    assert.equal(stmts[1].binds[2], "2026-06-12");
+    assert.equal(stmts[1].binds[0], Date.UTC(2026, 5, 12));
   });
 
   test("no-ops without a D1 binding", async () => {
@@ -1391,6 +1789,40 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.ok(
       rollupIdx < pruneIdx,
       "daily rollup must run before the raw prune so history is never lost",
+    );
+  });
+
+  test("hourly cron skips prune when uptime rollup fails", async () => {
+    const order = [];
+    const orderDb = {
+      prepare(sql) {
+        return {
+          sql,
+          bind: () => ({
+            sql,
+            async run() {
+              order.push(`run:${sql}`);
+              return { meta: { changes: 0 } };
+            },
+          }),
+        };
+      },
+      async batch() {
+        order.push("batch:uptime-rollup");
+        throw new Error("d1 unavailable");
+      },
+    };
+    const result = await handleScheduled(
+      { cron: "0 * * * *" },
+      { METAGRAPH_HEALTH_DB: orderDb },
+      {},
+    );
+    assert.equal(result.rollup_skipped_prune, true);
+    assert.equal(result.uptime_rolled, false);
+    assert.equal(result.pruned, false);
+    assert.ok(
+      !order.some((o) => o.includes("DELETE FROM surface_checks")),
+      "raw surface_checks must not be pruned when rollup fails",
     );
   });
 });

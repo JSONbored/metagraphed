@@ -99,6 +99,7 @@ function refreshCommands(refreshTimestamp) {
     step("verify:candidates", refreshEnv),
     step("curate:baseline", refreshEnv),
     step("review:promote"),
+    step("review:queue", refreshEnv),
     step("adapters:snapshot", refreshEnv),
     step("build", refreshEnv),
     step("schemas:snapshot", refreshEnv),

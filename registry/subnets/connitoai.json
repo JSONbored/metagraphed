@@ -65,5 +65,9 @@
       },
       "notes": "Official ConnitoAI source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/connitoai"
+  },
+  "contact": "isabella@connito.ai"
 }

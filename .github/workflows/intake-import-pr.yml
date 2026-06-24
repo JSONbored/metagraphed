@@ -16,23 +16,23 @@ concurrency:
 
 jobs:
   import:
-    if: contains(github.event.issue.labels.*.name, 'interface-submission') && contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')
+    if: (contains(github.event.issue.labels.*.name, 'interface-submission') || contains(github.event.issue.labels.*.name, 'endpoint-submission')) && contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 22.22.3
+          node-version: 22.23.0
           cache: npm
 
       - name: Install
         run: npm ci
 
       - name: Write issue payload
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');

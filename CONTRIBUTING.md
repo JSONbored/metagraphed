@@ -7,7 +7,7 @@ Live: [metagraph.sh](https://metagraph.sh) · API [api.metagraph.sh](https://api
 Two kinds of contribution, two paths:
 
 - **Code / schema changes** → normal feature PR, run the gates below.
-- **Community data** → one candidate JSON file, see [Community submissions](#community-submissions).
+- **Community data** → add a surface to one subnet file, see [Community submissions](#community-submissions).
 
 ## Setup & gates
 
@@ -34,58 +34,58 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 ## Where to start
 
-- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and submit one candidate file ([Community submissions](#community-submissions) below). Each issue links the exact `candidate:new` command.
+- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and add it as a surface on the subnet's file ([Community submissions](#community-submissions) below). Each issue links the exact `surface:add` command.
 - **Data gaps** — generate the current curation queue: `npm run curation:brief` (add `-- --limit 20` for more, `-- --json` for machine-readable). Start with profile-light subnets: directory-only entries, missing websites or source repos, public APIs with no OpenAPI metadata yet. See [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
 ## Community submissions
 
-Community data becomes a reviewed **candidate**, not direct registry truth. PR-first is the simplest path:
+Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Add `registry/providers/community/<slug>.json` in the same PR (`npm run provider:new`); provider identity still gets reviewed before it's trusted.
 
-Generate a candidate locally — three steps:
+Add a surface locally — three steps:
 
 ```bash
 # 1. Find the provider slug for the team/operator behind this surface.
 #    (No match? Register one in the same PR with `npm run provider:new`.)
 npm run providers:list
 
-# 2. Generate the candidate with a REAL --provider slug (a placeholder like
-#    "community" is not a registered provider and will fail validation).
-npm run candidate:new -- \
+# 2. Append the surface to the subnet's file with a REAL --provider slug (a
+#    placeholder like "community" is not a registered provider and fails validation).
+npm run surface:add -- \
   --netuid 7 --kind docs \
   --url https://docs.example.com \
   --source-url https://github.com/example/project \
   --provider <provider-slug> --submitted-by <github-login> --write
 
-# 3. Check it before pushing — a fast local pre-check that catches schema +
-#    provider-slug mistakes without the full build (CI runs the full validate).
-npm run validate:candidate -- registry/candidates/community/<your-file>.json
+# 3. Check it before pushing — a fast local pre-check (schema + provider slug +
+#    review-state + real subnet name) without the full build (CI runs full validate).
+npm run validate:surface -- registry/subnets/<slug>.json
 ```
 
-A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
+> New subnet with no file yet? `npm run subnet:new -- --netuid <n> --name "<Real Name>" --write` first — a real `--name` is required (placeholder on-chain identities like "Team TBC" are rejected) — then add your surface to it.
 
-**Routes to manual review** (still welcome, just won't auto-merge): provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes.
+A good surface PR is small: one public `url`, one `source_url` proving the claim, the right `kind`, all on the subnet's single file. Auto-review kinds: `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
+
+**Higher-trust kinds** (base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership).
 
 **Hard boundaries:**
 
-- Health, uptime, latency, incidents, and pool eligibility are **probe-derived only**. Reports can trigger a re-probe; they can never set observed state.
+- Health, uptime, latency, incidents, and pool eligibility are **probe-derived only** — never hand-set them (or a surface's `verification`). The build's prober owns them.
 - No secrets, PATs, wallet paths, private URLs, or validator-local data.
 - Don't invent API/status surfaces a subnet doesn't publish.
-- Schema-valid ≠ accepted. A private review gate makes the final call.
+- Schema-valid ≠ accepted. The review gate makes the final call.
 
 **Accepted vs rejected at a glance** — the visible checklist (the final merge decision is the review gate's):
 
-| ✅ Tends to get accepted                                                                                             | ❌ Gets closed / routed to manual                                                                              |
-| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Exactly one `registry/candidates/community/*.json` (or `providers/community/*.json`)                                 | Touches generated artifacts, scripts, or workflows ([#296](https://github.com/JSONbored/metagraphed/pull/296)) |
-| A public `url` **plus** a `source_url` that proves the claim                                                         | `source_url` 404s or doesn't back the claim ([#328](https://github.com/JSONbored/metagraphed/pull/328))        |
-| An auto-review `kind` (docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk, example) | A surface the subnet already exposes — duplicate ([#90](https://github.com/JSONbored/metagraphed/pull/90))     |
-| `auth_required: false`, `public_safe: true`, an active netuid, a registered provider                                 | Secrets/PATs/wallet paths, private/localhost URLs, or base-layer RPC/WSS/archive                               |
+| ✅ Tends to get accepted                                                                                          | ❌ Gets closed / routed to manual                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/community/*.json` for a debut)       | Touches generated artifacts, scripts, or workflows                                                   |
+| A surface with a public `url` **plus** a `source_url` that proves the claim                                       | `source_url` 404s or doesn't back the claim                                                          |
+| `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider | A surface the subnet already exposes — duplicate                                                     |
+| `auth_required: false`, `public_safe: true`                                                                       | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |
 
-A clean accepted example to copy: [#87](https://github.com/JSONbored/metagraphed/pull/87).
-
-Prefer issues? Use the `interface-submission`, `profile-correction`, `endpoint-submission`, `provider-submission`, or `status-report` template — an approved issue opens the candidate PR for you. Full contract in [`docs/submission-gate.md`](docs/submission-gate.md).
+Callable surface with documented limits? Add an optional structured `rate_limit` — `{ requests, window, burst?, scope?, cost_notes? }` (`requests` + `window` required) — so agents and SDKs can pace calls. It's integration-only: metagraphed never enforces it and it doesn't feed completeness.
 
 ## Pull requests
 

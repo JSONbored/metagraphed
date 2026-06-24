@@ -70,7 +70,7 @@
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -79,7 +79,7 @@
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -133,6 +133,15 @@
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -205,7 +214,25 @@
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+      "id": "economics",
+      "path": "/metagraph/economics.json",
+      "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -223,7 +250,7 @@
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -241,7 +268,7 @@
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -381,10 +408,19 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Computed 7d/30d uptime + latency trends for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
+      "description": "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live from D1 at /api/v1/health/trends (no static file).",
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -417,6 +453,114 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
+      "id": "subnet-metagraph",
+      "path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "A single neuron's metagraph state by UID, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
+      "id": "subnet-neuron",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "schema_ref": "#/components/schemas/NeuronDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
+      "id": "subnet-validators",
+      "path": "/metagraph/subnets/{netuid}/validators.json",
+      "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+      "id": "subnet-neuron-history",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+      "id": "subnet-history",
+      "path": "/metagraph/subnets/{netuid}/history.json",
+      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+      "id": "account-summary",
+      "path": "/metagraph/accounts/{ss58}.json",
+      "schema_ref": "#/components/schemas/AccountSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events (no static file).",
+      "id": "account-events",
+      "path": "/metagraph/accounts/{ss58}/events.json",
+      "schema_ref": "#/components/schemas/AccountEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
+      "id": "account-subnets",
+      "path": "/metagraph/accounts/{ss58}/subnets.json",
+      "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
@@ -435,7 +579,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Registry leaderboards (healthiest, fastest-rpc, most-complete, fastest-growing), computed live from D1 + registry projections at /api/v1/registry/leaderboards (no static file).",
+      "description": "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
@@ -444,7 +588,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
+      "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
@@ -489,7 +633,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 2-minute scheduled prober.",
+      "description": "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 15-minute scheduled prober.",
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
@@ -502,7 +646,7 @@
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -592,7 +736,7 @@
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -646,7 +790,7 @@
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "dual"
+      "storage_tier": "r2"
     }
   ],
   "base_path": "/metagraph",

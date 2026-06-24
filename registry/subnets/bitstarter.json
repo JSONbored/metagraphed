@@ -146,5 +146,9 @@
       },
       "notes": "Public Bitstarter app workflow for incubator project submissions."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/bitstarterai"
+  },
+  "contact": "hello@bitstarter.ai"
 }

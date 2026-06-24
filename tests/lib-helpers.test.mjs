@@ -21,6 +21,9 @@ import {
   sanitizeOpenApiDocument,
   isPlaceholderIdentityUrl,
   backfilledIdentityUrl,
+  socialAccounts,
+  subnetContact,
+  deriveAuthDetail,
   nativeContactHandle,
   nativeDisplayName,
   nativeContactUrl,
@@ -29,9 +32,192 @@ import {
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
   buildSubnetLineageLinks,
+  buildEconomicsArtifact,
+  corroboratingSources,
+  surfaceStableKey,
   sanitizeFixtureBody,
+  surfaceFixtureReference,
   writeJson,
 } from "../scripts/lib.mjs";
+
+describe("buildEconomicsArtifact", () => {
+  const base = {
+    generatedAt: "1970-01-01T00:00:00.000Z",
+    network: "finney",
+    capturedAt: "2026-06-17T00:00:00Z",
+  };
+
+  test("computes price-weighted emission_share, sorts by it, and summarizes", () => {
+    const subnets = [
+      { netuid: 1, slug: "sn-1", name: "One" },
+      { netuid: 2, slug: "sn-2", name: "Two" },
+      { netuid: 3, slug: "sn-3", name: "Three" }, // no economics → omitted
+    ];
+    const economicsByNetuid = new Map([
+      [
+        1,
+        {
+          alpha_price_tao: 0.25,
+          validator_count: 3,
+          miner_count: 10,
+          total_stake_tao: 100,
+          registration_allowed: true,
+        },
+      ],
+      [
+        2,
+        {
+          alpha_price_tao: 0.75,
+          validator_count: 5,
+          miner_count: 20,
+          total_stake_tao: 300,
+          registration_allowed: false,
+        },
+      ],
+    ]);
+    const out = buildEconomicsArtifact({ subnets, economicsByNetuid, ...base });
+    assert.equal(out.subnets.length, 2); // SN3 dropped (no economics block)
+    assert.equal(out.subnets[0].netuid, 2); // higher price → higher share → first
+    assert.equal(out.subnets[0].emission_share, 0.75);
+    assert.equal(out.subnets[1].emission_share, 0.25);
+    assert.equal(out.subnets[0].slug, "sn-2");
+    assert.equal(out.summary.subnet_count, 3);
+    assert.equal(out.summary.with_economics_count, 2);
+    assert.equal(out.summary.total_validators, 8);
+    assert.equal(out.summary.total_miners, 30);
+    assert.equal(out.summary.total_stake_tao, 400);
+    assert.equal(out.summary.registration_open_count, 1);
+    assert.equal(out.network, "finney");
+  });
+
+  test("emission_share is null when a subnet reports no alpha price", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [
+        { netuid: 1, slug: "a", name: "A" },
+        { netuid: 2, slug: "b", name: "B" },
+      ],
+      economicsByNetuid: new Map([
+        [1, { alpha_price_tao: 0.4 }],
+        [2, { alpha_price_tao: null }],
+      ]),
+      ...base,
+    });
+    const byId = Object.fromEntries(out.subnets.map((s) => [s.netuid, s]));
+    assert.equal(byId[1].emission_share, 1); // sole priced subnet → 100% share
+    assert.equal(byId[2].emission_share, null);
+  });
+
+  test("is graceful (empty rows) when no subnet has an economics block", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [{ netuid: 1, slug: "a", name: "A" }],
+      economicsByNetuid: new Map(),
+      ...base,
+    });
+    assert.equal(out.subnets.length, 0);
+    assert.equal(out.summary.with_economics_count, 0);
+    assert.equal(out.summary.subnet_count, 1);
+    assert.equal(out.summary.total_stake_tao, 0);
+  });
+
+  test("orders equal emission shares by netuid and ignores non-numeric stake", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [
+        { netuid: 5, slug: "e", name: "E" },
+        { netuid: 2, slug: "b", name: "B" },
+      ],
+      economicsByNetuid: new Map([
+        // equal price → equal share → tiebreak on netuid; null stake → 0 in sum
+        [
+          5,
+          { alpha_price_tao: 0.5, total_stake_tao: null, validator_count: 1 },
+        ],
+        [2, { alpha_price_tao: 0.5, total_stake_tao: 40, validator_count: 1 }],
+      ]),
+      ...base,
+    });
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [2, 5],
+    );
+    assert.equal(out.subnets[0].emission_share, 0.5);
+    assert.equal(out.summary.total_stake_tao, 40);
+  });
+
+  test("emission_share is null for every subnet when no positive alpha price exists", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [
+        { netuid: 1, slug: "a", name: "A" },
+        { netuid: 2, slug: "b", name: "B" },
+      ],
+      // total alpha price is 0 → the price/Σprice guard yields null for all
+      economicsByNetuid: new Map([
+        [1, { alpha_price_tao: 0 }],
+        [2, { alpha_price_tao: null }],
+      ]),
+      ...base,
+    });
+    assert.equal(
+      out.subnets.every((s) => s.emission_share === null),
+      true,
+    );
+  });
+
+  test("defaults network and captured_at to null when omitted", () => {
+    const out = buildEconomicsArtifact({
+      subnets: [{ netuid: 1, slug: "a", name: "A" }],
+      economicsByNetuid: new Map([[1, { alpha_price_tao: 0.1 }]]),
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(out.network, null);
+    assert.equal(out.captured_at, null);
+  });
+});
+
+describe("corroboratingSources", () => {
+  test("returns sorted distinct source domains (2+ = corroboration)", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/1",
+          "https://github.com/macrocosm-os/apex",
+        ],
+      }),
+      ["github.com", "taomarketcap.com"],
+    );
+  });
+
+  test("folds api./docs. subdomains of one site into a single source", () => {
+    // two URLs on the same site are NOT independent corroboration
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "https://api.taomarketcap.com/v1/subnets/1",
+          "https://docs.taomarketcap.com/subnet/1",
+        ],
+      }),
+      ["taomarketcap.com"],
+    );
+  });
+
+  test("drops unparseable URLs and dedupes", () => {
+    assert.deepEqual(
+      corroboratingSources({
+        source_urls: [
+          "not-a-url",
+          "https://github.com/a",
+          "https://github.com/b",
+        ],
+      }),
+      ["github.com"],
+    );
+  });
+
+  test("returns [] when source_urls is missing or not an array", () => {
+    assert.deepEqual(corroboratingSources({}), []);
+    assert.deepEqual(corroboratingSources({ source_urls: null }), []);
+    assert.deepEqual(corroboratingSources(null), []);
+  });
+});
 
 describe("stripUrls", () => {
   test("removes http(s) URLs, emails, and bare domains", () => {
@@ -169,6 +355,9 @@ describe("isBrandImpersonationUrl", () => {
       "https://metagraph.sh/api/v1/subnets",
       "https://api.metagraph.sh/x",
       "https://www.metagraph.sh",
+      // FQDN-canonical trailing dot resolves to the same host, not a squat.
+      "https://metagraph.sh./api/v1/subnets",
+      "https://api.metagraph.sh./x",
     ]) {
       assert.equal(isBrandImpersonationUrl(url), false, url);
     }
@@ -177,9 +366,12 @@ describe("isBrandImpersonationUrl", () => {
   test("blocks squats of the exact domain", () => {
     for (const url of [
       "https://metagraph.sh.evil.com/api",
+      "https://metagraph.sh-evil.com/api",
       "https://metagraphsh.com",
       "https://metagraph-sh.io/call",
       "https://api.metagraphsh.net",
+      "https://metagraph.sh@evil.com/api",
+      "https://user:metagraph-sh@evil.com/api",
     ]) {
       assert.equal(isBrandImpersonationUrl(url), true, url);
     }
@@ -245,15 +437,37 @@ describe("extractAuth", () => {
   test("flags auth from OpenAPI 3 securitySchemes", () => {
     assert.deepEqual(
       extractAuth({
-        components: { securitySchemes: { ApiKeyHeader: { type: "apiKey" } } },
+        components: {
+          securitySchemes: {
+            ApiKeyHeader: { type: "apiKey", in: "header", name: "X-API-Key" },
+          },
+        },
       }),
-      { auth_required: true, auth_schemes: ["apiKey"] },
+      {
+        auth_required: true,
+        auth_schemes: ["apiKey"],
+        auth_detail: {
+          scheme: "api-key",
+          location: "header",
+          name: "X-API-Key",
+          value_format: "<api-key>",
+        },
+      },
     );
   });
   test("flags auth from Swagger 2 securityDefinitions", () => {
     assert.deepEqual(
       extractAuth({ securityDefinitions: { oauth: { type: "oauth2" } } }),
-      { auth_required: true, auth_schemes: ["oauth2"] },
+      {
+        auth_required: true,
+        auth_schemes: ["oauth2"],
+        auth_detail: {
+          scheme: "oauth2",
+          location: "header",
+          name: "Authorization",
+          value_format: "Bearer <token>",
+        },
+      },
     );
   });
   test("dedupes + sorts scheme types", () => {
@@ -272,10 +486,12 @@ describe("extractAuth", () => {
     assert.deepEqual(extractAuth({ paths: {} }), {
       auth_required: false,
       auth_schemes: [],
+      auth_detail: null,
     });
     assert.deepEqual(extractAuth(null), {
       auth_required: false,
       auth_schemes: [],
+      auth_detail: null,
     });
   });
 });
@@ -374,9 +590,15 @@ describe("backfilledIdentityUrl", () => {
       "https://curated.example/repo",
     );
   });
-  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+  test("preserves explicit curated null suppression", () => {
     assert.equal(
       backfilledIdentityUrl(null, "github.com/opentensor/bittensor"),
+      null,
+    );
+  });
+  test("falls back to the cleaned on-chain value when overlay is absent", () => {
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/opentensor/bittensor"),
       "https://github.com/opentensor/bittensor",
     );
     // bare domain gets https:// prefixed (root path keeps its trailing slash)
@@ -386,10 +608,20 @@ describe("backfilledIdentityUrl", () => {
     );
   });
   test("rejects placeholder junk and unusable chain values", () => {
-    assert.equal(backfilledIdentityUrl(null, "https://deprecated.png"), null);
-    assert.equal(backfilledIdentityUrl(null, "github.com/username/repo"), null);
-    assert.equal(backfilledIdentityUrl(null, null), null);
-    assert.equal(backfilledIdentityUrl(null, "not a url"), null);
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://deprecated.png"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "github.com/username/repo"),
+      null,
+    );
+    assert.equal(
+      backfilledIdentityUrl(undefined, "https://glyph.testnet.local"),
+      null,
+    );
+    assert.equal(backfilledIdentityUrl(undefined, null), null);
+    assert.equal(backfilledIdentityUrl(undefined, "not a url"), null);
   });
 });
 
@@ -633,9 +865,130 @@ describe("buildSubnetLineageLinks", () => {
     );
   });
 
+  test("surfaces conflicting testnet lineage approvals", () => {
+    const mainnet = [
+      sub(34, "BitMind", "https://github.com/BitMind-AI/bitmind-subnet"),
+      sub(68, "NOVA", null),
+    ];
+    const testnet = [sub(379, "NOVA", null)];
+    const broken = [];
+    const links = buildSubnetLineageLinks(
+      mainnet,
+      testnet,
+      [
+        { source_netuid: 68, target_netuid: 379, matched_by: "chain_name" },
+        { source_netuid: 34, target_netuid: 379, matched_by: "github_repo" },
+      ],
+      broken,
+    );
+
+    assert.deepEqual(links, [
+      { source_netuid: 68, target_netuid: 379, matched_by: "chain_name" },
+    ]);
+    assert.deepEqual(broken, [
+      {
+        source_netuid: 34,
+        target_netuid: 379,
+        reason: "target-netuid-conflict",
+        conflicts_with_source_netuid: 68,
+      },
+    ]);
+  });
+
+  test("#1012: surfaces broken approvals instead of silently dropping them", () => {
+    const mainnet = [
+      sub(24, "Quasar", "https://github.com/silx-labs/quasar-subnet"),
+    ];
+    const testnet = [
+      sub(383, "quasar-test", "https://github.com/silx-labs/quasar-subnet"),
+    ];
+    const broken = [];
+    const links = buildSubnetLineageLinks(
+      mainnet,
+      testnet,
+      [
+        { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 999, matched_by: "github_repo" },
+        { source_netuid: 24, target_netuid: 383, matched_by: "unreviewed" },
+      ],
+      broken,
+    );
+    // The valid link is still returned …
+    assert.deepEqual(links, [
+      { source_netuid: 24, target_netuid: 383, matched_by: "github_repo" },
+    ]);
+    // … and the missing-netuid + invalid-match approvals are surfaced, not dropped.
+    assert.equal(broken.length, 2);
+    assert.deepEqual(broken.map((entry) => entry.reason).sort(), [
+      "invalid-approval",
+      "target-netuid-missing",
+    ]);
+    assert.deepEqual(
+      broken.find((entry) => entry.reason === "target-netuid-missing"),
+      {
+        source_netuid: 24,
+        target_netuid: 999,
+        reason: "target-netuid-missing",
+      },
+    );
+  });
+
   test("returns [] for empty inputs", () => {
     assert.deepEqual(buildSubnetLineageLinks([], []), []);
     assert.deepEqual(buildSubnetLineageLinks(undefined, undefined), []);
+  });
+});
+
+describe("surfaceStableKey (#1005)", () => {
+  test("is stable across display-name/slug renames (same netuid|kind|url)", () => {
+    const before = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+      id: "sn-7-old-slug-openapi",
+      name: "Old Name",
+    });
+    const afterRename = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+      id: "sn-7-new-slug-openapi",
+      name: "New Name",
+    });
+    assert.equal(before, afterRename);
+    assert.match(before, /^srf-[0-9a-f]{16}$/);
+  });
+
+  test("changes when the url, kind, or netuid changes (a different identity)", () => {
+    const base = surfaceStableKey({
+      netuid: 7,
+      kind: "openapi",
+      url: "https://api.example.io/openapi.json",
+    });
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 7,
+        kind: "openapi",
+        url: "https://api.other.io/openapi.json",
+      }),
+    );
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 8,
+        kind: "openapi",
+        url: "https://api.example.io/openapi.json",
+      }),
+    );
+    assert.notEqual(
+      base,
+      surfaceStableKey({
+        netuid: 7,
+        kind: "subnet-api",
+        url: "https://api.example.io/openapi.json",
+      }),
+    );
   });
 });
 
@@ -700,6 +1053,10 @@ describe("sanitizeFixtureBody (#352)", () => {
   test("redacts common compact and camelCase sensitive keys", () => {
     const out = sanitizeFixtureBody({
       accessToken: "access-token",
+      idToken: "id-token",
+      authToken: "auth-token",
+      clientSecret: "client-secret",
+      secretKey: "secret-key",
       sessionId: "session-id",
       cookieValue: "cookie-value",
       passwordHash: "password-hash",
@@ -710,6 +1067,10 @@ describe("sanitizeFixtureBody (#352)", () => {
     });
 
     assert.equal(out.accessToken, "[redacted]");
+    assert.equal(out.idToken, "[redacted]");
+    assert.equal(out.authToken, "[redacted]");
+    assert.equal(out.clientSecret, "[redacted]");
+    assert.equal(out.secretKey, "[redacted]");
     assert.equal(out.sessionId, "[redacted]");
     assert.equal(out.cookieValue, "[redacted]");
     assert.equal(out.passwordHash, "[redacted]");
@@ -844,5 +1205,317 @@ describe("clusterDomainFromUrl", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);
     assert.equal(clusterDomainFromUrl(null), null);
     assert.equal(clusterDomainFromUrl(undefined), null);
+  });
+});
+
+describe("socialAccounts (#745)", () => {
+  test("extracts handles from on-chain `additional` free text", () => {
+    assert.deepEqual(
+      socialAccounts("Follow us at https://x.com/bitads_ai for updates"),
+      { x: "https://x.com/bitads_ai" },
+    );
+    assert.deepEqual(
+      socialAccounts(
+        "x https://x.com/foo tg https://t.me/bar yt https://youtu.be/abc123",
+      ),
+      {
+        x: "https://x.com/foo",
+        telegram: "https://t.me/bar",
+        youtube: "https://youtu.be/abc123",
+      },
+    );
+  });
+
+  test("maps twitter.com -> x and youtube.com -> youtube", () => {
+    const out = socialAccounts(
+      "https://twitter.com/legacy and https://www.youtube.com/@chan",
+    );
+    assert.equal(out.x, "https://twitter.com/legacy");
+    assert.equal(out.youtube, "https://www.youtube.com/@chan");
+  });
+
+  test("first handle per platform wins (chain text is left-to-right)", () => {
+    assert.deepEqual(
+      socialAccounts("https://x.com/first then https://x.com/second"),
+      { x: "https://x.com/first" },
+    );
+  });
+
+  test("strips trailing punctuation from extracted URLs", () => {
+    assert.deepEqual(socialAccounts("see https://x.com/handle."), {
+      x: "https://x.com/handle",
+    });
+  });
+
+  test("curated overlay wins per platform and can add platforms", () => {
+    assert.deepEqual(
+      socialAccounts("https://x.com/from_chain", {
+        x: "https://x.com/curated",
+        telegram: "https://t.me/curated",
+      }),
+      { x: "https://x.com/curated", telegram: "https://t.me/curated" },
+    );
+    // overlay-only (no chain text) still resolves
+    assert.deepEqual(
+      socialAccounts(null, { reddit: "https://reddit.com/r/x" }),
+      {
+        reddit: "https://reddit.com/r/x",
+      },
+    );
+  });
+
+  test("ignores non-social hosts, junk URLs, and unusable overlay values", () => {
+    assert.equal(
+      socialAccounts("homepage https://example.com and repo github.com/a/b"),
+      null,
+    );
+    assert.equal(socialAccounts(null, { x: "not a url" }), null);
+    assert.equal(socialAccounts(null, { x: "" }), null);
+    assert.equal(
+      socialAccounts(null, { x: "http://169.254.169.254/latest/meta-data" }),
+      null,
+    );
+  });
+
+  test("ignores curated overlays whose host does not match the platform key", () => {
+    assert.equal(
+      socialAccounts(null, { x: "https://attacker.example/phish" }),
+      null,
+    );
+    assert.deepEqual(
+      socialAccounts("https://x.com/from_chain", {
+        x: "https://attacker.example/phish",
+        telegram: "https://t.me/curated",
+      }),
+      { x: "https://x.com/from_chain", telegram: "https://t.me/curated" },
+    );
+    assert.equal(
+      socialAccounts(null, { telegram: "https://x.com/not_telegram" }),
+      null,
+    );
+  });
+
+  test("returns null for empty / non-string input", () => {
+    assert.equal(socialAccounts(""), null);
+    assert.equal(socialAccounts("just words, no links"), null);
+    assert.equal(socialAccounts(null), null);
+    assert.equal(socialAccounts(undefined), null);
+    assert.equal(socialAccounts(42), null);
+  });
+
+  test("only ever emits the four known display-only keys (flywheel-safe)", () => {
+    const out = socialAccounts(
+      "https://x.com/a https://t.me/b https://reddit.com/r/c https://youtu.be/d",
+    );
+    // No score/gap/completeness keys can leak out of this helper — its entire
+    // surface is the display-only social object (the #343 flywheel gate).
+    assert.deepEqual(Object.keys(out).sort(), [
+      "reddit",
+      "telegram",
+      "x",
+      "youtube",
+    ]);
+  });
+});
+
+describe("deriveAuthDetail (#746)", () => {
+  test("apiKey scheme maps to the exact header/param name", () => {
+    assert.deepEqual(
+      deriveAuthDetail({
+        k: { type: "apiKey", in: "header", name: "X-API-Key" },
+      }),
+      {
+        scheme: "api-key",
+        location: "header",
+        name: "X-API-Key",
+        value_format: "<api-key>",
+      },
+    );
+    // query-located key keeps its location
+    assert.equal(
+      deriveAuthDetail({ k: { type: "apiKey", in: "query", name: "api_key" } })
+        .location,
+      "query",
+    );
+  });
+
+  test("http bearer and basic map to Authorization", () => {
+    assert.deepEqual(
+      deriveAuthDetail({ b: { type: "http", scheme: "bearer" } }),
+      {
+        scheme: "bearer",
+        location: "header",
+        name: "Authorization",
+        value_format: "Bearer <token>",
+      },
+    );
+    assert.equal(
+      deriveAuthDetail({ b: { type: "http", scheme: "basic" } }).value_format,
+      "Basic <base64(user:pass)>",
+    );
+  });
+
+  test("oauth2 pulls a junk-guarded token_url from flows", () => {
+    const out = deriveAuthDetail({
+      o: {
+        type: "oauth2",
+        flows: {
+          clientCredentials: { tokenUrl: "https://auth.example.com/token" },
+        },
+      },
+    });
+    assert.equal(out.scheme, "oauth2");
+    assert.equal(out.token_url, "https://auth.example.com/token");
+  });
+
+  test("drops an unsafe/placeholder token_url rather than surfacing it", () => {
+    const out = deriveAuthDetail({
+      o: {
+        type: "oauth2",
+        flows: { password: { tokenUrl: "http://127.0.0.1/token" } },
+      },
+    });
+    assert.equal(out.scheme, "oauth2");
+    assert.equal("token_url" in out, false);
+  });
+
+  test("prefers a concrete api-key/http scheme over oauth2", () => {
+    const out = deriveAuthDetail({
+      oauth: { type: "oauth2", flows: {} },
+      key: { type: "apiKey", in: "header", name: "X-Key" },
+    });
+    assert.equal(out.scheme, "api-key");
+    assert.equal(out.name, "X-Key");
+  });
+
+  test("returns null when no security scheme is declared", () => {
+    assert.equal(deriveAuthDetail({}), null);
+    assert.equal(deriveAuthDetail(null), null);
+    assert.equal(deriveAuthDetail(undefined), null);
+  });
+
+  test("resolves token_url from openIdConnect, authorizationUrl, and Swagger-2 shapes", () => {
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "openIdConnect",
+          openIdConnectUrl:
+            "https://idp.example.com/.well-known/openid-configuration",
+        },
+      }).token_url,
+      "https://idp.example.com/.well-known/openid-configuration",
+    );
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "oauth2",
+          flows: {
+            implicit: {
+              authorizationUrl: "https://auth.example.com/authorize",
+            },
+          },
+        },
+      }).token_url,
+      "https://auth.example.com/authorize",
+    );
+    assert.equal(
+      deriveAuthDetail({
+        o: { type: "oauth2", tokenUrl: "https://auth.example.com/token" },
+      }).token_url,
+      "https://auth.example.com/token",
+    );
+    // Swagger-2 top-level authorizationUrl (no tokenUrl, no flows) is the last
+    // fallback in oauthTokenUrl().
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "oauth2",
+          authorizationUrl: "https://auth.example.com/authorize",
+        },
+      }).token_url,
+      "https://auth.example.com/authorize",
+    );
+  });
+
+  test("ignores non-object scheme entries and unknown scheme types", () => {
+    assert.equal(deriveAuthDetail({ a: null, b: "nope" }), null);
+    assert.equal(deriveAuthDetail({ a: { type: "mutualTLS" } }), null);
+  });
+});
+
+describe("subnetContact", () => {
+  test("accepts a clean email (lowercased) or public URL", () => {
+    assert.equal(subnetContact("Support@Chutes.ai"), "support@chutes.ai");
+    assert.equal(subnetContact("mailto:hello@cacheon.ai"), "hello@cacheon.ai");
+    assert.equal(
+      subnetContact("https://chutes.ai/support"),
+      "https://chutes.ai/support",
+    );
+  });
+  test("rejects junk, malformed, and non-string values", () => {
+    assert.equal(subnetContact("deprecated"), null);
+    assert.equal(subnetContact("None"), null);
+    assert.equal(subnetContact("deprecated@gmail.com"), null); // junk local-part
+    assert.equal(subnetContact("not an email"), null);
+    assert.equal(subnetContact("javascript:alert(1)@example.com"), null);
+    assert.equal(subnetContact("<|system|>@example.com"), null);
+    assert.equal(subnetContact("https://evil.com@127.0.0.1/x"), null);
+    assert.equal(subnetContact("mailto:javascript:alert(1)@example.com"), null);
+    assert.equal(subnetContact("http://127.0.0.1/x"), null); // not public
+    assert.equal(subnetContact(""), null);
+    assert.equal(subnetContact(null), null);
+    assert.equal(subnetContact(42), null);
+  });
+});
+
+describe("surfaceFixtureReference (#748)", () => {
+  const fixture = {
+    schema_version: 1,
+    surface_id: "allways-api-health",
+    netuid: 7,
+    kind: "subnet-api",
+    captured_at: "2026-06-16T12:00:00.000Z",
+    request: { method: "GET", url: "https://api.all-ways.io/health" },
+    response: {
+      status: 200,
+      content_type: "application/json",
+      body: { ok: true },
+    },
+  };
+
+  test("projects a bounded reference and links the full fixture artifact", () => {
+    const ref = surfaceFixtureReference("allways-api-health", fixture);
+    assert.deepEqual(ref, {
+      captured_at: "2026-06-16T12:00:00.000Z",
+      request: { method: "GET", url: "https://api.all-ways.io/health" },
+      response: { status: 200, content_type: "application/json" },
+      artifact_path: "/metagraph/fixtures/allways-api-health.json",
+    });
+  });
+
+  test("never inlines the response body (kept lean; body stays at artifact_path)", () => {
+    const ref = surfaceFixtureReference("allways-api-health", fixture);
+    assert.equal("body" in ref.response, false);
+    assert.equal(JSON.stringify(ref).includes('"ok"'), false);
+  });
+
+  test("defaults method to GET and tolerates missing optional fields", () => {
+    const ref = surfaceFixtureReference("sn-9-x", {
+      request: { url: "https://x.example/api" },
+      response: { status: 204 },
+    });
+    assert.equal(ref.request.method, "GET");
+    assert.equal(ref.captured_at, null);
+    assert.equal(ref.response.content_type, null);
+    assert.equal(ref.response.status, 204);
+    assert.equal(ref.artifact_path, "/metagraph/fixtures/sn-9-x.json");
+  });
+
+  test("returns null when there is no fixture or no surface id", () => {
+    assert.equal(surfaceFixtureReference("sn-9-x", null), null);
+    assert.equal(surfaceFixtureReference("sn-9-x", undefined), null);
+    assert.equal(surfaceFixtureReference("sn-9-x", "nope"), null);
+    assert.equal(surfaceFixtureReference("", fixture), null);
+    assert.equal(surfaceFixtureReference(null, fixture), null);
   });
 });

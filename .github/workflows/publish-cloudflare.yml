@@ -1,17 +1,42 @@
 name: Publish Cloudflare Backend
 
-# Scheduled DATA refresh (ADR 0001). Builds fresh artifacts (live probes +
-# adapter snapshots) and publishes them to R2 + the KV `latest` pointer. The
-# Worker CODE + committed assets are deployed separately by Cloudflare Workers
-# Builds on push to main; this workflow only refreshes the DATA the Worker
-# serves from R2/KV, decoupled from code pushes (so a docs commit no longer
-# re-probes 1k+ surfaces). Run with workflow_dispatch publish_mode=dry-run to
-# validate without writing to R2/KV.
+# DATA refresh (ADR 0001). Builds fresh artifacts (chain snapshot + live probes +
+# adapter snapshots) and publishes them to R2 + the KV `latest` pointer. The Worker
+# CODE + committed assets deploy separately via Cloudflare Workers Builds on push to
+# main; this workflow only refreshes the DATA the Worker serves from R2/KV.
+#
+# Triggers — event-driven + daily floor:
+#   - push to main on human-input registry paths → republish so a merged
+#     contributor change (subnet / provider / community candidate / maintainer
+#     review / adapter) appears in the served dataset within minutes, not hours.
+#     Code/docs commits don't match the path filter, so they never trigger a
+#     re-probe (the original decoupling intent is preserved).
+#   - schedule: once daily → a floor for slow chain/registry drift. The volatile
+#     tiers are already served LIVE and refresh independently: surface health via
+#     the 15m prober (src/health-prober.mjs), economics via refresh-economics.yml.
+#   - workflow_dispatch (publish_mode=dry-run validates without writing R2/KV).
+#
+# No stale-pointer hazard: every run fresh-fetches the chain snapshot FIRST
+# (build.mjs productionSteps, tolerant), so the KV `latest` pointer always flips to
+# freshly-built data regardless of trigger. The prober is decoupled from this
+# publish too — operational-surfaces.json is DUAL/committed (#1247), so the live
+# health tier survives a publish outage.
 on:
+  push:
+    branches: [main]
+    # Human-input data only — NOT machine-generated paths (registry/native,
+    # registry/generated, registry/candidates/generated), which the build
+    # regenerates itself and must not self-trigger.
+    paths:
+      - "registry/subnets/**"
+      - "registry/providers/**"
+      - "registry/candidates/community/**"
+      - "registry/reviews/**"
+      - "registry/adapters/**"
   schedule:
-    # Every 6h — keeps published data within the freshness windows
-    # (surface-health blocks at 6h, adapter-snapshots at 24h).
-    - cron: "17 1,7,13,19 * * *"
+    # Daily floor (07:17 UTC). Volatile data is live (health 15m, economics 3h);
+    # this only catches slow chain/registry drift no event trigger covered.
+    - cron: "17 7 * * *"
   workflow_dispatch:
     inputs:
       publish_mode:
@@ -35,34 +60,44 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      metagraph_run_id: ${{ steps.stamp-publish-time.outputs.metagraph_run_id }}
+      metagraph_published_at: ${{ steps.stamp-publish-time.outputs.metagraph_published_at }}
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 22.22.3
+          node-version: 22.23.0
           cache: npm
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Install
         run: npm ci
 
       - name: Stamp publish time
+        id: stamp-publish-time
         run: |
-          echo "METAGRAPH_PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> "$GITHUB_ENV"
+          # The real publish moment — served LIVE as meta.published_at, never baked.
+          published_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "METAGRAPH_PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_published_at=$published_at" >> "$GITHUB_OUTPUT"
+          # Unique R2 run-prefix id for every r2:manifest invocation (build + the
+          # post-changelog re-stamp). generated_at stays the deterministic epoch
+          # marker (issue #349) so artifacts don't churn; this keeps runs/ unique.
+          echo "METAGRAPH_RUN_ID=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_run_id=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Prepare reviewed publish artifacts
-        run: |
-          npm run build
-          npm run r2:manifest
+        run: npm run build
         env:
           # The production build re-snapshots adapters from live GitHub metadata
           # so the publish is fresh by construction. A token is always present
@@ -70,6 +105,9 @@ jobs:
           # shipping degraded adapter data (mirrors sync-subnets.yml).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No METAGRAPH_BUILD_TIMESTAMP override: generated_at stays the epoch
+          # marker (deterministic, no churn). The real time is served live
+          # (meta.published_at); the unique run prefix comes from METAGRAPH_RUN_ID.
           METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
@@ -130,16 +168,21 @@ jobs:
     env:
       METAGRAPH_PRODUCTION_BUILD: "1"
       METAGRAPH_REQUIRE_PROBE_HEALTH: "1"
+      # $GITHUB_ENV is job-local; carry the refresh job's unique publish stamp
+      # into the publish job so the final r2:manifest restamp cannot fall back to
+      # the deterministic generated_at epoch and reuse runs/1970.../.
+      METAGRAPH_RUN_ID: ${{ needs.refresh.outputs.metagraph_run_id }}
+      METAGRAPH_PUBLISHED_AT: ${{ needs.refresh.outputs.metagraph_published_at }}
     steps:
       - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 22.22.3
+          node-version: 22.23.0
           cache: npm
 
       - name: Install
@@ -256,6 +299,36 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
+
+      # Compute the real "what changed since last publish" changelog by diffing
+      # the staged build against the previous R2 publish — BEFORE r2:upload
+      # overwrites latest/. The build emits only an empty placeholder (subnets/
+      # coverage are R2-only, #1003); this fills it in. Best-effort: it never
+      # fails the publish (a stale changelog for one run is recoverable).
+      - name: Compute publish changelog (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run changelog:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Build the deprecated surface-id alias map from the same previous R2
+      # publish. The deterministic build emits an empty placeholder because
+      # surfaces.json is R2-only; this fills it before latest/ is overwritten.
+      - name: Compute publish surface aliases (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run surface-aliases:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # changelog:publish and surface-aliases:publish overwrite staged R2-only
+      # placeholder artifacts, but the r2-manifest still records the build-time
+      # placeholder hashes. Re-stamp the manifest from the final staged artifacts
+      # before upload.
+      - name: Re-stamp R2 manifest after publish metadata
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run r2:manifest
 
       - name: Upload artifact history to R2
         if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'

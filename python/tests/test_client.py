@@ -3,12 +3,18 @@
 import json
 import unittest
 import urllib.error
+import urllib.request
 from unittest import mock
+
+import metagraphed.client as client
 
 from metagraphed import (
     MetagraphedClient,
     MetagraphedError,
+    Subnet,
+    Surface,
     metagraphed_fetch,
+    metagraphed_fetch_all,
     metagraphed_paginate,
     metagraphed_rpc,
 )
@@ -37,7 +43,7 @@ class ClientTest(unittest.TestCase):
             captured["accept"] = request.get_header("Accept")
             return _FakeResponse({"ok": True, "data": {"netuid": 7}})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             out = metagraphed_fetch(
                 "/api/v1/subnets/{netuid}", path_params={"netuid": 7}
             )
@@ -57,7 +63,7 @@ class ClientTest(unittest.TestCase):
             captured["url"] = request.full_url
             return _FakeResponse({"ok": True})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             metagraphed_fetch(
                 "/api/v1/search",
                 query={"q": "image gen", "cursor": None, "limit": 5},
@@ -74,7 +80,7 @@ class ClientTest(unittest.TestCase):
             captured["url"] = request.full_url
             return _FakeResponse({"ok": True})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             MetagraphedClient(base_url="https://metagraph.sh").fetch("/api/v1/health")
 
         self.assertTrue(
@@ -85,7 +91,7 @@ class ClientTest(unittest.TestCase):
         def fake_urlopen(request, timeout=None):
             raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, None)
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_fetch("/api/v1/subnets/{netuid}", path_params={"netuid": 9999})
         self.assertEqual(ctx.exception.status, 404)
@@ -99,7 +105,7 @@ class ClientTest(unittest.TestCase):
             captured["ua"] = request.get_header("User-agent")
             return _FakeResponse({"ok": True})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             metagraphed_fetch("/api/v1/health")
 
         self.assertIsNotNone(captured["ua"])
@@ -112,10 +118,36 @@ class ClientTest(unittest.TestCase):
             captured["ua"] = request.get_header("User-agent")
             return _FakeResponse({"ok": True})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             metagraphed_fetch("/api/v1/health", headers={"User-Agent": "my-app/1.0"})
 
         self.assertEqual(captured["ua"], "my-app/1.0")
+
+    def test_cross_origin_redirect_strips_custom_headers(self):
+        request = urllib.request.Request("https://api.example.test/v1", method="GET")
+        request.add_header("Accept", "application/json")
+        request.add_header("User-Agent", "metagraphed-python/test")
+        request.add_header("Authorization", "Bearer SECRET")
+        request.add_header("X-Api-Key", "SECRET")
+        request.add_header("Cookie", "session=SECRET")
+
+        redirected = client._CrossOriginSafeRedirectHandler().redirect_request(
+            request,
+            None,
+            302,
+            "Found",
+            {},
+            "https://attacker.example.test/collect",
+        )
+
+        self.assertIsNotNone(redirected)
+        self.assertEqual(redirected.get_header("Accept"), "application/json")
+        self.assertEqual(
+            redirected.get_header("User-agent"), "metagraphed-python/test"
+        )
+        self.assertIsNone(redirected.get_header("Authorization"))
+        self.assertIsNone(redirected.get_header("X-api-key"))
+        self.assertIsNone(redirected.get_header("Cookie"))
 
     def test_http_error_surfaces_api_error_envelope(self):
         import io
@@ -131,7 +163,7 @@ class ClientTest(unittest.TestCase):
             )
             raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, body)
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_fetch(
                     "/api/v1/subnets/{netuid}", path_params={"netuid": 9999}
@@ -153,7 +185,7 @@ class ClientTest(unittest.TestCase):
             )
             raise urllib.error.HTTPError(request.full_url, 502, "Bad Gateway", {}, body)
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_fetch("/api/v1/health")
         self.assertEqual(ctx.exception.status, 502)
@@ -165,7 +197,8 @@ class ClientTest(unittest.TestCase):
                 self._body = b"<html>not json</html>"
 
         with mock.patch(
-            "urllib.request.urlopen", lambda request, timeout=None: _BadResponse()
+            "metagraphed.client._open_request",
+            lambda request, timeout=None: _BadResponse(),
         ):
             with self.assertRaises(MetagraphedError):
                 metagraphed_fetch("/api/v1/health")
@@ -179,7 +212,7 @@ class ClientTest(unittest.TestCase):
                 raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
             return _FakeResponse({"ok": True, "data": {"healthy": True}})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             out = metagraphed_fetch("/api/v1/health", retries=1, backoff=0)
 
         self.assertEqual(calls["n"], 2)
@@ -209,7 +242,7 @@ class ClientTest(unittest.TestCase):
                 )
             return _FakeResponse({"ok": True})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen), mock.patch(
+        with mock.patch("metagraphed.client._open_request", fake_urlopen), mock.patch(
             "time.sleep", lambda seconds: sleeps.append(seconds)
         ):
             out = metagraphed_fetch("/api/v1/health", retries=2, backoff=0)
@@ -221,7 +254,7 @@ class ClientTest(unittest.TestCase):
         def fake_urlopen(request, timeout=None):
             raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_fetch("/api/v1/health", retries=2, backoff=0)
         self.assertEqual(ctx.exception.status, 503)
@@ -240,7 +273,7 @@ class ClientTest(unittest.TestCase):
             state["i"] += 1
             return _FakeResponse(page)
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             seen = [
                 page["data"][0]
                 for page in metagraphed_paginate("/api/v1/subnets", query={"limit": 1})
@@ -258,7 +291,7 @@ class ClientTest(unittest.TestCase):
             captured["body"] = request.data
             return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": {"peers": 40}})
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             result = metagraphed_rpc("finney", "system_health")
 
         self.assertEqual(result, {"peers": 40})
@@ -276,10 +309,143 @@ class ClientTest(unittest.TestCase):
                 }
             )
 
-        with mock.patch("urllib.request.urlopen", fake_urlopen):
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
             with self.assertRaises(MetagraphedError) as ctx:
                 metagraphed_rpc("finney", "nope")
         self.assertIn("Method not found", str(ctx.exception))
+
+    def test_rpc_retries_transient_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": {"peers": 7}})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc(
+                "finney", "system_health", retries=1, backoff=0
+            )
+
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(result, {"peers": 7})
+
+    def test_rpc_retries_network_error_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise urllib.error.URLError("connection reset")
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": "0xabc"})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = metagraphed_rpc(
+                "finney", "chain_getBlockHash", [0], retries=1, backoff=0
+            )
+
+        self.assertEqual(calls["n"], 2)
+        self.assertEqual(result, "0xabc")
+
+    def test_rpc_retries_exhausted_raises_after_configured_count(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            with self.assertRaises(MetagraphedError) as ctx:
+                metagraphed_rpc("finney", "system_health", retries=2, backoff=0)
+
+        # Initial attempt + 2 retries, then it gives up.
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(ctx.exception.status, 503)
+
+    def test_client_rpc_forwards_configured_retries_and_backoff(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(request, timeout=None):
+            calls["n"] += 1
+            if calls["n"] <= 2:
+                raise urllib.error.HTTPError(request.full_url, 503, "busy", {}, None)
+            return _FakeResponse({"jsonrpc": "2.0", "id": 1, "result": "ok"})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            result = MetagraphedClient(retries=2, backoff=0).rpc(
+                "finney", "system_health"
+            )
+
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(result, "ok")
+
+
+class FetchAllAndModelsTest(unittest.TestCase):
+    def _patch_pages(self, pages):
+        responses = iter(_FakeResponse(page) for page in pages)
+
+        def fake_urlopen(request, timeout=None):
+            return next(responses)
+
+        return mock.patch("metagraphed.client._open_request", fake_urlopen)
+
+    def test_fetch_all_collects_nested_collection_following_cursor(self):
+        # List endpoints nest rows under data[meta.pagination.collection].
+        pages = [
+            {
+                "data": {"subnets": [{"netuid": 1}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": "c2"}},
+            },
+            {
+                "data": {"subnets": [{"netuid": 2}]},
+                "meta": {"pagination": {"collection": "subnets", "next_cursor": None}},
+            },
+        ]
+        with self._patch_pages(pages):
+            items = metagraphed_fetch_all("/api/v1/subnets")
+        self.assertEqual([item["netuid"] for item in items], [1, 2])
+
+    def test_fetch_all_falls_back_to_flat_and_lone_array(self):
+        flat = [{"data": [{"id": "a"}], "meta": {"pagination": {"next_cursor": None}}}]
+        with self._patch_pages(flat):
+            self.assertEqual(metagraphed_fetch_all("/api/v1/subnets"), [{"id": "a"}])
+        # No collection key, but data has a single list-valued field.
+        lone = [
+            {
+                "data": {"rows": [{"id": "b"}]},
+                "meta": {"pagination": {"next_cursor": None}},
+            }
+        ]
+        with self._patch_pages(lone):
+            self.assertEqual(metagraphed_fetch_all("/api/v1/subnets"), [{"id": "b"}])
+
+    def test_subnets_convenience_returns_typed_models(self):
+        pages = [
+            {
+                "data": [{"netuid": 7, "name": "Allways", "categories": ["inference"]}],
+                "meta": {"pagination": {"next_cursor": None}},
+            }
+        ]
+        with self._patch_pages(pages):
+            subnets = MetagraphedClient().subnets()
+        self.assertIsInstance(subnets[0], Subnet)
+        self.assertEqual(subnets[0].netuid, 7)
+        self.assertEqual(subnets[0].name, "Allways")
+        self.assertEqual(subnets[0].categories, ["inference"])
+        self.assertEqual(subnets[0].raw["name"], "Allways")
+
+    def test_model_from_dict_ignores_unknown_and_keeps_raw(self):
+        surface = Surface.from_dict(
+            {"id": "x", "kind": "openapi", "unknown_field": 1}
+        )
+        self.assertEqual(surface.id, "x")
+        self.assertEqual(surface.kind, "openapi")
+        self.assertEqual(surface.raw["unknown_field"], 1)
+
+    def test_model_from_dict_tolerates_non_mapping(self):
+        self.assertEqual(Subnet.from_dict(None).raw, {})
+        self.assertIsNone(Subnet.from_dict(None).netuid)
 
 
 if __name__ == "__main__":

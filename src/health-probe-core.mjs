@@ -1,4 +1,4 @@
-// Pure, isomorphic surface-probing primitives shared by the Node 6h build
+// Pure, isomorphic surface-probing primitives shared by the Node data build
 // (scripts/probes-smoke.mjs) and the Cloudflare cron prober (src/health-prober.mjs,
 // wired through workers/api.mjs `scheduled()`).
 //
@@ -8,6 +8,7 @@
 // URL, TextEncoder). The classification + scoring logic is lifted verbatim from
 // the historical build so artifacts stay byte-stable after the extraction
 // (writeJson sorts keys via stableStringify, so only VALUES must match).
+import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
 
 export const SUBTENSOR_PROBE_CALLS = [
   { key: "chain_getHeader", method: "chain_getHeader", params: [] },
@@ -32,8 +33,8 @@ function normalizeHash(value) {
 }
 
 // Surface kinds whose health changes minute-to-minute and is worth probing live
-// (the 2-minute cron prober). Everything else — docs, website, source-repo,
-// dashboard, openapi, sdk, example, repo-registry — stays on the slower 6h build.
+// (the 15-minute cron prober). Everything else — docs, website, source-repo,
+// dashboard, openapi, sdk, example, repo-registry — stays on the slower batch build.
 // This is the single source of truth: scripts/build-artifacts.mjs emits the
 // operational-surfaces.json list from it, and the Worker prober consumes that list.
 export const OPERATIONAL_SURFACE_KINDS = [
@@ -61,7 +62,9 @@ const UNSAFE_HOST_PATTERNS = [
   /^0\./,
   /^::1$/,
   /^::$/,
-  /^fe80:/i,
+  // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879) — the whole
+  // fe80::–feff: reserved range, mirroring the webhook guard (issue #1538).
+  /^fe[89a-f][0-9a-f]:/i,
   /^fc00:/i,
   /^fd/i,
 ];
@@ -83,6 +86,20 @@ export function isUnsafePublicUrl(value) {
     // 172.16.0.0 – 172.31.255.255 (private range).
     if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) {
       return true;
+    }
+    // IPv4 tunnelled inside an IPv6 literal (::ffff:a.b.c.d mapped, ::a.b.c.d
+    // compatible, 2002::/16 6to4, 64:ff9b::/96 NAT64) hides a private/loopback
+    // target — e.g. ::ffff:169.254.169.254 (cloud metadata) — from the prefix
+    // patterns. Re-check the embedded v4 against the same ranges.
+    const embedded = ipv6EmbeddedIpv4(host);
+    if (embedded) {
+      const dotted = embedded.join(".");
+      if (
+        /^172\.(1[6-9]|2\d|3[01])\./.test(dotted) ||
+        UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(dotted))
+      ) {
+        return true;
+      }
     }
     return UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(host));
   } catch {
@@ -302,6 +319,33 @@ export function contentMismatch(probe, surface) {
       .includes("text/event-stream");
   }
   return false;
+}
+
+// Canonical subnet operational-status rollup — the SINGLE source of the
+// ok/degraded/failed/unknown precedence shared by the live serve overlay
+// (health-serving), the 15-minute prober, and the build/smoke status columns.
+// Keeping every caller here means build-time status and live-served status can
+// never silently diverge — drift in the health domain that is the product's core
+// promise. Precedence: all-unknown (or empty) → unknown; no failed/degraded → ok;
+// any ok or degraded present → degraded; else → failed.
+export function rollupSubnetStatus({
+  ok = 0,
+  degraded = 0,
+  failed = 0,
+  unknown = 0,
+  total,
+}) {
+  if (total === 0 || unknown === total) return "unknown";
+  if (failed === 0 && degraded === 0) return "ok";
+  if (ok > 0 || degraded > 0) return "degraded";
+  return "failed";
+}
+
+// Latency is a success-only signal: keep a probe's latency only when it resolved
+// `ok`. Every failure (timeout, 5xx, unsafe, thrown) collapses to null, so it
+// counts toward uptime but never toward the latency mean or percentiles.
+export function okLatencyMs(status, latencyMs) {
+  return status === "ok" && Number.isFinite(latencyMs) ? latencyMs : null;
 }
 
 export function statusForClassification(classification, surface = null) {
@@ -648,15 +692,21 @@ export function parseBlockNumber(header) {
     return null;
   }
   const value = header.number;
+  let block;
   if (typeof value === "number") {
-    return value;
-  }
-  if (typeof value === "string") {
-    return value.startsWith("0x")
+    block = value;
+  } else if (typeof value === "string") {
+    block = value.startsWith("0x")
       ? Number.parseInt(value, 16)
       : Number.parseInt(value, 10);
+  } else {
+    return null;
   }
-  return null;
+  // A real block height is a non-negative integer. Anything else — NaN from a
+  // malformed "0x"/"0xZZ"/empty string, or a non-finite/fractional number —
+  // is unusable and collapses to null, matching this function's other branches
+  // (and so it never leaks NaN past the `??` fallbacks downstream).
+  return Number.isInteger(block) && block >= 0 ? block : null;
 }
 
 // Bounded-concurrency map. Preserves INPUT order in the returned array (callers

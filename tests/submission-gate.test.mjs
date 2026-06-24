@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
@@ -62,9 +68,18 @@ describe("Metagraphed submission gate policy", () => {
   });
 
   test("accepts a one-file direct candidate for private review", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].rate_limit = {
+      requests: 60,
+      window: "1m",
+      burst: 10,
+      scope: "per-key",
+      cost_notes: "Free tier limit.",
+    };
+
     const report = buildPrSubmissionReport({
       changedFiles: ["registry/candidates/community/allways-docs-example.json"],
-      candidateDocument: validCandidateDocument,
+      candidateDocument: document,
       native,
       providers,
       existingSubnets: subnets,
@@ -76,6 +91,10 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.private_review_required, true);
     assert.equal(report.blocking, false);
     assert.equal(report.candidate.id, "community-sn-7-docs-example");
+    assert.deepEqual(
+      report.candidate.rate_limit,
+      document.candidates[0].rate_limit,
+    );
   });
 
   test("blocks direct candidates with malformed schema metadata", () => {
@@ -121,7 +140,7 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.errors[0].category, "generated-artifact-tampering");
   });
 
-  test("routes tampered direct submissions through the UGC preflight", () => {
+  test("routes tampered direct submissions through full validation", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
       const changedFilesPath = path.join(tmp, "changed-files.txt");
@@ -144,13 +163,140 @@ describe("Metagraphed submission gate policy", () => {
         },
       );
 
-      assert.match(readFileSync(outputPath, "utf8"), /^mode=ugc$/m);
+      assert.match(readFileSync(outputPath, "utf8"), /^mode=full$/m);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
   });
 
-  test("routes mixed direct candidate PRs through the UGC gate", () => {
+  test("passes a delete-only candidate PR (removed file) instead of ENOENT-failing the preflight (#candidate-deletion)", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      // A candidate path absent from the working tree = a deletion. Before the fix the preflight ENOENT-ed
+      // reading the missing file (exit 1); now it treats the removal as a non-submission and passes.
+      writeFileSync(
+        changedFilesPath,
+        "registry/candidates/community/__removed-candidate__.json\n",
+      );
+      execFileSync(
+        process.execPath,
+        [
+          "scripts/submission-pr.mjs",
+          "--changed-files",
+          changedFilesPath,
+          "--out",
+          outputPath,
+          "--submitter",
+          "JSONbored",
+        ],
+        { stdio: "pipe" },
+      ); // must NOT throw — exit 0
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, false);
+      assert.equal(report.state, "not-routed");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("blocks mixed candidate deletion and unrelated edits in the preflight", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-mixed-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      writeFileSync(
+        changedFilesPath,
+        [
+          "registry/candidates/community/removed-candidate.json",
+          "README.md",
+        ].join("\n"),
+      );
+
+      assert.throws(() =>
+        execFileSync(
+          process.execPath,
+          [
+            "scripts/submission-pr.mjs",
+            "--changed-files",
+            changedFilesPath,
+            "--out",
+            outputPath,
+            "--submitter",
+            "JSONbored",
+          ],
+          { stdio: "pipe" },
+        ),
+      );
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, true);
+      assert.equal(report.state, "schema-invalid");
+      assert.deepEqual(report.changed_files, [
+        "README.md",
+        "registry/candidates/community/removed-candidate.json",
+      ]);
+      assert.equal(
+        report.error_categories.includes("generated-artifact-tampering"),
+        true,
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("blocks direct submissions mixed with deleted direct files", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-del-submit-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "report.json");
+      // One present direct candidate file (created under the tmp input-root) mixed
+      // with a removed one. The removed-file shortcut (#944) must NOT swallow the
+      // mix into a clean deletion — the policy keeps both and blocks the
+      // unsupported shape. Self-contained so it doesn't depend on any committed
+      // candidate file (the community-candidate lane is being retired).
+      const presentFile =
+        "registry/candidates/community/community-sn-7-present.json";
+      mkdirSync(path.join(tmp, path.dirname(presentFile)), { recursive: true });
+      writeFileSync(
+        path.join(tmp, presentFile),
+        JSON.stringify(validCandidateDocument),
+      );
+      writeFileSync(
+        changedFilesPath,
+        [
+          "registry/candidates/community/removed-candidate.json",
+          presentFile,
+        ].join("\n"),
+      );
+
+      assert.throws(() =>
+        execFileSync(
+          process.execPath,
+          [
+            "scripts/submission-pr.mjs",
+            "--changed-files",
+            changedFilesPath,
+            "--input-root",
+            tmp,
+            "--out",
+            outputPath,
+            "--submitter",
+            "JSONbored",
+          ],
+          { stdio: "pipe" },
+        ),
+      );
+      const report = JSON.parse(readFileSync(outputPath, "utf8"));
+      assert.equal(report.blocking, true);
+      assert.equal(report.state, "schema-invalid");
+      assert.equal(report.error_categories.includes("unsupported-shape"), true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("routes mixed direct candidate PRs through full validation", () => {
     const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-route-"));
     try {
       const changedFiles = path.join(tmp, "changed-files.txt");
@@ -169,7 +315,7 @@ describe("Metagraphed submission gate policy", () => {
       );
       const report = JSON.parse(output);
 
-      assert.equal(report.mode, "ugc");
+      assert.equal(report.mode, "full");
       assert.equal(report.scope, "direct-candidate");
       assert.deepEqual(
         report.errors.map((error) => error.category),
@@ -242,7 +388,7 @@ describe("Metagraphed submission gate policy", () => {
   // artifacts are now R2-only (ADR 0001), so there is nothing committed to diff.
   // The reject-arbitrary-artifact safety checks above still guard contributor PRs.
 
-  test("routes direct provider profile PRs to manual review", () => {
+  test("routes a direct provider profile PR to manual review with the provider-review flag", () => {
     const document = structuredClone(validProviderDocument);
     document.submission.submitted_by = "jsonbored";
     document.submission.submitted_by_url = "https://github.com/jsonbored";
@@ -255,10 +401,13 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "JSONbored",
     });
 
+    // Provider identity affects future endpoint trust, so direct provider
+    // profiles require deterministic maintainer review rather than autonomous
+    // private-review routing.
     assert.equal(report.public_state, "manual_review");
     assert.equal(report.next_action, "manual-review");
-    assert.equal(report.private_review_required, true);
-    assert.equal(report.blocking, false);
+    assert.equal(report.private_review_required, false);
+    assert.equal(report.blocking, true);
     assert.equal(
       report.direct_provider_file,
       "registry/providers/community/example-operator.json",
@@ -338,15 +487,107 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("blocks mixed direct candidate and provider PRs", () => {
+  test("accepts an atomic provider+candidate pair PR (debut lane)", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",
       "registry/providers/community/example-operator.json",
     ]);
 
-    assert.equal(scope.scope, "direct-provider");
-    assert.equal(scope.errors.length, 1);
-    assert.equal(scope.errors[0].category, "unsupported-shape");
+    // One candidate + one provider (and nothing else) is the atomic debut pair:
+    // a first-time team registers its provider and lands its first surface in one
+    // PR. No error — it routes down the UGC lane to reviewbot.
+    assert.equal(scope.scope, "direct-pair");
+    assert.equal(scope.errors.length, 0);
+  });
+
+  test("still blocks a direct submission bundled with unrelated files", () => {
+    const scope = classifyPrScope([
+      "registry/candidates/community/allways-docs-example.json",
+      "registry/providers/community/example-operator.json",
+      "scripts/build.mjs",
+    ]);
+
+    assert.equal(
+      scope.errors.some(
+        (error) => error.category === "generated-artifact-tampering",
+      ),
+      true,
+    );
+  });
+
+  test("still blocks two candidate files (only an atomic one-of-each pair is allowed)", () => {
+    const scope = classifyPrScope([
+      "registry/candidates/community/allways-docs-example.json",
+      "registry/candidates/community/another-candidate.json",
+    ]);
+
+    assert.equal(
+      scope.errors.some((error) => error.category === "unsupported-shape"),
+      true,
+    );
+  });
+
+  test("accepts an atomic provider+candidate debut pair end-to-end (inline provider counts as registered)", () => {
+    const providerDoc = structuredClone(validProviderDocument);
+    providerDoc.submission.submitted_by = "jsonbored";
+    providerDoc.submission.submitted_by_url = "https://github.com/jsonbored";
+    const candidateDoc = structuredClone(validCandidateDocument);
+    candidateDoc.candidates[0].id = "community-sn-7-docs-debut";
+    candidateDoc.candidates[0].provider = providerDoc.provider.id; // not yet registered
+
+    const report = buildPrSubmissionReport({
+      changedFiles: [
+        "registry/candidates/community/community-sn-7-docs-debut.json",
+        "registry/providers/community/example-operator.json",
+      ],
+      candidateDocument: candidateDoc,
+      providerDocument: providerDoc,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+
+    // The inline provider satisfies the candidate's registration check, but its
+    // identity is self-asserted in the same PR, so the pair requires maintainer
+    // review instead of autonomous routing.
+    assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.errors.some((error) => /is not registered/.test(error)),
+      false,
+    );
+    assert.equal(report.candidate.id, "community-sn-7-docs-debut");
+    assert.equal(report.provider.id, providerDoc.provider.id);
+  });
+
+  test("flags a candidate referencing an unregistered provider as a NON-terminal fix (not an auto-close)", () => {
+    const candidateDoc = structuredClone(validCandidateDocument);
+    candidateDoc.candidates[0].id = "community-sn-7-docs-noprovider";
+    candidateDoc.candidates[0].provider = "brand-new-unregistered-provider";
+
+    const report = buildPrSubmissionReport({
+      changedFiles: [
+        "registry/candidates/community/community-sn-7-docs-noprovider.json",
+      ],
+      candidateDocument: candidateDoc,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "jsonbored",
+    });
+
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.blocking, true);
+    assert.equal(
+      report.error_categories.includes("provider-not-registered"),
+      true,
+    );
+    // Non-terminal: the contributor fixes it by adding the provider in the same
+    // PR — the gate must not recommend auto-closing the debut submission.
+    assert.equal(report.terminal_recommendation, null);
+    assert.notEqual(report.next_action, "close");
   });
 
   test("blocks unsafe candidate URLs", () => {
@@ -407,7 +648,15 @@ describe("Metagraphed submission gate policy", () => {
       existingSubnets: subnets,
       submitter: "jsonbored",
     });
+    // High-trust surfaces require deterministic maintainer review.
     assert.equal(authReport.public_state, "manual_review");
+    assert.equal(authReport.next_action, "manual-review");
+    assert.equal(
+      authReport.manual_reasons.includes(
+        "authenticated interfaces require review",
+      ),
+      true,
+    );
 
     const rpcDocument = structuredClone(validCandidateDocument);
     rpcDocument.candidates[0].kind = "subtensor-rpc";
@@ -421,9 +670,16 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(rpcReport.public_state, "manual_review");
+    assert.equal(rpcReport.next_action, "manual-review");
+    assert.equal(
+      rpcReport.manual_reasons.includes(
+        "base-layer RPC/WSS/archive endpoint claims require review",
+      ),
+      true,
+    );
   });
 
-  test("routes an ownership-sensitive surface whose owner does not match its provider to manual review", () => {
+  test("routes an ownership-mismatched surface to manual review with the owner-mismatch flag", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {
       id: "community-sn-7-source-repo-mismatch",
@@ -441,6 +697,7 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("does not match its registered provider"),
@@ -449,7 +706,7 @@ describe("Metagraphed submission gate policy", () => {
     );
   });
 
-  test("routes an ownership-sensitive surface with mismatched url even when source_url matches provider to manual review", () => {
+  test("routes a masked ownership-mismatch (url owner differs, source_url matches) to manual review", () => {
     const document = structuredClone(validCandidateDocument);
     Object.assign(document.candidates[0], {
       id: "community-sn-7-source-repo-masked-mismatch",
@@ -467,6 +724,7 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("url owner does not match its registered provider"),
@@ -531,6 +789,7 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("independent proof source"),
@@ -580,6 +839,7 @@ describe("Metagraphed submission gate policy", () => {
       submitter: "jsonbored",
     });
     assert.equal(report.public_state, "manual_review");
+    assert.equal(report.next_action, "manual-review");
     assert.equal(
       report.manual_reasons.some((reason) =>
         reason.includes("independent proof source"),
@@ -719,6 +979,57 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.public_state, "submit_pr");
     assert.equal(report.import_allowed, true);
     assert.equal(report.next_action, "open-import-pr");
+  });
+
+  test("rejects interface submissions with credential-like evidence as readable strings", () => {
+    const patEvidence = [
+      ["git", "hub"].join(""),
+      ["pat", "abcdefghijklmnopqrstuvwxyz123456"].join("_"),
+    ].join("_");
+    const body = [
+      "### Netuid",
+      "7",
+      "### Subnet name",
+      "Allways",
+      "### Interface kind",
+      "docs",
+      "### Public URL",
+      "https://docs.all-ways.io/community-submission-example",
+      "### Source URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### Provider or team",
+      "allways",
+      "### Does this interface require authentication?",
+      "no",
+      "### Evidence",
+      `${patEvidence} token should not pass.`,
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 55,
+        title: "interface: secret evidence",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.interfaceSubmission }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.candidate, null);
+    assert.equal(
+      report.errors.includes(
+        "submission appears to include wallet, PAT, token, or private credential material",
+      ),
+      true,
+    );
+    assert.equal(
+      report.errors.some((error) => error === "[object Object]"),
+      false,
+    );
   });
 
   test("routes provider profile issue submissions to manual review", () => {
@@ -1240,6 +1551,7 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.deepEqual(urlOwnerTokens("https://attacker.uc.r.appspot.com/api"), [
       "attacker",
     ]);
+    assert.deepEqual(urlOwnerTokens("https://abc.gitlab.io/api"), ["abc"]);
     assert.deepEqual(urlOwnerTokens("not a url"), []);
     assert.deepEqual(urlOwnerTokens(42), []);
     // a sub-4-char org is filtered out
@@ -1277,6 +1589,33 @@ describe("submission-policy owner-identity + placeholder helpers", () => {
     assert.equal(
       ownerTokensMatch(["safescanai"], ["byzantium", "byzantiumai"]),
       false,
+    );
+  });
+
+  test("short multi-tenant URL owners still trigger owner mismatch review", () => {
+    const document = structuredClone(validCandidateDocument);
+    document.candidates[0].kind = "subnet-api";
+    document.candidates[0].url = "https://abc.gitlab.io/api";
+    document.candidates[0].source_url =
+      "https://docs.all-ways.io/how-it-works.html";
+    document.candidates[0].source_urls = [
+      "https://docs.all-ways.io/how-it-works.html",
+    ];
+
+    const report = buildPrSubmissionReport({
+      changedFiles: ["registry/candidates/community/abc-gitlab-api.json"],
+      candidateDocument: document,
+      native,
+      providers,
+      existingSubnets: subnets,
+      submitter: "JSONbored",
+    });
+
+    assert.equal(
+      report.manual_reasons.includes(
+        "candidate url owner does not match its registered provider's identity — needs review to confirm it is the subnet's own surface",
+      ),
+      true,
     );
   });
 

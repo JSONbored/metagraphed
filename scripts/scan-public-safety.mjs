@@ -28,7 +28,12 @@ const patterns = [
   {
     name: "private or loopback URL",
     regex:
-      /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+    // The standard local subtensor RPC endpoint is documented setup guidance for
+    // the `local` network surface (llms.txt / setup docs), not a leaked internal
+    // URL. Scoped to the exact well-known endpoint; any other loopback URL on the
+    // same line is still flagged (allowlisted spans are stripped before testing).
+    allow: /wss?:\/\/127\.0\.0\.1:9944(?![A-Za-z0-9._~:/?#\]@!$&'()*+,;=%-])/gi,
   },
   {
     name: "token-like assignment",
@@ -49,6 +54,16 @@ const patterns = [
   {
     name: "Bittensor key terminology",
     regex: /\bcoldkey\b/i,
+    // Bare "coldkey" as a public API field name (JSON property / required entry /
+    // TS type member) is legitimate metagraph vocabulary (#1304) — an ss58 coldkey
+    // is public on-chain data, not a secret. Also allow the "hotkey or coldkey"
+    // field-pair phrase (account routes #1347 doc text) and the `coldkey =` SQL
+    // column comparison. Strip those legitimate spans so only suspicious prose
+    // ("your coldkey seed phrase" — still caught by the wallet/key-wording rule)
+    // trips. Same rationale as the isMirroredExternalSpec exemption, scoped to the
+    // safe forms so the guard stays active everywhere else.
+    allow:
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey\s+or\s+coldkey\b|\bcoldkey\s*=/gi,
     soft: true,
   },
   {
@@ -75,6 +90,14 @@ function isMirroredExternalSpec(relativePath) {
   return [
     /^public\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
     /^dist\/metagraph-r2\/metagraph\/schemas\/(?!index\.json$)[^/]+\.json$/,
+    // Adapter snapshots are machine-generated, live-fetched from each subnet's own
+    // upstream API/repo each publish — the same "published docs" case as schemas:
+    // legitimate wallet/key API vocabulary (e.g. Hippius SN75 documents "private
+    // key"/"seed phrase") false-positives the SOFT terminology heuristic and
+    // wedges the publish. Exempt the source snapshot + its R2 mirror from the soft
+    // patterns only; the HARD secret-value patterns above still apply to them.
+    /^registry\/adapters\/latest\/[^/]+\.json$/,
+    /^dist\/metagraph-r2\/metagraph\/adapters\/[^/]+\.json$/,
     ...mirroredFixturePatterns,
   ].some((pattern) => pattern.test(relativePath));
 }
@@ -137,7 +160,11 @@ for (const root of targetRoots) {
         if (pattern.soft && skipSoft) {
           continue;
         }
-        if (pattern.regex.test(line)) {
+        // Strip allowlisted spans (e.g. the documented local subtensor RPC
+        // endpoint) before testing, so a real leak elsewhere on the same line
+        // is still caught.
+        const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+        if (pattern.regex.test(probe)) {
           findings.push(`${relative}:${index + 1}: ${pattern.name}`);
         }
       }
@@ -168,7 +195,7 @@ function scanCapturedFixtureBody(relativePath, content) {
     return;
   }
 
-  for (const { valuePath, value } of walkJsonStrings(body)) {
+  for (const { valuePath, value, kind } of walkJsonStrings(body)) {
     for (const pattern of patterns) {
       // Keep broad Bittensor terminology exempt for mirrored fixture bodies, but
       // still scan security-sensitive wallet/key phrases that can appear under
@@ -186,9 +213,11 @@ function scanCapturedFixtureBody(relativePath, content) {
         continue;
       }
       if (pattern.regex.test(value)) {
-        findings.push(
-          `${relativePath}:response.body${valuePath}: ${pattern.name}`,
-        );
+        const location =
+          kind === "key"
+            ? `${relativePath}:response.body${valuePath} key`
+            : `${relativePath}:response.body${valuePath}`;
+        findings.push(`${location}: ${pattern.name}`);
       }
     }
   }
@@ -241,7 +270,9 @@ function* walkJsonStrings(node, valuePath = "") {
   }
   if (node && typeof node === "object") {
     for (const [key, value] of Object.entries(node)) {
-      yield* walkJsonStrings(value, `${valuePath}.${key}`);
+      const nestedPath = `${valuePath}.${key}`;
+      yield { valuePath: nestedPath, value: key, kind: "key" };
+      yield* walkJsonStrings(value, nestedPath);
     }
   }
 }

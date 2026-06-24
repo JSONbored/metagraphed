@@ -65,5 +65,7 @@
       },
       "notes": "Official Talisman AI source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/wearetalisman" },
+  "contact": "tai@rizzo.network"
 }

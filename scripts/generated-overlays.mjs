@@ -7,6 +7,7 @@ import {
   listJsonFiles,
   loadCandidates,
   loadNativeSnapshot,
+  loadProviders,
   loadVerification,
   nativeDisplayName,
   nativeNameQuality,
@@ -17,6 +18,11 @@ import {
   stableStringify,
   writeJson,
 } from "./lib.mjs";
+import {
+  ownerTokensMatch,
+  providerIdentityTokens,
+  urlOwnerTokens,
+} from "./submission-policy.mjs";
 
 export const generatedOverlayDirectory = path.join(
   repoRoot,
@@ -30,6 +36,10 @@ export const generatedOverlaySourcePath = path.join(
   generatedSourceRoot,
   "subnets/generated-overlays.json",
 );
+
+function overlayFieldOrFallback(overlay, field, fallback) {
+  return Object.hasOwn(overlay, field) ? overlay[field] : fallback;
+}
 
 export async function loadManualSubnetOverlays() {
   const files = await listJsonFiles(path.join(repoRoot, "registry/subnets"));
@@ -48,11 +58,29 @@ export async function generateBaselineOverlaySet(options = {}) {
   const candidates = options.candidates || (await loadCandidates());
   const verification =
     options.verification || (await loadVerification({ preferDetailed: false }));
+  const providers = options.providers || (await loadProviders());
   const manualOverlays =
     options.manualOverlays || (await loadManualSubnetOverlays());
   const existingGeneratedOverlays =
     options.existingGeneratedOverlays ||
     (await loadExistingGeneratedSubnetOverlays());
+  // Maintainer-reviewed decisions elevate generated-only overlays too (not just
+  // manual ones), but the elevation must be tied to reviewed evidence. A subnet
+  // should not inherit the maintainer-reviewed tier merely because any unrelated
+  // surface was promoted for the same netuid.
+  const maintainerReviewedDecisions =
+    options.maintainerReviewedDecisions ||
+    (
+      await readJson(
+        path.join(repoRoot, "registry/reviews/maintainer-reviewed.json"),
+      ).catch(() => ({ decisions: [] }))
+    ).decisions ||
+    [];
+  const maintainerReviewedDecisionsByNetuid = groupByNetuid(
+    maintainerReviewedDecisions.filter(
+      (decision) => decision.decision === "maintainer-reviewed",
+    ),
+  );
 
   const manualNetuids = new Set(
     manualOverlays.map((overlay) => overlay.netuid),
@@ -63,6 +91,9 @@ export async function generateBaselineOverlaySet(options = {}) {
   const verificationByCandidate = new Map(
     (verification.results || []).map((result) => [result.candidate_id, result]),
   );
+  const providersById = new Map(
+    providers.map((provider) => [provider.id, provider]),
+  );
   const candidatesByNetuid = groupByNetuid(candidates);
   const generatedOverlays = [];
   const manualBaselineOverlays = [];
@@ -72,7 +103,9 @@ export async function generateBaselineOverlaySet(options = {}) {
       candidatesByNetuid,
       existingGeneratedByNetuid,
       nativeSubnet,
+      providersById,
       verificationByCandidate,
+      maintainerReviewedDecisionsByNetuid,
     });
     if (manualNetuids.has(nativeSubnet.netuid)) {
       manualBaselineOverlays.push(baselineOverlay);
@@ -99,6 +132,7 @@ export async function generateBaselineOverlaySet(options = {}) {
     manualOverlays: augmentedManualOverlays,
     nativeSnapshot,
     summary,
+    providers,
     verification,
   };
 }
@@ -165,10 +199,16 @@ export function augmentManualOverlaysWithBaseline(
         dashboard_url:
           manualOverlay.dashboard_url || firstUrl(manualSurfaces, "dashboard"),
         docs_url: manualOverlay.docs_url || firstUrl(manualSurfaces, "docs"),
-        source_repo:
-          manualOverlay.source_repo || firstUrl(manualSurfaces, "source-repo"),
-        website_url:
-          manualOverlay.website_url || firstUrl(manualSurfaces, "website"),
+        source_repo: overlayFieldOrFallback(
+          manualOverlay,
+          "source_repo",
+          firstUrl(manualSurfaces, "source-repo"),
+        ),
+        website_url: overlayFieldOrFallback(
+          manualOverlay,
+          "website_url",
+          firstUrl(manualSurfaces, "website"),
+        ),
         curation: {
           ...(manualOverlay.curation || {}),
           source_count: Math.max(
@@ -237,11 +277,39 @@ export async function writeGeneratedOverlayArtifacts({
   return summary;
 }
 
+// Curation block for a generated overlay. A maintainer-reviewed decision elevates
+// the level to the trusted tier (only when there are surfaces to vouch for);
+// otherwise it's machine-verified (has surfaces) or candidate-discovered (none).
+// reviewed_at stays null here — the authoritative timestamp lives in the decision
+// file (registry/reviews/maintainer-reviewed.json), the single source of truth.
+function buildGeneratedCuration({
+  hasSurfaces,
+  hasReviewedEvidence,
+  sourceCount,
+  gapNotes,
+}) {
+  const elevated = hasSurfaces && hasReviewedEvidence;
+  return {
+    level: elevated
+      ? "maintainer-reviewed"
+      : hasSurfaces
+        ? "machine-verified"
+        : "candidate-discovered",
+    review_state: elevated ? "maintainer-reviewed" : "machine-generated",
+    reviewed_at: null,
+    verified_at: null,
+    source_count: sourceCount,
+    gap_notes: gapNotes,
+  };
+}
+
 function buildGeneratedOverlay({
   candidatesByNetuid,
   existingGeneratedByNetuid,
   nativeSubnet,
+  providersById,
   verificationByCandidate,
+  maintainerReviewedDecisionsByNetuid = new Map(),
 }) {
   const subnetCandidates = candidatesByNetuid.get(nativeSubnet.netuid) || [];
   const promotedSurfaces = subnetCandidates
@@ -250,7 +318,7 @@ function buildGeneratedOverlay({
       verification: verificationByCandidate.get(candidate.id),
     }))
     .filter(({ candidate, verification }) =>
-      isPromotable(candidate, verification),
+      isPromotable(candidate, verification, providersById),
     )
     .map(({ candidate, verification }) =>
       promoteCandidate(candidate, verification),
@@ -291,23 +359,48 @@ function buildGeneratedOverlay({
       nativeSubnet.netuid === 0
         ? "Machine-generated root/system baseline overlay."
         : "Machine-generated baseline overlay from verified public-source candidates.",
-    curation: {
-      level:
-        promotedSurfaces.length > 0
-          ? "machine-verified"
-          : "candidate-discovered",
-      review_state: "machine-generated",
-      reviewed_at: null,
-      verified_at: null,
-      source_count: sourceUrls.size,
-      gap_notes: gaps.gap_notes,
-    },
+    curation: buildGeneratedCuration({
+      hasSurfaces: promotedSurfaces.length > 0,
+      hasReviewedEvidence: hasMaintainerReviewedEvidence(
+        promotedSurfaces,
+        maintainerReviewedDecisionsByNetuid.get(nativeSubnet.netuid) || [],
+      ),
+      sourceCount: sourceUrls.size,
+      gapNotes: gaps.gap_notes,
+    }),
     links: [],
     surfaces: promotedSurfaces,
   };
 }
 
-function isPromotable(candidate, verification) {
+function hasMaintainerReviewedEvidence(surfaces, decisions) {
+  if (surfaces.length === 0 || decisions.length === 0) {
+    return false;
+  }
+
+  const promotedUrls = new Set(
+    surfaces
+      .flatMap((surface) => [surface.url, ...(surface.source_urls || [])])
+      .map((url) => normalizePublicUrl(url))
+      .filter(Boolean),
+  );
+  return decisions.some((decision) =>
+    (decision.source_urls || [])
+      .map((url) => normalizePublicUrl(url))
+      .filter(Boolean)
+      .some((url) => promotedUrls.has(url)),
+  );
+}
+
+const OWNER_SENSITIVE_KINDS = new Set([
+  "source-repo",
+  "website",
+  "subnet-api",
+  "openapi",
+  "sse",
+]);
+
+function isPromotable(candidate, verification, providersById = new Map()) {
   if (
     !verification ||
     !["live", "redirected"].includes(verification.classification)
@@ -321,6 +414,17 @@ function isPromotable(candidate, verification) {
     verification.private_redirect_blocked
   ) {
     return false;
+  }
+  if (candidate.state && candidate.state !== "schema-valid") {
+    return false;
+  }
+  if (isCommunityOwnerSensitiveCandidate(candidate)) {
+    const providerRecord = providersById.get(candidate.provider);
+    const identityTokens = providerIdentityTokens(providerRecord);
+    const claimTokens = urlOwnerTokens(candidate.url);
+    if (!ownerTokensMatch(claimTokens, identityTokens)) {
+      return false;
+    }
   }
   if (isGenericToolingSurface(candidate)) {
     return false;
@@ -338,6 +442,14 @@ function isPromotable(candidate, verification) {
     return isJsonContentType(verification.content_type);
   }
   return true;
+}
+
+function isCommunityOwnerSensitiveCandidate(candidate) {
+  return (
+    OWNER_SENSITIVE_KINDS.has(candidate.kind) &&
+    (candidate.source_type === "community-pr-intake" ||
+      candidate.source_tier === "community-docs")
+  );
 }
 
 function isGenericToolingSurface(candidate) {
@@ -426,6 +538,7 @@ function promoteCandidate(candidate, verification) {
     public_safe: true,
     source_urls: candidate.source_urls || [candidate.source_url],
     quality_signals: verification.quality_signals,
+    rate_limit: candidate.rate_limit,
     rate_limit_notes: candidate.rate_limit_notes,
     probe: probeForKind(candidate.kind),
     notes: candidate.review_notes,

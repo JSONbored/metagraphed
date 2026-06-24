@@ -219,7 +219,9 @@ describe("/health readiness", () => {
   });
 
   test("reports degraded + 503 when the KV latest pointer is stale", async () => {
-    const stale = new Date(Date.now() - 48 * 3_600_000).toISOString();
+    // Clearly past the 48h default max-age — not exactly on the boundary, which
+    // raced (a few ms of test runtime decided 48.001h > 48h vs == 48h).
+    const stale = new Date(Date.now() - 72 * 3_600_000).toISOString();
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: stale },
@@ -233,6 +235,9 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 503);
     assert.equal(res.headers.get("x-metagraph-health"), "degraded");
+    // A transient degraded 503 must not be edge-cached (it would pin the outage
+    // for up to max-age + stale-while-revalidate after recovery).
+    assert.equal(res.headers.get("cache-control"), "no-store");
     const body = await res.json();
     assert.equal(body.status, "degraded");
     assert.equal(body.freshness.stale, true);
@@ -248,6 +253,86 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 200);
     assert.equal((await res.json()).status, "ok");
+    // The healthy path stays edge-cacheable (short profile) for load relief.
+    assert.match(res.headers.get("cache-control"), /max-age=/);
+  });
+
+  test("reports chain-event index freshness (#1361)", async () => {
+    const atMs = Date.now() - 18_000; // latest indexed event ~18s ago
+    const preparedSql = [];
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          preparedSql.push(sql);
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [{ block: 8461200, at: atMs }] };
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.chain_events.latest_indexed_block, 8461200);
+    assert.equal(typeof body.chain_events.age_seconds, "number");
+    assert.ok(
+      body.chain_events.age_seconds >= 17 &&
+        body.chain_events.age_seconds <= 120,
+      `age_seconds out of range: ${body.chain_events.age_seconds}`,
+    );
+    assert.ok(body.chain_events.latest_event_at.startsWith("20"));
+    assert.deepEqual(preparedSql, [
+      "SELECT block_number AS block, observed_at AS at FROM account_events " +
+        "ORDER BY observed_at DESC LIMIT 1",
+    ]);
+  });
+
+  test("chain_events is schema-stable nulls when the event tier is cold (#1361)", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] }; // empty account_events tier
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.chain_events.latest_indexed_block, null);
+    assert.equal(body.chain_events.latest_event_at, null);
+    assert.equal(body.chain_events.age_seconds, null);
+  });
+
+  test("chain_events is null when no health DB is bound (#1361)", async () => {
+    const env = {
+      ASSETS: {
+        async fetch() {
+          return new Response("{}", { status: 404 });
+        },
+      },
+    };
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal((await res.json()).chain_events, null);
   });
 
   test("HEAD /health returns no body", async () => {
@@ -353,6 +438,46 @@ describe("badge SVG handler", () => {
       {},
     );
     assert.equal(res.status, 304);
+  });
+
+  test("304 for a badge when if-none-match sends the strong (W/-less) validator", async () => {
+    // weakEtag emits W/"…", but If-None-Match uses weak comparison (RFC 7232),
+    // so the strong form "…" must also match. The previous strict === check
+    // only matched the exact W/"…" echo and returned 200 here.
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/metagraph/health/badges/7.svg"),
+      env,
+      {},
+    );
+    const strong = first.headers.get("etag").replace(/^W\//, "");
+    const res = await handleRequest(
+      req("/metagraph/health/badges/7.svg", {
+        headers: { "if-none-match": strong },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 304);
+  });
+
+  test("304 for the MCP server card / agent-tools with the strong validator", async () => {
+    // The same weak-comparison fix applies to the other two discovery handlers.
+    const env = createLocalArtifactEnv();
+    for (const path of [
+      "/.well-known/mcp/server-card.json",
+      "/.well-known/agent-tools/openai.json",
+    ]) {
+      const first = await handleRequest(req(path), env, {});
+      assert.equal(first.status, 200, `${path} first GET`);
+      const strong = first.headers.get("etag").replace(/^W\//, "");
+      const res = await handleRequest(
+        req(path, { headers: { "if-none-match": strong } }),
+        env,
+        {},
+      );
+      assert.equal(res.status, 304, `${path} strong-form revalidation`);
+    }
   });
 
   test("prefers the live KV overlay status when present", async () => {
@@ -537,6 +662,18 @@ describe("invalid query handling", () => {
     );
     assert.equal(res.status, 400);
     assert.equal((await res.json()).meta.parameter, "order");
+  });
+
+  test("400 invalid_query for an unsupported projected field", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?fields=netuid,not_a_field"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "fields");
   });
 
   test("paginates with cursor + limit and reports next_cursor", async () => {
@@ -1071,6 +1208,52 @@ describe("health trends D1 error handling", () => {
     assert.equal(body.data.netuid, 0);
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
+
+  test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  throw new Error("d1 down");
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["7d"].subnets, []);
+  });
+
+  test("bulk route treats a D1 response without results as empty", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {};
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/health/trends"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.windows["7d"].subnet_count, 0);
+    assert.deepEqual(body.data.windows["30d"].subnets, []);
+  });
 });
 
 // --- readAsset with no ASSETS binding ----------------------------------------
@@ -1099,6 +1282,19 @@ describe("weightedPickEndpoint", () => {
     ];
     const picked = weightedPickEndpoint(endpoints, () => 0.999999999);
     assert.equal(picked.id, "b");
+  });
+
+  test("returns the final endpoint when randomFn lands exactly on the total (cursor never < 0)", () => {
+    // randomFn() === 1 → cursor = total; subtracting each weight leaves cursor at
+    // exactly 0 after the last endpoint, never < 0, so the loop never returns and
+    // the post-loop fallthrough (return endpoints[len-1]) is taken.
+    const endpoints = [
+      { id: "a", score: 1 },
+      { id: "b", score: 1 },
+      { id: "c", score: 1 },
+    ];
+    const picked = weightedPickEndpoint(endpoints, () => 1);
+    assert.equal(picked.id, "c");
   });
 
   test("single-endpoint shortcut", () => {

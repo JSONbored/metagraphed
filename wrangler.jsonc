@@ -28,6 +28,8 @@
       "/.well-known/api-catalog",
       "/.well-known/mcp/server-card.json",
       "/.well-known/agent-tools/*",
+      "/og.png",
+      "/og",
       "/api/*",
       "/rpc/*",
       "/metagraph/*",
@@ -94,7 +96,7 @@
       "index_name": "metagraphed-registry-v2",
     },
   ],
-  // Live operational-health store. Written every 2 minutes by the cron prober
+  // Live operational-health store. Written every 15 minutes by the cron prober
   // (src/health-prober.mjs) and read live by the serving layer — decoupled from
   // the 6h build so a stale structural snapshot never freezes health.
   "d1_databases": [
@@ -105,11 +107,22 @@
       "migrations_dir": "migrations",
     },
   ],
-  // Cron prober: every 2 minutes probes the operational surfaces into D1/KV
-  // (served live); the hourly trigger prunes the D1 time-series. Registered
+  // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
+  // (served live); the hourly trigger prunes the D1 time-series. 15 min (96
+  // checks/day/surface) is ample for a registry's uptime + incident signal and
+  // far politer to the probed subnets than the old 2-min sweep. Registered
   // automatically on the next Workers Builds deploy.
   "triggers": {
-    "crons": ["*/2 * * * *", "0 * * * *", "37 3 * * *"],
+    // */3 = fast drain of R2-staged chain-event/neuron batches into D1 (#1346
+    // Option A, ~5-min ingestion); */15 = health probe; 0 = hourly prune/rollup;
+    // 37 3 = daily embedding sync; 47 5 = daily neuron-history rollup (#1345).
+    "crons": [
+      "*/3 * * * *",
+      "*/15 * * * *",
+      "0 * * * *",
+      "37 3 * * *",
+      "47 5 * * *",
+    ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
   // for enabling METAGRAPH_ENABLE_RPC_PROXY). 100 requests / 60s per client IP;

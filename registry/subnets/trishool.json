@@ -87,5 +87,7 @@
       },
       "notes": "Official Trishool phase two source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/trishoolai" },
+  "contact": "nav@astroware.ai"
 }

@@ -66,5 +66,9 @@
       },
       "notes": "Official ForeverMoney source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/forevermoney_ai"
+  },
+  "contact": "gm@forevermoney.ai"
 }

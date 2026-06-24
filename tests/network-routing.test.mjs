@@ -91,6 +91,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
 
     for (const route of [
       "/api/v1/registry/leaderboards",
+      "/api/v1/health/trends",
       "/api/v1/subnets/7/health/trends",
     ]) {
       const bare = await get(env, route);
@@ -158,6 +159,40 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(detail.body.data.subnet.netuid, 11);
   });
 
+  test("testnet subnet details do not receive mainnet live economics", async () => {
+    const economicsBlob = {
+      schema_version: 1,
+      captured_at: new Date().toISOString(),
+      summary: { with_economics_count: 1 },
+      subnets: [
+        {
+          netuid: 1,
+          name: "MAINNET economics row for netuid 1",
+          emission_share: 1,
+          validators: 123,
+          miners: 456,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === "economics:current" ? economicsBlob : null;
+        },
+      },
+    });
+
+    const detail = await get(env, "/api/v1/testnet/subnets/1");
+
+    assert.equal(detail.res.status, 200);
+    assert.equal(
+      detail.body.meta.artifact_path,
+      "/metagraph/testnet/subnets/1.json",
+    );
+    assert.equal(detail.body.data.subnet.netuid, 1);
+    assert.equal(detail.body.data.economics, undefined);
+  });
+
   test("local network route 404s cleanly (no data published)", async () => {
     const env = createLocalArtifactEnv();
     const { res } = await get(env, "/api/v1/local/coverage");
@@ -203,7 +238,8 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(info.res.status, 200);
     assert.equal(info.body.data.network, "local");
     assert.equal(info.body.data.mode, "client-side");
-    assert.match(info.body.data.rpc.ws, /127\.0\.0\.1:9944/);
+    assert.equal(info.body.data.rpc.ws, undefined);
+    assert.equal(info.body.data.rpc.network_arg, "local");
     // Develop-before-mainnet quickstart (issue #354): real ordered steps + the
     // testnet/mainnet/lineage references, not just a ws:// URL.
     const steps = info.body.data.quickstart?.steps;
@@ -237,7 +273,11 @@ describe("multi-network routing prefix (Phase 1)", () => {
     );
     assert.equal(leaderboards.res.status, 404);
 
-    // Numeric per-subnet dynamic route (D1-backed) is mainnet-only too.
+    // D1-backed health trend routes are mainnet-only too.
+    const bulkTrends = await get(env, "/api/v1/testnet/health/trends");
+    assert.equal(bulkTrends.res.status, 404);
+    assert.equal(bulkTrends.body.meta.network, "testnet");
+
     const trends = await get(env, "/api/v1/testnet/subnets/7/health/trends");
     assert.equal(trends.res.status, 404);
     assert.equal(trends.body.meta.network, "testnet");

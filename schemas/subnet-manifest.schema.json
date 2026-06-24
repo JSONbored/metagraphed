@@ -40,7 +40,7 @@
       "uniqueItems": true
     },
     "docs_url": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "uri"
     },
     "source_repo": {
@@ -65,6 +65,37 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/link"
+      }
+    },
+    "contact": {
+      "type": "string",
+      "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) — sanitized at build via subnetContact. Display-only; never feeds completeness."
+    },
+    "social": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Curated social links — wins over on-chain extraction (#745). Display-only; never feeds completeness.",
+      "properties": {
+        "x": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Xx]\\.com|[Tt]witter\\.com)([:/?#]|$)"
+        },
+        "telegram": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Tt]\\.me|[Tt]elegram\\.me|[Tt]elegram\\.org)([:/?#]|$)"
+        },
+        "reddit": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?[Rr]eddit\\.com([:/?#]|$)"
+        },
+        "youtube": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://([^/?#@]+\\.)?([Yy]outube\\.com|[Yy]outu\\.be)([:/?#]|$)"
+        }
       }
     },
     "baseline_excluded_surface_ids": {
@@ -175,12 +206,114 @@
         "verification": {
           "$ref": "#/$defs/verification"
         },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "description": "Per-surface review/trust state for the single-file contribution model: a community-submitted surface enters as \"community-submitted\" and the Gittensory Gate / maintainer review promotes the state in place. Distinct from probe-derived `verification` (health) and the subnet-level `curation.review_state`.",
+          "properties": {
+            "state": {
+              "enum": [
+                "community-submitted",
+                "schema-valid",
+                "auto-verified",
+                "maintainer-reviewed",
+                "stale",
+                "rejected"
+              ]
+            },
+            "submitted_by": {
+              "type": "string"
+            },
+            "submitted_at": {
+              "type": "string"
+            },
+            "confidence": {
+              "enum": ["low", "medium", "high"]
+            },
+            "review_notes": {
+              "type": "string"
+            }
+          }
+        },
         "quality_signals": {
           "type": "object",
           "additionalProperties": true
         },
         "rate_limit_notes": {
           "type": "string"
+        },
+        "rate_limit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requests", "window"],
+          "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+          "properties": {
+            "requests": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Permitted requests per window."
+            },
+            "window": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\"."
+            },
+            "burst": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Optional short-term burst allowance above the steady rate."
+            },
+            "scope": {
+              "enum": ["per-key", "per-ip", "global", "unknown"],
+              "description": "What the limit is counted against."
+            },
+            "cost_notes": {
+              "type": "string",
+              "description": "Notes on weighted/credit costs or tier differences."
+            }
+          }
+        },
+        "auth": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["scheme"],
+          "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+          "properties": {
+            "scheme": {
+              "enum": [
+                "none",
+                "bearer",
+                "api-key",
+                "basic",
+                "oauth2",
+                "custom"
+              ],
+              "description": "Credential scheme."
+            },
+            "location": {
+              "enum": ["header", "query", "cookie"],
+              "description": "Where the credential is sent."
+            },
+            "name": {
+              "type": "string",
+              "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\"."
+            },
+            "value_format": {
+              "type": "string",
+              "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret."
+            },
+            "token_url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+              "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one."
+            },
+            "scopes_note": {
+              "type": "string",
+              "description": "Note on required scopes or how to obtain a credential."
+            }
+          }
         },
         "probe": {
           "$ref": "#/$defs/probe"

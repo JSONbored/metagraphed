@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 39,
-  "name": "Basilica",
-  "slug": "sn-39",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "compute",
@@ -11,16 +6,7 @@
     "identity-reviewed",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/one-covenant/basilica",
-  "dashboard_url": "https://taomarketcap.com/subnets/39",
-  "website_url": "https://www.basilica.ai/",
-  "notes": "Reviewed overlay for SN39 using the live One Covenant Basilica repository and website. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "needs-review",
-    "reviewed_at": "2026-06-08T11:05:00.000Z",
-    "verified_at": "2026-06-08T11:05:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "Native chain name currently reports as deprecated.",
       "No verified docs site yet.",
@@ -28,50 +14,103 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "needs-review",
+    "reviewed_at": "2026-06-08T11:05:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T11:05:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/39",
+  "name": "Basilica",
+  "netuid": 39,
+  "notes": "Reviewed overlay for SN39 using the live One Covenant Basilica repository and website. Native chain identity currently reports a deprecated placeholder, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "schema_version": 1,
+  "slug": "sn-39",
+  "source_repo": "https://github.com/one-covenant/basilica",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-39-basilica-source",
-      "name": "Basilica source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/one-covenant/basilica",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-39-basilica-source",
+      "kind": "source-repo",
+      "name": "Basilica source repository",
+      "notes": "Public Basilica source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
       "public_safe": true,
       "source_urls": [
         "https://github.com/one-covenant/basilica",
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/39/subnet.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Basilica source repository."
+      "url": "https://github.com/one-covenant/basilica"
     },
     {
-      "id": "sn-39-basilica-website",
-      "name": "Basilica website",
-      "kind": "website",
-      "url": "https://www.basilica.ai/",
-      "provider": "one-covenant",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-39-basilica-website",
+      "kind": "website",
+      "name": "Basilica website",
+      "notes": "Website linked from the Basilica repository homepage.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "one-covenant",
       "public_safe": true,
       "source_urls": [
         "https://github.com/one-covenant/basilica",
         "https://www.basilica.ai/"
       ],
+      "url": "https://www.basilica.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-39-basilica-examples",
+      "kind": "example",
+      "name": "Basilica code examples",
+      "notes": "Official Basilica examples — hello-world, storage, and FastAPI quickstarts.",
+      "probe": {
+        "enabled": false,
+        "expect": "any",
+        "method": "HEAD"
+      },
+      "provider": "one-covenant",
+      "public_safe": true,
+      "source_urls": ["https://github.com/one-covenant/basilica"],
+      "url": "https://github.com/one-covenant/basilica/tree/main/examples"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-39-one-covenant-docs",
+      "kind": "docs",
+      "name": "deprecated community docs",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Website linked from the Basilica repository homepage."
+      "provider": "one-covenant",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://www.basilica.ai/"],
+      "url": "https://docs.basilica.ai/miners"
     }
-  ]
+  ],
+  "website_url": "https://www.basilica.ai/"
 }

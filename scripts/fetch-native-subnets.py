@@ -6,6 +6,62 @@ from datetime import datetime, timezone
 import bittensor as bt
 
 
+def to_tao(value):
+    """Coerce a bittensor Balance (or plain number) to a float.
+
+    Balance.__float__ already returns the tao-denominated value; plain ints and
+    floats pass through. Anything else (None, unexpected type) becomes None so a
+    single odd field never aborts the per-subnet economics block.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def normalize_economics(info):
+    """Per-subnet validator + economic snapshot from MetagraphInfo (#1009).
+
+    Every value is already on the MetagraphInfo objects returned by
+    get_all_metagraphs_info — no extra RPC. Per-uid arrays (validator_permit,
+    total_stake) are aggregated into counts/sums; Balances are coerced to TAO.
+    Best-effort: a missing/odd field becomes null rather than failing the fetch.
+    """
+    permits = list(getattr(info, "validator_permit", []) or [])
+    validator_count = sum(1 for permit in permits if permit)
+    num_uids = int(getattr(info, "num_uids", 0) or 0)
+    stakes = [
+        stake
+        for stake in (
+            to_tao(entry) for entry in (getattr(info, "total_stake", []) or [])
+        )
+        if stake is not None
+    ]
+    return {
+        "max_uids": int(getattr(info, "max_uids", 0) or 0),
+        "validator_count": validator_count,
+        "max_validators": int(getattr(info, "max_validators", 0) or 0),
+        "miner_count": max(0, num_uids - validator_count),
+        "registration_allowed": bool(getattr(info, "registration_allowed", False)),
+        "registration_cost_tao": to_tao(getattr(info, "burn", None)),
+        # dTAO emission is price-weighted: a subnet's share of network TAO
+        # emission tracks its alpha price (moving_price), not the now-zeroed
+        # subnet_emission/tao_in_emission fields. We capture the price here and
+        # derive each subnet's emission_share at build time (price / Σ price).
+        "alpha_price_tao": to_tao(getattr(info, "moving_price", None)),
+        "total_stake_tao": round(sum(stakes), 9) if stakes else None,
+        "max_stake_tao": round(max(stakes), 9) if stakes else None,
+        "tao_in_pool_tao": to_tao(getattr(info, "tao_in", None)),
+        "alpha_in_pool": to_tao(getattr(info, "alpha_in", None)),
+        "alpha_out_pool": to_tao(getattr(info, "alpha_out", None)),
+        "subnet_volume_tao": to_tao(getattr(info, "subnet_volume", None)),
+        "owner_hotkey": str(getattr(info, "owner_hotkey", "") or "") or None,
+        "owner_coldkey": str(getattr(info, "owner_coldkey", "") or "") or None,
+    }
+
+
 def normalize_info(info, mechanism_count, identity=None):
     netuid = int(info.netuid)
     raw_name = str(getattr(info, "name", "") or "").strip()
@@ -23,6 +79,7 @@ def normalize_info(info, mechanism_count, identity=None):
         "tempo": int(getattr(info, "tempo", 0) or 0),
         "registered_at_block": int(getattr(info, "network_registered_at", 0) or 0),
         "mechanism_count": int(mechanism_count),
+        "economics": normalize_economics(info),
     }
     if identity:
         normalized["chain_identity"] = identity

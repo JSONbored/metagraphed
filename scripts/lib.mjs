@@ -86,6 +86,7 @@ unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
 unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
 unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
 unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
+unsafeIpBlocks.addSubnet("fec0::", 10, "ipv6"); // deprecated site-local (RFC 3879)
 unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export function buildEvidenceSubjectNetuidIndex({
@@ -232,7 +233,44 @@ export function stripJsonComments(value) {
     }
     out += ch;
   }
-  return out.replace(/,\s*([}\]])/g, "$1");
+
+  // Drop trailing commas (",}" / ",]") outside string literals only. A blanket
+  // regex over the whole output spliced commas out of string contents too, so a
+  // value like "a, }" lost its comma. Re-walk string-aware; for a removed comma
+  // the look-ahead (j) also skips the whitespace up to the closing bracket, so
+  // ",\n }" collapses to "}" exactly as the old regex did.
+  let result = "";
+  inString = false;
+  for (let i = 0; i < out.length; i += 1) {
+    const ch = out[i];
+    if (inString) {
+      result += ch;
+      if (ch === "\\") {
+        result += out[i + 1] ?? "";
+        i += 1;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      result += ch;
+      continue;
+    }
+    if (ch === ",") {
+      let j = i + 1;
+      while (j < out.length && /\s/.test(out[j])) {
+        j += 1;
+      }
+      if (out[j] === "}" || out[j] === "]") {
+        i = j - 1;
+        continue;
+      }
+    }
+    result += ch;
+  }
+  return result;
 }
 
 export async function formatRepositoryJson(value) {
@@ -276,6 +314,28 @@ export function artifactDirectoryPath(relativePath) {
     return stagedPath;
   }
   return path.join(publicMetagraphRoot, normalized);
+}
+
+export async function latestArtifactDate(relativePath) {
+  const dirPath = artifactDirectoryPath(relativePath);
+  let entries;
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+  return (
+    entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((file) => /^\d{4}-\d{2}-\d{2}\.json$/.test(file))
+      .map((file) => file.replace(/\.json$/, ""))
+      .sort()
+      .at(-1) || null
+  );
 }
 
 export function createLocalArtifactEnv(overrides = {}) {
@@ -368,8 +428,25 @@ export async function listJsonFilesRecursive(dirPath) {
 }
 
 export async function loadProviders() {
-  const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
-  return Promise.all(files.map(readJson));
+  // Top-level registry/providers/*.json are curated providers (flat objects).
+  // Community-submitted providers live in registry/providers/community/ as a
+  // { provider, submission } wrapper; they are first-class once merged — unwrap
+  // them so they load / validate / serve exactly like curated providers (mirrors
+  // how loadCandidates loads registry/candidates/community/). A curated provider
+  // wins over a community one of the same id (defensive — ids do not collide today).
+  const [flatFiles, communityFiles] = await Promise.all([
+    listJsonFiles(path.join(repoRoot, "registry/providers")),
+    listJsonFiles(path.join(repoRoot, "registry/providers/community")),
+  ]);
+  const flat = await Promise.all(flatFiles.map(readJson));
+  const community = (await Promise.all(communityFiles.map(readJson))).map(
+    (document) => document.provider || document,
+  );
+  const byId = new Map();
+  for (const provider of [...community, ...flat]) {
+    if (provider?.id) byId.set(provider.id, provider);
+  }
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export async function loadSubnets() {
@@ -392,10 +469,13 @@ export async function loadNativeSnapshot() {
   return readJson(path.join(repoRoot, "registry/native/finney-subnets.json"));
 }
 
-export async function loadCandidates() {
-  const files = await listJsonFilesRecursive(
-    path.join(repoRoot, "registry/candidates"),
+export async function loadCandidates(options = {}) {
+  const excludeFiles = new Set(
+    (options.excludeFiles || []).map((file) => path.resolve(file)),
   );
+  const files = (
+    await listJsonFilesRecursive(path.join(repoRoot, "registry/candidates"))
+  ).filter((file) => !excludeFiles.has(path.resolve(file)));
   const documents = await Promise.all(files.map(readJson));
   const candidates = documents.flatMap((document) => {
     if (Array.isArray(document.candidates)) {
@@ -455,14 +535,87 @@ export async function loadDetailedVerification() {
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
-      subnet.surfaces.map((surface) => ({
-        ...surface,
-        netuid: subnet.netuid,
-        subnet_slug: subnet.slug,
-        subnet_name: subnet.name,
-      })),
+      subnet.surfaces.map((surface) => {
+        const flattened = {
+          ...surface,
+          netuid: subnet.netuid,
+          subnet_slug: subnet.slug,
+          subnet_name: subnet.name,
+        };
+        // #1005: a stable identity decoupled from the hand-authored display id.
+        flattened.key = surfaceStableKey(flattened);
+        // #1006: the as-of timestamp every served surface should carry. A
+        // per-surface verification wins; otherwise the subnet's curation
+        // verified_at (when a maintainer last vetted the overlay). null when
+        // neither exists — the agent then sees the surface is unverified.
+        flattened.last_verified_at =
+          surface.verification?.verified_at ??
+          subnet.curation?.verified_at ??
+          null;
+        return flattened;
+      }),
     )
     .sort((a, b) => a.netuid - b.netuid || a.id.localeCompare(b.id));
+}
+
+// #1006: per-kind verification-freshness TTL (days). `last_verified_at` is the
+// curator's as-of; a surface is `stale` once it hasn't been re-verified within
+// its kind's window. Callable/operational surfaces drift fast (short window);
+// static identity surfaces are stable (long window). Any kind not listed uses
+// SURFACE_FRESHNESS_DEFAULT_TTL_DAYS. Fixed (not env-gated) so the build and the
+// validate reproduction compute byte-identical `stale` values.
+export const SURFACE_FRESHNESS_DEFAULT_TTL_DAYS = 90;
+export const SURFACE_FRESHNESS_TTL_DAYS = {
+  "subnet-api": 30,
+  openapi: 30,
+  sse: 30,
+  "data-artifact": 30,
+  "subtensor-rpc": 30,
+  "subtensor-wss": 30,
+  dashboard: 60,
+  website: 90,
+  docs: 90,
+  archive: 120,
+  example: 120,
+  sdk: 120,
+  "source-repo": 120,
+  "repo-registry": 120,
+};
+
+export function surfaceFreshnessTtlDays(kind) {
+  return SURFACE_FRESHNESS_TTL_DAYS[kind] ?? SURFACE_FRESHNESS_DEFAULT_TTL_DAYS;
+}
+
+// True when a surface's verification is older than its kind's TTL, measured
+// against `nowMs` (the dataset's native-snapshot captured_at, a committed +
+// deterministic reference — never wall-clock — so the flag is reproducible). A
+// surface with no last_verified_at is NOT stale: that's "unverified", a distinct
+// state the null timestamp already signals.
+export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
+  if (!lastVerifiedAt) return false;
+  const verifiedMs = Date.parse(lastVerifiedAt);
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
+}
+
+// Stamp the serve-time `stale` flag onto a flattened-surface list (the companion
+// to flattenSurfaces' static `last_verified_at`). Kept separate because `stale`
+// needs the `nowMs` reference flattenSurfaces does not carry; build + validate
+// both call this with the same captured_at so per-subnet artifacts reproduce.
+export function withSurfaceFreshness(surfaces, nowMs) {
+  return surfaces.map((surface) => ({
+    ...surface,
+    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
+  }));
+}
+
+// Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
+// surface keeps the same `key` across display-name/slug renames (the `id` is
+// author-controlled and changes on rename, which orphans D1 history + breaks the
+// derived endpoint link). PR1 surfaces this `key`; later PRs re-key D1 history +
+// endpoint links onto it. A URL change is intentionally a new identity.
+export function surfaceStableKey(entry) {
+  return `srf-${sha256Hex(registrySurfaceKey(entry)).slice(0, 16)}`;
 }
 
 export function stableStringify(value) {
@@ -529,11 +682,30 @@ export function classifyNativeName(value, netuid) {
   const normalized = raw.toLowerCase();
   const genericName =
     Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
-  if (
-    genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
-    !/[\p{L}\p{N}]/u.test(raw)
-  ) {
+  // Placeholder on-chain identities an owner may set before naming a subnet —
+  // e.g. "Team TBC", "TBD", "Coming Soon". Treated as not-a-real-name so the
+  // build falls back to "Subnet N" and the registry never adopts them as a
+  // display name (subnet:new + validate:surface enforce this on creation/CI).
+  const placeholderName =
+    [
+      "unknown",
+      "none",
+      "null",
+      "n/a",
+      "na",
+      "unnamed",
+      "untitled",
+      "tbc",
+      "tbd",
+      "tba",
+      "wip",
+      "placeholder",
+      "coming soon",
+      "to be confirmed",
+      "to be determined",
+      "to be announced",
+    ].includes(normalized) || /\b(?:tbc|tbd|tba)\b/.test(normalized);
+  if (genericName || placeholderName || !/[\p{L}\p{N}]/u.test(raw)) {
     return { raw_name: raw, quality: "placeholder" };
   }
 
@@ -680,6 +852,9 @@ export function isUnsafeUrl(value) {
     if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
       return true;
     }
+    if (url.username || url.password) {
+      return true;
+    }
 
     const host = normalizeHostname(url.hostname);
     return isUnsafeHostname(host);
@@ -688,30 +863,46 @@ export function isUnsafeUrl(value) {
   }
 }
 
-export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
     if (isUnsafeUrl(url.toString())) {
-      return true;
+      return [];
     }
 
     const host = normalizeHostname(url.hostname);
     if (isIP(host)) {
-      return false;
+      return [{ address: host, family: isIP(host) }];
     }
 
     const records = await resolver(host, { all: true, verbatim: true });
-    return (
+    if (
       records.length === 0 ||
       records.some((record) => isUnsafeIpAddress(record.address))
-    );
+    ) {
+      return [];
+    }
+    return records.map((record) => ({
+      address: record.address,
+      family: record.family,
+    }));
   } catch {
-    return true;
+    return [];
   }
 }
 
+export async function isUnsafeResolvedUrl(value, resolver = lookup) {
+  return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
 function isUnsafeHostname(host) {
-  if (!host || host === "localhost" || host.endsWith(".localhost")) {
+  if (
+    !host ||
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "local" ||
+    host.endsWith(".local")
+  ) {
     return true;
   }
 
@@ -730,16 +921,30 @@ const SELF_DOMAIN = "metagraph.sh";
 // targets squats of our exact domain, not the generic "metagraph" Bittensor term
 // (a subnet legitimately named "…metagraph…" is unaffected).
 export function isBrandImpersonationUrl(value) {
-  let host;
+  let url;
   try {
-    host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    url = new URL(value);
   } catch {
     return false;
   }
+
+  // A trailing dot is the FQDN-canonical form of the same hostname, so strip it
+  // before the self-domain exemption — otherwise "metagraph.sh." (and real
+  // subdomains like "api.metagraph.sh.") fail the `=== SELF_DOMAIN` / `.endsWith`
+  // check and get wrongly flagged as impersonating our own domain.
+  const host = url.hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
   if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
     return false;
   }
-  return /metagraph\.sh(?:\.|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host);
+
+  const userinfo = `${url.username}:${url.password}`.toLowerCase();
+  return (
+    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host) ||
+    /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
+  );
 }
 
 function isUnsafeIpAddress(address) {
@@ -811,7 +1016,7 @@ export function redactCredentialedUrls(value) {
 // might echo back. Match common separator-delimited, camelCase, and compact
 // spellings so live fixtures do not publish token/session-like fields.
 const FIXTURE_SENSITIVE_KEY =
-  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed)(?:Token|Key|Id|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|privateKey|seedPhrase|jwt)\b/i;
+  /(?:^|[_-])(?:token|secret|api[_-]?key|apikey|password|passwd|pwd|authorization|auth|cookie|session|credential|private[_-]?key|mnemonic|seed[_-]?phrase|bearer|access[_-]?key|refresh[_-]?token|csrf[_-]?token|jwt)(?:[_-]|$)|(?:access|refresh|csrf|session|cookie|password|private|seed|id|auth|client|secret)(?:Token|Key|Id|Secret|Value|Hash|Phrase)\b|(?:apiKey|passwordHash|cookieValue|sessionId|csrfToken|accessToken|refreshToken|authToken|idToken|clientSecret|secretKey|privateKey|seedPhrase|jwt)\b/i;
 
 // Sanitize an arbitrary parsed JSON response from a third-party subnet API so a
 // single live sample can be committed as a fixture (issue #352). Redacts
@@ -825,7 +1030,11 @@ export function sanitizeFixtureBody(
   const walk = (node, depth) => {
     if (depth > maxDepth) return "[truncated: max depth]";
     if (typeof node === "string") {
-      const redacted = redactCredentialedUrl(node);
+      // Redact credentials AND private/loopback URLs. A captured spec can carry a
+      // servers[].url pointing at localhost / 10.x / 192.168.x (operators leave
+      // dev servers in their public OpenAPI); the publish public-safety scan
+      // rejects those, so mirror the schema-snapshot sanitizer here too.
+      const redacted = sanitizeSchemaText(redactCredentialedUrl(node));
       return redacted.length > maxString
         ? `${redacted.slice(0, maxString)}…[truncated]`
         : redacted;
@@ -851,6 +1060,54 @@ export function sanitizeFixtureBody(
     return node;
   };
   return walk(value, 0);
+}
+
+// Bounded reference to a captured live request/response fixture (#748). Gives an
+// agent reading a subnet's callable services enough to see the example REQUEST
+// (method + url) and the response shape (status + content_type) inline, plus
+// artifact_path to fetch the full sanitized body (GET
+// /metagraph/fixtures/{surface_id}.json, also the get_fixture MCP tool). The
+// body itself is NOT inlined — captured bodies can be ~1 MB — so service detail
+// stays lean and the one already-sanitized copy is served from a single place.
+// Returns null when there is no fixture, so callers omit the field entirely.
+export function fixtureCaptureFailureReason(error) {
+  const name = error?.name || null;
+  if (name === "SyntaxError") {
+    return "invalid json response";
+  }
+  if (name === "AbortError") {
+    return "request timed out";
+  }
+  if (name === "FixtureCaptureLimitError") {
+    return "response exceeds byte limit";
+  }
+  if (name === "TypeError") {
+    return "request failed";
+  }
+  return "capture failed";
+}
+
+export function surfaceFixtureReference(surfaceId, fixture) {
+  if (!surfaceId || !fixture || typeof fixture !== "object") {
+    return null;
+  }
+  const request = fixture.request || {};
+  const response = fixture.response || {};
+  return {
+    captured_at: fixture.captured_at || null,
+    request: {
+      method: typeof request.method === "string" ? request.method : "GET",
+      url: typeof request.url === "string" ? request.url : null,
+    },
+    response: {
+      status: Number.isInteger(response.status) ? response.status : null,
+      content_type:
+        typeof response.content_type === "string"
+          ? response.content_type
+          : null,
+    },
+    artifact_path: `/metagraph/fixtures/${surfaceId}.json`,
+  };
 }
 
 export function normalizePublicUrl(value) {
@@ -880,6 +1137,7 @@ export function normalizePublicUrl(value) {
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
       url.username ||
       url.password ||
+      isCredentialedUrl(url.toString()) ||
       isUnsafeUrl(url.toString())
     ) {
       return null;
@@ -914,19 +1172,128 @@ export function isPlaceholderIdentityUrl(value) {
 }
 
 // Resolve a subnet identity link (source_repo / website_url / logo_url):
-// curated overlay wins; otherwise fall back to the cleaned on-chain value;
-// otherwise null. Shared by build-artifacts (mergeSubnet) and validate
-// (buildExpectedGeneratedSubnet) so the chain backfill can't drift between the
-// generator and the reproducibility validator.
+// an explicit curated overlay value wins (including null suppression); otherwise
+// fall back to the cleaned on-chain value; otherwise null. Shared by
+// build-artifacts (mergeSubnet) and validate (buildExpectedGeneratedSubnet) so
+// the chain backfill can't drift between the generator and the reproducibility
+// validator.
 export function backfilledIdentityUrl(overlayValue, chainValue) {
-  if (overlayValue) {
-    return overlayValue;
+  if (overlayValue !== undefined) {
+    return overlayValue || null;
   }
   const normalized = normalizePublicUrl(chainValue);
   if (!normalized || isPlaceholderIdentityUrl(normalized)) {
     return null;
   }
   return normalized;
+}
+
+// Social platforms recognized in the free-text on-chain `additional` field, by
+// canonical host (#745).
+const SOCIAL_HOSTS = {
+  x: ["x.com", "twitter.com"],
+  telegram: ["t.me", "telegram.me", "telegram.org"],
+  reddit: ["reddit.com"],
+  youtube: ["youtube.com", "youtu.be"],
+};
+const SOCIAL_KEYS = Object.keys(SOCIAL_HOSTS);
+
+function socialHostKey(host) {
+  const h = host.replace(/^www\./, "").toLowerCase();
+  for (const key of SOCIAL_KEYS) {
+    if (SOCIAL_HOSTS[key].some((d) => h === d || h.endsWith(`.${d}`))) {
+      return key;
+    }
+  }
+  return null;
+}
+
+function socialHostMatchesKey(url, key) {
+  try {
+    return socialHostKey(new URL(url).hostname) === key;
+  } catch {
+    return false;
+  }
+}
+
+// Resolve a subnet/provider's structured social links: a curated overlay
+// `social` object wins per platform; otherwise extract from the free-text
+// on-chain `additional` content (sanitized + junk-guarded via
+// normalizePublicHttpUrl). Returns a { x?, telegram?, reddit?, youtube? } object
+// or null. Shared by build-artifacts (mergeSubnet) and validate
+// (buildExpectedGeneratedSubnet) so the chain extraction can't drift.
+// Display-only: a chain-claimed handle is NOT verification, and this NEVER feeds
+// completeness_score/missing_* (the flywheel's gaps stay the product).
+export function socialAccounts(additionalText, overlaySocial = null) {
+  const out = {};
+  const text = typeof additionalText === "string" ? additionalText : "";
+  const re =
+    /\b(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com|t\.me|telegram\.(?:me|org)|reddit\.com|youtube\.com|youtu\.be)\/[^\s"'<>)\]]+/gi;
+  for (const raw of text.match(re) || []) {
+    const normalized = normalizePublicHttpUrl(raw.replace(/[.,;]+$/, ""));
+    if (!normalized || isPlaceholderIdentityUrl(normalized)) {
+      continue;
+    }
+    let host;
+    try {
+      host = new URL(normalized).hostname;
+    } catch {
+      continue;
+    }
+    const key = socialHostKey(host);
+    if (key && !out[key]) {
+      out[key] = normalized;
+    }
+  }
+  if (
+    overlaySocial &&
+    typeof overlaySocial === "object" &&
+    !Array.isArray(overlaySocial)
+  ) {
+    for (const key of SOCIAL_KEYS) {
+      const curated = normalizePublicHttpUrl(overlaySocial[key]);
+      if (curated && socialHostMatchesKey(curated, key)) {
+        out[key] = curated;
+      }
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Taostats-survey follow-up: the operator's published support contact
+// (SubnetIdentitiesV3 `subnet_contact` — an email or URL). metagraphed otherwise
+// keeps only a `contact_present` boolean, dropping the value an integration dev
+// (or agent) needs to reach a team when an API breaks. Overlay-driven and
+// sanitized — never parsed from free chain text, so it can't carry injection;
+// display-only, never feeds completeness (the #343 flywheel gate). Returns a
+// bare email (lowercased) or a normalized public URL, else null.
+const CONTACT_JUNK_VALUES = new Set([
+  "deprecated",
+  "none",
+  "n/a",
+  "na",
+  "tbd",
+  "-",
+  "null",
+]);
+const EMAIL_ATOM = "[A-Z0-9!#$%&\\'*+/=?^_`{|}~-]+";
+const EMAIL_RE = new RegExp(
+  `^${EMAIL_ATOM}(?:\\.${EMAIL_ATOM})*@` +
+    "(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\\.)+[A-Z]{2,63}$",
+  "i",
+);
+export function subnetContact(overlayContact) {
+  if (typeof overlayContact !== "string") return null;
+  const value = overlayContact.trim();
+  if (!value || CONTACT_JUNK_VALUES.has(value.toLowerCase())) return null;
+  const email = /^mailto:/i.test(value) ? value.slice(7).trim() : value;
+  if (EMAIL_RE.test(email)) {
+    // Reject junk placeholders that happen to be well-formed (deprecated@…).
+    const local = email.slice(0, email.indexOf("@")).toLowerCase();
+    return CONTACT_JUNK_VALUES.has(local) ? null : email.toLowerCase();
+  }
+  const url = normalizePublicHttpUrl(value);
+  return url && !isPlaceholderIdentityUrl(url) ? url : null;
 }
 
 export function registrySurfaceKey(entry) {
@@ -948,6 +1315,40 @@ export function hashJson(value) {
   return sha256Hex(stableStringify(value));
 }
 
+// Content hash for publish diagnostics: an artifact's hash with the pure build
+// stamp (`generated_at`) normalized out. `captured_at` is deliberately NOT
+// normalized: it is the chain-snapshot time consumers read as freshness. Non-JSON
+// artifacts (svg/txt) and unparseable files hash as-is.
+// NOTE: this is not an integrity hash. Upload/download decisions must use the
+// real `sha256` of the actual bytes so latest manifests and objects stay aligned.
+const DELTA_GENERATED_AT_PLACEHOLDER = "1970-01-01T00:00:00.000Z";
+
+export function artifactContentHash(relativePath, raw) {
+  if (!relativePath.endsWith(".json")) return sha256Hex(raw);
+  let parsed;
+  try {
+    parsed = JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
+  } catch {
+    return sha256Hex(raw);
+  }
+  return hashJson(stripGeneratedAt(parsed));
+}
+
+function stripGeneratedAt(value) {
+  if (Array.isArray(value)) return value.map(stripGeneratedAt);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      out[key] =
+        key === "generated_at"
+          ? DELTA_GENERATED_AT_PLACEHOLDER
+          : stripGeneratedAt(val);
+    }
+    return out;
+  }
+  return value;
+}
+
 export function isJsonContentType(value) {
   return String(value || "")
     .toLowerCase()
@@ -958,6 +1359,74 @@ export function isHtmlContentType(value) {
   return String(value || "")
     .toLowerCase()
     .includes("html");
+}
+
+// Conventional, read-only paths where a subnet or provider commonly exposes a
+// machine-readable OpenAPI 3.x (or legacy Swagger 2.0) document. Auto-discovery
+// (#1004) probes these on each known base origin to surface callable APIs the
+// registry can then validate, capture, and promote.
+export const OPENAPI_PROBE_PATHS = Object.freeze([
+  "/openapi.json",
+  "/swagger.json",
+  "/swagger/v1/swagger.json",
+  "/docs/openapi.json",
+  "/api/openapi.json",
+  "/api/v1/openapi.json",
+  "/v1/openapi.json",
+  "/.well-known/openapi.json",
+]);
+
+// Structural check that a parsed JSON value is a genuine OpenAPI/Swagger
+// document — not merely some JSON served at /openapi.json. Requires the version
+// marker plus the `info` and `paths` objects every spec carries, so a stray
+// config or error body never registers as a callable API. Pure + side-effect
+// free, so it is exhaustively unit-testable.
+export function isOpenApiDocument(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return false;
+  }
+  const version =
+    typeof body.openapi === "string"
+      ? body.openapi
+      : typeof body.swagger === "string"
+        ? body.swagger
+        : null;
+  // OpenAPI reports "3.x.y"; Swagger reports "2.0". Reject anything else.
+  if (!version || !/^[23]\.\d/.test(version)) {
+    return false;
+  }
+  const isPlainObject = (value) =>
+    Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  return isPlainObject(body.info) && isPlainObject(body.paths);
+}
+
+// Probe an ordered list of candidate spec paths on `origin`, returning the first
+// whose body is a valid OpenAPI/Swagger document as `{ url, document }`, or null
+// if none match. `fetcher(url)` owns all network + safety concerns (timeout,
+// body cap, private-IP/unsafe-URL block) and returns the parsed JSON body or
+// null; keeping it injectable leaves this orchestration pure and mock-driven in
+// tests. A fetcher that throws is treated as a miss for that path, so one bad
+// path never aborts the sweep.
+export async function probeOpenApiSpec(origin, paths, fetcher) {
+  let base;
+  try {
+    base = new URL(origin);
+  } catch {
+    return null;
+  }
+  for (const specPath of paths) {
+    const url = new URL(specPath, base).toString();
+    let body;
+    try {
+      body = await fetcher(url);
+    } catch {
+      continue;
+    }
+    if (isOpenApiDocument(body)) {
+      return { url, document: body };
+    }
+  }
+  return null;
 }
 
 export function buildTimestamp() {
@@ -1116,6 +1585,7 @@ export function buildSubnetLineageLinks(
   sourceSubnets,
   targetSubnets,
   approvedLinks = [],
+  brokenLinks = [],
 ) {
   const sourcesByNetuid = new Map(
     (sourceSubnets || []).map((source) => [source.netuid, source]),
@@ -1125,6 +1595,7 @@ export function buildSubnetLineageLinks(
   );
   const links = [];
   const seen = new Set();
+  const seenTargets = new Map();
   for (const approval of approvedLinks || []) {
     const sourceNetuid = approval?.source_netuid ?? approval?.mainnet_netuid;
     const targetNetuid = approval?.target_netuid ?? approval?.testnet_netuid;
@@ -1133,14 +1604,46 @@ export function buildSubnetLineageLinks(
       !Number.isInteger(targetNetuid) ||
       !LINEAGE_MATCH_TYPES.has(approval?.matched_by)
     ) {
+      // #1012: don't silently drop — record the malformed approval so it's fixable.
+      brokenLinks.push({
+        source_netuid: Number.isInteger(sourceNetuid) ? sourceNetuid : null,
+        target_netuid: Number.isInteger(targetNetuid) ? targetNetuid : null,
+        reason: "invalid-approval",
+      });
       continue;
     }
     const source = sourcesByNetuid.get(sourceNetuid);
     const target = targetsByNetuid.get(targetNetuid);
-    if (!source || !target) continue;
+    if (!source || !target) {
+      // #1012: an approval referencing a netuid that no longer exists on its
+      // network — surface it instead of silently dropping the lineage link.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: !source ? "source-netuid-missing" : "target-netuid-missing",
+      });
+      continue;
+    }
     const key = `${sourceNetuid}:${targetNetuid}`;
     if (seen.has(key)) continue;
+    const existingSourceNetuid = seenTargets.get(targetNetuid);
+    if (
+      Number.isInteger(existingSourceNetuid) &&
+      existingSourceNetuid !== sourceNetuid
+    ) {
+      // A testnet subnet can only graduate to one mainnet subnet in the public
+      // lineage artifact. Surface conflicting curated approvals instead of
+      // publishing ambiguous many-to-one lineage.
+      brokenLinks.push({
+        source_netuid: sourceNetuid,
+        target_netuid: targetNetuid,
+        reason: "target-netuid-conflict",
+        conflicts_with_source_netuid: existingSourceNetuid,
+      });
+      continue;
+    }
     seen.add(key);
+    seenTargets.set(targetNetuid, sourceNetuid);
     links.push({
       source_netuid: sourceNetuid,
       target_netuid: targetNetuid,
@@ -1297,6 +1800,195 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
+// project's registrable domain so the OpenAPI spec sweep reaches APIs that live
+// on api.<domain> (or docs.<domain>) rather than the marketing root — the
+// Graphite/Vidaio/Hippius class the website-only probe was blind to. Returns []
+// when a service subdomain is meaningless: unparseable input, IP literals,
+// multi-tenant platform tenants (api.foo.github.io would belong to the platform,
+// not the project), or hosts with no resolvable registrable domain. Pure +
+// deterministic, so it is exhaustively unit-tested. Callers still apply their own
+// generic-host / safe-fetch policy to the returned origins.
+export function apiDocsSubdomainOrigins(origin) {
+  let host;
+  try {
+    host = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return [];
+  }
+  // IPv4 / IPv6 literals have no subdomain structure.
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":")) {
+    return [];
+  }
+  const bare = host.replace(/^www\./, "");
+  if (bare.split(".").filter(Boolean).length < 2) {
+    return [];
+  }
+  // Multi-tenant platform tenant (foo.github.io, bar.vercel.app): a service
+  // subdomain of the registrable domain would belong to the platform, never the
+  // project, so don't derive one.
+  for (const suffix of MULTI_TENANT_HOST_SUFFIXES) {
+    if (bare === suffix || bare.endsWith(`.${suffix}`)) {
+      return [];
+    }
+  }
+  const registrable = clusterSuffixDomain(bare);
+  if (!registrable) {
+    return [];
+  }
+  return [`https://api.${registrable}`, `https://docs.${registrable}`];
+}
+
+// Provenance auto-elevation (Move A): a callable-API surface (openapi/subnet-api)
+// that is (1) live-verified and (2) hosted on the subnet's OWN on-chain-asserted
+// registrable domain (Subtensor SubnetIdentitiesV3 subnet_url) is trustworthy
+// WITHOUT a human review — the chain itself vouches for the domain and we probed
+// the API live. This computes that set so promote-reviewed can lift those subnets
+// to the maintainer-reviewed trust tier automatically, and validate can treat the
+// machine decision as backing for the tier. Pure + deterministic (sorted, deduped)
+// so it is unit-testable and the committed auto-reviewed.json can be drift-checked.
+//
+// Provenance bar (kept strict so a blind common-path guess never auto-trusts):
+//   - openapi  : source must be a probe-confirmed spec ("openapi-probe") or a
+//                human intake ("community-pr-intake") — never a blind path guess.
+//   - subnet-api: any source EXCEPT the blind "project-website-common-path" sweep.
+// Both require: kind on the chain-asserted domain + verification live/redirected +
+// the verify step judged the response content-type to match the kind.
+const AUTO_ELEVATE_OPENAPI_SOURCES = new Set([
+  "openapi-probe",
+  "community-pr-intake",
+]);
+export function computeProvenanceElevations({
+  candidates = [],
+  nativeSubnets = [],
+  verificationResults = [],
+}) {
+  const authByNetuid = new Map();
+  for (const subnet of nativeSubnets) {
+    const url = subnet?.chain_identity?.subnet_url;
+    const domain = url ? clusterDomainFromUrl(url) : null;
+    if (domain) authByNetuid.set(subnet.netuid, domain);
+  }
+  const verByCandidate = new Map(
+    verificationResults
+      .filter((result) => result?.candidate_id)
+      .map((result) => [result.candidate_id, result]),
+  );
+  const byNetuid = new Map();
+  for (const candidate of candidates) {
+    if (candidate.kind !== "openapi" && candidate.kind !== "subnet-api") {
+      continue;
+    }
+    const auth = authByNetuid.get(candidate.netuid);
+    if (!auth || clusterDomainFromUrl(candidate.url) !== auth) {
+      continue;
+    }
+    if (
+      candidate.kind === "openapi"
+        ? !AUTO_ELEVATE_OPENAPI_SOURCES.has(candidate.source_type)
+        : candidate.source_type === "project-website-common-path"
+    ) {
+      continue;
+    }
+    const verification = verByCandidate.get(candidate.id);
+    if (
+      !verification ||
+      (verification.classification !== "live" &&
+        verification.classification !== "redirected") ||
+      verification.quality_signals?.content_type_matches_kind !== true
+    ) {
+      continue;
+    }
+    if (!byNetuid.has(candidate.netuid)) {
+      byNetuid.set(candidate.netuid, {
+        netuid: candidate.netuid,
+        slug: candidate.slug ?? null,
+        domain: auth,
+        source_urls: new Set(),
+        kinds: new Set(),
+      });
+    }
+    const entry = byNetuid.get(candidate.netuid);
+    entry.source_urls.add(candidate.url);
+    entry.kinds.add(candidate.kind);
+    if (!entry.slug && candidate.slug) entry.slug = candidate.slug;
+  }
+  return [...byNetuid.values()]
+    .map((entry) => ({
+      netuid: entry.netuid,
+      slug: entry.slug,
+      domain: entry.domain,
+      kinds: [...entry.kinds].sort(),
+      source_urls: [...entry.source_urls].sort(),
+    }))
+    .sort((a, b) => a.netuid - b.netuid);
+}
+
+// Build the provenance review queue document from the elevation set: the subnets
+// a maintainer should elevate next, i.e. provenance-strong live APIs whose subnet
+// is NOT already at the top trust tier (maintainer-reviewed / adapter-backed).
+// Deterministic (generated_at is the fixed build placeholder) so the committed
+// queue is drift-checked by validate.mjs. Pure — takes the already-loaded inputs.
+const TOP_TRUST_LEVELS = new Set(["maintainer-reviewed", "adapter-backed"]);
+export function buildProvenanceReviewQueue({
+  candidates = [],
+  nativeSubnets = [],
+  verificationResults = [],
+  subnets = [],
+}) {
+  const levelByNetuid = new Map(
+    subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
+  );
+  const slugByNetuid = new Map(
+    subnets.map((subnet) => [subnet.netuid, subnet.slug]),
+  );
+  const elevations = computeProvenanceElevations({
+    candidates,
+    nativeSubnets,
+    verificationResults,
+  });
+  const queue = elevations
+    .filter((entry) => !TOP_TRUST_LEVELS.has(levelByNetuid.get(entry.netuid)))
+    .map((entry) => ({
+      netuid: entry.netuid,
+      slug:
+        slugByNetuid.get(entry.netuid) ?? entry.slug ?? `sn-${entry.netuid}`,
+      current_level: levelByNetuid.get(entry.netuid) ?? null,
+      kinds: entry.kinds,
+      domain: entry.domain,
+      source_urls: entry.source_urls,
+      rationale:
+        `Live ${entry.kinds.join(" + ")} on the subnet's on-chain-asserted ` +
+        `domain (${entry.domain}). Strong provenance — elevate by adding a ` +
+        `decision to maintainer-reviewed.json after a quick confirm.`,
+    }));
+  return {
+    schema_version: 1,
+    generated_by: "metagraphed-review-queue",
+    generated_at: buildTimestamp(),
+    notes:
+      "Suggested maintainer-review elevations: provenance-strong, live callable " +
+      "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +
+      "top trust tier. Machine-proposed; promote by moving an entry into " +
+      "maintainer-reviewed.json. Regenerate with `npm run review:queue`.",
+    queue,
+  };
+}
+
+// #1007: the distinct discovery sources (clustered domains) that independently
+// surfaced a candidate, from its source_urls. 2+ distinct sources is strong
+// corroboration — a URL claimed by both TaoMarketCap and a GitHub README is more
+// trustworthy than a single-source one — and feeds a `confirmed_by` field plus a
+// verification-score bonus (scoreCandidate). Pure + deterministic (sorted,
+// deduped); clusterDomainFromUrl folds api./docs. subdomains into one source so
+// two URLs on the same site never read as independent corroboration.
+export function corroboratingSources(candidate) {
+  const urls = Array.isArray(candidate?.source_urls)
+    ? candidate.source_urls
+    : [];
+  return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
+}
+
 // Build a fallback "what does it do" blurb from curated provider notes when a
 // subnet has no chain/overlay description (issue #346). Sanitized + truncated to
 // a word boundary. This populates a SEPARATE derived_description field — it never
@@ -1311,6 +2003,90 @@ export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
     .slice(0, maxLength)
     .replace(/\s+\S*$/, "")
     .trimEnd()}…`;
+}
+
+// Pull a usable OAuth2/OIDC token (or authorize) endpoint out of a security
+// scheme, tolerating OpenAPI 3 `flows.*` and Swagger 2 top-level shapes.
+function oauthTokenUrl(scheme) {
+  if (typeof scheme.openIdConnectUrl === "string") {
+    return scheme.openIdConnectUrl;
+  }
+  const flows =
+    scheme.flows && typeof scheme.flows === "object" ? scheme.flows : {};
+  for (const flow of Object.values(flows)) {
+    if (flow && typeof flow.tokenUrl === "string") {
+      return flow.tokenUrl;
+    }
+    if (flow && typeof flow.authorizationUrl === "string") {
+      return flow.authorizationUrl;
+    }
+  }
+  if (typeof scheme.tokenUrl === "string") {
+    return scheme.tokenUrl;
+  }
+  if (typeof scheme.authorizationUrl === "string") {
+    return scheme.authorizationUrl;
+  }
+  return null;
+}
+
+// Map a captured OpenAPI/Swagger securitySchemes object to a single structured
+// auth hint a caller can act on (#746): the scheme + concrete header/param name
+// and a value PLACEHOLDER (never a real secret). Prefers a concrete api-key/http
+// scheme over oauth2 when several are declared. token_url is junk/SSRF-guarded.
+export function deriveAuthDetail(schemes) {
+  const entries = Object.values(schemes || {}).filter(
+    (scheme) => scheme && typeof scheme === "object",
+  );
+  if (!entries.length) {
+    return null;
+  }
+  const pick =
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "apikey") ||
+    entries.find((scheme) => String(scheme.type).toLowerCase() === "http") ||
+    entries[0];
+  const type = String(pick.type || "").toLowerCase();
+  if (type === "apikey" && typeof pick.name === "string" && pick.name) {
+    const location = ["header", "query", "cookie"].includes(pick.in)
+      ? pick.in
+      : "header";
+    return {
+      scheme: "api-key",
+      location,
+      name: pick.name,
+      value_format: "<api-key>",
+    };
+  }
+  if (type === "http") {
+    if (String(pick.scheme || "").toLowerCase() === "basic") {
+      return {
+        scheme: "basic",
+        location: "header",
+        name: "Authorization",
+        value_format: "Basic <base64(user:pass)>",
+      };
+    }
+    return {
+      scheme: "bearer",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+  }
+  if (type === "oauth2" || type === "openidconnect") {
+    const detail = {
+      scheme: "oauth2",
+      location: "header",
+      name: "Authorization",
+      value_format: "Bearer <token>",
+    };
+    const tokenUrl = normalizePublicHttpUrl(oauthTokenUrl(pick));
+    if (tokenUrl) {
+      detail.token_url = tokenUrl;
+    }
+    return detail;
+  }
+  return null;
 }
 
 // Derive auth metadata from a captured OpenAPI/Swagger spec: OpenAPI 3
@@ -1329,7 +2105,13 @@ export function extractAuth(spec) {
         .filter((type) => typeof type === "string"),
     ),
   ].sort();
-  return { auth_required: authSchemes.length > 0, auth_schemes: authSchemes };
+  return {
+    auth_required: authSchemes.length > 0,
+    auth_schemes: authSchemes,
+    // Structured, caller-actionable detail (#746): exact header/param + value
+    // placeholder. null when no scheme is declared.
+    auth_detail: deriveAuthDetail(schemes),
+  };
 }
 
 // Declared lifecycle, derived from canonical on-chain identity names (teams set
@@ -1408,199 +2190,17 @@ export function staleOperationalKinds({
   return stale;
 }
 
-export const README_LINK_LIMIT = 5;
-
-export const README_KIND_LIMITS = {
-  dashboard: 2,
-  "data-artifact": 1,
-  docs: 1,
-  openapi: 2,
-  "subnet-api": 2,
-  website: 1,
-};
-
-const GENERIC_README_REFERENCE_HOSTS = [
-  "arxiv.org",
-  "astral.sh",
-  "bittensor.com",
-  "docs.google.com",
-  "ico.org.uk",
-  "kubernetes.io",
-  "learnbittensor.org",
-  "nextjs.org",
-  "openai.com",
-  "pm2.io",
-  "python.org",
-  "subnetradar.com",
-  "taomarketcap.com",
-  "taostats.io",
-];
-
-const README_AFFINITY_STOPWORDS = new Set([
-  "ai",
-  "api",
-  "app",
-  "bittensor",
-  "docs",
-  "github",
-  "inc",
-  "io",
-  "labs",
-  "ltd",
-  "main",
-  "miner",
-  "network",
-  "org",
-  "protocol",
-  "repo",
-  "subnet",
-  "the",
-  "validator",
-  "www",
-]);
-
-export function selectReviewableReadmeLinks(
-  links,
-  { limit = README_LINK_LIMIT, netuid, repo } = {},
-) {
-  const selected = [];
-  const seen = new Set();
-  const kindCounts = new Map();
-
-  for (const link of links || []) {
-    if (!isReviewableReadmeLink(link, { netuid, repo })) {
-      continue;
-    }
-
-    const key = readmeDedupeKey(link);
-    if (seen.has(key)) {
-      continue;
-    }
-
-    const kind = link.classification.kind;
-    const kindLimit = README_KIND_LIMITS[kind] || 1;
-    if ((kindCounts.get(kind) || 0) >= kindLimit) {
-      continue;
-    }
-
-    seen.add(key);
-    kindCounts.set(kind, (kindCounts.get(kind) || 0) + 1);
-    selected.push(link);
-
-    if (selected.length >= limit) {
-      break;
-    }
-  }
-
-  return selected;
-}
-
-export function isReviewableReadmeLink(link, { netuid, repo } = {}) {
-  if (!link?.url || !link.classification?.kind) {
-    return false;
-  }
-
-  if (isGenericReadmeReferenceHost(link.url)) {
-    return false;
-  }
-
-  return hasReadmeProjectAffinity(link, { netuid, repo });
-}
-
-function readmeDedupeKey(link) {
-  try {
-    return `${link.classification.kind}:${registrableDomain(
-      new URL(link.url).hostname,
-    )}`;
-  } catch {
-    return `${link.classification.kind}:${String(link.url || "").toLowerCase()}`;
-  }
-}
-
-function isGenericReadmeReferenceHost(value) {
-  try {
-    const host = normalizeHost(new URL(value).hostname);
-    return GENERIC_README_REFERENCE_HOSTS.some(
-      (genericHost) => host === genericHost || host.endsWith(`.${genericHost}`),
-    );
-  } catch {
-    return true;
-  }
-}
-
-function hasReadmeProjectAffinity(link, { netuid, repo } = {}) {
-  let url;
-  try {
-    url = new URL(link.url);
-  } catch {
-    return false;
-  }
-
-  const rawHaystack = [url.hostname, url.pathname, url.search, link.label || ""]
-    .join(" ")
-    .toLowerCase();
-  const compactHaystack = compactReadmeValue(rawHaystack);
-
-  if (Number.isInteger(netuid) && hasNetuidAffinity(rawHaystack, netuid)) {
-    return true;
-  }
-
-  return repoTokens(repo).some((token) => compactHaystack.includes(token));
-}
-
-function hasNetuidAffinity(value, netuid) {
-  const escaped = String(netuid).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const patterns = [
-    new RegExp(`(^|[^a-z0-9])sn[-_ ]?${escaped}([^a-z0-9]|$)`, "i"),
-    new RegExp(`(^|[^a-z0-9])subnets?[-_/= ]?${escaped}([^a-z0-9]|$)`, "i"),
-  ];
-  if (patterns.some((pattern) => pattern.test(value))) {
-    return true;
-  }
-
-  const compactValue = compactReadmeValue(value);
-  return (
-    compactValue.includes(`sn${netuid}`) ||
-    compactValue.includes(`subnet${netuid}`) ||
-    compactValue.includes(`subnets${netuid}`)
-  );
-}
-
-function repoTokens(repo = {}) {
-  const rawTokens = `${repo.owner || ""} ${repo.repo || ""}`
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  const compactTokens = [
-    compactReadmeValue(repo.owner || ""),
-    compactReadmeValue(repo.repo || ""),
-  ].filter(Boolean);
-
-  return [
-    ...new Set(
-      [...rawTokens, ...compactTokens].map(compactReadmeValue).filter(Boolean),
-    ),
-  ].filter(
-    (token) => token.length >= 3 && !README_AFFINITY_STOPWORDS.has(token),
-  );
-}
-
-function compactReadmeValue(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-function normalizeHost(hostname) {
-  return String(hostname || "")
-    .toLowerCase()
-    .replace(/^www\./, "");
-}
-
-function registrableDomain(hostname) {
-  const parts = normalizeHost(hostname).split(".").filter(Boolean);
-  return parts.slice(-2).join(".");
-}
+// README link selection + classification was extracted to scripts/lib/readme-links.mjs
+// (#510 maintainability decomposition). Re-exported here verbatim so every existing
+// importer of scripts/lib.mjs keeps its import path unchanged — pure code-motion
+// with byte-identical artifact output.
+export {
+  README_LINK_LIMIT,
+  README_KIND_LIMITS,
+  isLikelyExampleLink,
+  selectReviewableReadmeLinks,
+  isReviewableReadmeLink,
+} from "./lib/readme-links.mjs";
 
 export function slugify(value) {
   return String(value || "")
@@ -1612,613 +2212,17 @@ export function slugify(value) {
     .replace(/-{2,}/g, "-");
 }
 
-export function buildRpcEndpointArtifact({
-  surfaces,
-  healthSurfaces = [],
-  generatedAt,
-  contractVersion,
-  source,
-}) {
-  const healthBySurface = new Map(
-    healthSurfaces.map((surface) => [surface.surface_id, surface]),
-  );
-  const endpoints = surfaces
-    .filter((surface) =>
-      ["subtensor-rpc", "subtensor-wss"].includes(surface.kind),
-    )
-    .map((surface) => {
-      const health = healthBySurface.get(surface.id) || {};
-      const healthMeta = endpointHealthMetadata({
-        health,
-        monitored: true,
-      });
-      return {
-        id: surface.id,
-        netuid: surface.netuid,
-        subnet_slug: surface.subnet_slug,
-        subnet_name: surface.subnet_name,
-        chain: "bittensor",
-        network: "finney",
-        kind: surface.kind,
-        url: surface.url,
-        provider: surface.provider,
-        authority: surface.authority,
-        auth_required: surface.auth_required,
-        public_safe: surface.public_safe,
-        archive_support: health.archive_support ?? null,
-        latest_block: health.latest_block ?? null,
-        methods_supported: health.methods_supported || null,
-        rpc_method_count: health.rpc_method_count ?? null,
-        method_tested: health.method_tested || surface.probe?.method || null,
-        status: health.status || "unknown",
-        classification: health.classification || "unknown",
-        latency_ms: health.latency_ms ?? null,
-        observed_at: healthMeta.observed_at,
-        health_source: healthMeta.health_source,
-        health_stale: healthMeta.health_stale,
-        last_ok: healthMeta.last_ok,
-        last_checked: healthMeta.last_checked,
-        error: health.error || null,
-        rate_limit_notes: surface.rate_limit_notes || null,
-        source_urls: surface.source_urls || [],
-      };
-    })
-    .sort(
-      (a, b) =>
-        a.provider.localeCompare(b.provider) || a.id.localeCompare(b.id),
-    );
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    source,
-    notes:
-      "Bittensor base-layer RPC endpoints only. These are chain-level surfaces, not subnet application APIs.",
-    summary: {
-      endpoint_count: endpoints.length,
-      by_kind: countRecord(endpoints, (endpoint) => endpoint.kind),
-      by_provider: countRecord(endpoints, (endpoint) => endpoint.provider),
-      by_status: countRecord(endpoints, (endpoint) => endpoint.status),
-      archive_supported_count: endpoints.filter(
-        (endpoint) => endpoint.archive_support === true,
-      ).length,
-    },
-    endpoints,
-  };
-}
-
-export function buildEndpointResourceArtifact({
-  surfaces,
-  healthSurfaces = [],
-  generatedAt,
-  contractVersion,
-  source,
-}) {
-  const healthBySurface = new Map(
-    healthSurfaces.map((surface) => [surface.surface_id, surface]),
-  );
-  const endpoints = surfaces.map((surface) => {
-    const health = healthBySurface.get(surface.id) || {};
-    const monitored = surface.probe?.enabled === true && surface.public_safe;
-    const healthMeta = endpointHealthMetadata({
-      health,
-      monitored,
-    });
-    const scoreBreakdown = endpointScoreBreakdown({
-      ...surface,
-      ...health,
-      status: health.status || "unknown",
-    });
-    const poolEligibility = endpointPoolEligibility({
-      ...surface,
-      status: health.status || "unknown",
-    });
-
-    return {
-      id: `endpoint-${surface.id}`,
-      surface_id: surface.id,
-      netuid: surface.netuid,
-      subnet_slug: surface.subnet_slug,
-      subnet_name: surface.subnet_name,
-      chain: "bittensor",
-      network: "finney",
-      layer: endpointLayer(surface.kind),
-      kind: surface.kind,
-      url: surface.url,
-      provider: surface.provider,
-      operator: surface.provider,
-      authority: surface.authority,
-      auth_required: surface.auth_required,
-      public_safe: surface.public_safe,
-      monitoring_policy: endpointMonitoringPolicy(surface),
-      monitoring_status: monitored ? "monitored" : "not_monitored",
-      publication_state: endpointPublicationState({
-        monitored,
-        poolEligible: poolEligibility.eligible,
-        surface,
-      }),
-      pool_eligible: poolEligibility.eligible,
-      pool_eligibility_reasons: poolEligibility.reasons,
-      archive_support: health.archive_support ?? null,
-      latest_block: health.latest_block ?? null,
-      method_support: health.methods_supported || null,
-      rpc_method_count: health.rpc_method_count ?? null,
-      method_tested: health.method_tested || surface.probe?.method || null,
-      status: monitored ? health.status || "unknown" : "unknown",
-      classification: monitored
-        ? health.classification || "unknown"
-        : "unknown",
-      latency_ms: monitored ? (health.latency_ms ?? null) : null,
-      observed_at: healthMeta.observed_at,
-      health_source: healthMeta.health_source,
-      health_stale: healthMeta.health_stale,
-      score: scoreBreakdown.score,
-      score_reasons: scoreBreakdown.reasons,
-      last_ok: healthMeta.last_ok,
-      last_checked: healthMeta.last_checked,
-      error: monitored ? health.error || null : null,
-      rate_limit_notes: surface.rate_limit_notes || null,
-      source_urls: surface.source_urls || [],
-    };
-  });
-
-  endpoints.sort(
-    (a, b) =>
-      a.netuid - b.netuid ||
-      a.layer.localeCompare(b.layer) ||
-      a.kind.localeCompare(b.kind) ||
-      a.id.localeCompare(b.id),
-  );
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    source,
-    notes: [
-      "Endpoint resources are normalized from curated public surfaces.",
-      "Observed health, latency, and pool eligibility are probe-derived only.",
-      "Subnet application APIs are heterogeneous and are not proxied in v1.",
-    ],
-    summary: {
-      endpoint_count: endpoints.length,
-      monitored_count: endpoints.filter(
-        (endpoint) => endpoint.monitoring_status === "monitored",
-      ).length,
-      pool_eligible_count: endpoints.filter(
-        (endpoint) => endpoint.pool_eligible,
-      ).length,
-      by_kind: countRecord(endpoints, (endpoint) => endpoint.kind),
-      by_layer: countRecord(endpoints, (endpoint) => endpoint.layer),
-      by_provider: countRecord(endpoints, (endpoint) => endpoint.provider),
-      by_publication_state: countRecord(
-        endpoints,
-        (endpoint) => endpoint.publication_state,
-      ),
-      by_status: countRecord(endpoints, (endpoint) => endpoint.status),
-    },
-    endpoints,
-  };
-}
-
-export function buildEndpointPoolArtifact({
-  generatedAt,
-  contractVersion,
-  rpcArtifact = null,
-  endpointArtifact = null,
-  // Static, non-default-network base-layer RPC endpoints (e.g. testnet). These
-  // are NOT probe-derived: they carry static pool_eligible/score so /rpc/v1/{net}
-  // can route immediately, with the proxy's in-isolate breaker + failover handling
-  // liveness. Shape matches the mapped `endpoints` below (see test-base-endpoints).
-  testnetEndpoints = [],
-}) {
-  const sourceArtifact = endpointArtifact || rpcArtifact || { endpoints: [] };
-  const endpoints = (sourceArtifact.endpoints || []).map((endpoint) => {
-    const scoreBreakdown = endpointScoreBreakdown(endpoint);
-    const poolEligibility = endpointPoolEligibility(endpoint);
-    return {
-      ...endpoint,
-      score: scoreBreakdown.score,
-      score_reasons: endpoint.score_reasons || scoreBreakdown.reasons,
-      pool_eligible: poolEligibility.eligible,
-      pool_eligibility_reasons:
-        endpoint.pool_eligibility_reasons || poolEligibility.reasons,
-      unsafe_methods_blocked: true,
-    };
-  });
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    source: endpointArtifact
-      ? "endpoint-resource-probes"
-      : "rpc-endpoint-probes",
-    notes: [
-      "Endpoint pools are advisory only in v1.",
-      "Future proxy/load-balancer routes must block write and unsafe RPC methods by default.",
-      "Only Bittensor base-layer RPC/WSS endpoints are pool candidates in v1.",
-    ],
-    disabled_proxy_contract: {
-      enabled: false,
-      allowed_methods: [
-        "chain_getHeader",
-        "chain_getBlockHash",
-        "system_health",
-        "rpc_methods",
-      ],
-      denied_method_patterns: [
-        "author_",
-        "state_call",
-        "sudo_",
-        "payment_",
-        "contracts_",
-      ],
-      feature_flag: "METAGRAPH_ENABLE_RPC_PROXY",
-      rate_limit_required: true,
-      waf_required: true,
-    },
-    eligibility_policy: {
-      source: "probe-derived",
-      eligible_layers: ["bittensor-base"],
-      required_status: "ok",
-      requires_public_safe: true,
-      requires_no_auth: true,
-      user_reports_can_change_health: false,
-      notes:
-        "Pool eligibility is derived from monitored endpoint state only. Contributor reports can trigger review or re-probes, but cannot set health or uptime.",
-    },
-    provider_scores: endpointProviderScores(endpoints),
-    pools: [
-      endpointPool("finney-rpc", "subtensor-rpc", endpoints),
-      endpointPool("finney-wss", "subtensor-wss", endpoints),
-      endpointPool(
-        "finney-archive",
-        "archive",
-        endpoints.filter((endpoint) => endpoint.archive_support === true),
-      ),
-      // Testnet base-layer pools (registry/native/test-base-endpoints.json).
-      // test-rpc is the proxy target (/rpc/v1/test); test-wss is reference-only
-      // (the HTTP proxy can't proxy WSS), parity with finney-wss. Each appended
-      // only when that kind is configured, so no empty pools.
-      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-rpc")
-        ? [endpointPool("test-rpc", "subtensor-rpc", testnetEndpoints)]
-        : []),
-      ...(testnetEndpoints.some((endpoint) => endpoint.kind === "subtensor-wss")
-        ? [endpointPool("test-wss", "subtensor-wss", testnetEndpoints)]
-        : []),
-    ],
-  };
-}
-
-function endpointPool(id, kind, endpoints) {
-  const poolEndpoints = endpoints
-    .filter((endpoint) => kind === "archive" || endpoint.kind === kind)
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        (a.latency_ms ?? 999999) - (b.latency_ms ?? 999999) ||
-        a.id.localeCompare(b.id),
-    );
-  return {
-    id,
-    kind,
-    endpoint_count: poolEndpoints.length,
-    eligible_count: poolEndpoints.filter((endpoint) => endpoint.pool_eligible)
-      .length,
-    best_endpoint_id:
-      poolEndpoints.find((endpoint) => endpoint.pool_eligible)?.id || null,
-    endpoints: poolEndpoints.map((endpoint) => ({
-      archive_support: endpoint.archive_support,
-      id: endpoint.id,
-      kind: endpoint.kind,
-      layer: endpoint.layer || endpointLayer(endpoint.kind),
-      health_source: endpoint.health_source || "missing-probe",
-      health_stale: endpoint.health_stale ?? endpoint.status !== "ok",
-      latency_ms: endpoint.latency_ms,
-      latest_block: endpoint.latest_block,
-      observed_at: endpoint.observed_at || endpoint.last_checked || null,
-      pool_eligible: endpoint.pool_eligible,
-      provider: endpoint.provider,
-      score: endpoint.score,
-      score_reasons: endpoint.score_reasons || [],
-      status: endpoint.status,
-      url: endpoint.url,
-      last_ok: endpoint.last_ok || null,
-      pool_eligibility_reasons: endpoint.pool_eligibility_reasons || [],
-    })),
-  };
-}
-
-// Only callable infrastructure (RPC/WSS + the agent-callable surface kinds) can
-// have a meaningful "down" incident. Docs / dashboards / websites / repos are
-// reference links, not endpoints — a website that returns HTML probes as
-// "unsupported" and must NOT be reported as an incident.
-const CALLABLE_ENDPOINT_KINDS = new Set([
-  "subtensor-rpc",
-  "subtensor-wss",
-  "subnet-api",
-  "openapi",
-  "sse",
-  "data-artifact",
-]);
-
-export function buildEndpointIncidentArtifact({
-  endpointArtifact,
-  generatedAt,
-  contractVersion,
-}) {
-  const endpoints = endpointArtifact?.endpoints || [];
-  const incidents = endpoints
-    .filter((endpoint) => CALLABLE_ENDPOINT_KINDS.has(endpoint.kind))
-    .filter((endpoint) => endpoint.monitoring_status === "monitored")
-    .filter((endpoint) => ["failed", "degraded"].includes(endpoint.status))
-    .map((endpoint) => {
-      const severity = endpoint.status === "failed" ? "critical" : "warning";
-      const reason =
-        endpoint.error ||
-        endpoint.classification ||
-        `${endpoint.status} endpoint probe result`;
-      return {
-        id: `incident-${endpoint.id}`,
-        endpoint_id: endpoint.id,
-        surface_id: endpoint.surface_id,
-        netuid: endpoint.netuid,
-        subnet_slug: endpoint.subnet_slug,
-        subnet_name: endpoint.subnet_name,
-        layer: endpoint.layer,
-        kind: endpoint.kind,
-        provider: endpoint.provider,
-        operator: endpoint.operator,
-        status: endpoint.status,
-        classification: endpoint.classification,
-        observed_at: endpoint.observed_at || endpoint.last_checked || null,
-        health_source: endpoint.health_source || "probe-derived",
-        health_stale: endpoint.health_stale ?? endpoint.status !== "ok",
-        severity,
-        state: "active",
-        reason,
-        detected_at: endpoint.last_checked || generatedAt,
-        last_ok: endpoint.last_ok || null,
-        last_checked: endpoint.last_checked,
-        pool_eligible: false,
-        user_reported: false,
-        source: "probe-derived",
-      };
-    })
-    .sort(
-      (a, b) =>
-        severityRank(b.severity) - severityRank(a.severity) ||
-        a.netuid - b.netuid ||
-        a.kind.localeCompare(b.kind) ||
-        a.endpoint_id.localeCompare(b.endpoint_id),
-    );
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    source: "endpoint-resource-probes",
-    notes: [
-      "Endpoint incidents are generated from observed probe state only.",
-      "Contributor reports can create review or re-probe work, but cannot set uptime, latency, health, or pool eligibility.",
-      "Resolved incident history is expected to live in R2/D1 once persistent probe history is enabled.",
-    ],
-    summary: {
-      incident_count: incidents.length,
-      active_count: incidents.filter((incident) => incident.state === "active")
-        .length,
-      by_kind: countRecord(incidents, (incident) => incident.kind),
-      by_layer: countRecord(incidents, (incident) => incident.layer),
-      by_provider: countRecord(incidents, (incident) => incident.provider),
-      by_severity: countRecord(incidents, (incident) => incident.severity),
-      by_status: countRecord(incidents, (incident) => incident.status),
-    },
-    incidents,
-  };
-}
-
-function endpointLayer(kind) {
-  if (isBaseLayerEndpoint(kind) || kind === "archive") {
-    return "bittensor-base";
-  }
-  if (
-    ["subnet-api", "openapi", "sse", "dashboard", "sdk", "example"].includes(
-      kind,
-    )
-  ) {
-    return "subnet-app";
-  }
-  if (kind === "data-artifact") {
-    return "data-provider";
-  }
-  return "docs-provider";
-}
-
-function endpointHealthMetadata({ health, monitored }) {
-  if (!monitored) {
-    return {
-      observed_at: null,
-      health_source: "not-monitored",
-      health_stale: false,
-      last_checked: null,
-      last_ok: null,
-    };
-  }
-
-  const observedAt = health.verified_at || health.last_checked || null;
-  const lastOk = health.last_ok || (health.status === "ok" ? observedAt : null);
-
-  return {
-    observed_at: observedAt,
-    health_source: observedAt ? "probe-derived" : "missing-probe",
-    health_stale: observedAt === null,
-    last_checked: observedAt,
-    last_ok: lastOk,
-  };
-}
-
-function isBaseLayerEndpoint(kind) {
-  return ["subtensor-rpc", "subtensor-wss"].includes(kind);
-}
-
-function endpointMonitoringPolicy(surface) {
-  if (!surface.probe) {
-    return {
-      enabled: false,
-      method: null,
-      expect: null,
-      source: "not-configured",
-    };
-  }
-  return {
-    enabled: surface.probe.enabled === true,
-    method: surface.probe.method || null,
-    expect: surface.probe.expect || null,
-    timeout_ms: surface.probe.timeout_ms || null,
-    source: "surface-probe-config",
-  };
-}
-
-function endpointPublicationState({ monitored, poolEligible, surface }) {
-  if (surface.public_safe !== true) {
-    return "disabled";
-  }
-  if (poolEligible) {
-    return "pool-eligible";
-  }
-  if (monitored) {
-    return "monitored";
-  }
-  return "verified";
-}
-
-function endpointScoreBreakdown(endpoint) {
-  let score = 0;
-  const reasons = [];
-  function add(reason, points) {
-    score += points;
-    reasons.push({ reason, points });
-  }
-
-  if (endpoint.status === "ok") add("status-ok", 50);
-  if (endpoint.archive_support === true) add("archive-support", 15);
-  if (endpoint.latest_block) add("latest-block-observed", 10);
-  const methodSupport = endpoint.methods_supported || endpoint.method_support;
-  if (
-    methodSupport &&
-    typeof methodSupport === "object" &&
-    !Array.isArray(methodSupport)
-  ) {
-    add(
-      "method-support",
-      Math.min(Object.values(methodSupport).filter(Boolean).length * 5, 20),
-    );
-  } else if (Array.isArray(methodSupport)) {
-    add("method-support", Math.min(methodSupport.length, 20));
-  }
-  if (Number.isFinite(endpoint.latency_ms))
-    add("latency", Math.max(0, 20 - Math.round(endpoint.latency_ms / 100)));
-  if (endpoint.auth_required) add("auth-required", -25);
-  if (endpoint.status === "degraded") add("status-degraded", -10);
-  if (endpoint.status === "failed") add("status-failed", -50);
-
-  return {
-    score: Math.max(0, score),
-    reasons: reasons.filter((reason) => reason.points !== 0),
-  };
-}
-
-function endpointPoolEligibility(endpoint) {
-  const reasons = [];
-  if (!isBaseLayerEndpoint(endpoint.kind)) {
-    reasons.push("not-bittensor-base-layer");
-  }
-  if (endpoint.status !== "ok") {
-    reasons.push(`status-${endpoint.status || "unknown"}`);
-  }
-  if (endpoint.auth_required !== false) {
-    reasons.push("auth-required");
-  }
-  if (endpoint.public_safe !== true) {
-    reasons.push("not-public-safe");
-  }
-  return {
-    eligible: reasons.length === 0,
-    reasons: reasons.length ? reasons : ["eligible"],
-  };
-}
-
-function endpointProviderScores(endpoints) {
-  const providers = new Map();
-  for (const endpoint of endpoints) {
-    const provider = endpoint.provider || "unknown";
-    const row = providers.get(provider) || {
-      provider,
-      endpoint_count: 0,
-      monitored_count: 0,
-      ok_count: 0,
-      failed_count: 0,
-      degraded_count: 0,
-      pool_eligible_count: 0,
-      score_total: 0,
-    };
-    row.endpoint_count += 1;
-    if (endpoint.monitoring_status === "monitored") {
-      row.monitored_count += 1;
-    }
-    if (endpoint.status === "ok") row.ok_count += 1;
-    if (endpoint.status === "failed") row.failed_count += 1;
-    if (endpoint.status === "degraded") row.degraded_count += 1;
-    if (endpoint.pool_eligible) row.pool_eligible_count += 1;
-    row.score_total += endpoint.score || 0;
-    providers.set(provider, row);
-  }
-
-  return [...providers.values()]
-    .map((row) => {
-      const publicRow = { ...row };
-      delete publicRow.score_total;
-      return {
-        ...publicRow,
-        average_score: row.endpoint_count
-          ? Math.round(row.score_total / row.endpoint_count)
-          : 0,
-        operational_score:
-          row.endpoint_count === 0
-            ? 0
-            : Math.max(
-                0,
-                Math.round(
-                  (row.ok_count / row.endpoint_count) * 70 +
-                    (row.pool_eligible_count / row.endpoint_count) * 20 -
-                    (row.failed_count / row.endpoint_count) * 30 -
-                    (row.degraded_count / row.endpoint_count) * 10,
-                ),
-              ),
-      };
-    })
-    .sort(
-      (a, b) =>
-        b.operational_score - a.operational_score ||
-        b.average_score - a.average_score ||
-        a.provider.localeCompare(b.provider),
-    );
-}
-
-function severityRank(severity) {
-  return { critical: 3, warning: 2, info: 1 }[severity] || 0;
-}
-
-function countRecord(items, keyFn) {
-  return Object.fromEntries(
-    Object.entries(
-      items.reduce((accumulator, item) => {
-        const key = keyFn(item) || "unknown";
-        accumulator[key] = (accumulator[key] || 0) + 1;
-        return accumulator;
-      }, {}),
-    ).sort(([a], [b]) => a.localeCompare(b)),
-  );
-}
+// Economics + endpoint artifact derivation were extracted to dedicated modules
+// under scripts/lib/ (#510 maintainability decomposition). They are re-exported
+// here verbatim so every existing importer of scripts/lib.mjs keeps its import
+// path unchanged — this is pure code-motion with byte-identical artifact output.
+export {
+  computeMinerReadiness,
+  buildEconomicsArtifact,
+} from "./lib/economics-artifacts.mjs";
+export {
+  buildRpcEndpointArtifact,
+  buildEndpointResourceArtifact,
+  buildEndpointPoolArtifact,
+  buildEndpointIncidentArtifact,
+} from "./lib/endpoint-artifacts.mjs";

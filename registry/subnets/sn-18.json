@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "netuid": 18,
+  "name": "Zeus",
+  "slug": "sn-18",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [],
+  "social": {
+    "x": "https://x.com/zeussubnet"
+  },
+  "source_repo": "https://github.com/Orpheus-AI/Zeus",
+  "website_url": "https://www.zeussubnet.com/"
+}

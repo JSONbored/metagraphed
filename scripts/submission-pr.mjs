@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import {
   loadCandidates,
@@ -33,11 +33,34 @@ if (!changedFilesPath) {
 const changedFiles = normalizeChangedFiles(
   await fs.readFile(changedFilesPath, "utf8"),
 );
-const directCandidateFile = changedFiles.find((file) =>
-  DIRECT_CANDIDATE_PATTERN.test(file),
+// A delete-only direct submission REMOVES the candidate/provider file — it's absent from the working
+// tree. A removal is a registry DELETION, not a content submission to validate; reading the missing file
+// ENOENT-ed the whole preflight and false-failed maintainer cleanup #944. Drop removed direct files only
+// when every changed file is such a deletion, so pure removals route as normal/non-submission PRs. Mixed
+// deletion PRs must keep the removed paths in the policy input; otherwise the UGC preflight can disagree
+// with the workflow router and skip the full CI gates for unrelated edits. (#candidate-deletion)
+// Use the broad community-dir prefix (matching classifyPrScope's touchedCommunity* check), not just the
+// strict DIRECT_*_PATTERN, so ANY removed candidate/provider file is recognized as a deletion.
+const isRemovedDirectFile = (file) =>
+  (file.startsWith("registry/candidates/community/") ||
+    file.startsWith("registry/providers/community/")) &&
+  file.endsWith(".json") &&
+  !existsSync(path.join(inputRoot, file));
+const removedDirectFiles = changedFiles.filter(isRemovedDirectFile);
+const deletionOnlyDirectPr =
+  removedDirectFiles.length > 0 &&
+  removedDirectFiles.length === changedFiles.length;
+const effectiveChangedFiles = deletionOnlyDirectPr ? [] : changedFiles;
+if (deletionOnlyDirectPr) {
+  console.log(
+    `Submission preflight: ${removedDirectFiles.length} removed direct file(s) treated as registry deletion(s): ${removedDirectFiles.join(", ")}`,
+  );
+}
+const directCandidateFile = effectiveChangedFiles.find(
+  (file) => DIRECT_CANDIDATE_PATTERN.test(file) && !isRemovedDirectFile(file),
 );
-const directProviderFile = changedFiles.find((file) =>
-  DIRECT_PROVIDER_PATTERN.test(file),
+const directProviderFile = effectiveChangedFiles.find(
+  (file) => DIRECT_PROVIDER_PATTERN.test(file) && !isRemovedDirectFile(file),
 );
 const candidateDocument = directCandidateFile
   ? await readJson(path.join(inputRoot, directCandidateFile))
@@ -58,12 +81,9 @@ const directSubmissionRaw = new Map(
   ).map(([file, raw]) => [file, raw]),
 );
 const existingCandidates = directCandidateFile
-  ? (await loadCandidates()).filter(
-      (candidate) =>
-        !candidateDocument?.candidates?.some(
-          (submitted) => submitted.id === candidate.id,
-        ),
-    )
+  ? await loadCandidates({
+      excludeFiles: [path.join(inputRoot, directCandidateFile)],
+    })
   : await loadCandidates();
 const existingProviders = directProviderFile
   ? (await loadProviders()).filter(
@@ -72,7 +92,7 @@ const existingProviders = directProviderFile
   : await loadProviders();
 
 const report = buildPrSubmissionReport({
-  changedFiles,
+  changedFiles: effectiveChangedFiles,
   candidateDocument,
   providerDocument,
   submitter,

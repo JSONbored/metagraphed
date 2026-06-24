@@ -137,5 +137,8 @@
       },
       "notes": "Official Vanta Network source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/taoshiio"
+  }
 }

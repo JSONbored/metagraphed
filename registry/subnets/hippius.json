@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 75,
-  "name": "Hippius",
-  "slug": "sn-75",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "depin",
@@ -13,114 +8,147 @@
     "official-website",
     "storage"
   ],
-  "docs_url": "https://docs.hippius.com/",
-  "source_repo": "https://github.com/thenervelab/hippius-validator",
-  "dashboard_url": "https://taomarketcap.com/subnets/75",
-  "website_url": "https://hippius.com/",
-  "notes": "Reviewed overlay for SN75 using the official Hippius website, docs, blockchain API docs, validator repository, and storage miner repository. Common API/OpenAPI paths on hippius.com currently return 404 and are not promoted as API surfaces.",
+  "contact": "hello@hippius.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:25:00.000Z",
-    "verified_at": "2026-06-08T09:25:00.000Z",
-    "source_count": 8,
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T09:25:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/75",
+  "docs_url": "https://docs.hippius.com/",
+  "name": "Hippius",
+  "netuid": 75,
+  "notes": "Reviewed overlay for SN75 using the official Hippius website, docs, blockchain API docs, validator repository, and storage miner repository. Common API/OpenAPI paths on hippius.com currently return 404 and are not promoted as API surfaces.",
+  "schema_version": 1,
+  "slug": "sn-75",
+  "social": {
+    "x": "https://x.com/hippius_subnet"
+  },
+  "source_repo": "https://github.com/thenervelab/hippius-validator",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-75-hippius-website",
-      "name": "Hippius website",
-      "kind": "website",
-      "url": "https://hippius.com/",
-      "provider": "hippius",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-75-hippius-website",
+      "kind": "website",
+      "name": "Hippius website",
+      "notes": "Official Hippius website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
       "public_safe": true,
       "source_urls": ["https://hippius.com/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hippius website."
+      "url": "https://hippius.com/"
     },
     {
-      "id": "sn-75-hippius-docs",
-      "name": "Hippius docs",
-      "kind": "docs",
-      "url": "https://docs.hippius.com/",
-      "provider": "hippius",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-75-hippius-docs",
+      "kind": "docs",
+      "name": "Hippius docs",
+      "notes": "Official Hippius documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
       "public_safe": true,
       "source_urls": ["https://docs.hippius.com/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hippius documentation."
+      "url": "https://docs.hippius.com/"
     },
     {
-      "id": "sn-75-hippius-blockchain-api-docs",
-      "name": "Hippius blockchain API docs",
-      "kind": "docs",
-      "url": "https://docs.hippius.com/blockchain/api",
-      "provider": "hippius",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-75-hippius-blockchain-api-docs",
+      "kind": "docs",
+      "name": "Hippius blockchain API docs",
+      "notes": "Official Hippius blockchain API documentation. This is documentation, not a promoted API endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
       "public_safe": true,
       "source_urls": ["https://docs.hippius.com/blockchain/api"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hippius blockchain API documentation. This is documentation, not a promoted API endpoint."
+      "url": "https://docs.hippius.com/blockchain/api"
     },
     {
-      "id": "sn-75-hippius-validator-source",
-      "name": "Hippius validator repository",
-      "kind": "source-repo",
-      "url": "https://github.com/thenervelab/hippius-validator",
-      "provider": "hippius",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-75-hippius-validator-source",
+      "kind": "source-repo",
+      "name": "Hippius validator repository",
+      "notes": "Official Hippius validator repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
       "public_safe": true,
       "source_urls": ["https://github.com/thenervelab/hippius-validator"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Hippius validator repository."
+      "url": "https://github.com/thenervelab/hippius-validator"
     },
     {
-      "id": "sn-75-hippius-storage-miner-source",
-      "name": "Hippius storage miner repository",
-      "kind": "source-repo",
-      "url": "https://github.com/thenervelab/hippius-storage-miner",
-      "provider": "hippius",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/thenervelab/hippius-storage-miner"],
+      "id": "sn-75-hippius-storage-miner-source",
+      "kind": "source-repo",
+      "name": "Hippius storage miner repository",
+      "notes": "Official Hippius storage miner repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official Hippius storage miner repository."
+      "provider": "hippius",
+      "public_safe": true,
+      "source_urls": ["https://github.com/thenervelab/hippius-storage-miner"],
+      "url": "https://github.com/thenervelab/hippius-storage-miner"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-openapi",
+      "kind": "openapi",
+      "name": "Hippius API (OpenAPI)",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.hippius.com/swagger.json",
+      "source_urls": ["https://api.hippius.com/swagger"],
+      "url": "https://api.hippius.com/swagger.json"
     }
-  ]
+  ],
+  "website_url": "https://hippius.com/"
 }

@@ -19,6 +19,563 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.20.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.20.0...platform-v0.20.1) (2026-06-23)
+
+
+### Bug Fixes
+
+* **backfill:** pin xxhash dependency ([#1510](https://github.com/JSONbored/metagraphed/issues/1510)) ([37b5cc6](https://github.com/JSONbored/metagraphed/commit/37b5cc62c1303f4e606d5461ffe9ba1f35efa775))
+* **history:** return structured window errors ([#1492](https://github.com/JSONbored/metagraphed/issues/1492)) ([57c37b0](https://github.com/JSONbored/metagraphed/commit/57c37b0cb811d4cc55778d2725acbc65aa87a8b3))
+* validate backfill workflow inputs ([#1516](https://github.com/JSONbored/metagraphed/issues/1516)) ([d6a24fd](https://github.com/JSONbored/metagraphed/commit/d6a24fd8e09d6bb26976e2941b7f0445685a1040))
+* **workflows:** validate backfill shard input ([#1518](https://github.com/JSONbored/metagraphed/issues/1518)) ([5ad6685](https://github.com/JSONbored/metagraphed/commit/5ad66859712905a6e8bed49e3439e62297e6bf7c))
+* **workflows:** validate stake backfill months input ([#1515](https://github.com/JSONbored/metagraphed/issues/1515)) ([1358c8c](https://github.com/JSONbored/metagraphed/commit/1358c8c29c87f0c16414e3b15b672d3f92a6e2c7))
+
+## [0.20.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.19.0...platform-v0.20.0) (2026-06-23)
+
+
+### Features
+
+* **economics:** alpha-price history backfill for marquee sparklines ([#1124](https://github.com/JSONbored/metagraphed/issues/1124)) ([#1512](https://github.com/JSONbored/metagraphed/issues/1512)) ([fc20671](https://github.com/JSONbored/metagraphed/commit/fc206716b615ff637e169379ede85c8b016f5e54)), closes [#1511](https://github.com/JSONbored/metagraphed/issues/1511)
+* **history:** backfill 1yr of metagraph history + 400-day D1 retention ([#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1495](https://github.com/JSONbored/metagraphed/issues/1495)) ([99d00a4](https://github.com/JSONbored/metagraphed/commit/99d00a44c2f3221c4b8b724f1dd12d5240d44656)), closes [#1494](https://github.com/JSONbored/metagraphed/issues/1494)
+* **history:** per-UID daily metagraph history (block-explorer Tier-1, [#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1485](https://github.com/JSONbored/metagraphed/issues/1485)) ([b6d3961](https://github.com/JSONbored/metagraphed/commit/b6d3961727262cc5ef8fb49775b1886ee1cc84ab))
+* **history:** R2 cold archive + 90-day prune for neuron_daily ([#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1491](https://github.com/JSONbored/metagraphed/issues/1491)) ([7f44e61](https://github.com/JSONbored/metagraphed/commit/7f44e616fd3a777c7acc84a865df16bc2514d39a)), closes [#1490](https://github.com/JSONbored/metagraphed/issues/1490)
+* **icon:** /api/v1/icon favicon proxy — fixes site-wide missing brand icons ([#1124](https://github.com/JSONbored/metagraphed/issues/1124)) ([#1501](https://github.com/JSONbored/metagraphed/issues/1501)) ([1940ed8](https://github.com/JSONbored/metagraphed/commit/1940ed8dd31965fcbf006e4e359507bd19b31cae)), closes [#1500](https://github.com/JSONbored/metagraphed/issues/1500)
+
+
+### Bug Fixes
+
+* **api:** list pagination meta only reports desc when a sort was applied ([#1503](https://github.com/JSONbored/metagraphed/issues/1503)) ([5ff5da6](https://github.com/JSONbored/metagraphed/commit/5ff5da622f08a1b23341dbbf6cd867eb16695bc2))
+* **api:** report actually-inserted event rows, not validated rows ([#1456](https://github.com/JSONbored/metagraphed/issues/1456)) ([ad50eaa](https://github.com/JSONbored/metagraphed/commit/ad50eaa984d2d7f88e3f8443cbe23c6275180640))
+* **backfill:** batched raw-storage fetch — 176x faster, free, full-year ([#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1499](https://github.com/JSONbored/metagraphed/issues/1499)) ([3060f73](https://github.com/JSONbored/metagraphed/commit/3060f7344e7265ffe7b508c72176bb40834c4ba4)), closes [#1498](https://github.com/JSONbored/metagraphed/issues/1498)
+* **backfill:** dedicated METAGRAPH_BACKFILL_SECRET for the ingest auth ([#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1497](https://github.com/JSONbored/metagraphed/issues/1497)) ([b1c31cd](https://github.com/JSONbored/metagraphed/commit/b1c31cd99ae6adf765fef00a48509e8bddc29a9d)), closes [#1496](https://github.com/JSONbored/metagraphed/issues/1496)
+* **backfill:** retry transient 5xx in post_chunk + monthly stake pass ([#1345](https://github.com/JSONbored/metagraphed/issues/1345)) ([#1505](https://github.com/JSONbored/metagraphed/issues/1505)) ([1bcc47a](https://github.com/JSONbored/metagraphed/commit/1bcc47a4d0920a3c40eac13bf393235c7eb6b406)), closes [#1504](https://github.com/JSONbored/metagraphed/issues/1504)
+* **badge:** cap label by code points so it can't split a surrogate pair ([#1438](https://github.com/JSONbored/metagraphed/issues/1438)) ([63a5633](https://github.com/JSONbored/metagraphed/commit/63a56330857cdcef04d95262ce807130a68e93ad))
+* **graphql:** treat inline fragments transparently in depth/complexity ([#1440](https://github.com/JSONbored/metagraphed/issues/1440)) ([354c447](https://github.com/JSONbored/metagraphed/commit/354c44717ebbeafd3cef00850d9c4fdb2959019f)), closes [#1439](https://github.com/JSONbored/metagraphed/issues/1439)
+* **health:** overlay live probe health on MCP find_subnet_for_task + /ask enrichment ([#1481](https://github.com/JSONbored/metagraphed/issues/1481)) ([23cee4f](https://github.com/JSONbored/metagraphed/commit/23cee4f27ab2687e721210bcf9a62ee8044524c2)), closes [#1480](https://github.com/JSONbored/metagraphed/issues/1480)
+* **release:** require package sources match tag ([#1488](https://github.com/JSONbored/metagraphed/issues/1488)) ([dd76be5](https://github.com/JSONbored/metagraphed/commit/dd76be54a97757b15b77fa44d4a1a2945c965f96))
+* **release:** verify release tag is an ancestor of HEAD, not SHA-equal ([#1475](https://github.com/JSONbored/metagraphed/issues/1475)) ([c260b6e](https://github.com/JSONbored/metagraphed/commit/c260b6edd09b2f80ffb51d040a5a0da862d5644b))
+
+
+### Performance
+
+* **api:** short-circuit field-projection validation instead of scanning every row ([#1448](https://github.com/JSONbored/metagraphed/issues/1448)) ([6b3c958](https://github.com/JSONbored/metagraphed/commit/6b3c95822ad0e12656acb378bf40a16e89636f55))
+* edge-cache deterministic analytics routes + composite indexes (audit-driven) ([#1483](https://github.com/JSONbored/metagraphed/issues/1483)) ([28f0e75](https://github.com/JSONbored/metagraphed/commit/28f0e75b2ab10f1e4404d285cebdbba12daf6afa))
+
+
+### Documentation
+
+* **contract:** register metagraph-history routes in OpenAPI + catalog ([#1487](https://github.com/JSONbored/metagraphed/issues/1487)) ([84443ee](https://github.com/JSONbored/metagraphed/commit/84443ee91bae6082a445033f6b7cebf25da2981a)), closes [#1486](https://github.com/JSONbored/metagraphed/issues/1486)
+
+## [0.19.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.18.0...platform-v0.19.0) (2026-06-22)
+
+
+### Features
+
+* **api:** GraphQL read-only query layer at POST /api/v1/graphql ([#1367](https://github.com/JSONbored/metagraphed/issues/1367)) ([241d6fc](https://github.com/JSONbored/metagraphed/commit/241d6fc426f1d530e613c23da025ff754917409b))
+* **explorer:** account entity API — /api/v1/accounts/{ss58} (+events, +subnets) ([#1347](https://github.com/JSONbored/metagraphed/issues/1347)) ([#1368](https://github.com/JSONbored/metagraphed/issues/1368)) ([f0d1912](https://github.com/JSONbored/metagraphed/commit/f0d1912ef96312276d58ded68e97a32c6d6c5356))
+* **explorer:** realtime event ingest endpoint + streamer ([#1360](https://github.com/JSONbored/metagraphed/issues/1360), [#1361](https://github.com/JSONbored/metagraphed/issues/1361)) ([#1374](https://github.com/JSONbored/metagraphed/issues/1374)) ([917c79a](https://github.com/JSONbored/metagraphed/commit/917c79a486324e8331c21e868c0ef003d06d53cc))
+* **explorer:** tighten chain-event ingestion to ~5 min ([#1359](https://github.com/JSONbored/metagraphed/issues/1359), Option A) ([#1362](https://github.com/JSONbored/metagraphed/issues/1362)) ([58e0390](https://github.com/JSONbored/metagraphed/commit/58e0390cec5e14e7a33cc603d5d20ff44d99bf6c))
+* **health:** surface chain-event index freshness on /health ([#1361](https://github.com/JSONbored/metagraphed/issues/1361)) ([#1386](https://github.com/JSONbored/metagraphed/issues/1386)) ([76c1566](https://github.com/JSONbored/metagraphed/commit/76c1566121a256d5471292148ee68ab45064821e))
+* **metagraph:** re-source per-UID neurons to the Bittensor SDK ([#1348](https://github.com/JSONbored/metagraphed/issues/1348)) ([#1398](https://github.com/JSONbored/metagraphed/issues/1398)) ([6405cf4](https://github.com/JSONbored/metagraphed/commit/6405cf4c104b318a6ddc801c4e3e8037871d1e0a))
+* **streamer:** production-grade logging + resilience ([#1361](https://github.com/JSONbored/metagraphed/issues/1361)) ([#1391](https://github.com/JSONbored/metagraphed/issues/1391)) ([15ff0f9](https://github.com/JSONbored/metagraphed/commit/15ff0f9af71d8b7249d268d3c4e693b00a4c1a71))
+* **streamer:** Railway deploy config-as-code + WAF-safe User-Agent ([#1361](https://github.com/JSONbored/metagraphed/issues/1361)) ([#1384](https://github.com/JSONbored/metagraphed/issues/1384)) ([4242ba8](https://github.com/JSONbored/metagraphed/commit/4242ba82273b278f7d8085c3b472425933e19c96))
+
+
+### Bug Fixes
+
+* **api:** analyticsWindow error names the invalid value and valid options ([#1364](https://github.com/JSONbored/metagraphed/issues/1364)) ([45e7de6](https://github.com/JSONbored/metagraphed/commit/45e7de64f2b8536078428ac1c25c42ea304e24b7))
+* **api:** avoid caching D1 fallback analytics ([#1466](https://github.com/JSONbored/metagraphed/issues/1466)) ([10e3c5f](https://github.com/JSONbored/metagraphed/commit/10e3c5f9f8acf3980f05679a9eaf19895e98ceff))
+* **api:** honor If-None-Match lists and * on discovery endpoints ([#1423](https://github.com/JSONbored/metagraphed/issues/1423)) ([a26424d](https://github.com/JSONbored/metagraphed/commit/a26424d723fa0a481f519101ecc21dad1d0174f7))
+* **api:** keep the current bucket in the /rpc/usage time-series ([#1390](https://github.com/JSONbored/metagraphed/issues/1390)) ([0d81a59](https://github.com/JSONbored/metagraphed/commit/0d81a59aee7d974bad041fb9402b7aefe6a1edbe))
+* **api:** make error responses no-store so the edge cannot cache them ([#1407](https://github.com/JSONbored/metagraphed/issues/1407)) ([6d07ff0](https://github.com/JSONbored/metagraphed/commit/6d07ff0d4ab272fb174a6f12039c035249e0c818))
+* **api:** reject unsupported query params on per-subnet /health/trends ([#1447](https://github.com/JSONbored/metagraphed/issues/1447)) ([4a2f456](https://github.com/JSONbored/metagraphed/commit/4a2f45634b0960355dc00bb403ce66a109fcab3e))
+* **api:** route GraphQL before read-only method gate ([#1378](https://github.com/JSONbored/metagraphed/issues/1378)) ([6e0ef0d](https://github.com/JSONbored/metagraphed/commit/6e0ef0d2a871089c75db7f1a50998c405b7ad7f1))
+* **api:** surface observed_at on /subnets/{netuid}/uptime responses ([#1385](https://github.com/JSONbored/metagraphed/issues/1385)) ([b3381a6](https://github.com/JSONbored/metagraphed/commit/b3381a633c6bf3acb67dacd618debf7d471a6435))
+* **api:** tolerate optional economics snapshot read failures ([#1366](https://github.com/JSONbored/metagraphed/issues/1366)) ([508a2c6](https://github.com/JSONbored/metagraphed/commit/508a2c60b4a205b40041a8d328cf9b61ad840262))
+* **api:** use weak ETag comparison for badge/discovery 304s ([#1412](https://github.com/JSONbored/metagraphed/issues/1412)) ([1cf05d5](https://github.com/JSONbored/metagraphed/commit/1cf05d575bb275f32942eefd984d822cdd166987))
+* chunk D1 health writes and surface persist failures ([#1451](https://github.com/JSONbored/metagraphed/issues/1451)) ([f610419](https://github.com/JSONbored/metagraphed/commit/f61041967f7fe3e77fa6e23fa3b00b842b7becab))
+* **ci:** isolate metagraph fetch from secrets ([#1409](https://github.com/JSONbored/metagraphed/issues/1409)) ([71648c9](https://github.com/JSONbored/metagraphed/commit/71648c914a03123eddfe11fad36937dd21a6d049))
+* **contracts:** bound self-referential schemas in sampleFromSchema ([#1419](https://github.com/JSONbored/metagraphed/issues/1419)) ([c9b7ca6](https://github.com/JSONbored/metagraphed/commit/c9b7ca6092a0addcea27d351f0f9a6a3a39a2601))
+* **deps:** update dependency httpx to &gt;=0.28.1 ([#1425](https://github.com/JSONbored/metagraphed/issues/1425)) ([6d58dfb](https://github.com/JSONbored/metagraphed/commit/6d58dfbd9ebc07546d06b782f0d9566e31674aad))
+* **docker:** narrow streamer build context ([#1410](https://github.com/JSONbored/metagraphed/issues/1410)) ([e107db0](https://github.com/JSONbored/metagraphed/commit/e107db03933e68f22c1ae9690cccdc06191a0549))
+* **events:** cap the staged-event R2-&gt;D1 drain + drain overflow progressively ([#1346](https://github.com/JSONbored/metagraphed/issues/1346)) ([#1405](https://github.com/JSONbored/metagraphed/issues/1405)) ([1a804e8](https://github.com/JSONbored/metagraphed/commit/1a804e8714bb49fd94191928b63e619891962757))
+* **events:** durable R2 cursor for the poller — no more silent event loss on cron delay ([#1346](https://github.com/JSONbored/metagraphed/issues/1346)) ([#1462](https://github.com/JSONbored/metagraphed/issues/1462)) ([fec4416](https://github.com/JSONbored/metagraphed/commit/fec4416ddd14c1fd71531d128f10f1c328b3bf4d))
+* **events:** require observed timestamps for staged event ingestion ([#1371](https://github.com/JSONbored/metagraphed/issues/1371)) ([d8efe88](https://github.com/JSONbored/metagraphed/commit/d8efe88b19506d831bf54b0ca4bb1903822485d5))
+* **events:** rescan overlap despite staged cursor ([#1469](https://github.com/JSONbored/metagraphed/issues/1469)) ([cd61235](https://github.com/JSONbored/metagraphed/commit/cd61235826199876ba54f52438818d8c0c624f48))
+* **feeds:** clamp by code points so a feed string can't split a surrogate pair ([#1445](https://github.com/JSONbored/metagraphed/issues/1445)) ([590dadc](https://github.com/JSONbored/metagraphed/commit/590dadc06651749fe47f0f5873d15c09e78bccce))
+* **feeds:** coverage-delta item describes only the present side ([#1453](https://github.com/JSONbored/metagraphed/issues/1453)) ([23fef6d](https://github.com/JSONbored/metagraphed/commit/23fef6d6247a0f97e5a14015d0cf0f9e81b9614f))
+* **graphql:** bound request and query parsing ([#1408](https://github.com/JSONbored/metagraphed/issues/1408)) ([f083e38](https://github.com/JSONbored/metagraphed/commit/f083e387395bda9fa96f0450b3760d6f3fcaae3d))
+* **graphql:** follow named fragments in depth/complexity limits ([#1403](https://github.com/JSONbored/metagraphed/issues/1403)) ([5f4501d](https://github.com/JSONbored/metagraphed/commit/5f4501db6ba89ec82d482faa92797ee26c22f22f))
+* **graphql:** memoize fragment validation limits ([#1416](https://github.com/JSONbored/metagraphed/issues/1416)) ([579b6b6](https://github.com/JSONbored/metagraphed/commit/579b6b6e6826dc062feea36535ee9de3d92c3db3))
+* **health:** avoid full scan for chain events ([#1400](https://github.com/JSONbored/metagraphed/issues/1400)) ([ef7cf4e](https://github.com/JSONbored/metagraphed/commit/ef7cf4efed83fa4bd15b7bb24e03daca8ddae7bc))
+* **health:** count degraded RPC probes toward eviction ([#1465](https://github.com/JSONbored/metagraphed/issues/1465)) ([32136ab](https://github.com/JSONbored/metagraphed/commit/32136abd7a9940af68f45ed439aba1281c56da36))
+* **health:** only count consecutive FAILED probes toward pool eviction ([#1450](https://github.com/JSONbored/metagraphed/issues/1450)) ([399a4cf](https://github.com/JSONbored/metagraphed/commit/399a4cf3972303961efda9b22d2cbc5feee128be))
+* **health:** use REAL division for the weighted latency mean ([#1414](https://github.com/JSONbored/metagraphed/issues/1414)) ([5ad036f](https://github.com/JSONbored/metagraphed/commit/5ad036ff2fce203e76bcfc34e474dcfafc2f1341))
+* **health:** weight reliability-aggregate latency mean by healthy readings ([#1373](https://github.com/JSONbored/metagraphed/issues/1373)) ([f677983](https://github.com/JSONbored/metagraphed/commit/f6779839ce79d4cd66babda60e65ecc168de332d))
+* **mcp:** bound keyword query terms ([#1369](https://github.com/JSONbored/metagraphed/issues/1369)) ([fca782b](https://github.com/JSONbored/metagraphed/commit/fca782bb9240a2cda3c2b4b780e2e2c194bd6b22))
+* **mcp:** filter find_subnet_for_task by callability before truncating the pool ([#1379](https://github.com/JSONbored/metagraphed/issues/1379)) ([123e0fd](https://github.com/JSONbored/metagraphed/commit/123e0fd1d73ccc688058c3e30ef07489aa36d957))
+* **neuron:** allow full staged neuron snapshots by raising pre-parse byte cap ([#1393](https://github.com/JSONbored/metagraphed/issues/1393)) ([34801db](https://github.com/JSONbored/metagraphed/commit/34801dbbf9a8fde49d873f2e221e36a9e5f9bfd2))
+* **neurons:** snapshot-replace stale rows — no more phantom neurons ([#1459](https://github.com/JSONbored/metagraphed/issues/1459)) ([e943b97](https://github.com/JSONbored/metagraphed/commit/e943b97b821c3207a78d8fddee0d18ee19a6482e))
+* purge stale neuron rows after partial metagraph refresh ([#1404](https://github.com/JSONbored/metagraphed/issues/1404)) ([9b19433](https://github.com/JSONbored/metagraphed/commit/9b19433daf23a16de5b9de211bc2519ab532ca6c))
+* **railway:** include streamer files in Docker context ([#1394](https://github.com/JSONbored/metagraphed/issues/1394)) ([059a4d9](https://github.com/JSONbored/metagraphed/commit/059a4d9549d074701445e3490e75274fe153261c))
+* **rollup:** isolate account event rollup prepare failures ([#1396](https://github.com/JSONbored/metagraphed/issues/1396)) ([d77d5df](https://github.com/JSONbored/metagraphed/commit/d77d5dfec1f67a31d3f426717f0d41341d610220))
+* **rpc:** circuit-breaker cooldown no longer resets under sustained load ([#1363](https://github.com/JSONbored/metagraphed/issues/1363)) ([46dc4fe](https://github.com/JSONbored/metagraphed/commit/46dc4fe91e3d93588777da256a433f0842ad7c48))
+* **scheduled:** drain staged R2 only on the */3 cron — no cross-cron clobber ([#1463](https://github.com/JSONbored/metagraphed/issues/1463)) ([e0c2408](https://github.com/JSONbored/metagraphed/commit/e0c2408544bd94cb37c5eba0e001017ac820d2cd))
+* **scripts:** bound README netuid affinity to avoid prefix substring matches ([#1399](https://github.com/JSONbored/metagraphed/issues/1399)) ([9a7c63b](https://github.com/JSONbored/metagraphed/commit/9a7c63b4258f4df69b148dcb12240b2c099ad0d1))
+* **security:** rate-limit GraphQL, drop spoofable XFF for client IP, auth webhook before validate ([#1464](https://github.com/JSONbored/metagraphed/issues/1464)) ([25a6798](https://github.com/JSONbored/metagraphed/commit/25a6798b149b0dcf45862f165895b05ba11b9ef3))
+* skip health prune when daily rollup fails. ([#1392](https://github.com/JSONbored/metagraphed/issues/1392)) ([69fbd71](https://github.com/JSONbored/metagraphed/commit/69fbd711c11d94ea72bcac338b8791fa556dee9f))
+* **webhooks:** block the full fe00::/8 reserved IPv6 range in the SSRF guard ([#1443](https://github.com/JSONbored/metagraphed/issues/1443)) ([722b864](https://github.com/JSONbored/metagraphed/commit/722b864e8082b017f2d23ec8a5818ed17298fd8f))
+
+
+### Performance
+
+* **api:** edge-cache the D1 analytics endpoints (trends/percentiles/incidents/bulk) ([#1124](https://github.com/JSONbored/metagraphed/issues/1124)) ([#1461](https://github.com/JSONbored/metagraphed/issues/1461)) ([96a078b](https://github.com/JSONbored/metagraphed/commit/96a078bcaf2c09d6cfd79b3a19a03c11f0d57a84))
+* **api:** memoize economics:current KV reads in-isolate with 60 s TTL ([#1415](https://github.com/JSONbored/metagraphed/issues/1415)) ([5ae5c6f](https://github.com/JSONbored/metagraphed/commit/5ae5c6f0fd693627de21f1d2c3f77e8b46a094e1))
+* **api:** memoize KV_HEALTH_META reads in-isolate with 60 s TTL ([#1375](https://github.com/JSONbored/metagraphed/issues/1375)) ([49f9835](https://github.com/JSONbored/metagraphed/commit/49f9835b5afc56d0c8ec8f8207cc143645108dd5))
+
+## [0.18.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.17.0...platform-v0.18.0) (2026-06-22)
+
+
+### Features
+
+* **explorer:** chain-direct event poller + account_events D1 tier ([#1346](https://github.com/JSONbored/metagraphed/issues/1346)) ([#1353](https://github.com/JSONbored/metagraphed/issues/1353)) ([e09947a](https://github.com/JSONbored/metagraphed/commit/e09947a85fcc737224707b538e0ee7f20a4c9eca))
+
+
+### Bug Fixes
+
+* **prober:** backfill NULL economics in daily snapshots (COALESCE DO UPDATE) ([#1351](https://github.com/JSONbored/metagraphed/issues/1351)) ([f477c09](https://github.com/JSONbored/metagraphed/commit/f477c0927de7a434948b12437575df8f30e70924))
+
+## [0.17.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.2...platform-v0.17.0) (2026-06-21)
+
+
+### Features
+
+* **ai:** add relevance scores to /api/v1/ask citations ([#1312](https://github.com/JSONbored/metagraphed/issues/1312)) ([#1317](https://github.com/JSONbored/metagraphed/issues/1317)) ([01530b2](https://github.com/JSONbored/metagraphed/commit/01530b26d5ffd39a57c70159d909537aad8725ee))
+* **api:** miner discovery — open_slots + miner_readiness on economics ([#1306](https://github.com/JSONbored/metagraphed/issues/1306), epic [#1302](https://github.com/JSONbored/metagraphed/issues/1302)) ([#1327](https://github.com/JSONbored/metagraphed/issues/1327)) ([6891721](https://github.com/JSONbored/metagraphed/commit/689172105fdfa745c4afd0bcd5d6a4d6a72c16a9))
+* **api:** per-UID metagraph + validator-discovery endpoints ([#1304](https://github.com/JSONbored/metagraphed/issues/1304), [#1305](https://github.com/JSONbored/metagraphed/issues/1305)) ([#1322](https://github.com/JSONbored/metagraphed/issues/1322)) ([e0907d0](https://github.com/JSONbored/metagraphed/commit/e0907d03202f97083e464e88b17bb9288d305836))
+* **api:** robust conditional requests across live endpoints and the SSE feed ([#1333](https://github.com/JSONbored/metagraphed/issues/1333)) ([49561b7](https://github.com/JSONbored/metagraphed/commit/49561b7002754e3f35f642c747bde11f6d61b51c))
+* **api:** serve per-subnet economics on /api/v1/subnets/{netuid} ([#1308](https://github.com/JSONbored/metagraphed/issues/1308)) ([#1315](https://github.com/JSONbored/metagraphed/issues/1315)) ([7c49c0e](https://github.com/JSONbored/metagraphed/commit/7c49c0e20c417d7288db2c27efdbff1a2050aaad))
+* **api:** server-side filter/sort on /api/v1/economics ([#1313](https://github.com/JSONbored/metagraphed/issues/1313)) ([#1316](https://github.com/JSONbored/metagraphed/issues/1316)) ([aee270e](https://github.com/JSONbored/metagraphed/commit/aee270e483f7b873f979222e3f55527c1ab112cb))
+* **api:** time-series economics on the subnet trajectory ([#1307](https://github.com/JSONbored/metagraphed/issues/1307), epic [#1302](https://github.com/JSONbored/metagraphed/issues/1302)) ([#1323](https://github.com/JSONbored/metagraphed/issues/1323)) ([4883698](https://github.com/JSONbored/metagraphed/commit/4883698b82f65353d8eb0476fba8a0ff6fce014e))
+* **badge:** add uptime variant, style/label options, and CORS header ([#1299](https://github.com/JSONbored/metagraphed/issues/1299)) ([5698520](https://github.com/JSONbored/metagraphed/commit/569852077c25682c48c0d2f61802df971d54568d))
+* **metagraph:** per-UID neuron snapshot pipeline → D1 ([#1303](https://github.com/JSONbored/metagraphed/issues/1303), epic [#1302](https://github.com/JSONbored/metagraphed/issues/1302)) ([#1321](https://github.com/JSONbored/metagraphed/issues/1321)) ([b3dc005](https://github.com/JSONbored/metagraphed/commit/b3dc0059a75ea66a22eb4d56076882c937a4b5d7))
+* **python:** honor configured retries and backoff on RPC reads ([#1334](https://github.com/JSONbored/metagraphed/issues/1334)) ([1ea72f4](https://github.com/JSONbored/metagraphed/commit/1ea72f4eb31962ecc1ad4ca7c98e6603f60fc67f))
+
+
+### Bug Fixes
+
+* **api:** restrict subnet economics overlay to mainnet ([#1318](https://github.com/JSONbored/metagraphed/issues/1318)) ([99fac8a](https://github.com/JSONbored/metagraphed/commit/99fac8a754f2d1afbd115c20a78a12ff3a4c7ad5))
+* **health:** success-only latency with tail percentiles and sample counts ([#1331](https://github.com/JSONbored/metagraphed/issues/1331)) ([1fcae89](https://github.com/JSONbored/metagraphed/commit/1fcae897a437c759dae9602c14b5c64d9c7282ec))
+* **lib:** keep trailing-comma cleanup out of string literals in stripJsonComments ([#1319](https://github.com/JSONbored/metagraphed/issues/1319)) ([2039881](https://github.com/JSONbored/metagraphed/commit/2039881003dcb0319e23c280561d970f14f05b15))
+* **lib:** strip FQDN trailing dot before the self-domain brand check ([#1320](https://github.com/JSONbored/metagraphed/issues/1320)) ([8d606cb](https://github.com/JSONbored/metagraphed/commit/8d606cb4a23d8d11c115c43981694bfcfbd79b17))
+* **lib:** treat a non-finite registration cost as unknown in computeMinerReadiness ([#1330](https://github.com/JSONbored/metagraphed/issues/1330)) ([83e9737](https://github.com/JSONbored/metagraphed/commit/83e973749b6e7054dd1d183aa4fc8cc241d80571))
+* **mcp:** rank keyword discovery by whole words, not substrings ([#1339](https://github.com/JSONbored/metagraphed/issues/1339)) ([ffaab7d](https://github.com/JSONbored/metagraphed/commit/ffaab7df9b90cad0adc0d6c81b16f220b986039c))
+* **mcp:** sanitize internal errors on the public /mcp endpoint ([#1328](https://github.com/JSONbored/metagraphed/issues/1328)) ([8caf461](https://github.com/JSONbored/metagraphed/commit/8caf461d9a6feb4879ec49e764a166b7cf727f11))
+* **metagraph:** load neurons into D1 via the Worker binding, not the API token ([#1303](https://github.com/JSONbored/metagraphed/issues/1303)) ([#1343](https://github.com/JSONbored/metagraphed/issues/1343)) ([18b52b6](https://github.com/JSONbored/metagraphed/commit/18b52b64ae12bd4070be77ea171e7b32e499cb60))
+* **og:** serve a branded full-size fallback card instead of a cached 1x1 PNG ([#1336](https://github.com/JSONbored/metagraphed/issues/1336)) ([eb870a6](https://github.com/JSONbored/metagraphed/commit/eb870a68e5b8ecc517b29e873a3804a7ad89743d))
+* **python:** fetch_all reads nested data[&lt;collection&gt;], not a flat array ([#1324](https://github.com/JSONbored/metagraphed/issues/1324)) ([71b419b](https://github.com/JSONbored/metagraphed/commit/71b419b0f7ddb454b3bbc0e922f1888bf1841f0c))
+
+
+### Performance
+
+* **worker:** memoize rpc/pools.json per-isolate on the RPC proxy hot path ([#1309](https://github.com/JSONbored/metagraphed/issues/1309)) ([#1314](https://github.com/JSONbored/metagraphed/issues/1314)) ([c4ae2a2](https://github.com/JSONbored/metagraphed/commit/c4ae2a249b15fbf8863ade3733008ab4f54f513a))
+* **worker:** memoize the latest publish pointer in-isolate ([#367](https://github.com/JSONbored/metagraphed/issues/367)) ([#1300](https://github.com/JSONbored/metagraphed/issues/1300)) ([fa62ffb](https://github.com/JSONbored/metagraphed/commit/fa62ffb431a7be95f17697f5746a6e7b7b9dc2f9))
+
+## [0.16.2](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.1...platform-v0.16.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **feeds:** return feed errors through the canonical API error envelope ([#1258](https://github.com/JSONbored/metagraphed/issues/1258)) ([cc0dc95](https://github.com/JSONbored/metagraphed/commit/cc0dc95542e1370ef261008c2e6f9ffa7f297a41))
+* **publish:** preserve R2 run id across jobs ([#1298](https://github.com/JSONbored/metagraphed/issues/1298)) ([308b7ee](https://github.com/JSONbored/metagraphed/commit/308b7ee3966d0ac8076c45ba90630c785f9ba9be))
+* **r2:** compare latest uploads by real sha ([#1297](https://github.com/JSONbored/metagraphed/issues/1297)) ([5ac13de](https://github.com/JSONbored/metagraphed/commit/5ac13de736d1cda7b8a64a1eff6d720bb53c91d4))
+* **submission:** restore manual review routing ([#1294](https://github.com/JSONbored/metagraphed/issues/1294)) ([19662bc](https://github.com/JSONbored/metagraphed/commit/19662bc21058fee004d7063f0ad6c537e194aac6))
+* **submissions:** reject unknown provider fields ([#1293](https://github.com/JSONbored/metagraphed/issues/1293)) ([86506a7](https://github.com/JSONbored/metagraphed/commit/86506a7bb756c51eb83b9ae72f67ab521cfedb78))
+* **submission:** validate candidate auth metadata ([#1292](https://github.com/JSONbored/metagraphed/issues/1292)) ([297605a](https://github.com/JSONbored/metagraphed/commit/297605ab867daf1d9c7093cfaf70be427630b75f))
+* **validate:** warn on on-chain name collisions ([#1296](https://github.com/JSONbored/metagraphed/issues/1296)) ([7891eff](https://github.com/JSONbored/metagraphed/commit/7891effc88136ef76ba160a39d0c61f2379ac761))
+
+## [0.16.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.16.0...platform-v0.16.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **ci:** contract at epoch stamp + de-flake /health max-age test (green main) ([#1290](https://github.com/JSONbored/metagraphed/issues/1290)) ([1a313ca](https://github.com/JSONbored/metagraphed/commit/1a313cabf012abfed68e58c36a71ce806eb327eb))
+* **client:** fetchAll reads nested data[&lt;collection&gt;], not a flat array ([#1257](https://github.com/JSONbored/metagraphed/issues/1257)) ([ba44312](https://github.com/JSONbored/metagraphed/commit/ba4431209ba8ee65840a253040fe1d64d4c2a1fc))
+* **evidence:** verified_at is the real verification time or null, never the build clock ([#1289](https://github.com/JSONbored/metagraphed/issues/1289)) ([8556a5b](https://github.com/JSONbored/metagraphed/commit/8556a5bbc80ecdc9b595d3f9a3c6f2499784e03b))
+* **registry:** drop stale colosseum overlay (slot reused to ChronoLLM) + add identity guardrail ([#1264](https://github.com/JSONbored/metagraphed/issues/1264)) ([03fd18a](https://github.com/JSONbored/metagraphed/commit/03fd18a97e1a0c517fba83052980bb7011cdc536))
+* **registry:** re-key Nodexo to netuid 106 (on-chain identity), revert 27 to Team TBC ([#1263](https://github.com/JSONbored/metagraphed/issues/1263)) ([060274f](https://github.com/JSONbored/metagraphed/commit/060274f459028eca78da858bd6b39ee715e25357))
+
+
+### Performance
+
+* **r2:** skip re-uploading artifacts whose only change is the build stamp ([#1271](https://github.com/JSONbored/metagraphed/issues/1271)) ([e133e82](https://github.com/JSONbored/metagraphed/commit/e133e829c92ccc53a644c5906eda86eae25c4ae6))
+
+
+### Documentation
+
+* **readme:** refresh subnet catalog ([#1020](https://github.com/JSONbored/metagraphed/issues/1020)) ([#1253](https://github.com/JSONbored/metagraphed/issues/1253)) ([b73aa58](https://github.com/JSONbored/metagraphed/commit/b73aa584f0f9f7da1dcb72c79c886acebcebb1bf))
+
+## [0.16.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.15.0...platform-v0.16.0) (2026-06-20)
+
+
+### Features
+
+* **discover:** probe api./docs. subdomains for OpenAPI specs ([#1004](https://github.com/JSONbored/metagraphed/issues/1004)) ([#1232](https://github.com/JSONbored/metagraphed/issues/1232)) ([f6fd848](https://github.com/JSONbored/metagraphed/commit/f6fd848a65ca6d672dd9f7c8932c90a724240d80))
+* **economics:** live economics tier (KV-primary, R2-fallback) decoupled from the 6h publish ([#1248](https://github.com/JSONbored/metagraphed/issues/1248)) ([a08e79c](https://github.com/JSONbored/metagraphed/commit/a08e79c2c8d7e853919722f3f2bd5945147e2e68))
+* **publish:** event-driven data publish + daily floor (replace the 6h cron) ([#1250](https://github.com/JSONbored/metagraphed/issues/1250)) ([e7c2f8a](https://github.com/JSONbored/metagraphed/commit/e7c2f8abaf95b518fe7450e872052619481f0fa5))
+* **reviews:** honor maintainer decisions for generated overlays + elevate SN59/SN107 ([#1238](https://github.com/JSONbored/metagraphed/issues/1238)) ([a8a47ef](https://github.com/JSONbored/metagraphed/commit/a8a47efa188d971a66350e9c373ec5f468480234))
+* **reviews:** make maintainer-reviewed.json the single source of truth for the trust tier ([#1234](https://github.com/JSONbored/metagraphed/issues/1234)) ([1277903](https://github.com/JSONbored/metagraphed/commit/1277903fab7009bb78deb83ffca87b464244c22e))
+* **reviews:** provenance review queue — auto-surface high-signal elevations ([#1235](https://github.com/JSONbored/metagraphed/issues/1235)) ([d35e5a9](https://github.com/JSONbored/metagraphed/commit/d35e5a90d699c5acf5ea70e6484b44653466dfac))
+* **submission:** hand all valid submissions to the autonomous reviewer (no maintainer pre-gating) ([#1251](https://github.com/JSONbored/metagraphed/issues/1251)) ([c15ea01](https://github.com/JSONbored/metagraphed/commit/c15ea01fa55d0d420a5240aa985758abc1336c4d))
+
+
+### Bug Fixes
+
+* **build:** regenerate stale committed datasets (unblock CI freshness gate) ([#1233](https://github.com/JSONbored/metagraphed/issues/1233)) ([7213101](https://github.com/JSONbored/metagraphed/commit/72131010fada5c076d96094abefd0d4bb03cedd8))
+* **discover:** skip derived probes for generic hosts ([#1244](https://github.com/JSONbored/metagraphed/issues/1244)) ([88507a6](https://github.com/JSONbored/metagraphed/commit/88507a66eb2d0dd69bb88fe1b138061830f35004))
+* **generated-overlays:** require reviewed evidence for elevation ([#1246](https://github.com/JSONbored/metagraphed/issues/1246)) ([2b4630a](https://github.com/JSONbored/metagraphed/commit/2b4630aa0866373ea63e199a1b135675e781953c))
+* **health:** commit operational-surfaces.json (DUAL) to decouple the live prober from the 6h publish ([#1247](https://github.com/JSONbored/metagraphed/issues/1247)) ([b3a4979](https://github.com/JSONbored/metagraphed/commit/b3a4979f3a85006feea0754e38b22cfbd09641d3))
+* **live-tier:** harden health/economics serving + writers (review findings) ([#1255](https://github.com/JSONbored/metagraphed/issues/1255)) ([2c53299](https://github.com/JSONbored/metagraphed/commit/2c5329993968d3a977c183664d6eff23e5b9e807))
+* **providers:** load community providers as first-class (debut-pair lane was broken on disk) ([#1254](https://github.com/JSONbored/metagraphed/issues/1254)) ([bde9bb4](https://github.com/JSONbored/metagraphed/commit/bde9bb4583ac19de11ff4faea05e289474b1345a))
+* **publish:** exempt adapter snapshots from soft wallet/key wording scan ([#1240](https://github.com/JSONbored/metagraphed/issues/1240)) ([bc5a94f](https://github.com/JSONbored/metagraphed/commit/bc5a94feefdae37359d18850389177b79f4f73ff))
+* **publish:** regenerate review-queue during candidate refresh ([#1237](https://github.com/JSONbored/metagraphed/issues/1237)) ([b7339e3](https://github.com/JSONbored/metagraphed/commit/b7339e36af06d504b9215dfc6efaf7d266908135))
+* **publish:** remove review-queue drift gate that breaks production publish ([#1239](https://github.com/JSONbored/metagraphed/issues/1239)) ([1e96688](https://github.com/JSONbored/metagraphed/commit/1e966888021e818547ce4c5ffd192de15a9eb99d))
+
+
+### Performance
+
+* **build:** group endpoints/candidates once instead of re-filtering per subnet/provider ([#1256](https://github.com/JSONbored/metagraphed/issues/1256)) ([3790498](https://github.com/JSONbored/metagraphed/commit/3790498c6889fdf4d261c24cfe91c06b0bdac75a))
+* **health:** probe every 15m instead of 2m + retune coupled thresholds ([#1242](https://github.com/JSONbored/metagraphed/issues/1242)) ([f59e7d0](https://github.com/JSONbored/metagraphed/commit/f59e7d012692aaa87fe3333516d6d12c71eb96f0))
+
+
+### Documentation
+
+* **curation:** document single-source-of-truth tier + review:queue ([#1236](https://github.com/JSONbored/metagraphed/issues/1236)) ([938c902](https://github.com/JSONbored/metagraphed/commit/938c902202cae96937ed8e058703364835dcad55))
+* **intake:** add EvolAI official website candidate (SN47) ([#1252](https://github.com/JSONbored/metagraphed/issues/1252)) ([a958463](https://github.com/JSONbored/metagraphed/commit/a95846377ee0b0bee521dfc7e629b0a5a9d2d5b7))
+* **intake:** add Graphite OpenAPI schema candidate (SN43) ([#1228](https://github.com/JSONbored/metagraphed/issues/1228)) ([02ba401](https://github.com/JSONbored/metagraphed/commit/02ba40184c9ed14e1b7706d839d562da8b2c9004))
+* **intake:** add Hippius API OpenAPI candidate (SN75) ([#1231](https://github.com/JSONbored/metagraphed/issues/1231)) ([96a7bb2](https://github.com/JSONbored/metagraphed/commit/96a7bb2e0faf7a440e0b3a7ca81431b6188f9d93))
+* **intake:** add Vidaio API OpenAPI candidate (SN85) ([#1230](https://github.com/JSONbored/metagraphed/issues/1230)) ([d27f799](https://github.com/JSONbored/metagraphed/commit/d27f79954ada87da038d4ace474ec6a7733d0c80))
+
+## [0.15.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.3...platform-v0.15.0) (2026-06-19)
+
+
+### Features
+
+* **registry:** add SN64 Chutes utilization data-artifact ([#1216](https://github.com/JSONbored/metagraphed/issues/1216)) ([451241d](https://github.com/JSONbored/metagraphed/commit/451241df33b16e6e05a4ff502f6417ea716eda6b))
+* **registry:** add SN74 Gittensor languages data-artifact ([#1217](https://github.com/JSONbored/metagraphed/issues/1217)) ([269e6bb](https://github.com/JSONbored/metagraphed/commit/269e6bb78f698f5c5fbc7ac7c9da5eae26895bd6))
+
+
+### Bug Fixes
+
+* **ci:** route invalid submissions through full validation ([b4142d2](https://github.com/JSONbored/metagraphed/commit/b4142d205a51fb6f034c33bba4e95df33f29fef1))
+* **public-safety:** remove loopback URL from LLM discovery docs ([5f5a3cd](https://github.com/JSONbored/metagraphed/commit/5f5a3cd3d35e20363782b18a5a8efd328797b1ca))
+* **registry:** prevent candidate id collisions ([233a5b5](https://github.com/JSONbored/metagraphed/commit/233a5b5e360832a5d5e4effbf734e53c50e375a3))
+* **scan:** tighten local subtensor allowlist ([929aaaf](https://github.com/JSONbored/metagraphed/commit/929aaaf610d8b2fe25e5a7119124eddea9b24f8e))
+
+## [0.14.3](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.2...platform-v0.14.3) (2026-06-19)
+
+
+### Bug Fixes
+
+* **ci:** allowlist documented local subtensor RPC in public-safety scan ([#1214](https://github.com/JSONbored/metagraphed/issues/1214)) ([0f072bd](https://github.com/JSONbored/metagraphed/commit/0f072bdbe25a68fe97d65e7b44c37039ee612075))
+* **ci:** repair main Validate — dedup SN64 candidate, fix r2-manifest guard, refresh artifacts, format ([#1211](https://github.com/JSONbored/metagraphed/issues/1211)) ([e13f009](https://github.com/JSONbored/metagraphed/commit/e13f009bfa02315eca2bfda4f8526bfc66f9b746))
+
+## [0.14.2](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.1...platform-v0.14.2) (2026-06-19)
+
+
+### Bug Fixes
+
+* **schemas:** preserve index on clean builds ([#1209](https://github.com/JSONbored/metagraphed/issues/1209)) ([43aebb8](https://github.com/JSONbored/metagraphed/commit/43aebb8e6d8f34970341481178df588f34e7017e))
+
+## [0.14.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.14.0...platform-v0.14.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* **ci:** keep submission gate outputs trusted ([#1207](https://github.com/JSONbored/metagraphed/issues/1207)) ([9178729](https://github.com/JSONbored/metagraphed/commit/9178729be72df0bb937ca647759eb28a3c0db8ea))
+
+## [0.14.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.13.0...platform-v0.14.0) (2026-06-19)
+
+
+### Features
+
+* **agent:** expose fixture coverage ([7559c8b](https://github.com/JSONbored/metagraphed/commit/7559c8be5e901df3a889d6c659bdefee9e721d45))
+* **agent:** expose readiness blockers ([04c7db5](https://github.com/JSONbored/metagraphed/commit/04c7db53a2cb2d13cf49450a79f291c7553da021))
+* **agent:** project captured schemas ([55823c6](https://github.com/JSONbored/metagraphed/commit/55823c614aeed8e7ca0f10a428cd81c764b69f2f))
+* **api:** add bulk health trends endpoint ([f373e0c](https://github.com/JSONbored/metagraphed/commit/f373e0ca3d429ac5e76d15b2d26ef1b94740759d))
+* **api:** add list field projection ([9b3ac3e](https://github.com/JSONbored/metagraphed/commit/9b3ac3e7a3d3dca5b66cc47dbae8d4d9a717ca58))
+* **api:** add rpc usage buckets ([cedef63](https://github.com/JSONbored/metagraphed/commit/cedef63abcbe6ec8096b1a8dc52bd842dcca2b85))
+* **api:** stabilize endpoint ids ([f09432a](https://github.com/JSONbored/metagraphed/commit/f09432ab5369fb0a3400ac80eb62ae2219e1f01f))
+* **brand:** dynamic Open Graph card for the api.metagraph.sh landing page ([#1108](https://github.com/JSONbored/metagraphed/issues/1108)) ([188fc0a](https://github.com/JSONbored/metagraphed/commit/188fc0a620dc06e4c02557699ca430f853713f3f))
+* **brand:** favicon + OG meta on the api.metagraph.sh landing page ([#1104](https://github.com/JSONbored/metagraphed/issues/1104)) ([f49ade5](https://github.com/JSONbored/metagraphed/commit/f49ade57df9082cdcd5a4cb01c646f9a74f6b73f))
+* **brand:** redesign OG card — real logo lockup + airy composition ([#1110](https://github.com/JSONbored/metagraphed/issues/1110)) ([f8bfe6d](https://github.com/JSONbored/metagraphed/commit/f8bfe6ddf9ff54805b0955f4b466e97e466c672f))
+* **coverage:** add depth scorecard ([60a5f4c](https://github.com/JSONbored/metagraphed/commit/60a5f4c8f1d1fdc364e422ee8b5d3e78be5b88ab))
+* **discovery:** auto-discover OpenAPI specs at conventional paths ([#1026](https://github.com/JSONbored/metagraphed/issues/1026)) ([1e62530](https://github.com/JSONbored/metagraphed/commit/1e6253001100daf16db1b535c5e735e28e58ac1e)), closes [#1004](https://github.com/JSONbored/metagraphed/issues/1004)
+* **health:** add surface alias map ([ba41675](https://github.com/JSONbored/metagraphed/commit/ba416750fdad3e03ddf049379adb939ce4223de1))
+* **health:** re-key D1 health history onto the stable surface_key ([#1005](https://github.com/JSONbored/metagraphed/issues/1005) PR2) ([#1099](https://github.com/JSONbored/metagraphed/issues/1099)) ([51d3401](https://github.com/JSONbored/metagraphed/commit/51d3401ce31e8cb59be9749573d40d510635ad7a))
+* **mcp:** expose enrichment targets ([aab550c](https://github.com/JSONbored/metagraphed/commit/aab550c4d1310a8b782e70fdfc4c553d4dbae064))
+* **readme:** auto-generated subnet catalog ([#1020](https://github.com/JSONbored/metagraphed/issues/1020)) ([#1105](https://github.com/JSONbored/metagraphed/issues/1105)) ([2a74f57](https://github.com/JSONbored/metagraphed/commit/2a74f5702297740502083dd78a4631786846c2e0))
+* **registry:** add SN64 Chutes boosted chutes data-artifact ([#1156](https://github.com/JSONbored/metagraphed/issues/1156)) ([4f423f0](https://github.com/JSONbored/metagraphed/commit/4f423f0d6f6a340940bad7a5ab9e2e9606630d82))
+* **registry:** code-examples entity — index quickstarts/SDK snippets per subnet ([#1008](https://github.com/JSONbored/metagraphed/issues/1008)) ([#1098](https://github.com/JSONbored/metagraphed/issues/1098)) ([d564573](https://github.com/JSONbored/metagraphed/commit/d564573a005ef79bf35f5eaec973bb103bd08df9))
+* **registry:** enrich SN14 Cacheon — add container logs data artifact ([#1045](https://github.com/JSONbored/metagraphed/issues/1045)) ([74416b2](https://github.com/JSONbored/metagraphed/commit/74416b2eba8794a501c19026810d3c4d9ff4d041))
+* **registry:** enrich SN15 ORO — confirm OpenAPI schema candidate ([#1059](https://github.com/JSONbored/metagraphed/issues/1059)) ([9a15e75](https://github.com/JSONbored/metagraphed/commit/9a15e75c523e8a4e86dedb5b0da3410f70b32f27))
+* **registry:** enrich SN19 blockmachine — confirm OpenAPI schema candidate ([#1056](https://github.com/JSONbored/metagraphed/issues/1056)) ([b856e73](https://github.com/JSONbored/metagraphed/commit/b856e73d250e11a6113af398ad128904114836b0))
+* **registry:** enrich SN49 Nepher Robotics — add active tournament list data artifact ([#1046](https://github.com/JSONbored/metagraphed/issues/1046)) ([d7bb7ac](https://github.com/JSONbored/metagraphed/commit/d7bb7ac43c53132c60836f46cc94818585c4d0a4))
+* **registry:** enrich SN64 Chutes — add GPU count history data artifact ([#1044](https://github.com/JSONbored/metagraphed/issues/1044)) ([e396686](https://github.com/JSONbored/metagraphed/commit/e39668696106fad59be24e80ee39c527acc7670c))
+* **registry:** multi-source corroboration — confirmed_by + score bonus ([#1007](https://github.com/JSONbored/metagraphed/issues/1007)) ([#1095](https://github.com/JSONbored/metagraphed/issues/1095)) ([3240376](https://github.com/JSONbored/metagraphed/commit/3240376805af88f4020c70df6c5f9dbdb9ec49c6))
+* **registry:** per-field provenance — last_verified_at + freshness TTL on surfaces ([#1006](https://github.com/JSONbored/metagraphed/issues/1006)) ([#1097](https://github.com/JSONbored/metagraphed/issues/1097)) ([f3ca8ce](https://github.com/JSONbored/metagraphed/commit/f3ca8cea30d7dbdadab26fa71afadb8de7a1d966))
+* **registry:** per-subnet validator/economic entity + /api/v1/economics ([#1009](https://github.com/JSONbored/metagraphed/issues/1009)) ([#1032](https://github.com/JSONbored/metagraphed/issues/1032)) ([b821a50](https://github.com/JSONbored/metagraphed/commit/b821a500ffbc60b4bcd07e27c9058ad1f330ed8b))
+* **registry:** propagate candidate↔surface dedup into counts ([#1002](https://github.com/JSONbored/metagraphed/issues/1002)) ([#1096](https://github.com/JSONbored/metagraphed/issues/1096)) ([e3fc8c0](https://github.com/JSONbored/metagraphed/commit/e3fc8c08d418938ed47baac1f234e916b645f249))
+
+
+### Bug Fixes
+
+* **adapter-snapshots:** cap OpenAPI schema fetch size ([#1178](https://github.com/JSONbored/metagraphed/issues/1178)) ([6ff949a](https://github.com/JSONbored/metagraphed/commit/6ff949a90676db049989acb67c3c0e18c536848c))
+* **api:** bound bulk health trends query ([#1164](https://github.com/JSONbored/metagraphed/issues/1164)) ([0f8e919](https://github.com/JSONbored/metagraphed/commit/0f8e919cf15b4a392afac954fd170bcd02375c0b))
+* **api:** bound subnet csv filter parsing ([#1177](https://github.com/JSONbored/metagraphed/issues/1177)) ([0a11433](https://github.com/JSONbored/metagraphed/commit/0a1143346fc1c4e0ae343326eb802a7f970d3502))
+* **api:** canonicalize overlay cache query keys ([#1166](https://github.com/JSONbored/metagraphed/issues/1166)) ([8546171](https://github.com/JSONbored/metagraphed/commit/8546171c06dc319d9c07023cd160c5193f74ae29))
+* **api:** preserve 404s for missing composed artifacts ([#1198](https://github.com/JSONbored/metagraphed/issues/1198)) ([3158bd9](https://github.com/JSONbored/metagraphed/commit/3158bd96f254ac304b31f156455fcc7047459824))
+* **api:** reject non-canonical analytics queries ([#1175](https://github.com/JSONbored/metagraphed/issues/1175)) ([8af72b2](https://github.com/JSONbored/metagraphed/commit/8af72b2259a8864c98d565e9a7b2bb3d610cd17a))
+* **api:** validate staged health history artifacts ([e8562cf](https://github.com/JSONbored/metagraphed/commit/e8562cf6a5aee80e61c5f2c74b22aa4b10d28c0a))
+* **brand:** render OG stat separators as brand dots, not a tofu glyph ([#1109](https://github.com/JSONbored/metagraphed/issues/1109)) ([4fb5c58](https://github.com/JSONbored/metagraphed/commit/4fb5c583226f48f241758b46febd8762251e16c8))
+* **capture:** pin fixture fetch DNS results ([#1158](https://github.com/JSONbored/metagraphed/issues/1158)) ([eaaff2a](https://github.com/JSONbored/metagraphed/commit/eaaff2ade6845be709b7ddb1fe056e963e9d01d9))
+* **ci:** block mixed direct deletion preflight bypass ([#1160](https://github.com/JSONbored/metagraphed/issues/1160)) ([fd02986](https://github.com/JSONbored/metagraphed/commit/fd0298632dc8f0abb20f69528adec35d2a9f887f))
+* **ci:** detect regenerated untracked public artifacts ([#1192](https://github.com/JSONbored/metagraphed/issues/1192)) ([3b117dc](https://github.com/JSONbored/metagraphed/commit/3b117dc41d8fdeecb3e5b50bdfa8e7d40990c1d7))
+* **ci:** preserve proto keys in artifact canonicalization ([#1173](https://github.com/JSONbored/metagraphed/issues/1173)) ([5f9afe5](https://github.com/JSONbored/metagraphed/commit/5f9afe5a80327272a415b6efa00a1243fd8d4938))
+* **ci:** preserve proto keys in artifact canonicalization ([#1203](https://github.com/JSONbored/metagraphed/issues/1203)) ([66f8752](https://github.com/JSONbored/metagraphed/commit/66f87525a126386208b1f71b0e8b195a1718f523))
+* **ci:** restore trusted submission gate ([#1174](https://github.com/JSONbored/metagraphed/issues/1174)) ([524d0aa](https://github.com/JSONbored/metagraphed/commit/524d0aab97ffeab7fdd96d3e4c523d2cc908184b))
+* **ci:** validate ignored R2 manifest byte totals ([#1161](https://github.com/JSONbored/metagraphed/issues/1161)) ([d491b18](https://github.com/JSONbored/metagraphed/commit/d491b18f7d58925bdca5081229e5a062d32bdf77))
+* **client:** bound uncached 304 retry ([#1194](https://github.com/JSONbored/metagraphed/issues/1194)) ([bdf8bfc](https://github.com/JSONbored/metagraphed/commit/bdf8bfc8dead378f2c2401aa423b1558309c840a))
+* **client:** hash ETag header cache keys ([#1165](https://github.com/JSONbored/metagraphed/issues/1165)) ([770eba2](https://github.com/JSONbored/metagraphed/commit/770eba2a1fed257810443c506c81034e6e91ff8c))
+* **datasets:** hash exported CSV content ([#1186](https://github.com/JSONbored/metagraphed/issues/1186)) ([f1a18de](https://github.com/JSONbored/metagraphed/commit/f1a18de1fbfc9abf3c7daf89425c8864755385aa))
+* **discovery:** reserve committed community candidate locators (unbreak prod publish) ([#1100](https://github.com/JSONbored/metagraphed/issues/1100)) ([7907e07](https://github.com/JSONbored/metagraphed/commit/7907e0729117492058863a3736cddafe8be0cc4e))
+* **fixtures:** redact private/loopback URLs in captured bodies (unbreak prod publish) ([#1101](https://github.com/JSONbored/metagraphed/issues/1101)) ([1d39547](https://github.com/JSONbored/metagraphed/commit/1d39547ad35e23edb965e1bbf06bd52a24e154d1))
+* **health:** correct prober R2 key (drop phantom metagraph/ segment) ([#1107](https://github.com/JSONbored/metagraphed/issues/1107)) ([659c71a](https://github.com/JSONbored/metagraphed/commit/659c71a5cfbb55814f763783d701db7691806df0))
+* **health:** expose wrong-chain classification ([#1197](https://github.com/JSONbored/metagraphed/issues/1197)) ([b1c9c80](https://github.com/JSONbored/metagraphed/commit/b1c9c80f529b8edd4850c23f36f1003494e89731))
+* **health:** handle legacy surface id upserts ([#1193](https://github.com/JSONbored/metagraphed/issues/1193)) ([70b45a6](https://github.com/JSONbored/metagraphed/commit/70b45a69f5cebceb02ee5daab5170c65f5aceb63))
+* **health:** re-key live health rows by surface key ([36569d9](https://github.com/JSONbored/metagraphed/commit/36569d94a05be6c2e68982f5ef8fff5a85501840))
+* **health:** require consecutive failed incident samples ([#1195](https://github.com/JSONbored/metagraphed/issues/1195)) ([ab14c81](https://github.com/JSONbored/metagraphed/commit/ab14c81607ebbcb7422cd452a7285913e27fbdc8))
+* **health:** resolve live health by surface key ([7760d92](https://github.com/JSONbored/metagraphed/commit/7760d92f55a8deb1248aa59e0c432351fc80706e))
+* **intake:** process endpoint submissions ([#1202](https://github.com/JSONbored/metagraphed/issues/1202)) ([666677a](https://github.com/JSONbored/metagraphed/commit/666677af95eb6f6c08ce0b18e85230695104f636))
+* **publish:** keep manifest timestamp from production build ([#1200](https://github.com/JSONbored/metagraphed/issues/1200)) ([10a029a](https://github.com/JSONbored/metagraphed/commit/10a029a0066f16ce63536679f202b193dda57998))
+* **publish:** point KV latest at immutable R2 run ([#1196](https://github.com/JSONbored/metagraphed/issues/1196)) ([a3129d1](https://github.com/JSONbored/metagraphed/commit/a3129d19a93865fda09735a90c8b3896f162cf7d))
+* **publish:** re-stamp r2-manifest after changelog:publish (unblock R2 upload) ([#1103](https://github.com/JSONbored/metagraphed/issues/1103)) ([3dee663](https://github.com/JSONbored/metagraphed/commit/3dee663f6e2da2e4d48c6cbbfb7fb576c1353717))
+* **python:** strip custom headers on cross-origin redirects ([#1188](https://github.com/JSONbored/metagraphed/issues/1188)) ([6565ece](https://github.com/JSONbored/metagraphed/commit/6565ece750fd33c2c9480a7a3528f9592dab5be8))
+* **r2:** read build-summary.json from R2 staging, not deleted public/ path ([#1106](https://github.com/JSONbored/metagraphed/issues/1106)) ([795c89e](https://github.com/JSONbored/metagraphed/commit/795c89ea08f94c63614d7e3536647d9909e3f04d))
+* **r2:** refresh committed manifest history prefix ([#1189](https://github.com/JSONbored/metagraphed/issues/1189)) ([bf26054](https://github.com/JSONbored/metagraphed/commit/bf26054b9db54e6ef5135dd8077463c70fc177a5))
+* redact common fixture credential keys ([#1169](https://github.com/JSONbored/metagraphed/issues/1169)) ([e414d46](https://github.com/JSONbored/metagraphed/commit/e414d463e9ab76ca40ef1abded7a79d8b646eafb))
+* **registry:** block unsafe candidate promotion ([#1162](https://github.com/JSONbored/metagraphed/issues/1162)) ([664957e](https://github.com/JSONbored/metagraphed/commit/664957e0f2327220bb5a98e3b13b75c6acf2c0d5))
+* **registry:** preserve explicit link suppression ([#1172](https://github.com/JSONbored/metagraphed/issues/1172)) ([89702d6](https://github.com/JSONbored/metagraphed/commit/89702d6e2ee71986ab961a086cafa453a3942004))
+* **registry:** reject unsafe candidate URLs ([#1183](https://github.com/JSONbored/metagraphed/issues/1183)) ([465f55d](https://github.com/JSONbored/metagraphed/commit/465f55da4b85d39e2db388b1c2f4e0836206a062))
+* reject credentialed public URLs ([#1182](https://github.com/JSONbored/metagraphed/issues/1182)) ([3d97cb3](https://github.com/JSONbored/metagraphed/commit/3d97cb3544e223fcff660fe700d7a53b7dac4dde))
+* sanitize fixture capture errors ([#1163](https://github.com/JSONbored/metagraphed/issues/1163)) ([e717fb7](https://github.com/JSONbored/metagraphed/commit/e717fb734c749a88520d86512a73e557401c3756))
+* **scan:** detect sensitive fixture body keys ([#1167](https://github.com/JSONbored/metagraphed/issues/1167)) ([3f76cbf](https://github.com/JSONbored/metagraphed/commit/3f76cbf024f5723d161b1dd53aa847122bd4da09))
+* **schemas:** verify reused snapshot artifacts ([#1190](https://github.com/JSONbored/metagraphed/issues/1190)) ([e76ce37](https://github.com/JSONbored/metagraphed/commit/e76ce37c3482e7fabc51139d83f9dcf59f375f93))
+* **search:** return semantic capability facets ([#1199](https://github.com/JSONbored/metagraphed/issues/1199)) ([5c38186](https://github.com/JSONbored/metagraphed/commit/5c381867fd433b700a1146a64a37eddb816cffec))
+* **security:** avoid public loopback websocket hints ([#1187](https://github.com/JSONbored/metagraphed/issues/1187)) ([da8b248](https://github.com/JSONbored/metagraphed/commit/da8b2484dfb265eaaf173e5ada7f282f3739db4a))
+* **security:** block candidate URL impersonation bypasses ([#1170](https://github.com/JSONbored/metagraphed/issues/1170)) ([353ae05](https://github.com/JSONbored/metagraphed/commit/353ae05fc6faf4a879ad82a2efdc713afe903877))
+* **security:** reject local identity hostnames ([#1171](https://github.com/JSONbored/metagraphed/issues/1171)) ([8df7141](https://github.com/JSONbored/metagraphed/commit/8df71418c06d358a902c7d8939a2bc3155502d65))
+* **security:** scan private-boundary symlink targets ([#1181](https://github.com/JSONbored/metagraphed/issues/1181)) ([34069ab](https://github.com/JSONbored/metagraphed/commit/34069ab3c0e9877e881637fb7b4e69fd370ad289))
+* **submissions:** preserve short multi-tenant owner tokens ([#1185](https://github.com/JSONbored/metagraphed/issues/1185)) ([489a5d2](https://github.com/JSONbored/metagraphed/commit/489a5d207958a19479de801e5353d4cb2637f50e))
+* **subnets:** tighten contact email sanitizer ([#1184](https://github.com/JSONbored/metagraphed/issues/1184)) ([60abc45](https://github.com/JSONbored/metagraphed/commit/60abc454a680c0041881277521b1a1984a39293f))
+* **uptime:** validate window keys safely ([#1168](https://github.com/JSONbored/metagraphed/issues/1168)) ([6925934](https://github.com/JSONbored/metagraphed/commit/69259347c6e8a8491a5395ac030309e319dce706))
+* **validate:** reject future freshness timestamps ([#1191](https://github.com/JSONbored/metagraphed/issues/1191)) ([6c01593](https://github.com/JSONbored/metagraphed/commit/6c01593a808962bd49a346fd0e26868c187f439b))
+* **verify:** reuse Worker DNS SSRF guard ([5cef42d](https://github.com/JSONbored/metagraphed/commit/5cef42d9359aea8667a15b024eb5937bb5cd4281))
+* **worker:** route dynamic OG image before assets ([859aefb](https://github.com/JSONbored/metagraphed/commit/859aefb5759fe9c406e644accf2f5946c4f76ff7))
+* **workflow:** preserve R2 manifest publish timestamp ([#1201](https://github.com/JSONbored/metagraphed/issues/1201)) ([add50f4](https://github.com/JSONbored/metagraphed/commit/add50f44f79500674ed5920341585d0df7da2fbd))
+
+
+### Documentation
+
+* **agent:** add callable subnet workflows ([f3b04d9](https://github.com/JSONbored/metagraphed/commit/f3b04d97a73b12842fc9dc3dfcc1cf7ad746642a))
+* **readme:** add brand banner header (mint) ([#1102](https://github.com/JSONbored/metagraphed/issues/1102)) ([7964e6d](https://github.com/JSONbored/metagraphed/commit/7964e6d2bf2805f6759632bc5736d14d0f8780ab))
+* **readme:** refresh subnet catalog ([#1020](https://github.com/JSONbored/metagraphed/issues/1020)) ([#1206](https://github.com/JSONbored/metagraphed/issues/1206)) ([d4554bb](https://github.com/JSONbored/metagraphed/commit/d4554bb017586aa22b7e4a63eaefe56f329aaef0))
+
+## [0.13.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.12.0...platform-v0.13.0) (2026-06-17)
+
+
+### Features
+
+* **api:** reference captured request/response fixtures on callable services ([#748](https://github.com/JSONbored/metagraphed/issues/748)) ([#955](https://github.com/JSONbored/metagraphed/issues/955)) ([5026871](https://github.com/JSONbored/metagraphed/commit/5026871bcee725255d472431c677de33e64da222))
+* **api:** serve-time contract-version staleness signal ([#1001](https://github.com/JSONbored/metagraphed/issues/1001)) ([#1015](https://github.com/JSONbored/metagraphed/issues/1015)) ([b28b34e](https://github.com/JSONbored/metagraphed/commit/b28b34e340a87dfd58ebfb13044e64680d042f14))
+* **ci:** add validate:committed-seed cold-start gate ([#1000](https://github.com/JSONbored/metagraphed/issues/1000)) ([#1013](https://github.com/JSONbored/metagraphed/issues/1013)) ([555e0b0](https://github.com/JSONbored/metagraphed/commit/555e0b05d314421c3708d2cbf683f0b53e877c5d))
+* **python:** async client, typed models, and fetch_all auto-pagination ([#749](https://github.com/JSONbored/metagraphed/issues/749)) ([#967](https://github.com/JSONbored/metagraphed/issues/967)) ([00a511f](https://github.com/JSONbored/metagraphed/commit/00a511f264d671a260e4ff301081b390b6cac381))
+* **registry:** add SN71 Leadpoet provider profile ([#842](https://github.com/JSONbored/metagraphed/issues/842)) ([504d7aa](https://github.com/JSONbored/metagraphed/commit/504d7aa068aa167cf3794262d472733e6e33d8c2))
+* **registry:** dedup candidate ↔ curated surface via superseded_by ([#1002](https://github.com/JSONbored/metagraphed/issues/1002)) ([#1024](https://github.com/JSONbored/metagraphed/issues/1024)) ([9b82623](https://github.com/JSONbored/metagraphed/commit/9b82623ca3d8fbc312262b58e56a9e5628d7511f))
+* **registry:** enrich SN118 Ditto — add MCP SDK ([#901](https://github.com/JSONbored/metagraphed/issues/901)) ([55b72ca](https://github.com/JSONbored/metagraphed/commit/55b72ca46cf94508c83a5418db035e0829b09bc6))
+* **registry:** enrich SN14 Cacheon — add evaluations data artifact ([#965](https://github.com/JSONbored/metagraphed/issues/965)) ([1abe786](https://github.com/JSONbored/metagraphed/commit/1abe786d3057b2abc153639d813265d7ae70ffc4))
+* **registry:** enrich SN14 Cacheon — add evaluations data artifact ([#993](https://github.com/JSONbored/metagraphed/issues/993)) ([af05efb](https://github.com/JSONbored/metagraphed/commit/af05efb3daf122f18747909990871f7a4dad4af9))
+* **registry:** enrich SN14 Cacheon — add leader history data artifact ([#951](https://github.com/JSONbored/metagraphed/issues/951)) ([5b8ca17](https://github.com/JSONbored/metagraphed/commit/5b8ca17c083deb5bd9c950eb2dcef9dec671530a))
+* **registry:** enrich SN33 ReadyAI — confirm OpenAPI schema candidate ([#975](https://github.com/JSONbored/metagraphed/issues/975)) ([e24a621](https://github.com/JSONbored/metagraphed/commit/e24a621d7a42ea9b314b55b779ce7e71051762d4))
+* **registry:** enrich SN34 BitMind — add subnet SDK ([#939](https://github.com/JSONbored/metagraphed/issues/939)) ([1b4b1dd](https://github.com/JSONbored/metagraphed/commit/1b4b1dd6d4ab29b16cf6d6f859d01245ef7973ed))
+* **registry:** enrich SN49 Nepher Robotics — add active leaderboard data artifact ([#950](https://github.com/JSONbored/metagraphed/issues/950)) ([a22989d](https://github.com/JSONbored/metagraphed/commit/a22989d918299bcaef0711250719689087c503cd))
+* **registry:** enrich SN49 Nepher Robotics — add active tournament id data artifact ([#964](https://github.com/JSONbored/metagraphed/issues/964)) ([b97555a](https://github.com/JSONbored/metagraphed/commit/b97555ae5f20c3d017e072e148ca32d1fc998fdd))
+* **registry:** enrich SN49 Nepher Robotics — add active tournament id data artifact ([#991](https://github.com/JSONbored/metagraphed/issues/991)) ([1945dcb](https://github.com/JSONbored/metagraphed/commit/1945dcb10cc3d9bc1bbe21a2b29e3e669bd75c60))
+* **registry:** enrich SN49 Nepher Robotics — add tournament list data artifact ([#918](https://github.com/JSONbored/metagraphed/issues/918)) ([96f535b](https://github.com/JSONbored/metagraphed/commit/96f535b5555dbe5ec2d63e3407700529566576f1))
+* **registry:** enrich SN56 Gradients — add latest tournament details data artifact ([#949](https://github.com/JSONbored/metagraphed/issues/949)) ([2e9a3a3](https://github.com/JSONbored/metagraphed/commit/2e9a3a3d46b3f3941e054385bde566dd98f45cd1))
+* **registry:** enrich SN56 Gradients — add network status data artifact ([#996](https://github.com/JSONbored/metagraphed/issues/996)) ([5893f6f](https://github.com/JSONbored/metagraphed/commit/5893f6f0281c15052e5487768039f171f7ec23b4))
+* **registry:** enrich SN58 Handshake58 — add agent API endpoint ([#929](https://github.com/JSONbored/metagraphed/issues/929)) ([23e039f](https://github.com/JSONbored/metagraphed/commit/23e039f4fa9917b7f257202a2ff87d162bcd4fd2))
+* **registry:** enrich SN58 Handshake58 — add MCP providers data artifact ([#928](https://github.com/JSONbored/metagraphed/issues/928)) ([3e99791](https://github.com/JSONbored/metagraphed/commit/3e9979139e3076a4e52d0cd7ecfb829ce62658dc))
+* **registry:** enrich SN58 Handshake58 — add skills index data artifact ([#994](https://github.com/JSONbored/metagraphed/issues/994)) ([4f7d6b4](https://github.com/JSONbored/metagraphed/commit/4f7d6b49293d868daa7179a878483bfcc6dae285))
+* **registry:** enrich SN6 Numinous — add benchmarks baseline data artifact ([#948](https://github.com/JSONbored/metagraphed/issues/948)) ([b1e9c31](https://github.com/JSONbored/metagraphed/commit/b1e9c310d488763d02abf3193456d90aaf2c97e0))
+* **registry:** enrich SN64 Chutes — add daily revenue summary data artifact ([#992](https://github.com/JSONbored/metagraphed/issues/992)) ([ef6249f](https://github.com/JSONbored/metagraphed/commit/ef6249f94408d1804a479d4daea2400baf429034))
+* **registry:** enrich SN64 Chutes — add public data artifact ([#894](https://github.com/JSONbored/metagraphed/issues/894)) ([582db1e](https://github.com/JSONbored/metagraphed/commit/582db1e00d52f036cad483d63446ea470f57ad67))
+* **registry:** enrich SN64 Chutes — add users growth data artifact ([#942](https://github.com/JSONbored/metagraphed/issues/942)) ([bf9b71c](https://github.com/JSONbored/metagraphed/commit/bf9b71c6d1ae4a53b9065957da92017178e3a43f))
+* **registry:** enrich SN7 Allways — add OpenAPI schema ([#898](https://github.com/JSONbored/metagraphed/issues/898)) ([a21ca56](https://github.com/JSONbored/metagraphed/commit/a21ca56514896dee2102f8689e81556c26f24b14))
+* **registry:** enrich SN7 Allways — add public data artifact ([#897](https://github.com/JSONbored/metagraphed/issues/897)) ([7fc82e2](https://github.com/JSONbored/metagraphed/commit/7fc82e279a1ffb9c7dd303bc271f01d5be6df6a8))
+* **registry:** enrich SN74 Gittensor — add miners subnet API ([#971](https://github.com/JSONbored/metagraphed/issues/971)) ([eab210f](https://github.com/JSONbored/metagraphed/commit/eab210f2a4a98d2decc05a75108ed4c394d5d3c5))
+* **surfaces:** stable surface key decoupled from the display id ([#1005](https://github.com/JSONbored/metagraphed/issues/1005) PR1) ([#1023](https://github.com/JSONbored/metagraphed/issues/1023)) ([1b34ac4](https://github.com/JSONbored/metagraphed/commit/1b34ac4698f3694bb110aa0e36d5125ef60804ff))
+
+
+### Bug Fixes
+
+* **artifacts:** tier review/profile-completeness.json as R2-only ([#1010](https://github.com/JSONbored/metagraphed/issues/1010)) ([#1014](https://github.com/JSONbored/metagraphed/issues/1014)) ([41ce5b6](https://github.com/JSONbored/metagraphed/commit/41ce5b67b58f101777de78b162f50515641b742a))
+* **build:** exclude hidden files from artifact size/digest walk ([#1028](https://github.com/JSONbored/metagraphed/issues/1028)) ([#1030](https://github.com/JSONbored/metagraphed/issues/1030)) ([f7b3fb9](https://github.com/JSONbored/metagraphed/commit/f7b3fb9f64ce0b27d6bd9322dfe42782b16a5ca3))
+* **ci:** pass delete-only candidate/provider PRs through the UGC preflight ([#952](https://github.com/JSONbored/metagraphed/issues/952)) ([7b68c00](https://github.com/JSONbored/metagraphed/commit/7b68c00289525912bd045bdb887fd3b2add4444a))
+* **ci:** regenerate stale committed derived artifacts + add drift gate ([#1025](https://github.com/JSONbored/metagraphed/issues/1025)) ([#1027](https://github.com/JSONbored/metagraphed/issues/1027)) ([78cbaab](https://github.com/JSONbored/metagraphed/commit/78cbaab928af63c501e05511764fc887c8c8c94e))
+* **lineage:** surface broken cross-network links instead of silently dropping ([#1012](https://github.com/JSONbored/metagraphed/issues/1012)) ([#1022](https://github.com/JSONbored/metagraphed/issues/1022)) ([c0c21ee](https://github.com/JSONbored/metagraphed/commit/c0c21ee8d9888683458eaea89a0debdd8359b6dc))
+* **test:** update artifact-tier assertions after the data-index R2 move ([#1018](https://github.com/JSONbored/metagraphed/issues/1018)) ([fdffa08](https://github.com/JSONbored/metagraphed/commit/fdffa08b2c8507231d7fca4fd5796626fc907e3d))
+
+
+### Performance
+
+* **ci:** run the validate suite and checks as parallel jobs ([#954](https://github.com/JSONbored/metagraphed/issues/954)) ([c9a7f3f](https://github.com/JSONbored/metagraphed/commit/c9a7f3fb116ad5672449b358d212299ef6238262))
+
+## [0.12.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.11.0...platform-v0.12.0) (2026-06-16)
+
+
+### Features
+
+* **registry:** enrich SN106 Nodexo — add source repository ([#882](https://github.com/JSONbored/metagraphed/issues/882)) ([1c2c1f0](https://github.com/JSONbored/metagraphed/commit/1c2c1f0fceabb20c34009feac3f06a40e8267575))
+* **registry:** enrich SN118 Ditto — add source repository ([#878](https://github.com/JSONbored/metagraphed/issues/878)) ([e43b393](https://github.com/JSONbored/metagraphed/commit/e43b393a5a17dce65a67c83e063cadc1115399f1))
+* **registry:** enrich SN14 Cacheon — add OpenAPI schema ([#884](https://github.com/JSONbored/metagraphed/issues/884)) ([24166f6](https://github.com/JSONbored/metagraphed/commit/24166f6deb9f5a4cd6281115f9874709901e3eda))
+* **registry:** enrich SN14 Cacheon — add public data artifact ([#885](https://github.com/JSONbored/metagraphed/issues/885)) ([55720e5](https://github.com/JSONbored/metagraphed/commit/55720e53a7611b38df1cb9f6849c7efdc081c872))
+* **registry:** enrich SN22 Desearch — add OpenAPI schema ([#891](https://github.com/JSONbored/metagraphed/issues/891)) ([a5e8a57](https://github.com/JSONbored/metagraphed/commit/a5e8a577476c6125dee568f40592cd81cf816948))
+* **registry:** enrich SN27 Nodexo — add source repository ([#879](https://github.com/JSONbored/metagraphed/issues/879)) ([f707d55](https://github.com/JSONbored/metagraphed/commit/f707d5547b68ab258db260b60c17c1ce77ab8cb0))
+* **registry:** enrich SN34 BitMind — add OpenAPI schema ([#886](https://github.com/JSONbored/metagraphed/issues/886)) ([02ca792](https://github.com/JSONbored/metagraphed/commit/02ca79241bbcd225b24c81fe831173d0dcdad50a))
+* **registry:** enrich SN34 BitMind — add public API endpoint ([#887](https://github.com/JSONbored/metagraphed/issues/887)) ([89a4da4](https://github.com/JSONbored/metagraphed/commit/89a4da4cb0971404d59ffc3818f40adb51f36c90))
+* **registry:** enrich SN34 BitMind — add public data artifact ([#892](https://github.com/JSONbored/metagraphed/issues/892)) ([e6c26c0](https://github.com/JSONbored/metagraphed/commit/e6c26c04afa89463e8b0d2d4f6a075caaea54aa5))
+* **registry:** enrich SN40 Chunking — add source repository ([#880](https://github.com/JSONbored/metagraphed/issues/880)) ([1a18003](https://github.com/JSONbored/metagraphed/commit/1a180036282b99f10649e565c3719c1e752002a3))
+* **registry:** enrich SN49 Nepher Robotics — add public data artifact ([#890](https://github.com/JSONbored/metagraphed/issues/890)) ([0c1bbdf](https://github.com/JSONbored/metagraphed/commit/0c1bbdfdd21b217c7fa0db0193b3441d91f8c902))
+* **registry:** enrich SN53 EfficientFrontier — add source repository ([#881](https://github.com/JSONbored/metagraphed/issues/881)) ([ca20a70](https://github.com/JSONbored/metagraphed/commit/ca20a70e64c7ae2c7b4bfb32f0dee3111a84d216))
+* **registry:** enrich SN56 Gradients — add public data artifact ([#893](https://github.com/JSONbored/metagraphed/issues/893)) ([d8bfd01](https://github.com/JSONbored/metagraphed/commit/d8bfd01e82689c73cfb182ef136e7ac95c35a7da))
+* **registry:** enrich SN6 Numinous — add public data artifact ([#888](https://github.com/JSONbored/metagraphed/issues/888)) ([81dace6](https://github.com/JSONbored/metagraphed/commit/81dace6bbfa23d41324c6d9af410b103cd180cee))
+* **subnets:** structured operator support contact (taostats survey) ([#889](https://github.com/JSONbored/metagraphed/issues/889)) ([bdd2f38](https://github.com/JSONbored/metagraphed/commit/bdd2f384278a08c8d3cab6abf20e3eaa2bfb0839))
+
+## [0.11.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.10.0...platform-v0.11.0) (2026-06-16)
+
+
+### Features
+
+* **readiness:** readiness_verified — a live-probe gate on the readiness score ([#357](https://github.com/JSONbored/metagraphed/issues/357)) ([#874](https://github.com/JSONbored/metagraphed/issues/874)) ([8a48aa6](https://github.com/JSONbored/metagraphed/commit/8a48aa6e9e22e8b6d1feb0d7308d12ae991fa916))
+* **registry:** add SN116 TaoLend source repository candidate ([#876](https://github.com/JSONbored/metagraphed/issues/876)) ([0f73e97](https://github.com/JSONbored/metagraphed/commit/0f73e97e556cba2a7cc99c801b83a682d7a80978))
+* **verify:** verify_integration — live probe-now for one catalogued surface ([#358](https://github.com/JSONbored/metagraphed/issues/358)) ([#877](https://github.com/JSONbored/metagraphed/issues/877)) ([5e44549](https://github.com/JSONbored/metagraphed/commit/5e4454910d33f125e70549f728e6560b6db4f53c))
+
+## [0.10.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.9.0...platform-v0.10.0) (2026-06-16)
+
+
+### Features
+
+* **readiness:** readiness_tier + non-API low-weight components ([#356](https://github.com/JSONbored/metagraphed/issues/356)) ([#873](https://github.com/JSONbored/metagraphed/issues/873)) ([253c576](https://github.com/JSONbored/metagraphed/commit/253c576281c4d9639f82b7502e1af53fc9f546a6))
+* **subnets:** add updated_at freshness to /api/v1/subnets list rows ([#640](https://github.com/JSONbored/metagraphed/issues/640)) ([#870](https://github.com/JSONbored/metagraphed/issues/870)) ([bc0dd3d](https://github.com/JSONbored/metagraphed/commit/bc0dd3df6c757ecaaff9c1add1b7fe2e5c1df75b))
+
+## [0.9.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.8.0...platform-v0.9.0) (2026-06-16)
+
+
+### Features
+
+* **registry:** add SN105 Beam provider profile (with X) ([#858](https://github.com/JSONbored/metagraphed/issues/858)) ([86719de](https://github.com/JSONbored/metagraphed/commit/86719de23d696e055e86ff2cf9500f773e5b348c))
+* **registry:** add SN107 Minos provider profile (with X) ([#819](https://github.com/JSONbored/metagraphed/issues/819)) ([ed97eb3](https://github.com/JSONbored/metagraphed/commit/ed97eb30648a36a3d29f89b58666e6cd51f93f2a))
+* **registry:** add SN108 TalkHead provider profile (with X) ([#821](https://github.com/JSONbored/metagraphed/issues/821)) ([f6406be](https://github.com/JSONbored/metagraphed/commit/f6406befef0251aec5576bbe0b118adb9aa271d8))
+* **registry:** add SN112 minotaur provider profile (with X) ([#823](https://github.com/JSONbored/metagraphed/issues/823)) ([80efe78](https://github.com/JSONbored/metagraphed/commit/80efe78ecaca7eaf18edb7b4cdb577c3b33e9ef2))
+* **registry:** add SN120 Affine provider profile (with X) ([#860](https://github.com/JSONbored/metagraphed/issues/860)) ([187b97e](https://github.com/JSONbored/metagraphed/commit/187b97e74f846f31af8b6c6e00f82a8f35e3d845))
+* **registry:** add SN124 Swarm provider profile (with X) ([#862](https://github.com/JSONbored/metagraphed/issues/862)) ([9f62108](https://github.com/JSONbored/metagraphed/commit/9f621087a98970915c5c593a2bb3a366736c50ba))
+* **registry:** add SN126 Poker44 provider profile (with X) ([#811](https://github.com/JSONbored/metagraphed/issues/811)) ([15e2c68](https://github.com/JSONbored/metagraphed/commit/15e2c68d0bee5a7b8bcbd86153de2c305edecaf3))
+* **registry:** add SN127 Astrid provider profile ([#864](https://github.com/JSONbored/metagraphed/issues/864)) ([ad27597](https://github.com/JSONbored/metagraphed/commit/ad275971ec2c45f0ca79880fa26d109245d9f921))
+* **registry:** add SN17 404-GEN provider profile (with X) ([#813](https://github.com/JSONbored/metagraphed/issues/813)) ([a15070b](https://github.com/JSONbored/metagraphed/commit/a15070bc166a90c536db9485e54c95bfd6e13275))
+* **registry:** add SN18 Zeus provider profile (with X) ([#807](https://github.com/JSONbored/metagraphed/issues/807)) ([f51099f](https://github.com/JSONbored/metagraphed/commit/f51099f2cc47321248272193597e59e9503650dd))
+* **registry:** add SN26 Perturb provider profile (with X) ([#815](https://github.com/JSONbored/metagraphed/issues/815)) ([128adfc](https://github.com/JSONbored/metagraphed/commit/128adfcc745a0006bd2ec30174ffcf3f81f0f889))
+* **registry:** add SN35 OxMarkets provider profile (with X) ([#826](https://github.com/JSONbored/metagraphed/issues/826)) ([0e20e9d](https://github.com/JSONbored/metagraphed/commit/0e20e9d0e2d47cb021bcaed0066aaafa8ab58fc9))
+* **registry:** add SN36 Eirel provider profile (with X) ([#828](https://github.com/JSONbored/metagraphed/issues/828)) ([4b0d0f2](https://github.com/JSONbored/metagraphed/commit/4b0d0f23d79622fa9fcc34e816b1891320fb0a2f))
+* **registry:** add SN37 Aurelius provider profile (with X) ([#830](https://github.com/JSONbored/metagraphed/issues/830)) ([0604307](https://github.com/JSONbored/metagraphed/commit/0604307a6804d79777fccfd27a0aa563535d8a90))
+* **registry:** add SN44 Score provider profile (with X) ([#836](https://github.com/JSONbored/metagraphed/issues/836)) ([e4a21c1](https://github.com/JSONbored/metagraphed/commit/e4a21c1430ecfaa97838a5a7eeefaf53b1537d70))
+* **registry:** add SN46 Zipcode provider profile (with X) ([#832](https://github.com/JSONbored/metagraphed/issues/832)) ([7de2720](https://github.com/JSONbored/metagraphed/commit/7de2720650351f3ba653ea6b541f314eadb406c1))
+* **registry:** add SN50 Synth provider profile ([#799](https://github.com/JSONbored/metagraphed/issues/799)) ([79add03](https://github.com/JSONbored/metagraphed/commit/79add033fc68dd87735996030e4c82a07b5902b7))
+* **registry:** add SN55 NIOME provider profile ([#838](https://github.com/JSONbored/metagraphed/issues/838)) ([326336c](https://github.com/JSONbored/metagraphed/commit/326336ca2108e21cb9a387f08efe64c2b5868cc7))
+* **registry:** add SN59 Babelbit provider profile (with X) ([#817](https://github.com/JSONbored/metagraphed/issues/817)) ([0b00177](https://github.com/JSONbored/metagraphed/commit/0b00177b45e7cbfe37effc622eac5e3ef55af85a))
+* **registry:** add SN60 Bitsec.ai provider profile ([#840](https://github.com/JSONbored/metagraphed/issues/840)) ([7453506](https://github.com/JSONbored/metagraphed/commit/745350667ec53c0780af0bc266932e240b9e82e9))
+* **registry:** add SN65 TAO Private Network provider profile (with X) ([#834](https://github.com/JSONbored/metagraphed/issues/834)) ([edb56d9](https://github.com/JSONbored/metagraphed/commit/edb56d9c2809f8f7b2f8a97f2c003ab83090c157))
+* **registry:** add SN67 Harnyx provider profile (with X) ([#804](https://github.com/JSONbored/metagraphed/issues/804)) ([920b893](https://github.com/JSONbored/metagraphed/commit/920b89314f219a51711c0f9b67be16d33dd6373c))
+* **registry:** add SN68 NOVA provider profile (with X) ([#809](https://github.com/JSONbored/metagraphed/issues/809)) ([f594214](https://github.com/JSONbored/metagraphed/commit/f5942148ce13155d0a3a4083d6e7e5159088e15d))
+* **registry:** add SN77 Liquidity provider profile ([#844](https://github.com/JSONbored/metagraphed/issues/844)) ([6920cc5](https://github.com/JSONbored/metagraphed/commit/6920cc5e26a276a592684c9c3005759492a45de0))
+* **registry:** add SN78 Vocence provider profile ([#846](https://github.com/JSONbored/metagraphed/issues/846)) ([1e1825d](https://github.com/JSONbored/metagraphed/commit/1e1825dbd74d9fd38fe23edd3d3e8a9fcd7c4319))
+* **registry:** add SN80 dogelayer provider profile (with X) ([#848](https://github.com/JSONbored/metagraphed/issues/848)) ([7041afe](https://github.com/JSONbored/metagraphed/commit/7041afeb151426e09302265000787d4f39d14338))
+* **registry:** add SN83 CliqueAI provider profile ([#850](https://github.com/JSONbored/metagraphed/issues/850)) ([faedd25](https://github.com/JSONbored/metagraphed/commit/faedd25affe06ae27faf2f831fa573a2347436cf))
+* **registry:** add SN93 Bitcast provider profile ([#852](https://github.com/JSONbored/metagraphed/issues/852)) ([4bd34d0](https://github.com/JSONbored/metagraphed/commit/4bd34d065e199a354ea57587ed230d55ec706dce))
+* **registry:** add SN97 Albedo provider profile ([#854](https://github.com/JSONbored/metagraphed/issues/854)) ([cdee810](https://github.com/JSONbored/metagraphed/commit/cdee81047c08a25a6eb857628a823dc7a066bc3d))
+* **registry:** add SN99 Leoma provider profile ([#856](https://github.com/JSONbored/metagraphed/issues/856)) ([61f1d67](https://github.com/JSONbored/metagraphed/commit/61f1d67755695bca6a167d91a4792db1c69f1887))
+
+
+### Bug Fixes
+
+* **ci:** check submitted_by against the PR author, not GITHUB_ACTOR ([#824](https://github.com/JSONbored/metagraphed/issues/824)) ([68d4e41](https://github.com/JSONbored/metagraphed/commit/68d4e418d4a599941bda37581cf7d55e529c364b))
+* **client:** isolate ETag cache by request headers ([#801](https://github.com/JSONbored/metagraphed/issues/801)) ([f351cac](https://github.com/JSONbored/metagraphed/commit/f351cacefbfe1ea368839ea36810e66d14df8313))
+
+
+### Documentation
+
+* **readme:** add a resource-links row near the top ([#791](https://github.com/JSONbored/metagraphed/issues/791)) ([9762b7a](https://github.com/JSONbored/metagraphed/commit/9762b7a00461e3f50510f37b76be65ff1a82a935))
+
+## [0.8.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.7.0...platform-v0.8.0) (2026-06-16)
+
+
+### Features
+
+* **client:** retries, ETag caching, convenience methods + fetchAll on the TS SDK ([#790](https://github.com/JSONbored/metagraphed/issues/790)) ([c7076b1](https://github.com/JSONbored/metagraphed/commit/c7076b1c40158fe842e90261a21063121054a1df))
+
+## [0.7.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.6.0...platform-v0.7.0) (2026-06-16)
+
+
+### Features
+
+* **api:** most-enriched registry leaderboard board ([#753](https://github.com/JSONbored/metagraphed/issues/753)) ([#789](https://github.com/JSONbored/metagraphed/issues/789)) ([b0822f3](https://github.com/JSONbored/metagraphed/commit/b0822f3896b9065e62606ea89261f4c555f13327))
+* **data:** structured per-API auth detail + snippet rewiring ([#746](https://github.com/JSONbored/metagraphed/issues/746)) ([#783](https://github.com/JSONbored/metagraphed/issues/783)) ([0ac9d0e](https://github.com/JSONbored/metagraphed/commit/0ac9d0e57c9d3dc79d4da71894ef32212fe13ad0))
+* **data:** structured rate_limit metadata on callable surfaces ([#747](https://github.com/JSONbored/metagraphed/issues/747)) ([#780](https://github.com/JSONbored/metagraphed/issues/780)) ([f15d88f](https://github.com/JSONbored/metagraphed/commit/f15d88fd69f062dfbceeab607872a77ad8e83daf))
+* **registry:** add SN58 Handshake58 directory providers API ([#781](https://github.com/JSONbored/metagraphed/issues/781)) ([c57e902](https://github.com/JSONbored/metagraphed/commit/c57e902cecb9531e3aa161cf3f410a17bbdaadb7))
+* **registry:** add SN74 Gittensor dash/stats data artifact ([#779](https://github.com/JSONbored/metagraphed/issues/779)) ([a31c059](https://github.com/JSONbored/metagraphed/commit/a31c0597e4699a11c04a8f119df3b89ef7af78c4))
+
+
+### Bug Fixes
+
+* **feeds:** vary cache by accept header ([#784](https://github.com/JSONbored/metagraphed/issues/784)) ([84a1ab5](https://github.com/JSONbored/metagraphed/commit/84a1ab545dda6cb88369a99e4063ad48420fbb6f))
+* **provider:** constrain fallback logo URLs ([#785](https://github.com/JSONbored/metagraphed/issues/785)) ([364d2e6](https://github.com/JSONbored/metagraphed/commit/364d2e60a45009d1e9df7950e8445654538fae50))
+* **provider:** sanitize social URL artifacts ([#786](https://github.com/JSONbored/metagraphed/issues/786)) ([7087a3d](https://github.com/JSONbored/metagraphed/commit/7087a3d254689e0d29e6b1fadbde84eaf61ae249))
+* restrict curated social overlay hosts ([#787](https://github.com/JSONbored/metagraphed/issues/787)) ([83a568e](https://github.com/JSONbored/metagraphed/commit/83a568e6576adb627a6d160e2fb12d7853eb314a))
+
+## [0.6.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.5.0...platform-v0.6.0) (2026-06-16)
+
+
+### Features
+
+* **data:** structured social accounts on provider profiles ([#745](https://github.com/JSONbored/metagraphed/issues/745)) ([#778](https://github.com/JSONbored/metagraphed/issues/778)) ([3be5c17](https://github.com/JSONbored/metagraphed/commit/3be5c175d66a118424254a365b69e7c389c9d1db))
+* **data:** structured social accounts on subnet index + detail ([#745](https://github.com/JSONbored/metagraphed/issues/745)) ([#777](https://github.com/JSONbored/metagraphed/issues/777)) ([41dd69c](https://github.com/JSONbored/metagraphed/commit/41dd69c5667787a6365840f59cbb6627afbfd589))
+* **openapi:** public-read security signal + field descriptions ([#743](https://github.com/JSONbored/metagraphed/issues/743)) ([#775](https://github.com/JSONbored/metagraphed/issues/775)) ([78ebe52](https://github.com/JSONbored/metagraphed/commit/78ebe52456ebb3bf273044bb2271cc2db0f0a826))
+
+## [0.5.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.4.0...platform-v0.5.0) (2026-06-16)
+
+
+### Features
+
+* **api:** content feeds — RSS 2.0 / Atom 1.0 / JSON Feed 1.1 ([#741](https://github.com/JSONbored/metagraphed/issues/741)) ([#772](https://github.com/JSONbored/metagraphed/issues/772)) ([0872793](https://github.com/JSONbored/metagraphed/commit/087279378b1854c1e8d08a5fa367fb39ad13b65d))
+* **api:** embeddable SVG readiness badges ([#744](https://github.com/JSONbored/metagraphed/issues/744)) ([#774](https://github.com/JSONbored/metagraphed/issues/774)) ([e63501e](https://github.com/JSONbored/metagraphed/commit/e63501eb72728670c7230d48a78a9a008a3e8c57))
+
+## [0.4.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.1...platform-v0.4.0) (2026-06-16)
+
+
+### Features
+
+* **mcp:** expose Resources + Prompts ([#742](https://github.com/JSONbored/metagraphed/issues/742)) ([#764](https://github.com/JSONbored/metagraphed/issues/764)) ([f9be7e1](https://github.com/JSONbored/metagraphed/commit/f9be7e1a1e2f74e5cdb6490a7e575cf1be8f4b25))
+
 ## [0.3.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.3.0...platform-v0.3.1) (2026-06-15)
 
 

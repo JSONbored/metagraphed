@@ -175,5 +175,7 @@
       },
       "notes": "Official TrajectoryRL source repository."
     }
-  ]
+  ],
+  "social": { "x": "https://x.com/trajectoryrl" },
+  "contact": "trajectoryrl@gmail.com"
 }

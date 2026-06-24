@@ -18,6 +18,7 @@ import {
 } from "../src/ai-search.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { overlayCatalogIndex } from "../src/health-serving.mjs";
 
 const SEMANTIC_URL = "https://api.metagraph.sh/api/v1/search/semantic";
 const ASK_URL = "https://api.metagraph.sh/api/v1/ask";
@@ -82,6 +83,8 @@ function stubVectorize() {
             title: `Subnet ${i + 1}`,
             subtitle: `summary ${i + 1}`,
             url: `https://api.metagraph.sh/api/v1/subnets/${i + 1}/overview`,
+            categories: i === 0 ? ["inference"] : [],
+            service_kinds: i === 0 ? ["openapi", "sse"] : [],
           },
         })),
       });
@@ -166,6 +169,12 @@ describe("embedding helpers", () => {
     const long = "surface:" + "x".repeat(80);
     assert.ok(vectorId(long).startsWith("h:"));
     assert.ok(vectorId(long).length <= 64);
+    // Vectorize caps ids at 64 BYTES, not UTF-16 length: a multi-byte id that is
+    // <=64 chars but >64 bytes must still be folded to a hashed id.
+    const multibyte = "é".repeat(40); // 40 chars, 80 UTF-8 bytes
+    assert.ok(new TextEncoder().encode(multibyte).length > 64);
+    assert.equal(multibyte.length <= 64, true); // would wrongly pass the old check
+    assert.ok(vectorId(multibyte).startsWith("h:"));
   });
   test("embeddingMetadata normalises missing fields to null", () => {
     assert.deepEqual(embeddingMetadata({ type: "subnet", netuid: 7 }), {
@@ -372,6 +381,8 @@ describe("semanticSearch", () => {
     assert.equal(out.count, 3);
     assert.equal(out.results[0].netuid, 1);
     assert.equal(typeof out.results[0].score, "number");
+    assert.deepEqual(out.results[0].categories, ["inference"]);
+    assert.deepEqual(out.results[0].service_kinds, ["openapi", "sse"]);
   });
   test("rejects a blank query", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
@@ -404,6 +415,9 @@ describe("askQuestion", () => {
     assert.equal(out.model, ASK_MODEL);
     assert.ok(out.answer.length > 0);
     assert.equal(out.citations[0].ref, 1);
+    // Citations carry the Vectorize relevance score so agents can rank them (#1312).
+    assert.equal(typeof out.citations[0].score, "number");
+    assert.ok(out.citations[0].score >= 0 && out.citations[0].score <= 1);
     assert.equal(out.context_count, 3);
   });
   test("rejects a blank question", async () => {
@@ -629,6 +643,8 @@ describe("ai-search defensive branches", () => {
     const out = await semanticSearch(env, "x");
     assert.equal(out.results[0].score, 0);
     assert.equal(out.results[0].netuid, null);
+    assert.deepEqual(out.results[0].categories, []);
+    assert.deepEqual(out.results[0].service_kinds, []);
   });
 
   test("askQuestion frames retrieved descriptions as untrusted JSON data", async () => {
@@ -775,6 +791,69 @@ describe("ai-search defensive branches", () => {
     const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
     const userMessage = askCall.input.messages.at(-1).content;
     assert.match(userMessage, /api\.one\.io/);
+  });
+
+  test("askQuestion overlays LIVE probe health onto the catalog enrichment", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const readArtifact = () =>
+      Promise.resolve({
+        ok: true,
+        data: {
+          subnets: [
+            {
+              netuid: 1,
+              callable_count: 3,
+              base_url: "https://api.one.io",
+              health: "unknown", // build-time stub baked into the artifact
+            },
+          ],
+        },
+      });
+    // The /ask handler resolves the live snapshot and injects it + the overlay
+    // helper. Assert the live status reaches the prompt, overriding the stub.
+    const liveHealth = {
+      last_run_at: "2026-06-22T18:00:00.000Z",
+      subnets: [{ netuid: 1, status: "degraded" }],
+    };
+    const out = await askQuestion(
+      env,
+      "Which subnet does images?",
+      {},
+      { readArtifact, liveHealth, overlayCatalogIndex },
+    );
+    assert.ok(out.answer.length > 0);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.at(-1).content;
+    // Live "degraded" status overrides the baked "unknown" stub in the context.
+    assert.match(userMessage, /degraded/);
+  });
+
+  test("askQuestion sends an explicit no-results context when Vectorize returns no matches", async () => {
+    // Empty-result path: the user prompt must carry the
+    // "(no matching registry entries)" sentinel (not an empty context block), so
+    // the model is told there is nothing to ground on rather than hallucinating.
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await askQuestion(env, "anything at all?");
+    assert.equal(out.context_count, 0);
+    assert.deepEqual(out.citations, []);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.find(
+      (m) => m.role === "user",
+    ).content;
+    assert.match(userMessage, /\(no matching registry entries\)/);
+  });
+
+  test("semanticSearch returns an empty result set when Vectorize has no matches", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await semanticSearch(env, "no such thing");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
   });
 
   test("askQuestion degrades gracefully when the catalog read fails", async () => {

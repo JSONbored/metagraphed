@@ -1,13 +1,19 @@
 import path from "node:path";
 import {
+  apiDocsSubdomainOrigins,
   buildTimestamp,
   isBrandImpersonationUrl,
+  isCredentialedUrl,
+  isLikelyExampleLink,
   isUnsafeResolvedUrl,
   isUnsafeUrl,
+  listJsonFilesRecursive,
   loadNativeSnapshot,
   loadProviders,
   loadSubnets,
   nativeDisplayName,
+  OPENAPI_PROBE_PATHS,
+  probeOpenApiSpec,
   readJson,
   README_KIND_LIMITS,
   README_LINK_LIMIT,
@@ -53,12 +59,47 @@ const netuidsWithProjectDocs = new Set(
     )
     .map((overlay) => overlay.netuid),
 );
+// Subnets that already expose an `openapi` surface — nothing to auto-discover.
+const netuidsWithOpenapi = new Set(
+  existingOverlays
+    .filter((overlay) =>
+      (overlay.surfaces || []).some((surface) => surface.kind === "openapi"),
+    )
+    .map((overlay) => overlay.netuid),
+);
+// Body cap for an OpenAPI spec probe — generous enough for real specs while
+// bounding what a hostile path can stream back into the discovery process.
+const OPENAPI_SPEC_PROBE_MAX_BYTES = 2 * 1024 * 1024;
 const candidatesByKey = new Map();
 const candidateIds = new Set();
 const warnings = [];
 const existingGeneratedCandidates = await loadExistingGeneratedCandidates();
+// A committed community/curated candidate already pins a locator that the live
+// OpenAPI/website probes can rediscover under a different id — which trips
+// validate's candidate-locator uniqueness in the production publish (#1026
+// follow-up). CI builds from committed data only, so it never sees the live
+// collision; that's why the publish failed while every PR's CI stayed green.
+// Reserve every committed community candidate's locator (same key format as
+// addCandidate, with the LOCAL normalizePublicUrl) so the discovery never emits
+// a duplicate of one — the committed candidate stands.
+const reservedCandidateLocators = new Set();
+for (const file of await listJsonFilesRecursive(
+  path.join(repoRoot, "registry/candidates/community"),
+)) {
+  const document = await readJson(file);
+  for (const candidate of document.candidates || []) {
+    const normalizedUrl = normalizePublicUrl(candidate.url);
+    if (!normalizedUrl) continue;
+    reservedCandidateLocators.add(
+      `${candidate.netuid}:${candidate.kind}:${normalizedUrl.toLowerCase()}`,
+    );
+  }
+}
 const restoredProviders = new Set();
 const TAOPEDIA_ARTICLE_PROBE_MAX_BYTES = 64 * 1024;
+// TaoMarketCap normally reports a finite `count`, but keep count-less
+// pagination bounded so a malformed `next` chain cannot hang refresh jobs.
+const TAOMARKETCAP_MAX_PAGES = 50;
 
 await discoverFromNativeChainIdentity();
 await discoverFromTaoMarketCap();
@@ -68,6 +109,13 @@ await discoverUniversalTaoMarketCapDashboards();
 await discoverUniversalBackpropFinanceDashboards();
 await discoverUniversalTaostatsMetagraphDashboards();
 await discoverUniversalSubnetRadarDashboards();
+// OpenAPI auto-discovery probes already-known API/docs surfaces (local overlay
+// data) plus the discovered project websites, so it runs UNCONDITIONALLY —
+// independent of whether the flaky third-party index sources fell back to
+// restore mode — and before the website pass so a probe-confirmed spec wins the
+// de-dupe over the blind common-path guess (addCommonApiPathCandidates) for the
+// same URL. It is always freshly probed, so it is not part of the restore set.
+await discoverOpenApiSpecs();
 if (restoredProviders.size === 0) {
   await discoverFromGithubReadmes();
   await discoverFromProjectWebsites();
@@ -249,7 +297,11 @@ async function discoverFromTaoMarketCap() {
   let offset = 0;
   let expectedCount = null;
 
-  while (expectedCount === null || offset < expectedCount) {
+  for (let pageIndex = 0; pageIndex < TAOMARKETCAP_MAX_PAGES; pageIndex += 1) {
+    if (expectedCount !== null && offset >= expectedCount) {
+      break;
+    }
+
     const pageUrl = `https://api.taomarketcap.com/public/v1/subnets/?limit=${limit}&offset=${offset}`;
     const page = await fetchJson(pageUrl);
     if (!page) {
@@ -259,9 +311,12 @@ async function discoverFromTaoMarketCap() {
       return;
     }
 
-    expectedCount = Number.isInteger(page.count)
-      ? page.count
-      : offset + (page.results || []).length;
+    // Only bound the loop by total when the API actually reports one. The old
+    // fallback `offset + results.length` equalled the just-advanced offset, so a
+    // response without `count` exited after page 1 even when `page.next` pointed
+    // at more pages. Leave it null and let the `if (!page.next) break` below
+    // (the API's own pagination signal) terminate the walk.
+    expectedCount = Number.isInteger(page.count) ? page.count : null;
     for (const subnet of page.results || []) {
       const netuid = Number(subnet.netuid);
       if (!nativeByNetuid.has(netuid) || subnet.is_active === false) {
@@ -316,6 +371,12 @@ async function discoverFromTaoMarketCap() {
       break;
     }
     offset += limit;
+
+    if (pageIndex === TAOMARKETCAP_MAX_PAGES - 1) {
+      warnings.push(
+        `TaoMarketCap pagination exceeded ${TAOMARKETCAP_MAX_PAGES} pages; stopping discovery to avoid an unbounded refresh`,
+      );
+    }
   }
 }
 
@@ -762,6 +823,132 @@ function addCommonApiPathCandidates(candidate, root) {
   }
 }
 
+// #1004 — actively probe conventional OpenAPI/Swagger paths on each known base
+// origin and register an `openapi` candidate only when a path returns a VALID
+// spec document. Unlike the blind common-path guesses (addCommonApiPathCandidates),
+// these are confirmed by a safe, body-capped probe, so they enter at `medium`
+// confidence and feed the same verification + promotion + snapshot-openapi
+// pipeline as every other candidate.
+async function discoverOpenApiSpecs() {
+  await mapLimit(collectOpenApiBaseOrigins(), 8, async (target) => {
+    const match = await probeOpenApiSpec(
+      target.origin,
+      OPENAPI_PROBE_PATHS,
+      fetchOpenApiCandidate,
+    );
+    if (!match) {
+      return;
+    }
+    let hostSlug;
+    try {
+      hostSlug = slugify(new URL(target.origin).hostname);
+    } catch {
+      hostSlug = slugify(target.origin);
+    }
+    addCandidate({
+      id: `sn-${target.netuid}-openapi-probe-${hostSlug}`,
+      netuid: target.netuid,
+      name: `${displayNameForNetuid(target.netuid)} OpenAPI schema`,
+      kind: "openapi",
+      url: match.url,
+      source_url: target.origin,
+      source_type: "openapi-probe",
+      source_tier: "provider-claimed",
+      confidence: "medium",
+      provider: target.provider,
+      review_notes:
+        "OpenAPI/Swagger document confirmed by a safe probe (validated spec structure) at a conventional path. Requires maintainer review before promotion.",
+    });
+  });
+}
+
+// Distinct (netuid, provider, origin) base origins worth probing for a spec: the
+// project websites we have discovered plus any API/docs surfaces already known
+// for the subnet (specs frequently live on an `api.` subdomain, not the
+// marketing site). Subnets that already expose an `openapi` surface are skipped,
+// and a candidate with no resolvable provider is dropped (provider is required).
+function collectOpenApiBaseOrigins() {
+  const seen = new Set();
+  const targets = [];
+  const pushOrigin = (netuid, provider, origin) => {
+    let host;
+    try {
+      host = new URL(origin).hostname;
+    } catch {
+      return;
+    }
+    if (isGenericHost(host)) {
+      return;
+    }
+    const key = `${netuid}:${origin}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    targets.push({ netuid, provider, origin });
+  };
+  const add = (netuid, provider, rawUrl) => {
+    if (netuid == null || !provider || netuidsWithOpenapi.has(netuid)) {
+      return;
+    }
+    const normalized = normalizePublicUrl(rawUrl);
+    if (!normalized) {
+      return;
+    }
+    let origin;
+    try {
+      origin = new URL(normalized).origin;
+    } catch {
+      return;
+    }
+    if (isGenericHost(new URL(origin).hostname)) {
+      return;
+    }
+    pushOrigin(netuid, provider, origin);
+    // #1004 — also probe the conventional api./docs. subdomains of the same
+    // registrable domain; live specs frequently live there, not on the marketing
+    // root (the Graphite/Vidaio/Hippius class the root-only probe missed).
+    for (const derived of apiDocsSubdomainOrigins(origin)) {
+      pushOrigin(netuid, provider, derived);
+    }
+  };
+
+  for (const candidate of candidatesByKey.values()) {
+    if (candidate.kind === "website") {
+      add(candidate.netuid, candidate.provider, candidate.url);
+    }
+  }
+  for (const overlay of existingOverlays) {
+    const provider = selectOverlayProvider(overlay);
+    for (const surface of overlay.surfaces || []) {
+      if (surface.kind === "subnet-api" || surface.kind === "docs") {
+        add(overlay.netuid, provider, surface.url);
+      }
+    }
+  }
+  return targets;
+}
+
+// Safe, body-capped JSON fetch for the spec probe: returns the parsed document
+// or null on any non-200, oversized, non-JSON, or unsafe/blocked response.
+// Delegates to fetchText, which enforces the timeout, byte cap, and
+// private-IP/unsafe-URL block (via fetchWithSafeRedirects).
+async function fetchOpenApiCandidate(url) {
+  const result = await fetchText(url, {
+    accept: "application/json",
+    maxBytes: OPENAPI_SPEC_PROBE_MAX_BYTES,
+    warn: false,
+  });
+  if (!result || result.status_code !== 200 || !result.text) {
+    return null;
+  }
+  try {
+    return JSON.parse(result.text);
+  } catch {
+    return null;
+  }
+}
+
 function isCommunityDocsProvider(provider) {
   return ["taopedia-articles", "tensorplex-subnet-docs"].includes(provider);
 }
@@ -891,6 +1078,12 @@ function addCandidate(candidate) {
   }
 
   const key = `${candidate.netuid}:${candidate.kind}:${normalizedUrl.toLowerCase()}`;
+  // A committed community candidate already pins this locator — re-emitting it as
+  // a generated candidate breaks the publish's candidate-locator uniqueness check
+  // (#1026 follow-up). Skip; the committed candidate stands.
+  if (reservedCandidateLocators.has(key)) {
+    return;
+  }
   const sourceUrl = normalizePublicUrl(candidate.source_url);
   if (!sourceUrl) {
     return;
@@ -985,7 +1178,15 @@ function normalizePublicUrl(value) {
 
   try {
     const url = new URL(candidate);
-    if (!["http:", "https:"].includes(url.protocol)) {
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      isCredentialedUrl(url.toString())
+    ) {
+      return null;
+    }
+    if (url.username || url.password) {
       return null;
     }
     // SSRF pre-filter: literal private/loopback/link-local/metadata IPs +
@@ -1198,6 +1399,13 @@ function classifyDiscoveredLink(url, label, baseUrl) {
 
   if (haystack.includes("openapi") || haystack.includes("swagger")) {
     return { kind: "openapi", label: "OpenAPI surface" };
+  }
+  // #1008: code-examples — quickstarts, example dirs, SDK snippets, notebooks.
+  // Checked ahead of the generic api/docs heuristics so an `/examples/` path or a
+  // "quickstart" link is indexed as an example, not mis-bucketed as a docs/API
+  // surface. Shared predicate (isLikelyExampleLink) so the test pins the logic.
+  if (isLikelyExampleLink(haystack)) {
+    return { kind: "example", label: "code example" };
   }
   if (
     haystack.includes("leaderboard") ||

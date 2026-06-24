@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "netuid": 27,
+  "netuid": 106,
   "name": "Nodexo",
   "slug": "nodexo",
   "status": "active",
@@ -17,16 +17,16 @@
   "dashboard_url": "https://console.nodexo.ai/",
   "source_repo": null,
   "baseline_excluded_surface_ids": [
-    "sn-27-taomarketcap-source-repo",
-    "sn-27-taomarketcap-website",
-    "sn-27-website-common-api",
-    "sn-27-website-common-docs",
-    "sn-27-website-common-health",
-    "sn-27-website-common-openapi-json",
-    "sn-27-website-common-swagger",
-    "sn-27-website-common-swagger-json"
+    "sn-106-taomarketcap-source-repo",
+    "sn-106-taomarketcap-website",
+    "sn-106-website-common-api",
+    "sn-106-website-common-docs",
+    "sn-106-website-common-health",
+    "sn-106-website-common-openapi-json",
+    "sn-106-website-common-swagger",
+    "sn-106-website-common-swagger-json"
   ],
-  "notes": "Reviewed overlay for SN27 Nodexo Compute. Official browser-facing website, docs, and console surfaces are known, but simple Node/HEAD probes currently receive connection resets. The previously discovered source repository candidate currently returns 404 and is not promoted.",
+  "notes": "Reviewed overlay for SN106 Nodexo Compute (on-chain SubnetIdentitiesV3 netuid 106 = subnet_name \"Nodexo\", subnet_url nodexo.ai; re-keyed from netuid 27, which on-chain is \"Team TBC\"). Official browser-facing website, docs, and console surfaces are known, but simple Node/HEAD probes currently receive connection resets. The previously discovered source repository candidate currently returns 404 and is not promoted.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -44,9 +44,10 @@
       "No verified standalone static data artifact yet."
     ]
   },
+  "social": { "x": "https://x.com/nodex0_" },
   "surfaces": [
     {
-      "id": "sn-27-nodexo-website",
+      "id": "sn-106-nodexo-website",
       "name": "Nodexo website",
       "kind": "website",
       "url": "https://nodexo.ai/",
@@ -59,7 +60,7 @@
       "notes": "Official Nodexo Compute website."
     },
     {
-      "id": "sn-27-nodexo-docs",
+      "id": "sn-106-nodexo-docs",
       "name": "Nodexo docs",
       "kind": "docs",
       "url": "https://docs.nodexo.ai/",
@@ -72,7 +73,7 @@
       "notes": "Official Nodexo Compute documentation."
     },
     {
-      "id": "sn-27-nodexo-console",
+      "id": "sn-106-nodexo-console",
       "name": "Nodexo console",
       "kind": "dashboard",
       "url": "https://console.nodexo.ai/",

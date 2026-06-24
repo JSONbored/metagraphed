@@ -3,11 +3,18 @@ import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, test } from "vitest";
-import { isUnsafeResolvedUrl, isUnsafeUrl, repoRoot } from "../scripts/lib.mjs";
+import {
+  isUnsafeResolvedUrl,
+  isUnsafeUrl,
+  normalizePublicHttpUrl,
+  repoRoot,
+} from "../scripts/lib.mjs";
 
 const FIXTURE_DIR = path.join(repoRoot, "dist/metagraph-r2/metagraph/fixtures");
 const TEST_FIXTURE = "__public_safety_test__.json";
 const TEST_FIXTURE_PATH = path.join(FIXTURE_DIR, TEST_FIXTURE);
+const TEST_PUBLIC_FILE = "__public_safety_test__.txt";
+const TEST_PUBLIC_PATH = path.join(repoRoot, "public", TEST_PUBLIC_FILE);
 
 async function writeTestFixture(body) {
   await fs.mkdir(FIXTURE_DIR, { recursive: true });
@@ -53,8 +60,39 @@ describe("public URL safety checks", () => {
     }
   });
 
+  test("normalizes only public non-credentialed HTTP URLs", () => {
+    const unsafeUrls = [
+      "http://10.0.0.1/admin/",
+      "http://169.254.169.254/latest/meta-data/",
+      "http://[::1]/",
+      "https://user:pass@example.com/private/",
+      "https://example.com/private?token=secret",
+    ];
+
+    for (const url of unsafeUrls) {
+      assert.equal(normalizePublicHttpUrl(url), null, url);
+    }
+
+    assert.equal(
+      normalizePublicHttpUrl("example.com/docs/#intro"),
+      "https://example.com/docs",
+    );
+  });
+
   test("blocks hostnames that resolve to private addresses", async () => {
     assert.equal(await isUnsafeResolvedUrl("http://localhost/"), true);
+  });
+
+  test("blocks credentialed public URLs before DNS resolution", () => {
+    const credentialedUrls = [
+      "https://user:pass@example.com/api",
+      "http://peer1-api:8080,0xPeer2@http//peer2-api:8080",
+      "wss://token@example.com/socket",
+    ];
+
+    for (const url of credentialedUrls) {
+      assert.equal(isUnsafeUrl(url), true, url);
+    }
   });
 
   test("allows syntactically valid public HTTP URLs before DNS resolution", () => {
@@ -79,6 +117,44 @@ describe("public URL safety checks", () => {
 describe("captured-fixture body scan", () => {
   afterEach(async () => {
     await fs.rm(TEST_FIXTURE_PATH, { force: true });
+    await fs.rm(TEST_PUBLIC_PATH, { force: true });
+  });
+
+  test("allows only the exact documented local subtensor endpoint", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "Use the documented local RPC at `ws://127.0.0.1:9944` for local development.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `the exact documented endpoint should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("flags local subtensor allowlist prefix bypass attempts", async () => {
+    const bypassAttempts = [
+      "ws://127.0.0.1:9944/admin",
+      "ws://127.0.0.1:9944?token=abcdefghijklmnop",
+      "ws://127.0.0.1:9944@10.0.0.1/private",
+    ];
+
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      `${bypassAttempts.join("\n")}\n`,
+      "utf8",
+    );
+    const output = runScanOutput();
+    for (const [index] of bypassAttempts.entries()) {
+      assert.ok(
+        output.includes(
+          `${TEST_PUBLIC_FILE}:${index + 1}: private or loopback URL`,
+        ),
+        `bypass attempt on line ${index + 1} must be flagged; got:\n${output}`,
+      );
+    }
   });
 
   test("does not flag soft Bittensor terminology in a mirrored fixture body", async () => {
@@ -104,6 +180,20 @@ describe("captured-fixture body scan", () => {
     assert.ok(
       output.includes(`${TEST_FIXTURE}:response.body.note: wallet/key wording`),
       `sensitive wallet/key wording must still fire on fixture body values; got:\n${output}`,
+    );
+  });
+
+  test("flags sensitive wallet/key wording hidden in a fixture body key", async () => {
+    await writeTestFixture({
+      "seed phrase":
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    });
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(
+        `${TEST_FIXTURE}:response.body.seed phrase key: wallet/key wording`,
+      ),
+      `sensitive wallet/key wording must still fire on fixture body keys; got:\n${output}`,
     );
   });
 

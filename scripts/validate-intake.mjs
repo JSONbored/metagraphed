@@ -77,6 +77,26 @@ const profileCorrectionExample = await readJson(
 );
 const errors = [];
 
+// The per-surface community-candidate intake lane is retired — surfaces now live
+// in ONE file per subnet (registry/subnets/<slug>.json), added with
+// `npm run surface:add`. Reject any recreation of the candidate dir so the
+// migrated-away one-file-per-surface farm can't reopen. Runs in both the UGC and
+// full CI lanes (validate:intake is on both), so a candidate file is always caught.
+try {
+  const retiredDir = path.join(repoRoot, "registry/candidates/community");
+  const retiredFiles = (await fs.readdir(retiredDir)).filter((name) =>
+    name.endsWith(".json"),
+  );
+  if (retiredFiles.length > 0) {
+    errors.push(
+      `registry/candidates/community/ is retired (${retiredFiles.length} file(s): ${retiredFiles.join(", ")}). ` +
+        "Add surfaces to registry/subnets/<slug>.json with `npm run surface:add` instead.",
+    );
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+
 checkIncludes(interfaceTemplate.toLowerCase(), "interface template", [
   "interface-submission",
   "metagraphed-under-review",

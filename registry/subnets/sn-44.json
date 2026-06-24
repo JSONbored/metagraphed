@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "netuid": 44,
+  "name": "Score",
+  "slug": "sn-44",
+  "status": "active",
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "surfaces": [],
+  "social": {
+    "x": "https://x.com/webuildscore"
+  },
+  "contact": "hello@wearescore.com",
+  "source_repo": "https://github.com/score-technologies/turbovision",
+  "website_url": "https://www.wearescore.com/"
+}

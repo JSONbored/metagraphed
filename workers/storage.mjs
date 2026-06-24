@@ -184,15 +184,31 @@ export async function latestR2Key(artifactPath, env) {
   return `${prefix}${artifactPath.replace(/^\/metagraph\//, "")}`;
 }
 
+// In-isolate memo for the publish pointer (#367). Cloudflare reuses Worker
+// isolates across requests, so a short TTL collapses the per-request KV read on
+// the hot path — latestPointer feeds every origin-miss R2 read + /health. The
+// pointer changes at most a few times a day (event-driven publish, ADR 0007), so
+// a 60s TTL is bounded staleness: a flipped pointer propagates within the window,
+// and the immutable run-prefix means the previous prefix's objects stay valid in
+// the meantime, so a request served from a just-stale pointer never 404s. Keyed
+// on the env object so tests (and any multi-binding caller) never cross-read.
+const POINTER_MEMO_TTL_MS = 60_000;
+let pointerMemo = { env: null, value: null, expiresAt: 0 };
+
 export async function latestPointer(env) {
   if (!env.METAGRAPH_CONTROL?.get) {
     return null;
   }
-
+  const now = Date.now();
+  if (pointerMemo.env === env && now < pointerMemo.expiresAt) {
+    return pointerMemo.value;
+  }
   try {
-    return await env.METAGRAPH_CONTROL.get(METAGRAPH_LATEST_KEY, {
+    const value = await env.METAGRAPH_CONTROL.get(METAGRAPH_LATEST_KEY, {
       type: "json",
     });
+    pointerMemo = { env, value, expiresAt: now + POINTER_MEMO_TTL_MS };
+    return value;
   } catch {
     return null;
   }

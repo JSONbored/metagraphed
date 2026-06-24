@@ -83,5 +83,9 @@
       },
       "notes": "Official MVTRX source repository."
     }
-  ]
+  ],
+  "social": {
+    "x": "https://x.com/taos_im"
+  },
+  "contact": "to@mvtrx.fi"
 }

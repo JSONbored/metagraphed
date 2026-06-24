@@ -169,6 +169,15 @@ export function buildDatasetExports({
     });
   }
 
+  const contentFingerprint = {
+    datasets,
+    files: files.map(({ relativePath, contentType, body }) => ({
+      relativePath,
+      contentType,
+      body,
+    })),
+  };
+
   return {
     files,
     manifest: {
@@ -178,7 +187,7 @@ export function buildDatasetExports({
       // generated_at stays the deterministic build stamp.
       generated_at: generatedAt,
       published_at: publishedAt,
-      content_hash: hashJson ? hashJson(datasets) : null,
+      content_hash: hashJson ? hashJson(contentFingerprint) : null,
       dataset_count: datasets.length,
       datasets,
     },
