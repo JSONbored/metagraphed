@@ -15,7 +15,7 @@
   "docs_url": "https://docs.targon.com/",
   "dashboard_url": null,
   "website_url": "https://targon.com/",
-  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. No public API, OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
+  "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. Community-submitted public inventory API surface (https://api.targon.com/tha/v2/inventory) pending maintainer review. No machine-readable OpenAPI schema, SSE stream, or standalone data artifact is verified yet.",
   "curation": {
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
@@ -24,8 +24,8 @@
     "source_count": 6,
     "gap_notes": [
       "Official website, docs, Intel whitepaper, and source repository are verified live.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified OpenAPI/Swagger schema yet.",
+      "Community-submitted public subnet API endpoint pending maintainer review (https://api.targon.com/tha/v2/inventory).",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
     ]
@@ -105,6 +105,25 @@
         "timeout_ms": 10000
       },
       "notes": "Official Targon source repository."
+    },
+    {
+      "id": "sn-4-targon-subnet-api",
+      "name": "Targon inventory API",
+      "kind": "subnet-api",
+      "url": "https://api.targon.com/tha/v2/inventory",
+      "provider": "targon",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://docs.targon.com/api/inventory"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "notes": "Public inventory endpoint from the official Targon API. Returns a JSON catalogue of available compute resource types and pricing. No machine-readable OpenAPI spec captured yet.",
+      "review": { "state": "community-submitted", "submitted_by": "nickmopen" }
     }
   ],
   "social": { "x": "https://x.com/targoncompute" },
