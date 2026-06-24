@@ -187,9 +187,11 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Claude Code session directory (local, per-developer) — but version-control the
-# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery).
+# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery) and
+# the committed contributor skill in .claude/skills/ (read by Claude Code + Codex).
 .claude/*
 !.claude/commands/
+!.claude/skills/
 
 # Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
 __pycache__/

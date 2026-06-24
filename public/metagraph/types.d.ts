@@ -4074,6 +4074,16 @@ export interface components {
                 window: string;
             };
             rate_limit_notes?: string;
+            /** @description Per-surface review/trust state (single-file contribution model): community-submitted surfaces enter as "community-submitted" and are promoted in place by the Gittensory Gate / maintainer review. Distinct from probe-derived verification (health) and subnet-level curation.review_state. */
+            review?: {
+                /** @enum {unknown} */
+                confidence?: "low" | "medium" | "high";
+                review_notes?: string;
+                /** @enum {unknown} */
+                state: "community-submitted" | "schema-valid" | "auto-verified" | "maintainer-reviewed" | "stale" | "rejected";
+                submitted_at?: string;
+                submitted_by?: string;
+            };
             /** @enum {unknown} */
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
             /** Format: uri */

@@ -1,9 +1,9 @@
 {
-  "schema_version": 1,
-  "netuid": 114,
-  "name": "SOMA",
-  "slug": "sn-114",
-  "status": "active",
+  "baseline_excluded_surface_ids": [
+    "sn-114-taomarketcap-source-repo",
+    "sn-114-taomarketcap-website",
+    "sn-114-website-link-thesoma-ai-data-artifact-4"
+  ],
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,21 +11,8 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://thesoma.ai/",
-  "source_repo": "https://github.com/DendriteHQ/SOMA",
-  "dashboard_url": "https://thesoma.ai/dashboard",
-  "baseline_excluded_surface_ids": [
-    "sn-114-taomarketcap-source-repo",
-    "sn-114-taomarketcap-website",
-    "sn-114-website-link-thesoma-ai-data-artifact-4"
-  ],
-  "notes": "Reviewed overlay for SN114 SOMA using the public SOMA website, dashboard, MCP/access surfaces, and DendriteHQ source repository. Common docs/API/health/OpenAPI/Swagger probe paths currently return 404 or transient fetch failures and are not promoted.",
+  "contact": "https://x.com/SomaSubnet",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T19:30:00.000Z",
-    "verified_at": "2026-06-08T19:30:00.000Z",
-    "source_count": 8,
     "gap_notes": [
       "Official website, dashboard, MCP/access pages, and DendriteHQ source repository are verified.",
       "Level114/level114-subnet is live from Tensorplex evidence but is not promoted as the primary source repository.",
@@ -34,129 +21,145 @@
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T19:30:00.000Z"
   },
+  "dashboard_url": "https://thesoma.ai/dashboard",
+  "name": "SOMA",
+  "netuid": 114,
+  "notes": "Reviewed overlay for SN114 SOMA using the public SOMA website, dashboard, MCP/access surfaces, and DendriteHQ source repository. Common docs/API/health/OpenAPI/Swagger probe paths currently return 404 or transient fetch failures and are not promoted.",
+  "schema_version": 1,
+  "slug": "sn-114",
+  "social": {
+    "x": "https://x.com/somasubnet"
+  },
+  "source_repo": "https://github.com/DendriteHQ/SOMA",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-114-soma-website",
-      "name": "SOMA website",
-      "kind": "website",
-      "url": "https://thesoma.ai/",
-      "provider": "soma",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-114-soma-website",
+      "kind": "website",
+      "name": "SOMA website",
+      "notes": "Official SOMA website for SN114.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
       "source_urls": [
         "https://thesoma.ai/",
         "https://github.com/DendriteHQ/SOMA"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official SOMA website for SN114."
+      "url": "https://thesoma.ai/"
     },
     {
-      "id": "sn-114-soma-dashboard",
-      "name": "SOMA dashboard",
-      "kind": "dashboard",
-      "url": "https://thesoma.ai/dashboard",
-      "provider": "soma",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-114-soma-dashboard",
+      "kind": "dashboard",
+      "name": "SOMA dashboard",
+      "notes": "Public SOMA dashboard surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
       "source_urls": ["https://thesoma.ai/dashboard", "https://thesoma.ai/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Public SOMA dashboard surface."
+      "url": "https://thesoma.ai/dashboard"
     },
     {
-      "id": "sn-114-soma-mcp",
-      "name": "SOMA MCP surface",
-      "kind": "data-artifact",
-      "url": "https://thesoma.ai/mcp",
-      "provider": "soma",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-114-soma-mcp",
+      "kind": "data-artifact",
+      "name": "SOMA MCP surface",
+      "notes": "Public SOMA MCP information surface for SN114.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
       "source_urls": ["https://thesoma.ai/mcp", "https://thesoma.ai/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Public SOMA MCP information surface for SN114."
+      "url": "https://thesoma.ai/mcp"
     },
     {
-      "id": "sn-114-soma-access",
-      "name": "SOMA access surface",
-      "kind": "dashboard",
-      "url": "https://thesoma.ai/soma-access",
-      "provider": "soma",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-114-soma-access",
+      "kind": "dashboard",
+      "name": "SOMA access surface",
+      "notes": "Public SOMA access/app surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
       "source_urls": ["https://thesoma.ai/soma-access", "https://thesoma.ai/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Public SOMA access/app surface."
+      "url": "https://thesoma.ai/soma-access"
     },
     {
-      "id": "sn-114-soma-source",
-      "name": "SOMA source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/DendriteHQ/SOMA",
-      "provider": "soma",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-114-soma-source",
+      "kind": "source-repo",
+      "name": "SOMA source repository",
+      "notes": "Public SOMA source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
       "source_urls": [
         "https://github.com/DendriteHQ/SOMA",
         "https://thesoma.ai/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public SOMA source repository."
+      "url": "https://github.com/DendriteHQ/SOMA"
     },
     {
-      "id": "sn-114-level114-source",
-      "name": "Level114 subnet source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/Level114/level114-subnet",
-      "provider": "soma",
       "auth_required": false,
       "authority": "community",
+      "id": "sn-114-level114-source",
+      "kind": "source-repo",
+      "name": "Level114 subnet source repository",
+      "notes": "Live alternate repository discovered through Tensorplex subnet docs. Kept as secondary evidence; DendriteHQ/SOMA remains the primary source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "soma",
       "public_safe": true,
+      "review": {
+        "state": "maintainer-reviewed"
+      },
       "source_urls": [
         "https://github.com/Level114/level114-subnet",
         "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/114"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Live alternate repository discovered through Tensorplex subnet docs. Kept as secondary evidence; DendriteHQ/SOMA remains the primary source repository."
+      "url": "https://github.com/Level114/level114-subnet"
     }
   ],
-  "social": {
-    "x": "https://x.com/somasubnet"
-  },
-  "contact": "https://x.com/SomaSubnet"
+  "website_url": "https://thesoma.ai/"
 }
