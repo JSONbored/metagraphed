@@ -3061,3 +3061,72 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 });
+
+describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
+  // INVARIANT: a malformed argument must surface as a tools/call RESULT with
+  // isError:true + a stable `invalid_params` code (so an agent branches on the
+  // code), NOT as a thrown transport error or a 500. These exercise the
+  // optionalEnum / requireString / clampLimit validators across several tools.
+
+  test("optionalEnum rejects an out-of-set value with an invalid_params result", async () => {
+    const res = await callTool("list_enrichment_targets", {
+      tier: "not-a-real-tier",
+    });
+    assert.equal(res.status, 200, "transport stays 200; the error is in-band");
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /must be one of/);
+  });
+
+  test("optionalEnum rejects a non-string value the same way", async () => {
+    const res = await callTool("find_subnet_opportunities", { board: 7 });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("requireString rejects a blank/whitespace-only required arg", async () => {
+    for (const args of [{ query: "   " }, { query: "" }, { query: 42 }]) {
+      const res = await callTool("search_subnets", args);
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+      assert.match(res.body.result.content[0].text, /non-empty string/);
+    }
+  });
+
+  test("an unknown tool name is a typed isError result, not a transport error", async () => {
+    // Regression: callTool must return an isError result for an unknown tool
+    // (the dispatcher never throws a -32603 for it).
+    const res = await callTool("definitely_not_a_tool", {});
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown tool/);
+    // A non-string name is handled the same way (no crash on `.get`).
+    const res2 = await rpc({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name: 123, arguments: {} },
+    });
+    assert.equal(res2.body.result.isError, true);
+  });
+
+  test("an unknown JSON-RPC method is a typed method-not-found, not a throw", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/teleport",
+      params: {},
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.error.code, -32601);
+  });
+});

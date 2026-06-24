@@ -134,6 +134,83 @@ describe("handleOgImage", () => {
     assert.match(og.calls.markup, /Live health, schemas, and discovery/);
   });
 
+  test("HEAD returns the cached render headers (no body) on a cache hit", async () => {
+    // A primed cache + a HEAD request must short-circuit to the cached response
+    // headers with an empty body (exercises the HEAD-on-cache-hit branch).
+    const cachedResponse = new Response("PNG-BODY", {
+      status: 200,
+      headers: { "content-type": "image/png", "x-render": "cached" },
+    });
+    const res = await handleOgImage(req("HEAD"), {}, urlFor(), {
+      cache: { match: async () => cachedResponse, put: async () => {} },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-render"), "cached");
+    assert.equal(await res.text(), "", "HEAD carries no body");
+  });
+
+  test("renders only the stats that are present (partial summary, no coverage)", async () => {
+    // subnet_count is a non-number (→ formatCount null), endpoints present,
+    // providers absent, coverage absent. The card must render exactly the
+    // formattable counts and skip the rest, never emitting "undefined" or "null".
+    const og = fakeOg();
+    const readPartial = async () => ({
+      ok: true,
+      data: {
+        subnet_count: "many", // non-number → dropped
+        counts: { endpoints: 1198 }, // providers absent → dropped
+        coverage: { average_score: "n/a" }, // non-number → dropped
+      },
+    });
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readPartial,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.match(og.calls.markup, /1,198 endpoints/);
+    assert.doesNotMatch(og.calls.markup, /subnets/);
+    assert.doesNotMatch(og.calls.markup, /providers/);
+    assert.doesNotMatch(og.calls.markup, /coverage/);
+    assert.doesNotMatch(og.calls.markup, /undefined|null|NaN/);
+  });
+
+  test("falls back to the generic line when a summary has NO formattable counts", async () => {
+    // The artifact reads ok but every count is non-numeric → loadStatLine's
+    // parts array is empty → it returns null (not []), so the generic stat line
+    // renders instead of an empty stat row.
+    const og = fakeOg();
+    const readAllJunk = async () => ({
+      ok: true,
+      data: {
+        subnet_count: null,
+        counts: { endpoints: "x", providers: undefined },
+        coverage: { average_score: "n/a" },
+      },
+    });
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readAllJunk,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets|\d+ endpoints/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
+  test("treats a non-function readArtifact dep as a cold summary (generic line)", async () => {
+    // deps.readArtifact omitted → loadStatLine returns null without throwing, so
+    // the generic fallback stat line renders.
+    const og = fakeOg();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
   test("serves the branded full-size fallback card (not a 1x1, not a 500) when font loading fails", async () => {
     const og = fakeOg({ failFont: true });
     const { assets, requested } = fakeAssets();
