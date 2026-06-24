@@ -233,7 +233,7 @@ export function buildIssueIntakeReport({
   const errors = [...fieldErrors];
   const manual_reasons = [];
 
-  const netuid = Number(fields.netuid);
+  const netuid = parseNetuidField(fields.netuid);
   if (
     !Number.isInteger(netuid) ||
     !native.subnets.some((subnet) => subnet.netuid === netuid)
@@ -479,7 +479,7 @@ export function buildEndpointStatusReportIntakeReport({
   const manual_reasons = [
     "status reports trigger review or re-probes and cannot set observed health",
   ];
-  const netuid = Number(fields.netuid);
+  const netuid = parseNetuidField(fields.netuid);
   const activeNetuid = native.subnets.some(
     (subnet) => subnet.netuid === netuid,
   );
@@ -1691,6 +1691,16 @@ export function parseIssueFields(body) {
 
 export function issueFieldParseErrors(fields) {
   return fields?.[FIELD_PARSE_ERRORS] || [];
+}
+
+// Parse an intake `netuid` field. A bare `Number()` coerces a blank/whitespace
+// field to 0, which is a *valid* integer and (since Finney exposes the root
+// subnet, netuid 0) would silently attribute an empty-netuid submission to
+// subnet 0. Same `Number("") === 0` trap fetch-metagraph.mjs::parseNetuidSubset
+// guards against — only an all-digit value is accepted; anything else is NaN.
+export function parseNetuidField(value) {
+  const raw = String(value ?? "").trim();
+  return /^\d+$/.test(raw) ? Number(raw) : NaN;
 }
 
 export function normalizeKind(value) {
