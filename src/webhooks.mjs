@@ -575,10 +575,13 @@ export async function deliverChangeEvent({
 // `fn` calls. Shared by the fresh fan-out and the redelivery sweep.
 async function mapBounded(items, concurrency, fn) {
   const queue = [...(items || [])];
-  const results = [];
+  const results = new Array(queue.length);
+  let nextIndex = 0;
   const worker = async () => {
     while (queue.length > 0) {
-      results.push(await fn(queue.shift()));
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await fn(queue.shift());
     }
   };
   const workers = Array.from(
