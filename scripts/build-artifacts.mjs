@@ -2359,6 +2359,7 @@ const llmsHeader = [
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
+  `- [GraphQL](${llmsApiBase}/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
@@ -2657,6 +2658,12 @@ const agentResourcesContent = {
       title: "Ask (grounded Q&A)",
       kind: "api",
       url: `${llmsApiBase}/api/v1/ask`,
+    },
+    {
+      id: "graphql",
+      title: "GraphQL (shaped registry queries)",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/graphql`,
     },
     {
       id: "fixtures",

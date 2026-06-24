@@ -5146,11 +5146,10 @@ function corsPreflight(request) {
     methods = "POST, OPTIONS";
   } else if (url.pathname.startsWith("/api/v1/webhooks/")) {
     methods = "POST, GET, DELETE, OPTIONS";
-  } else if (
-    url.pathname === "/mcp" ||
-    url.pathname === "/api/v1/ask" ||
-    url.pathname === "/api/v1/graphql"
-  ) {
+  } else if (url.pathname === "/api/v1/graphql") {
+    // POST executes queries; GET serves the published SDL document.
+    methods = "GET, POST, OPTIONS";
+  } else if (url.pathname === "/mcp" || url.pathname === "/api/v1/ask") {
     methods = "POST, OPTIONS";
   }
   headers.set("access-control-allow-methods", methods);
