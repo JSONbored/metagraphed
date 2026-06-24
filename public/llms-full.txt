@@ -65,7 +65,7 @@ Prefix any `/api/v1/` or `/metagraph/` path with a network to scope it: `/api/v1
 - SN24 Quasar (sn-24) [baseline-augmented, baseline-curated, identity-reviewed, language-models, model-artifacts, official-docs, official-source-repo, official-website]; 3/3 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/24
 - SN25 Mainframe (sn-25); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/25
 - SN26 Perturb (sn-26); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/26
-- SN27 Team TBC (sn-27); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/27
+- SN27 NI Compute (sn-27); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/27
 - SN28 gm (gm); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/28
 - SN29 Coldint (sn-29) [baseline-augmented, baseline-curated, data, distributed-training, identity-reviewed, official-docs, official-source-repo, official-website]; 1/1 callable services (data-artifact) — https://api.metagraph.sh/api/v1/agent-catalog/29
 - SN30 Endure Network (sn-30); no catalogued public API yet — https://api.metagraph.sh/api/v1/agent-catalog/30

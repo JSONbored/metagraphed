@@ -4,7 +4,7 @@
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "name": "Team TBC",
+  "name": "NI Compute",
   "netuid": 27,
   "schema_version": 1,
   "slug": "sn-27",
@@ -15,7 +15,7 @@
       "authority": "community",
       "id": "sn-27-nodexo-source-repo",
       "kind": "source-repo",
-      "name": "Team TBC community source-repo",
+      "name": "NI Compute source repository",
       "probe": {
         "enabled": true,
         "expect": "any",
