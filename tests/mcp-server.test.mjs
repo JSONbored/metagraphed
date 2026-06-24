@@ -1655,6 +1655,50 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.equal(out.results[0].netuid, 1);
   });
 
+  test("semantic_search forwards the type scope to Vectorize", async () => {
+    const env = aiEnv();
+    let lastOptions;
+    env.VECTORIZE.query = (_vector, options) => {
+      lastOptions = options;
+      return Promise.resolve({ matches: [] });
+    };
+    const res = await callTool(
+      "semantic_search",
+      { query: "images", type: ["subnet", "provider"] },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(lastOptions.filter, {
+      type: { $in: ["subnet", "provider"] },
+    });
+  });
+
+  test("semantic_search rejects an unknown type with invalid_params", async () => {
+    const res = await callTool(
+      "semantic_search",
+      { query: "images", type: "widget" },
+      { env: aiEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown type|Valid types/);
+  });
+
+  test("ask forwards the type scope to Vectorize", async () => {
+    const env = aiEnv();
+    let lastOptions;
+    env.VECTORIZE.query = (_vector, options) => {
+      lastOptions = options;
+      return Promise.resolve({ matches: [] });
+    };
+    const res = await callTool(
+      "ask",
+      { question: "which providers?", type: "provider" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(lastOptions.filter, { type: "provider" });
+  });
+
   test("ask returns a grounded answer with citations when AI is enabled", async () => {
     const res = await callTool(
       "ask",

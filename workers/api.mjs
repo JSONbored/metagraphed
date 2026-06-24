@@ -5141,8 +5141,13 @@ async function handleSemanticSearchRequest(request, env, url) {
     return aiRateLimitedResponse();
   }
   try {
+    // `?type=subnet&type=provider` (repeatable) scopes results; absent → all
+    // kinds. getAll returns [] when absent, which normalizeSemanticTypes reads as
+    // "no scope", so an empty list is equivalent to omitting the param.
+    const types = url.searchParams.getAll("type");
     const data = await semanticSearch(env, url.searchParams.get("q"), {
       limit: url.searchParams.get("limit"),
+      type: types.length ? types : undefined,
     });
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
@@ -5209,7 +5214,7 @@ async function handleAskRequest(request, env) {
     const data = await askQuestion(
       env,
       body?.question,
-      { topK: body?.topK },
+      { topK: body?.topK, type: body?.type },
       { readArtifact, liveHealth, overlayCatalogIndex },
     );
     return dataResponse(env, data, 200, { source: "ai-live" });

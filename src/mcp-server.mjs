@@ -46,6 +46,7 @@ import {
 import {
   aiEnabled,
   askQuestion,
+  SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.mjs";
@@ -407,6 +408,18 @@ function clampLimit(value, fallback, max) {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
+}
+
+// Input-schema fragment for the optional `type` scope: one record kind or a list.
+// Built from SEMANTIC_TYPES so the schema and the server-side validator never drift.
+function semanticTypeSchema() {
+  const kind = { type: "string", enum: [...SEMANTIC_TYPES] };
+  return {
+    description:
+      `Restrict results to one or more record kinds (${SEMANTIC_TYPES.join(", ")}). ` +
+      "Accepts a single kind or a list; omit for all kinds.",
+    oneOf: [kind, { type: "array", items: kind }],
+  };
 }
 
 // Shared pagination for every list/search tool: slice one page and return the
@@ -1451,7 +1464,8 @@ export const MCP_TOOLS = [
       "providers. Unlike search_subnets' keyword match, this understands intent " +
       "— 'generate images from a prompt', 'stream live price data' — and ranks " +
       "by semantic similarity. Returns netuid/slug/title/description/url per " +
-      "hit. Requires the AI layer; fall back to search_subnets when it is not " +
+      "hit, optionally scoped to subnets, surfaces, and/or providers via `type`. " +
+      "Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
     inputSchema: {
       type: "object",
@@ -1467,6 +1481,7 @@ export const MCP_TOOLS = [
           minimum: 1,
           maximum: 20,
         },
+        type: semanticTypeSchema(),
       },
       required: ["query"],
       additionalProperties: false,
@@ -1476,7 +1491,10 @@ export const MCP_TOOLS = [
       const query = requireString(args, "query");
       await requireAiRateLimit(ctx, "semantic");
       return runAi(() =>
-        semanticSearch(ctx.env, query, { limit: args?.limit }),
+        semanticSearch(ctx.env, query, {
+          limit: args?.limit,
+          type: args?.type,
+        }),
       );
     },
   },
@@ -1487,7 +1505,8 @@ export const MCP_TOOLS = [
       "Natural-language Q&A grounded in the registry (RAG). Retrieves the most " +
       "relevant subnets/surfaces and answers from them with bracketed [n] " +
       "citations — e.g. 'Which subnets expose an inference API I can call " +
-      "today?'. Returns the answer plus its citations. Requires the AI layer.",
+      "today?'. Returns the answer plus its citations. Scope the retrieved " +
+      "context with `type`. Requires the AI layer.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1496,6 +1515,7 @@ export const MCP_TOOLS = [
           description:
             "A question about Bittensor subnets or the registry as a whole.",
         },
+        type: semanticTypeSchema(),
       },
       required: ["question"],
       additionalProperties: false,
@@ -1505,7 +1525,12 @@ export const MCP_TOOLS = [
       const question = requireString(args, "question");
       await requireAiRateLimit(ctx, "ask");
       return runAi(() =>
-        askQuestion(ctx.env, question, {}, { readArtifact: ctx.readArtifact }),
+        askQuestion(
+          ctx.env,
+          question,
+          { type: args?.type },
+          { readArtifact: ctx.readArtifact },
+        ),
       );
     },
   },
