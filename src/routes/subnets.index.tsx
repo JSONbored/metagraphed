@@ -763,33 +763,48 @@ function ParticipantsCell({
 function SurfacesCell({ subnet, density = "comfortable" }: { subnet: Subnet; density?: Density }) {
   const count = subnet.surfaces_count ?? 0;
   const rec = subnet as unknown as Record<string, unknown>;
+  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : 0);
   const byKind = (rec.surfaces_by_kind ?? rec.surface_kinds) as Record<string, number> | undefined;
-  const segments = byKind
-    ? Object.entries(byKind)
-        .filter(([, v]) => typeof v === "number" && v > 0)
-        .map(([k, v]) => ({
+  // Prefer a real per-kind breakdown if the list API ever exposes one; otherwise
+  // show the surface-trust composition (official / registry-observed / other) —
+  // the list API always carries these counts, so the bar is a meaningful
+  // breakdown instead of a flat single-segment placeholder.
+  const TRUST_COLORS: Record<string, string> = {
+    official: "var(--accent)",
+    observed: "var(--ink-muted)",
+    other: "var(--border)",
+  };
+  const official = num("official_surface_count");
+  const observed = num("registry_observed_count");
+  const trust = [
+    { label: "official", value: official },
+    { label: "observed", value: observed },
+    { label: "other", value: Math.max(0, count - official - observed) },
+  ];
+  const segments = (
+    byKind
+      ? Object.entries(byKind).map(([k, v]) => ({
           label: k,
-          value: v,
+          value: typeof v === "number" ? v : 0,
           color: SURFACE_KIND_COLORS[k.toLowerCase()] ?? "var(--ink-muted)",
         }))
-    : count > 0
-      ? [{ label: "surfaces", value: count, color: "var(--accent)" }]
-      : [];
+      : trust.map((t) => ({ ...t, color: TRUST_COLORS[t.label] }))
+  ).filter((s) => s.value > 0);
   const compact = density === "compact";
-  const kindSummary = byKind
-    ? Object.entries(byKind)
-        .filter(([, v]) => typeof v === "number" && v > 0)
-        .map(([k, v]) => `${k}:${v}`)
-        .join(", ")
-    : null;
+  const summary = (
+    byKind ? Object.entries(byKind) : (trust.map((t) => [t.label, t.value]) as [string, number][])
+  )
+    .filter(([, v]) => typeof v === "number" && v > 0)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(", ");
 
   return (
     <SparkLegend
-      metric="Surface kinds"
-      source={`Verified public surfaces from /api/v1/subnets/${subnet.netuid}/surfaces, grouped by kind.${kindSummary ? ` — ${kindSummary}` : ""}`}
+      metric={byKind ? "Surface kinds" : "Surface trust"}
+      source={`Verified public surfaces for SN${subnet.netuid}${byKind ? ", grouped by kind" : ", by trust tier (official / registry-observed)"}.${summary ? ` — ${summary}` : ""}`}
       windowLabel="latest snapshot"
       updatedAt={subnet.updated_at ?? subnet.freshness ?? null}
-      staleness="Unverified candidates are excluded; the bar collapses to a single segment when per-kind counts are missing."
+      staleness="Unverified candidates are excluded from the count; the bar shows the trust composition of manifested surfaces."
       side="top"
     >
       <span
