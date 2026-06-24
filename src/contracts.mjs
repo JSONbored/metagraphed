@@ -943,6 +943,18 @@ export const PUBLIC_ARTIFACTS = [
     "AccountSubnetsArtifact",
   ),
   artifact(
+    "blocks-feed",
+    "/metagraph/blocks.json",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "BlocksFeedArtifact",
+  ),
+  artifact(
+    "block-detail",
+    "/metagraph/blocks/{ref}.json",
+    "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+    "BlockDetailArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -1633,6 +1645,31 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "blocks-feed",
+    "GET",
+    "/api/v1/blocks",
+    "/metagraph/blocks.json",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "block-detail",
+    "GET",
+    "/api/v1/blocks/{ref}",
+    "/metagraph/blocks/{ref}.json",
+    "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
     "subnet-uptime",
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
@@ -2085,7 +2122,9 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
-    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
+    // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -2093,7 +2132,8 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 

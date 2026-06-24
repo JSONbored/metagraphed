@@ -47,6 +47,11 @@ const R2_ONLY_PATTERNS = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/events\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
+  // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
+  // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
+  // 0x block_hash) — never written as files.
+  /^blocks\.json$/,
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
   /^registry\/leaderboards\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
