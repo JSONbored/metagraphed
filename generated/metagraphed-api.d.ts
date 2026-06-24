@@ -1784,11 +1784,37 @@ export interface components {
             requested_netuids?: number[];
             schema_version: number;
             source: string;
-            subnets: {
-                [key: string]: unknown;
-            }[];
+            subnets: components["schemas"]["CompareSubnetEntry"][];
         } & {
             [key: string]: unknown;
+        };
+        /** @description One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row. */
+        CompareSubnetEntry: {
+            economics?: {
+                alpha_price_tao?: number | null;
+                emission_share?: number | null;
+                miner_count?: number;
+                miner_readiness?: number | null;
+                open_slots?: number | null;
+                registration_allowed?: boolean;
+                registration_cost_tao?: number | null;
+                total_stake_tao?: number | null;
+                validator_count?: number;
+            } | null;
+            found: boolean;
+            health?: {
+                avg_latency_ms?: number | null;
+                ok_count?: number;
+                surface_count?: number;
+            } | null;
+            name: string | null;
+            netuid: number;
+            slug: string | null;
+            structure?: {
+                completeness_score?: number | null;
+                operational_interface_count?: number;
+                surface_count?: number;
+            } | null;
         };
         ContractsArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: components["schemas"]["ArtifactContractEntry"][];
@@ -5941,7 +5967,12 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "source": "live-cron-prober",
                      *         "subnets": [
-                     *           {}
+                     *           {
+                     *             "found": false,
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "slug": "example-subnet"
+                     *           }
                      *         ]
                      *       },
                      *       "meta": {

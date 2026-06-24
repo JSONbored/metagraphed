@@ -19,10 +19,55 @@
           },
           "subnets": {
             "type": "array",
-            "items": { "type": "object", "additionalProperties": true }
+            "items": { "$ref": "#/components/schemas/CompareSubnetEntry" }
           }
         },
         "additionalProperties": true
+      },
+      "CompareSubnetEntry": {
+        "type": "object",
+        "description": "One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row.",
+        "required": ["netuid", "name", "slug", "found"],
+        "additionalProperties": false,
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "name": { "type": ["string", "null"] },
+          "slug": { "type": ["string", "null"] },
+          "found": { "type": "boolean" },
+          "structure": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "completeness_score": { "type": ["number", "null"] },
+              "surface_count": { "type": "integer", "minimum": 0 },
+              "operational_interface_count": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "economics": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "registration_cost_tao": { "type": ["number", "null"] },
+              "registration_allowed": { "type": "boolean" },
+              "open_slots": { "type": ["integer", "null"] },
+              "emission_share": { "type": ["number", "null"] },
+              "alpha_price_tao": { "type": ["number", "null"] },
+              "validator_count": { "type": "integer", "minimum": 0 },
+              "miner_count": { "type": "integer", "minimum": 0 },
+              "total_stake_tao": { "type": ["number", "null"] },
+              "miner_readiness": { "type": ["number", "null"] }
+            }
+          },
+          "health": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "surface_count": { "type": "integer", "minimum": 0 },
+              "ok_count": { "type": "integer", "minimum": 0 },
+              "avg_latency_ms": { "type": ["number", "null"] }
+            }
+          }
+        }
       },
       "CurationMetadata": {
         "type": "object",
