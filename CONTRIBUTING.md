@@ -41,22 +41,23 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Add `registry/providers/community/<slug>.json` in the same PR (`npm run provider:new`); provider identity still gets reviewed before it's trusted.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/community/<slug>.json` stub for you in the same PR (or run `npm run provider:new`); provider identity still gets reviewed before it's trusted.
 
 Add a surface locally — three steps:
 
 ```bash
 # 1. Find the provider slug for the team/operator behind this surface.
-#    (No match? Register one in the same PR with `npm run provider:new`.)
 npm run providers:list
 
-# 2. Append the surface to the subnet's file with a REAL --provider slug (a
-#    placeholder like "community" is not a registered provider and fails validation).
+# 2. Append the surface to the subnet's file with a REAL --provider slug.
+#    Debut provider? Add --provider-name + --provider-url and surface:add also
+#    scaffolds registry/providers/community/<slug>.json so the PR validates in one shot.
 npm run surface:add -- \
   --netuid 7 --kind docs \
   --url https://docs.example.com \
   --source-url https://github.com/example/project \
   --provider <provider-slug> --submitted-by <github-login> --write
+  # debut provider: --provider-name "Example Team" --provider-url https://example.com
 
 # 3. Check it before pushing — a fast local pre-check (schema + provider slug +
 #    review-state + real subnet name) without the full build (CI runs full validate).
