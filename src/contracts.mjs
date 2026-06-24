@@ -955,6 +955,18 @@ export const PUBLIC_ARTIFACTS = [
     "BlockDetailArtifact",
   ),
   artifact(
+    "extrinsics-feed",
+    "/metagraph/extrinsics.json",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
+    "extrinsic-detail",
+    "/metagraph/extrinsics/{hash}.json",
+    "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "ExtrinsicDetailArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -1670,6 +1682,32 @@ export const API_ROUTES = [
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
+    "extrinsics-feed",
+    "GET",
+    "/api/v1/extrinsics",
+    "/metagraph/extrinsics.json",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+    "short",
+    ["extrinsics", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "extrinsic-detail",
+    "GET",
+    "/api/v1/extrinsics/{hash}",
+    "/metagraph/extrinsics/{hash}.json",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+    "short",
+    ["extrinsics", "analytics"],
+    [],
+    [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
     "subnet-uptime",
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
@@ -2124,7 +2162,9 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
     // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
-    .replace(/\{ref\}/g, "__METAGRAPH_REF__");
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__")
+    // Block-explorer {hash} (#1345 second slice): a 0x extrinsic_hash.
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -2133,7 +2173,8 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
     .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
-    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})");
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 

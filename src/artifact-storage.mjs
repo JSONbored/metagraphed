@@ -52,6 +52,11 @@ const R2_ONLY_PATTERNS = [
   // 0x block_hash) — never written as files.
   /^blocks\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
+  // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
+  // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
+  // (0x extrinsic_hash) — never written as files.
+  /^extrinsics\.json$/,
+  /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\{hash\})\.json$/,
   /^registry\/leaderboards\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.

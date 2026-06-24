@@ -378,6 +378,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/extrinsics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345). */
+        get: operations["extrinsicsFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/extrinsics/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown. */
+        get: operations["extrinsicDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fixtures": {
         parameters: {
             query?: never;
@@ -2107,6 +2141,36 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
+        Extrinsic: {
+            block_number: number | null;
+            call_function?: string | null;
+            call_module?: string | null;
+            extrinsic_hash?: string | null;
+            extrinsic_index: number | null;
+            /** Format: date-time */
+            observed_at?: string | null;
+            signer?: string | null;
+            success?: boolean | null;
+        };
+        /** @description Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file). */
+        ExtrinsicDetailArtifact: {
+            extrinsic: components["schemas"]["Extrinsic"] | null;
+            ref?: string | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file). */
+        ExtrinsicsFeedArtifact: {
+            extrinsic_count: number;
+            extrinsics: components["schemas"]["Extrinsic"][];
+            limit?: number | null;
+            offset?: number | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
         FixturesIndexArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count?: number;
             coverage?: ({
@@ -7076,6 +7140,230 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["EvidenceLedgerArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    extrinsicsFeed: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                block?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "extrinsic_count": 1,
+                     *         "extrinsics": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "extrinsic_index": 1
+                     *           }
+                     *         ],
+                     *         "limit": 1,
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ExtrinsicsFeedArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    extrinsicDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "extrinsic": {
+                     *           "block_number": 5000000,
+                     *           "call_function": "example",
+                     *           "call_module": "example",
+                     *           "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "extrinsic_index": 1,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "signer": "example",
+                     *           "success": false
+                     *         },
+                     *         "ref": "example",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ExtrinsicDetailArtifact"];
                     };
                 };
             };
