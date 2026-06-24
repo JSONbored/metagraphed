@@ -43,56 +43,42 @@ The stable marker comment is:
 
 ## Direct PR Shape
 
-Direct UGC PRs must change exactly one candidate or provider review file, OR an
-atomic provider+candidate **pair** (one of each):
+A community **surface contribution** changes **exactly one** subnet file — the
+subnet's `registry/subnets/<slug>.json`, appending to its `surfaces[]` array:
 
 ```text
-registry/candidates/community/<slug>.json
-registry/providers/<slug>.json
+registry/subnets/<slug>.json
 ```
 
-The atomic pair is the **debut lane**: a first-time team registers its provider
-and lands its first surface in a single PR. The inline provider counts as
-registered for the candidate's checks, so no prior, separately-reviewed provider
-PR is required. (Submitting a candidate alone that references an unregistered
-provider is a non-terminal `fix_required` asking you to add the provider in the
-same PR — it is never auto-closed.)
+`npm run surface:add` writes the surface with `authority: "community"` and
+`review.state: "community-submitted"`. A first-time provider can debut in the
+**same PR** by adding one `registry/providers/community/<slug>.json` stub
+(`surface:add --provider-name … --provider-url …` scaffolds it, or
+`npm run provider:new`) — provider identity is reviewed before it is trusted.
 
-The file must contain exactly one candidate:
+> The standalone per-candidate-file lane (`registry/candidates/community/*.json`)
+> is **retired** — recreating it is rejected by CI (`validate:intake`). One
+> subnet = one file = one PR; see
+> [CONTRIBUTING → Community submissions](../CONTRIBUTING.md#community-submissions).
+
+The appended `surfaces[]` entry looks like (health/`probe` fields are
+probe-derived and added by the build — never hand-set):
 
 ```json
 {
-  "schema_version": 1,
-  "submission": {
-    "submitted_by": "github-login",
-    "submitted_by_url": "https://github.com/github-login"
-  },
-  "candidates": [
-    {
-      "schema_version": 1,
-      "id": "community-sn-7-docs-example",
-      "netuid": 7,
-      "state": "schema-valid",
-      "name": "Allways community docs example",
-      "kind": "docs",
-      "url": "https://docs.example.com",
-      "source_url": "https://github.com/example/project",
-      "source_urls": ["https://github.com/example/project"],
-      "source_type": "community-pr-intake",
-      "source_tier": "community-docs",
-      "confidence": "medium",
-      "provider": "community",
-      "auth_required": false,
-      "public_safe": true,
-      "rate_limit_notes": "",
-      "rate_limit": {
-        "requests": 60,
-        "window": "60s",
-        "scope": "per-ip"
-      },
-      "review_notes": "Community-submitted public interface candidate."
-    }
-  ]
+  "id": "sn-7-allways-docs-example",
+  "name": "Allways community docs example",
+  "kind": "docs",
+  "url": "https://docs.example.com",
+  "provider": "community",
+  "authority": "community",
+  "auth_required": false,
+  "public_safe": true,
+  "source_urls": ["https://github.com/example/project"],
+  "review": {
+    "state": "community-submitted",
+    "submitted_by": "github-login"
+  }
 }
 ```
 
@@ -136,7 +122,7 @@ Provider profile submissions are review inputs only; they cannot claim official
 authority, directly modify canonical provider manifests, set endpoint health, or
 make any endpoint pool-eligible.
 
-Clean direct candidate PRs for public-safe app-layer surfaces can be
+Clean direct surface PRs for public-safe app-layer surfaces can be
 AI-reviewed by the private Metagraphed gate and merged directly by the GitHub
 App after required public checks pass. Public preflight only decides whether a
 submission is shaped correctly enough for private review; it does not expose AI
@@ -149,7 +135,8 @@ lane until a maintainer reviews the identity claim.
 
 Maintainer automation branches such as `codex/*` are ignored before D1 state,
 labels, comments, AI review, or Discord notifications. Direct UGC examples
-should use normal feature branches and exactly one candidate or provider file.
+should use normal feature branches and the one-file surface shape (one
+`registry/subnets/<slug>.json`, optionally plus a debut provider stub).
 
 ## Supported UGC Types
 

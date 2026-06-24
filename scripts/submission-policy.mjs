@@ -746,8 +746,14 @@ export function classifyPrScope(changedFiles) {
   if (submissionFileCount !== 1 && !isPair) {
     errors.push({
       category: "unsupported-shape",
+      // The standalone community-candidate file lane is retired (validate-intake
+      // rejects registry/candidates/community/*.json); community surfaces now live
+      // in registry/subnets/<slug>.json, added via `npm run surface:add` and
+      // reviewed as a normal PR. This classifier still recognizes the provider /
+      // legacy-candidate direct shapes, so the message describes them accurately
+      // while pointing contributors at the current surface model.
       message:
-        "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/*.json file, or an atomic provider+candidate pair (one of each)",
+        "the per-candidate-file lane (registry/candidates/community/*.json) is retired — add community surfaces to a single registry/subnets/<slug>.json via `npm run surface:add` instead. (A provider profile may still change exactly one registry/providers/*.json file.)",
     });
   }
 
