@@ -13,6 +13,21 @@ import { getNetworkPrefix } from "@/lib/metagraphed/config";
 import { isUsableTimestamp } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { NativeOnlyNotice } from "./native-only-notice";
+import { safeExternalUrl } from "./external-link";
+
+// Scheme barrier for an EmptyState action link (CodeQL js/xss-through-dom): external
+// actions go through safeExternalUrl (http(s) only, no creds/private hosts); internal
+// actions must be a relative path / anchor / query — never an inline scheme like
+// javascript:. Returns undefined for anything unsafe so the <a> is simply not rendered.
+function safeActionHref(action?: {
+  href: string;
+  external?: boolean;
+}): string | undefined {
+  if (!action?.href) return undefined;
+  if (action.external) return safeExternalUrl(action.href);
+  const href = action.href.trim();
+  return /^(?:\/(?!\/)|#|\?)/.test(href) ? href : undefined;
+}
 
 export function ErrorState({
   error,
@@ -33,6 +48,7 @@ export function ErrorState({
   }
   const message = (error as Error)?.message ?? "Unknown error";
   const url = isApi ? error.url : undefined;
+  const safeUrl = safeExternalUrl(url); // scheme barrier before using as an href
   const status = isApi ? error.status : undefined;
 
   return (
@@ -63,9 +79,9 @@ export function ErrorState({
                 <RefreshCw className="size-3" /> Retry
               </button>
             ) : null}
-            {url ? (
+            {safeUrl ? (
               <a
-                href={url}
+                href={safeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-ink-muted hover:text-ink-strong hover:border-ink/30"
@@ -92,6 +108,7 @@ export function EmptyState({
   lastChecked?: string;
   action?: { label: string; href: string; external?: boolean };
 }) {
+  const actionHref = safeActionHref(action);
   return (
     <div className="rounded border border-dashed border-ink-subtle bg-surface/30 p-6 text-center">
       <Inbox className="mx-auto size-5 text-ink-muted" />
@@ -104,9 +121,9 @@ export function EmptyState({
           Last checked <TimeAgo at={lastChecked} />
         </div>
       ) : null}
-      {action ? (
+      {action && actionHref ? (
         <a
-          href={action.href}
+          href={actionHref}
           {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           className="mt-3 inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 text-[11px] font-medium hover:border-ink/30"
         >
