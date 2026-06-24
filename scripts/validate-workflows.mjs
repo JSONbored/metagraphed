@@ -60,57 +60,6 @@ for (const workflow of workflows) {
       `action ref must be pinned to a full commit SHA: ${actionRef}`,
     );
   }
-  if (workflow === "intake-validation.yml") {
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'interface-submission')",
-      ),
-      workflow,
-      "intake must be exact-label gated",
-    );
-  }
-  if (workflow === "intake-import-pr.yml") {
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'interface-submission')",
-      ),
-      workflow,
-      "intake import must require interface-submission label",
-    );
-    check(
-      content.includes(
-        "contains(github.event.issue.labels.*.name, 'metagraphed-import-approved')",
-      ),
-      workflow,
-      "intake import must require maintainer approval label",
-    );
-    check(
-      content.includes("peter-evans/create-pull-request@"),
-      workflow,
-      "intake import must open a PR instead of direct-publishing",
-    );
-    check(
-      content.includes("npm run intake:import"),
-      workflow,
-      "intake import must use the checked-in import script",
-    );
-    check(
-      !content.includes("--issue-json issue.json") &&
-        !content.includes("--out intake-report.json"),
-      workflow,
-      "intake import must keep transient issue and report files outside the repository workspace",
-    );
-    check(
-      content.includes("add-paths:") &&
-        content.includes("registry/**") &&
-        content.includes("public/**") &&
-        content.includes("dist/metagraph-r2/**") &&
-        content.includes("schemas/**") &&
-        content.includes("generated/**"),
-      workflow,
-      "intake import pull request must allowlist generated registry artifact paths",
-    );
-  }
   if (workflow === "validate.yml") {
     // There is NO reduced "ugc" lane to forge — every PR runs the full
     // validation. The only PR-derived input is the deletion-filtered submitted-

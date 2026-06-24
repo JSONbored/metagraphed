@@ -211,7 +211,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run contract:summary`: compare schema contracts against a base ref and classify changes as additive, risky, or breaking.
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
 - `npm run validate:intake`: validate GitHub issue intake templates.
-- `npm run candidate:new`: generate a one-candidate community PR file.
+- `npm run surface:add`: append a community surface to a subnet's file.
 - `npm run provider:new`: generate a one-provider-profile community PR file.
 - `npm run submission:comment`: render a deterministic Markdown submission report.
 - `npm run validate:workflows`: validate workflow hardening rules.
