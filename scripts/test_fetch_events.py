@@ -121,5 +121,33 @@ class ParseCursorTest(unittest.TestCase):
         self.assertIsNone(_parse_cursor(-7))
 
 
+_lag_alert_needed = _fe._lag_alert_needed
+
+
+class LagAlertNeededTest(unittest.TestCase):
+    def test_cold_cursor_never_alerts(self):
+        self.assertFalse(_lag_alert_needed(10_000, None, window=256, horizon=300))
+
+    def test_alerts_at_and_above_the_overlap_floor(self):
+        # floor = horizon - window = 44; lag >= 44 alerts, below does not.
+        self.assertFalse(
+            _lag_alert_needed(10_000, 10_000 - 43, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 44, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 100, window=256, horizon=300)
+        )
+
+    def test_window_ge_horizon_never_alerts(self):
+        # When the overlap window covers the whole prune horizon, blocks can never
+        # age out unseen — must NOT alert (regression: a bare horizon-window
+        # threshold goes <= 0 and would fire every run, even at lag 0).
+        self.assertFalse(_lag_alert_needed(10_000, 10_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
