@@ -199,4 +199,16 @@ describe("list-query numeric range filters", () => {
     );
     assert.equal(badMax.error.parameter, "max_tempo");
   });
+
+  test("an overflowing decimal range bound is a query error", () => {
+    const hugeDecimal = "9".repeat(400);
+    const bad = applyQueryFilters(
+      data,
+      query(`/api/v1/subnets?max_surface_count=${hugeDecimal}`),
+      "subnets",
+    );
+
+    assert.equal(bad.error.parameter, "max_surface_count");
+    assert.match(bad.error.message, /must be a number/);
+  });
 });

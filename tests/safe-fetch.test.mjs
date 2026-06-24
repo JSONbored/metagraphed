@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
-import { safeFetch } from "../scripts/lib.mjs";
+import { createPinnedLookup, safeFetch } from "../scripts/lib.mjs";
 
 // IP-literal URLs so isUnsafeResolvedUrl never needs DNS: 1.1.1.1 / 8.8.8.8 are
 // public (safe); 169.254.169.254 (link-local, the classic cloud-metadata SSRF
@@ -83,5 +83,66 @@ describe("safeFetch SSRF guard", () => {
     const result = await safeFetch("http://1.1.1.1/missing");
     assert.equal(result.ok, false);
     assert.equal(result.status, 404);
+  });
+
+  test("pins the checked DNS answer into the actual fetch connection", async () => {
+    const resolverCalls = [];
+    const fetchCalls = [];
+    const resolver = async (host, options) => {
+      resolverCalls.push([host, options]);
+      return [{ address: "93.184.216.34", family: 4 }];
+    };
+    vi.stubGlobal("fetch", async (url, options) => {
+      fetchCalls.push([String(url), options]);
+      return mockResponse({ status: 200 });
+    });
+
+    const result = await safeFetch("http://rebind.example.test/surface", {
+      resolver,
+    });
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(resolverCalls, [
+      ["rebind.example.test", { all: true, verbatim: true }],
+    ]);
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0][0], "http://rebind.example.test/surface");
+    assert.ok(fetchCalls[0][1].dispatcher);
+  });
+});
+
+describe("createPinnedLookup", () => {
+  const PINNED = "93.184.216.34";
+
+  test("resolves the pinned host to the vetted address (single + all forms)", () => {
+    const lookup = createPinnedLookup("example.test", PINNED, 4);
+
+    // Node's single-answer form: callback(err, address, family).
+    let single;
+    lookup("example.test", {}, (err, address, family) => {
+      single = { err, address, family };
+    });
+    assert.equal(single.err, null);
+    assert.equal(single.address, PINNED);
+    assert.equal(single.family, 4);
+
+    // The `{ all: true }` form must return an address array. Hostname matching is
+    // normalized, so an upper-cased request for the same host still resolves.
+    let all;
+    lookup("EXAMPLE.TEST", { all: true }, (err, addresses) => {
+      all = { err, addresses };
+    });
+    assert.equal(all.err, null);
+    assert.deepEqual(all.addresses, [{ address: PINNED, family: 4 }]);
+  });
+
+  test("rejects a connect-time lookup for any other (rebound) host", () => {
+    const lookup = createPinnedLookup("example.test", PINNED, 4);
+    let captured;
+    lookup("evil.test", { all: true }, (err) => {
+      captured = err;
+    });
+    assert.ok(captured instanceof Error);
+    assert.match(captured.message, /unpinned host/);
   });
 });
