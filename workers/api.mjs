@@ -9,6 +9,7 @@ import { applyQueryFilters } from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
+  exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   weakEtag,
 } from "./http.mjs";
@@ -5225,6 +5226,7 @@ async function handleEventsRequest(request, env) {
   headers.set("content-type", "text/event-stream; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("access-control-allow-origin", "*");
+  exposeCustomResponseHeaders(headers);
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
   headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");
