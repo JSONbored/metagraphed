@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { handleIconProxy } from "../src/icon-proxy.mjs";
+import { handleIconProxy, extractIconHrefs } from "../src/icon-proxy.mjs";
 
 const PNG = new Uint8Array(200).fill(1).buffer; // >100 bytes -> not a placeholder
 
@@ -99,6 +99,80 @@ test("rejects too-small (placeholder) responses -> 404", async () => {
       }),
   });
   assert.equal(res.status, 404);
+});
+
+test("extractIconHrefs parses rel/href variants, ignores non-icon links", () => {
+  const html = `
+    <link rel="icon" href="/a.png">
+    <link rel='shortcut icon' href='/b.ico'>
+    <link rel="apple-touch-icon" href="https://cdn.x.com/c.png">
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="mask-icon" href=/d.svg color=red>`;
+  assert.deepEqual(extractIconHrefs(html), [
+    "/a.png",
+    "/b.ico",
+    "https://cdn.x.com/c.png",
+    "/d.svg",
+  ]);
+  assert.deepEqual(extractIconHrefs(""), []);
+  assert.deepEqual(extractIconHrefs(null), []);
+});
+
+test("resolves an icon declared via <link rel=icon> in the page HTML", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (url === "https://example.com/") {
+      return new Response(
+        '<html><head><link rel="icon" href="/brand/icon.png"></head></html>',
+        {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        },
+      );
+    }
+    if (url === "https://example.com/brand/icon.png") {
+      return new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }
+    return new Response("", { status: 404 });
+  };
+  const res = await call("?host=example.com&size=64", { env, fetchImpl });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "image/png");
+});
+
+test("page-declared icon at a private/non-public host is rejected (SSRF)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  let privateFetched = false;
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (url === "https://example.com/") {
+      return new Response(
+        '<html><head><link rel="icon" href="http://localhost/secret.png"></head></html>',
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }
+    if (url.includes("localhost")) {
+      privateFetched = true;
+      return new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }
+    return new Response("", { status: 404 });
+  };
+  const res = await call("?host=example.com", { env, fetchImpl });
+  assert.equal(privateFetched, false); // never fetched the private target
+  assert.equal(res.status, 404); // nothing else resolves
 });
 
 test("304 on matching If-None-Match (no fetch, no R2)", async () => {
