@@ -342,14 +342,17 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("unrecognized status values roll up as unknown, not ok", () => {
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
-    assert.equal(out.failed_count, 0);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.ok_count, 0);
+    assert.equal(out.failed_count, 0);
+  });
+  test("null or missing status is treated as unknown", () => {
+    const out = summarizeRows([row(null), { status: undefined }]);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([
