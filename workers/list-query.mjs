@@ -145,21 +145,34 @@ function applyListTransform(data, params, config) {
 
 function searchRows(rows, params, keys) {
   const q = params.get("q");
-  if (!q || keys.length === 0) {
+  if (q === null || keys.length === 0) {
     return rows;
   }
-  const needle = q.toLowerCase();
-  return rows.filter((row) =>
-    keys
+  // Match each whitespace-separated term independently (order-independent AND)
+  // rather than the whole string as one contiguous phrase. A query like
+  // "gradients training" then finds a subnet named "Gradients" described as
+  // "decentralized training network" even though that exact phrase never
+  // appears in one field. A single term keeps the previous substring behaviour,
+  // and a blank / whitespace-only q has no terms, so it is treated as no search
+  // instead of matching every row that merely contains a space.
+  const terms = q
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (terms.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) => {
+    const haystack = keys
       .flatMap((key) => {
         const value = row[key];
         return Array.isArray(value) ? value : [value];
       })
       .filter(Boolean)
       .join(" ")
-      .toLowerCase()
-      .includes(needle),
-  );
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
 }
 
 function sortRows(rows, params) {
