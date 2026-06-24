@@ -100,6 +100,50 @@ describe("public contract registry", () => {
     );
   });
 
+  test("substitutes every route token compileRoutePattern captures", () => {
+    // Each token the compiler captures must also be substituted by the path
+    // builder, or the route's artifact path leaks a raw placeholder (#1686).
+    const tokenCases = [
+      ["/metagraph/subnets/{netuid}/neurons/{uid}.json", { netuid: 7, uid: 3 }],
+      ["/metagraph/accounts/{ss58}.json", { ss58: "5GrwvaEF" }],
+      ["/metagraph/blocks/{ref}.json", { ref: 123 }],
+      ["/metagraph/extrinsics/{hash}.json", { hash: "0xdeadbeef" }],
+    ];
+    for (const [template, params] of tokenCases) {
+      const resolved = artifactPathFromTemplate(template, params);
+      assert.ok(
+        !/\{[a-z_]+\}/.test(resolved),
+        `unsubstituted token left in ${resolved}`,
+      );
+    }
+    assert.equal(
+      artifactPathFromTemplate(
+        "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+        {
+          netuid: 7,
+          uid: 3,
+        },
+      ),
+      "/metagraph/subnets/7/neurons/3.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/accounts/{ss58}.json", {
+        ss58: "5GrwvaEF",
+      }),
+      "/metagraph/accounts/5GrwvaEF.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/blocks/{ref}.json", { ref: 123 }),
+      "/metagraph/blocks/123.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/extrinsics/{hash}.json", {
+        hash: "0xabc123",
+      }),
+      "/metagraph/extrinsics/0xabc123.json",
+    );
+  });
+
   test("builds contracts, API index, and OpenAPI from one route table", async () => {
     const generatedAt = "1970-01-01T00:00:00.000Z";
     const contracts = buildContractsArtifact(generatedAt);

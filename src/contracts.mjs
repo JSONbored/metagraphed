@@ -2184,11 +2184,18 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 }
 
 export function artifactPathFromTemplate(template, params = {}) {
+  // Substitute every route token compileRoutePattern() captures, in the same
+  // order, so an artifact path can never leak a raw {uid}/{ss58}/{ref}/{hash}
+  // placeholder when one of those routes falls through to the artifact reader.
   return template
-    .replace("{netuid}", String(params.netuid ?? ""))
-    .replace("{slug}", String(params.slug ?? ""))
-    .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace(/\{netuid\}/g, String(params.netuid ?? ""))
+    .replace(/\{uid\}/g, String(params.uid ?? ""))
+    .replace(/\{ss58\}/g, String(params.ss58 ?? ""))
+    .replace(/\{slug\}/g, String(params.slug ?? ""))
+    .replace(/\{date\}/g, String(params.date ?? ""))
+    .replace(/\{surface_id\}/g, String(params.surface_id ?? ""))
+    .replace(/\{ref\}/g, String(params.ref ?? ""))
+    .replace(/\{hash\}/g, String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
