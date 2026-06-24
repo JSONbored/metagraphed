@@ -217,6 +217,112 @@ describe("handleOgImage", () => {
     assert.ok(buf.length > 1000);
   });
 
+  test("falls back to a generic stat line when readArtifact itself throws", async () => {
+    const og = fakeOg();
+    const readArtifactThrows = async () => {
+      throw new Error("registry-summary read blew up");
+    };
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readArtifactThrows,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    // loadStatLine swallowed the throw -> generic ASCII fallback line, no counts
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
+  test("serves the branded fallback card when workers-og is unavailable (import/destructure throws)", async () => {
+    // deps.og is truthy (so the dynamic import is short-circuited) but accessing
+    // its members throws during destructuring -> the catch on line 190-192 fires.
+    const explodingOg = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("workers-og module evaluation failed");
+        },
+      },
+    );
+    const { assets, requested } = fakeAssets();
+    const { cache, puts } = fakeCache();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: explodingOg,
+      cache,
+      assets,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "image/png");
+    assert.equal(await res.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(requested, ["/brand/og-fallback.png"]);
+    // a fallback is never edge-cached
+    assert.equal(puts.length, 0);
+  });
+
+  test("returns 503 when the fallback asset fetch itself throws (no cached blank)", async () => {
+    const og = fakeOg({ failRender: true });
+    const assets = {
+      fetch: async () => {
+        throw new Error("ASSETS subsystem down");
+      },
+    };
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: og.og,
+      cache: null,
+      assets,
+    });
+    // fallbackResponse swallowed the throw and degraded to the 503 no-store path
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.match(await res.text(), /temporarily unavailable/);
+  });
+
+  test("a HEAD on a cache hit returns the cached headers with no body", async () => {
+    const cachedResponse = new Response("CACHED-PNG", {
+      headers: { "content-type": "image/png", "x-cached": "1" },
+    });
+    const res = await handleOgImage(req("HEAD"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      cache: { match: async () => cachedResponse, put: async () => {} },
+    });
+    // HEAD on a cache hit: status + headers from the cached response, empty body
+    assert.equal(res.headers.get("x-cached"), "1");
+    assert.equal(await res.text(), "");
+  });
+
+  test("uses globalThis.caches.default when no cache dep is provided", async () => {
+    const og = fakeOg();
+    const matched = [];
+    const cachedResponse = new Response("GLOBAL-CACHED-PNG", {
+      headers: { "content-type": "image/png" },
+    });
+    const originalCaches = globalThis.caches;
+    globalThis.caches = {
+      default: {
+        match: async (key) => {
+          matched.push(key);
+          return cachedResponse;
+        },
+        put: async () => {},
+      },
+    };
+    try {
+      const res = await handleOgImage(req("GET"), {}, urlFor(), {
+        readArtifact: readSummaryOk,
+        og: og.og,
+        // cache intentionally omitted -> falls back to globalThis.caches.default
+      });
+      assert.equal(await res.text(), "GLOBAL-CACHED-PNG");
+      assert.equal(matched.length, 1);
+      // served from cache, so no render happened
+      assert.equal(og.calls.markup, null);
+    } finally {
+      globalThis.caches = originalCaches;
+    }
+  });
+
   test("serves a cached render on hit without re-rendering", async () => {
     let rendered = false;
     const og = {

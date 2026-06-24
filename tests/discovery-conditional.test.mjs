@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   agentToolsResponse,
+  apiCatalogResponse,
   handleBadgeSvgRequest,
   mcpServerCardResponse,
 } from "../workers/request-handlers/discovery.mjs";
@@ -51,6 +52,62 @@ describe("discovery conditional requests", () => {
     await assertConditional((headers) =>
       handleBadgeSvgRequest(new Request(url, { headers }), {}, new URL(url)),
     );
+  });
+
+  test("badge SVG rejects non-GET/HEAD methods with 405 and an Allow header", async () => {
+    const url = "https://api.metagraph.sh/metagraph/health/badges/7.svg";
+    const res = await handleBadgeSvgRequest(
+      new Request(url, { method: "POST" }),
+      {},
+      new URL(url),
+    );
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS");
+    const body = await res.json();
+    assert.equal(body.error.code, "method_not_allowed");
+  });
+
+  test("api catalog HEAD returns the discovery headers with no body", async () => {
+    const url = "https://api.metagraph.sh/.well-known/api-catalog";
+    const res = apiCatalogResponse(new Request(url, { method: "HEAD" }));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "application/linkset+json");
+    // HEAD never carries a body, but the discovery Link header is still present.
+    assert.ok(res.headers.get("link"));
+    assert.equal(await res.text(), "");
+  });
+
+  test("api catalog GET returns the RFC 9264 linkset body", async () => {
+    const url = "https://api.metagraph.sh/.well-known/api-catalog";
+    const res = apiCatalogResponse(new Request(url, { method: "GET" }));
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.ok(Array.isArray(body.linkset));
+    assert.ok(body.linkset[0]["service-desc"]);
+  });
+
+  test("MCP server card returns 404 when the static asset is unavailable", async () => {
+    // ASSETS missing the card -> the handler degrades to a 404 not_found.
+    const url = "https://api.metagraph.sh/.well-known/mcp/server-card.json";
+    const envMiss = {
+      ASSETS: {
+        fetch: async () => new Response("not found", { status: 404 }),
+      },
+    };
+    const res = await mcpServerCardResponse(
+      new Request(url, { method: "GET" }),
+      envMiss,
+    );
+    assert.equal(res.status, 404);
+    const body = await res.json();
+    assert.equal(body.error.code, "not_found");
+
+    // No ASSETS binding at all -> same 404 path (asset === null).
+    const resNoBinding = await mcpServerCardResponse(
+      new Request(url, { method: "GET" }),
+      {},
+    );
+    assert.equal(resNoBinding.status, 404);
   });
 
   test("MCP server card honors If-None-Match lists and the * wildcard", async () => {
