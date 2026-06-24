@@ -287,16 +287,17 @@ export function buildIssueIntakeReport({
     );
   }
 
-  const unsafeText = unsafeTextReasons(
-    [
-      fields["rate limits or access notes"],
-      fields["public rate limits or access notes"],
-      fields.evidence,
-      fields["public url"],
-      fields["source url"],
-    ].join("\n"),
+  errors.push(
+    ...unsafeTextReasons(
+      [
+        fields["rate limits or access notes"],
+        fields["public rate limits or access notes"],
+        fields.evidence,
+        fields["public url"],
+        fields["source url"],
+      ].join("\n"),
+    ).map((error) => error.message),
   );
-  errors.push(...unsafeText);
 
   const subnet = native.subnets.find(
     (candidate) => candidate.netuid === netuid,

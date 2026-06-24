@@ -93,9 +93,15 @@ export function generateServiceSnippets(service) {
         : null;
 
   // Header credentials go in the request headers; query credentials go on the URL.
+  // Percent-encode the credential name/value: authFromDetail intentionally allows
+  // spaces and URL-reserved chars (fine inside a header), but unencoded they'd
+  // either trip isSnippetSafeUrl's whitespace guard (→ no snippets at all) or
+  // corrupt the query string.
   const requestUrl =
     auth?.location === "query"
-      ? `${url}${url.includes("?") ? "&" : "?"}${auth.name}=${auth.value}`
+      ? `${url}${url.includes("?") ? "&" : "?"}${encodeURIComponent(
+          auth.name,
+        )}=${encodeURIComponent(auth.value)}`
       : url;
   if (!isSnippetSafeUrl(requestUrl)) return null;
   const header = auth?.location === "header" ? auth : null;

@@ -961,6 +961,57 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.next_action, "open-import-pr");
   });
 
+  test("rejects interface submissions with credential-like evidence as readable strings", () => {
+    const patEvidence = [
+      ["git", "hub"].join(""),
+      ["pat", "abcdefghijklmnopqrstuvwxyz123456"].join("_"),
+    ].join("_");
+    const body = [
+      "### Netuid",
+      "7",
+      "### Subnet name",
+      "Allways",
+      "### Interface kind",
+      "docs",
+      "### Public URL",
+      "https://docs.all-ways.io/community-submission-example",
+      "### Source URL",
+      "https://docs.all-ways.io/how-it-works.html",
+      "### Provider or team",
+      "allways",
+      "### Does this interface require authentication?",
+      "no",
+      "### Evidence",
+      `${patEvidence} token should not pass.`,
+    ].join("\n\n");
+    const report = buildIssueIntakeReport({
+      issue: {
+        number: 55,
+        title: "interface: secret evidence",
+        user: { login: "jsonbored" },
+        labels: [{ name: SUBMISSION_LABELS.interfaceSubmission }],
+        body,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+
+    assert.equal(report.state, "schema-invalid");
+    assert.equal(report.public_state, "fix_required");
+    assert.equal(report.candidate, null);
+    assert.equal(
+      report.errors.includes(
+        "submission appears to include wallet, PAT, token, or private credential material",
+      ),
+      true,
+    );
+    assert.equal(
+      report.errors.some((error) => error === "[object Object]"),
+      false,
+    );
+  });
+
   test("routes provider profile issue submissions to manual review", () => {
     const body = [
       "### Provider slug",
