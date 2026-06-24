@@ -1072,12 +1072,12 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     callableAgentServices.length,
-    95,
+    96,
     "agent-catalog callable-service count must stay deterministic",
   );
   assert.equal(
     callableWithoutSchema.length,
-    45,
+    46,
     "schema projection should reduce callable services without schema artifacts",
   );
   assert.equal(
