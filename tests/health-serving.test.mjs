@@ -166,6 +166,29 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(a.health_stale, false);
     assert.equal(a.observed_at, "2026-06-11T00:00:00Z");
   });
+
+  test("observed_at falls back to last_ok, then null, when the run time is absent", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [
+        { id: "a", status: "ok" },
+        { id: "b", status: "ok" },
+      ],
+    };
+    // No last_run_at on the pool → fall back to the endpoint's last_ok, then null.
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", last_ok: "2026-06-10T08:00:00Z" },
+        { id: "b", status: "failed" },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live).endpoints;
+    assert.equal(
+      merged.find((e) => e.id === "a").observed_at,
+      "2026-06-10T08:00:00Z",
+    );
+    assert.equal(merged.find((e) => e.id === "b").observed_at, null);
+  });
 });
 
 describe("overlayRpcPoolEligibility", () => {
