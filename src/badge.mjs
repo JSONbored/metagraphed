@@ -8,6 +8,8 @@
 //   metric=readiness   integration readiness 0–100 (default)
 //   metric=uptime      window uptime %, colored by the A–F reliability grade
 //                      (alias: reliability), from the live uptime rollup in D1
+//   metric=grade       the A–F reliability grade letter itself (e.g. "A") —
+//                      same uptime data + color band as uptime, one-glyph message
 //   style=flat-square  square corners, no gradient (default: flat)
 //   label=…            override the left "metagraphed" segment text
 //
@@ -22,11 +24,13 @@ const NA_MESSAGE = "n/a";
 const UNKNOWN_COLOR = "#9f9f9f";
 const NA_CONTENT = { message: NA_MESSAGE, color: UNKNOWN_COLOR };
 
-// metric query value → internal metric ("uptime"/"reliability" are aliases).
+// metric query value → internal metric ("uptime"/"reliability" are aliases;
+// "grade" shares the reliability data but renders the letter grade as the message).
 const BADGE_METRICS = {
   readiness: "readiness",
   uptime: "reliability",
   reliability: "reliability",
+  grade: "grade",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square"]);
@@ -210,13 +214,15 @@ async function readinessContent({ target, readArtifact, env }) {
 }
 
 // Reliability: the subnet's netuid, or all of a provider's netuids, scored from
-// the live uptime rollup in one aggregate query. Message is the window uptime %.
+// the live uptime rollup in one aggregate query, colored by the A–F grade band.
+// The message is the window uptime % — or, for metric=grade, the grade letter.
 async function reliabilityContent({
   target,
   readArtifact,
   env,
   db,
   loadReliability,
+  metric,
 }) {
   let netuids = [];
   if (target.kind === "subnet") {
@@ -233,7 +239,10 @@ async function reliabilityContent({
   const rel = netuids.length ? await loadReliability({ db, netuids }) : null;
   return rel
     ? {
-        message: formatUptimePercent(rel.uptime_ratio),
+        message:
+          metric === "grade"
+            ? rel.grade
+            : formatUptimePercent(rel.uptime_ratio),
         color: gradeColor(rel.grade),
       }
     : NA_CONTENT;
@@ -264,8 +273,8 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
   let content = NA_CONTENT;
   if (target && typeof readArtifact === "function") {
     content =
-      metric === "reliability"
-        ? await reliabilityContent(ctx)
+      metric === "reliability" || metric === "grade"
+        ? await reliabilityContent({ ...ctx, metric })
         : await readinessContent(ctx);
   }
 
