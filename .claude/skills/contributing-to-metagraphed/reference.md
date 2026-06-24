@@ -28,28 +28,31 @@ to trust a surface. "community-submitted" ≠ verified truth until the gate/buil
 
 Required on every surface: `id, name, kind, url, provider, auth_required, authority, public_safe`.
 
-| Field                           | Type / values                                                                                                                                                                   | Who sets it                                  |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `id`                            | `^[a-z0-9][a-z0-9-]*$`, unique in the file (convention `sn-<netuid>-<provider>-<kind>`)                                                                                         | you (helper)                                 |
-| `name`                          | human label                                                                                                                                                                     | you                                          |
-| `kind`                          | see enum below                                                                                                                                                                  | you                                          |
-| `url`                           | public URI you can fetch                                                                                                                                                        | you                                          |
-| `provider`                      | registered provider slug `^[a-z0-9][a-z0-9-]*$`                                                                                                                                 | you (`providers:list` / `provider:new`)      |
-| `authority`                     | `official` · `provider-claimed` · **`community`** · `registry-observed`                                                                                                         | you → **`community`**                        |
-| `auth_required` / `public_safe` | boolean                                                                                                                                                                         | you (`false` / `true` for auto-review kinds) |
-| `source_urls`                   | array of URIs that **prove** the claim                                                                                                                                          | you (≥1, required in practice)               |
-| `review` _(new)_                | `{ state, submitted_by?, submitted_at?, confidence?, review_notes? }` — `state` ∈ `community-submitted · schema-valid · auto-verified · maintainer-reviewed · stale · rejected` | you set `community-submitted`; gate promotes |
-| `verification`                  | `{ classification, verified_at, status_code, latency_ms, confidence_score, … }`                                                                                                 | **build prober only — never by hand**        |
-| `schema_url` / `schema_status`  | OpenAPI URL · `machine-readable`/`ui-only`/`not-captured`                                                                                                                       | you (optional)                               |
-| `rate_limit`                    | `{ requests, window, burst?, scope?, cost_notes? }` (`requests`+`window` required)                                                                                              | you (optional, integration-only)             |
-| `auth`                          | `{ scheme, location?, name?, value_format?, … }` — **placeholders only, never a secret**                                                                                        | you (optional)                               |
-| `probe`                         | `{ enabled, method, expect, timeout_ms? }` (`method` ∈ GET/HEAD/JSON-RPC/WSS-RPC)                                                                                               | you (optional)                               |
+| Field                           | Type / values                                                                                                                                                                                                                 | Who sets it                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `id`                            | `^[a-z0-9][a-z0-9-]*$`, unique in the file (convention `sn-<netuid>-<provider>-<kind>`)                                                                                                                                       | you (helper)                                                 |
+| `name`                          | human label                                                                                                                                                                                                                   | you                                                          |
+| `kind`                          | see enum below                                                                                                                                                                                                                | you                                                          |
+| `url`                           | public URI you can fetch                                                                                                                                                                                                      | you                                                          |
+| `provider`                      | registered provider slug `^[a-z0-9][a-z0-9-]*$`                                                                                                                                                                               | you (`providers:list` / `provider:new`)                      |
+| `authority`                     | `official` · `provider-claimed` · **`community`** · `registry-observed`                                                                                                                                                       | you → **`community`**                                        |
+| `auth_required` / `public_safe` | boolean                                                                                                                                                                                                                       | you (`false` / `true` for auto-review kinds)                 |
+| `source_urls`                   | array of URIs that **prove** the claim                                                                                                                                                                                        | you (≥1, required in practice)                               |
+| `review`                        | `{ state, submitted_by?, submitted_at?, confidence?, review_notes? }` — `state` ∈ `community-submitted · maintainer-reviewed · rejected` (HUMAN-governance axis only; machine verify/freshness is the separate probe overlay) | you set `community-submitted`; a maintainer promotes/rejects |
+| `verification`                  | `{ classification, verified_at, status_code, latency_ms, confidence_score, … }`                                                                                                                                               | **build prober only — never by hand**                        |
+| `schema_url` / `schema_status`  | OpenAPI URL · `machine-readable`/`ui-only`/`not-captured`                                                                                                                                                                     | you (optional)                                               |
+| `rate_limit`                    | `{ requests, window, burst?, scope?, cost_notes? }` (`requests`+`window` required)                                                                                                                                            | you (optional, integration-only)                             |
+| `auth`                          | `{ scheme, location?, name?, value_format?, … }` — **placeholders only, never a secret**                                                                                                                                      | you (optional)                                               |
+| `probe`                         | `{ enabled, method, expect, timeout_ms? }` (`method` ∈ GET/HEAD/JSON-RPC/WSS-RPC)                                                                                                                                             | you (optional)                                               |
 
-**`kind` enum (14):** `archive · subtensor-rpc · subtensor-wss · subnet-api · openapi · sse · sdk ·
-example · website · source-repo · dashboard · repo-registry · docs · data-artifact`.
-Auto-reviewable: `docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk,
-example, repo-registry`. Higher-trust (harder review, airtight ownership proof): `subtensor-rpc`,
-`subtensor-wss`, `archive`, authed/paid APIs, unknown providers.
+**Contributor `kind` enum (11):** `docs · website · source-repo · openapi · subnet-api · dashboard ·
+sse · sdk · example · repo-registry · data-artifact` — all auto-reviewable. Higher-trust within these
+(harder review, airtight ownership proof): authed/paid APIs and unknown providers.
+
+> **Base-layer chain endpoints** (`subtensor-rpc` / `subtensor-wss` / `archive`) are NOT contributor
+> surfaces — they are maintainer-curated network infrastructure served through the endpoint lane (the
+> `/rpc` proxy + `/api/v1/rpc/*`). They stay valid in the schema (for `registry/subnets/root.json` +
+> the endpoint pipeline) but are excluded from the contributor surface template.
 
 Subnet-level fields you must **not** touch in a community PR: `curation` (`level` + `review_state`),
 `status`, `categories`, `baseline_excluded_*`, `social`, `contact`. Those are maintainer/build-owned.
@@ -58,31 +61,21 @@ Subnet-level fields you must **not** touch in a community PR: `curation` (`level
 
 ## 2. CI — the `Validate` workflow (`.github/workflows/validate.yml`)
 
-Two parallel jobs share a route classifier (untrusted PR contents can't force the reduced lane):
+**Every contributor PR runs the FULL validation — there is no reduced "ugc" fast-lane.** (It was
+retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
+one-file surface PR runs the same gates as a code PR. Two parallel jobs both build:
 
 - **`test`** — builds, then `npm run test:coverage` (Codecov is the coverage gate).
-- **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators.
+- **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
 
-The classifier routes by **what changed**:
-
-| Changed files                                          | Route `mode` | What runs                                                                                                                  |
-| ------------------------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| Only the surface/submission lane (see note)            | `ugc`        | `submission:pr` preflight + `validate:intake` + `scan:public-safety` + `validate:private-boundary` — the `test` job no-ops |
-| Anything else (code, schemas, scripts, multiple files) | `full`       | the entire suite below                                                                                                     |
-
-> **Migration note:** today the classifier's `ugc` lane is keyed on
-> `registry/candidates/community/*.json` (+ the atomic candidate+provider pair). Under the single-file
-> model the lane is re-keyed to **a single `registry/subnets/<slug>.json` edit that only appends
-> community surfaces** (+ an optional `registry/providers/community/*.json` for a debut). That
-> re-key is part of the model implementation (`ci-validate-route.mjs` / `submission-policy.mjs` /
-> `validate.yml`), not something a contributor configures.
-
-**Full-lane gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
+**Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
 `validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
-under `public/` after a fresh build) · `validate` · `validate:schemas` · `validate:api` ·
+under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA artifacts like
+`public/datasets/` + the llms.txt catalogs are gitignored, and the README catalog is refreshed
+out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
-`validate:docs` · `validate:readme-catalog` · `validate:intake` · `validate:workflows` ·
+`validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
 `cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `scan:public-safety` ·
 `validate:private-boundary`.
 
@@ -121,22 +114,23 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 
 ## 4. npm scripts you'll actually use
 
-| Need                                             | Command                                                                                                                                                                                                                    |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Find the data gaps                               | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                    |
-| List / register providers                        | `npm run providers:list` · `npm run provider:new`                                                                                                                                                                          |
-| Add a community surface to a subnet file _(new)_ | `npm run surface:add -- --slug … --kind … --url … --source-url … --provider … --submitted-by … --write`                                                                                                                    |
-| Scaffold a brand-new subnet file _(new)_         | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                       |
-| Validate a surface contribution _(new)_          | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                 |
-| Public-safety scan                               | `npm run scan:public-safety`                                                                                                                                                                                               |
-| Code/schema: regenerate the contract             | `npm run build`                                                                                                                                                                                                            |
-| Code/schema: validators                          | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows` |
-| Tests / coverage                                 | `npm test` · `npm run test:coverage`                                                                                                                                                                                       |
-| Full local pipeline (after a clean build)        | `npm run pipeline:check`                                                                                                                                                                                                   |
+| Need                                      | Command                                                                                                                                                                                                                    |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                    |
+| List / register providers                 | `npm run providers:list` · `npm run provider:new`                                                                                                                                                                          |
+| Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` and it scaffolds the provider stub too              |
+| Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                       |
+| Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                 |
+| Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                               |
+| Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                            |
+| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows` |
+| Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                       |
+| Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                   |
 
-> `surface:add`, `subnet:new`, and `validate:surface` are the single-file-model commands; they ship
-> with the model implementation (replacing/extending `candidate:new` + `validate:candidate`). Until
-> then, the underlying file shape in §1 is authoritative.
+> `surface:add`, `subnet:new`, and `validate:surface` are the single-file-model commands. They fully
+> replaced the retired `candidate:new` / `validate:candidate` intake lane — and `surface:add`
+> live-verifies the URLs at add-time (probes reachability, fills openapi schema fields) and
+> auto-scaffolds a debut provider stub.
 
 ---
 

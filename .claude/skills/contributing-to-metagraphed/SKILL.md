@@ -119,10 +119,11 @@ npm install        # required before any validator runs
 - **Find the gap.** `npm run curation:brief` lists profile-light subnets (directory-only, no website /
   source repo, public APIs with no OpenAPI yet). See `docs/curation-playbook.md`.
 - **Confirm the surface is real and public.** A safe public `url` you can fetch, plus a `source_url`
-  that proves the subnet publishes it. Pick the right `kind` (full enum in `reference.md`):
-  auto-reviewable kinds are `docs, website, source-repo, openapi, subnet-api, dashboard, sse,
-data-artifact, sdk, example, repo-registry`. Higher-trust kinds (`subtensor-rpc/wss`, `archive`,
-  authed/paid APIs, unknown providers) are welcome too — make the ownership proof airtight.
+  that proves the subnet publishes it. Pick the right `kind` (full enum in `reference.md`): contributor
+  kinds are `docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk,
+example, repo-registry` — all auto-reviewable; authed/paid APIs + unknown providers are higher-trust
+  (airtight ownership proof). Base-layer chain endpoints (`subtensor-rpc/wss`, `archive`) are
+  maintainer-curated infra (the endpoint lane), not contributor surfaces.
 
 ### Phase A2 — Edit the ONE subnet file
 
@@ -130,16 +131,18 @@ A surface contribution adds entries to the `surfaces[]` array of `registry/subne
 the helper so the id/shape are correct:
 
 ```sh
-# Find the provider slug for the team behind the surface (register one in the SAME PR if missing).
+# Find the provider slug for the team behind the surface.
 npm run providers:list
-npm run provider:new          # only if the provider isn't registered yet
 
 # Append a community surface to the subnet file (writes into registry/subnets/<slug>.json):
 npm run surface:add -- \
-  --slug sn-43 --kind subnet-api \
+  --netuid 43 --kind subnet-api \
   --url https://api.example.com/v1 \
   --source-url https://github.com/example/project/blob/main/README.md \
   --provider <provider-slug> --submitted-by <github-login> --write
+  # Debut provider (slug not registered)? Add the team identity and surface:add scaffolds
+  # registry/providers/community/<slug>.json in the SAME PR:
+  #   --provider-name "Example Team" --provider-url https://example.com
 ```
 
 Each added surface must carry `authority: "community"` and a `review` block — the helper sets these:
@@ -166,8 +169,9 @@ Each added surface must carry `authority: "community"` and a `review` block — 
 You set **identity + proof + `review.state: community-submitted`** only. **Do not** add
 `verification`, health, or `curation` changes, and **do not** touch other surfaces or top-level fields
 in the file — a community PR that edits anything beyond appending its own community surface(s) is
-out-of-shape and gets routed to full review or closed. The gate flips `review.state` →
-`maintainer-reviewed` / `auto-verified` **in place** on merge; the build's prober fills `verification`.
+out-of-shape and gets routed to full review or closed. `review.state` is the human-governance axis: a
+maintainer flips it → `maintainer-reviewed` (or `rejected`) in place; machine verification + freshness
+is the separate probe overlay (the build's prober fills `verification`/health).
 
 > New subnet not yet in `registry/subnets/`? Scaffold it with `npm run subnet:new -- --netuid <n>`
 > first (one file), then add your surface to it in the same PR.
