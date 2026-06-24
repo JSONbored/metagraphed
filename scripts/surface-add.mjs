@@ -9,6 +9,10 @@
 //     --url https://docs.example.com \
 //     --source-url https://github.com/example/project \
 //     --provider <provider-slug> --submitted-by <github-login> --write
+//
+// Debut provider (slug not registered yet)? Add --provider-name "<Team>" and
+// --provider-url <https://public-site> and surface:add also scaffolds
+// registry/providers/community/<slug>.json so the PR validates in one shot.
 import path from "node:path";
 import {
   isJsonContentType,
@@ -48,6 +52,13 @@ const name = valueAfter("--name");
 const authRequired = parseBoolean(valueAfter("--auth-required") || "false");
 const rateLimitNotes = valueAfter("--rate-limit-notes") || "";
 const notes = valueAfter("--notes") || "";
+// Debut-provider auto-scaffold inputs (only used when --provider isn't registered).
+const providerName = valueAfter("--provider-name");
+const providerUrl = normalizePublicUrl(valueAfter("--provider-url"));
+const providerKind = valueAfter("--provider-kind") || "subnet-team";
+const providerGithub = valueAfter("--provider-github")
+  ? normalizePublicUrl(valueAfter("--provider-github"))
+  : null;
 
 const native = await loadNativeSnapshot();
 const subnet = native.subnets.find((entry) => entry.netuid === netuid);
@@ -68,15 +79,44 @@ if (!document) {
   );
 }
 
-// Provider must be a registered slug to pass validate:surface + CI. Warn (don't
-// fail) so a debut provider added in the same PR still works.
+// Provider must be a registered slug to pass validate:surface + CI. For a debut
+// provider, auto-scaffold a registry/providers/community/<slug>.json stub in the
+// same PR so the contributor never hits the unregistered-provider failure. The
+// website_url is only stored (never fetched), so normalizePublicUrl's synchronous
+// safety check (it rejects localhost/private hosts) is sufficient.
 const providerIds = new Set((await loadProviders()).map((entry) => entry.id));
+const providerFilePath = path.join(
+  repoRoot,
+  "registry/providers/community",
+  `${provider}.json`,
+);
+let providerStub = null;
 if (!providerIds.has(provider)) {
-  console.warn(
-    `Warning: provider "${provider}" is not a registered slug, so this surface will ` +
-      "FAIL `npm run validate:surface` and CI. Pick one with `npm run providers:list`, " +
-      "or register it with `npm run provider:new` in the same PR.",
-  );
+  if (!providerName || !providerUrl) {
+    fail(
+      `Provider "${provider}" is not registered. Add --provider-name "<Team Name>" ` +
+        "and --provider-url <https://public-site> so surface:add scaffolds " +
+        `registry/providers/community/${provider}.json in the same PR, ` +
+        "or pick an existing slug with `npm run providers:list`.",
+    );
+  }
+  providerStub = {
+    schema_version: 1,
+    submission: {
+      submitted_by: submittedBy,
+      submitted_by_url: `https://github.com/${submittedBy}`,
+    },
+    provider: {
+      schema_version: 1,
+      id: provider,
+      name: providerName,
+      kind: providerKind,
+      website_url: providerUrl,
+      ...(providerGithub ? { github_url: providerGithub } : {}),
+      authority: "community",
+      public_notes: "",
+    },
+  };
 }
 
 const surfaces = Array.isArray(document.surfaces) ? document.surfaces : [];
@@ -112,6 +152,9 @@ document.surfaces = [...surfaces, surface];
 
 if (write) {
   await writeRepositoryJson(filePath, document);
+  if (providerStub) {
+    await writeRepositoryJson(providerFilePath, providerStub);
+  }
 }
 
 console.log(
@@ -121,7 +164,17 @@ console.log(
     surface_count: document.surfaces.length,
     verification: findings,
     surface,
-    next: "Link a tracked issue (Closes #N) and open a PR that changes ONLY this file.",
+    ...(providerStub
+      ? {
+          provider_stub: {
+            file: path.relative(repoRoot, providerFilePath),
+            provider: providerStub.provider,
+          },
+        }
+      : {}),
+    next: providerStub
+      ? "Debut provider scaffolded — open a PR with BOTH this subnet file and the new registry/providers/community file. Link a tracked issue (Closes #N)."
+      : "Link a tracked issue (Closes #N) and open a PR that changes ONLY this file.",
   }),
 );
 
