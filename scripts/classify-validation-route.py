@@ -4,7 +4,9 @@
 Reads ``changed-files.txt`` (one path per line, produced by the merge-base diff in
 the classify-validation-route composite action) and decides:
 
-  * ``mode=ugc``   — the PR is a single community candidate/provider submission
+  * ``mode=ugc``   — the PR is a community direct submission with no classifier
+                     errors: a single candidate, a single provider, or an atomic
+                     provider+candidate pair
                      (registry/{candidates,providers}/community/<slug>.json). The
                      checks job runs the light submission preflight only.
   * ``mode=full``  — everything else. The full build + contract/schema/safety
@@ -41,15 +43,25 @@ touched_community = [
 ]
 errors = []
 submission_files = candidate_files + provider_files
+# An atomic provider+candidate PAIR (one of each) is a valid debut shape: a
+# first-time team registers its provider and lands its first surface in one PR.
+is_pair = len(candidate_files) == 1 and len(provider_files) == 1
 if not submission_files and not touched_community:
     scope = "normal-pr"
 else:
-    scope = "direct-provider" if len(provider_files) == 1 else "direct-candidate"
-    if len(submission_files) != 1:
+    if is_pair:
+        scope = "direct-pair"
+    elif len(provider_files) == 1:
+        scope = "direct-provider"
+    else:
+        scope = "direct-candidate"
+    # Allowed shapes: exactly one candidate, exactly one provider, OR the atomic
+    # pair. Anything else is out-of-shape (mirrors classifyPrScope).
+    if len(submission_files) != 1 and not is_pair:
         errors.append(
             {
                 "category": "unsupported-shape",
-                "message": "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file",
+                "message": "direct submissions must change exactly one registry/candidates/community/*.json or registry/providers/community/*.json file, or an atomic provider+candidate pair (one of each)",
             }
         )
     unrelated = [
@@ -64,7 +76,9 @@ else:
                 "message": "direct submissions cannot change other files: " + ", ".join(unrelated),
             }
         )
-mode = "ugc" if scope in {"direct-candidate", "direct-provider"} else "full"
+# Mirrors scripts/ci-validate-route.mjs: any non-normal-pr scope with no classifier
+# errors takes the light ugc lane; an error (any shape/tampering issue) forces full.
+mode = "ugc" if scope != "normal-pr" and not errors else "full"
 report = {
     "schema_version": 1,
     "mode": mode,

@@ -500,6 +500,66 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.errors.length, 0);
   });
 
+  test("python classify-validation-route stays in sync with classifyPrScope (#1577)", () => {
+    // The Python pre-`npm ci` classifier must agree with the canonical JS policy:
+    // an atomic pair is direct-pair (no error), and any classifier error forces
+    // mode=full instead of the light ugc lane.
+    const python = ["python3", "python"].find((bin) => {
+      try {
+        execFileSync(bin, ["--version"], { stdio: "ignore" });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    if (!python) return; // no interpreter on this runner — CI provides python3
+
+    const scriptPath = path.resolve("scripts/classify-validation-route.py");
+    const runPython = (files) => {
+      const dir = mkdtempSync(path.join(tmpdir(), "classify-route-"));
+      try {
+        writeFileSync(
+          path.join(dir, "changed-files.txt"),
+          files.join("\n") + "\n",
+        );
+        return JSON.parse(
+          execFileSync(python, [scriptPath], { cwd: dir, encoding: "utf8" }),
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+
+    const expect = (files) => {
+      const js = classifyPrScope(files);
+      return {
+        scope: js.scope,
+        mode:
+          js.scope !== "normal-pr" && js.errors.length === 0 ? "ugc" : "full",
+        errorCount: js.errors.length,
+      };
+    };
+
+    const pairFiles = [
+      "registry/candidates/community/acme.json",
+      "registry/providers/community/acme.json",
+    ];
+    const pairPy = runPython(pairFiles);
+    const pairJs = expect(pairFiles);
+    assert.equal(pairPy.scope, "direct-pair");
+    assert.equal(pairPy.scope, pairJs.scope);
+    assert.equal(pairPy.mode, "ugc");
+    assert.equal(pairPy.errors.length, 0);
+
+    const errorFiles = ["registry/candidates/community/acme.json", "README.md"];
+    const errorPy = runPython(errorFiles);
+    const errorJs = expect(errorFiles);
+    assert.equal(errorPy.mode, "full");
+    assert.equal(errorPy.mode, errorJs.mode);
+    assert.ok(errorPy.errors.length >= 1);
+    assert.equal(errorPy.errors.length, errorJs.errorCount);
+  });
+
   test("still blocks a direct submission bundled with unrelated files", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",
