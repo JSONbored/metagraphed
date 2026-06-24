@@ -7,6 +7,7 @@ import {
   gradeColor,
   parseBadgePath,
   parseBadgeOptions,
+  formatUptimePercent,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -313,5 +314,20 @@ describe("badge — Worker dispatch integration", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
     assert.match(await res.text(), /<svg /);
+  });
+});
+
+describe("badge — formatUptimePercent", () => {
+  test("only an exact full ratio renders 100%", () => {
+    assert.equal(formatUptimePercent(1), "100%");
+    assert.equal(formatUptimePercent(0.9983), "99.83%");
+    assert.equal(formatUptimePercent(0), "0%");
+  });
+
+  test("a sub-1 ratio that rounds to 100 is clamped to 99.99% (not 100%)", () => {
+    // 0.99996 * 10000 rounds to 10000 -> "100%", overstating a sub-perfect
+    // uptime as a perfect-uptime badge.
+    assert.equal(formatUptimePercent(0.99996), "99.99%");
+    assert.equal(formatUptimePercent(0.999951), "99.99%");
   });
 });
