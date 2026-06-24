@@ -592,7 +592,7 @@
       "id": "compare",
       "path": "/metagraph/compare.json",
       "schema_ref": "#/components/schemas/CompareArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
