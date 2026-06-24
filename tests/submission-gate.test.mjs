@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, test } from "vitest";
@@ -244,11 +250,23 @@ describe("Metagraphed submission gate policy", () => {
     try {
       const changedFilesPath = path.join(tmp, "changed-files.txt");
       const outputPath = path.join(tmp, "report.json");
+      // One present direct candidate file (created under the tmp input-root) mixed
+      // with a removed one. The removed-file shortcut (#944) must NOT swallow the
+      // mix into a clean deletion — the policy keeps both and blocks the
+      // unsupported shape. Self-contained so it doesn't depend on any committed
+      // candidate file (the community-candidate lane is being retired).
+      const presentFile =
+        "registry/candidates/community/community-sn-7-present.json";
+      mkdirSync(path.join(tmp, path.dirname(presentFile)), { recursive: true });
+      writeFileSync(
+        path.join(tmp, presentFile),
+        JSON.stringify(validCandidateDocument),
+      );
       writeFileSync(
         changedFilesPath,
         [
           "registry/candidates/community/removed-candidate.json",
-          "registry/candidates/community/community-sn-7-subnet-api-api-all-ways-io.json",
+          presentFile,
         ].join("\n"),
       );
 
@@ -259,6 +277,8 @@ describe("Metagraphed submission gate policy", () => {
             "scripts/submission-pr.mjs",
             "--changed-files",
             changedFilesPath,
+            "--input-root",
+            tmp,
             "--out",
             outputPath,
             "--submitter",

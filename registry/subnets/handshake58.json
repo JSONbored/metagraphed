@@ -243,6 +243,50 @@
       "public_safe": true,
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/58"],
       "url": "https://taomarketcap.com/subnets/58"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-58-handshake58-data-artifact",
+      "kind": "data-artifact",
+      "name": "Pending community data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://handshake58.com/openapi.json"],
+      "url": "https://handshake58.com/api/skills"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-58-handshake58-subnet-api",
+      "kind": "subnet-api",
+      "name": "Pending community subnet-api",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "handshake58",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://handshake58.com/openapi.json"],
+      "url": "https://handshake58.com/api/agent"
     }
   ],
   "website_url": "https://handshake58.com"

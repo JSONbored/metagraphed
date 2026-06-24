@@ -5,6 +5,7 @@
 //   npm run subnet:new -- --netuid 123 --write
 import path from "node:path";
 import {
+  classifyNativeName,
   listJsonFiles,
   loadNativeSnapshot,
   readJson,
@@ -34,12 +35,32 @@ for (const file of files) {
   }
 }
 
-const fileSlug = slugify(subnet.name) || `sn-${netuid}`;
+// Never adopt a placeholder on-chain identity (e.g. "Team TBC") as the registry
+// display name — require a real --name when the chain identity isn't usable.
+const nameArg = valueAfter("--name");
+const name =
+  nameArg ||
+  (classifyNativeName(subnet.name, netuid).quality === "chain"
+    ? subnet.name
+    : null);
+if (!name) {
+  fail(
+    `SN${netuid}'s on-chain identity (${JSON.stringify(subnet.name || null)}) is a placeholder, not a real name. ` +
+      `Pass --name "<real subnet name>" (check taostats or the subnet's source repo).`,
+  );
+}
+if (classifyNativeName(name, netuid).quality !== "chain") {
+  fail(
+    `--name ${JSON.stringify(name)} looks like a placeholder — provide the subnet's real display name.`,
+  );
+}
+
+const fileSlug = slugify(name) || `sn-${netuid}`;
 const filePath = path.join(subnetsDir, `${fileSlug}.json`);
 const document = {
   schema_version: 1,
   netuid,
-  name: subnet.name,
+  name,
   slug: `sn-${netuid}`,
   status: subnet.status === "inactive" ? "inactive" : "active",
   categories: [],

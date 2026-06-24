@@ -1072,18 +1072,18 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     callableAgentServices.length,
-    68,
+    95,
     "agent-catalog callable-service count must stay deterministic",
   );
   assert.equal(
     callableWithoutSchema.length,
-    31,
+    45,
     "schema projection should reduce callable services without schema artifacts",
   );
   assert.equal(
     callableWithoutSchema.filter((service) => service.kind === "subnet-api")
       .length,
-    6,
+    5,
     "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
   );
   assert.equal(

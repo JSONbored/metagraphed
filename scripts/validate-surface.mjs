@@ -9,7 +9,13 @@
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import path from "node:path";
-import { listJsonFiles, loadProviders, readJson, repoRoot } from "./lib.mjs";
+import {
+  classifyNativeName,
+  listJsonFiles,
+  loadProviders,
+  readJson,
+  repoRoot,
+} from "./lib.mjs";
 
 const ajv = new Ajv2020({ allErrors: true, strict: false });
 addFormats(ajv);
@@ -40,6 +46,18 @@ for (const file of files) {
   if (!validate(document)) {
     errors.push(`${path.basename(file)}: ${ajv.errorsText(validate.errors)}`);
     continue;
+  }
+  // Reject placeholder display names (e.g. "Team TBC", "Subnet 86") unless the
+  // maintainer has deliberately tagged the subnet "identity-placeholder" — the
+  // documented escape hatch for subnets that genuinely have no on-chain identity.
+  if (
+    classifyNativeName(document.name, document.netuid).quality !== "chain" &&
+    !(document.categories || []).includes("identity-placeholder")
+  ) {
+    errors.push(
+      `${path.basename(file)}: subnet name ${JSON.stringify(document.name)} is a placeholder — ` +
+        'set a real curated display name, or tag the subnet "identity-placeholder" if it genuinely has no on-chain identity.',
+    );
   }
   for (const surface of document.surfaces || []) {
     surfaceCount += 1;

@@ -1,0 +1,36 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Bitcast",
+  "netuid": 93,
+  "schema_version": 1,
+  "slug": "sn-93",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-network-dashboard",
+      "kind": "dashboard",
+      "name": "Bitcast community dashboard",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://stats.bitcast.network/docs"],
+      "url": "https://stats.bitcast.network/"
+    }
+  ]
+}
