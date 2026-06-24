@@ -49,13 +49,14 @@ export const THEME_BOOTSTRAP_SCRIPT = `(() => {
 
 export function useTheme() {
   const [choice, setChoiceState] = useState<ThemeChoice>(() => readChoice());
-  const [resolved, setResolved] = useState<ResolvedTheme>(() =>
-    typeof document === "undefined"
-      ? "light"
-      : document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light",
-  );
+  // Initialize to a fixed "light" so the server render and the first client
+  // render agree — the effect below syncs `resolved` to the real theme right
+  // after mount, and the pre-hydration THEME_BOOTSTRAP_SCRIPT has already set
+  // the document class for a flash-free first paint. Reading the (bootstrap-set)
+  // document class during the initial render instead diverges from the server's
+  // "light" and trips a hydration mismatch on every theme-param'd value — e.g.
+  // BrandIcon's `?theme=light|dark` icon-proxy URL.
+  const [resolved, setResolved] = useState<ResolvedTheme>("light");
 
   // Apply choice + listen to system changes while in `system` mode.
   useEffect(() => {
