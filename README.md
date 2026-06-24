@@ -106,7 +106,7 @@ Deeper docs: [`docs/api-stability.md`](docs/api-stability.md) (the `/api/v1` con
 Issues are labeled `good first issue` and `help wanted` — start there.
 
 - **Schema-first edits** require `npm run build` (regenerates `openapi.json` + types).
-- **Community submissions** are PR-first: touch exactly one `registry/candidates/community/*.json` file, no generated artifacts.
+- **Community submissions** are PR-first: add a surface to exactly one `registry/subnets/<slug>.json` file (via `npm run surface:add`), no generated artifacts.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/submission-gate.md).
 
