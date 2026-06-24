@@ -4,14 +4,19 @@
 //   GET /api/v1/icon?host={domain}&size={px}&theme={light|dark}
 //   -> 200 image/png|x-icon (square, cached) | 404 when no source resolves
 //
-// SSRF SAFETY: sources are the fixed favicon aggregators (DuckDuckGo, Google) PLUS the
-// host's own well-known favicon paths (apple-touch-icon / favicon.ico) — the aggregators
-// are bot-blocked from Worker egress, so the direct same-host fetch is what actually
-// resolves most hosts. Fetching the host directly is safe here because `host` is
+// SSRF SAFETY: this Worker fetches ONLY the fixed favicon-aggregator origins
+// (icons.duckduckgo.com, www.google.com). The requested `host` is passed solely as a
+// path/query parameter to those constant origins — it never becomes the request target
+// itself — so an operator-controlled or DNS-rebound registry host cannot make the proxy
+// initiate outbound requests to arbitrary infrastructure. `host` is additionally
 // validated to a plain public DNS name (no IP literals, no localhost/.local/.internal),
-// the Cloudflare Worker runtime cannot reach private/internal addresses, and only an
-// image/* response of sane size is ever returned. Results are cached in R2 (immutable)
-// so repeat loads are a single edge read.
+// and only an image/* response of sane size is ever returned. Results are cached in R2
+// (immutable) so repeat loads are a single edge read.
+//
+// NOTE: we deliberately do NOT fetch the host directly (no <link rel=icon> scrape, no
+// direct /favicon.ico). Those add an SSRF surface for marginal gain — aggregators are
+// often bot-blocked from Worker egress anyway, and the UI's GitHub-avatar fallback
+// (BrandIcon repoUrl) is the real icon source for most subnets.
 const ICON_CACHE_PREFIX = "icon-cache";
 const MAX_SIZE = 256;
 const DEFAULT_SIZE = 64;
@@ -20,6 +25,10 @@ const MAX_ICON_BYTES = 256 * 1024; // bound Worker memory and R2 object size
 const FETCH_TIMEOUT_MS = 3000;
 const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
 const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
+// A real-ish UA — DuckDuckGo/Google's favicon endpoints bot-block the default Worker
+// user-agent (a cause of the prod 404s).
+const BROWSER_UA =
+  "Mozilla/5.0 (compatible; MetagraphedIconBot/1.0; +https://metagraph.sh)";
 
 function normalizeHost(input) {
   const host = String(input ?? "")
@@ -143,20 +152,14 @@ async function boundedArrayBuffer(res) {
   return out.buffer;
 }
 
-// Resolution order: the favicon-aggregator services first (they parse the page and
-// return the best icon), then the host's OWN well-known favicon paths as a fallback.
-// The aggregators are frequently bot-blocked from Cloudflare Worker egress, so the
-// direct same-host paths are what actually resolve most subnets. Fetching the host
-// directly is SSRF-safe here: `host` is validated to a public DNS name (no IP
-// literals / localhost / private TLDs) and the Worker runtime cannot reach private/
-// internal addresses; we additionally only accept an image/* response.
+// FIXED aggregator origins ONLY — the host is a path/query param, never the request
+// target. Do NOT add `https://${host}/...` entries here: fetching a registry-controlled
+// host directly is an SSRF surface (operator-controlled / DNS-rebindable) for marginal
+// gain. The UI's GitHub-avatar fallback covers most subnets.
 function faviconSources(host, size) {
   return [
     `https://icons.duckduckgo.com/ip3/${host}.ico`,
     `https://www.google.com/s2/favicons?domain=${host}&sz=${Math.min(size * 2, MAX_SIZE)}`,
-    `https://${host}/apple-touch-icon.png`,
-    `https://${host}/apple-touch-icon-precomposed.png`,
-    `https://${host}/favicon.ico`,
   ];
 }
 
@@ -229,21 +232,16 @@ export async function handleIconProxy(request, env, url, options = {}) {
     }
   }
 
+  // Try each fixed aggregator. A browser-ish UA (the services bot-block the default
+  // Worker UA); follow redirects (the aggregators 30x to their own CDNs); no
+  // cf.cacheEverything (it forced caching of redirect/non-200 responses and broke
+  // resolution) — successful icons are cached in R2 below.
   for (const src of faviconSources(host, size)) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
       const res = await fetch(src, {
-        // A real-ish UA — DuckDuckGo/Google's favicon endpoints bot-block the
-        // default Worker user-agent (the cause of the prod 404s). Follow redirects
-        // (favicons often 30x to a CDN). Dropped `cf.cacheEverything`, which forced
-        // caching of the services' redirect/non-200 responses and broke resolution;
-        // successful icons are cached in R2 below.
-        headers: {
-          accept: "image/*",
-          "user-agent":
-            "Mozilla/5.0 (compatible; MetagraphedIconBot/1.0; +https://metagraph.sh)",
-        },
+        headers: { accept: "image/*", "user-agent": BROWSER_UA },
         redirect: "follow",
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));

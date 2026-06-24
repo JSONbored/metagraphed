@@ -1424,6 +1424,17 @@ describe("deriveAuthDetail (#746)", () => {
       }).token_url,
       "https://auth.example.com/token",
     );
+    // Swagger-2 top-level authorizationUrl (no tokenUrl, no flows) is the last
+    // fallback in oauthTokenUrl().
+    assert.equal(
+      deriveAuthDetail({
+        o: {
+          type: "oauth2",
+          authorizationUrl: "https://auth.example.com/authorize",
+        },
+      }).token_url,
+      "https://auth.example.com/authorize",
+    );
   });
 
   test("ignores non-object scheme entries and unknown scheme types", () => {

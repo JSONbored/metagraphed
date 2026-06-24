@@ -430,6 +430,28 @@
               }
             },
             "additionalProperties": false
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "description": "Per-surface review/trust state (single-file contribution model): community-submitted surfaces enter as \"community-submitted\" and are promoted in place by the Gittensory Gate / maintainer review. Distinct from probe-derived verification (health) and subnet-level curation.review_state.",
+            "properties": {
+              "state": {
+                "enum": [
+                  "community-submitted",
+                  "schema-valid",
+                  "auto-verified",
+                  "maintainer-reviewed",
+                  "stale",
+                  "rejected"
+                ]
+              },
+              "submitted_by": { "type": "string" },
+              "submitted_at": { "type": "string" },
+              "confidence": { "enum": ["low", "medium", "high"] },
+              "review_notes": { "type": "string" }
+            }
           }
         },
         "additionalProperties": false

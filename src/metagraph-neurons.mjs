@@ -123,8 +123,11 @@ export async function loadSubnetMetagraph(
 }
 
 export async function loadSubnetValidators(d1, netuid) {
+  // Tie-break equal stake by the unique uid so the ranking is deterministic
+  // across snapshot-replaced captures (without it, SQLite returns tied rows in
+  // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
   const rows = await d1(
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC, uid ASC`,
     [netuid],
   );
   return buildSubnetValidators(rows, netuid);

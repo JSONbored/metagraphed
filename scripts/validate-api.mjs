@@ -145,6 +145,34 @@ const checks = [
     },
   ],
   [
+    "/api/v1/blocks",
+    (body) => {
+      assert.equal(Array.isArray(body.data.blocks), true);
+      assert.equal(typeof body.data.block_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal("block" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    `/api/v1/extrinsics/0x${"a".repeat(64)}`,
+    (body) => {
+      assert.equal(body.data.ref, `0x${"a".repeat(64)}`);
+      assert.equal("extrinsic" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);

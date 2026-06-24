@@ -575,6 +575,7 @@ export const API_QUERY_COLLECTIONS = {
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
+    search: ["name", "slug"],
     sort: [
       "block",
       "candidate_count",
@@ -587,6 +588,16 @@ export const API_QUERY_COLLECTIONS = {
       "probed_surface_count",
       "status",
       "subnet_type",
+      "surface_count",
+      "tempo",
+    ],
+    // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    rangeFilters: [
+      "block",
+      "candidate_count",
+      "mechanism_count",
+      "participant_count",
+      "probed_surface_count",
       "surface_count",
       "tempo",
     ],
@@ -941,6 +952,30 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
     "AccountSubnetsArtifact",
+  ),
+  artifact(
+    "blocks-feed",
+    "/metagraph/blocks.json",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "BlocksFeedArtifact",
+  ),
+  artifact(
+    "block-detail",
+    "/metagraph/blocks/{ref}.json",
+    "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+    "BlockDetailArtifact",
+  ),
+  artifact(
+    "extrinsics-feed",
+    "/metagraph/extrinsics.json",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
+    "extrinsic-detail",
+    "/metagraph/extrinsics/{hash}.json",
+    "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "ExtrinsicDetailArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -1633,6 +1668,57 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "blocks-feed",
+    "GET",
+    "/api/v1/blocks",
+    "/metagraph/blocks.json",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "block-detail",
+    "GET",
+    "/api/v1/blocks/{ref}",
+    "/metagraph/blocks/{ref}.json",
+    "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "extrinsics-feed",
+    "GET",
+    "/api/v1/extrinsics",
+    "/metagraph/extrinsics.json",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+    "short",
+    ["extrinsics", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "extrinsic-detail",
+    "GET",
+    "/api/v1/extrinsics/{hash}",
+    "/metagraph/extrinsics/{hash}.json",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+    "short",
+    ["extrinsics", "analytics"],
+    [],
+    [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
     "subnet-uptime",
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
@@ -2085,7 +2171,11 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
-    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
+    // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__")
+    // Block-explorer {hash} (#1345 second slice): a 0x extrinsic_hash.
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -2093,7 +2183,9 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64})");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -2152,6 +2244,10 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: each field F here accepts `min_F` and `max_F` query
+    // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
+    // hand-rolled min_readiness the MCP list_subnets tool did.
+    range_filters: options.rangeFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2174,12 +2270,18 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
+  const rangeParameters = config.range_filters.flatMap((field) => [
+    { name: `min_${field}`, schema: { type: "number" } },
+    { name: `max_${field}`, schema: { type: "number" } },
+  ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      ...rangeParameters,
       {
         name: "fields",
         schema: fieldListSchema,

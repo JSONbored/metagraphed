@@ -1,82 +1,106 @@
 {
-  "schema_version": 1,
-  "netuid": 85,
-  "name": "Vidaio",
-  "slug": "sn-85",
-  "status": "active",
+  "baseline_excluded_surface_ids": [
+    "sn-85-website-common-docs",
+    "sn-85-website-common-swagger"
+  ],
   "categories": [
     "baseline-curated",
     "identity-reviewed",
     "official-source-repo"
   ],
-  "source_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/85",
-  "website_url": "https://vidaio.io/",
-  "baseline_excluded_surface_ids": [
-    "sn-85-website-common-docs",
-    "sn-85-website-common-swagger"
-  ],
-  "notes": "Reviewed overlay for SN85 using the live Vidaio website and source repository. Generated common-path docs, dashboard, and OpenAPI-looking URLs currently redirect to sign-in or are not machine-readable, so they are intentionally not promoted.",
+  "contact": "Vidaio@vidaio.io",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T11:15:00.000Z",
-    "verified_at": "2026-06-08T11:15:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "Website docs and dashboard paths currently redirect to sign-in.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T11:15:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T11:15:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/85",
+  "name": "Vidaio",
+  "netuid": 85,
+  "notes": "Reviewed overlay for SN85 using the live Vidaio website and source repository. Generated common-path docs, dashboard, and OpenAPI-looking URLs currently redirect to sign-in or are not machine-readable, so they are intentionally not promoted.",
+  "schema_version": 1,
+  "slug": "sn-85",
+  "social": {
+    "x": "https://x.com/vidaio_"
+  },
+  "source_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-85-vidaio-website",
-      "name": "Vidaio website",
-      "kind": "website",
-      "url": "https://vidaio.io/",
-      "provider": "vidaio",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-85-vidaio-website",
+      "kind": "website",
+      "name": "Vidaio website",
+      "notes": "Public Vidaio website.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
       "public_safe": true,
       "source_urls": [
         "https://vidaio.io/",
         "https://api.taomarketcap.com/public/v1/subnets/85"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Vidaio website."
+      "url": "https://vidaio.io/"
     },
     {
-      "id": "sn-85-vidaio-source",
-      "name": "Vidaio source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/vidaio-subnet/vidaio-subnet",
-      "provider": "vidaio",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-85-vidaio-source",
+      "kind": "source-repo",
+      "name": "Vidaio source repository",
+      "notes": "Public Vidaio source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
       "public_safe": true,
       "source_urls": [
         "https://github.com/vidaio-subnet/vidaio-subnet",
         "https://api.taomarketcap.com/public/v1/subnets/85"
       ],
+      "url": "https://github.com/vidaio-subnet/vidaio-subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-openapi",
+      "kind": "openapi",
+      "name": "Vidaio API (OpenAPI)",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Public Vidaio source repository."
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.vidaio.io/openapi.json",
+      "source_urls": ["https://vidaio.io/"],
+      "url": "https://api.vidaio.io/openapi.json"
     }
   ],
-  "social": {
-    "x": "https://x.com/vidaio_"
-  },
-  "contact": "Vidaio@vidaio.io"
+  "website_url": "https://vidaio.io/"
 }

@@ -2359,6 +2359,7 @@ const llmsHeader = [
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
+  `- [GraphQL](${llmsApiBase}/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
@@ -2657,6 +2658,12 @@ const agentResourcesContent = {
       title: "Ask (grounded Q&A)",
       kind: "api",
       url: `${llmsApiBase}/api/v1/ask`,
+    },
+    {
+      id: "graphql",
+      title: "GraphQL (shaped registry queries)",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/graphql`,
     },
     {
       id: "fixtures",
@@ -5568,35 +5575,91 @@ function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   ) {
     return null;
   }
-  const previousSchemas = previous.schemas || [];
+  // A captured entry must point at a real schema-detail artifact path; a
+  // not-captured entry legitimately has none, so only captured claims are gated.
   if (
-    previousSchemas.some(
-      (schema) => !schemaDetailArtifactRelativePath(schema.path || ""),
+    previous.schemas.some(
+      (schema) =>
+        schema.status === "captured" &&
+        !schemaDetailArtifactRelativePath(schema.path || ""),
     )
   ) {
     return null;
   }
   const currentSurfaces = openApiSurfacesById(surfaces);
-  if (
-    !sameStringSet(
-      [...currentSurfaces.keys()].sort(),
-      previousSurfaceIds(previousSchemas),
-    )
-  ) {
-    return null;
+  // Forgery/staleness guard: a committed entry whose surface still exists but no
+  // longer matches it (tampered or drifted metadata) means the index can't be
+  // trusted — discard it wholesale and fall back to the build placeholder.
+  for (const entry of previous.schemas) {
+    const surface = currentSurfaces.get(entry.surface_id);
+    if (
+      surface &&
+      !schemaIndexEntryMatchesSurface(entry, surface, capturedDetails)
+    ) {
+      return null;
+    }
   }
-  if (
-    !previousSchemas.every((entry) =>
-      schemaIndexEntryMatchesSurface(
-        entry,
-        currentSurfaces.get(entry.surface_id),
-        capturedDetails,
-      ),
-    )
-  ) {
-    return null;
+  // Reconcile incrementally with the current surface set instead of nuking the
+  // whole index when it changes: keep every committed entry whose surface still
+  // exists (captured snapshots survive), drop entries for removed surfaces, and
+  // add a not-captured placeholder for each new openapi surface. Adding an
+  // openapi surface is now a routine single-file contribution, so it must never
+  // wipe the captured schema index; a later `schemas:snapshot` upgrades the
+  // placeholders to captured.
+  const previousIds = new Set(
+    previous.schemas.map((entry) => entry.surface_id),
+  );
+  const reconciled = previous.schemas.filter((entry) =>
+    currentSurfaces.has(entry.surface_id),
+  );
+  for (const [surfaceId, surface] of currentSurfaces) {
+    if (!previousIds.has(surfaceId)) {
+      reconciled.push(notCapturedSchemaIndexEntry(surface));
+    }
   }
-  return previous;
+  if (stableStringify(reconciled) === stableStringify(previous.schemas)) {
+    return previous;
+  }
+  reconciled.sort(
+    (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+  );
+  return {
+    ...previous,
+    summary: {
+      surface_count: currentSurfaces.size,
+      schema_count: reconciled.filter((entry) => entry.status === "captured")
+        .length,
+      by_status: schemaEntryCounts(reconciled, "status"),
+      by_drift_status: schemaEntryCounts(reconciled, "drift_status"),
+    },
+    schemas: reconciled,
+  };
+}
+
+function notCapturedSchemaIndexEntry(surface) {
+  return {
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug,
+    surface_id: surface.id,
+    url: surface.url,
+    schema_url: surface.schema_url || null,
+    status: "not-captured",
+    drift_status: "not-captured",
+    hash: null,
+    previous_hash: null,
+    path: null,
+    error: null,
+  };
+}
+
+function schemaEntryCounts(entries, key) {
+  const counts = {};
+  for (const entry of entries) {
+    counts[entry[key]] = (counts[entry[key]] || 0) + 1;
+  }
+  return Object.fromEntries(
+    Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 function buildSchemaIndexPlaceholder() {

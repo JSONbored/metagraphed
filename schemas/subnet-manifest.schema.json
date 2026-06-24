@@ -40,7 +40,7 @@
       "uniqueItems": true
     },
     "docs_url": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "uri"
     },
     "source_repo": {
@@ -205,6 +205,36 @@
         },
         "verification": {
           "$ref": "#/$defs/verification"
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "description": "Per-surface review/trust state for the single-file contribution model: a community-submitted surface enters as \"community-submitted\" and the Gittensory Gate / maintainer review promotes the state in place. Distinct from probe-derived `verification` (health) and the subnet-level `curation.review_state`.",
+          "properties": {
+            "state": {
+              "enum": [
+                "community-submitted",
+                "schema-valid",
+                "auto-verified",
+                "maintainer-reviewed",
+                "stale",
+                "rejected"
+              ]
+            },
+            "submitted_by": {
+              "type": "string"
+            },
+            "submitted_at": {
+              "type": "string"
+            },
+            "confidence": {
+              "enum": ["low", "medium", "high"]
+            },
+            "review_notes": {
+              "type": "string"
+            }
+          }
         },
         "quality_signals": {
           "type": "object",

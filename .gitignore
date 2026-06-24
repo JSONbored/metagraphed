@@ -143,6 +143,12 @@ public/metagraph/review/curation.json
 public/metagraph/review/enrichment-queue.json
 public/metagraph/review/gap-priorities.json
 public/metagraph/review/maintainer-decisions.json
+# Bulk dataset exports (CSV/JSON) — DATA-derived from the registry, regenerated +
+# served as static assets on every build/deploy. Never commit: they re-drift on
+# every data refresh and repeatedly red-lined the "fresh artifacts" gate. Also
+# excluded from that gate in validate.yml so a stale-based enrich PR re-tracking
+# them can't turn CI red. (Contract artifacts stay committed + gated.)
+public/datasets/
 
 # Local/private automation implementation details
 private/
@@ -181,9 +187,11 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Claude Code session directory (local, per-developer) — but version-control the
-# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery).
+# shared project slash commands in .claude/commands/ (e.g. /lineage-discovery) and
+# the committed contributor skill in .claude/skills/ (read by Claude Code + Codex).
 .claude/*
 !.claude/commands/
+!.claude/skills/
 
 # Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
 __pycache__/
