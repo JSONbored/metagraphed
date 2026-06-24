@@ -898,23 +898,29 @@ export async function isUnsafeResolvedUrl(value, resolver = lookup) {
 
 const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
 
+// The connect-time DNS lookup that pins the single validated answer: every
+// connection for this hop resolves `hostname` to the exact `address` that
+// resolvePublicUrlAddresses already vetted, and rejects a lookup for any other
+// host — closing the TOCTOU DNS-rebinding window between the safety check and the
+// actual socket. Returns a Node `dns.lookup`-shaped callback (single-answer and
+// `{ all: true }` array forms). Exported so its branches are unit-covered.
+export function createPinnedLookup(hostname, address, family) {
+  return (requestedHostname, options, callback) => {
+    if (normalizeHostname(requestedHostname) !== hostname) {
+      callback(new Error("safeFetch attempted to resolve an unpinned host"));
+      return;
+    }
+    if (options?.all) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
+}
+
 function createPinnedAddressDispatcher(hostname, address, family) {
   return new Agent({
-    connect: {
-      lookup(requestedHostname, options, callback) {
-        if (normalizeHostname(requestedHostname) !== hostname) {
-          callback(
-            new Error("safeFetch attempted to resolve an unpinned host"),
-          );
-          return;
-        }
-        if (options?.all) {
-          callback(null, [{ address, family }]);
-          return;
-        }
-        callback(null, address, family);
-      },
-    },
+    connect: { lookup: createPinnedLookup(hostname, address, family) },
   });
 }
 
