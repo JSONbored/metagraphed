@@ -2939,9 +2939,7 @@ async function handleTrajectory(request, env, netuid, url) {
     },
     "short",
   );
-  return hasD1FallbackRows(rows)
-    ? markD1FallbackResponse(response)
-    : response;
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
@@ -3406,9 +3404,7 @@ async function handleUptime(request, env, netuid, url) {
     },
     "short",
   );
-  return hasD1FallbackRows(rows)
-    ? markD1FallbackResponse(response)
-    : response;
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // Small {meta, completeness} projection over profiles.json, cached in-isolate.
