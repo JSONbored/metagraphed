@@ -5,6 +5,25 @@
   "type": "object",
   "components": {
     "schemas": {
+      "CompareArtifact": {
+        "type": "object",
+        "required": ["schema_version", "source", "subnets"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "source": { "type": "string" },
+          "observed_at": { "type": ["string", "null"] },
+          "dimensions": { "type": "array", "items": { "type": "string" } },
+          "requested_netuids": {
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "subnets": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          }
+        },
+        "additionalProperties": true
+      },
       "CurationMetadata": {
         "type": "object",
         "required": ["level", "review_state"],

@@ -40,6 +40,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "extrinsics-feed",
   "extrinsic-detail",
   "registry-leaderboards",
+  "compare",
   "rpc-usage",
   "global-incidents",
   // Live-only operational health (served from KV/D1, no static file on disk).

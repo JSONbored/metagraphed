@@ -996,6 +996,12 @@ export const PUBLIC_ARTIFACTS = [
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
+    "compare",
+    "/metagraph/compare.json",
+    "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
+    "CompareArtifact",
+  ),
+  artifact(
     "rpc-usage",
     "/metagraph/rpc/usage.json",
     "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
@@ -1756,6 +1762,27 @@ export const API_ROUTES = [
         },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "compare",
+    "GET",
+    "/api/v1/compare",
+    "/metagraph/compare.json",
+    "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+    "standard",
+    ["registry", "subnets", "analytics"],
+    [
+      {
+        name: "netuids",
+        schema: {
+          type: "string",
+          maxLength: 767,
+          pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+        },
+      },
+      { name: "dimensions", schema: { type: "string" } },
     ],
     [],
   ),

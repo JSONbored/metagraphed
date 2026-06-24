@@ -188,6 +188,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/compare?netuids=1",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(body.data.subnets.length, 1);
+      assert.equal(body.data.subnets[0].netuid, 1);
+      assert.equal(Array.isArray(body.data.requested_netuids), true);
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
