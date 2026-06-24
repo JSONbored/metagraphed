@@ -3,7 +3,7 @@ import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
-import { CandidateChip, CurationChip } from "@/components/metagraphed/chips";
+import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import {
@@ -679,6 +679,7 @@ function SurfacesList({ netuid }: { netuid: number }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-ink-strong">{s.name ?? s.url}</span>
                       <CurationChip level={s.curation_level} />
+                      <ReviewChip state={s.review?.state} />
                       {s.provider ? (
                         <Link
                           to="/providers/$slug"

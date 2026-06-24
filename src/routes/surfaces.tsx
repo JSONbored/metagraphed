@@ -4,7 +4,7 @@ import { Suspense, useMemo } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { CurationChip } from "@/components/metagraphed/chips";
+import { CurationChip, ReviewChip } from "@/components/metagraphed/chips";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import { Skeleton } from "@/components/metagraphed/states";
 import { RegistryEmpty } from "@/components/metagraphed/states/registry-empty";
@@ -317,7 +317,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
     <div key={s.id} className="rounded border border-border bg-card p-3 min-h-11">
       <div className="flex items-center justify-between gap-2">
         <span className="mg-label">{s.kind ?? "surface"}</span>
-        <CurationChip level={s.curation_level} />
+        <div className="flex items-center gap-1.5">
+          <CurationChip level={s.curation_level} />
+          <ReviewChip state={s.review?.state} />
+        </div>
       </div>
       <div className="mt-1 flex items-center gap-2">
         <BrandIcon
@@ -460,7 +463,10 @@ function SurfacesTable({ view }: { view: "table" | "grid" }) {
                   </td>
                   <td className="px-3 py-2 text-[12px]">{renderProviderCell(s)}</td>
                   <td className="px-3 py-2">
-                    <CurationChip level={s.curation_level} />
+                    <div className="flex items-center gap-1.5">
+                      <CurationChip level={s.curation_level} />
+                      <ReviewChip state={s.review?.state} />
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[11px] text-ink-muted">
                     <SparkLegend
