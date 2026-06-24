@@ -2489,6 +2489,30 @@ describe("submission policy helpers", () => {
     assert.equal(endpoint.public_state, "submit_pr");
     assert.equal(endpoint.candidate.auth_required, false);
 
+    const surfaceBody = validBody
+      .replace("### Interface kind", "### Surface kind")
+      .replace("### Provider or team", "### Provider slug")
+      .replace(
+        "### Does this interface require authentication?",
+        "### Does this surface require authentication?",
+      );
+    const surface = buildIssueIntakeReport({
+      issue: {
+        number: 12,
+        title: "surface: docs",
+        user: { login: "jsonbored" },
+        labels: [{ name: "surface-submission" }],
+        body: surfaceBody,
+      },
+      native,
+      providers,
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    });
+    assert.equal(surface.public_state, "submit_pr");
+    assert.equal(surface.candidate.kind, "docs");
+    assert.equal(surface.candidate.provider, "allways");
+    assert.equal(surface.candidate.auth_required, false);
+
     const manual = buildIssueIntakeReport({
       issue: {
         number: 8,

@@ -242,7 +242,10 @@ export function buildIssueIntakeReport({
   }
 
   const kind = normalizeKind(
-    fields["interface kind"] || fields["endpoint kind"] || fields.kind,
+    fields["surface kind"] ||
+      fields["interface kind"] ||
+      fields["endpoint kind"] ||
+      fields.kind,
   );
   if (!kind) {
     errors.push("interface kind is missing or unsupported");
@@ -261,7 +264,8 @@ export function buildIssueIntakeReport({
   }
 
   const provider = slugify(
-    fields["provider or team"] ||
+    fields["provider slug"] ||
+      fields["provider or team"] ||
       fields["provider or operator slug"] ||
       fields.provider ||
       "community",
@@ -271,7 +275,8 @@ export function buildIssueIntakeReport({
   }
 
   const auth = normalizeAuth(
-    fields["does this interface require authentication?"] ||
+    fields["does this surface require authentication?"] ||
+      fields["does this interface require authentication?"] ||
       fields["does this endpoint require authentication?"] ||
       fields.auth_required,
   );
