@@ -3,9 +3,9 @@
     {
       "auth_required": false,
       "confidence": "medium",
-      "id": "community-sn-14-openapi-api-cacheon-ai",
+      "id": "community-sn-14-openapi-docs-cacheon-ai",
       "kind": "openapi",
-      "name": "Cacheon community openapi",
+      "name": "Cacheon Monitoring API docs",
       "netuid": 14,
       "provider": "cacheon",
       "public_safe": true,
@@ -20,7 +20,7 @@
         "https://api.cacheon.ai/openapi.json"
       ],
       "state": "schema-valid",
-      "url": "https://api.cacheon.ai/openapi.json"
+      "url": "https://api.cacheon.ai/docs"
     }
   ],
   "schema_version": 1,
