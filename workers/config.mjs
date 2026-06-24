@@ -160,6 +160,10 @@ export const MAX_BACKFILL_INGEST_ROWS = 2_000;
 // re-drain idempotent.
 export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
 export const MAX_STAGED_EVENT_ROWS = 10_000;
+// loadStagedNeurons retries the post-upsert snapshot prune when upserts span
+// multiple D1 batches. A transient DELETE failure must not leave deregistered
+// ghost rows until the next cron tick.
+export const NEURON_SNAPSHOT_PRUNE_RETRIES = 3;
 // Block-explorer hot window (#1345): the staged `blocks` sidecar caps. One block
 // row per finalized block in the rolling poller window, so the row volume is far
 // lower than the per-block event count — but keep the same byte ceiling +

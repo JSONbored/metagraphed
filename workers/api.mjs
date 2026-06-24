@@ -192,6 +192,7 @@ import {
   MAX_STAGED_EXTRINSIC_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
+  NEURON_SNAPSHOT_PRUNE_RETRIES,
   MAX_RPC_BODY_BYTES,
   MAX_UPTIME_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
@@ -451,6 +452,42 @@ function validStagedNeuronRow(row) {
   return true;
 }
 
+function neuronSnapshotPruneStatement(db, stagingMeta, snapshotCapturedAt) {
+  return stagingMeta.legacy
+    ? db
+        .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
+        .bind(snapshotCapturedAt)
+    : db
+        .prepare(
+          `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
+            .map(() => "?")
+            .join(",")}) AND captured_at < ?`,
+        )
+        .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
+}
+
+async function runNeuronSnapshotPrune(
+  db,
+  stagingMeta,
+  snapshotCapturedAt,
+  { retries = NEURON_SNAPSHOT_PRUNE_RETRIES } = {},
+) {
+  const prune = neuronSnapshotPruneStatement(
+    db,
+    stagingMeta,
+    snapshotCapturedAt,
+  );
+  let lastError;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      return await prune.run();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 // Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
 // refresh-metagraph CI job fetches the metagraph first-party (#1348), wraps the
 // neuron rows in an HMAC-signed envelope, and writes it to R2
@@ -536,19 +573,6 @@ export async function loadStagedNeurons(env) {
   // shares one captured_at stamp (set once by the producer). If ANY batch throws,
   // bail WITHOUT deleting prior rows or the staged object — the prior snapshot
   // stays as a fallback and the next cron retries the same staged file.
-  try {
-    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-    }
-  } catch {
-    return { ok: false, reason: "load_failed" };
-  }
-  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete
-  // rows older than this snapshot's stamp for the same replacement scope. Legacy
-  // bare-array snapshots have no coverage metadata, so they replace the whole
-  // table. Coverage envelopes can intentionally represent a partial refresh, so
-  // prune only those refreshed netuids; otherwise a subnet that failed to fetch
-  // could be erased by an unrelated newer captured_at stamp.
   let snapshotCapturedAt = 0;
   for (const row of rows) {
     if (
@@ -557,25 +581,40 @@ export async function loadStagedNeurons(env) {
     )
       snapshotCapturedAt = row.captured_at;
   }
+  const pruneStatement = neuronSnapshotPruneStatement(
+    db,
+    stagingMeta,
+    snapshotCapturedAt,
+  );
   let purged;
   try {
-    const prune = stagingMeta.legacy
-      ? db
-          .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
-          .bind(snapshotCapturedAt)
-      : db
-          .prepare(
-            `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
-              .map(() => "?")
-              .join(",")}) AND captured_at < ?`,
-          )
-          .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
-    const result = await prune.run();
-    purged = result?.meta?.changes ?? 0;
+    // Single-batch snapshots upsert + prune in one D1 transaction so a failed
+    // prune cannot commit replacement rows while deregistered UIDs linger.
+    if (statements.length + 1 <= STMTS_PER_BATCH) {
+      const batchResult = await db.batch([...statements, pruneStatement]);
+      purged = batchResult.at(-1)?.meta?.changes ?? 0;
+    } else {
+      for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
+        await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
+      }
+      const result = await runNeuronSnapshotPrune(
+        db,
+        stagingMeta,
+        snapshotCapturedAt,
+      );
+      purged = result?.meta?.changes ?? 0;
+    }
   } catch {
-    // Rows are already loaded; a failed prune just leaves stale rows for the next
-    // run to clear. Do NOT delete the staged object — let the next cron re-prune.
-    return { ok: false, reason: "purge_failed" };
+    // Mid-upsert failure: prior snapshot stays intact and the staged object is
+    // preserved for retry. Post-upsert prune failure (multi-batch only): upserts
+    // are already committed — keep the staged object so the next cron re-prunes.
+    return {
+      ok: false,
+      reason:
+        statements.length + 1 <= STMTS_PER_BATCH
+          ? "load_failed"
+          : "purge_failed",
+    };
   }
   await bucket.delete(STAGED_NEURONS_KEY);
   return { ok: true, rows: rows.length, purged };
