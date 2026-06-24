@@ -152,6 +152,21 @@ describe("embedding helpers", () => {
     assert.equal(embeddingText({ title: "A" }), "A");
     assert.ok(embeddingText({ title: "x".repeat(5000) }).length <= 1500);
   });
+  test("embeddingText caps by code points and never splits a surrogate pair", () => {
+    // An emoji (non-BMP: two UTF-16 units) straddling the truncation boundary must
+    // not be severed into a lone surrogate. A plain `.slice(0, 1500)` would keep
+    // only the high surrogate, yielding a not-well-formed string that the embedding
+    // model receives as a U+FFFD replacement at the tail — the byte-truthful sibling
+    // of the vectorId() cap below. The fix truncates by code point instead.
+    const straddling = embeddingText({ title: "a".repeat(1499) + "\u{1F600}" });
+    assert.equal(straddling.isWellFormed(), true);
+    assert.ok(straddling.endsWith("\u{1F600}"));
+    assert.equal([...straddling].length, 1500);
+    // A long all-emoji title stays bounded to the code-point cap, still well-formed.
+    const allEmoji = embeddingText({ title: "\u{1F600}".repeat(5000) });
+    assert.equal([...allEmoji].length, 1500);
+    assert.equal(allEmoji.isWellFormed(), true);
+  });
   test("embeddingText appends capability facets (categories + service_kinds)", () => {
     assert.equal(
       embeddingText({

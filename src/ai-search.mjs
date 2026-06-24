@@ -33,6 +33,9 @@ export const ASK_MAX_QUESTION_LENGTH = 1000;
 export const ASK_MAX_TOKENS = 512;
 const EMBED_BATCH_SIZE = 100;
 const VECTOR_ID_MAX_BYTES = 64;
+// Upper bound on embedding input length, measured in Unicode code points (not
+// UTF-16 units) so the cap can never sever a surrogate pair — see embeddingText.
+const EMBED_TEXT_MAX_CHARS = 1500;
 
 const ASK_SYSTEM_PROMPT =
   "You are the metagraphed assistant. metagraphed is the operational + " +
@@ -105,7 +108,7 @@ export function embeddingText(doc) {
   // free-text tokens so they explicitly bias the embedding toward capability —
   // "inference api", "sse stream", "data-artifact" queries rank on what a subnet
   // can do, not just its prose. Non-subnet docs simply omit these (empty).
-  return [
+  const text = [
     doc.title,
     doc.subtitle,
     ...(Array.isArray(doc.tokens) ? doc.tokens : []),
@@ -113,8 +116,14 @@ export function embeddingText(doc) {
     ...(Array.isArray(doc.service_kinds) ? doc.service_kinds : []),
   ]
     .filter(Boolean)
-    .join(" ")
-    .slice(0, 1500);
+    .join(" ");
+  // Cap by code points, not UTF-16 code units: a plain `.slice(0, 1500)` can
+  // sever a non-BMP character (e.g. an emoji in a subnet title) straddling the
+  // boundary into a lone surrogate. That string is not well-formed UTF-16, so
+  // the embedding model receives a U+FFFD replacement at the tail — corrupting
+  // the very token the truncation was meant to preserve. Mirrors the byte-correct
+  // cap in vectorId() below and the surrogate-safe clamps elsewhere in the repo.
+  return [...text].slice(0, EMBED_TEXT_MAX_CHARS).join("");
 }
 
 // Vectorize ids are capped at 64 bytes; long surface ids are folded to a stable
