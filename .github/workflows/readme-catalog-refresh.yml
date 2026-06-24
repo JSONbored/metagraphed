@@ -1,10 +1,13 @@
 name: README catalog refresh
 
 # Regenerate the README subnet catalog (#1020) from the curated overlays whenever
-# they change on main, and open a PR if it drifted. Normally a no-op: PRs that
-# touch an overlay are gated by `validate:readme-catalog`, so the catalog is
-# already fresh at merge. This is the safety net for admin-merges/direct pushes
-# that bypass the gate — the catalog is NOT regenerated on the 6h data refresh.
+# they change on main, and accumulate any drift into a single chore/readme-catalog
+# PR (peter-evans reuses the same branch). This is the PRIMARY owner of README
+# catalog freshness: the catalog is DATA-derived and is NOT gated on contributor
+# PRs (gating it red-lined build-less surface PRs that legitimately change a
+# subnet's catalog row), so every registry/subnets push lands here and refreshes
+# the accumulator PR, which a maintainer merges periodically. The catalog is NOT
+# regenerated on the 6h data refresh.
 on:
   push:
     branches: [main]

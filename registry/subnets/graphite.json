@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 43,
-  "name": "Graphite",
-  "slug": "sn-43",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -12,68 +7,99 @@
     "optimization",
     "research"
   ],
-  "website_url": "https://graphite-ai.net/",
-  "source_repo": "https://github.com/GraphiteAI/Graphite-Subnet",
-  "dashboard_url": "https://taomarketcap.com/subnets/43",
-  "notes": "Reviewed overlay for SN43 using the official Graphite source repository and website. No official docs/API/OpenAPI surface is verified yet.",
+  "contact": "team@graphite-ai.net",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
-    "verified_at": "2026-06-08T10:35:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "No verified official docs URL yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T10:35:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/43",
+  "name": "Graphite",
+  "netuid": 43,
+  "notes": "Reviewed overlay for SN43 using the official Graphite source repository and website. No official docs/API/OpenAPI surface is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-43",
+  "social": {
+    "x": "https://x.com/graphitesubnet"
+  },
+  "source_repo": "https://github.com/GraphiteAI/Graphite-Subnet",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-43-graphite-website",
-      "name": "Graphite website",
-      "kind": "website",
-      "url": "https://graphite-ai.net/",
-      "provider": "graphite-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-43-graphite-website",
+      "kind": "website",
+      "name": "Graphite website",
+      "notes": "Official Graphite website linked from the project source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
       "public_safe": true,
       "source_urls": [
         "https://github.com/GraphiteAI/Graphite-Subnet",
         "https://graphite-ai.net/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Graphite website linked from the project source repository."
+      "url": "https://graphite-ai.net/"
     },
     {
-      "id": "sn-43-graphite-source",
-      "name": "Graphite source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/GraphiteAI/Graphite-Subnet",
-      "provider": "graphite-ai",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-43-graphite-source",
+      "kind": "source-repo",
+      "name": "Graphite source repository",
+      "notes": "Official Graphite source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "graphite-ai",
       "public_safe": true,
       "source_urls": [
         "https://learnbittensor.org/subnets/43",
         "https://github.com/GraphiteAI/Graphite-Subnet"
       ],
+      "url": "https://github.com/GraphiteAI/Graphite-Subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-ai-openapi",
+      "kind": "openapi",
+      "name": "Graphite Knowledge Graph API (OpenAPI)",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Official Graphite source repository."
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.graphite-ai.net/openapi.json",
+      "source_urls": ["https://api.graphite-ai.net/docs"],
+      "url": "https://api.graphite-ai.net/openapi.json"
     }
   ],
-  "social": { "x": "https://x.com/graphitesubnet" },
-  "contact": "team@graphite-ai.net"
+  "website_url": "https://graphite-ai.net/"
 }
