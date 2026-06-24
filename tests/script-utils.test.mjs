@@ -308,13 +308,13 @@ describe("script utility contracts", () => {
     assert.deepEqual(
       await submissionFormattingErrors([
         {
-          file: "registry/candidates/community/example.json",
+          file: "registry/subnets/example.json",
           raw: `${JSON.stringify(document, null, 2)}\n`,
           document,
         },
       ]),
       [
-        "registry/candidates/community/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run candidate:new/provider:new",
+        "registry/subnets/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run surface:add/provider:new",
       ],
     );
     assert.deepEqual(

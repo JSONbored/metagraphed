@@ -41,7 +41,7 @@ needs-review, and hard-blocker gap types.
 Contributor-ready targets are available through
 `/api/v1/review/enrichment-targets`. This route groups the queue into concrete
 surface-candidate, adapter-review, maintainer-review, and monitoring-followup
-targets, including copyable `npm run candidate:new` command templates for
+targets, including copyable `npm run surface:add` command templates for
 direct public-safe submissions.
 
 Detailed candidate evidence behind the queue is available through
@@ -95,7 +95,7 @@ Direct PRs should add exactly one candidate file under
 Use:
 
 ```bash
-npm run candidate:new -- --netuid <netuid> --kind <kind> --url <public-url> --source-url <source-url> --provider <provider> --submitted-by <github-login> --write
+npm run surface:add -- --netuid <netuid> --kind <kind> --url <public-url> --source-url <source-url> --provider <provider> --submitted-by <github-login> --write
 ```
 
 Best candidate kinds:

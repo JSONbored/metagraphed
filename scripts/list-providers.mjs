@@ -1,5 +1,5 @@
 // Lists the registered provider slugs to use as `--provider <slug>` for
-// `npm run candidate:new`. Slugs (the left column) print to stdout; the summary
+// `npm run surface:add`. Slugs (the left column) print to stdout; the summary
 // goes to stderr so the list can be piped/grepped cleanly. Pass `--json` for
 // machine-readable output.
 import { loadProviders } from "./lib.mjs";
@@ -29,7 +29,7 @@ if (process.argv.includes("--json")) {
   }
   console.error(
     `\n${providers.length} providers. Use the left-column slug as ` +
-      "`--provider <slug>` for `npm run candidate:new` " +
+      "`--provider <slug>` for `npm run surface:add` " +
       "(or `npm run provider:new` to register a new one).",
   );
 }
