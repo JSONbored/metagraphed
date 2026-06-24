@@ -12,7 +12,7 @@
 //
 // Debut provider (slug not registered yet)? Add --provider-name "<Team>" and
 // --provider-url <https://public-site> and surface:add also scaffolds
-// registry/providers/community/<slug>.json so the PR validates in one shot.
+// registry/providers/<slug>.json so the PR validates in one shot.
 import path from "node:path";
 import {
   isJsonContentType,

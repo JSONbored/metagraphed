@@ -8,7 +8,9 @@
   "netuid": 93,
   "schema_version": 1,
   "slug": "sn-93",
+  "source_repo": "https://github.com/bitcast-network/bitcast",
   "status": "active",
+  "website_url": "https://stats.bitcast.network/",
   "surfaces": [
     {
       "auth_required": false,

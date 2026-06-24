@@ -26,6 +26,7 @@ import {
   providerIdentityTokens,
   sameResourceUrl,
   urlOwnerTokens,
+  validateCandidateForSubmission,
 } from "../scripts/submission-policy.mjs";
 import {
   buildNotificationKey,
@@ -164,6 +165,33 @@ describe("Metagraphed submission gate policy", () => {
       );
 
       assert.match(readFileSync(outputPath, "utf8"), /^mode=full$/m);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("routes flat provider profile submissions through the UGC gate", () => {
+    const tmp = mkdtempSync(path.join(tmpdir(), "metagraphed-provider-route-"));
+    try {
+      const changedFilesPath = path.join(tmp, "changed-files.txt");
+      const outputPath = path.join(tmp, "github-output.txt");
+      writeFileSync(
+        changedFilesPath,
+        "registry/providers/example-operator.json\n",
+      );
+
+      execFileSync(
+        process.execPath,
+        ["scripts/ci-validate-route.mjs", "--changed-files", changedFilesPath],
+        {
+          env: { ...process.env, GITHUB_OUTPUT: outputPath },
+          stdio: "pipe",
+        },
+      );
+
+      const output = readFileSync(outputPath, "utf8");
+      assert.match(output, /^mode=ugc$/m);
+      assert.match(output, /^scope=direct-provider$/m);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
@@ -393,7 +421,7 @@ describe("Metagraphed submission gate policy", () => {
     document.submission.submitted_by = "jsonbored";
     document.submission.submitted_by_url = "https://github.com/jsonbored";
     const report = buildPrSubmissionReport({
-      changedFiles: ["registry/providers/community/example-operator.json"],
+      changedFiles: ["registry/providers/example-operator.json"],
       providerDocument: document,
       native,
       providers,
@@ -410,7 +438,7 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(report.blocking, true);
     assert.equal(
       report.direct_provider_file,
-      "registry/providers/community/example-operator.json",
+      "registry/providers/example-operator.json",
     );
     assert.equal(report.provider.id, "example-operator");
     assert.equal(
@@ -428,7 +456,7 @@ describe("Metagraphed submission gate policy", () => {
     document.provider.website_url = "https://user:pass@example.com";
 
     const report = buildPrSubmissionReport({
-      changedFiles: ["registry/providers/community/credentialed-provider.json"],
+      changedFiles: ["registry/providers/credentialed-provider.json"],
       providerDocument: document,
       native,
       providers,
@@ -455,7 +483,7 @@ describe("Metagraphed submission gate policy", () => {
     document.provider.notes = "github_pat_abcdefghijklmnopqrstuvwxyz123456";
 
     const report = buildPrSubmissionReport({
-      changedFiles: ["registry/providers/community/unsafe-provider.json"],
+      changedFiles: ["registry/providers/unsafe-provider.json"],
       providerDocument: document,
       native,
       providers,
@@ -490,7 +518,7 @@ describe("Metagraphed submission gate policy", () => {
   test("accepts an atomic provider+candidate pair PR (debut lane)", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",
-      "registry/providers/community/example-operator.json",
+      "registry/providers/example-operator.json",
     ]);
 
     // One candidate + one provider (and nothing else) is the atomic debut pair:
@@ -500,10 +528,46 @@ describe("Metagraphed submission gate policy", () => {
     assert.equal(scope.errors.length, 0);
   });
 
+  test("treats a legacy registry/providers/community/ path as a normal PR (post-flatten exclusion)", () => {
+    // Providers were flattened to registry/providers/*.json (#1678); the old
+    // community/ subdir is gone. A path still under that retired subdir is neither
+    // a flat direct-provider file nor a touchedCommunityProvider, so it falls
+    // through to a normal PR (full validation), not the direct-provider lane.
+    const scope = classifyPrScope([
+      "registry/providers/community/legacy-operator.json",
+    ]);
+
+    assert.equal(scope.scope, "normal-pr");
+    assert.equal(scope.providerFiles.length, 0);
+  });
+
+  test("validateCandidateForSubmission labels a provider-less candidate <missing>", () => {
+    const result = validateCandidateForSubmission({
+      candidate: {
+        schema_version: 1,
+        netuid: 1,
+        kind: "docs",
+        url: "https://api.acme-labs.io/v1",
+        source_url: "https://api.acme-labs.io/v1",
+      },
+      native: { subnets: [{ netuid: 1 }] },
+      providers: [],
+    });
+
+    assert.equal(
+      result.errors.some((error) =>
+        error.message?.includes(
+          "candidate provider <missing> is not registered",
+        ),
+      ),
+      true,
+    );
+  });
+
   test("still blocks a direct submission bundled with unrelated files", () => {
     const scope = classifyPrScope([
       "registry/candidates/community/allways-docs-example.json",
-      "registry/providers/community/example-operator.json",
+      "registry/providers/example-operator.json",
       "scripts/build.mjs",
     ]);
 
@@ -538,7 +602,7 @@ describe("Metagraphed submission gate policy", () => {
     const report = buildPrSubmissionReport({
       changedFiles: [
         "registry/candidates/community/community-sn-7-docs-debut.json",
-        "registry/providers/community/example-operator.json",
+        "registry/providers/example-operator.json",
       ],
       candidateDocument: candidateDoc,
       providerDocument: providerDoc,
