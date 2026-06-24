@@ -142,6 +142,20 @@ test("backfill rejects too many rows (413)", async () => {
   assert.equal(res.status, 413);
 });
 
+test("backfill sizes the body by UTF-8 bytes, not UTF-16 code units (413)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture([]),
+  };
+  // 400k three-byte chars: 400_000 UTF-16 code units (under the 1 MiB byte cap)
+  // but ~1.2 MB of UTF-8 (over it). A code-unit check would wrongly admit it.
+  const res = await handleNeuronBackfill(
+    post("あ".repeat(400000), { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
 test("backfill returns 503 when the history store is unavailable", async () => {
   const env = { METAGRAPH_EVENTS_INGEST_SECRET: SECRET }; // authed but no DB
   const res = await handleNeuronBackfill(
