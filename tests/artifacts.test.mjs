@@ -1077,7 +1077,7 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(
     callableWithoutSchema.length,
-    45,
+    46,
     "schema projection should reduce callable services without schema artifacts",
   );
   assert.equal(
