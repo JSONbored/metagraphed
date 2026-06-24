@@ -175,6 +175,68 @@ test("page-declared icon at a private/non-public host is rejected (SSRF)", async
   assert.equal(res.status, 404); // nothing else resolves
 });
 
+test("blocks redirects from page-declared icons to private targets (SSRF)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  let privateFetched = false;
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (url === "https://example.com/") {
+      return new Response(
+        '<html><head><link rel="icon" href="https://cdn.example.com/icon.png"></head></html>',
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }
+    if (url === "https://cdn.example.com/icon.png") {
+      return new Response("", {
+        status: 302,
+        headers: { location: "http://127.0.0.1/secret.png" },
+      });
+    }
+    if (url.includes("127.0.0.1")) {
+      privateFetched = true;
+      return new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }
+    return new Response("", { status: 404 });
+  };
+  const res = await call("?host=example.com", { env, fetchImpl });
+  assert.equal(privateFetched, false);
+  assert.equal(res.status, 404);
+});
+
+test("blocks redirects from the allowlisted page root to private targets (SSRF)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  let privateFetched = false;
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (url === "https://example.com/") {
+      return new Response("", {
+        status: 302,
+        headers: { location: "http://127.0.0.1/" },
+      });
+    }
+    if (url.includes("127.0.0.1")) {
+      privateFetched = true;
+      return new Response(
+        '<html><head><link rel="icon" href="/secret.png"></head></html>',
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }
+    return new Response("", { status: 404 });
+  };
+  const res = await call("?host=example.com", { env, fetchImpl });
+  assert.equal(privateFetched, false);
+  assert.equal(res.status, 404);
+});
+
 test("304 on matching If-None-Match (no fetch, no R2)", async () => {
   const res = await call("?host=example.com&size=64", {
     env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },

@@ -23,6 +23,8 @@ const MAX_HTML_BYTES = 256 * 1024; // cap the page fetch when scraping <link rel
 const MAX_PAGE_ICONS = 4; // most page-declared icons we will try
 const FETCH_TIMEOUT_MS = 3000;
 const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const MAX_REDIRECTS = 5;
 const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
 // A real-ish UA — DuckDuckGo/Google's favicon endpoints and some origins bot-block
 // the default Worker user-agent (a cause of the prod 404s).
@@ -202,6 +204,42 @@ function resolveIconUrls(hrefs, host) {
   return out;
 }
 
+function isSafeHttpUrl(value) {
+  let url;
+  try {
+    url = new URL(String(value));
+  } catch {
+    return false;
+  }
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    normalizeHost(url.hostname)
+  );
+}
+
+async function safeFetch(url, init = {}, redirectCount = 0) {
+  if (!isSafeHttpUrl(url)) return null;
+  const res = await fetch(url, { ...init, redirect: "manual" });
+  if (!REDIRECT_STATUSES.has(res.status)) return res;
+
+  const location = res.headers.get("location");
+  if (!location || redirectCount >= MAX_REDIRECTS) {
+    await res.body?.cancel?.();
+    return null;
+  }
+
+  let next;
+  try {
+    next = new URL(location, url).toString();
+  } catch {
+    await res.body?.cancel?.();
+    return null;
+  }
+
+  await res.body?.cancel?.();
+  return safeFetch(next, init, redirectCount + 1);
+}
+
 async function boundedText(res, max) {
   const reader = res.body?.getReader?.();
   if (!reader) {
@@ -241,14 +279,14 @@ async function pageDeclaredIconSources(host) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(`https://${host}/`, {
+    const res = await safeFetch(`https://${host}/`, {
       headers: {
         accept: "text/html,application/xhtml+xml",
         "user-agent": BROWSER_UA,
       },
-      redirect: "follow",
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
+    if (!res) return [];
     if (!res.ok || !(res.headers.get("content-type") || "").includes("html")) {
       await res.body?.cancel?.();
       return [];
@@ -345,9 +383,10 @@ export async function handleIconProxy(request, env, url, options = {}) {
   }
 
   // Page-declared <link rel="icon"> first (the real fix), then aggregators + well-known
-  // paths. Follow redirects (favicons often 30x to a CDN); no cf.cacheEverything (it
-  // forced caching of redirect/non-200 responses and broke resolution) — successful
-  // icons are cached in R2 below.
+  // paths. Follow only redirects whose next target also passes URL safety checks
+  // (favicons often 30x to a CDN); no cf.cacheEverything (it forced caching of
+  // redirect/non-200 responses and broke resolution) — successful icons are cached
+  // in R2 below.
   const sources = [
     ...(await pageDeclaredIconSources(host)),
     ...faviconSources(host, size),
@@ -356,11 +395,11 @@ export async function handleIconProxy(request, env, url, options = {}) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      const res = await fetch(src, {
+      const res = await safeFetch(src, {
         headers: { accept: "image/*", "user-agent": BROWSER_UA },
-        redirect: "follow",
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));
+      if (!res) continue;
       if (!res.ok) continue;
       const ct = res.headers.get("content-type") || "image/png";
       if (!ct.startsWith("image/")) {
