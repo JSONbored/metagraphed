@@ -287,16 +287,17 @@ export function buildIssueIntakeReport({
     );
   }
 
-  const unsafeText = unsafeTextReasons(
-    [
-      fields["rate limits or access notes"],
-      fields["public rate limits or access notes"],
-      fields.evidence,
-      fields["public url"],
-      fields["source url"],
-    ].join("\n"),
+  errors.push(
+    ...unsafeTextReasons(
+      [
+        fields["rate limits or access notes"],
+        fields["public rate limits or access notes"],
+        fields.evidence,
+        fields["public url"],
+        fields["source url"],
+      ].join("\n"),
+    ).map((error) => error.message),
   );
-  errors.push(...unsafeText);
 
   const subnet = native.subnets.find(
     (candidate) => candidate.netuid === netuid,
@@ -820,7 +821,13 @@ export function extractSingleProvider(document) {
       message: "provider submission document schema_version must be 1",
     });
   }
-  if (!document.provider || typeof document.provider !== "object") {
+  // Accept the flat provider object (post-#1678 — providers are flat in
+  // registry/providers/) OR the legacy { provider } wrapper.
+  const provider =
+    document.provider && typeof document.provider === "object"
+      ? document.provider
+      : document;
+  if (typeof provider.id !== "string") {
     errors.push({
       category: "unsupported-shape",
       message: "provider submission document must include provider",
@@ -828,7 +835,7 @@ export function extractSingleProvider(document) {
   }
 
   return {
-    provider: document.provider || null,
+    provider: typeof provider.id === "string" ? provider : null,
     errors,
   };
 }

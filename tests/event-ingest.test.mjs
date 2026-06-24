@@ -214,6 +214,21 @@ test("ingest rejects an oversized body (413)", async () => {
   assert.equal(res.status, 413);
 });
 
+test("ingest sizes the body by UTF-8 bytes, not UTF-16 code units (413)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture([]),
+  };
+  // 100k three-byte chars: 100_000 UTF-16 code units (under the byte cap) but
+  // ~300_000 UTF-8 bytes (over it). A code-unit check would wrongly let it past
+  // the guard; a byte check rejects it.
+  const res = await handleEventIngest(
+    post("あ".repeat(100000), { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
 test("ingest rejects a non-array body (400)", async () => {
   const env = {
     METAGRAPH_EVENTS_INGEST_SECRET: SECRET,

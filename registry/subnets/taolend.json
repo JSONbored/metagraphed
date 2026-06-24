@@ -1,9 +1,5 @@
 {
-  "schema_version": 1,
-  "netuid": 116,
-  "name": "TaoLend",
-  "slug": "taolend",
-  "status": "active",
+  "baseline_excluded_surface_ids": ["sn-116-tensorplex-source-repo-1"],
   "categories": [
     "baseline-curated",
     "defi",
@@ -11,16 +7,7 @@
     "lending",
     "official-website"
   ],
-  "website_url": "https://taolend.io/",
-  "source_repo": null,
-  "baseline_excluded_surface_ids": ["sn-116-tensorplex-source-repo-1"],
-  "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity currently reports hard_sign, while public subnet directories identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T14:15:00.000Z",
-    "verified_at": "2026-06-08T14:15:00.000Z",
-    "source_count": 6,
     "gap_notes": [
       "Native chain name currently reports as hard_sign; public directories identify SN116 as TaoLend.",
       "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
@@ -30,26 +17,63 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T14:15:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T14:15:00.000Z"
   },
+  "name": "TaoLend",
+  "netuid": 116,
+  "notes": "Reviewed overlay for SN116 TaoLend. Native chain identity currently reports hard_sign, while public subnet directories identify SN116 as TaoLend. The official website is tracked but currently returns server errors to simple probes. The previously discovered source repository currently returns 404 and is not promoted.",
+  "schema_version": 1,
+  "slug": "taolend",
+  "source_repo": null,
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-116-taolend-website",
-      "name": "TaoLend website",
-      "kind": "website",
-      "url": "https://taolend.io/",
-      "provider": "taolend",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://taolend.io/"],
+      "id": "sn-116-taolend-website",
+      "kind": "website",
+      "name": "TaoLend website",
+      "notes": "Official TaoLend website. Current probe state is expected to show degraded while the origin returns server errors.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official TaoLend website. Current probe state is expected to show degraded while the origin returns server errors."
+      "provider": "taolend",
+      "public_safe": true,
+      "source_urls": ["https://taolend.io/"],
+      "url": "https://taolend.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-116-taolend-source-repo",
+      "kind": "source-repo",
+      "name": "TaoLend source repository",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taolend",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/oxylok/116-taolend/blob/main/README.md"
+      ],
+      "url": "https://github.com/oxylok/116-taolend"
     }
-  ]
+  ],
+  "website_url": "https://taolend.io/"
 }

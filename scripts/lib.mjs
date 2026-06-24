@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import { Agent } from "undici";
 import {
   ARTIFACT_STORAGE_TIERS,
   R2_STAGING_RELATIVE_ROOT,
@@ -86,6 +87,7 @@ unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
 unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
 unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
 unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
+unsafeIpBlocks.addSubnet("fec0::", 10, "ipv6"); // deprecated site-local (RFC 3879)
 unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export function buildEvidenceSubjectNetuidIndex({
@@ -427,22 +429,17 @@ export async function listJsonFilesRecursive(dirPath) {
 }
 
 export async function loadProviders() {
-  // Top-level registry/providers/*.json are curated providers (flat objects).
-  // Community-submitted providers live in registry/providers/community/ as a
-  // { provider, submission } wrapper; they are first-class once merged — unwrap
-  // them so they load / validate / serve exactly like curated providers (mirrors
-  // how loadCandidates loads registry/candidates/community/). A curated provider
-  // wins over a community one of the same id (defensive — ids do not collide today).
-  const [flatFiles, communityFiles] = await Promise.all([
-    listJsonFiles(path.join(repoRoot, "registry/providers")),
-    listJsonFiles(path.join(repoRoot, "registry/providers/community")),
-  ]);
-  const flat = await Promise.all(flatFiles.map(readJson));
-  const community = (await Promise.all(communityFiles.map(readJson))).map(
+  // All providers are flat objects in registry/providers/*.json. Trust is the
+  // per-file `authority` field (official / provider-claimed / community /
+  // registry-observed), NOT the directory — the old registry/providers/community/
+  // wrapper lane was flattened (#1678). The `.provider || document` unwrap is kept
+  // defensively for any legacy { provider } shape; dedup by id (ids don't collide).
+  const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
+  const providers = (await Promise.all(files.map(readJson))).map(
     (document) => document.provider || document,
   );
   const byId = new Map();
-  for (const provider of [...community, ...flat]) {
+  for (const provider of providers) {
     if (provider?.id) byId.set(provider.id, provider);
   }
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
@@ -681,11 +678,30 @@ export function classifyNativeName(value, netuid) {
   const normalized = raw.toLowerCase();
   const genericName =
     Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
-  if (
-    genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
-    !/[\p{L}\p{N}]/u.test(raw)
-  ) {
+  // Placeholder on-chain identities an owner may set before naming a subnet —
+  // e.g. "Team TBC", "TBD", "Coming Soon". Treated as not-a-real-name so the
+  // build falls back to "Subnet N" and the registry never adopts them as a
+  // display name (subnet:new + validate:surface enforce this on creation/CI).
+  const placeholderName =
+    [
+      "unknown",
+      "none",
+      "null",
+      "n/a",
+      "na",
+      "unnamed",
+      "untitled",
+      "tbc",
+      "tbd",
+      "tba",
+      "wip",
+      "placeholder",
+      "coming soon",
+      "to be confirmed",
+      "to be determined",
+      "to be announced",
+    ].includes(normalized) || /\b(?:tbc|tbd|tba)\b/.test(normalized);
+  if (genericName || placeholderName || !/[\p{L}\p{N}]/u.test(raw)) {
     return { raw_name: raw, quality: "placeholder" };
   }
 
@@ -873,6 +889,102 @@ export async function resolvePublicUrlAddresses(value, resolver = lookup) {
 
 export async function isUnsafeResolvedUrl(value, resolver = lookup) {
   return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
+const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
+
+// The connect-time DNS lookup that pins the single validated answer: every
+// connection for this hop resolves `hostname` to the exact `address` that
+// resolvePublicUrlAddresses already vetted, and rejects a lookup for any other
+// host — closing the TOCTOU DNS-rebinding window between the safety check and the
+// actual socket. Returns a Node `dns.lookup`-shaped callback (single-answer and
+// `{ all: true }` array forms). Exported so its branches are unit-covered.
+export function createPinnedLookup(hostname, address, family) {
+  return (requestedHostname, options, callback) => {
+    if (normalizeHostname(requestedHostname) !== hostname) {
+      callback(new Error("safeFetch attempted to resolve an unpinned host"));
+      return;
+    }
+    if (options?.all) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
+}
+
+function createPinnedAddressDispatcher(hostname, address, family) {
+  return new Agent({
+    connect: { lookup: createPinnedLookup(hostname, address, family) },
+  });
+}
+
+// SSRF-safe outbound GET: re-validates EVERY hop — the initial URL AND each
+// redirect Location — against isUnsafeResolvedUrl before connecting, so a public
+// host can't 30x-redirect into a private/internal address (169.254.169.254,
+// localhost, …). Each validated DNS answer is also pinned into undici's
+// connection lookup for that hop, closing the DNS-rebinding gap between the
+// safety check and the actual fetch. `redirect: "follow"` would bypass the
+// guard; this follows manually, bounded by maxRedirects. Returns exactly one of:
+//   { ok: true,  response, status, url }  final non-redirect 2xx response
+//   { ok: false, response, status, url }  final non-redirect non-2xx response
+//   { ok: false, unsafe: true, url }      a hop resolved to a private/unsafe addr
+//   { ok: false, error }                  network error / timeout / too many redirects
+// The caller owns response.body (read or cancel it).
+export async function safeFetch(
+  url,
+  {
+    accept = "*/*",
+    maxRedirects = 5,
+    timeoutMs = 12000,
+    resolver = lookup,
+  } = {},
+) {
+  let target = url;
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    const addresses = await resolvePublicUrlAddresses(target, resolver);
+    if (addresses.length === 0) {
+      return { ok: false, unsafe: true, url: target };
+    }
+    const targetUrl = new URL(target);
+    const host = normalizeHostname(targetUrl.hostname);
+    const dispatcher = createPinnedAddressDispatcher(
+      host,
+      addresses[0].address,
+      addresses[0].family,
+    );
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetch(target, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+        dispatcher,
+        headers: { "user-agent": "metagraphed/0.0", accept },
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.name === "AbortError" ? "timeout" : error.message,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+    const location = response.headers.get("location");
+    if (SAFE_FETCH_REDIRECT_CODES.has(response.status) && location) {
+      await response.body?.cancel();
+      try {
+        target = new URL(location, target).toString();
+      } catch {
+        return { ok: false, error: "invalid redirect location" };
+      }
+      continue;
+    }
+    return { ok: response.ok, response, status: response.status, url: target };
+  }
+  return { ok: false, error: "too many redirects" };
 }
 
 function isUnsafeHostname(host) {

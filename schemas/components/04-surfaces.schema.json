@@ -430,6 +430,25 @@
               }
             },
             "additionalProperties": false
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state"],
+            "description": "Per-surface HUMAN review/governance state (single-file contribution model): a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". This is the human-governance axis ONLY — machine verification + freshness (is the surface live or stale) is the separate probe-derived overlay (health, last_verified_at, incidents), and subnet-level curation has its own curation.review_state.",
+            "properties": {
+              "state": {
+                "enum": [
+                  "community-submitted",
+                  "maintainer-reviewed",
+                  "rejected"
+                ]
+              },
+              "submitted_by": { "type": "string" },
+              "submitted_at": { "type": "string" },
+              "confidence": { "enum": ["low", "medium", "high"] },
+              "review_notes": { "type": "string" }
+            }
           }
         },
         "additionalProperties": false

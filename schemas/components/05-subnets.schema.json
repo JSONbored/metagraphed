@@ -5,6 +5,25 @@
   "type": "object",
   "components": {
     "schemas": {
+      "CompareArtifact": {
+        "type": "object",
+        "required": ["schema_version", "source", "subnets"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "source": { "type": "string" },
+          "observed_at": { "type": ["string", "null"] },
+          "dimensions": { "type": "array", "items": { "type": "string" } },
+          "requested_netuids": {
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "subnets": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          }
+        },
+        "additionalProperties": true
+      },
       "CurationMetadata": {
         "type": "object",
         "required": ["level", "review_state"],
@@ -1522,6 +1541,101 @@
           "subnets": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountRegistration" }
+          }
+        }
+      },
+      "Block": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "required": ["block_number"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "block_hash": { "type": ["string", "null"] },
+          "parent_hash": { "type": ["string", "null"] },
+          "author": { "type": ["string", "null"] },
+          "extrinsic_count": { "type": ["integer", "null"] },
+          "event_count": { "type": ["integer", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "BlocksFeedArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file).",
+        "required": ["schema_version", "block_count", "blocks"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "block_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": ["integer", "null"] },
+          "offset": { "type": ["integer", "null"] },
+          "blocks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Block" }
+          }
+        }
+      },
+      "BlockDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "block"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Block" },
+              { "type": "null" }
+            ]
+          }
+        }
+      },
+      "Extrinsic": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "required": ["block_number", "extrinsic_index"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"] },
+          "extrinsic_index": { "type": ["integer", "null"] },
+          "extrinsic_hash": { "type": ["string", "null"] },
+          "signer": { "type": ["string", "null"] },
+          "call_module": { "type": ["string", "null"] },
+          "call_function": { "type": ["string", "null"] },
+          "success": { "type": ["boolean", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "ExtrinsicsFeedArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file).",
+        "required": ["schema_version", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": ["integer", "null"] },
+          "offset": { "type": ["integer", "null"] },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
+      "ExtrinsicDetailArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "extrinsic"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "extrinsic": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/Extrinsic" },
+              { "type": "null" }
+            ]
           }
         }
       },

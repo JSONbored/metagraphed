@@ -112,3 +112,103 @@ describe("list-query pagination order", () => {
     assert.equal(result.meta.pagination.order, "desc");
   });
 });
+
+describe("list-query numeric range filters", () => {
+  const data = {
+    subnets: [
+      { netuid: 1, surface_count: 2, tempo: 100 },
+      { netuid: 2, surface_count: 9, tempo: 360 },
+      { netuid: 3, surface_count: 5, tempo: 360 },
+      { netuid: 4 }, // surface_count absent
+      { netuid: 5, surface_count: "x" }, // non-numeric
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("min_<field> keeps rows >= the bound (inclusive)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=5"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 3]);
+  });
+
+  test("max_<field> keeps rows <= the bound (inclusive)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?max_surface_count=5"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("min + max combine into an inclusive range, across fields", () => {
+    const result = applyQueryFilters(
+      data,
+      query(
+        "/api/v1/subnets?min_surface_count=3&max_surface_count=9&min_tempo=360",
+      ),
+      "subnets",
+    );
+    // surface_count in [3,9] → {2,3}; AND tempo >= 360 → both qualify.
+    assert.deepEqual(netuids(result), [2, 3]);
+  });
+
+  test("a row whose field is absent or non-numeric is excluded once a bound is set", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=0"),
+      "subnets",
+    );
+    // netuid 4 (absent) and 5 (non-numeric) drop out even at min 0.
+    assert.deepEqual(netuids(result), [1, 2, 3]);
+  });
+
+  test("no range param is a no-op (every row passes)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=netuid"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 2, 3, 4, 5]);
+  });
+
+  test("accepts a negative / decimal bound", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=-1&max_surface_count=4.5"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1]); // surface_count 2 only
+  });
+
+  test("a non-numeric min_/max_ value is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=lots"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "min_surface_count");
+    assert.match(bad.error.message, /must be a number/);
+
+    const badMax = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?max_tempo="),
+      "subnets",
+    );
+    assert.equal(badMax.error.parameter, "max_tempo");
+  });
+
+  test("an overflowing decimal range bound is a query error", () => {
+    const hugeDecimal = "9".repeat(400);
+    const bad = applyQueryFilters(
+      data,
+      query(`/api/v1/subnets?max_surface_count=${hugeDecimal}`),
+      "subnets",
+    );
+
+    assert.equal(bad.error.parameter, "max_surface_count");
+    assert.match(bad.error.message, /must be a number/);
+  });
+});

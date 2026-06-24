@@ -828,6 +828,34 @@ describe("ai-search defensive branches", () => {
     assert.match(userMessage, /degraded/);
   });
 
+  test("askQuestion sends an explicit no-results context when Vectorize returns no matches", async () => {
+    // Empty-result path: the user prompt must carry the
+    // "(no matching registry entries)" sentinel (not an empty context block), so
+    // the model is told there is nothing to ground on rather than hallucinating.
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await askQuestion(env, "anything at all?");
+    assert.equal(out.context_count, 0);
+    assert.deepEqual(out.citations, []);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.find(
+      (m) => m.role === "user",
+    ).content;
+    assert.match(userMessage, /\(no matching registry entries\)/);
+  });
+
+  test("semanticSearch returns an empty result set when Vectorize has no matches", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await semanticSearch(env, "no such thing");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
+  });
+
   test("askQuestion degrades gracefully when the catalog read fails", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     const readArtifact = () => Promise.reject(new Error("r2 down"));

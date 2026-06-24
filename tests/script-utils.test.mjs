@@ -308,13 +308,13 @@ describe("script utility contracts", () => {
     assert.deepEqual(
       await submissionFormattingErrors([
         {
-          file: "registry/candidates/community/example.json",
+          file: "registry/subnets/example.json",
           raw: `${JSON.stringify(document, null, 2)}\n`,
           document,
         },
       ]),
       [
-        "registry/candidates/community/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run candidate:new/provider:new",
+        "registry/subnets/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run surface:add/provider:new",
       ],
     );
     assert.deepEqual(
@@ -1444,16 +1444,14 @@ describe("script utility contracts", () => {
     );
   });
 
-  test("loadProviders loads community-submitted providers as first-class (regression: was non-recursive)", async () => {
-    // The debut provider+candidate lane depends on community providers being
-    // loaded/registered the same way community candidates are. loadProviders was
-    // non-recursive and skipped registry/providers/community/, so a merged
-    // community provider was invisible and any candidate referencing it failed
-    // validate ("unknown provider"). Assert they are loaded, unwrapped, and
-    // conform to the flat provider shape.
+  test("loadProviders loads community-authority providers as first-class flat objects", async () => {
+    // Providers are flat objects in registry/providers/*.json — trust is the
+    // `authority` field, not the directory (#1678 flattened the old
+    // registry/providers/community/ wrapper lane). Assert a community-authority
+    // provider loads as a flat object alongside curated ones.
     const providers = await loadProviders();
     const ids = new Set(providers.map((provider) => provider.id));
-    assert.equal(ids.has("404-gen"), true); // a registry/providers/community/*.json id
+    assert.equal(ids.has("404-gen"), true); // a community-authority provider (ex-community lane)
     assert.equal(ids.size, providers.length); // no duplicate ids (curated wins)
     const community = providers.find((provider) => provider.id === "404-gen");
     // Unwrapped to a flat provider object (no { provider, submission } wrapper).
@@ -1517,6 +1515,7 @@ describe("script utility contracts", () => {
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
     assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
+    assert.equal(isUnsafeUrl("http://[fec0::1]"), true); // site-local (issue #1538)
     assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);
@@ -2606,4 +2605,32 @@ describe("adapter github metadata carry-forward", () => {
     assert.equal(summary.carried_forward_count, 0);
     assert.equal(summary.repositories.length, 0);
   });
+});
+
+test("validate:intake rejects nested retired community candidate files", async () => {
+  const retiredDir = path.join(
+    repoRoot,
+    "registry/candidates/community/__retired-intake-test__",
+  );
+  const retiredFile = path.join(retiredDir, "nested.json");
+  await mkdir(retiredDir, { recursive: true });
+  try {
+    await writeFile(retiredFile, "{}\n");
+    const result = spawnSync("node", ["scripts/validate-intake.mjs"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /registry\/candidates\/community\/ is retired/,
+    );
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /__retired-intake-test__\/nested\.json/,
+    );
+  } finally {
+    await rm(retiredDir, { recursive: true, force: true });
+  }
 });

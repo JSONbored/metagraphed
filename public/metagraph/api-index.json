@@ -408,6 +408,34 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
@@ -425,6 +453,13 @@
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "compare",
+      "path": "/metagraph/compare.json",
+      "schema_ref": "#/components/schemas/CompareArtifact",
       "storage_tier": "r2"
     },
     {
@@ -717,6 +752,96 @@
               "application"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_tempo",
+          "schema": {
+            "type": "number"
           }
         },
         {
@@ -4037,6 +4162,93 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/blocks.json",
+      "cache": "short",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+      "id": "blocks-feed",
+      "method": "GET",
+      "path": "/api/v1/blocks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}.json",
+      "cache": "short",
+      "description": "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+      "id": "block-detail",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+      "id": "extrinsics-feed",
+      "method": "GET",
+      "path": "/api/v1/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics/{hash}.json",
+      "cache": "short",
+      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+      "id": "extrinsic-detail",
+      "method": "GET",
+      "path": "/api/v1/extrinsics/{hash}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",
       "cache": "short",
       "description": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
@@ -4093,6 +4305,33 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/compare.json",
+      "cache": "standard",
+      "description": "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+      "id": "compare",
+      "method": "GET",
+      "path": "/api/v1/compare",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuids",
+          "schema": {
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "dimensions",
+          "schema": {
+            "type": "string"
           }
         }
       ]

@@ -88,8 +88,13 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/accounts/{ss58}.json`: schema for a cross-subnet account summary (chain-event aggregates joined to current registrations), served live from the `account_events` + `neurons` D1 tiers at `GET /api/v1/accounts/{ss58}` (no static file).
 - `/metagraph/accounts/{ss58}/events.json`: schema for an account's paginated chain-event history, served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/events` (no static file).
 - `/metagraph/accounts/{ss58}/subnets.json`: schema for the subnets where an account's hotkey is currently registered, served live from the `neurons` D1 tier at `GET /api/v1/accounts/{ss58}/subnets` (no static file).
+- `/metagraph/blocks.json`: schema for the recent-block feed (newest first) of the block explorer, served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks` (no static file).
+- `/metagraph/blocks/{ref}.json`: schema for per-block detail (by numeric `block_number` or `0x` `block_hash`), served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks/{ref}` (no static file).
+- `/metagraph/extrinsics.json`: schema for the recent-extrinsic feed (newest first) of the block explorer, served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics` (no static file).
+- `/metagraph/extrinsics/{hash}.json`: schema for per-extrinsic detail (by `0x` `extrinsic_hash`), served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics/{hash}` (no static file).
 - `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
 - `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — served live from D1 + registry projections + the economics tier at `GET /api/v1/registry/leaderboards` (no static file).
+- `/metagraph/compare.json`: schema for the cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids — served live at `GET /api/v1/compare` (no static file).
 - `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
@@ -134,7 +139,12 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/accounts/{ss58}`: fetch a cross-subnet account summary (chain-event aggregates joined to current registrations + stake) for a hotkey or coldkey (live from the `account_events` + `neurons` D1 tiers).
 - `/api/v1/accounts/{ss58}/events`: fetch an account's paginated chain-event history, newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
 - `/api/v1/accounts/{ss58}/subnets`: fetch the subnets where an account's hotkey is currently registered (live from the `neurons` D1 tier).
+- `/api/v1/blocks`: fetch the recent-block feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` (live from the first-party `blocks` D1 tier).
+- `/api/v1/blocks/{ref}`: fetch per-block detail by numeric `block_number` or `0x` `block_hash` (live from the first-party `blocks` D1 tier; 200 with `block:null` when cold/unknown).
+- `/api/v1/extrinsics`: fetch the recent-extrinsic feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` / optional `?block=<n>` (live from the first-party `extrinsics` D1 tier).
+- `/api/v1/extrinsics/{hash}`: fetch per-extrinsic detail by `0x` `extrinsic_hash` (live from the first-party `extrinsics` D1 tier; 200 with `extrinsic:null` when cold/unknown).
 - `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|most-enriched|fastest-growing|open-slots|cheapest-registration|highest-emission|validator-headroom`, or omit for all). The four economic boards rank cross-subnet miner/validator opportunity from the economics tier; pairs with the `find_subnet_opportunities` MCP tool.
+- `/api/v1/compare`: compare several subnets side by side across registry structure, the economics tier, and the live per-subnet health rollup. `netuids` (required) is a comma-separated list of 1-128 subnet ids; `dimensions` (optional) selects a subset of `structure,economics,health` (default all). Returns one entry per requested netuid in requested order, with `found:false` for unknown ids.
 - `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
@@ -203,7 +213,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run contract:summary`: compare schema contracts against a base ref and classify changes as additive, risky, or breaking.
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
 - `npm run validate:intake`: validate GitHub issue intake templates.
-- `npm run candidate:new`: generate a one-candidate community PR file.
+- `npm run surface:add`: append a community surface to a subnet's file.
 - `npm run provider:new`: generate a one-provider-profile community PR file.
 - `npm run submission:comment`: render a deterministic Markdown submission report.
 - `npm run validate:workflows`: validate workflow hardening rules.

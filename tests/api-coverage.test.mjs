@@ -235,6 +235,9 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 503);
     assert.equal(res.headers.get("x-metagraph-health"), "degraded");
+    // A transient degraded 503 must not be edge-cached (it would pin the outage
+    // for up to max-age + stale-while-revalidate after recovery).
+    assert.equal(res.headers.get("cache-control"), "no-store");
     const body = await res.json();
     assert.equal(body.status, "degraded");
     assert.equal(body.freshness.stale, true);
@@ -250,6 +253,8 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 200);
     assert.equal((await res.json()).status, "ok");
+    // The healthy path stays edge-cacheable (short profile) for load relief.
+    assert.match(res.headers.get("cache-control"), /max-age=/);
   });
 
   test("reports chain-event index freshness (#1361)", async () => {
@@ -1277,6 +1282,19 @@ describe("weightedPickEndpoint", () => {
     ];
     const picked = weightedPickEndpoint(endpoints, () => 0.999999999);
     assert.equal(picked.id, "b");
+  });
+
+  test("returns the final endpoint when randomFn lands exactly on the total (cursor never < 0)", () => {
+    // randomFn() === 1 → cursor = total; subtracting each weight leaves cursor at
+    // exactly 0 after the last endpoint, never < 0, so the loop never returns and
+    // the post-loop fallthrough (return endpoints[len-1]) is taken.
+    const endpoints = [
+      { id: "a", score: 1 },
+      { id: "b", score: 1 },
+      { id: "c", score: 1 },
+    ];
+    const picked = weightedPickEndpoint(endpoints, () => 1);
+    assert.equal(picked.id, "c");
   });
 
   test("single-endpoint shortcut", () => {

@@ -75,6 +75,15 @@ function isCredentialSafeUrl(url) {
   }
 }
 
+function encodeQueryCredentialPart(value) {
+  try {
+    return encodeURIComponent(value);
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+}
+
 // Returns { curl, python, typescript } or null when there is no usable base_url.
 export function generateServiceSnippets(service) {
   const url = service?.base_url;
@@ -93,10 +102,18 @@ export function generateServiceSnippets(service) {
         : null;
 
   // Header credentials go in the request headers; query credentials go on the URL.
-  const requestUrl =
-    auth?.location === "query"
-      ? `${url}${url.includes("?") ? "&" : "?"}${auth.name}=${auth.value}`
-      : url;
+  // Percent-encode the credential name/value: authFromDetail intentionally allows
+  // spaces and URL-reserved chars (fine inside a header), but unencoded they'd
+  // either trip isSnippetSafeUrl's whitespace guard (→ no snippets at all) or
+  // corrupt the query string.
+  let requestUrl = url;
+  if (auth?.location === "query") {
+    const encodedName = encodeQueryCredentialPart(auth.name);
+    const encodedValue = encodeQueryCredentialPart(auth.value);
+    if (encodedName !== null && encodedValue !== null) {
+      requestUrl = `${url}${url.includes("?") ? "&" : "?"}${encodedName}=${encodedValue}`;
+    }
+  }
   if (!isSnippetSafeUrl(requestUrl)) return null;
   const header = auth?.location === "header" ? auth : null;
 

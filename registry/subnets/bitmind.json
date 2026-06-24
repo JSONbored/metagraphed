@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 34,
-  "name": "BitMind",
-  "slug": "sn-34",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "deepfake-detection",
@@ -13,100 +8,195 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://bitmind.ai/",
-  "docs_url": "https://docs.bitmind.ai/",
-  "source_repo": "https://github.com/BitMind-AI/bitmind-subnet",
-  "dashboard_url": "https://app.bitmind.ai/",
-  "notes": "Reviewed overlay for SN34 using BitMind's official website, docs, app, and subnet source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "contact": "intern@bitmind.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:35:00.000Z",
-    "verified_at": "2026-06-08T10:35:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified unauthenticated public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:35:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T10:35:00.000Z"
   },
+  "dashboard_url": "https://app.bitmind.ai/",
+  "docs_url": "https://docs.bitmind.ai/",
+  "name": "BitMind",
+  "netuid": 34,
+  "notes": "Reviewed overlay for SN34 using BitMind's official website, docs, app, and subnet source repository. No machine-readable OpenAPI schema or unauthenticated public subnet API endpoint is promoted yet.",
+  "schema_version": 1,
+  "slug": "sn-34",
+  "source_repo": "https://github.com/BitMind-AI/bitmind-subnet",
+  "status": "active",
   "surfaces": [
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-34-bitmind-website",
-      "name": "BitMind website",
       "kind": "website",
-      "url": "https://bitmind.ai/",
-      "provider": "bitmind",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://docs.bitmind.ai/"],
+      "name": "BitMind website",
+      "notes": "Official BitMind website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official BitMind website."
+      "provider": "bitmind",
+      "public_safe": true,
+      "source_urls": ["https://docs.bitmind.ai/"],
+      "url": "https://bitmind.ai/"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-34-bitmind-docs",
-      "name": "BitMind documentation",
       "kind": "docs",
-      "url": "https://docs.bitmind.ai/",
-      "provider": "bitmind",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://docs.bitmind.ai/"],
+      "name": "BitMind documentation",
+      "notes": "Official BitMind documentation.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official BitMind documentation."
+      "provider": "bitmind",
+      "public_safe": true,
+      "source_urls": ["https://docs.bitmind.ai/"],
+      "url": "https://docs.bitmind.ai/"
     },
     {
-      "id": "sn-34-bitmind-source",
-      "name": "BitMind subnet source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/BitMind-AI/bitmind-subnet",
-      "provider": "bitmind",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-34-bitmind-source",
+      "kind": "source-repo",
+      "name": "BitMind subnet source repository",
+      "notes": "Official BitMind subnet source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
       "public_safe": true,
       "source_urls": [
         "https://docs.bitmind.ai/",
         "https://api.github.com/repos/BitMind-AI/bitmind-subnet"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official BitMind subnet source repository."
+      "url": "https://github.com/BitMind-AI/bitmind-subnet"
     },
     {
-      "id": "sn-34-bitmind-app",
-      "name": "BitMind app",
-      "kind": "dashboard",
-      "url": "https://app.bitmind.ai/",
-      "provider": "bitmind",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://docs.bitmind.ai/"],
+      "id": "sn-34-bitmind-app",
+      "kind": "dashboard",
+      "name": "BitMind app",
+      "notes": "Public BitMind application surface linked from the official docs.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Public BitMind application surface linked from the official docs."
+      "provider": "bitmind",
+      "public_safe": true,
+      "source_urls": ["https://docs.bitmind.ai/"],
+      "url": "https://app.bitmind.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-bitmind-data-artifact",
+      "kind": "data-artifact",
+      "name": "BitMind community data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-bitmind-openapi",
+      "kind": "openapi",
+      "name": "BitMind community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.bitmind.ai/openapi.json",
+      "source_urls": ["https://api.bitmind.ai/openapi.json"],
+      "url": "https://api.bitmind.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-bitmind-sdk",
+      "kind": "sdk",
+      "name": "BitMind GASBench evaluation SDK",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/BitMind-AI/bitmind-subnet"],
+      "url": "https://github.com/BitMind-AI/gasbench"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-34-bitmind-subnet-api",
+      "kind": "subnet-api",
+      "name": "BitMind community subnet-api",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "bitmind",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://bitmind.ai/"],
+      "url": "https://api.bitmind.ai/health"
     }
   ],
-  "contact": "intern@bitmind.ai"
+  "website_url": "https://bitmind.ai/"
 }

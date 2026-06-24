@@ -24,27 +24,34 @@ const FULL_COVERAGE_BOOST = 2;
 // and only the first bounded set is considered.
 export const MAX_QUERY_TERMS = 32;
 
-// Lowercase alphanumeric terms. Used for both the query and the document side so
-// they tokenize identically.
-export function queryTerms(query) {
+// Lowercase alphanumeric terms. maxTerms caps the loop early so callers that
+// bound attacker-controlled input avoid building an unbounded intermediate array.
+// Document-side callers pass Infinity (default) to index the full field value.
+function tokenize(value, maxTerms = Infinity) {
   const terms = [];
   const seen = new Set();
-  for (const term of String(query ?? "")
+  for (const term of String(value ?? "")
     .toLowerCase()
     .split(/[^a-z0-9]+/)) {
     if (term.length === 0 || seen.has(term)) continue;
     seen.add(term);
     terms.push(term);
-    if (terms.length >= MAX_QUERY_TERMS) break;
+    if (terms.length >= maxTerms) break;
   }
   return terms;
+}
+
+// Capped variant for attacker-controlled query input. Breaks early after
+// MAX_QUERY_TERMS so neither the loop nor the resulting array grow unbounded.
+export function queryTerms(query) {
+  return tokenize(query, MAX_QUERY_TERMS);
 }
 
 // Distinct words across a list of field values (each a string or nullish).
 function wordSet(values) {
   const words = new Set();
   for (const value of values) {
-    for (const word of queryTerms(value)) words.add(word);
+    for (const word of tokenize(value)) words.add(word);
   }
   return words;
 }
@@ -70,8 +77,8 @@ function termWeight(term, words, weight) {
 export function keywordScore({ name, slug, text } = {}, terms) {
   if (!Array.isArray(terms) || terms.length === 0) return 0;
 
-  const nameTokens = queryTerms(name);
-  const slugTokens = queryTerms(slug);
+  const nameTokens = tokenize(name);
+  const slugTokens = tokenize(slug);
   const nameWords = new Set([...nameTokens, ...slugTokens]);
   const textWords = wordSet(Array.isArray(text) ? text : [text]);
 

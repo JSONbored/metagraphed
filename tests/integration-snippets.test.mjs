@@ -143,6 +143,60 @@ describe("generateServiceSnippets structured auth (#746)", () => {
     assert.match(out.curl, /\?v=2&key=YOUR_API_KEY/);
   });
 
+  test("query auth with a spaced placeholder is encoded, not suppressed", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api key",
+        value_format: "<your api key>",
+      },
+    });
+    // Before the fix the raw space tripped isSnippetSafeUrl → null (no snippets).
+    assert.ok(out);
+    assert.match(out.curl, /\?api%20key=%3Cyour%20api%20key%3E/);
+    assert.match(out.python, /\?api%20key=%3Cyour%20api%20key%3E/);
+  });
+
+  test("query bearer default value (has a space) still yields snippets", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "bearer", location: "query" },
+    });
+    assert.ok(out);
+    assert.match(out.curl, /\?api_key=Bearer%20YOUR_API_KEY/);
+  });
+
+  test("malformed UTF-16 in query auth is dropped without throwing", () => {
+    let out;
+    assert.doesNotThrow(() => {
+      out = generateServiceSnippets({
+        ...base,
+        auth: {
+          scheme: "api-key",
+          location: "query",
+          name: "\uD800",
+          value_format: "<api-key>",
+        },
+      });
+    });
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+
+    out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api_key",
+        value_format: "\uD800",
+      },
+    });
+    assert.ok(out);
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+    assert.doesNotMatch(out.python, /api_key/);
+  });
+
   test("structured auth wins over the scheme-type guess", () => {
     const out = generateServiceSnippets({
       ...base,

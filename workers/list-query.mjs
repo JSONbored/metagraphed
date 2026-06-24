@@ -69,6 +69,33 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
   );
 }
 
+// Inclusive numeric range filter: for each configured field F, `?min_F=` keeps
+// rows where row[F] >= n and `?max_F=` keeps rows where row[F] <= n. A row whose
+// F is absent / non-numeric can't satisfy a bound, so it is excluded once any
+// bound on F is set. Validation (validateListQuery) has already confirmed every
+// present min_/max_ param is a finite number, so Number() here is safe.
+function rangeFilterRows(rows, params, rangeFields) {
+  const bounds = [];
+  for (const field of rangeFields) {
+    const min = params.get(`min_${field}`);
+    if (min !== null) bounds.push({ field, limit: Number(min), kind: "min" });
+    const max = params.get(`max_${field}`);
+    if (max !== null) bounds.push({ field, limit: Number(max), kind: "max" });
+  }
+  if (bounds.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    bounds.every(({ field, limit, kind }) => {
+      const value = row[field];
+      if (typeof value !== "number") {
+        return false;
+      }
+      return kind === "min" ? value >= limit : value <= limit;
+    }),
+  );
+}
+
 function applyListTransform(data, params, config) {
   const queryError = validateListQuery(params, config);
   if (queryError) {
@@ -80,12 +107,16 @@ function applyListTransform(data, params, config) {
     return { error: projection.error };
   }
   const filterKeys = Object.keys(config.filters);
-  const filtered = filterRows(
-    searchRows(data[key], params, config.search_keys),
+  const filtered = rangeFilterRows(
+    filterRows(
+      searchRows(data[key], params, config.search_keys),
+      params,
+      filterKeys,
+      config.csv_filters,
+      config.array_filters,
+    ),
     params,
-    filterKeys,
-    config.csv_filters,
-    config.array_filters,
+    config.range_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);
@@ -239,6 +270,18 @@ function validateListQuery(params, config) {
     }
   }
 
+  for (const field of config.range_filters) {
+    for (const bound of ["min", "max"]) {
+      const key = `${bound}_${field}`;
+      if (params.has(key) && numberParam(params.get(key)) === null) {
+        return {
+          parameter: key,
+          message: `${key} must be a number.`,
+        };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -314,4 +357,15 @@ function integerParam(value) {
   }
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+// A finite decimal (optional sign, optional fraction) for range-filter bounds —
+// e.g. "5", "-3", "360.5". Rejects blanks, exponents, hex, and Infinity/NaN so a
+// bound is always a plain, predictable number. Returns the number or null.
+function numberParam(value) {
+  if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
