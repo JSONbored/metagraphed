@@ -116,9 +116,13 @@ function prettyLabel(s: ApiSource) {
   return seg.replace(/\.json$/, "");
 }
 
+function shellSingleQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 function ApiSourceBody({ source }: { source: ApiSource }) {
   const fullUrl = `${API_BASE}${source.path}`;
-  const curl = `curl -sS '${fullUrl}' | jq`;
+  const curl = `curl -sS ${shellSingleQuote(fullUrl)} | jq`;
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: metagraphedQueryKey("api-drawer", source.path),

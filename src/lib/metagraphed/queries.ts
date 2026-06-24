@@ -1,6 +1,7 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
+import { blockRefPathSegment } from "./blocks";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -801,7 +802,11 @@ export const blockQuery = (ref: string) =>
   queryOptions({
     queryKey: k("block", ref),
     queryFn: async ({ signal }) => {
-      const res = await fetchDetail<unknown>(`/api/v1/blocks/${ref}`, "block", signal);
+      const res = await fetchDetail<unknown>(
+        `/api/v1/blocks/${blockRefPathSegment(ref)}`,
+        "block",
+        signal,
+      );
       return { ...res, data: normalizeBlock(res.data) } as ApiResult<Block | null>;
     },
     staleTime: STALE_SHORT,

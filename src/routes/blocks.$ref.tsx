@@ -13,13 +13,17 @@ import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { blockQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { shortHash } from "@/lib/metagraphed/blocks";
+import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // Prime the shared cache so head() can title the page with the real block
   // number. Non-fatal: any failure falls back to the ref-only copy and the
   // page's own useSuspenseQuery still drives the not-found/empty path.
   loader: async ({ context, params }) => {
+    if (!isValidBlockRef(params.ref)) {
+      return null;
+    }
+
     try {
       const { data } = await context.queryClient.ensureQueryData(blockQuery(params.ref));
       return { blockNumber: data?.block_number ?? null };
@@ -57,6 +61,28 @@ function BlockDetailPage() {
 }
 
 function BlockDetail({ refValue }: { refValue: string }) {
+  if (!isValidBlockRef(refValue)) {
+    return (
+      <>
+        <PageHeading
+          eyebrow="Explorer"
+          title="Invalid block reference"
+          description="Block references must be a decimal block number or a 0x-prefixed hex hash."
+        />
+        <EmptyState
+          title="Invalid block reference"
+          description="Use a decimal block number or a 0x-prefixed hexadecimal block hash."
+          action={{ label: "Back to blocks", href: "/blocks" }}
+        />
+      </>
+    );
+  }
+
+  return <ValidBlockDetail refValue={refValue} />;
+}
+
+function ValidBlockDetail({ refValue }: { refValue: string }) {
+  const sourceRef = blockRefPathSegment(refValue);
   const block = useSuspenseQuery(blockQuery(refValue)).data.data;
 
   if (!block) {
@@ -73,8 +99,8 @@ function BlockDetail({ refValue }: { refValue: string }) {
           action={{ label: "Back to blocks", href: "/blocks" }}
         />
         <ApiSourceFooter
-          paths={[`/api/v1/blocks/${refValue}`]}
-          artifacts={[`/metagraph/blocks/${refValue}.json`]}
+          paths={[`/api/v1/blocks/${sourceRef}`]}
+          artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
         />
       </>
     );
@@ -171,8 +197,8 @@ function BlockDetail({ refValue }: { refValue: string }) {
       </div>
 
       <ApiSourceFooter
-        paths={[`/api/v1/blocks/${refValue}`]}
-        artifacts={[`/metagraph/blocks/${refValue}.json`]}
+        paths={[`/api/v1/blocks/${sourceRef}`]}
+        artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
       />
     </>
   );
