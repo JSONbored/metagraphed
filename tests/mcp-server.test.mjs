@@ -2893,3 +2893,121 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 });
+
+describe("MCP block explorer tools", () => {
+  const HASH = `0x${"a".repeat(64)}`;
+  const BLOCK = {
+    block_number: 8_473_450,
+    block_hash: HASH,
+    parent_hash: `0x${"b".repeat(64)}`,
+    author: "5Author",
+    extrinsic_count: 12,
+    event_count: 34,
+    observed_at: 1750009000000,
+  };
+  const OLDER_BLOCK = {
+    ...BLOCK,
+    block_number: 8_473_449,
+    block_hash: `0x${"c".repeat(64)}`,
+  };
+
+  function blockD1({ feed = [], detail = null, captured = {} } = {}) {
+    return {
+      prepare(sql) {
+        captured.sql = sql;
+        return {
+          bind(...params) {
+            captured.params = params;
+            return {
+              all() {
+                if (sql.includes("ORDER BY block_number DESC")) {
+                  return Promise.resolve({ results: feed });
+                }
+                if (sql.includes("WHERE block_hash = ?")) {
+                  return Promise.resolve({
+                    results: detail?.block_hash === params[0] ? [detail] : [],
+                  });
+                }
+                if (sql.includes("WHERE block_number = ?")) {
+                  return Promise.resolve({
+                    results: detail?.block_number === params[0] ? [detail] : [],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
+  test("list_recent_blocks returns the recent feed newest-first", async () => {
+    const captured = {};
+    const res = await callTool(
+      "list_recent_blocks",
+      { limit: 2, offset: 1 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: blockD1({
+            feed: [BLOCK, OLDER_BLOCK],
+            captured,
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 2);
+    assert.equal(out.limit, 2);
+    assert.equal(out.offset, 1);
+    assert.equal(out.blocks[0].block_number, 8_473_450);
+    assert.equal(
+      out.blocks[0].observed_at,
+      new Date(1750009000000).toISOString(),
+    );
+    assert.deepEqual(captured.params, [2, 1]);
+  });
+
+  test("get_block resolves a numeric block ref", async () => {
+    const res = await callTool(
+      "get_block",
+      { ref: 8_473_450 },
+      { env: { METAGRAPH_HEALTH_DB: blockD1({ detail: BLOCK }) } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, "8473450");
+    assert.equal(out.block.block_number, 8_473_450);
+    assert.equal(out.block.block_hash, HASH);
+  });
+
+  test("get_block resolves a 0x block hash ref", async () => {
+    const res = await callTool(
+      "get_block",
+      { ref: HASH },
+      { env: { METAGRAPH_HEALTH_DB: blockD1({ detail: BLOCK }) } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, HASH);
+    assert.equal(out.block.block_hash, HASH);
+  });
+
+  test("get_block rejects malformed refs", async () => {
+    for (const ref of ["", "abc", "0x123", -1, 1.5]) {
+      const res = await callTool("get_block", { ref });
+      assert.equal(res.body.result.isError, true, `${ref} must fail`);
+      assert.match(res.body.result.content[0].text, /Argument `ref`/);
+    }
+  });
+
+  test("block tools degrade to schema-stable empty payloads when D1 is cold", async () => {
+    const feed = await callTool("list_recent_blocks", {});
+    assert.equal(feed.body.result.isError, false);
+    assert.equal(feed.body.result.structuredContent.block_count, 0);
+    assert.deepEqual(feed.body.result.structuredContent.blocks, []);
+
+    const detail = await callTool("get_block", { ref: 8_473_450 });
+    assert.equal(detail.body.result.isError, false);
+    assert.equal(detail.body.result.structuredContent.ref, "8473450");
+    assert.equal(detail.body.result.structuredContent.block, null);
+  });
+});

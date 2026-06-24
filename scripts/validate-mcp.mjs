@@ -334,6 +334,13 @@ assert.ok(
 );
 const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
 assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
+const recentBlocks = await callOk("list_recent_blocks", { limit: 3 });
+assert.ok(
+  Array.isArray(recentBlocks.blocks),
+  "list_recent_blocks must return blocks[]",
+);
+const block = await callOk("get_block", { ref: 1 });
+assert.ok("block" in block, "get_block must return a block field");
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);
