@@ -101,6 +101,30 @@ test("rejects too-small (placeholder) responses -> 404", async () => {
   assert.equal(res.status, 404);
 });
 
+test("never fetches the requested host directly", async () => {
+  const requested = [];
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async (src) => {
+      requested.push(String(src));
+      return new Response("", { status: 404 });
+    },
+  });
+  assert.equal(res.status, 404);
+  assert.deepEqual(requested, [
+    "https://icons.duckduckgo.com/ip3/example.com.ico",
+    "https://www.google.com/s2/favicons?domain=example.com&sz=128",
+  ]);
+  assert.equal(
+    requested.some((src) => src.startsWith("https://example.com/")),
+    false,
+  );
+});
+
 test("304 on matching If-None-Match (no fetch, no R2)", async () => {
   const res = await call("?host=example.com&size=64", {
     env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
