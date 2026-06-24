@@ -200,7 +200,10 @@ def _block_author(s, block_hash, header):
             engine, data = pre[0], pre[1]
             if engine == AURA_ENGINE_ID:
                 hex_data = data[2:] if str(data).startswith("0x") else str(data)
-                slot = int.from_bytes(bytes.fromhex(hex_data)[:8], "little")
+                slot_data = bytes.fromhex(hex_data)
+                if len(slot_data) != 8:
+                    return None
+                slot = int.from_bytes(slot_data, "little")
                 break
         if slot is None:
             return None

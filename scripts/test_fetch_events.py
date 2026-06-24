@@ -25,6 +25,8 @@ _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
 _parse_cursor = _fe._parse_cursor
+_block_author = _fe._block_author
+AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
 
 
 class ComputeFromBlockTest(unittest.TestCase):
@@ -98,6 +100,37 @@ class ComputeFromBlockTest(unittest.TestCase):
         self.assertGreaterEqual(compute_from_block(2, 5, 250), 0)
         # A None cursor with head 0 and any window clamps to 0 (not -249).
         self.assertEqual(compute_from_block(None, 0, 250), 0)
+
+
+class BlockAuthorTest(unittest.TestCase):
+    class QueryResult:
+        def __init__(self, value):
+            self.value = value
+
+    class Substrate:
+        def query(self, module, storage, block_hash=None):
+            return BlockAuthorTest.QueryResult(["0x00", "0x01", "0x02"])
+
+        def ss58_encode(self, pubkey):
+            return f"5AUTHORITY{pubkey}"
+
+    def header(self, data):
+        return {"digest": {"logs": [{"PreRuntime": [AURA_ENGINE_ID, data]}]}}
+
+    def test_aura_digest_requires_exactly_eight_slot_bytes(self):
+        substrate = self.Substrate()
+        for data in ("0x", "0x01", "0x01000000000000", "0x010000000000000000"):
+            with self.subTest(data=data):
+                self.assertIsNone(
+                    _block_author(substrate, "0xblock", self.header(data))
+                )
+
+    def test_aura_digest_decodes_eight_byte_slot(self):
+        substrate = self.Substrate()
+        self.assertEqual(
+            _block_author(substrate, "0xblock", self.header("0x0100000000000000")),
+            "5AUTHORITY01",
+        )
 
 
 class ParseCursorTest(unittest.TestCase):
