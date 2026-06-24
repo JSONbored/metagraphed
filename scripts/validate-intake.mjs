@@ -48,9 +48,6 @@ const submissionGateDocs = await fs.readFile(
   path.join(repoRoot, "docs/submission-gate.md"),
   "utf8",
 );
-const candidateExample = await readJson(
-  path.join(repoRoot, "docs/examples/submissions/direct-candidate.json"),
-);
 const providerExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/provider-profile.json"),
 );
@@ -59,21 +56,6 @@ const directProviderExample = await readJson(
 );
 const statusReportExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/status-report.json"),
-);
-const endpointResourceExample = await readJson(
-  path.join(
-    repoRoot,
-    "docs/examples/submissions/direct-endpoint-resource.json",
-  ),
-);
-const openapiSchemaExample = await readJson(
-  path.join(repoRoot, "docs/examples/submissions/direct-openapi-schema.json"),
-);
-const profileCorrectionExample = await readJson(
-  path.join(
-    repoRoot,
-    "docs/examples/submissions/direct-profile-correction.json",
-  ),
 );
 const errors = [];
 
@@ -275,13 +257,9 @@ checkIncludes(submissionGateDocs, "submission gate docs", [
   "route_away",
 ]);
 
-checkExampleCandidate(candidateExample);
 checkExampleProvider(providerExample);
 checkExampleProviderSubmission(directProviderExample);
 checkExampleStatusReport(statusReportExample);
-checkExampleCandidate(endpointResourceExample);
-checkExampleCandidate(openapiSchemaExample);
-checkExampleCandidate(profileCorrectionExample);
 
 if (errors.length > 0) {
   console.error(`Intake validation failed with ${errors.length} issue(s):`);
@@ -297,29 +275,6 @@ function checkIncludes(content, label, needles) {
   for (const needle of needles) {
     if (!content.includes(needle)) {
       errors.push(`${label}: missing ${needle}`);
-    }
-  }
-}
-
-function checkExampleCandidate(document) {
-  const candidate = document?.candidates?.[0];
-  if (document?.schema_version !== 1 || !candidate) {
-    errors.push(
-      "direct candidate example: missing schema_version or candidate",
-    );
-    return;
-  }
-  for (const field of [
-    "id",
-    "netuid",
-    "kind",
-    "url",
-    "source_url",
-    "provider",
-    "public_safe",
-  ]) {
-    if (candidate[field] === undefined || candidate[field] === "") {
-      errors.push(`direct candidate example: missing ${field}`);
     }
   }
 }

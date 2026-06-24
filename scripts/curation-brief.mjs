@@ -120,7 +120,7 @@ export function renderCurationBrief(snapshot) {
     "",
     "## Best Direct PR Targets",
     "",
-    "Submit one public-safe candidate at a time with `npm run candidate:new`. Official docs, websites, source repos, OpenAPI/schema URLs, public subnet APIs, dashboards, SDKs, examples, and data artifacts are the best auto-review candidates.",
+    "Submit one public-safe candidate at a time with `npm run surface:add`. Official docs, websites, source repos, OpenAPI/schema URLs, public subnet APIs, dashboards, SDKs, examples, and data artifacts are the best auto-review candidates.",
     "",
     `- Enrichment queue lanes: ${formatCounts(enrichmentSummary.lane_counts)}`,
     `- Evidence actions: ${formatCounts(enrichmentSummary.evidence_action_counts)}`,
