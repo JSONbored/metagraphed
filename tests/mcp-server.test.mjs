@@ -2707,9 +2707,23 @@ describe("MCP economics + metagraph data tools", () => {
       emission_share: 0.05,
     },
   ];
+  const DAILY_ROW = { ...ROW, snapshot_date: "2026-06-20" };
+  const SUBNET_HISTORY_ROW = {
+    snapshot_date: "2026-06-20",
+    neuron_count: 2,
+    validator_count: 1,
+    total_stake_tao: 1500.75,
+    total_emission_tao: 44.2,
+  };
 
-  // D1 binding honoring the loaders' WHERE clauses (neurons + subnet_snapshots).
-  function metagraphD1({ neurons = [], snapshots = [] } = {}) {
+  // D1 binding honoring the loaders' WHERE clauses (neurons, neuron_daily,
+  // subnet_snapshots).
+  function metagraphD1({
+    neurons = [],
+    neuronDaily = [],
+    subnetHistory = [],
+    snapshots = [],
+  } = {}) {
     return {
       prepare(sql) {
         return {
@@ -2721,6 +2735,16 @@ describe("MCP economics + metagraph data tools", () => {
                   if (sql.includes("validator_permit = 1")) {
                     r = r.filter((x) => x.validator_permit === 1);
                   }
+                  if (sql.includes("AND uid = ?")) {
+                    r = r.filter((x) => x.uid === params[1]);
+                  }
+                  return Promise.resolve({ results: r });
+                }
+                if (sql.includes("FROM neuron_daily")) {
+                  if (sql.includes("GROUP BY snapshot_date")) {
+                    return Promise.resolve({ results: subnetHistory });
+                  }
+                  let r = neuronDaily;
                   if (sql.includes("AND uid = ?")) {
                     r = r.filter((x) => x.uid === params[1]);
                   }
@@ -2740,6 +2764,8 @@ describe("MCP economics + metagraph data tools", () => {
   const d1Env = {
     METAGRAPH_HEALTH_DB: metagraphD1({
       neurons: [ROW, MINER],
+      neuronDaily: [DAILY_ROW],
+      subnetHistory: [SUBNET_HISTORY_ROW],
       snapshots: SNAPSHOTS,
     }),
   };
@@ -2826,6 +2852,58 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.deltas["7d"].completeness_score, 7);
   });
 
+  test("get_subnet_history returns daily aggregate points", async () => {
+    const res = await callTool(
+      "get_subnet_history",
+      { netuid: 7, window: "90d" },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "90d");
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].snapshot_date, "2026-06-20");
+    assert.equal(out.points[0].validator_count, 1);
+    assert.equal(out.points[0].total_stake_tao, 1500.75);
+  });
+
+  test("get_neuron_history returns live-shaped daily neuron points", async () => {
+    const res = await callTool(
+      "get_neuron_history",
+      { netuid: 7, uid: 0, window: "7d" },
+      { env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.uid, 0);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].snapshot_date, "2026-06-20");
+    assert.equal(out.points[0].validator_permit, true);
+    assert.equal(typeof out.points[0].captured_at, "string");
+  });
+
+  test("history tools reject unsupported windows", async () => {
+    const unsupported = await callTool(
+      "get_subnet_history",
+      { netuid: 7, window: "400d" },
+      { env: d1Env },
+    );
+    assert.equal(unsupported.body.result.isError, true);
+    assert.match(
+      unsupported.body.result.content[0].text,
+      /window must be one of/,
+    );
+
+    const wrongType = await callTool(
+      "get_neuron_history",
+      { netuid: 7, uid: 0, window: 30 },
+      { env: d1Env },
+    );
+    assert.equal(wrongType.body.result.isError, true);
+    assert.match(wrongType.body.result.content[0].text, /Argument `window`/);
+  });
+
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
     const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
     assert.equal(meta.body.result.isError, false);
@@ -2840,6 +2918,17 @@ describe("MCP economics + metagraph data tools", () => {
 
     const traj = await callTool("get_subnet_trajectory", { netuid: 7 });
     assert.equal(traj.body.result.structuredContent.point_count, 0);
+
+    const subnetHistory = await callTool("get_subnet_history", { netuid: 7 });
+    assert.equal(subnetHistory.body.result.structuredContent.point_count, 0);
+    assert.deepEqual(subnetHistory.body.result.structuredContent.points, []);
+
+    const neuronHistory = await callTool("get_neuron_history", {
+      netuid: 7,
+      uid: 0,
+    });
+    assert.equal(neuronHistory.body.result.structuredContent.point_count, 0);
+    assert.deepEqual(neuronHistory.body.result.structuredContent.points, []);
   });
 
   test("the D1 runner swallows a query error and a missing result set", async () => {
@@ -2881,6 +2970,7 @@ describe("MCP economics + metagraph data tools", () => {
     for (const name of [
       "get_subnet_economics",
       "get_subnet_trajectory",
+      "get_subnet_history",
       "get_subnet_metagraph",
       "list_subnet_validators",
     ]) {
@@ -2891,5 +2981,12 @@ describe("MCP economics + metagraph data tools", () => {
         `${name} must reject netuid -1`,
       );
     }
+
+    const neuronHistory = await callTool(
+      "get_neuron_history",
+      { netuid: -1, uid: 0 },
+      { env: d1Env },
+    );
+    assert.equal(neuronHistory.body.result.isError, true);
   });
 });

@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const subnetHistory = await callOk("get_subnet_history", { netuid: 7 });
+assert.ok(
+  Array.isArray(subnetHistory.points),
+  "get_subnet_history must return points[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),
@@ -334,6 +339,14 @@ assert.ok(
 );
 const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
 assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
+const neuronHistory = await callOk("get_neuron_history", {
+  netuid: 7,
+  uid: 0,
+});
+assert.ok(
+  Array.isArray(neuronHistory.points),
+  "get_neuron_history must return points[]",
+);
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);
