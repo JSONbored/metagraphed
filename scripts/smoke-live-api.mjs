@@ -343,14 +343,28 @@ async function discoverHealthHistoryDate() {
 }
 
 function apiRouteUrl(routePath, date) {
+  // D1-tier detail routes carry id placeholders beyond {netuid}/{slug}/{date}.
+  // Substitute constant, dependency-free sample ids that resolve to a live 200:
+  // uid 0 always exists; an all-zero hash / block 0 hit the cold→null wrapper
+  // (still a 200 envelope); the accounts route requires a checksum-valid SS58, so
+  // use the canonical dev address (Alice) rather than an arbitrary string (which
+  // 404s on the checksum). Without these, the smoke step requests literal-
+  // placeholder URLs that match no route and 404 (#1682).
   const route = routePath
     .replace("{netuid}", "7")
     .replace("{slug}", "allways")
-    .replace("{date}", date);
+    .replace("{date}", date)
+    .replace("{uid}", "0")
+    .replace("{hash}", `0x${"0".repeat(64)}`)
+    .replace("{ref}", "0")
+    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
   const url = new URL(route, baseUrl);
   if (routePath === "/api/v1/subnets") {
     url.searchParams.set("limit", "3");
     url.searchParams.set("sort", "netuid");
+  } else if (routePath === "/api/v1/compare") {
+    // compare requires `netuids` — a bare GET is a 400 (#1682).
+    url.searchParams.set("netuids", "7");
   } else if (
     [
       "/api/v1/surfaces",
