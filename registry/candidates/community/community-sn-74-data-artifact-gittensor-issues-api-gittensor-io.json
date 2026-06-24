@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-74-data-artifact-gittensor-issues-api-gittensor-io",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounties",
+      "netuid": 74,
+      "provider": "gittensor",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.gittensor.io/swagger",
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "state": "schema-valid",
+      "url": "https://api.gittensor.io/issues"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "carlh7777",
+    "submitted_by_url": "https://github.com/carlh7777"
+  }
+}
