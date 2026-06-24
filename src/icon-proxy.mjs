@@ -204,7 +204,7 @@ function resolveIconUrls(hrefs, host) {
   return out;
 }
 
-function isSafeHttpUrl(value) {
+export function isSafeHttpUrl(value) {
   let url;
   try {
     url = new URL(String(value));
@@ -213,7 +213,7 @@ function isSafeHttpUrl(value) {
   }
   return (
     (url.protocol === "https:" || url.protocol === "http:") &&
-    normalizeHost(url.hostname)
+    normalizeHost(url.hostname) !== null
   );
 }
 

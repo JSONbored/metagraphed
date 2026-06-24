@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { handleIconProxy, extractIconHrefs } from "../src/icon-proxy.mjs";
+import {
+  handleIconProxy,
+  extractIconHrefs,
+  isSafeHttpUrl,
+} from "../src/icon-proxy.mjs";
 
 const PNG = new Uint8Array(200).fill(1).buffer; // >100 bytes -> not a placeholder
 
@@ -235,6 +239,103 @@ test("blocks redirects from the allowlisted page root to private targets (SSRF)"
   const res = await call("?host=example.com", { env, fetchImpl });
   assert.equal(privateFetched, false);
   assert.equal(res.status, 404);
+});
+
+test("isSafeHttpUrl: only public-DNS http(s) URLs pass", () => {
+  assert.equal(isSafeHttpUrl("https://example.com/favicon.ico"), true);
+  assert.equal(isSafeHttpUrl("http://example.com/a.png"), true);
+  assert.equal(isSafeHttpUrl("ftp://example.com/a"), false); // non-http(s)
+  assert.equal(isSafeHttpUrl("http://127.0.0.1/a"), false); // private/IP-literal
+  assert.equal(isSafeHttpUrl("http://localhost/a"), false); // single-label
+  assert.equal(isSafeHttpUrl("not a url"), false); // unparseable -> catch
+  assert.equal(isSafeHttpUrl(null), false);
+});
+
+test("follows a SAFE favicon redirect through to the image", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (url === "https://example.com/")
+      return new Response("", { status: 404 });
+    if (url === "https://icons.duckduckgo.com/ip3/example.com.ico") {
+      return new Response("", {
+        status: 302,
+        headers: { location: "https://cdn.example.com/real.png" },
+      });
+    }
+    if (url === "https://cdn.example.com/real.png") {
+      return new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      });
+    }
+    return new Response("", { status: 404 });
+  };
+  const res = await call("?host=example.com&size=64", { env, fetchImpl });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "image/png");
+});
+
+test("a redirect with no Location header resolves to nothing (404)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const fetchImpl = async (u) =>
+    String(u) === "https://icons.duckduckgo.com/ip3/example.com.ico"
+      ? new Response("", { status: 302 }) // no location header
+      : new Response("", { status: 404 });
+  assert.equal(
+    (await call("?host=example.com", { env, fetchImpl })).status,
+    404,
+  );
+});
+
+test("a redirect loop past the cap resolves to nothing (404)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  // Every source self-redirects to a safe target → exceeds MAX_REDIRECTS → null.
+  const fetchImpl = async (u) => {
+    const url = String(u);
+    if (
+      url.startsWith("https://example.com") ||
+      url.startsWith("https://icons.duckduckgo.com") ||
+      url.startsWith("https://www.google.com")
+    ) {
+      return new Response("", {
+        status: 308,
+        headers: { location: "https://example.com/loop" },
+      });
+    }
+    return new Response("", { status: 404 });
+  };
+  assert.equal(
+    (await call("?host=example.com", { env, fetchImpl })).status,
+    404,
+  );
+});
+
+test("a redirect to a malformed Location resolves to nothing (404)", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const fetchImpl = async (u) =>
+    String(u) === "https://icons.duckduckgo.com/ip3/example.com.ico"
+      ? new Response("", {
+          status: 302,
+          headers: { location: "http://foo bar/" },
+        }) // unparseable
+      : new Response("", { status: 404 });
+  assert.equal(
+    (await call("?host=example.com", { env, fetchImpl })).status,
+    404,
+  );
 });
 
 test("304 on matching If-None-Match (no fetch, no R2)", async () => {
