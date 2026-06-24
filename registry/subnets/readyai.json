@@ -10,11 +10,7 @@
   ],
   "contact": "david@readyai.ai",
   "curation": {
-    "gap_notes": [
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
-      "No verified SSE/event stream yet."
-    ],
+    "gap_notes": ["No verified SSE/event stream yet."],
     "level": "maintainer-reviewed",
     "review_state": "maintainer-reviewed",
     "reviewed_at": "2026-06-08T08:35:00.000Z",
@@ -24,7 +20,7 @@
   "docs_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md",
   "name": "ReadyAI",
   "netuid": 33,
-  "notes": "Reviewed overlay for SN33 using the official ReadyAI website, Conversation Genome source repository, README, public Hugging Face dataset, and llms.txt data repository.",
+  "notes": "Reviewed overlay for SN33 using the official ReadyAI website, Conversation Genome source repository, README, public Hugging Face dataset, llms.txt data repository, and the live public OpenAPI and health endpoints. No public SSE surface is verified yet.",
   "schema_version": 1,
   "slug": "sn-33",
   "source_repo": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
@@ -156,6 +152,29 @@
       "schema_url": "https://api.readyai.ai/openapi.json",
       "source_urls": ["https://readyai.ai/docs"],
       "url": "https://api.readyai.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-33-readyai-subnet-api",
+      "kind": "subnet-api",
+      "name": "ReadyAI API health",
+      "notes": "Safe read-only health endpoint documented by the ReadyAI OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": ["https://api.readyai.ai/openapi.json"],
+      "url": "https://api.readyai.ai/health"
     }
   ],
   "website_url": "https://readyai.ai/"
