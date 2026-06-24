@@ -27,6 +27,18 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
                             on a cold start → fall back to the window floor
       ACCOUNT_EVENTS_JSON   events output path (default dist/account-events.json)
       EVENTS_CURSOR_OUT     next-cursor sidecar path (default dist/events-cursor.json)
+      BLOCKS_JSON           per-block sidecar path (default dist/blocks.json) — the
+                            block-explorer hot window (#1345), staged + loaded into
+                            D1 `blocks` the same way the events JSON is
+
+Block-explorer sidecar (#1345 first vertical slice): the same per-block loop also
+emits a `blocks` record (header hash, parent hash, best-effort author, extrinsic
+count, decoded event count, observed_at) to BLOCKS_JSON. The refresh-events
+workflow stages that sidecar to R2; the Worker's loadStagedBlocks bulk-loads it
+into D1 `blocks` with INSERT OR IGNORE keyed on block_number — idempotent like the
+events load. The extras are best-effort: a per-block extras failure skips that
+block's block-row (never a corrupt row, never crashes the poll); the event rows
+for that block are unaffected.
 
 Positional attribute order verified against live finney (2026-06-21); see
 src/account-events.mjs INDEXED_EVENT_KINDS for the loaded set. Extractors are
@@ -48,6 +60,7 @@ DEFAULT_RPC = "wss://entrypoint-finney.opentensor.ai:443"
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 OUT = os.environ.get("ACCOUNT_EVENTS_JSON", "dist/account-events.json")
 CURSOR_OUT = os.environ.get("EVENTS_CURSOR_OUT", "dist/events-cursor.json")
+BLOCKS_OUT = os.environ.get("BLOCKS_JSON", "dist/blocks.json")
 # Public finney nodes prune ~300 blocks; if the cursor falls this far behind the
 # head, the poller is losing the race against pruning and blocks between the prune
 # horizon and the cursor can no longer be re-fetched. Surfaced as a workflow alert.
@@ -147,6 +160,55 @@ EXTRACTORS = {
 }
 
 
+def _block_author(header):
+    """Best-effort block author (ss58) from the header digest, else None.
+
+    Author attribution requires session-key → ss58 resolution that public RPC
+    doesn't hand us cleanly; we surface a string only if the header already
+    carries one (some runtimes expose an `author`/`block_author` field). Anything
+    else is left null — nullable author is acceptable for the v1 block explorer
+    (#1345); never block the poll on a perfect decode. NEVER raises.
+    """
+    try:
+        if not isinstance(header, dict):
+            return None
+        for key in ("author", "block_author"):
+            v = header.get(key)
+            if isinstance(v, str) and v.startswith("5"):
+                return v
+    except Exception:
+        return None
+    return None
+
+
+def block_extras(s, bn, bh, event_count):
+    """Best-effort per-block explorer record for the `blocks` D1 tier (#1345).
+
+    One extra header read + one block read per block — fine for the bounded
+    recent window. Wrapped so ANY failure (pruned/transient/shape drift) yields
+    None: the caller skips that block's block-row, never corrupts it, and the
+    event rows for the block are unaffected. observed_at is supplied by the
+    caller (same height-derived timestamp the events use).
+    """
+    try:
+        header = s.get_block_header(block_hash=bh)["header"]
+    except Exception:
+        return None
+    parent_hash = header.get("parentHash") if isinstance(header, dict) else None
+    try:
+        extrinsic_count = len(s.get_block(block_hash=bh)["extrinsics"])
+    except Exception:
+        extrinsic_count = None
+    return {
+        "block_number": bn,
+        "block_hash": str(bh),
+        "parent_hash": str(parent_hash) if parent_hash is not None else None,
+        "author": _block_author(header),
+        "extrinsic_count": extrinsic_count,
+        "event_count": event_count,
+    }
+
+
 def extract(event_id, attrs):
     fn = EXTRACTORS.get(event_id)
     if not fn:
@@ -220,6 +282,7 @@ def main():
     _emit_lag_alert(head_bn, cursor)
 
     rows = []
+    blocks = []
     scanned = 0
     skipped = 0
     for bn in range(start, head_bn + 1):
@@ -232,6 +295,14 @@ def main():
             sys.stderr.write(f"block {bn}: skip ({repr(e)[:80]})\n")
             continue
         scanned += 1
+        # Block-explorer hot-window record (#1345): best-effort header extras +
+        # the decoded event count, observed_at from the same height-derived clock
+        # as the events. A None means the extras read failed — skip this block's
+        # block-row only (its event rows below are unaffected).
+        extras = block_extras(s, bn, bh, len(events))
+        if extras is not None:
+            extras["observed_at"] = observed_at
+            blocks.append(extras)
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
@@ -259,6 +330,13 @@ def main():
     with open(OUT, "w") as fh:
         json.dump(rows, fh)
 
+    # Block-explorer sidecar (#1345): the recent-window block rows. Staged to R2
+    # + loaded into D1 `blocks` by the Worker (loadStagedBlocks) just like the
+    # events JSON. A bare array — the same signer/loader envelope shape applies.
+    os.makedirs(os.path.dirname(BLOCKS_OUT) or ".", exist_ok=True)
+    with open(BLOCKS_OUT, "w") as fh:
+        json.dump(blocks, fh)
+
     # Next-cursor sidecar: the highest block we covered this run (the finalized
     # head we scanned through). The workflow stages the events first, then — only
     # on a successful stage — promotes this to events/cursor.json in R2. Because
@@ -273,6 +351,7 @@ def main():
     sys.stderr.write(
         f"wrote {len(rows)} events from blocks {start}..{head_bn} "
         f"(cursor_in={cursor}, scanned {scanned}, skipped {skipped}) -> {OUT}; "
+        f"wrote {len(blocks)} block rows -> {BLOCKS_OUT}; "
         f"next cursor {next_cursor} -> {CURSOR_OUT}\n"
     )
 

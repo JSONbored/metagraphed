@@ -1221,6 +1221,126 @@
           "local"
         ]
       },
+      "Block": {
+        "additionalProperties": false,
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "properties": {
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "block_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number"
+        ],
+        "type": "object"
+      },
+      "BlockDetailArtifact": {
+        "additionalProperties": true,
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Block"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "block"
+        ],
+        "type": "object"
+      },
+      "BlocksFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file).",
+        "properties": {
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/Block"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "block_count",
+          "blocks"
+        ],
+        "type": "object"
+      },
       "BuildSummaryArtifact": {
         "allOf": [
           {

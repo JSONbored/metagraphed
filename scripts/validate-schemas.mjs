@@ -35,6 +35,8 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-summary",
   "account-events",
   "account-subnets",
+  "blocks-feed",
+  "block-detail",
   "registry-leaderboards",
   "rpc-usage",
   "global-incidents",

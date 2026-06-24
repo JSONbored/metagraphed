@@ -133,6 +133,7 @@ describe("badge — rendering", () => {
       parseBadgeOptions(sp("metric=reliability")).metric,
       "reliability",
     );
+    assert.equal(parseBadgeOptions(sp("metric=GRADE")).metric, "grade");
     assert.equal(parseBadgeOptions(sp("metric=bogus")).metric, "readiness");
     // style: flat default; flat-square allowed; anything else → flat.
     assert.equal(parseBadgeOptions(sp("")).style, "flat");
@@ -271,6 +272,33 @@ describe("badge — uptime / reliability metric", () => {
       "/api/v1/subnets/7/badge.svg?metric=uptime&label=uptime",
     );
     assert.match(text, /aria-label="uptime: 99\.83%"/);
+  });
+});
+
+describe("badge — grade metric", () => {
+  test("subnet grade renders the A–F letter, colored by the grade band", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=grade");
+    assert.match(text, /aria-label="metagraphed: A"/); // the letter itself
+    assert.match(text, /#2ea44f/); // grade A → green
+    assert.ok(!text.includes("99.83")); // not the uptime % rendering
+    assert.ok(!text.includes("/100")); // not the readiness rendering
+  });
+
+  test("provider grade is the rollup grade across its subnets", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/datura/badge.svg?metric=grade",
+    );
+    assert.match(text, /aria-label="metagraphed: D"/);
+    assert.match(text, /#dfb317/); // grade D → yellow
+  });
+
+  test("unknown subnet grade degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/999/badge.svg?metric=grade",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
   });
 });
 
