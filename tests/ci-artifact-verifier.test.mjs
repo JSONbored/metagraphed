@@ -15,7 +15,10 @@ test("submitted artifact verifier includes force-added public datasets", () => {
     isSubmittedPublicArtifactPath("public/metagraph/types.d.ts"),
     true,
   );
-  assert.equal(isSubmittedPublicArtifactPath("registry/providers/x.json"), false);
+  assert.equal(
+    isSubmittedPublicArtifactPath("registry/providers/x.json"),
+    false,
+  );
 });
 
 test("artifact canonical JSON ignores object key order", () => {
