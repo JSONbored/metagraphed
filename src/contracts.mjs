@@ -591,6 +591,16 @@ export const API_QUERY_COLLECTIONS = {
       "surface_count",
       "tempo",
     ],
+    // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    rangeFilters: [
+      "block",
+      "candidate_count",
+      "mechanism_count",
+      "participant_count",
+      "probed_surface_count",
+      "surface_count",
+      "tempo",
+    ],
   }),
 };
 
@@ -2234,6 +2244,10 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: each field F here accepts `min_F` and `max_F` query
+    // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
+    // hand-rolled min_readiness the MCP list_subnets tool did.
+    range_filters: options.rangeFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2256,12 +2270,18 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
+  const rangeParameters = config.range_filters.flatMap((field) => [
+    { name: `min_${field}`, schema: { type: "number" } },
+    { name: `max_${field}`, schema: { type: "number" } },
+  ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      ...rangeParameters,
       {
         name: "fields",
         schema: fieldListSchema,
