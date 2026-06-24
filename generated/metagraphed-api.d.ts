@@ -4103,13 +4103,13 @@ export interface components {
                 window: string;
             };
             rate_limit_notes?: string;
-            /** @description Per-surface review/trust state (single-file contribution model): community-submitted surfaces enter as "community-submitted" and are promoted in place by the Gittensory Gate / maintainer review. Distinct from probe-derived verification (health) and subnet-level curation.review_state. */
+            /** @description Per-surface HUMAN review/governance state (single-file contribution model): a surface enters as "community-submitted"; a maintainer promotes it to "maintainer-reviewed" or marks it "rejected". This is the human-governance axis ONLY — machine verification + freshness (is the surface live or stale) is the separate probe-derived overlay (health, last_verified_at, incidents), and subnet-level curation has its own curation.review_state. */
             review?: {
                 /** @enum {unknown} */
                 confidence?: "low" | "medium" | "high";
                 review_notes?: string;
                 /** @enum {unknown} */
-                state: "community-submitted" | "schema-valid" | "auto-verified" | "maintainer-reviewed" | "stale" | "rejected";
+                state: "community-submitted" | "maintainer-reviewed" | "rejected";
                 submitted_at?: string;
                 submitted_by?: string;
             };
