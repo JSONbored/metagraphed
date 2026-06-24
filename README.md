@@ -113,7 +113,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**99 curated subnets** — 86 with a site, 44 with docs, 85 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**99 curated subnets** — 87 with a site, 44 with docs, 86 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -192,7 +192,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/submission-gate.md`](docs/su
 - **[DegenBrain](https://metagraph.sh/subnets/90)** `SN90` — `prediction-markets` `verification` · [site](https://subnet90.com/)
 - **[Bitstarter #1](https://metagraph.sh/subnets/91)** `SN91` · [site](https://bitstarter.ai/) · [repo](https://github.com/AlphaCoreBittensor/alphacore)
 - **[Tensorclaw](https://metagraph.sh/subnets/92)** `SN92` — `inference` `stale-source-restored` · [site](https://www.tensorclaw.ai/) · [repo](https://github.com/tensorclaw/tensorclaw)
-- **[Bitcast](https://metagraph.sh/subnets/93)** `SN93`
+- **[Bitcast](https://metagraph.sh/subnets/93)** `SN93` · [site](https://stats.bitcast.network/) · [repo](https://github.com/bitcast-network/bitcast)
 - **[Actual](https://metagraph.sh/subnets/95)** `SN95` — `inference` `model-registry` · [site](https://actual.inc/) · [repo](https://github.com/actual-computer/actual-subnet-95)
 - **[Verathos](https://metagraph.sh/subnets/96)** `SN96` — `inference` `language-models` · [site](https://verathos.ai/) · [docs](https://verathos.ai/docs) · [repo](https://github.com/verathos-ai/verathos)
 - **[ForeverMoney](https://metagraph.sh/subnets/98)** `SN98` — `finance` · [site](https://forevermoney.ai/) · [repo](https://github.com/SN98-ForeverMoney/forever-money)
