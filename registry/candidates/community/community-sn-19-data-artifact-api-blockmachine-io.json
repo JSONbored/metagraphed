@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "auth_required": false,
+      "confidence": "medium",
+      "id": "community-sn-19-data-artifact-api-blockmachine-io",
+      "kind": "data-artifact",
+      "name": "BlockMachine community data-artifact",
+      "netuid": 19,
+      "provider": "blockmachine",
+      "public_safe": true,
+      "rate_limit_notes": "",
+      "review_notes": "Community-submitted public interface candidate.",
+      "schema_version": 1,
+      "source_tier": "community-docs",
+      "source_type": "community-pr-intake",
+      "source_url": "https://api.blockmachine.io/openapi.json",
+      "source_urls": ["https://api.blockmachine.io/openapi.json"],
+      "state": "schema-valid",
+      "url": "https://api.blockmachine.io/epochs/latest-finalized"
+    }
+  ],
+  "schema_version": 1,
+  "submission": {
+    "submitted_by": "minion1227",
+    "submitted_by_url": "https://github.com/minion1227"
+  }
+}
