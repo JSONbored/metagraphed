@@ -196,6 +196,28 @@
       "rate_limit_notes": "Candidate only; no recurring probe is configured until maintainer review.",
       "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/87"],
       "url": "https://taomarketcap.com/subnets/87"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-87-luminar-network-source-repo",
+      "kind": "source-repo",
+      "name": "unknown community source-repo",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "luminar-network",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/Luminar-Network/luminar-sn"],
+      "url": "https://github.com/Luminar-Network/luminar-sn"
     }
   ],
   "website_url": "https://luminar.network/"

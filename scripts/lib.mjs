@@ -682,11 +682,30 @@ export function classifyNativeName(value, netuid) {
   const normalized = raw.toLowerCase();
   const genericName =
     Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
-  if (
-    genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
-    !/[\p{L}\p{N}]/u.test(raw)
-  ) {
+  // Placeholder on-chain identities an owner may set before naming a subnet —
+  // e.g. "Team TBC", "TBD", "Coming Soon". Treated as not-a-real-name so the
+  // build falls back to "Subnet N" and the registry never adopts them as a
+  // display name (subnet:new + validate:surface enforce this on creation/CI).
+  const placeholderName =
+    [
+      "unknown",
+      "none",
+      "null",
+      "n/a",
+      "na",
+      "unnamed",
+      "untitled",
+      "tbc",
+      "tbd",
+      "tba",
+      "wip",
+      "placeholder",
+      "coming soon",
+      "to be confirmed",
+      "to be determined",
+      "to be announced",
+    ].includes(normalized) || /\b(?:tbc|tbd|tba)\b/.test(normalized);
+  if (genericName || placeholderName || !/[\p{L}\p{N}]/u.test(raw)) {
     return { raw_name: raw, quality: "placeholder" };
   }
 
@@ -874,6 +893,65 @@ export async function resolvePublicUrlAddresses(value, resolver = lookup) {
 
 export async function isUnsafeResolvedUrl(value, resolver = lookup) {
   return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
+const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
+
+// SSRF-safe outbound GET: re-validates EVERY hop — the initial URL AND each
+// redirect Location — against isUnsafeResolvedUrl before connecting, so a public
+// host can't 30x-redirect into a private/internal address (169.254.169.254,
+// localhost, …). `redirect: "follow"` would bypass the guard; this follows
+// manually, bounded by maxRedirects. Returns exactly one of:
+//   { ok: true,  response, status, url }  final non-redirect 2xx response
+//   { ok: false, response, status, url }  final non-redirect non-2xx response
+//   { ok: false, unsafe: true, url }      a hop resolved to a private/unsafe addr
+//   { ok: false, error }                  network error / timeout / too many redirects
+// The caller owns response.body (read or cancel it).
+export async function safeFetch(
+  url,
+  {
+    accept = "*/*",
+    maxRedirects = 5,
+    timeoutMs = 12000,
+    resolver = lookup,
+  } = {},
+) {
+  let target = url;
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    if (await isUnsafeResolvedUrl(target, resolver)) {
+      return { ok: false, unsafe: true, url: target };
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetch(target, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+        headers: { "user-agent": "metagraphed/0.0", accept },
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.name === "AbortError" ? "timeout" : error.message,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+    const location = response.headers.get("location");
+    if (SAFE_FETCH_REDIRECT_CODES.has(response.status) && location) {
+      await response.body?.cancel();
+      try {
+        target = new URL(location, target).toString();
+      } catch {
+        return { ok: false, error: "invalid redirect location" };
+      }
+      continue;
+    }
+    return { ok: response.ok, response, status: response.status, url: target };
+  }
+  return { ok: false, error: "too many redirects" };
 }
 
 function isUnsafeHostname(host) {
