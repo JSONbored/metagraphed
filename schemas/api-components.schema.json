@@ -1957,8 +1957,7 @@
           },
           "subnets": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/CompareSubnetEntry"
             },
             "type": "array"
           }
@@ -1967,6 +1966,140 @@
           "schema_version",
           "source",
           "subnets"
+        ],
+        "type": "object"
+      },
+      "CompareSubnetEntry": {
+        "additionalProperties": false,
+        "description": "One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row.",
+        "properties": {
+          "economics": {
+            "additionalProperties": false,
+            "properties": {
+              "alpha_price_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "emission_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "miner_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_readiness": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "open_slots": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "registration_allowed": {
+                "type": "boolean"
+              },
+              "registration_cost_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_stake_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validator_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "health": {
+            "additionalProperties": false,
+            "properties": {
+              "avg_latency_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ok_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "structure": {
+            "additionalProperties": false,
+            "properties": {
+              "completeness_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "operational_interface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "found"
         ],
         "type": "object"
       },
