@@ -1284,6 +1284,19 @@ describe("weightedPickEndpoint", () => {
     assert.equal(picked.id, "b");
   });
 
+  test("returns the final endpoint when randomFn lands exactly on the total (cursor never < 0)", () => {
+    // randomFn() === 1 → cursor = total; subtracting each weight leaves cursor at
+    // exactly 0 after the last endpoint, never < 0, so the loop never returns and
+    // the post-loop fallthrough (return endpoints[len-1]) is taken.
+    const endpoints = [
+      { id: "a", score: 1 },
+      { id: "b", score: 1 },
+      { id: "c", score: 1 },
+    ];
+    const picked = weightedPickEndpoint(endpoints, () => 1);
+    assert.equal(picked.id, "c");
+  });
+
   test("single-endpoint shortcut", () => {
     assert.equal(weightedPickEndpoint([{ id: "solo" }]).id, "solo");
   });

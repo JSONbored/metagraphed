@@ -95,6 +95,17 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks fec0::/10 deprecated site-local IPv6 (issue #1538)", () => {
+    for (const url of [
+      "http://[fec0::1]/x",
+      "https://[fed0:1:2::3]/x",
+      "http://[feff::1]/x",
+      "http://[fe80::1]/x", // link-local still blocked
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
   test("blocks a private v4 tunnelled inside an IPv6 literal host", () => {
     for (const url of [
       "http://[::ffff:169.254.169.254]/latest", // IPv4-mapped metadata IP

@@ -5,6 +5,7 @@ import {
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildNeuronDetail,
+  loadSubnetValidators,
 } from "../src/metagraph-neurons.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -92,6 +93,47 @@ describe("metagraph-neurons builders", () => {
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
+  });
+});
+
+describe("metagraph-neurons loaders", () => {
+  // A d1 runner that filters by validator_permit and APPLIES the SQL's ORDER BY
+  // (parsing the real clause), so a missing tie-break would actually reorder the
+  // result — not a circular check that passes regardless.
+  function orderingD1(rows) {
+    return async (sql) => {
+      let r = rows.filter((x) => x.validator_permit === 1);
+      const order = /ORDER BY (.+?)(?:$|\bLIMIT\b)/.exec(sql);
+      if (order) {
+        const keys = order[1]
+          .split(",")
+          .map((part) => part.trim().split(/\s+/));
+        r = [...r].sort((a, b) => {
+          for (const [col, dir] of keys) {
+            const delta = (a[col] - b[col]) * (dir === "DESC" ? -1 : 1);
+            if (delta !== 0) return delta;
+          }
+          return 0;
+        });
+      }
+      return r;
+    };
+  }
+
+  test("loadSubnetValidators ranks by stake, breaking equal-stake ties by uid", async () => {
+    const d1 = orderingD1([
+      { uid: 9, validator_permit: 1, stake_tao: 100 },
+      { uid: 2, validator_permit: 1, stake_tao: 100 }, // tie with uid 9
+      { uid: 5, validator_permit: 1, stake_tao: 250 },
+      { uid: 4, validator_permit: 0, stake_tao: 999 }, // not a validator
+    ]);
+    const data = await loadSubnetValidators(d1, 7);
+    // 250 first; the two 100-stake validators tie → uid ascending (2 before 9).
+    assert.deepEqual(
+      data.validators.map((v) => v.uid),
+      [5, 2, 9],
+    );
+    assert.equal(data.validator_count, 3); // the miner is excluded
   });
 });
 

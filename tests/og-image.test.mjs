@@ -134,6 +134,83 @@ describe("handleOgImage", () => {
     assert.match(og.calls.markup, /Live health, schemas, and discovery/);
   });
 
+  test("HEAD returns the cached render headers (no body) on a cache hit", async () => {
+    // A primed cache + a HEAD request must short-circuit to the cached response
+    // headers with an empty body (exercises the HEAD-on-cache-hit branch).
+    const cachedResponse = new Response("PNG-BODY", {
+      status: 200,
+      headers: { "content-type": "image/png", "x-render": "cached" },
+    });
+    const res = await handleOgImage(req("HEAD"), {}, urlFor(), {
+      cache: { match: async () => cachedResponse, put: async () => {} },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-render"), "cached");
+    assert.equal(await res.text(), "", "HEAD carries no body");
+  });
+
+  test("renders only the stats that are present (partial summary, no coverage)", async () => {
+    // subnet_count is a non-number (→ formatCount null), endpoints present,
+    // providers absent, coverage absent. The card must render exactly the
+    // formattable counts and skip the rest, never emitting "undefined" or "null".
+    const og = fakeOg();
+    const readPartial = async () => ({
+      ok: true,
+      data: {
+        subnet_count: "many", // non-number → dropped
+        counts: { endpoints: 1198 }, // providers absent → dropped
+        coverage: { average_score: "n/a" }, // non-number → dropped
+      },
+    });
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readPartial,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.match(og.calls.markup, /1,198 endpoints/);
+    assert.doesNotMatch(og.calls.markup, /subnets/);
+    assert.doesNotMatch(og.calls.markup, /providers/);
+    assert.doesNotMatch(og.calls.markup, /coverage/);
+    assert.doesNotMatch(og.calls.markup, /undefined|null|NaN/);
+  });
+
+  test("falls back to the generic line when a summary has NO formattable counts", async () => {
+    // The artifact reads ok but every count is non-numeric → loadStatLine's
+    // parts array is empty → it returns null (not []), so the generic stat line
+    // renders instead of an empty stat row.
+    const og = fakeOg();
+    const readAllJunk = async () => ({
+      ok: true,
+      data: {
+        subnet_count: null,
+        counts: { endpoints: "x", providers: undefined },
+        coverage: { average_score: "n/a" },
+      },
+    });
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readAllJunk,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets|\d+ endpoints/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
+  test("treats a non-function readArtifact dep as a cold summary (generic line)", async () => {
+    // deps.readArtifact omitted → loadStatLine returns null without throwing, so
+    // the generic fallback stat line renders.
+    const og = fakeOg();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
   test("serves the branded full-size fallback card (not a 1x1, not a 500) when font loading fails", async () => {
     const og = fakeOg({ failFont: true });
     const { assets, requested } = fakeAssets();
@@ -215,6 +292,112 @@ describe("handleOgImage", () => {
     assert.equal(buf.readUInt32BE(20), 630);
     // a real branded card, not the old 1x1 pixel (~70 bytes)
     assert.ok(buf.length > 1000);
+  });
+
+  test("falls back to a generic stat line when readArtifact itself throws", async () => {
+    const og = fakeOg();
+    const readArtifactThrows = async () => {
+      throw new Error("registry-summary read blew up");
+    };
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readArtifactThrows,
+      og: og.og,
+      cache: null,
+    });
+    assert.equal(res.status, 200);
+    // loadStatLine swallowed the throw -> generic ASCII fallback line, no counts
+    assert.doesNotMatch(og.calls.markup, /\d+ subnets/);
+    assert.match(og.calls.markup, /Live health, schemas, and discovery/);
+  });
+
+  test("serves the branded fallback card when workers-og is unavailable (import/destructure throws)", async () => {
+    // deps.og is truthy (so the dynamic import is short-circuited) but accessing
+    // its members throws during destructuring -> the catch on line 190-192 fires.
+    const explodingOg = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("workers-og module evaluation failed");
+        },
+      },
+    );
+    const { assets, requested } = fakeAssets();
+    const { cache, puts } = fakeCache();
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: explodingOg,
+      cache,
+      assets,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "image/png");
+    assert.equal(await res.text(), "BRANDED-FALLBACK-CARD-1200x630");
+    assert.deepEqual(requested, ["/brand/og-fallback.png"]);
+    // a fallback is never edge-cached
+    assert.equal(puts.length, 0);
+  });
+
+  test("returns 503 when the fallback asset fetch itself throws (no cached blank)", async () => {
+    const og = fakeOg({ failRender: true });
+    const assets = {
+      fetch: async () => {
+        throw new Error("ASSETS subsystem down");
+      },
+    };
+    const res = await handleOgImage(req("GET"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      og: og.og,
+      cache: null,
+      assets,
+    });
+    // fallbackResponse swallowed the throw and degraded to the 503 no-store path
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    assert.match(await res.text(), /temporarily unavailable/);
+  });
+
+  test("a HEAD on a cache hit returns the cached headers with no body", async () => {
+    const cachedResponse = new Response("CACHED-PNG", {
+      headers: { "content-type": "image/png", "x-cached": "1" },
+    });
+    const res = await handleOgImage(req("HEAD"), {}, urlFor(), {
+      readArtifact: readSummaryOk,
+      cache: { match: async () => cachedResponse, put: async () => {} },
+    });
+    // HEAD on a cache hit: status + headers from the cached response, empty body
+    assert.equal(res.headers.get("x-cached"), "1");
+    assert.equal(await res.text(), "");
+  });
+
+  test("uses globalThis.caches.default when no cache dep is provided", async () => {
+    const og = fakeOg();
+    const matched = [];
+    const cachedResponse = new Response("GLOBAL-CACHED-PNG", {
+      headers: { "content-type": "image/png" },
+    });
+    const originalCaches = globalThis.caches;
+    globalThis.caches = {
+      default: {
+        match: async (key) => {
+          matched.push(key);
+          return cachedResponse;
+        },
+        put: async () => {},
+      },
+    };
+    try {
+      const res = await handleOgImage(req("GET"), {}, urlFor(), {
+        readArtifact: readSummaryOk,
+        og: og.og,
+        // cache intentionally omitted -> falls back to globalThis.caches.default
+      });
+      assert.equal(await res.text(), "GLOBAL-CACHED-PNG");
+      assert.equal(matched.length, 1);
+      // served from cache, so no render happened
+      assert.equal(og.calls.markup, null);
+    } finally {
+      globalThis.caches = originalCaches;
+    }
   });
 
   test("serves a cached render on hit without re-rendering", async () => {

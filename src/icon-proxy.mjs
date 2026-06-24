@@ -4,28 +4,29 @@
 //   GET /api/v1/icon?host={domain}&size={px}&theme={light|dark}
 //   -> 200 image/png|x-icon (square, cached) | 404 when no source resolves
 //
-// Resolution order: (1) the host's OWN page-declared icon via <link rel="icon"> scraped
-// from its HTML root — what actually resolves most real sites; (2) the favicon
-// aggregators (DuckDuckGo, Google), usually bot-blocked from Worker egress; (3) the
-// host's well-known favicon paths (apple-touch-icon / favicon.ico).
-// SSRF SAFETY: `host` is validated to a plain public DNS name (no IP literals, no
-// localhost/.local/.internal); page-declared icon URLs are re-validated the same way
-// (public host, http(s) only) so a hostile page cannot redirect us at an internal
-// target; the Worker runtime cannot reach private/internal addresses; the page fetch is
-// size-capped and only an image/* response of sane size is ever returned. Results are
-// cached in R2 (immutable) so repeat loads are a single edge read.
+// SSRF SAFETY: this Worker fetches ONLY the fixed favicon-aggregator origins
+// (icons.duckduckgo.com, www.google.com). The requested `host` is passed solely as a
+// path/query parameter to those constant origins — it never becomes the request target
+// itself — so an operator-controlled or DNS-rebound registry host cannot make the proxy
+// initiate outbound requests to arbitrary infrastructure. `host` is additionally
+// validated to a plain public DNS name (no IP literals, no localhost/.local/.internal),
+// and only an image/* response of sane size is ever returned. Results are cached in R2
+// (immutable) so repeat loads are a single edge read.
+//
+// NOTE: we deliberately do NOT fetch the host directly (no <link rel=icon> scrape, no
+// direct /favicon.ico). Those add an SSRF surface for marginal gain — aggregators are
+// often bot-blocked from Worker egress anyway, and the UI's GitHub-avatar fallback
+// (BrandIcon repoUrl) is the real icon source for most subnets.
 const ICON_CACHE_PREFIX = "icon-cache";
 const MAX_SIZE = 256;
 const DEFAULT_SIZE = 64;
 const MIN_ICON_BYTES = 100; // reject empty / 1x1 placeholder responses
 const MAX_ICON_BYTES = 256 * 1024; // bound Worker memory and R2 object size
-const MAX_HTML_BYTES = 256 * 1024; // cap the page fetch when scraping <link rel=icon>
-const MAX_PAGE_ICONS = 4; // most page-declared icons we will try
 const FETCH_TIMEOUT_MS = 3000;
 const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
 const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
-// A real-ish UA — DuckDuckGo/Google's favicon endpoints and some origins bot-block
-// the default Worker user-agent (a cause of the prod 404s).
+// A real-ish UA — DuckDuckGo/Google's favicon endpoints bot-block the default Worker
+// user-agent (a cause of the prod 404s).
 const BROWSER_UA =
   "Mozilla/5.0 (compatible; MetagraphedIconBot/1.0; +https://metagraph.sh)";
 
@@ -151,127 +152,14 @@ async function boundedArrayBuffer(res) {
   return out.buffer;
 }
 
-// Extract icon hrefs from raw HTML: every <link> whose rel contains "icon" (icon /
-// shortcut icon / apple-touch-icon / mask-icon). A small targeted regex — NOT a general
-// HTML parser — over a size-capped page head. Pure + exported for tests; runs identically
-// in node + the Worker (Cloudflare's HTMLRewriter is unavailable in the unit-test
-// runtime, so the tested path IS the prod path).
-export function extractIconHrefs(html) {
-  if (typeof html !== "string" || !html) return [];
-  const attr = (tag, name) => {
-    const m = new RegExp(
-      `\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s">]+))`,
-      "i",
-    ).exec(tag);
-    return m ? (m[2] ?? m[3] ?? m[4] ?? "") : "";
-  };
-  const hrefs = [];
-  const linkRe = /<link\b[^>]*>/gi;
-  let m;
-  while ((m = linkRe.exec(html)) !== null) {
-    const tag = m[0];
-    if (!attr(tag, "rel").toLowerCase().includes("icon")) continue;
-    const href = attr(tag, "href").trim();
-    if (href) hrefs.push(href);
-  }
-  return hrefs;
-}
-
-// Resolve page-declared hrefs to absolute, SSRF-safe http(s) URLs against the host.
-// Rejects non-public hostnames (IP literals / private / localhost) so a hostile page
-// cannot point us at an internal target. Deduped + capped.
-function resolveIconUrls(hrefs, host) {
-  const base = `https://${host}/`;
-  const out = [];
-  const seen = new Set();
-  for (const href of hrefs) {
-    let abs;
-    try {
-      abs = new URL(href, base);
-    } catch {
-      continue;
-    }
-    if (abs.protocol !== "https:" && abs.protocol !== "http:") continue;
-    if (!normalizeHost(abs.hostname)) continue; // SSRF: public DNS names only
-    const s = abs.toString();
-    if (seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-    if (out.length >= MAX_PAGE_ICONS) break;
-  }
-  return out;
-}
-
-async function boundedText(res, max) {
-  const reader = res.body?.getReader?.();
-  if (!reader) {
-    const t = await res.text();
-    return t.length > max ? t.slice(0, max) : t;
-  }
-  const chunks = [];
-  let total = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      chunks.push(value);
-      if (total >= max) {
-        await reader.cancel();
-        break;
-      }
-    }
-  } finally {
-    reader.releaseLock?.();
-  }
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder("utf-8").decode(out);
-}
-
-// Fetch the host's HTML root and return its declared <link rel="icon"> URLs. THIS is
-// what resolves most real sites: the favicon aggregators are bot-blocked from Worker
-// egress and many sites serve no favicon at a literal root path, but nearly all declare
-// one in the page <head>. Best-effort — any failure yields [] and the caller falls back.
-async function pageDeclaredIconSources(host) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(`https://${host}/`, {
-      headers: {
-        accept: "text/html,application/xhtml+xml",
-        "user-agent": BROWSER_UA,
-      },
-      redirect: "follow",
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeout));
-    if (!res.ok || !(res.headers.get("content-type") || "").includes("html")) {
-      await res.body?.cancel?.();
-      return [];
-    }
-    const html = await boundedText(res, MAX_HTML_BYTES);
-    return resolveIconUrls(extractIconHrefs(html), host);
-  } catch {
-    return [];
-  }
-}
-
-// Fallback sources, tried after the page-declared icons: the favicon aggregators
-// (frequently bot-blocked from Worker egress) then the host's OWN well-known favicon
-// paths. Fetching the host directly is SSRF-safe here: `host` is validated to a public
-// DNS name (no IP literals / localhost / private TLDs) and the Worker runtime cannot
-// reach private/internal addresses; we additionally only accept an image/* response.
+// FIXED aggregator origins ONLY — the host is a path/query param, never the request
+// target. Do NOT add `https://${host}/...` entries here: fetching a registry-controlled
+// host directly is an SSRF surface (operator-controlled / DNS-rebindable) for marginal
+// gain. The UI's GitHub-avatar fallback covers most subnets.
 function faviconSources(host, size) {
   return [
     `https://icons.duckduckgo.com/ip3/${host}.ico`,
     `https://www.google.com/s2/favicons?domain=${host}&sz=${Math.min(size * 2, MAX_SIZE)}`,
-    `https://${host}/apple-touch-icon.png`,
-    `https://${host}/apple-touch-icon-precomposed.png`,
-    `https://${host}/favicon.ico`,
   ];
 }
 
@@ -344,15 +232,11 @@ export async function handleIconProxy(request, env, url, options = {}) {
     }
   }
 
-  // Page-declared <link rel="icon"> first (the real fix), then aggregators + well-known
-  // paths. Follow redirects (favicons often 30x to a CDN); no cf.cacheEverything (it
-  // forced caching of redirect/non-200 responses and broke resolution) — successful
-  // icons are cached in R2 below.
-  const sources = [
-    ...(await pageDeclaredIconSources(host)),
-    ...faviconSources(host, size),
-  ];
-  for (const src of sources) {
+  // Try each fixed aggregator. A browser-ish UA (the services bot-block the default
+  // Worker UA); follow redirects (the aggregators 30x to their own CDNs); no
+  // cf.cacheEverything (it forced caching of redirect/non-200 responses and broke
+  // resolution) — successful icons are cached in R2 below.
+  for (const src of faviconSources(host, size)) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

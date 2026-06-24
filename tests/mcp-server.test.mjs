@@ -916,6 +916,12 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(out.results[0].netuid, 7);
     assert.ok(out.results[0].url.includes("/api/v1/subnets/7/overview"));
     assert.ok(out.results.every((r) => r.netuid !== null));
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.count, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 5);
+    assert.equal(out.next_offset, null);
   });
 
   test("search_subnets clamps the limit and reports zero matches", async () => {
@@ -924,7 +930,12 @@ describe("MCP tools (injected deps)", () => {
       { query: "nonexistentxyz", limit: 999 },
       { deps },
     );
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
+    // An out-of-range limit clamps to the 50 max, not the raw 999.
+    assert.equal(out.limit, 50);
   });
 
   test("search_subnets limit:0 falls back to the default, not a single result", async () => {
@@ -981,6 +992,11 @@ describe("MCP tools (injected deps)", () => {
       "number",
       "find_subnets_by_capability results must carry integration_readiness",
     );
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 10);
+    assert.equal(out.next_offset, null);
   });
 
   test("find_subnets_by_capability with no match returns empty", async () => {
@@ -990,7 +1006,10 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     // netuid 12 has gpu but callable_count 0 -> excluded
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
   });
 
   test("get_subnet returns the overview artifact", async () => {
@@ -2534,6 +2553,155 @@ describe("list_subnets", () => {
   });
 });
 
+// The keyword search tools share the list_subnets pagination contract: page
+// through a match set larger than one page and confirm every ranked item is
+// reachable and next_offset clears at the end.
+describe("search tools pagination", () => {
+  const MATCH_COUNT = 60; // > the 50-per-page cap, so paging is mandatory
+  const searchDocs = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    type: "subnet",
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    title: `Pageable ${i + 1}`,
+    subtitle: "pageable subnet",
+    tokens: ["pageable"],
+  }));
+  const catalogSubnets = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    name: `Pageable ${i + 1}`,
+    categories: ["pageable"],
+    service_kinds: ["subnet-api"],
+    callable_count: 1,
+    // Distinct readiness => a total order with no ties to depend on.
+    integration_readiness: MATCH_COUNT - i,
+  }));
+  const deps = makeDeps({
+    "/metagraph/search.json": { documents: searchDocs },
+    "/metagraph/agent-catalog.json": { subnets: catalogSubnets },
+  });
+
+  // Walk every page by following next_offset; returns the concatenated results
+  // and the (offset, next_offset) cursor sequence seen.
+  async function walkAll(tool, baseArgs, limit) {
+    const all = [];
+    const cursors = [];
+    let offset = 0;
+    let total = null;
+    // Guard well above the real page count so a cursor bug fails fast instead
+    // of looping forever.
+    for (let guard = 0; guard < 100; guard += 1) {
+      const out = (
+        await callTool(tool, { ...baseArgs, offset, limit }, { deps })
+      ).body.result.structuredContent;
+      total = out.total;
+      assert.equal(out.offset, offset, `${tool}: echoes the requested offset`);
+      assert.equal(out.limit, limit, `${tool}: echoes the requested limit`);
+      assert.equal(
+        out.count,
+        out.results.length,
+        `${tool}: count equals the page length`,
+      );
+      all.push(...out.results);
+      cursors.push({ offset: out.offset, next_offset: out.next_offset });
+      if (out.next_offset === null) break;
+      assert.equal(
+        out.next_offset,
+        offset + out.results.length,
+        `${tool}: next_offset is the cursor for the following page`,
+      );
+      offset = out.next_offset;
+    }
+    return { all, cursors, total };
+  }
+
+  for (const { tool, args } of [
+    { tool: "search_subnets", args: { query: "pageable" } },
+    { tool: "find_subnets_by_capability", args: { capability: "pageable" } },
+  ]) {
+    test(`${tool} pages the whole match set; next_offset clears at the end`, async () => {
+      const { all, cursors, total } = await walkAll(tool, args, 50);
+      // total is the full match count, independent of the per-page cap.
+      assert.equal(total, MATCH_COUNT);
+      // Two pages (60 matches, 50 cap) prove items past page one are reachable.
+      assert.deepEqual(cursors, [
+        { offset: 0, next_offset: 50 },
+        { offset: 50, next_offset: null },
+      ]);
+      // Every match reached exactly once: no drops, no duplicates across pages.
+      assert.equal(all.length, MATCH_COUNT);
+      assert.equal(new Set(all.map((r) => r.netuid)).size, MATCH_COUNT);
+    });
+
+    test(`${tool} offset past the end returns an empty terminal page`, async () => {
+      const out = (
+        await callTool(
+          tool,
+          { ...args, offset: MATCH_COUNT, limit: 10 },
+          { deps },
+        )
+      ).body.result.structuredContent;
+      assert.equal(out.total, MATCH_COUNT);
+      assert.equal(out.offset, MATCH_COUNT);
+      assert.equal(out.count, 0);
+      assert.equal(out.results.length, 0);
+      assert.equal(out.next_offset, null);
+    });
+  }
+});
+
+// Optional fields are absent on some real subnets, so the result mappers fall
+// back: search subtitle -> null, and capability categories/service_kinds -> [],
+// integration_readiness -> null. Exercise those fallback branches directly.
+describe("search tools — absent optional fields fall back", () => {
+  const deps = makeDeps({
+    // A matching search doc with no subtitle.
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 5,
+          slug: "sparse",
+          title: "Sparse",
+          tokens: ["sparse"],
+        },
+      ],
+    },
+    // A matching catalog subnet (matched via name/slug) with no categories,
+    // service_kinds, or integration_readiness.
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        { netuid: 9, slug: "sparsecap", name: "Sparsecap", callable_count: 3 },
+      ],
+    },
+  });
+
+  test("search_subnets maps a missing subtitle to description: null", async () => {
+    const out = (
+      await callTool("search_subnets", { query: "sparse" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    assert.equal(out.results[0].netuid, 5);
+    assert.equal(out.results[0].description, null);
+  });
+
+  test("find_subnets_by_capability defaults absent categories/service_kinds/readiness", async () => {
+    const out = (
+      await callTool(
+        "find_subnets_by_capability",
+        { capability: "sparsecap" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    const [match] = out.results;
+    assert.equal(match.netuid, 9);
+    assert.deepEqual(match.categories, []);
+    assert.deepEqual(match.service_kinds, []);
+    assert.equal(match.integration_readiness, null);
+  });
+});
+
 describe("MCP economics + metagraph data tools", () => {
   // One valid live economics blob: contract matches, captured_at fresh, the row
   // count matches the summary, and emission_share sums to ~1 (resolveLiveEconomics
@@ -3009,5 +3177,74 @@ describe("MCP block explorer tools", () => {
     assert.equal(detail.body.result.isError, false);
     assert.equal(detail.body.result.structuredContent.ref, "8473450");
     assert.equal(detail.body.result.structuredContent.block, null);
+  });
+});
+
+describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
+  // INVARIANT: a malformed argument must surface as a tools/call RESULT with
+  // isError:true + a stable `invalid_params` code (so an agent branches on the
+  // code), NOT as a thrown transport error or a 500. These exercise the
+  // optionalEnum / requireString / clampLimit validators across several tools.
+
+  test("optionalEnum rejects an out-of-set value with an invalid_params result", async () => {
+    const res = await callTool("list_enrichment_targets", {
+      tier: "not-a-real-tier",
+    });
+    assert.equal(res.status, 200, "transport stays 200; the error is in-band");
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /must be one of/);
+  });
+
+  test("optionalEnum rejects a non-string value the same way", async () => {
+    const res = await callTool("find_subnet_opportunities", { board: 7 });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("requireString rejects a blank/whitespace-only required arg", async () => {
+    for (const args of [{ query: "   " }, { query: "" }, { query: 42 }]) {
+      const res = await callTool("search_subnets", args);
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+      assert.match(res.body.result.content[0].text, /non-empty string/);
+    }
+  });
+
+  test("an unknown tool name is a typed isError result, not a transport error", async () => {
+    // Regression: callTool must return an isError result for an unknown tool
+    // (the dispatcher never throws a -32603 for it).
+    const res = await callTool("definitely_not_a_tool", {});
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown tool/);
+    // A non-string name is handled the same way (no crash on `.get`).
+    const res2 = await rpc({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name: 123, arguments: {} },
+    });
+    assert.equal(res2.body.result.isError, true);
+  });
+
+  test("an unknown JSON-RPC method is a typed method-not-found, not a throw", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/teleport",
+      params: {},
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.error.code, -32601);
   });
 });

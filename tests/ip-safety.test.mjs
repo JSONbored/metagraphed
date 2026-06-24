@@ -44,6 +44,31 @@ describe("ipv6ToBytes", () => {
     assert.equal(ipv6ToBytes("::1.2.3.999"), null); // octet out of range
   });
 
+  // SSRF-guard regression edges: a dotted-quad smuggled mid-address, a
+  // non-numeric octet, and a :: that overruns 16 bytes must all be rejected
+  // (return null) so a caller can never be tricked into treating a malformed
+  // literal as a routable global-unicast address.
+  test("rejects a dotted-quad that is not the final group", () => {
+    // The IPv4 tail is only legal as the LAST group (x:x:x:x:x:x:d.d.d.d).
+    assert.equal(ipv6ToBytes("::1.2.3.4:5"), null);
+    assert.equal(ipv6ToBytes("1.2.3.4:1::"), null);
+  });
+
+  test("rejects a dotted-quad with a non-numeric octet", () => {
+    // Four octets present, but one is non-numeric — must fail the /^\d{1,3}$/
+    // octet check (distinct from the truncated-quad length check).
+    assert.equal(ipv6ToBytes("::1.2.x.4"), null);
+    assert.equal(ipv6ToBytes("::ffff:1.2.3.f"), null);
+  });
+
+  test("rejects a :: whose head+tail overflow 16 bytes (fill < 0)", () => {
+    // head (8 hextets = 16 bytes) + a non-empty tail leaves a negative fill, so
+    // the "::" cannot expand to a valid address — must be rejected, never
+    // silently truncated into a routable-looking literal.
+    assert.equal(ipv6ToBytes("1:2:3:4:5:6:7:8::9"), null);
+    assert.equal(ipv6ToBytes("1:2:3:4:5::6:7:8:9:a"), null);
+  });
+
   test("ignores a zone id", () => {
     assert.deepEqual(ipv6ToBytes("fe80::1%eth0"), ipv6ToBytes("fe80::1"));
   });

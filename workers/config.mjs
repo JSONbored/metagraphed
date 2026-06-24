@@ -65,6 +65,12 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
 export const BLOCK_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})$/;
+// Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
+// detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
+// (32-byte blake2b = 64 hex chars).
+export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+export const EXTRINSIC_DETAIL_PATH_PATTERN =
+  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64})$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
@@ -162,6 +168,14 @@ export const MAX_STAGED_EVENT_ROWS = 10_000;
 // block_number makes any re-drain idempotent.
 export const MAX_STAGED_BLOCKS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
 export const MAX_STAGED_BLOCK_ROWS = 10_000;
+// Block-explorer extrinsic slice (#1345): the staged `extrinsics` sidecar caps.
+// Several extrinsics per finalized block in the rolling poller window, so the row
+// volume sits between the per-block count and the per-event count — keep the same
+// byte ceiling + progressive-drain row cap so a pathological body can never be
+// materialized and each */3 tick stays well under the subrequest limit. INSERT OR
+// IGNORE on (block_number, extrinsic_index) makes any re-drain idempotent.
+export const MAX_STAGED_EXTRINSICS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
+export const MAX_STAGED_EXTRINSIC_ROWS = 10_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;
