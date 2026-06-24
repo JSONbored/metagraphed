@@ -53,11 +53,22 @@ function escapeXml(value) {
 }
 
 // Approximate px width of text in the 11px sans the badge renders with. Per-char
-// widths are a safe overestimate so text never overflows its segment.
+// widths are a safe overestimate so text never overflows its segment. Non-ASCII
+// glyphs are sized generously rather than falling through to the narrow default:
+// CJK and other BMP scripts render full-width, and non-BMP code points (notably
+// the emoji that sanitizeLabel deliberately admits in ?label=) are wider still.
+// The old fallback gave every one of them 6.5px — under the 8px of a capital
+// letter — which under-sized the segment and clipped the glyph. Iteration is by
+// code point (for…of), so an astral char is measured once, as a whole.
 function textWidth(text) {
   let w = 0;
   for (const ch of String(text)) {
-    if (/[ilj.,:'!|]/.test(ch)) w += 3;
+    // Iterate by code point. Astral chars (emoji, …) render widest; non-ASCII
+    // BMP (CJK, full-width scripts) are full-width; the ASCII classes follow.
+    const cp = ch.codePointAt(0);
+    if (cp > 0xffff) w += 12;
+    else if (cp > 0x7f) w += 11;
+    else if (/[ilj.,:'!|]/.test(ch)) w += 3;
     else if (/[A-Z0-9mw%@]/.test(ch)) w += 8;
     else w += 6.5;
   }

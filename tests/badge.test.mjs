@@ -92,6 +92,23 @@ describe("badge — rendering", () => {
     );
   });
 
+  test("renderBadge sizes non-BMP / non-ASCII glyphs as a safe over-estimate", () => {
+    // The segment width must over-estimate so a glyph never overflows/clips. An
+    // emoji renders wider than a capital "W", yet the old textWidth fallback gave
+    // every non-ASCII code point the narrow 6.5px lowercase default — under the 8px
+    // of a capital letter — so an emoji ?label= clipped its own segment.
+    const widthOf = (label) =>
+      Number(
+        /width="(\d+(?:\.\d+)?)"/.exec(renderBadge("x", "#000", { label }))[1],
+      );
+    assert.ok(
+      widthOf("😀") >= widthOf("W"),
+      "an emoji label must not be sized narrower than a capital W",
+    );
+    // Full-width BMP scripts (e.g. CJK) are wider than a lowercase ASCII glyph too.
+    assert.ok(widthOf("中") > widthOf("x"));
+  });
+
   test("renderBadge style=flat-square drops the gradient + rounding", () => {
     const flat = renderBadge("92/100", "#2ea44f");
     assert.match(flat, /linearGradient/);
