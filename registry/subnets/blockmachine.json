@@ -110,6 +110,42 @@
       "schema_url": "https://api.blockmachine.io/openapi.json",
       "source_urls": ["https://blockmachine.io/"],
       "url": "https://api.blockmachine.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-subnet-api",
+      "kind": "subnet-api",
+      "name": "BlockMachine public leaderboard API",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-data-artifact",
+      "kind": "data-artifact",
+      "name": "BlockMachine finalized-epoch snapshot",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/epochs/latest-finalized"
     }
   ],
   "website_url": "https://blockmachine.io/"
