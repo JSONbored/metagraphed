@@ -528,6 +528,47 @@ export async function loadDetailedVerification() {
   }
 }
 
+// #1757: the resolved per-surface `curation_level` (the CurationLevel trust
+// tier), derived once at the source from the surface's provider `authority`
+// (the Authority enum) and its verification state, so consumers stop conflating
+// the two distinct enums with `s.curation_level ?? s.authority`. The subnet's
+// curation level is the trust ceiling: an official, freshly-verified surface
+// inherits the subnet's maintainer-reviewed / adapter-backed tier; otherwise the
+// level falls out of authority + freshness, with `native` as the floor.
+//   adapter-backed      — subnet is adapter-backed and the surface is official
+//   maintainer-reviewed — subnet is maintainer-reviewed and the surface is
+//                         official and not stale (a human vetted this surface)
+//   machine-verified    — verified (has a last_verified_at) and not stale
+//   candidate-discovered — auto-discovered / unverified (registry-observed,
+//                         community, provider-claimed, or no verification yet)
+//   native              — defensive floor (no authority at all)
+export function resolveSurfaceCurationLevel({
+  authority,
+  lastVerifiedAt,
+  stale,
+  subnetCurationLevel,
+}) {
+  const official = authority === "official";
+  const verifiedFresh = Boolean(lastVerifiedAt) && stale !== true;
+  if (subnetCurationLevel === "adapter-backed" && official) {
+    return "adapter-backed";
+  }
+  if (
+    subnetCurationLevel === "maintainer-reviewed" &&
+    official &&
+    verifiedFresh
+  ) {
+    return "maintainer-reviewed";
+  }
+  if (verifiedFresh) {
+    return "machine-verified";
+  }
+  if (authority) {
+    return "candidate-discovered";
+  }
+  return "native";
+}
+
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
@@ -548,6 +589,16 @@ export function flattenSurfaces(subnets) {
           surface.verification?.verified_at ??
           subnet.curation?.verified_at ??
           null;
+        // #1757: the resolved trust tier for this surface. `stale` is stamped
+        // later (withSurfaceFreshness, which carries the nowMs reference), so a
+        // surface fresh at flatten time may still resolve down a tier once the
+        // freshness pass runs — withSurfaceFreshness re-resolves it there.
+        flattened.curation_level = resolveSurfaceCurationLevel({
+          authority: surface.authority ?? null,
+          lastVerifiedAt: flattened.last_verified_at,
+          stale: false,
+          subnetCurationLevel: subnet.curation?.level ?? null,
+        });
         return flattened;
       }),
     )
@@ -599,10 +650,33 @@ export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
 // needs the `nowMs` reference flattenSurfaces does not carry; build + validate
 // both call this with the same captured_at so per-subnet artifacts reproduce.
 export function withSurfaceFreshness(surfaces, nowMs) {
-  return surfaces.map((surface) => ({
-    ...surface,
-    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
-  }));
+  return surfaces.map((surface) => {
+    const stale = isSurfaceStale(surface.last_verified_at, surface.kind, nowMs);
+    return {
+      ...surface,
+      stale,
+      // #1757: re-resolve the trust tier now that staleness is known — a stale
+      // verification demotes machine-verified/maintainer-reviewed down to
+      // candidate-discovered, the same demotion the freshness model applies
+      // elsewhere. subnet_curation_level isn't carried on the flattened row, so
+      // an already-resolved maintainer-reviewed/adapter-backed level (set in
+      // flattenSurfaces from the subnet ceiling) is preserved when still fresh.
+      curation_level: stale
+        ? resolveSurfaceCurationLevel({
+            authority: surface.authority ?? null,
+            lastVerifiedAt: surface.last_verified_at,
+            stale: true,
+            subnetCurationLevel: null,
+          })
+        : (surface.curation_level ??
+          resolveSurfaceCurationLevel({
+            authority: surface.authority ?? null,
+            lastVerifiedAt: surface.last_verified_at,
+            stale: false,
+            subnetCurationLevel: null,
+          })),
+    };
+  });
 }
 
 // Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
@@ -1489,6 +1563,21 @@ export async function probeOpenApiSpec(origin, paths, fetcher) {
 
 export function buildTimestamp() {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
+}
+
+/**
+ * Returns the committed manifest's `generated_at` when running a local build
+ * (no publish env vars set), so `npm run build` never clobbers the live
+ * timestamp with the 1970 epoch placeholder. Returns null during publish runs
+ * (METAGRAPH_BUILD_TIMESTAMP or METAGRAPH_RUN_ID set) or when no manifest
+ * exists yet — callers fall back to generatedAt in those cases.
+ */
+export async function readCommittedManifestGeneratedAt(manifestPath) {
+  if (process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID) {
+    return null;
+  }
+  const manifest = await readJson(manifestPath).catch(() => null);
+  return manifest?.generated_at ?? null;
 }
 
 // Strip embedded URLs/emails/bare-domains from free text — they shred into junk

@@ -249,6 +249,30 @@ describe("contracts — compileRoutePattern per token type", () => {
       ),
       "/metagraph/subnets/7/x/2026-06-06/sid.json",
     );
+    // Block-explorer + account tokens (#1686).
+    assert.equal(
+      artifactPathFromTemplate(
+        "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+        { netuid: 7, uid: 3 },
+      ),
+      "/metagraph/subnets/7/neurons/3.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/accounts/{ss58}.json", {
+        ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      }),
+      "/metagraph/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/blocks/{ref}.json", { ref: "1234" }),
+      "/metagraph/blocks/1234.json",
+    );
+    assert.equal(
+      artifactPathFromTemplate("/metagraph/extrinsics/{hash}.json", {
+        hash: "0xabc",
+      }),
+      "/metagraph/extrinsics/0xabc.json",
+    );
     // A missing param substitutes the empty string (never "undefined").
     assert.equal(
       artifactPathFromTemplate("/metagraph/subnets/{netuid}.json", {}),

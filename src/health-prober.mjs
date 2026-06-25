@@ -17,6 +17,7 @@
 import {
   isUnsafePublicUrl,
   mapLimit,
+  normalizeProbeStatus,
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
@@ -60,7 +61,13 @@ const DNS_RECORD_TYPES = ["A", "AAAA"];
 const DNS_TIMEOUT_MS = 4000;
 const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 
-const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+// #1757: epoch-zero is a "never" sentinel, not a real probe time — `iso(0)`
+// would otherwise emit the "1970-01-01T00:00:00.000Z" placeholder onto a served
+// last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
+// null at the source so consumers don't each need a pre-2000 sentinel guard. A
+// real timestamp (run time, last OK) is always a large positive ms.
+const iso = (ms) =>
+  Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
 
 function safeRpcBlockNumber(value) {
   if (value == null) return null;
@@ -343,7 +350,7 @@ function summarizeGroup(rows) {
   let lastOk = 0;
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
     if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);

@@ -1,0 +1,105 @@
+name: Backfill Chain Events (historical range)
+
+# One-shot historical backfill (#1749, ADR 0012) for the block-explorer tiers.
+# Scans an explicit [from, to] block range from a WS ARCHIVE (the live streamer +
+# poller only cover recent blocks; older gaps are pruned from public RPC), decodes
+# blocks/extrinsics/account_events with the SAME verified decode as the live poller,
+# and stages them to R2 — the Worker's */3 fast-load cron drains them into D1 via
+# loadStaged* (INSERT OR IGNORE on the PKs → idempotent, so re-running a range or
+# overlapping the live poller is free).
+#
+# Manual only. Size each [from, to] to finish inside the timeout (~1500 blocks is a
+# safe chunk); space chunks ~5 min apart so the Worker drains each pending object
+# before the next overwrites it, then confirm with a D1 gap query and re-run any
+# range that didn't land (idempotent). Defaults to the free OnFinality WS archive;
+# override only via the maintainer-controlled SUBTENSOR_RPC_URL secret (e.g. our own node).
+on:
+  workflow_dispatch:
+    inputs:
+      from_block:
+        description: First block to backfill (inclusive)
+        required: true
+      to_block:
+        description: Last block to backfill (inclusive)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-events
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # No `cache: npm`: this workflow holds Cloudflare secrets, so it must not
+      # consume a shared npm cache another workflow could poison.
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Install
+        run: npm ci
+
+      # substrate-interface PINNED to the same verified version as the live poller:
+      # this step runs with Cloudflare secrets in scope, so never auto-pull a future
+      # (possibly compromised) release. Inputs are passed via env (not interpolated
+      # into the run line) to avoid script injection.
+      - name: Backfill the range from the archive
+        run: uv run --with substrate-interface==1.8.1 python scripts/backfill-events.py --from "$FROM_BLOCK" --to "$TO_BLOCK"
+        env:
+          FROM_BLOCK: ${{ inputs.from_block }}
+          TO_BLOCK: ${{ inputs.to_block }}
+          # Secret only → (still blank) the script's OnFinality default. Set the
+          # secret to our own archive to backfill from it; workflow callers cannot
+          # choose an endpoint for a production-signed staging batch.
+          SUBTENSOR_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL }}
+
+      # Sign + stage all three batches exactly like refresh-events (same HMAC signer,
+      # same R2 token, same pending object names) so the Worker's loadStaged* accepts
+      # and drains them into D1. No cursor advance — backfill does not touch the live
+      # poller's high-water cursor.
+      - name: Sign staged chain-event batch
+        run: node scripts/sign-staged-neurons.mjs dist/account-events.json
+        env:
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
+
+      - name: Stage events to R2 for the Worker to load into D1
+        run: npx wrangler r2 object put metagraphed-artifacts/events/account-events-pending.json --file=dist/account-events.json --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sign staged block batch
+        run: node scripts/sign-staged-neurons.mjs dist/blocks.json
+        env:
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
+
+      - name: Stage blocks to R2 for the Worker to load into D1
+        run: npx wrangler r2 object put metagraphed-artifacts/events/blocks-pending.json --file=dist/blocks.json --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sign staged extrinsic batch
+        run: node scripts/sign-staged-neurons.mjs dist/extrinsics.json
+        env:
+          METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
+
+      - name: Stage extrinsics to R2 for the Worker to load into D1
+        run: npx wrangler r2 object put metagraphed-artifacts/events/extrinsics-pending.json --file=dist/extrinsics.json --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
