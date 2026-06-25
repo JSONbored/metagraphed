@@ -1969,6 +1969,22 @@ describe("script utility contracts", () => {
     const degradedEndpoint = endpointResources.endpoints.find(
       (endpoint) => endpoint.surface_id === "root-degraded-rpc",
     );
+    // method-support weights each supported method by 5 (capped at 20), and must
+    // do so identically whether methods_supported is object- or array-shaped
+    // (regression: the array branch dropped the x5 multiplier, scoring 5x low).
+    assert.equal(
+      endpointResources.endpoints
+        .find((endpoint) => endpoint.surface_id === "root-rpc")
+        .score_reasons.find((reason) => reason.reason === "method-support")
+        .points,
+      10, // object shape: 2 methods x 5
+    );
+    assert.equal(
+      degradedEndpoint.score_reasons.find(
+        (reason) => reason.reason === "method-support",
+      ).points,
+      5, // array shape: 1 method x 5 (was 1 before the fix)
+    );
     assert.equal(incidents.incidents[0].endpoint_id, failedEndpoint.id);
     assert.equal(
       incidents.incidents[0].surface_key,
