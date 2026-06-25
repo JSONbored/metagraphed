@@ -1639,7 +1639,7 @@
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function/call_args are best-effort (nullable); fee_tao is the actual_fee+tip in TAO from TransactionPayment (null for inherents); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "required": ["block_number", "extrinsic_index"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1648,6 +1648,8 @@
           "signer": { "type": ["string", "null"] },
           "call_module": { "type": ["string", "null"] },
           "call_function": { "type": ["string", "null"] },
+          "call_args": { "description": "Decoded call arguments as a JSON object; null for inherents or when decode fails.", "type": ["object", "null"] },
+          "fee_tao": { "description": "Fee paid for this extrinsic in TAO (actual_fee + tip); null for inherents/unsigned extrinsics.", "type": ["number", "null"] },
           "success": { "type": ["boolean", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }

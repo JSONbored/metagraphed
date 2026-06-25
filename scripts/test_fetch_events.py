@@ -212,6 +212,109 @@ class LagAlertNeededTest(unittest.TestCase):
         self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
 
 
+_extrinsic_fee_map = _fe._extrinsic_fee_map
+
+
+class ExtrinsicFeeMapTest(unittest.TestCase):
+    """Tests for the _extrinsic_fee_map correlator (#1815)."""
+
+    class Ev:
+        def __init__(self, value):
+            self.value = value
+
+    def _fee_event(self, extrinsic_idx, actual_fee, tip=0):
+        return self.Ev({
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": extrinsic_idx,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": {"who": "5Signer", "actual_fee": actual_fee, "tip": tip},
+            },
+        })
+
+    def test_dict_attrs_maps_fee_to_index(self):
+        ev = self._fee_event(2, 500_000_000)  # 0.5 TAO
+        result = _extrinsic_fee_map([ev])
+        self.assertAlmostEqual(result[2], 0.5)
+
+    def test_tip_is_added_to_actual_fee(self):
+        ev = self._fee_event(0, 1_000_000_000, tip=100_000_000)  # 1 + 0.1 TAO
+        result = _extrinsic_fee_map([ev])
+        self.assertAlmostEqual(result[0], 1.1)
+
+    def test_list_attrs_positional(self):
+        ev = self.Ev({
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": 1,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": ["5Signer", 2_000_000_000, 0],
+            },
+        })
+        result = _extrinsic_fee_map([ev])
+        self.assertAlmostEqual(result[1], 2.0)
+
+    def test_wrong_module_skipped(self):
+        ev = self.Ev({
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": 0,
+            "event": {"module_id": "System", "event_id": "TransactionFeePaid", "attributes": {}},
+        })
+        self.assertEqual(_extrinsic_fee_map([ev]), {})
+
+    def test_wrong_phase_skipped(self):
+        ev = self.Ev({
+            "phase": "Initialization",
+            "extrinsic_idx": 0,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": {"actual_fee": 1_000_000_000, "tip": 0},
+            },
+        })
+        self.assertEqual(_extrinsic_fee_map([ev]), {})
+
+    def test_negative_index_skipped(self):
+        ev = self.Ev({
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": -1,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": {"actual_fee": 1_000_000_000, "tip": 0},
+            },
+        })
+        self.assertEqual(_extrinsic_fee_map([ev]), {})
+
+    def test_missing_actual_fee_skipped(self):
+        ev = self.Ev({
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": 0,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": {"who": "5Signer"},
+            },
+        })
+        self.assertEqual(_extrinsic_fee_map([ev]), {})
+
+    def test_empty_events_returns_empty(self):
+        self.assertEqual(_extrinsic_fee_map([]), {})
+
+    def test_never_raises_on_garbage(self):
+        result = _extrinsic_fee_map([None, "garbage", 42])
+        self.assertIsInstance(result, dict)
+
+    def test_multiple_events_multiple_indices(self):
+        evs = [self._fee_event(0, 1_000_000_000), self._fee_event(3, 500_000_000)]
+        result = _extrinsic_fee_map(evs)
+        self.assertAlmostEqual(result[0], 1.0)
+        self.assertAlmostEqual(result[3], 0.5)
+        self.assertNotIn(1, result)
+
+
 _extract = _fe.extract
 _SS58_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
 _SS58_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"

@@ -388,6 +388,49 @@ def _extrinsic_success_map(events):
     return out
 
 
+def _extrinsic_fee_map(events):
+    """Map extrinsic_index -> fee_tao from TransactionPayment.TransactionFeePaid events.
+
+    TransactionPayment emits one TransactionFeePaid per fee-bearing extrinsic, with
+    phase ApplyExtrinsic + extrinsic_idx. Fields: who (ss58), actual_fee (rao),
+    tip (rao). Best-effort: any malformed event is skipped; an index missing here
+    yields null fee_tao. NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes") or e.get("event_data") or {}
+            # attrs may be a dict {who, actual_fee, tip} or a list [who, actual_fee, tip]
+            if isinstance(attrs, dict):
+                actual_fee = attrs.get("actual_fee")
+                tip = attrs.get("tip") or 0
+            elif isinstance(attrs, (list, tuple)) and len(attrs) >= 2:
+                actual_fee = attrs[1]
+                tip = attrs[2] if len(attrs) > 2 else 0
+            else:
+                continue
+            if actual_fee is None:
+                continue
+            try:
+                out[idx] = (_tao(actual_fee) or 0) + (_tao(tip) or 0)
+            except Exception:
+                continue
+    except Exception:
+        return out
+    return out
+
+
 def extrinsics_for_block(s, bn, bh, events):
     """Best-effort per-extrinsic records for the `extrinsics` D1 tier (#1345).
 
@@ -409,6 +452,7 @@ def extrinsics_for_block(s, bn, bh, events):
     except Exception:
         return rows
     success_map = _extrinsic_success_map(events)
+    fee_map = _extrinsic_fee_map(events)
     for extrinsic_index, ext in enumerate(extrinsics):
         try:
             value = ext.value if ext is not None else None
@@ -425,6 +469,7 @@ def extrinsics_for_block(s, bn, bh, events):
                     "call_module": call_module,
                     "call_function": call_function,
                     "call_args": call_args,
+                    "fee_tao": fee_map.get(extrinsic_index),
                     "success": success_map.get(extrinsic_index),
                 }
             )
