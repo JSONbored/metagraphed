@@ -282,3 +282,67 @@ describe("list-query numeric range filters", () => {
     assert.deepEqual(netuids(result), [3]);
   });
 });
+
+describe("list-query free-text search", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        name: "Gradients Training",
+        slug: "gradients",
+      },
+      {
+        netuid: 2,
+        name: "Chutes",
+        slug: "chutes",
+      },
+      {
+        netuid: 3,
+        name: "Training Hub",
+        slug: "gradients-hub",
+      },
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("matches every whitespace-separated term independently across searchable fields", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=gradients%20training"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("term order does not matter", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=training%20gradients"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("a single term keeps substring semantics", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=chutes"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2]);
+  });
+
+  test("whitespace-only q is treated as no search", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=%20%20"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 2, 3]);
+  });
+
+  test("an absent q is a no-op", () => {
+    const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
+    assert.deepEqual(netuids(result), [1, 2, 3]);
+  });
+});

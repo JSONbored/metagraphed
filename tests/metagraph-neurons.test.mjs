@@ -90,6 +90,19 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].validator_permit, true);
   });
 
+  test("builders drop malformed rows and count only real neurons", () => {
+    // A null/non-object row can't be a Neuron, so it must not leak into the
+    // array — and the count tracks the array (neuron_count === neurons.length),
+    // matching the blocks/extrinsics feed builders' .filter(Boolean).
+    const data = buildSubnetMetagraph([ROW, null, MINER, undefined], 7);
+    assert.equal(data.neurons.length, 2);
+    assert.equal(data.neuron_count, 2);
+    assert.ok(data.neurons.every(Boolean));
+    const vals = buildSubnetValidators([ROW, null], 7);
+    assert.equal(vals.validators.length, 1);
+    assert.equal(vals.validator_count, 1);
+  });
+
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
