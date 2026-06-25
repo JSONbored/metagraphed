@@ -350,7 +350,6 @@ function utf8Bytes(value) {
   return new TextEncoder().encode(value);
 }
 
-
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
 // finalized-head streamer (#1361). Disabled (503) until METAGRAPH_EVENTS_INGEST_SECRET
 // is configured; then authenticated by a constant-time token compare. The body is
