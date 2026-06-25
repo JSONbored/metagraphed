@@ -17,7 +17,7 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS, JSON_CONTENT_TYPE } from "../config.mjs";
+import { DAY_MS } from "../config.mjs";
 import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
@@ -345,6 +345,9 @@ const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 // for one account, queried from the finney RPC at request time. 60s KV cache via
 // METAGRAPH_CONTROL. Returns 400 on invalid ss58; 200 with balance_tao:null on
 // RPC failure (schema-stable, consistent with blocks/extrinsics null-on-miss).
+// Served through the shared envelopeResponse so it carries the same ok/data
+// envelope, weak ETag, contract-version header, and 304/HEAD handling as every
+// other route — the body matches the AccountBalanceArtifact data schema.
 export async function handleAccountBalance(request, env, ss58) {
   if (!SS58_GUARD.test(ss58)) {
     return errorResponse(
@@ -357,20 +360,18 @@ export async function handleAccountBalance(request, env, ss58) {
   const cacheKey = `balance:${ss58}`;
   const kv = env.METAGRAPH_CONTROL;
 
+  const respond = (data) =>
+    envelopeResponse(
+      request,
+      { data, meta: { contract_version: contractVersion(env) } },
+      "short",
+    );
+
   // KV cache hit — return immediately without touching the RPC.
   if (kv?.get) {
     try {
       const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) {
-        return new Response(JSON.stringify(cached), {
-          status: 200,
-          headers: {
-            "content-type": JSON_CONTENT_TYPE,
-            "access-control-allow-origin": "*",
-            "cache-control": `public, max-age=${BALANCE_KV_TTL}, stale-while-revalidate=30`,
-          },
-        });
-      }
+      if (cached) return respond(cached);
     } catch {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
@@ -412,7 +413,7 @@ export async function handleAccountBalance(request, env, ss58) {
     // RPC fetch failed — balance_tao stays null, return 200 below.
   }
 
-  const payload = {
+  const data = {
     schema_version: 1,
     ss58,
     balance_tao: balanceTao,
@@ -422,7 +423,7 @@ export async function handleAccountBalance(request, env, ss58) {
   // Cache only on success so a transient RPC failure doesn't poison the cache.
   if (rpcOk && kv?.put) {
     try {
-      await kv.put(cacheKey, JSON.stringify(payload), {
+      await kv.put(cacheKey, JSON.stringify(data), {
         expirationTtl: BALANCE_KV_TTL,
       });
     } catch {
@@ -430,16 +431,7 @@ export async function handleAccountBalance(request, env, ss58) {
     }
   }
 
-  return new Response(JSON.stringify(payload), {
-    status: 200,
-    headers: {
-      "content-type": JSON_CONTENT_TYPE,
-      "access-control-allow-origin": "*",
-      "cache-control": rpcOk
-        ? `public, max-age=${BALANCE_KV_TTL}, stale-while-revalidate=30`
-        : "no-store",
-    },
-  });
+  return respond(data);
 }
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/

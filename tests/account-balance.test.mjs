@@ -36,10 +36,15 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
       assert.equal(res.status, 200);
       const body = await res.json();
       // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
+      assert.equal(body.ok, true);
       assert.equal(body.schema_version, 1);
-      assert.equal(body.ss58, SS58);
-      assert.ok(typeof body.balance_tao === "number");
-      assert.ok(body.queried_at);
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.ss58, SS58);
+      assert.ok(typeof body.data.balance_tao === "number");
+      assert.ok(body.data.queried_at);
+      // Cacheable envelope: weak ETag + contract-version header.
+      assert.ok(res.headers.get("etag"));
+      assert.ok(res.headers.get("x-metagraph-contract-version"));
     },
   );
 });
@@ -82,10 +87,11 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC fail
   );
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(body.schema_version, 1);
-  assert.equal(body.ss58, SS58);
-  assert.equal(body.balance_tao, null);
-  assert.ok(body.queried_at);
+  assert.equal(body.ok, true);
+  assert.equal(body.data.schema_version, 1);
+  assert.equal(body.data.ss58, SS58);
+  assert.equal(body.data.balance_tao, null);
+  assert.ok(body.data.queried_at);
 });
 
 test("GET /accounts/{ss58}/balance serves from KV cache when available", async () => {
@@ -107,8 +113,8 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
   );
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(body.balance_tao, 99.0);
-  assert.equal(body.queried_at, "2026-06-25T00:00:00.000Z");
+  assert.equal(body.data.balance_tao, 99.0);
+  assert.equal(body.data.queried_at, "2026-06-25T00:00:00.000Z");
 });
 
 test("GET /accounts/{ss58}/balance falls through on KV read failure", async () => {
@@ -132,7 +138,7 @@ test("GET /accounts/{ss58}/balance falls through on KV read failure", async () =
       );
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.balance_tao, null);
+      assert.equal(body.data.balance_tao, null);
     },
   );
 });
@@ -162,8 +168,8 @@ test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () =
       assert.equal(res.status, 200);
       const body = await res.json();
       // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
-      assert.ok(typeof body.balance_tao === "number");
-      assert.ok(body.balance_tao > 0);
+      assert.ok(typeof body.data.balance_tao === "number");
+      assert.ok(body.data.balance_tao > 0);
     },
   );
 });
@@ -179,7 +185,7 @@ test("GET /accounts/{ss58}/balance returns null when RPC responds non-ok", async
       );
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.balance_tao, null);
+      assert.equal(body.data.balance_tao, null);
     },
   );
 });
@@ -198,7 +204,7 @@ test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", a
       );
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.equal(body.balance_tao, null);
+      assert.equal(body.data.balance_tao, null);
     },
   );
 });
@@ -263,7 +269,7 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
       // KV write failure is non-fatal — still returns the balance.
       assert.equal(res.status, 200);
       const body = await res.json();
-      assert.ok(typeof body.balance_tao === "number");
+      assert.ok(typeof body.data.balance_tao === "number");
     },
   );
 });
