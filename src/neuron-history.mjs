@@ -285,18 +285,30 @@ export const NEURON_DAILY_READ_COLUMNS = `snapshot_date, ${NEURON_COLUMNS}`;
 // Per-UID time series: one point per snapshot_date (the handler queries newest
 // first, bounded by MAX_HISTORY_POINTS), each a live-shaped neuron plus its date.
 export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
+  // Drop any malformed (non-object) row so the array only holds real points and
+  // the count tracks it (point_count === points.length) -- mirroring the
+  // blocks/extrinsics/metagraph builders' .filter(Boolean) guard (#1793). Reading
+  // formatNeuron(r) first also means a null/undefined element degrades gracefully
+  // instead of throwing on `r.snapshot_date`.
+  const points = (rows || [])
+    .map((r) => {
+      const neuron = formatNeuron(r);
+      if (!neuron) return null;
+      return {
+        snapshot_date: r.snapshot_date,
+        captured_at: toIso(r.captured_at),
+        block_number: r.block_number ?? null,
+        ...neuron,
+      };
+    })
+    .filter(Boolean);
   return {
     schema_version: 1,
     netuid,
     uid,
     window: window ?? null,
-    point_count: rows.length,
-    points: rows.map((r) => ({
-      snapshot_date: r.snapshot_date,
-      captured_at: toIso(r.captured_at),
-      block_number: r.block_number ?? null,
-      ...formatNeuron(r),
-    })),
+    point_count: points.length,
+    points,
   };
 }
 
@@ -304,17 +316,23 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
 // snapshot_date (newest first), for a subnet-level history sparkline without
 // shipping every UID. Rows come from a GROUP BY snapshot_date query.
 export function buildSubnetHistory(rows, netuid, { window } = {}) {
-  return {
-    schema_version: 1,
-    netuid,
-    window: window ?? null,
-    point_count: rows.length,
-    points: rows.map((r) => ({
+  // Drop any malformed (non-object) row so the count tracks the emitted array
+  // (point_count === points.length) and a null/undefined element never throws on
+  // `r.snapshot_date` -- mirroring the sibling feed builders' guard (#1793).
+  const points = (rows || [])
+    .filter((r) => r && typeof r === "object")
+    .map((r) => ({
       snapshot_date: r.snapshot_date,
       neuron_count: r.neuron_count ?? null,
       validator_count: r.validator_count ?? null,
       total_stake_tao: r.total_stake_tao ?? null,
       total_emission_tao: r.total_emission_tao ?? null,
-    })),
+    }));
+  return {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    point_count: points.length,
+    points,
   };
 }
