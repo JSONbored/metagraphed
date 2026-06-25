@@ -856,7 +856,8 @@ const rootValue = {
       ? requestedDimensions.filter((d) => VALID_DIMENSIONS.includes(d))
       : VALID_DIMENSIONS;
 
-    const capped = (Array.isArray(netuids) ? netuids : []).slice(0, 128);
+    // GraphQL type system guarantees netuids is [Int!]! — always an array.
+    const capped = netuids.slice(0, 128);
     const allSubnets = await loadRows(context, ARTIFACT.subnets, "subnets");
     const metaByNetuid = new Map(allSubnets.map((s) => [s.netuid, s]));
 
@@ -874,24 +875,25 @@ const rootValue = {
         };
         if (meta) {
           if (dims.includes("structure")) {
+            // undefined fields pass through as null in GraphQL output.
             entry.structure = {
-              surface_count: meta.surface_count ?? null,
-              completeness_score: meta.completeness_score ?? null,
-              coverage_level: meta.coverage_level ?? null,
-              integration_readiness: meta.integration_readiness ?? null,
+              surface_count: meta.surface_count,
+              completeness_score: meta.completeness_score,
+              coverage_level: meta.coverage_level,
+              integration_readiness: meta.integration_readiness,
             };
           }
           if (dims.includes("economics")) {
             const econ = await loadSubnetEconomics(context, netuid);
             entry.economics = econ
               ? {
-                  emission_share: econ.emission_share ?? null,
-                  registration_cost_tao: econ.registration_cost_tao ?? null,
-                  registration_allowed: econ.registration_allowed ?? null,
-                  open_slots: econ.open_slots ?? null,
-                  miner_count: econ.miner_count ?? null,
-                  validator_count: econ.validator_count ?? null,
-                  total_stake_tao: econ.total_stake_tao ?? null,
+                  emission_share: econ.emission_share,
+                  registration_cost_tao: econ.registration_cost_tao,
+                  registration_allowed: econ.registration_allowed,
+                  open_slots: econ.open_slots,
+                  miner_count: econ.miner_count,
+                  validator_count: econ.validator_count,
+                  total_stake_tao: econ.total_stake_tao,
                 }
               : null;
           }
@@ -899,10 +901,10 @@ const rootValue = {
             const h = await loadSubnetHealth(context, netuid);
             entry.health = h
               ? {
-                  status: h.status ?? null,
-                  surface_count: h.surface_count ?? null,
-                  ok_count: h.ok_count ?? null,
-                  avg_latency_ms: h.avg_latency_ms ?? null,
+                  status: h.status,
+                  surface_count: h.surface_count,
+                  ok_count: h.ok_count,
+                  avg_latency_ms: h.avg_latency_ms,
                 }
               : null;
           }

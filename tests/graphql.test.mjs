@@ -1436,6 +1436,45 @@ describe("graphql — surface_readiness query", () => {
     assert.deepEqual(body.data.surface_readiness, { items: [], total: 0 });
   });
 
+  test("surface_readiness scores partial-clarity callable surfaces as callable-unverified", async () => {
+    // auth with scheme only (no location, no name/value_format) → clarity 1
+    // rate_limit without scope → clarity 1
+    // schema_status ui-only → clarity 1
+    // total: 3/7 ≈ 43 → callable-unverified (≥30, <70)
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          {
+            id: "partial",
+            netuid: 1,
+            kind: "subnet-api",
+            auth: { scheme: "apiKey" },
+            rate_limit: { requests: 100, window: "1m" },
+            schema_status: "ui-only",
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ surface_readiness {
+          items {
+            readiness_tier auth_clarity_score
+            rate_limit_clarity_score schema_clarity_score readiness_score
+          }
+          total
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.surface_readiness.total, 1);
+    const [s] = body.data.surface_readiness.items;
+    assert.equal(s.auth_clarity_score, 1); // scheme only, no location/name
+    assert.equal(s.rate_limit_clarity_score, 1); // no scope
+    assert.equal(s.schema_clarity_score, 1); // ui-only
+    assert.equal(s.readiness_score, 43); // round(3/7*100)
+    assert.equal(s.readiness_tier, "callable-unverified");
+  });
+
   test("surface_readiness projects curated surfaces into readiness rows", async () => {
     const env = fixtureEnv({
       "/metagraph/surfaces.json": {
