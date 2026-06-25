@@ -102,6 +102,11 @@ function mockEnv({
         async batch(stmts) {
           batches.push(stmts.length);
           if (failBatch) throw new Error("simulated D1 batch failure");
+          return stmts.map((stmt) => ({
+            meta: {
+              changes: stmt.sql?.includes("DELETE FROM neurons") ? 1 : 0,
+            },
+          }));
         },
       },
     },
@@ -120,8 +125,8 @@ test("loadStagedNeurons loads JSON via parameterized batches + deletes it (#1303
   assert.equal(r.ok, true);
   assert.equal(r.rows, 12);
   assert.deepEqual(m.getCalls, ["metagraph/neurons-pending.json"]);
-  // 12 rows / 5 per statement = 3 statements, in one batch (<=50).
-  assert.deepEqual(m.batches, [3]);
+  // 12 rows / 5 per statement = 3 upsert statements + 1 prune in one atomic batch.
+  assert.deepEqual(m.batches, [4]);
   // SQL is parameterized — the structure is fixed and values are bound, never
   // interpolated, so a tampered staged file cannot inject SQL.
   assert.ok(m.prepared[0].startsWith("INSERT OR REPLACE INTO neurons ("));
@@ -254,13 +259,20 @@ test("loadStagedNeurons coverage envelope prunes only refreshed netuids", async 
   const r = await loadStagedNeurons(m.env);
   assert.equal(r.ok, true);
   assert.equal(r.purged, 1);
-  const purges = m.runs.filter((run) =>
+  const purges = [
+    ...m.runs.filter((run) => run.sql.includes("DELETE FROM neurons")),
+    ...m.prepared.filter((sql) => sql.includes("DELETE FROM neurons")),
+  ];
+  assert.ok(purges.length >= 1, "exactly one coverage-scoped prune");
+  const purgeRun = m.runs.find((run) =>
     run.sql.includes("DELETE FROM neurons"),
   );
-  assert.equal(purges.length, 1, "exactly one coverage-scoped prune");
-  assert.deepEqual(purges[0].v, [1, captured_at]);
-  assert.match(purges[0].sql, /WHERE netuid IN \(\?\) AND captured_at < \?/);
-  // The prune runs strictly after the inserts (so a failed insert never prunes).
+  if (purgeRun) {
+    assert.deepEqual(purgeRun.v, [1, captured_at]);
+    assert.match(purgeRun.sql, /WHERE netuid IN \(\?\) AND captured_at < \?/);
+  }
+  // The prune runs in the same D1 batch as the final upsert chunk (single-batch
+  // loads) or via .run() after multi-batch upserts.
   assert.ok(m.batches.length > 0);
 });
 
@@ -280,8 +292,43 @@ test("loadStagedNeurons rejects coverage metadata that disagrees with row captur
 // (upsert by PK) and the snapshot-prune DELETE ... WHERE captured_at < ?. This is
 // what lets the regression test below prove a deregistered UID's row is actually
 // gone, not merely that a DELETE statement was prepared.
-function statefulEnv(table, { signingKey = SIGNING_KEY } = {}) {
+function applyNeuronSnapshotPrune(table, sql, values) {
+  if (sql.startsWith("DELETE FROM neurons WHERE captured_at <")) {
+    const cutoff = values[0];
+    let changes = 0;
+    for (const [k, row] of table) {
+      if (row.captured_at < cutoff) {
+        table.delete(k);
+        changes += 1;
+      }
+    }
+    return changes;
+  }
+  if (sql.startsWith("DELETE FROM neurons WHERE netuid IN")) {
+    const cutoff = values.at(-1);
+    const refreshed = new Set(values.slice(0, -1));
+    let changes = 0;
+    for (const [k, row] of table) {
+      if (refreshed.has(row.netuid) && row.captured_at < cutoff) {
+        table.delete(k);
+        changes += 1;
+      }
+    }
+    return changes;
+  }
+  return 0;
+}
+
+function statefulEnv(
+  table,
+  {
+    signingKey = SIGNING_KEY,
+    failBatchOnPrune = false,
+    failPruneUntil = 0,
+  } = {},
+) {
   const deleted = [];
+  let pruneAttempts = 0;
   function applyInsert(sql, values) {
     // Columns from "INSERT OR REPLACE INTO neurons (a,b,...) VALUES ..."
     const cols = sql.slice(sql.indexOf("(") + 1, sql.indexOf(")")).split(",");
@@ -319,28 +366,16 @@ function statefulEnv(table, { signingKey = SIGNING_KEY } = {}) {
               sql,
               v,
               async run() {
-                if (sql.startsWith("DELETE FROM neurons WHERE captured_at <")) {
-                  const cutoff = v[0];
-                  let changes = 0;
-                  for (const [k, row] of table) {
-                    if (row.captured_at < cutoff) {
-                      table.delete(k);
-                      changes += 1;
-                    }
+                if (sql.startsWith("DELETE FROM neurons")) {
+                  pruneAttempts += 1;
+                  if (pruneAttempts <= failPruneUntil) {
+                    throw new Error("simulated prune failure");
                   }
-                  return { meta: { changes } };
-                }
-                if (sql.startsWith("DELETE FROM neurons WHERE netuid IN")) {
-                  const cutoff = v.at(-1);
-                  const refreshed = new Set(v.slice(0, -1));
-                  let changes = 0;
-                  for (const [k, row] of table) {
-                    if (refreshed.has(row.netuid) && row.captured_at < cutoff) {
-                      table.delete(k);
-                      changes += 1;
-                    }
-                  }
-                  return { meta: { changes } };
+                  return {
+                    meta: {
+                      changes: applyNeuronSnapshotPrune(table, sql, v),
+                    },
+                  };
                 }
                 return { meta: { changes: 0 } };
               },
@@ -348,12 +383,40 @@ function statefulEnv(table, { signingKey = SIGNING_KEY } = {}) {
           };
         },
         async batch(stmts) {
-          for (const stmt of stmts) applyInsert(stmt.sql, stmt.v);
+          if (
+            failBatchOnPrune &&
+            stmts.some((stmt) => stmt.sql.startsWith("DELETE FROM neurons"))
+          ) {
+            throw new Error("simulated atomic upsert+prune batch failure");
+          }
+          const results = [];
+          for (const stmt of stmts) {
+            if (stmt.sql.startsWith("INSERT OR REPLACE INTO neurons")) {
+              applyInsert(stmt.sql, stmt.v);
+              results.push({ meta: { changes: 0 } });
+              continue;
+            }
+            if (stmt.sql.startsWith("DELETE FROM neurons")) {
+              pruneAttempts += 1;
+              if (pruneAttempts <= failPruneUntil) {
+                throw new Error("simulated prune failure");
+              }
+              results.push({
+                meta: {
+                  changes: applyNeuronSnapshotPrune(table, stmt.sql, stmt.v),
+                },
+              });
+            }
+          }
+          return results;
         },
       },
     },
     deleted,
     table,
+    get pruneAttempts() {
+      return pruneAttempts;
+    },
   };
 }
 
@@ -415,20 +478,62 @@ test("loadStagedNeurons keeps unrefreshed subnets during a partial coverage refr
 });
 
 test("loadStagedNeurons makes NO prune and keeps the staged object when a batch fails (safety)", async () => {
-  // SAFETY: if any upsert batch throws mid-load, we must NOT issue the prune
-  // (which would delete the prior good snapshot) and must NOT delete the staged R2
-  // object (so the prior snapshot stays as a fallback and the next cron retries).
+  // SAFETY: if any upsert batch throws mid-load, we must NOT commit the snapshot
+  // prune (which would delete the prior good snapshot) and must NOT delete the
+  // staged R2 object (so the prior snapshot stays as a fallback and the next cron
+  // retries).
   const rows = Array.from({ length: 12 }, (_, i) => neuronRow(1, i));
   const m = mockEnv({ rows: signedEnvelope(rows), failBatch: true });
   const r = await loadStagedNeurons(m.env);
   assert.equal(r.ok, false);
   assert.equal(r.reason, "load_failed");
-  // No DELETE statement of any kind was prepared (no prune on a failed load).
-  assert.ok(
-    !m.prepared.some((s) => s.includes("DELETE FROM neurons")),
-    "a failed batch must never reach the snapshot prune",
+  assert.equal(
+    m.batches.length,
+    1,
+    "single atomic upsert+prune batch attempted",
   );
   assert.equal(m.runs.length, 0, "no DELETE .run() was issued");
   // The staged object is preserved as the fallback snapshot.
   assert.deepEqual(m.deleted, [], "the staged R2 object must not be deleted");
+});
+
+test("loadStagedNeurons atomic upsert+prune failure leaves the prior snapshot intact", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:1", { ...neuronRow(1, 1), captured_at: T1 });
+  const m = statefulEnv(table, { failBatchOnPrune: true });
+
+  const T2 = T1 + 60_000;
+  const snap2 = [{ ...neuronRow(1, 0), captured_at: T2 }];
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "load_failed");
+  assert.deepEqual([...table.keys()].sort(), ["1:0", "1:1"]);
+  assert.equal(table.get("1:0").captured_at, T1);
+  assert.equal(table.get("1:1").captured_at, T1);
+  assert.deepEqual(m.deleted, [], "staged R2 object kept for retry");
+});
+
+test("loadStagedNeurons retries a failed multi-batch prune before giving up", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:1", { ...neuronRow(1, 1), captured_at: T1 });
+  const m = statefulEnv(table, { failPruneUntil: 2 });
+
+  const T2 = T1 + 60_000;
+  // 255 rows -> 51 upsert statements (> STMTS_PER_BATCH) -> multi-batch path.
+  // UID 1 is intentionally absent so the stale (1,1)@T1 row must be pruned.
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(m.pruneAttempts, 3, "two failed prune attempts then success");
+  assert.equal(table.has("1:1"), false, "deregistered ghost UID is pruned");
+  assert.equal(table.get("1:0").captured_at, T2);
 });

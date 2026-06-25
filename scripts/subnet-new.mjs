@@ -64,7 +64,7 @@ const document = {
   slug: `sn-${netuid}`,
   status: subnet.status === "inactive" ? "inactive" : "active",
   categories: [],
-  curation: { level: "candidate-discovered", review_state: "unreviewed" },
+  curation: { level: "community-seeded", review_state: "unreviewed" },
   surfaces: [],
 };
 

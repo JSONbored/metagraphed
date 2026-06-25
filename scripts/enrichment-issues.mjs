@@ -28,21 +28,25 @@ const API_BASE =
 const TRACKER = 427;
 const LABELS = ["gittensor:priority", "good first issue", "help wanted"];
 const LIMIT = Number(getOpt("--limit", "20"));
-// Default to the operational gaps (the remaining volume); identity gaps
-// (source-repo/website) are nearly exhausted by the existing tracker issues.
+// Operational gaps only — identity surfaces (source-repo/website) are
+// machine-promoted automatically from SubnetIdentitiesV3 chain data and injected
+// into every overlay via generateBaselineOverlaySet. Issuing contributor tasks for
+// them produces farming PRs that add no signal; the native-chain probe already
+// covers that surface kind for any subnet that has registered identity on-chain.
 const KINDS = getOpt("--kinds", "openapi,subnet-api,data-artifact,sse")
   .split(",")
   .map((k) => k.trim())
   .filter(Boolean);
 
 // Highest agent value first — a callable API + its spec beat artifacts/streams.
+// source-repo and website are intentionally absent: those are machine-promoted
+// from native-chain data; contributor submissions duplicate what the build already
+// injects automatically (see validate:surface native-chain dedup gate).
 const VALUE_PRIORITY = [
   "subnet-api",
   "openapi",
   "data-artifact",
   "sse",
-  "source-repo",
-  "website",
   "docs",
   "sdk",
 ];

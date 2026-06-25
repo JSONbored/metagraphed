@@ -3,7 +3,7 @@
 // model that replaces the per-candidate-file lane (registry/candidates/community).
 // The surface lands with authority:"community" + review.state:"community-submitted";
 // the Gittensory Gate / maintainer review promotes it in place, and the build's
-// prober owns verification/health. See .claude/skills/contributing-to-metagraphed.
+// prober owns verification/health. See .claude/skills/metagraphed.
 //
 //   npm run surface:add -- --netuid 7 --kind docs \
 //     --url https://docs.example.com \
