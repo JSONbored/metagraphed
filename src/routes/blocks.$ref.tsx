@@ -9,6 +9,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { blockQuery } from "@/lib/metagraphed/queries";
@@ -195,6 +196,19 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           ← All blocks
         </Link>
       </div>
+
+      <SectionAnchor
+        id="call"
+        title="Call this endpoint"
+        subtitle="Copy a ready-to-run request for this block."
+      >
+        <EndpointSnippet
+          rows={[
+            { label: "block", path: `/api/v1/blocks/${sourceRef}` },
+            { label: "artifact", path: `/metagraph/blocks/${sourceRef}.json` },
+          ]}
+        />
+      </SectionAnchor>
 
       <ApiSourceFooter
         paths={[`/api/v1/blocks/${sourceRef}`]}

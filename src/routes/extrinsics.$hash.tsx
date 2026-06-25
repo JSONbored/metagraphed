@@ -9,6 +9,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { extrinsicQuery } from "@/lib/metagraphed/queries";
@@ -204,6 +205,19 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           ← All extrinsics
         </Link>
       </div>
+
+      <SectionAnchor
+        id="call"
+        title="Call this endpoint"
+        subtitle="Copy a ready-to-run request for this extrinsic."
+      >
+        <EndpointSnippet
+          rows={[
+            { label: "extrinsic", path: `/api/v1/extrinsics/${sourceRef}` },
+            { label: "artifact", path: `/metagraph/extrinsics/${sourceRef}.json` },
+          ]}
+        />
+      </SectionAnchor>
 
       <ApiSourceFooter
         paths={[`/api/v1/extrinsics/${sourceRef}`]}

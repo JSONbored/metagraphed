@@ -9,6 +9,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { accountBalanceQuery, accountQuery } from "@/lib/metagraphed/queries";
@@ -262,6 +263,21 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           ← Account lookup
         </Link>
       </div>
+
+      <SectionAnchor
+        id="call"
+        title="Call this endpoint"
+        subtitle="Copy a ready-to-run request for this account."
+      >
+        <EndpointSnippet
+          rows={[
+            { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
+            { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
+            { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
+            { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
+          ]}
+        />
+      </SectionAnchor>
 
       <ApiSourceFooter paths={[`/api/v1/accounts/${sourceRef}`]} />
     </>

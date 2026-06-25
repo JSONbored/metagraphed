@@ -1,10 +1,9 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CandidateChip, CurationChip, ReviewChip } from "@/components/metagraphed/chips";
-import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { ExternalLink } from "@/components/metagraphed/external-link";
 import {
   EmptyState,
@@ -25,6 +24,7 @@ import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
+import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
@@ -36,8 +36,7 @@ import {
   fixturesIndexQuery,
   lineageQuery,
 } from "@/lib/metagraphed/queries";
-import { API_BASE } from "@/lib/metagraphed/config";
-import { classNames, isStaleFreshness } from "@/lib/metagraphed/format";
+import { isStaleFreshness } from "@/lib/metagraphed/format";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
   Endpoint,
@@ -527,37 +526,8 @@ function GapsPanel({ profile, compact }: { profile?: SubnetProfile; compact?: bo
   );
 }
 
-const API_SNIPPET_LANGS = [
-  { id: "url", label: "URL" },
-  { id: "curl", label: "curl" },
-  { id: "js", label: "JavaScript" },
-  { id: "python", label: "Python" },
-] as const;
-type ApiSnippetLang = (typeof API_SNIPPET_LANGS)[number]["id"];
-
-// One-liner copy snippets for a GET against a registry URL. Kept single-line so
-// they render and copy cleanly through CopyableCode.
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
-
-function apiSnippet(lang: ApiSnippetLang, url: string): string {
-  switch (lang) {
-    case "curl":
-      return `curl -sS ${shellSingleQuote(url)}`;
-    case "js":
-      return `fetch(${JSON.stringify(url)}).then((r) => r.json())`;
-    case "python":
-      return `requests.get(${JSON.stringify(url)}).json()`;
-    case "url":
-    default:
-      return url;
-  }
-}
-
 function ApiPanel({ netuid }: { netuid: number }) {
-  const [lang, setLang] = useState<ApiSnippetLang>("url");
-  const rows: Array<{ label: string; path: string }> = [
+  const rows = [
     { label: "profile", path: `/api/v1/subnets/${netuid}/profile` },
     { label: "surfaces", path: `/api/v1/subnets/${netuid}/surfaces` },
     { label: "endpoints", path: `/api/v1/subnets/${netuid}/endpoints` },
@@ -572,43 +542,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
       subtitle="Canonical URLs powering this profile."
       info="Pick a language and copy a ready-to-run snippet for any endpoint. /api/v1 endpoints return enveloped responses; /metagraph/*.json returns artifacts."
     >
-      <div
-        className="mb-3 inline-flex rounded border border-border bg-card p-0.5"
-        role="tablist"
-        aria-label="Snippet language"
-      >
-        {API_SNIPPET_LANGS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            role="tab"
-            aria-selected={lang === l.id}
-            onClick={() => setLang(l.id)}
-            className={classNames(
-              "rounded px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors",
-              lang === l.id ? "bg-ink-strong text-paper" : "text-ink-muted hover:text-ink-strong",
-            )}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
-      <div className="space-y-2">
-        {rows.map((r) => (
-          <CopyableCode
-            key={r.label}
-            label={r.label}
-            value={apiSnippet(lang, `${API_BASE}${r.path}`)}
-            truncate={false}
-            className="w-full"
-          />
-        ))}
-      </div>
-      {lang === "python" ? (
-        <p className="mt-2 font-mono text-[10px] text-ink-muted">
-          requires <code className="text-ink-strong">pip install requests</code>
-        </p>
-      ) : null}
+      <EndpointSnippet rows={rows} />
     </SectionAnchor>
   );
 }
