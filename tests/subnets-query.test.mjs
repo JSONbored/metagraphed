@@ -36,6 +36,22 @@ test("subnets collection returns no rows when q matches neither name nor slug", 
   assert.equal(data.subnets.length, 0);
 });
 
+test("subnets collection matches each whitespace-separated q term across name and slug", () => {
+  const wide = {
+    subnets: [
+      { netuid: 1, name: "Gradients Training", slug: "gradients" },
+      { netuid: 4, name: "Targon", slug: "targon" },
+      { netuid: 64, name: "Training Hub", slug: "gradients-hub" },
+    ],
+  };
+  const url = new URL("https://x/api/v1/subnets?q=gradients%20training");
+  const { data } = applyQueryFilters(wide, url, "subnets", []);
+  assert.deepEqual(
+    data.subnets.map((s) => s.netuid),
+    [1, 64],
+  );
+});
+
 test("subnets collection passes the blob through unchanged with no query", () => {
   const url = new URL("https://x/api/v1/subnets");
   const { data } = applyQueryFilters(blob, url, "subnets", []);
