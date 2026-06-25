@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   apiDocsSubdomainOrigins,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   isBrandImpersonationUrl,
   isCredentialedUrl,
   isLikelyExampleLink,
@@ -159,7 +160,14 @@ if (!dryRun) {
     {
       schema_version: 1,
       generated_by: "metagraphed-discover-candidates",
-      generated_at: buildTimestamp(),
+      // Preserve the committed generated_at on a local build so this never
+      // clobbers the tracked artifact with the 1970 epoch placeholder; publish
+      // runs (METAGRAPH_BUILD_TIMESTAMP/RUN_ID set) get the real build
+      // timestamp via buildTimestamp(). Mirrors the r2-manifest/verify:candidates path.
+      generated_at:
+        (await readCommittedManifestGeneratedAt(
+          path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
+        )) ?? buildTimestamp(),
       native_snapshot_captured_at: nativeSnapshot.captured_at,
       notes:
         "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
