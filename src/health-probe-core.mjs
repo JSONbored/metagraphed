@@ -321,6 +321,21 @@ export function contentMismatch(probe, surface) {
   return false;
 }
 
+// Canonical probe status values — every surface row should use one of these.
+// Callers that aggregate rows into rollupSubnetStatus must normalize through
+// normalizeProbeStatus first so unrecognized / forward-compat strings cannot
+// bypass the four buckets and roll up to a false "ok".
+export const PROBE_STATUS_VALUES = Object.freeze([
+  "ok",
+  "degraded",
+  "failed",
+  "unknown",
+]);
+
+export function normalizeProbeStatus(status) {
+  return PROBE_STATUS_VALUES.includes(status) ? status : "unknown";
+}
+
 // Canonical subnet operational-status rollup — the SINGLE source of the
 // ok/degraded/failed/unknown precedence shared by the live serve overlay
 // (health-serving), the 15-minute prober, and the build/smoke status columns.
