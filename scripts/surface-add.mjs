@@ -29,7 +29,7 @@ import {
   stableStringify,
   writeRepositoryJson,
 } from "./lib.mjs";
-import { normalizeGitHubLogin } from "./submission-policy.mjs";
+import { normalizeGitHubLogin } from "./registry-identity.mjs";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");

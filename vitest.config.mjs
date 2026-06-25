@@ -34,7 +34,7 @@ export default defineConfig({
       include: [
         "src/**/*.mjs",
         "workers/**/*.mjs",
-        "scripts/{artifact-budgets,lib,openapi-components,submission-notifications,submission-policy}.mjs",
+        "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.mjs",
       ],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That

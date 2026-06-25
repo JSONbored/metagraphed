@@ -71,7 +71,7 @@ for (const file of files) {
     if (surface.provider && !providerIds.has(surface.provider)) {
       errors.push(
         `${label}: provider "${surface.provider}" is not a registered slug — ` +
-          "run `npm run providers:list`, or `npm run provider:new` to add it.",
+          "run `npm run providers:list`, or pass `--provider-name` to surface:add to debut it.",
       );
     }
     if (surface.authority === "community" && !surface.review?.state) {

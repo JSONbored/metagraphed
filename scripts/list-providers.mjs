@@ -30,6 +30,6 @@ if (process.argv.includes("--json")) {
   console.error(
     `\n${providers.length} providers. Use the left-column slug as ` +
       "`--provider <slug>` for `npm run surface:add` " +
-      "(or `npm run provider:new` to register a new one).",
+      "(or pass --provider-name + --provider-url to surface:add to debut a new one).",
   );
 }

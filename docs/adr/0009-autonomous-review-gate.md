@@ -2,9 +2,9 @@
 
 - **Status:** Accepted — in use.
 - **Date:** 2026-06-22
-- **Relates to:** ADR 0008 (the one-file-per-subnet model the gate validates) and
-  [`docs/submission-gate.md`](../submission-gate.md) (the operational contract
-  this records the rationale for).
+- **Relates to:** ADR 0008 (the one-file-per-subnet model the gate validates).
+- **Updated by:** [ADR 0011](0011-retire-submission-preflight.md) — the residual
+  metagraphed-side preflight was retired, making "pre-gates nothing" literal.
 
 ## Context
 
@@ -36,9 +36,8 @@ the contributor a re-submission, not the registry its integrity.
   from an auto-close is a fresh PR, not a negotiation.
 - **The gate is the contract.** Contributors (and AI tools) must get a PR _right
   before pushing_ — one focused subnet file (ADR 0008), a public `url` plus an
-  independent `source_url` that proves it, and a linked issue. See
-  [`docs/submission-gate.md`](../submission-gate.md) and the
-  `contributing-to-metagraphed` skill for the checklist.
+  independent `source_url` that proves it, and a linked issue. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
+  and the `contributing-to-metagraphed` skill for the checklist.
 - **metagraphed stays adjudication-free** — no manual pre-escalation, no stored
   trust gating; the gate lives outside this repo and is configured there.
 - **Trade-off:** an external adjudicator is a dependency, and a wrong auto-close is

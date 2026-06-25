@@ -36,10 +36,6 @@ const docsOnlyTemplate = await fs.readFile(
   path.join(prTemplateRoot, "docs-only.md"),
   "utf8",
 );
-const submissionGateDocs = await fs.readFile(
-  path.join(repoRoot, "docs/submission-gate.md"),
-  "utf8",
-);
 const providerExample = await readJson(
   path.join(repoRoot, "docs/examples/submissions/provider-profile.json"),
 );
@@ -149,11 +145,9 @@ checkIncludes(surfacePrTemplate, "surface PR template", [
 
 checkIncludes(providerProfileTemplate, "provider profile PR template", [
   "registry/providers/*.json",
-  "npm run provider:new",
   "docs/examples/submissions/direct-provider-profile.json",
   "manual/private review",
   "pool-eligible",
-  "npm run submission:pr",
   "npm run validate:intake",
   "npm run scan:public-safety",
 ]);
@@ -172,34 +166,6 @@ checkIncludes(docsOnlyTemplate, "docs-only PR template", [
   "npm run validate:docs",
   "npm run validate:intake",
   "git diff --check",
-]);
-
-checkIncludes(submissionGateDocs, "submission gate docs", [
-  "submit_pr",
-  "fix_required",
-  "route_away",
-  "manual_review",
-  "metagraphed-under-review",
-  "metagraphed-manual-review",
-  "metagraphed-closed-by-gate",
-  "metagraphed-merged-by-gate",
-  "metagraphed-import-approved",
-  "<!-- metagraphed-submission-gate -->",
-  "Discord Notifications",
-  "DISCORD_SUBMISSION_WEBHOOK_URL",
-  "GITHUB_APP_ID",
-  "GITHUB_APP_PRIVATE_KEY",
-  "METAGRAPH_GATE_ALLOW_GITHUB_TOKEN_FALLBACK",
-  "github_write_mode",
-  "production_ready",
-  "production_blockers",
-  "npm run submission-gate:health",
-  "last_notification_key",
-  "merged",
-  "closed",
-  "manual-review",
-  "retry-exhausted",
-  "route_away",
 ]);
 
 checkExampleProvider(providerExample);

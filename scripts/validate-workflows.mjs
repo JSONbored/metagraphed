@@ -94,40 +94,6 @@ for (const workflow of workflows) {
       "validate workflow must detect rebuilt-but-untracked public artifacts after build",
     );
   }
-  if (workflow === "submission-gate.yml") {
-    check(
-      content.includes("metagraphed-submission-gate:"),
-      workflow,
-      "submission gate workflow must expose the metagraphed-submission-gate job",
-    );
-    check(
-      content.includes("Checkout trusted base worktree") &&
-        content.includes("path: trusted") &&
-        content.includes(
-          "ref: ${{ github.event.pull_request.base.sha || github.sha }}",
-        ),
-      workflow,
-      "submission gate workflow must checkout trusted base code",
-    );
-    check(
-      content.includes("working-directory: trusted") &&
-        content.includes("node scripts/submission-pr.mjs") &&
-        content.includes("--input-root ../pr"),
-      workflow,
-      "submission gate workflow must run trusted classifier against PR input",
-    );
-    check(
-      !content.includes("npm run submission:pr"),
-      workflow,
-      "submission gate workflow must not execute PR-controlled npm scripts",
-    );
-    check(
-      !content.includes("contents: write") &&
-        !content.includes("pull-requests: write"),
-      workflow,
-      "public submission gate workflow must not publish or merge",
-    );
-  }
   if (
     ["validate.yml", "sync-subnets.yml", "publish-cloudflare.yml"].includes(
       workflow,
