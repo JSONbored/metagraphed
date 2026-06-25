@@ -163,3 +163,26 @@ export function buildAccountExtrinsics(rows, ss58, { limit, offset } = {}) {
     extrinsics,
   };
 }
+
+// Per-block extrinsics sub-resource artifact (#1845): the extrinsics in one block,
+// in natural read order (extrinsic_index ASC) — note this differs from the global
+// feed's newest-first DESC; both are covered by the (block_number, extrinsic_index)
+// PK. block_number is null + extrinsics:[] when the ref didn't resolve (cold store
+// or unknown block) — schema-stable, never throws.
+export function buildBlockExtrinsics(
+  rows,
+  ref,
+  blockNumber,
+  { limit, offset } = {},
+) {
+  const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
+  return {
+    schema_version: 1,
+    ref: ref ?? null,
+    block_number: blockNumber ?? null,
+    extrinsic_count: extrinsics.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    extrinsics,
+  };
+}

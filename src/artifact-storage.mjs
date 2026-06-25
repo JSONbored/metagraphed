@@ -55,6 +55,9 @@ export const R2_ONLY_PATTERNS = [
   // 0x block_hash) — never written as files.
   /^blocks\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
+  // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
+  // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/extrinsics\.json$/,
   // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
   // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
   // (0x extrinsic_hash) — never written as files.

@@ -1666,6 +1666,24 @@
           }
         }
       },
+      "BlockExtrinsicsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "ref", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,

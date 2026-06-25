@@ -176,6 +176,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/blocks/1000000/extrinsics",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
     "/api/v1/extrinsics",
     (body) => {
       assert.equal(Array.isArray(body.data.extrinsics), true);

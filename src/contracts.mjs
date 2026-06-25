@@ -978,6 +978,12 @@ export const PUBLIC_ARTIFACTS = [
     "BlockDetailArtifact",
   ),
   artifact(
+    "block-extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+    "BlockExtrinsicsArtifact",
+  ),
+  artifact(
     "extrinsics-feed",
     "/metagraph/extrinsics.json",
     "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
@@ -1733,6 +1739,20 @@ export const API_ROUTES = [
     "short",
     ["blocks", "analytics"],
     [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-extrinsics",
+    "GET",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(

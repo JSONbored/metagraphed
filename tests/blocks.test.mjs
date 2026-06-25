@@ -347,3 +347,80 @@ test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
   assert.equal(body.data.block_count, 0);
   assert.equal(Array.isArray(body.data.blocks), true);
 });
+
+test("GET /blocks/{number}/extrinsics returns the block's extrinsics (#1845)", async () => {
+  const env = dbWith({
+    feed: [
+      {
+        block_number: 1234,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "Timestamp",
+        call_function: "set",
+        success: 1,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req("/api/v1/blocks/1234/extrinsics"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "1234");
+  assert.equal(body.data.block_number, 1234);
+  assert.equal(body.data.extrinsic_count, 1);
+  assert.equal(body.data.extrinsics[0].call_function, "set");
+});
+
+test("GET /blocks/{hash}/extrinsics resolves the hash then lists extrinsics (#1845)", async () => {
+  const hash = `0x${"a".repeat(64)}`;
+  const env = dbWith({
+    detail: { block_number: 9 },
+    feed: [
+      {
+        block_number: 9,
+        extrinsic_index: 1,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/blocks/${hash}/extrinsics`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, hash);
+  assert.equal(body.data.block_number, 9);
+  assert.equal(body.data.extrinsics[0].extrinsic_index, 1);
+});
+
+test("GET /blocks/{hash}/extrinsics is schema-stable when the hash is unknown (#1845)", async () => {
+  const hash = `0x${"d".repeat(64)}`;
+  const res = await handleRequest(
+    req(`/api/v1/blocks/${hash}/extrinsics`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, hash);
+  assert.equal(body.data.block_number, null);
+  assert.equal(body.data.extrinsic_count, 0);
+  assert.equal(Array.isArray(body.data.extrinsics), true);
+});
+
+test("GET /blocks/{ref}/extrinsics rejects an unsupported query param (#1845)", async () => {
+  const res = await handleRequest(
+    req("/api/v1/blocks/1234/extrinsics?bogus=1"),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
+});
