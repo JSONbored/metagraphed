@@ -1,0 +1,28 @@
+# Gittensory Gate scope manifest for metagraphed.
+#
+# wantedPaths  — patterns that signal this PR is a community data contribution
+#                (auto-adjudicate: merge/close/escalate on the gate's rules).
+# blockedPaths — if ANY changed file matches here the PR is NOT a community
+#                data submission (hold for human review / do not auto-merge).
+#
+# Aligns with the paths: filter in .github/workflows/publish-cloudflare.yml so
+# the gate's adjudication scope exactly tracks what a merged data PR publishes.
+
+wantedPaths:
+  - "registry/subnets/**"
+  - "registry/providers/**"
+  - "registry/candidates/community/**"
+  - "registry/reviews/**"
+  - "registry/adapters/**"
+
+blockedPaths:
+  - "src/**"
+  - "scripts/**"
+  - "workers/**"
+  - "schemas/**"
+  - "tests/**"
+  - "migrations/**"
+  - "packages/**"
+  - "public/**"
+  - ".github/**"
+  - ".claude/**"

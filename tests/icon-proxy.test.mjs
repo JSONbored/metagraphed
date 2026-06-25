@@ -4,9 +4,12 @@ import { handleIconProxy } from "../src/icon-proxy.mjs";
 
 const PNG = new Uint8Array(200).fill(1).buffer; // >100 bytes -> not a placeholder
 
-async function call(qs, { env = {}, headers = {}, fetchImpl, options } = {}) {
+async function call(
+  qs,
+  { env = {}, headers = {}, method = "GET", fetchImpl, options } = {},
+) {
   const url = new URL("https://api.metagraph.sh/api/v1/icon" + qs);
-  const request = new Request(url, { headers });
+  const request = new Request(url, { method, headers });
   const orig = globalThis.fetch;
   if (fetchImpl) globalThis.fetch = fetchImpl;
   try {
@@ -259,7 +262,88 @@ test("memoizes the artifact allowlist per env (readArtifact not re-read)", async
     options: { readArtifact },
     fetchImpl,
   });
-  assert.equal(reads, before); // second call served from the WeakMap memo
+  assert.equal(reads, before); // second call served from the TTL memo
+});
+
+test("re-reads the artifact allowlist after the memo TTL expires", async () => {
+  let reads = 0;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const readArtifact = async () => {
+    reads += 1;
+    return { ok: true, data: {} };
+  };
+  const fetchImpl = async () =>
+    new Response(PNG, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+  const t0 = 1_000_000;
+  await call("?host=example.com", {
+    env,
+    options: { readArtifact, now: t0 },
+    fetchImpl,
+  });
+  const afterFirst = reads;
+  // Within the TTL window -> memo hit, no re-read.
+  await call("?host=example.com", {
+    env,
+    options: { readArtifact, now: t0 + 60_000 },
+    fetchImpl,
+  });
+  assert.equal(reads, afterFirst, "within TTL: no re-read");
+  // Past the 5-minute TTL -> the memo is stale, artifacts are re-read so a
+  // newly-published host would now resolve.
+  await call("?host=example.com", {
+    env,
+    options: { readArtifact, now: t0 + 300_001 },
+    fetchImpl,
+  });
+  assert.equal(reads > afterFirst, true, "past TTL: artifacts re-read");
+});
+
+test("a host published after the first memo resolves once the TTL lapses", async () => {
+  let published = false;
+  const env = {
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  // The allowlist artifact starts empty, then a new surface appears.
+  const readArtifact = async (_e, path) => {
+    if (!path.endsWith("subnets.json")) return { ok: false, data: null };
+    return published
+      ? { ok: true, data: { url: "https://fresh.example" } }
+      : { ok: true, data: {} };
+  };
+  const fetchImpl = async () =>
+    new Response(PNG, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+  const t0 = 2_000_000;
+  // Not yet published -> 404 (not allowlisted), and the empty memo is cached.
+  const before = await call("?host=fresh.example", {
+    env,
+    options: { readArtifact, now: t0 },
+    fetchImpl,
+  });
+  assert.equal(before.status, 404);
+  published = true;
+  // Still inside the TTL -> served from the stale (empty) memo, still 404.
+  const stillStale = await call("?host=fresh.example", {
+    env,
+    options: { readArtifact, now: t0 + 10_000 },
+    fetchImpl,
+  });
+  assert.equal(stillStale.status, 404);
+  // Past the TTL -> memo refreshes, the new host resolves.
+  const fresh = await call("?host=fresh.example", {
+    env,
+    options: { readArtifact, now: t0 + 300_001 },
+    fetchImpl,
+  });
+  assert.equal(fresh.status, 200);
 });
 
 test("artifact read errors fail closed (host still allowed via configured env)", async () => {
@@ -421,6 +505,104 @@ test("skips a non-image content-type and cancels its body", async () => {
   });
   assert.equal(res.status, 404);
   assert.equal(canceled, true);
+});
+
+test("HEAD on an R2 hit returns a bodyless 200 with matching headers", async () => {
+  let bodyCanceled = false;
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: {
+      get: async () => ({
+        body: {
+          cancel: async () => {
+            bodyCanceled = true;
+          },
+        },
+        size: 200,
+        httpMetadata: { contentType: "image/png" },
+      }),
+      put: async () => {},
+    },
+  };
+  const res = await call("?host=example.com&size=64", { env, method: "HEAD" });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("x-icon-cache"), "hit");
+  assert.equal(res.headers.get("content-type"), "image/png");
+  assert.equal(res.headers.get("etag"), '"icon-example.com-64"');
+  assert.equal(res.headers.get("content-length"), "200"); // R2 object size
+  assert.match(res.headers.get("cache-control"), /immutable/);
+  assert.equal(await res.text(), ""); // no body streamed
+  assert.equal(bodyCanceled, true); // the R2 body stream was released
+});
+
+test("HEAD on a live miss returns a bodyless 200 advertising the byte length", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    method: "HEAD",
+    fetchImpl: async () =>
+      new Response(PNG, {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("x-icon-cache"), "miss");
+  assert.equal(res.headers.get("content-length"), "200"); // PNG byteLength
+  assert.equal(await res.text(), "");
+});
+
+test("non-allowlisted host negative-caches for a full day (stable no)", async () => {
+  const res = await call("?host=attacker.example.com", {
+    env: { METAGRAPH_ICON_ALLOWED_HOSTS: "example.com" },
+  });
+  assert.equal(res.status, 404);
+  assert.match(res.headers.get("cache-control"), /max-age=86400/);
+});
+
+test("allowlisted host, clean 404 from every aggregator -> 24h negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+  assert.match(res.headers.get("cache-control"), /max-age=86400/);
+});
+
+test("allowlisted host, thrown upstream error -> short transient negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => {
+      throw new Error("connection reset");
+    },
+  });
+  assert.equal(res.status, 404);
+  // 10-minute window, NOT the 24h stable one — a real icon retries soon.
+  assert.match(res.headers.get("cache-control"), /max-age=600/);
+});
+
+test("allowlisted host, 5xx from an aggregator -> short transient negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("", { status: 503 }),
+  });
+  assert.equal(res.status, 404);
+  assert.match(res.headers.get("cache-control"), /max-age=600/);
 });
 
 test("aborts a hung upstream fetch via the timeout controller", async () => {
