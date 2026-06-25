@@ -11,6 +11,7 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import { resolveClientIp } from "../workers/config.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
@@ -2687,6 +2688,8 @@ function buildContext(request, env, deps) {
 const MCP_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
+  // Let browser clients read custom headers (e.g. the 429 rate-limit family).
+  "access-control-expose-headers": EXPOSED_RESPONSE_HEADERS_VALUE,
   "cache-control": "no-store",
 };
 

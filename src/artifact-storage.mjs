@@ -42,16 +42,25 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
+  // Per-subnet chain-event stream (#1345): account_events filtered by netuid at
+  // /api/v1/subnets/{netuid}/events — live D1, never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/events\.json$/,
   // Account entity tiers (#1347): computed live from account_events + neurons at
   // /api/v1/accounts/{ss58}(/events|/subnets) — never written as files.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/events\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/extrinsics\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
+  // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,
   // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.
   /^blocks\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
+  // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
+  // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/extrinsics\.json$/,
   // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
   // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
   // (0x extrinsic_hash) — never written as files.

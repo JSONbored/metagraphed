@@ -924,6 +924,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+    "SubnetEventsArtifact",
+  ),
+  artifact(
     "subnet-neuron-history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
     "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
@@ -948,10 +954,22 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "AccountExtrinsicsArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
     "AccountSubnetsArtifact",
+  ),
+  artifact(
+    "account-balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+    "AccountBalanceArtifact",
   ),
   artifact(
     "blocks-feed",
@@ -966,6 +984,12 @@ export const PUBLIC_ARTIFACTS = [
     "BlockDetailArtifact",
   ),
   artifact(
+    "block-extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+    "BlockExtrinsicsArtifact",
+  ),
+  artifact(
     "extrinsics-feed",
     "/metagraph/extrinsics.json",
     "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
@@ -974,7 +998,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "extrinsic-detail",
     "/metagraph/extrinsics/{hash}.json",
-    "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
     "ExtrinsicDetailArtifact",
   ),
   artifact(
@@ -1602,6 +1626,21 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-events",
+    "GET",
+    "/api/v1/subnets/{netuid}/events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-neuron-history",
     "GET",
     "/api/v1/subnets/{netuid}/neurons/{uid}/history",
@@ -1663,6 +1702,20 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "account-extrinsics",
+    "GET",
+    "/api/v1/accounts/{ss58}/extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "account-subnets",
     "GET",
     "/api/v1/accounts/{ss58}/subnets",
@@ -1670,6 +1723,17 @@ export const API_ROUTES = [
     "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
     "short",
     ["accounts", "subnets"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-balance",
+    "GET",
+    "/api/v1/accounts/{ss58}/balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+    "short",
+    ["accounts"],
     [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
@@ -1699,17 +1763,39 @@ export const API_ROUTES = [
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
+    "block-extrinsics",
+    "GET",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
     "extrinsics-feed",
     "GET",
     "/api/v1/extrinsics",
     "/metagraph/extrinsics.json",
-    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
     "short",
     ["extrinsics", "analytics"],
     [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "signer", schema: { type: "string" } },
+      { name: "call_module", schema: { type: "string" } },
+      { name: "call_function", schema: { type: "string" } },
+      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
     ],
     [],
   ),
@@ -1718,7 +1804,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/extrinsics/{hash}",
     "/metagraph/extrinsics/{hash}.json",
-    "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
     "short",
     ["extrinsics", "analytics"],
     [],
@@ -2143,13 +2229,16 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         "unauthenticated GET. Responses use a stable JSON envelope " +
         "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
         "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
-        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
-        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
+        "client. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
+        "(mainnet is the default — omit it) to read testnet data, e.g. " +
+        "`/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have " +
+        "data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production (mainnet; prefix /testnet/ for testnet data)",
+        description:
+          "Production (mainnet default; insert /testnet/ after /api/v1/ for testnet data)",
       },
     ],
     // The API is intentionally public + unauthenticated; an empty top-level
@@ -2186,9 +2275,13 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
+    .replace("{uid}", String(params.uid ?? ""))
+    .replace("{ss58}", String(params.ss58 ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace("{surface_id}", String(params.surface_id ?? ""))
+    .replace("{ref}", String(params.ref ?? ""))
+    .replace("{hash}", String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
