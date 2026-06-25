@@ -219,9 +219,7 @@ function dbWith({
                   // Block prev/next neighbor aggregate (#1853).
                   if (/MAX\(CASE WHEN block_number </.test(sql)) {
                     return {
-                      results: [
-                        blockNeighbors || { prev: null, next: null },
-                      ],
+                      results: [blockNeighbors || { prev: null, next: null }],
                     };
                   }
                   // Subnet history: GROUP BY snapshot_date over neuron_daily.
@@ -229,7 +227,9 @@ function dbWith({
                     return { results: neuronDailySubnet || [] };
                   }
                   // Per-UID neuron_daily history.
-                  if (/FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)) {
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
+                  ) {
                     return { results: neuronDailyUid || [] };
                   }
                   // Account summary aggregates (order matters).
@@ -282,7 +282,11 @@ function dbWith({
                     return { results: accountEvents || [] };
                   }
                   // Hash → block_number resolution for block extrinsics/events.
-                  if (/SELECT block_number FROM blocks WHERE block_hash = \?/.test(sql)) {
+                  if (
+                    /SELECT block_number FROM blocks WHERE block_hash = \?/.test(
+                      sql,
+                    )
+                  ) {
                     if (blockNumberByHash != null) {
                       return { results: [{ block_number: blockNumberByHash }] };
                     }
@@ -308,11 +312,17 @@ function dbWith({
                   }
                   // Extrinsic detail by hash.
                   if (/WHERE extrinsic_hash = \?/.test(sql)) {
-                    return { results: extrinsicDetail ? [extrinsicDetail] : [] };
+                    return {
+                      results: extrinsicDetail ? [extrinsicDetail] : [],
+                    };
                   }
                   // Extrinsic detail by composite PK.
-                  if (/WHERE block_number = \? AND extrinsic_index = \?/.test(sql)) {
-                    return { results: extrinsicDetail ? [extrinsicDetail] : [] };
+                  if (
+                    /WHERE block_number = \? AND extrinsic_index = \?/.test(sql)
+                  ) {
+                    return {
+                      results: extrinsicDetail ? [extrinsicDetail] : [],
+                    };
                   }
                   // Block extrinsics (extrinsic_index ASC).
                   if (
@@ -334,7 +344,9 @@ function dbWith({
                     return { results: neurons?.length ? [neurons[0]] : [] };
                   }
                   // Validators ranking (stake_tao DESC).
-                  if (/validator_permit = 1 ORDER BY stake_tao DESC/.test(sql)) {
+                  if (
+                    /validator_permit = 1 ORDER BY stake_tao DESC/.test(sql)
+                  ) {
                     const rows = neurons || [];
                     return { results: rows };
                   }
@@ -365,7 +377,6 @@ async function assertColdSchema(handlerFn, ...args) {
   assert.equal(body.ok, true);
   return body;
 }
-
 
 describe("handleSubnetMetagraph", () => {
   test("rejects an unsupported query param with 400", async () => {
@@ -408,7 +419,10 @@ describe("handleSubnetMetagraph", () => {
     assert.equal(body.data.neuron_count, 1);
     assert.equal(body.data.neurons[0].uid, UID);
     assert.equal(body.data.neurons[0].validator_permit, true);
-    assert.equal(body.meta.artifact_path, `/metagraph/subnets/${NETUID}/metagraph.json`);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/metagraph.json`,
+    );
   });
 
   test("validator_permit=true filters to validators only", async () => {
@@ -435,7 +449,9 @@ describe("handleSubnetMetagraph", () => {
       NETUID,
       url(`/api/v1/subnets/${NETUID}/metagraph?validator_permit=false`),
     );
-    const metagraphSql = captures.sql.find((s) => /FROM neurons WHERE netuid/.test(s));
+    const metagraphSql = captures.sql.find((s) =>
+      /FROM neurons WHERE netuid/.test(s),
+    );
     assert.ok(metagraphSql);
     assert.ok(!/validator_permit = 1/.test(metagraphSql));
   });
@@ -469,7 +485,10 @@ describe("handleNeuron", () => {
     assert.equal(body.data.neuron.uid, UID);
     assert.equal(body.data.neuron.hotkey, SS58);
     assert.equal(body.data.neuron.active, true);
-    assert.equal(body.meta.artifact_path, `/metagraph/subnets/${NETUID}/neurons/${UID}.json`);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/neurons/${UID}.json`,
+    );
   });
 
   test("missing UID row yields neuron:null (not 404)", async () => {
@@ -526,7 +545,10 @@ describe("handleSubnetValidators", () => {
     );
     assert.equal(body.data.validator_count, 2);
     assert.equal(body.data.validators[0].uid, 1);
-    assert.equal(body.meta.artifact_path, `/metagraph/subnets/${NETUID}/validators.json`);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/validators.json`,
+    );
   });
 });
 
@@ -688,7 +710,13 @@ describe("handleAccount", () => {
         { kind: "WeightsSet", count: 5 },
       ],
       registrations: [
-        { netuid: NETUID, uid: UID, stake_tao: 100, validator_permit: 1, active: 1 },
+        {
+          netuid: NETUID,
+          uid: UID,
+          stake_tao: 100,
+          validator_permit: 1,
+          active: 1,
+        },
       ],
       accountEvents: [accountEventRow()],
       activity: {
@@ -938,7 +966,10 @@ describe("handleAccountTransfers", () => {
       url(`/api/v1/accounts/${SS58}/transfers?direction=sent`),
     );
     const sql = captures.sql.find((s) => /Transfer/.test(s));
-    assert.ok(/^[^O]*hotkey = \?/.test(sql.replace(/OR.*/, "")) || /hotkey = \?/.test(sql));
+    assert.ok(
+      /^[^O]*hotkey = \?/.test(sql.replace(/OR.*/, "")) ||
+        /hotkey = \?/.test(sql),
+    );
     assert.ok(!/coldkey = \? OR/.test(sql) || /hotkey = \?/.test(sql));
   });
 
@@ -970,7 +1001,13 @@ describe("handleAccountSubnets", () => {
   test("happy path returns cross-subnet registration footprint", async () => {
     const { env } = dbWith({
       registrations: [
-        { netuid: NETUID, uid: UID, stake_tao: 100, validator_permit: 0, active: 1 },
+        {
+          netuid: NETUID,
+          uid: UID,
+          stake_tao: 100,
+          validator_permit: 0,
+          active: 1,
+        },
         { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
       ],
     });
@@ -1065,7 +1102,9 @@ describe("handleAccountBalance", () => {
   test("cold env returns balance_tao:null without calling RPC", async () => {
     const origFetch = globalThis.fetch;
     globalThis.fetch = () => {
-      throw new Error("RPC must not be called when testing cold schema via KV miss");
+      throw new Error(
+        "RPC must not be called when testing cold schema via KV miss",
+      );
     };
     try {
       const body = await assertColdSchema(
@@ -1472,11 +1511,7 @@ describe("handleExtrinsic", () => {
   test("happy path resolves by extrinsic_hash", async () => {
     const { env } = dbWith({ extrinsicDetail: extrinsicRow() });
     const body = await json(
-      await handleExtrinsic(
-        req(`/api/v1/extrinsics/${HASH}`),
-        env,
-        HASH,
-      ),
+      await handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), env, HASH),
     );
     assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
     assert.equal(body.data.extrinsic.call_function, "add_stake");
@@ -1571,9 +1606,9 @@ describe("entities handler exports (#1900)", () => {
           NETUID,
           UID,
         ),
+      () => handleAccount(req(`/api/v1/accounts/${SS58}`), emptyEnv(), SS58),
       () =>
-        handleAccount(req(`/api/v1/accounts/${SS58}`), emptyEnv(), SS58),
-      () => handleBlocks(req("/api/v1/blocks"), emptyEnv(), url("/api/v1/blocks")),
+        handleBlocks(req("/api/v1/blocks"), emptyEnv(), url("/api/v1/blocks")),
       () =>
         handleExtrinsic(req(`/api/v1/extrinsics/${HASH}`), emptyEnv(), HASH),
     ];
@@ -1741,9 +1776,16 @@ describe("dbWith SQL routing regressions (#1900)", () => {
     const { env } = dbWith({
       agg: { c: 1, sc: 1, fb: 1, lb: 1, fo: 1, lo: 1 },
       kinds: [{ kind: "StakeAdded", count: 1 }],
-      registrations: [{ netuid: 1, uid: 0, stake_tao: 1, validator_permit: 0, active: 1 }],
+      registrations: [
+        { netuid: 1, uid: 0, stake_tao: 1, validator_permit: 0, active: 1 },
+      ],
       accountEvents: [accountEventRow()],
-      activity: { tx_count: 1, last_tx_block: 1, last_tx_at: 1, total_fee_tao: 0 },
+      activity: {
+        tx_count: 1,
+        last_tx_block: 1,
+        last_tx_at: 1,
+        total_fee_tao: 0,
+      },
       modules: [{ call_module: "Balances", count: 1 }],
     });
     const body = await json(
@@ -1801,7 +1843,9 @@ describe("dbWith SQL routing regressions (#1900)", () => {
       url(`/api/v1/blocks/${HASH}/extrinsics`),
     );
     assert.ok(
-      captures.sql.some((s) => /SELECT block_number FROM blocks WHERE block_hash/.test(s)),
+      captures.sql.some((s) =>
+        /SELECT block_number FROM blocks WHERE block_hash/.test(s),
+      ),
     );
     assert.ok(
       captures.sql.some((s) => /FROM extrinsics WHERE block_number/.test(s)),
@@ -1979,12 +2023,16 @@ describe("envelope + meta contracts (#1900)", () => {
     );
     assert.equal(body.meta.source, "metagraph-snapshot");
     assert.ok(body.meta.contract_version);
-    assert.ok(resHasEtag(await handleNeuron(
-      req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-      env,
-      NETUID,
-      UID,
-    )));
+    assert.ok(
+      resHasEtag(
+        await handleNeuron(
+          req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
+          env,
+          NETUID,
+          UID,
+        ),
+      ),
+    );
   });
 
   test("chain-events handlers set source chain-events", async () => {
