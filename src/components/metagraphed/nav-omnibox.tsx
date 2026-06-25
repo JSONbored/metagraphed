@@ -3,9 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
-  ArrowRightLeft,
   ArrowRight,
-  Boxes,
+  ArrowRightLeft,
   Clock,
   Hash,
   Layers,
@@ -51,12 +50,42 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 const NAV_LINKS = [
-  { to: "/subnets", label: "Subnets", hint: "All active Finney subnets", Icon: Layers },
-  { to: "/surfaces", label: "Surfaces", hint: "Verified public interfaces", Icon: Workflow },
-  { to: "/endpoints", label: "Endpoints", hint: "RPC, APIs, streams", Icon: Wifi },
-  { to: "/providers", label: "Providers", hint: "Teams & infrastructure", Icon: Network },
-  { to: "/blocks", label: "Blocks", hint: "Chain block explorer", Icon: Hash },
-  { to: "/accounts", label: "Accounts", hint: "Hotkey & coldkey activity", Icon: User },
+  {
+    to: "/subnets",
+    label: "Subnets",
+    hint: "All active Finney subnets",
+    Icon: Layers,
+  },
+  {
+    to: "/surfaces",
+    label: "Surfaces",
+    hint: "Verified public interfaces",
+    Icon: Workflow,
+  },
+  {
+    to: "/endpoints",
+    label: "Endpoints",
+    hint: "RPC, APIs, streams",
+    Icon: Wifi,
+  },
+  {
+    to: "/providers",
+    label: "Providers",
+    hint: "Teams & infrastructure",
+    Icon: Network,
+  },
+  {
+    to: "/blocks",
+    label: "Blocks",
+    hint: "Chain block explorer",
+    Icon: Hash,
+  },
+  {
+    to: "/accounts",
+    label: "Accounts",
+    hint: "Hotkey & coldkey activity",
+    Icon: User,
+  },
 ] as const;
 
 function hrefFor(hit: Hit): string {
@@ -79,13 +108,14 @@ type NavTarget =
       to: string;
       params?: Record<string, string>;
       icon: typeof User;
+      badge: string;
     };
 
 /**
- * Navbar omnibox. Real text input with a live suggestions popover. Groups
- * results by entity kind, deep-links straight to the right page. Supports
- * direct navigation by ss58 address, block number, and 0x hash. ⌘K opens
- * the full command palette.
+ * Navbar omnibox. Real text input with a wide live-suggestions popover.
+ * Supports direct navigation by ss58 wallet address, block number, and 0x
+ * tx/block hash — paste any of those and jump straight to the right page.
+ * ⌘K opens the full command palette.
  */
 export function NavOmnibox({ onOpenPalette }: Props) {
   const navigate = useNavigate();
@@ -123,7 +153,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
   });
   const hits = ((data?.data as Hit[] | undefined) ?? []).slice(0, 8);
 
-  // Group hits by kind for visual structure.
   const grouped = useMemo(() => {
     const m = new Map<string, Hit[]>();
     for (const h of hits) {
@@ -134,11 +163,13 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     return m;
   }, [hits]);
 
-  // Detect direct-navigation targets from the query.
+  // Detect direct-navigation targets from the query — ss58 wallet address,
+  // decimal block number, 0x tx hash, or partial 0x block hash.
   const navTargets = useMemo((): NavTarget[] => {
     if (!debounced) return [];
     const q = debounced.trim();
     const targets: NavTarget[] = [];
+
     if (isValidSs58(q)) {
       targets.push({
         kind: "nav",
@@ -147,51 +178,58 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         to: "/accounts/$ss58",
         params: { ss58: q },
         icon: User,
+        badge: "wallet",
       });
     }
+
     if (/^(?:0|[1-9][0-9]{0,9})$/.test(q)) {
       targets.push({
         kind: "nav",
         label: `Block #${q}`,
-        hint: "jump to block by number",
+        hint: "Jump to block by number",
         to: "/blocks/$ref",
         params: { ref: q },
         icon: Hash,
+        badge: "block",
       });
     }
+
     if (/^0x[0-9a-fA-F]{64}$/.test(q)) {
       targets.push(
         {
           kind: "nav",
           label: `Block ${shortHash(q, 8) ?? q}`,
-          hint: "by block hash",
+          hint: q,
           to: "/blocks/$ref",
           params: { ref: q },
           icon: Hash,
+          badge: "block hash",
         },
         {
           kind: "nav",
           label: `Extrinsic ${shortHash(q, 8) ?? q}`,
-          hint: "by extrinsic hash",
+          hint: q,
           to: "/extrinsics/$hash",
           params: { hash: q },
           icon: ArrowRightLeft,
+          badge: "tx hash",
         },
       );
     } else if (/^0x[0-9a-fA-F]{1,63}$/.test(q)) {
       targets.push({
         kind: "nav",
         label: `Block ${shortHash(q, 8) ?? q}`,
-        hint: "by block hash (partial)",
+        hint: q,
         to: "/blocks/$ref",
         params: { ref: q },
         icon: Hash,
+        badge: "partial hash",
       });
     }
+
     return targets;
   }, [debounced]);
 
-  // Flat list for keyboard navigation.
   const flat: NavTarget[] = useMemo(() => {
     const items: NavTarget[] = [...navTargets];
     for (const arr of grouped.values()) for (const h of arr) items.push({ kind: "hit", hit: h });
@@ -199,7 +237,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     return items;
   }, [navTargets, grouped, debounced]);
 
-  // Clamp active index when results change.
   useEffect(() => {
     setActive(0);
   }, [debounced, hits.length]);
@@ -215,7 +252,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       navigate({ to: item.to as never, params: (item.params ?? {}) as never });
       return;
     }
-    // Hit
     const href = hrefFor(item.hit);
     const safeHref = safeExternalUrl(href);
     if (safeHref) {
@@ -278,7 +314,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search subnets, surfaces, endpoints…"
+          placeholder="Search subnets, wallets, blocks, txs…"
           aria-label="Search the registry"
           aria-autocomplete="list"
           aria-expanded={open}
@@ -296,24 +332,24 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         </button>
       </div>
 
-      {/* Dropdown */}
+      {/* Dropdown — wider than the input, right-aligned */}
       {open ? (
         <div
           role="listbox"
-          className="absolute left-0 right-0 mt-1.5 rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
+          className="absolute right-0 mt-1.5 w-[600px] max-w-[calc(100vw-1.5rem)] rounded-xl border border-border bg-paper shadow-2xl z-50 overflow-hidden"
         >
           {/* ── Empty state: no query typed ─────────────────────────── */}
           {showSuggestions ? (
             <div>
               <div className="px-3 pt-3 pb-2">
                 <p className="mg-label mb-2">Jump to</p>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-3 gap-1.5">
                   {NAV_LINKS.map((r) => (
                     <Link
                       key={r.to}
                       to={r.to}
                       onClick={() => setOpen(false)}
-                      className="group/jump flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2 hover:border-accent/40 hover:bg-surface transition-colors"
+                      className="group/jump flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 hover:border-accent/40 hover:bg-surface transition-colors"
                     >
                       <r.Icon className="size-3.5 shrink-0 text-ink-muted group-hover/jump:text-accent transition-colors" />
                       <span className="min-w-0">
@@ -325,6 +361,13 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     </Link>
                   ))}
                 </div>
+              </div>
+
+              <div className="mx-3 mb-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2">
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  <span className="font-medium text-ink">Paste anything:</span> wallet address
+                  (ss58), block number, transaction hash (0x…) or block hash to jump directly.
+                </p>
               </div>
 
               {recent.length > 0 ? (
@@ -378,32 +421,31 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                   {navTargets.map((n, i) => {
                     if (n.kind !== "nav") return null;
                     const Icon = n.icon;
-                    const idx = i;
-                    const isActive = idx === active;
+                    const isActive = i === active;
                     return (
                       <button
                         key={`nav-${n.to}-${n.label}`}
                         type="button"
                         role="option"
                         aria-selected={isActive}
-                        onMouseEnter={() => setActive(idx)}
+                        onMouseEnter={() => setActive(i)}
                         onClick={() => commit(n)}
                         className={classNames(
-                          "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors",
+                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
                           isActive ? "bg-surface" : "hover:bg-surface/60",
                         )}
                       >
-                        <Icon className="size-3.5 shrink-0 text-accent" />
+                        <Icon className="size-4 shrink-0 text-accent" />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium text-ink-strong truncate">
+                          <span className="block text-sm font-medium text-ink-strong">
                             {n.label}
                           </span>
                           <span className="block font-mono text-[10px] text-ink-muted truncate">
                             {n.hint}
                           </span>
                         </span>
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-ink-muted shrink-0">
-                          {n.to.split("/")[1]}
+                        <span className="shrink-0 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-accent/80">
+                          {n.badge}
                         </span>
                       </button>
                     );
@@ -418,7 +460,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                 </div>
               ) : hits.length === 0 && navTargets.length === 0 ? (
                 <div className="px-3 py-5 text-center font-mono text-[11px] text-ink-muted">
-                  No results.
+                  No results. Try pasting a wallet address, block number, or tx hash.
                 </div>
               ) : hits.length > 0 ? (
                 <div
@@ -444,7 +486,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                               onMouseEnter={() => setActive(idx)}
                               onClick={() => commit({ kind: "hit", hit: h })}
                               className={classNames(
-                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors",
+                                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                                 isActive ? "bg-surface" : "hover:bg-surface/60",
                               )}
                             >
@@ -459,7 +501,6 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                                     : (h.slug ?? h.url ?? "")}
                                 </span>
                               </span>
-                              <Boxes className="size-3 shrink-0 text-ink-muted/40" />
                             </button>
                           );
                         })}
@@ -479,7 +520,7 @@ export function NavOmnibox({ onOpenPalette }: Props) {
                     onMouseEnter={() => setActive(flat.length - 1)}
                     onClick={() => commit({ kind: "action" })}
                     className={classNames(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors",
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                       active === flat.length - 1 ? "bg-surface" : "hover:bg-surface/60",
                     )}
                   >
