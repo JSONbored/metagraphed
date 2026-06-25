@@ -110,6 +110,25 @@
       },
       "source_urls": ["https://www.basilica.ai/"],
       "url": "https://docs.basilica.ai/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-39-basilica-subnet-api",
+      "kind": "subnet-api",
+      "name": "Basilica API health",
+      "notes": "Public, unauthenticated JSON health endpoint for the Basilica validator API (api.basilica.ai is the documented BASILICA_API_URL base). Returns service status, version, and validator counts.",
+      "provider": "basilica",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://docs.basilica.ai/llms-full.txt",
+        "https://www.basilica.ai/"
+      ],
+      "url": "https://api.basilica.ai/health"
     }
   ],
   "website_url": "https://www.basilica.ai/"
