@@ -139,8 +139,8 @@ import {
 } from "../src/neuron-history.mjs";
 import {
   eventInsertStatements,
-  rollupAccountEventsDaily,
   pruneAccountEvents,
+  rollupAccountEventsDaily,
   validEventRows,
 } from "../src/account-events.mjs";
 import {
@@ -762,20 +762,16 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       };
     }
     const [pruned] = await Promise.all([
-      // .catch-isolated like every sibling prune below — a rejection here (e.g. a
-      // transient D1 error) must degrade to a no-op for this tick, not abort the
-      // whole Promise.all and discard the snapshot write + the other prunes.
+      // .catch-isolated — a transient D1 error must degrade to a no-op for this
+      // tick, not abort the whole Promise.all and discard the snapshot write.
       pruneHealthHistory(env).catch(() => ({ pruned: false })),
+      // D1 safety-valve: prune chain-explorer tables at a 365-day window so D1
+      // never hits the 10 GB cap before the Postgres cold tier (#1519) ships.
+      // account_events is safe here — rollupAccountEventsDaily (above) already
+      // aggregated the daily summaries. blocks + extrinsics have no daily rollup
+      // yet, so older raw rows are discarded. All three are .catch-isolated.
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      // Block-explorer hot window (#1345): prune `blocks` past the 90d retention
-      // on the same hourly maintenance cron. No rollup (the block hot window has
-      // no durable daily aggregate yet), so it isn't gated on a rollup like the
-      // events prune; .catch-isolated so it can never break the shared cron.
       pruneBlocks(env).catch(() => ({ pruned: false })),
-      // Block-explorer extrinsic slice (#1345): prune `extrinsics` past the 90d
-      // retention on the same hourly maintenance cron. No rollup (the extrinsic
-      // hot window has no durable daily aggregate yet), so it isn't gated on a
-      // rollup; .catch-isolated so it can never break the shared cron.
       pruneExtrinsics(env).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);

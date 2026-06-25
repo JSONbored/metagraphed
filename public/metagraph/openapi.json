@@ -12255,7 +12255,7 @@
     }
   },
   "info": {
-    "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: prefix a path with `/testnet/` (mainnet is the default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
+    "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
     "version": "2026-06-06.1"
   },
@@ -28137,7 +28137,7 @@
   "security": [],
   "servers": [
     {
-      "description": "Production (mainnet; prefix /testnet/ for testnet data)",
+      "description": "Production (mainnet default; insert /testnet/ after /api/v1/ for testnet data)",
       "url": "https://api.metagraph.sh"
     }
   ],

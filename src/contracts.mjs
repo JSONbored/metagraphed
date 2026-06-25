@@ -2143,13 +2143,16 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         "unauthenticated GET. Responses use a stable JSON envelope " +
         "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
         "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
-        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
-        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
+        "client. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
+        "(mainnet is the default — omit it) to read testnet data, e.g. " +
+        "`/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have " +
+        "data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production (mainnet; prefix /testnet/ for testnet data)",
+        description:
+          "Production (mainnet default; insert /testnet/ after /api/v1/ for testnet data)",
       },
     ],
     // The API is intentionally public + unauthenticated; an empty top-level
@@ -2186,9 +2189,13 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
+    .replace("{uid}", String(params.uid ?? ""))
+    .replace("{ss58}", String(params.ss58 ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace("{surface_id}", String(params.surface_id ?? ""))
+    .replace("{ref}", String(params.ref ?? ""))
+    .replace("{hash}", String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {

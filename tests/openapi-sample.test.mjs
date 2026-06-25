@@ -255,6 +255,44 @@ describe("sampleFromSchema", () => {
     assert.doesNotThrow(() => sampleFromSchema(selfArr.Tree, selfArr, "Tree"));
   });
 
+  test("bounds recursion: composition-only self-referential schemas don't overflow", () => {
+    for (const keyword of ["oneOf", "anyOf", "allOf"]) {
+      const cyclic = {
+        Node: {
+          [keyword]: [{ $ref: "#/components/schemas/Node" }],
+        },
+      };
+      assert.doesNotThrow(() => sampleFromSchema(cyclic.Node, cyclic, "Node"));
+    }
+
+    const oneOfOut = sampleFromSchema(
+      { oneOf: [{ $ref: "#/components/schemas/Node" }] },
+      { Node: { oneOf: [{ $ref: "#/components/schemas/Node" }] } },
+      "Node",
+    );
+    assert.equal(oneOfOut, null);
+
+    const mutual = {
+      A: { oneOf: [{ $ref: "#/components/schemas/B" }] },
+      B: { oneOf: [{ $ref: "#/components/schemas/A" }] },
+    };
+    let mutualOut;
+    assert.doesNotThrow(() => {
+      mutualOut = sampleFromSchema(mutual.A, mutual, "A");
+    });
+    assert.equal(mutualOut, null);
+  });
+
+  test("allOf can sample the same $ref twice when members are independent", () => {
+    const out = s({
+      allOf: [
+        { $ref: "#/components/schemas/Inner" },
+        { $ref: "#/components/schemas/Inner" },
+      ],
+    });
+    assert.deepEqual(out, { x: 1 });
+  });
+
   test("a sampled instance validates against its own schema (round-trip)", () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: true });
     addFormats(ajv);
