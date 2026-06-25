@@ -982,18 +982,25 @@ describe("worker live health serving", () => {
   });
 
   test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    // Date the rows relative to "now" so they always fall inside the live 7d
+    // window the handler derives from Date.now() (`day >= now − 7d`). A fixed
+    // calendar date ages out of the window and turns this into a time-bomb that
+    // fails repo-wide the day the clock passes it.
+    const recentDay = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
           netuid: 8,
-          date: "2026-06-17",
+          date: recentDay,
           total: 10,
           ok_count: 8,
           avg_latency_ms: 30,
         },
         {
           netuid: 7,
-          date: "2026-06-17",
+          date: recentDay,
           total: 5,
           ok_count: 5,
           avg_latency_ms: 20,
