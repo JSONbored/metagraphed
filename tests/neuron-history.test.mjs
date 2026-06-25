@@ -212,6 +212,33 @@ describe("history builders", () => {
     assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, null);
   });
+
+  test("buildNeuronHistory drops malformed rows; point_count tracks the array (#1793)", () => {
+    // A null/undefined element (formatNeuron → null) is dropped, not leaked as a
+    // bare-date point, and never throws on r.snapshot_date. Valid sparse object
+    // rows are still kept.
+    const out = buildNeuronHistory([dailyRow(), null, undefined], 7, 3);
+    assert.equal(out.points.length, 1);
+    assert.equal(out.point_count, out.points.length);
+    assert.equal(out.points[0].uid, 3);
+    // A null rows argument yields an empty series rather than throwing.
+    const empty = buildNeuronHistory(null, 7, 3);
+    assert.equal(empty.point_count, 0);
+    assert.deepEqual(empty.points, []);
+  });
+
+  test("buildSubnetHistory drops non-object rows; point_count tracks the array", () => {
+    const out = buildSubnetHistory(
+      [{ snapshot_date: "2026-06-20", neuron_count: 5 }, null, undefined],
+      7,
+    );
+    assert.equal(out.points.length, 1);
+    assert.equal(out.point_count, out.points.length);
+    assert.equal(out.points[0].neuron_count, 5);
+    const empty = buildSubnetHistory(undefined, 7);
+    assert.equal(empty.point_count, 0);
+    assert.deepEqual(empty.points, []);
+  });
 });
 
 describe("rollupNeuronDaily idempotency invariant (#1345)", () => {
