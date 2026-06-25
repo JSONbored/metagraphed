@@ -480,6 +480,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
@@ -516,10 +525,37 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
       "storage_tier": "r2"
     },
     {
@@ -543,6 +579,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
@@ -552,7 +597,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+      "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
       "id": "extrinsic-detail",
       "path": "/metagraph/extrinsics/{hash}.json",
       "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
