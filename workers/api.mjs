@@ -63,9 +63,11 @@ import {
   handleAccount,
   handleAccountBalance,
   handleAccountEvents,
+  handleAccountExtrinsics,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
+  handleBlockExtrinsics,
   handleExtrinsics,
   handleExtrinsic,
 } from "./request-handlers/entities.mjs";
@@ -175,9 +177,11 @@ import {
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
+  BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
@@ -1194,6 +1198,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (accountSubnetsMatch) {
       return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
     }
+    const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountExtrinsicsMatch) {
+      return handleAccountExtrinsics(
+        request,
+        env,
+        accountExtrinsicsMatch[1],
+        resolved.url,
+      );
+    }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1205,7 +1220,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleAccount(request, env, accountMatch[1]);
     }
     // Block-explorer routes (#1345): computed live from the `blocks` D1 tier.
-    // Detail (more specific) before the feed; each pattern is anchored.
+    // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
+    const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (blockExtrinsicsMatch) {
+      return handleBlockExtrinsics(
+        request,
+        env,
+        blockExtrinsicsMatch[1],
+        resolved.url,
+      );
+    }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,
     );

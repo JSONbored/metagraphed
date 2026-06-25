@@ -4,6 +4,63 @@
   "additionalProperties": false,
   "components": {
     "schemas": {
+      "AccountActivity": {
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency.",
+        "properties": {
+          "last_tx_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_tx_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "modules_called": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "call_module": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "call_module",
+                "count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_fee_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tx_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tx_count",
+          "modules_called"
+        ],
+        "type": "object"
+      },
       "AccountBalanceArtifact": {
         "additionalProperties": true,
         "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
@@ -153,6 +210,41 @@
         ],
         "type": "object"
       },
+      "AccountExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
       "AccountRegistration": {
         "additionalProperties": false,
         "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",
@@ -218,6 +310,9 @@
         "additionalProperties": true,
         "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
         "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/AccountActivity"
+          },
           "event_count": {
             "minimum": 0,
             "type": "integer"
@@ -1337,6 +1432,50 @@
         "required": [
           "schema_version",
           "block"
+        ],
+        "type": "object"
+      },
+      "BlockExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "extrinsic_count",
+          "extrinsics"
         ],
         "type": "object"
       },
@@ -3791,7 +3930,7 @@
       },
       "ExtrinsicDetailArtifact": {
         "additionalProperties": true,
-        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
         "properties": {
           "extrinsic": {
             "oneOf": [

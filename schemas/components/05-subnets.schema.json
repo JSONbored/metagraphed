@@ -1554,6 +1554,31 @@
           "recent_events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
+          },
+          "activity": { "$ref": "#/components/schemas/AccountActivity" }
+        }
+      },
+      "AccountActivity": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency.",
+        "required": ["tx_count", "modules_called"],
+        "properties": {
+          "tx_count": { "type": "integer", "minimum": 0 },
+          "last_tx_block": { "type": ["integer", "null"] },
+          "last_tx_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_fee_tao": { "type": ["number", "null"] },
+          "modules_called": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["call_module", "count"],
+              "properties": {
+                "call_module": { "type": ["string", "null"] },
+                "count": { "type": "integer", "minimum": 0 }
+              }
+            }
           }
         }
       },
@@ -1588,6 +1613,23 @@
           "events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountExtrinsicsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "required": ["schema_version", "ss58", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
           }
         }
       },
@@ -1666,6 +1708,24 @@
           }
         }
       },
+      "BlockExtrinsicsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "ref", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,
@@ -1703,7 +1763,7 @@
       "ExtrinsicDetailArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
         "required": ["schema_version", "extrinsic"],
         "properties": {
           "schema_version": { "type": "integer" },

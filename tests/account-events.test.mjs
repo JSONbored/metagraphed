@@ -254,6 +254,34 @@ test("buildAccountSummary is schema-stable with no data", () => {
   assert.deepEqual(out.registrations, []);
   assert.deepEqual(out.event_kinds, []);
   assert.equal(out.first_seen_at, null);
+  // Activity sub-object (#1847) is always present + schema-stable.
+  assert.equal(out.activity.tx_count, 0);
+  assert.equal(out.activity.last_tx_block, null);
+  assert.equal(out.activity.last_tx_at, null);
+  assert.equal(out.activity.total_fee_tao, null);
+  assert.deepEqual(out.activity.modules_called, []);
+});
+
+test("buildAccountSummary threads the signing activity sub-object (#1847)", () => {
+  const out = buildAccountSummary("5Hk", {
+    activity: {
+      tx_count: 4,
+      last_tx_block: 200,
+      last_tx_at: 1750009000000,
+      total_fee_tao: 0.02,
+    },
+    modules: [
+      { call_module: "SubtensorModule", count: 3 },
+      { call_module: null, count: 1 },
+    ],
+  });
+  assert.equal(out.activity.tx_count, 4);
+  assert.equal(out.activity.last_tx_block, 200);
+  assert.equal(out.activity.last_tx_at, new Date(1750009000000).toISOString());
+  assert.equal(out.activity.total_fee_tao, 0.02);
+  // the {call_module:null} row is dropped
+  assert.equal(out.activity.modules_called.length, 1);
+  assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {

@@ -194,9 +194,27 @@ export function formatRegistration(row) {
 // matched by hotkey OR coldkey) joined to current registrations (from neurons,
 // by hotkey). `agg` is the single aggregate row; kinds/registrations/recent are
 // row arrays. Null-safe on a cold/absent store (returns a schema-stable zero).
+// Signing-activity sub-object (#1847) from the extrinsics tier, by signer. These
+// are hot-window aggregates (retention-bounded), not all-time. Matched by signer
+// only — an account queried by a key that did not sign won't line up with the
+// account_events aggregates (which match hotkey OR coldkey). Null-safe on a cold
+// store: tx_count 0, others null, modules_called [].
+export function formatAccountActivity(agg, modules) {
+  const a = agg || {};
+  return {
+    tx_count: a.tx_count ?? 0,
+    last_tx_block: a.last_tx_block ?? null,
+    last_tx_at: toIso(a.last_tx_at),
+    total_fee_tao: a.total_fee_tao ?? null,
+    modules_called: (modules || [])
+      .filter((m) => m && m.call_module)
+      .map((m) => ({ call_module: m.call_module, count: m.count ?? 0 })),
+  };
+}
+
 export function buildAccountSummary(
   ss58,
-  { agg, kinds, registrations, recent } = {},
+  { agg, kinds, registrations, recent, activity, modules } = {},
 ) {
   const a = agg || {};
   return {
@@ -215,6 +233,7 @@ export function buildAccountSummary(
       .map(formatRegistration)
       .filter(Boolean),
     recent_events: (recent || []).map(formatAccountEvent).filter(Boolean),
+    activity: formatAccountActivity(activity, modules),
   };
 }
 
