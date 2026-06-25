@@ -4,6 +4,7 @@
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
 // `applyQueryFilters` is the single public entry; the rest are internal helpers.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
+import { linkHeader } from "./http.mjs";
 
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -30,6 +31,40 @@ export function applyQueryFilters(
       ).map((name) => [name, config.filters[name]]),
     ),
   });
+}
+
+// RFC 8288 Link header for a cursor-paginated response (window from
+// `paginateRows`): `first`/`prev` when an earlier page exists, `next`/`last`
+// when a later one does. Each link is an absolute URL that keeps the active
+// query and pins the resolved cursor + limit, so a client can walk pages without
+// rebuilding the request. Null when no relation applies (unpaged, single page,
+// or empty) so the caller omits the header.
+export function paginationLinkHeader(url, pagination) {
+  if (!pagination || typeof pagination.limit !== "number") {
+    return null;
+  }
+  const { cursor, limit, next_cursor: nextCursor, total } = pagination;
+  const pageUri = (offset) => {
+    const target = new URL(url.href);
+    target.searchParams.set("cursor", String(offset));
+    target.searchParams.set("limit", String(limit));
+    return target.href;
+  };
+  const links = [];
+  if (cursor > 0) {
+    links.push({ uri: pageUri(0), rel: "first" });
+    links.push({ uri: pageUri(Math.max(0, cursor - limit)), rel: "prev" });
+  }
+  if (typeof nextCursor === "number") {
+    links.push({ uri: pageUri(nextCursor), rel: "next" });
+    // Final-page start: last whole-limit stride below `total`. The "- 1" keeps
+    // an exact multiple on the prior stride, not an empty page past the end.
+    links.push({
+      uri: pageUri(Math.floor((total - 1) / limit) * limit),
+      rel: "last",
+    });
+  }
+  return links.length > 0 ? linkHeader(links) : null;
 }
 
 function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
@@ -303,6 +338,19 @@ function validateListQuery(params, config) {
           message: `${key} must be a number.`,
         };
       }
+    }
+    const minKey = `min_${field}`;
+    const maxKey = `max_${field}`;
+    if (!params.has(minKey) || !params.has(maxKey)) {
+      continue;
+    }
+    const minValue = numberParam(params.get(minKey));
+    const maxValue = numberParam(params.get(maxKey));
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      return {
+        parameter: minKey,
+        message: `${minKey} must not be greater than ${maxKey}.`,
+      };
     }
   }
 

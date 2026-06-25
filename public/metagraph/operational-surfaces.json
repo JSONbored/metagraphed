@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 73,
+  "surface_count": 74,
   "surfaces": [
     {
       "auth_required": false,
@@ -155,6 +155,24 @@
       "surface_id": "opentensor-lite-wss",
       "surface_key": "srf-dcf48d017826dc4b",
       "url": "wss://lite.chain.opentensor.ai:443"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 4,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "targon",
+      "public_safe": true,
+      "subnet_name": "Targon",
+      "subnet_slug": "sn-4",
+      "surface_id": "sn-4-targon-subnet-api",
+      "surface_key": "srf-40be5162d95eb737",
+      "url": "https://api.targon.com/tha/v2/inventory"
     },
     {
       "auth_required": false,

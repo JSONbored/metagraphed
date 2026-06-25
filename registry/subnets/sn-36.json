@@ -9,7 +9,56 @@
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "id": "sn-36-eirel-docs",
+      "name": "Eirel documentation",
+      "kind": "docs",
+      "url": "https://eirel.ai/docs",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official Eirel documentation (headed \"Eirel Documentation — Subnet 36 on Bittensor\"), linked as \"Docs\" from the homepage navigation and footer."
+    },
+    {
+      "id": "sn-36-eirel-leaderboard",
+      "name": "Eirel leaderboard",
+      "kind": "dashboard",
+      "url": "https://leaderboard.eirel.ai",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official Eirel leaderboard dashboard on the project's own subdomain, linked as \"Leaderboard\" from the homepage."
+    },
+    {
+      "id": "sn-36-eirel-whitepaper",
+      "name": "Eirel whitepaper",
+      "kind": "docs",
+      "url": "https://eirel.ai/whitepaper.pdf",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official Eirel whitepaper (application/pdf), linked as \"Whitepaper\" from the homepage and footer."
+    }
+  ],
   "social": {
     "x": "https://x.com/rendix_network"
   },
