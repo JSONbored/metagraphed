@@ -9,7 +9,27 @@
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "id": "sn-35-oxmarkets-subnet-api",
+      "name": "0xMarkets Cartha Verifier API",
+      "kind": "subnet-api",
+      "url": "https://cartha-verifier-826542474079.us-central1.run.app/pools",
+      "provider": "oxmarkets",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://docs.0xmarkets.io/cartha/testnet",
+        "https://github.com/General-Tao-Ventures/cartha-validator"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "notes": "Public no-auth endpoint of the SN35 Cartha Verifier (returns live market pool data); the verifier base URL is documented in the official 0xMarkets docs. Testnet verifier instance."
+    }
+  ],
   "contact": "contact@0xmarkets.io",
   "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
   "website_url": "https://www.0xmarkets.io/",
