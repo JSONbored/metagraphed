@@ -1163,6 +1163,8 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
       "endpoints",
       "health",
       "opportunity_boards",
+      "surface_readiness",
+      "compare",
     ]) {
       assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
     }
@@ -1408,5 +1410,397 @@ describe("graphql — resolver branch coverage", () => {
     const res = await handleGraphQLRequest(req, emptyEnv);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
+  });
+});
+
+// --- surface_readiness query -------------------------------------------------
+
+describe("graphql — surface_readiness query", () => {
+  test("SDL advertises surface_readiness and new types", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql");
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    const sdl = await res.text();
+    assert.ok(sdl.includes("surface_readiness"), "surface_readiness in Query");
+    assert.ok(sdl.includes("type SurfaceReadiness"), "SurfaceReadiness type");
+    assert.ok(sdl.includes("readiness_score"), "readiness_score field");
+    assert.ok(sdl.includes("readiness_tier"), "readiness_tier field");
+    assert.ok(sdl.includes("type SurfaceAuth"), "SurfaceAuth type");
+    assert.ok(sdl.includes("type SurfaceRateLimit"), "SurfaceRateLimit type");
+  });
+
+  test("surface_readiness returns empty list on a cold store", async () => {
+    const { status, body } = await gql(
+      "{ surface_readiness { items { surface_id } total } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.surface_readiness, { items: [], total: 0 });
+  });
+
+  test("surface_readiness projects curated surfaces into readiness rows", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          {
+            id: "s1",
+            netuid: 1,
+            kind: "subnet-api",
+            auth: {
+              scheme: "bearer",
+              location: "header",
+              name: "Authorization",
+            },
+            rate_limit: { requests: 100, window: "1m", scope: "per-key" },
+            schema_status: "machine-readable",
+          },
+          {
+            id: "s2",
+            netuid: 2,
+            kind: "docs",
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ surface_readiness {
+          items {
+            surface_id callable readiness_score readiness_tier
+            auth_clarity_score rate_limit_clarity_score schema_clarity_score
+            auth { scheme location }
+            rate_limit { requests scope }
+          }
+          total
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.surface_readiness.total, 2);
+    const [callable, ref] = body.data.surface_readiness.items;
+    assert.equal(callable.surface_id, "s1");
+    assert.equal(callable.callable, true);
+    assert.equal(callable.readiness_score, 100);
+    assert.equal(callable.readiness_tier, "ready");
+    assert.equal(callable.auth_clarity_score, 3);
+    assert.equal(callable.rate_limit_clarity_score, 2);
+    assert.equal(callable.schema_clarity_score, 2);
+    assert.equal(callable.auth.scheme, "bearer");
+    assert.equal(callable.auth.location, "header");
+    assert.equal(callable.rate_limit.requests, 100);
+    assert.equal(callable.rate_limit.scope, "per-key");
+    assert.equal(ref.readiness_tier, "reference");
+    assert.equal(ref.callable, false);
+  });
+
+  test("surface_readiness filters by readiness_tier", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "a", netuid: 1, kind: "subnet-api" }, // blocked (callable, score 0)
+          { id: "b", netuid: 2, kind: "docs" }, // reference (non-callable)
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      '{ surface_readiness(readiness_tier: "reference") { items { surface_id } total } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.surface_readiness.total, 1);
+    assert.equal(body.data.surface_readiness.items[0].surface_id, "b");
+  });
+
+  test("surface_readiness filters by callable=true and callable=false", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "c1", netuid: 1, kind: "openapi" },
+          { id: "c2", netuid: 2, kind: "website" },
+        ],
+      },
+    });
+    const callableOnly = await gql(
+      "{ surface_readiness(callable: true) { items { surface_id callable } total } }",
+      env,
+    );
+    assert.equal(callableOnly.status, 200);
+    assert.equal(callableOnly.body.data.surface_readiness.total, 1);
+    assert.equal(
+      callableOnly.body.data.surface_readiness.items[0].callable,
+      true,
+    );
+
+    const refOnly = await gql(
+      "{ surface_readiness(callable: false) { items { surface_id callable } total } }",
+      env,
+    );
+    assert.equal(refOnly.status, 200);
+    assert.equal(refOnly.body.data.surface_readiness.total, 1);
+    assert.equal(refOnly.body.data.surface_readiness.items[0].callable, false);
+  });
+
+  test("surface_readiness scopes to one subnet via netuid", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { id: "n1a", netuid: 1, kind: "openapi" },
+          { id: "n2a", netuid: 2, kind: "openapi" },
+          { id: "n1b", netuid: 1, kind: "docs" },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      "{ surface_readiness(netuid: 1) { items { surface_id } total } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.surface_readiness.total, 2);
+    assert.ok(
+      body.data.surface_readiness.items.every((s) =>
+        ["n1a", "n1b"].includes(s.surface_id),
+      ),
+    );
+  });
+
+  test("surface_readiness cursor falls back to surface_key when id is absent", async () => {
+    const env = fixtureEnv({
+      "/metagraph/surfaces.json": {
+        surfaces: [
+          { key: "k1", netuid: 1, kind: "openapi" }, // no id
+          { id: "s2", netuid: 1, kind: "docs" },
+        ],
+      },
+    });
+    const { body } = await gql(
+      "{ surface_readiness(limit: 1) { items { surface_id } next_cursor total } }",
+      env,
+    );
+    assert.equal(body.data.surface_readiness.total, 2);
+    assert.equal(body.data.surface_readiness.next_cursor, "k1");
+  });
+});
+
+// --- compare query -----------------------------------------------------------
+
+describe("graphql — compare query", () => {
+  test("SDL advertises compare and new Compare* types", async () => {
+    const req = new Request("https://api.metagraph.sh/api/v1/graphql");
+    const res = await handleGraphQLRequest(req, emptyEnv);
+    const sdl = await res.text();
+    assert.ok(sdl.includes("compare(netuids"), "compare in Query");
+    assert.ok(sdl.includes("type CompareResult"), "CompareResult type");
+    assert.ok(sdl.includes("type CompareSubnet"), "CompareSubnet type");
+    assert.ok(sdl.includes("type CompareStructure"), "CompareStructure type");
+    assert.ok(sdl.includes("type CompareEconomics"), "CompareEconomics type");
+    assert.ok(sdl.includes("type CompareHealth"), "CompareHealth type");
+  });
+
+  test("compare with cold store marks requested netuids found:false", async () => {
+    const { status, body } = await gql(
+      "{ compare(netuids: [1, 2]) { dimensions requested_netuids subnets { netuid found structure { surface_count } } } }",
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.compare.dimensions, [
+      "structure",
+      "economics",
+      "health",
+    ]);
+    assert.deepEqual(body.data.compare.requested_netuids, [1, 2]);
+    assert.ok(body.data.compare.subnets.every((s) => s.found === false));
+    assert.ok(body.data.compare.subnets.every((s) => s.structure === null));
+  });
+
+  test("compare resolves structure from the subnets index", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 1,
+            name: "Alpha",
+            slug: "alpha",
+            surface_count: 5,
+            coverage_level: "detailed",
+            integration_readiness: 80,
+          },
+          {
+            netuid: 2,
+            name: "Beta",
+            slug: "beta",
+            surface_count: 2,
+            coverage_level: "basic",
+            integration_readiness: 40,
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ compare(netuids: [1, 2]) {
+          requested_netuids
+          subnets {
+            netuid name slug found
+            structure { surface_count coverage_level integration_readiness }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.compare.requested_netuids, [1, 2]);
+    const [a, b] = body.data.compare.subnets;
+    assert.equal(a.netuid, 1);
+    assert.equal(a.found, true);
+    assert.equal(a.name, "Alpha");
+    assert.equal(a.structure.surface_count, 5);
+    assert.equal(a.structure.coverage_level, "detailed");
+    assert.equal(a.structure.integration_readiness, 80);
+    assert.equal(b.structure.surface_count, 2);
+  });
+
+  test("compare populates economics when the dimension is requested", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 7, name: "G", slug: "g", surface_count: 1 }],
+      },
+      "/metagraph/economics.json": {
+        subnets: [
+          {
+            netuid: 7,
+            emission_share: 0.12,
+            registration_cost_tao: 0.5,
+            open_slots: 10,
+            miner_count: 20,
+            validator_count: 5,
+            total_stake_tao: 1000,
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ compare(netuids: [7]) {
+          subnets {
+            netuid found
+            economics { emission_share registration_cost_tao open_slots miner_count validator_count total_stake_tao }
+            structure { surface_count }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const s = body.data.compare.subnets[0];
+    assert.equal(s.found, true);
+    assert.equal(s.economics.emission_share, 0.12);
+    assert.equal(s.economics.open_slots, 10);
+    assert.equal(s.structure.surface_count, 1);
+  });
+
+  test("compare populates health from the live KV snapshot", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/subnets.json": {
+          subnets: [{ netuid: 3, name: "C", slug: "c" }],
+        },
+      },
+      {
+        kv: {
+          [KV_HEALTH_CURRENT]: {
+            subnets: [
+              {
+                netuid: 3,
+                status: "degraded",
+                ok_count: 2,
+                surface_count: 5,
+                avg_latency_ms: 120,
+              },
+            ],
+          },
+        },
+      },
+    );
+    const { status, body } = await gql(
+      `{ compare(netuids: [3]) {
+          subnets { netuid found health { status ok_count surface_count avg_latency_ms } }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const s = body.data.compare.subnets[0];
+    assert.equal(s.found, true);
+    assert.equal(s.health.status, "degraded");
+    assert.equal(s.health.ok_count, 2);
+    assert.equal(s.health.avg_latency_ms, 120);
+  });
+
+  test("compare honours the dimensions filter — excluding economics omits the field", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 5, name: "E", slug: "e", surface_count: 3 }],
+      },
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 5, emission_share: 0.9 }],
+      },
+    });
+    const { status, body } = await gql(
+      '{ compare(netuids: [5], dimensions: ["structure"]) { dimensions subnets { found structure { surface_count } economics { emission_share } } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.compare.dimensions, ["structure"]);
+    const s = body.data.compare.subnets[0];
+    assert.equal(s.found, true);
+    assert.equal(s.structure.surface_count, 3);
+    assert.equal(s.economics, null);
+  });
+
+  test("compare handles a mix of found and not-found netuids", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 1, name: "A", slug: "a", surface_count: 1 }],
+      },
+    });
+    const { status, body } = await gql(
+      `{ compare(netuids: [1, 999]) {
+          subnets { netuid name found structure { surface_count } }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const [found, missing] = body.data.compare.subnets;
+    assert.equal(found.netuid, 1);
+    assert.equal(found.found, true);
+    assert.equal(found.structure.surface_count, 1);
+    assert.equal(missing.netuid, 999);
+    assert.equal(missing.found, false);
+    assert.equal(missing.name, null);
+    assert.equal(missing.structure, null);
+  });
+
+  test("compare economics is null when the netuid has no economics row", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 4, name: "D", slug: "d" }],
+      },
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 99, emission_share: 1 }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ compare(netuids: [4]) { subnets { found economics { emission_share } } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.subnets[0].found, true);
+    assert.equal(body.data.compare.subnets[0].economics, null);
+  });
+
+  test("compare health is null when the live store is cold", async () => {
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 6, name: "F", slug: "f" }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ compare(netuids: [6]) { subnets { found health { status } } } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.subnets[0].found, true);
+    assert.equal(body.data.compare.subnets[0].health, null);
   });
 });

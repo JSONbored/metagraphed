@@ -15,6 +15,7 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import { computeSurfaceReadiness } from "./surface-readiness.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -46,6 +47,10 @@ export const SDL = `
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
     opportunity_boards(limit: Int): OpportunityBoards!
+    "Integration-readiness scorecard across all curated surfaces. Optionally scope to one subnet, filter by tier or callable flag."
+    surface_readiness(netuid: Int, readiness_tier: String, callable: Boolean, limit: Int, cursor: String): SurfaceReadinessList!
+    "Side-by-side registry, economics, and health comparison of two or more subnets."
+    compare(netuids: [Int!]!, dimensions: [String!]): CompareResult!
   }
 
   type SubnetList {
@@ -263,6 +268,97 @@ export const SDL = `
     validator_headroom: Int
     max_validators: Int
   }
+
+  type SurfaceReadinessList {
+    items: [SurfaceReadiness!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  "Auth object shape exposed by surface_readiness. Scheme is always present when auth is non-null."
+  type SurfaceAuth {
+    scheme: String
+    location: String
+    name: String
+    value_format: String
+  }
+
+  "Rate-limit object shape exposed by surface_readiness."
+  type SurfaceRateLimit {
+    requests: Int
+    window: String
+    scope: String
+  }
+
+  type SurfaceReadiness {
+    surface_id: String
+    surface_key: String
+    netuid: Int
+    subnet_name: String
+    subnet_slug: String
+    kind: String
+    provider: String
+    authority: String
+    url: String
+    auth_required: Boolean
+    auth: SurfaceAuth
+    rate_limit: SurfaceRateLimit
+    schema_status: String
+    schema_url: String
+    stale: Boolean
+    last_verified_at: String
+    callable: Boolean!
+    auth_clarity_score: Int!
+    rate_limit_clarity_score: Int!
+    schema_clarity_score: Int!
+    readiness_score: Int!
+    readiness_tier: String!
+  }
+
+  type CompareResult {
+    "Dimensions included in this response (subset of structure, economics, health)."
+    dimensions: [String!]!
+    requested_netuids: [Int!]!
+    subnets: [CompareSubnet!]!
+  }
+
+  type CompareSubnet {
+    netuid: Int!
+    name: String
+    slug: String
+    "False when the netuid is not in the registry; dimension objects will be null."
+    found: Boolean!
+    structure: CompareStructure
+    economics: CompareEconomics
+    health: CompareHealth
+  }
+
+  "Registry structure fields for one subnet in a compare response."
+  type CompareStructure {
+    surface_count: Int
+    completeness_score: Int
+    coverage_level: String
+    integration_readiness: Int
+  }
+
+  "Economics fields for one subnet in a compare response."
+  type CompareEconomics {
+    emission_share: Float
+    registration_cost_tao: Float
+    registration_allowed: Boolean
+    open_slots: Int
+    miner_count: Int
+    validator_count: Int
+    total_stake_tao: Float
+  }
+
+  "Live-health fields for one subnet in a compare response."
+  type CompareHealth {
+    status: String
+    surface_count: Int
+    ok_count: Int
+    avg_latency_ms: Int
+  }
 `;
 
 const schema = buildSchema(SDL);
@@ -285,6 +381,8 @@ export const FIELD_COMPLEXITY = {
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
+  surface_readiness: RELATIONSHIP_FIELD_COMPLEXITY,
+  compare: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -723,6 +821,96 @@ const rootValue = {
       scope: result.scope,
       subnets: result.subnets || [],
     };
+  },
+
+  async surface_readiness(
+    { netuid, readiness_tier, callable, limit, cursor },
+    context,
+  ) {
+    const all = await loadRows(context, ARTIFACT.surfaces, "surfaces", netuid);
+    let scored = all.map(computeSurfaceReadiness);
+    if (readiness_tier != null) {
+      scored = scored.filter((r) => r.readiness_tier === readiness_tier);
+    }
+    if (callable != null) {
+      scored = scored.filter((r) => r.callable === callable);
+    }
+    const { page, total, nextCursor } = paginate(
+      scored,
+      limit,
+      cursor,
+      // surface_id may be absent on legacy rows; fall back to key for the cursor.
+      (r) => r.surface_id ?? r.surface_key,
+    );
+    return { items: page, total, next_cursor: nextCursor };
+  },
+
+  // Assemble a side-by-side comparison across up to 128 netuids. The three
+  // dimensions (structure/economics/health) map to the same sources as the REST
+  // /api/v1/compare handler: subnets index (structure), live economics tier, and
+  // live health snapshot. All reads share the per-request memo so pulling two
+  // subnets with economics doesn't double-read the economics artifact.
+  async compare({ netuids, dimensions: requestedDimensions }, context) {
+    const VALID_DIMENSIONS = ["structure", "economics", "health"];
+    const dims = requestedDimensions
+      ? requestedDimensions.filter((d) => VALID_DIMENSIONS.includes(d))
+      : VALID_DIMENSIONS;
+
+    const capped = (Array.isArray(netuids) ? netuids : []).slice(0, 128);
+    const allSubnets = await loadRows(context, ARTIFACT.subnets, "subnets");
+    const metaByNetuid = new Map(allSubnets.map((s) => [s.netuid, s]));
+
+    const subnets = await Promise.all(
+      capped.map(async (netuid) => {
+        const meta = metaByNetuid.get(netuid) ?? null;
+        const entry = {
+          netuid,
+          name: meta?.name ?? null,
+          slug: meta?.slug ?? null,
+          found: meta !== null,
+          structure: null,
+          economics: null,
+          health: null,
+        };
+        if (meta) {
+          if (dims.includes("structure")) {
+            entry.structure = {
+              surface_count: meta.surface_count ?? null,
+              completeness_score: meta.completeness_score ?? null,
+              coverage_level: meta.coverage_level ?? null,
+              integration_readiness: meta.integration_readiness ?? null,
+            };
+          }
+          if (dims.includes("economics")) {
+            const econ = await loadSubnetEconomics(context, netuid);
+            entry.economics = econ
+              ? {
+                  emission_share: econ.emission_share ?? null,
+                  registration_cost_tao: econ.registration_cost_tao ?? null,
+                  registration_allowed: econ.registration_allowed ?? null,
+                  open_slots: econ.open_slots ?? null,
+                  miner_count: econ.miner_count ?? null,
+                  validator_count: econ.validator_count ?? null,
+                  total_stake_tao: econ.total_stake_tao ?? null,
+                }
+              : null;
+          }
+          if (dims.includes("health")) {
+            const h = await loadSubnetHealth(context, netuid);
+            entry.health = h
+              ? {
+                  status: h.status ?? null,
+                  surface_count: h.surface_count ?? null,
+                  ok_count: h.ok_count ?? null,
+                  avg_latency_ms: h.avg_latency_ms ?? null,
+                }
+              : null;
+          }
+        }
+        return entry;
+      }),
+    );
+    return { dimensions: dims, requested_netuids: capped, subnets };
   },
 
   async opportunity_boards({ limit }, context) {
