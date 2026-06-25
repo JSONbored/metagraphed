@@ -4,6 +4,36 @@
   "additionalProperties": false,
   "components": {
     "schemas": {
+      "AccountBalanceArtifact": {
+        "additionalProperties": true,
+        "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
+        "properties": {
+          "balance_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58"
+        ],
+        "type": "object"
+      },
       "AccountEvent": {
         "additionalProperties": false,
         "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",

@@ -60,6 +60,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleAccount,
+  handleAccountBalance,
   handleAccountEvents,
   handleAccountSubnets,
   handleBlocks,
@@ -165,6 +166,7 @@ import {
   withinRateLimit,
 } from "../src/ai-search.mjs";
 import {
+  ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
@@ -1166,6 +1168,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (accountSubnetsMatch) {
       return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
+    }
+    const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountBalanceMatch) {
+      return handleAccountBalance(request, env, accountBalanceMatch[1]);
     }
     const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
     if (accountMatch) {

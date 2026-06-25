@@ -47,6 +47,8 @@ export const R2_ONLY_PATTERNS = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/events\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
+  // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,
   // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.

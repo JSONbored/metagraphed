@@ -408,6 +408,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "schema_ref": "#/components/schemas/BlocksFeedArtifact",
@@ -4156,6 +4163,18 @@
       "id": "account-subnets",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/subnets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/balance.json",
+      "cache": "short",
+      "description": "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (503).",
+      "id": "account-balance",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/balance",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

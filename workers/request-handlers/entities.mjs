@@ -17,7 +17,8 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS } from "../config.mjs";
+import { DAY_MS, JSON_CONTENT_TYPE } from "../config.mjs";
+import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -333,6 +334,113 @@ export async function handleAccountSubnets(request, env, ss58) {
   );
 }
 
+// Basic ss58 guard: Bittensor hotkeys start with '5', base58 chars, 47-48 chars.
+// The ACCOUNT_BALANCE_PATH_PATTERN captures any non-slash segment so this check
+// is the first-pass validity gate before the RPC call.
+const SS58_GUARD = /^5[a-zA-Z0-9]{46,47}$/;
+const BALANCE_KV_TTL = 60; // seconds
+const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+
+// GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
+// for one account, queried from the finney RPC at request time. 60s KV cache via
+// METAGRAPH_CONTROL. Returns 400 on invalid ss58; 503 with balance_tao:null on
+// RPC failure (so callers always get a schema-stable JSON body).
+export async function handleAccountBalance(request, env, ss58) {
+  if (!SS58_GUARD.test(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must start with '5' and be 47-48 alphanumeric characters.",
+      400,
+    );
+  }
+
+  const cacheKey = `balance:${ss58}`;
+  const kv = env.METAGRAPH_CONTROL;
+
+  // KV cache hit — return immediately without touching the RPC.
+  if (kv?.get) {
+    try {
+      const cached = await kv.get(cacheKey, { type: "json" });
+      if (cached) {
+        return new Response(JSON.stringify(cached), {
+          status: 200,
+          headers: {
+            "content-type": JSON_CONTENT_TYPE,
+            "access-control-allow-origin": "*",
+            "cache-control": `public, max-age=${BALANCE_KV_TTL}, stale-while-revalidate=30`,
+          },
+        });
+      }
+    } catch {
+      // KV read failure is non-fatal — fall through to the live RPC.
+    }
+  }
+
+  const queriedAt = new Date().toISOString();
+  let balanceTao = null;
+  let rpcOk = false;
+
+  try {
+    const rpcResp = await fetch(FINNEY_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "system_account",
+        params: [ss58],
+      }),
+    });
+    if (rpcResp.ok) {
+      const rpcBody = await rpcResp.json();
+      const data = rpcBody?.result?.data;
+      if (data && typeof data.free !== "undefined") {
+        // free + reserved are hex-encoded u128 rao values (1 TAO = 1e9 rao).
+        const freeRao =
+          typeof data.free === "string"
+            ? Number(BigInt(data.free))
+            : Number(data.free);
+        const reservedRao =
+          typeof data.reserved === "string"
+            ? Number(BigInt(data.reserved))
+            : Number(data.reserved ?? 0);
+        balanceTao = (freeRao + reservedRao) / 1e9;
+        rpcOk = true;
+      }
+    }
+  } catch {
+    // RPC fetch failed — return 503 with balance_tao: null below.
+  }
+
+  const payload = {
+    schema_version: 1,
+    ss58,
+    balance_tao: balanceTao,
+    queried_at: queriedAt,
+  };
+
+  // Cache only on success so a transient RPC failure doesn't poison the cache.
+  if (rpcOk && kv?.put) {
+    try {
+      await kv.put(cacheKey, JSON.stringify(payload), {
+        expirationTtl: BALANCE_KV_TTL,
+      });
+    } catch {
+      // KV write failure is non-fatal.
+    }
+  }
+
+  return new Response(JSON.stringify(payload), {
+    status: rpcOk ? 200 : 503,
+    headers: {
+      "content-type": JSON_CONTENT_TYPE,
+      "access-control-allow-origin": "*",
+      "cache-control": rpcOk
+        ? `public, max-age=${BALANCE_KV_TTL}, stale-while-revalidate=30`
+        : "no-store",
+    },
+  });
+}
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta

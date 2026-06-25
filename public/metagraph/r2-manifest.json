@@ -1,61 +1,70 @@
 {
-  "artifact_count": 5,
-  "artifact_size_bytes": 1461620,
+  "artifact_count": 6,
+  "artifact_size_bytes": 1737063,
   "artifacts": [
     {
       "content_type": "application/json",
-      "key": "runs/2026-06-18T00-00-00-000Z/api-index.json",
+      "key": "runs/1970-01-01T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "3a730ab97210f043c4abc401f19295c29d322ffc78e6eed9f2a684766dddbff1",
-      "size_bytes": 114064,
+      "sha256": "638ffd9994ac2b3768f4cb5736646ef6941dbf50f511faad2bbbda41f30080e9",
+      "size_bytes": 131006,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/2026-06-18T00-00-00-000Z/contracts.json",
+      "key": "runs/1970-01-01T00-00-00-000Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "f07e9a28c4f5423f758972faa90ff995f117b2fb77b42ced9b5f94ffb248e254",
-      "size_bytes": 28908,
+      "sha256": "80019c3fe17cc0a460eb89bc61356b48369afd8a37fb4f8b7827813312d4bd4d",
+      "size_bytes": 35915,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/2026-06-18T00-00-00-000Z/openapi.json",
+      "key": "runs/1970-01-01T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "719e737d1a0c51751651d657ee3a3f44def223b78b3c623426d39a63ceafa12a",
-      "size_bytes": 744473,
+      "sha256": "de43c1a357ec216da2cb1c4457aaa4cea8d9021839c317f1aa46205309ebf303",
+      "size_bytes": 853970,
       "storage_tier": "dual"
     },
     {
       "content_type": "application/json",
-      "key": "runs/2026-06-18T00-00-00-000Z/schemas/index.json",
+      "key": "runs/1970-01-01T00-00-00-000Z/operational-surfaces.json",
+      "latest_key": "latest/operational-surfaces.json",
+      "path": "/metagraph/operational-surfaces.json",
+      "sha256": "d7682bd8f58ff7383d55ef3ff79412fed61794004b822e5ae392b336b2416dfc",
+      "size_bytes": 37581,
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/json",
+      "key": "runs/1970-01-01T00-00-00-000Z/schemas/index.json",
       "latest_key": "latest/schemas/index.json",
       "path": "/metagraph/schemas/index.json",
-      "sha256": "8c492328cbcc45813a0563b8f587b125dd06d88e931e3286ba8df88386658607",
-      "size_bytes": 23965,
+      "sha256": "cf46bb7bae1b832a07b9937f4bf4b839a870275b835fe0fd5eaf49b4e1b0da26",
+      "size_bytes": 37277,
       "storage_tier": "dual"
     },
     {
       "content_type": "text/plain; charset=utf-8",
-      "key": "runs/2026-06-18T00-00-00-000Z/types.d.ts",
+      "key": "runs/1970-01-01T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "a4d4c221e7fc842e8e74fee8dfe7ed98dfe15616e8f38bdda587f5a9c3418804",
-      "size_bytes": 550210,
+      "sha256": "1f0c9b1a1a74895f6344eab18b7e2f15885e9d5dc735a89c2c9d49bcb64c9cbc",
+      "size_bytes": 641314,
       "storage_tier": "dual"
     }
   ],
   "bucket_binding": "METAGRAPH_ARCHIVE",
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
-  "full_artifact_count": 2185,
-  "full_artifact_size_bytes": 38151278,
+  "full_artifact_count": 2256,
+  "full_artifact_size_bytes": 38855181,
   "full_manifest_key": "latest/r2-manifest.json",
-  "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
-  "generated_at": "2026-06-18T00:00:00.000Z",
+  "full_manifest_run_key": "runs/1970-01-01T00-00-00-000Z/r2-manifest.json",
+  "generated_at": "1970-01-01T00:00:00.000Z",
   "latest_prefix": "latest/",
   "manifest_kind": "compact",
   "required_artifact_paths": [
@@ -67,14 +76,14 @@
     "/metagraph/types.d.ts",
     "/metagraph/verification/latest.json"
   ],
-  "run_prefix": "runs/2026-06-18T00-00-00-000Z/",
+  "run_prefix": "runs/1970-01-01T00-00-00-000Z/",
   "schema_version": 1,
   "storage_tier_counts": {
-    "dual": 5,
-    "r2": 2180
+    "dual": 6,
+    "r2": 2250
   },
   "storage_tier_size_bytes": {
-    "dual": 1461620,
-    "r2": 36689658
+    "dual": 1737063,
+    "r2": 37118118
   }
 }
