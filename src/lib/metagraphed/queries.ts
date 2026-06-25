@@ -48,7 +48,6 @@ import type {
   SubnetHistoryPoint,
   SubnetNeuronHistory,
   SubnetNeuronHistoryPoint,
-  SubnetOverview,
   SubnetProfile,
   Surface,
   SurfaceLatencyPercentiles,
@@ -1229,20 +1228,6 @@ export const subnetNeuronHistoryQuery = (netuid: number, uid: number, window = "
     staleTime: STALE_MED,
   });
 
-// #1124 port: composed subnet overview (profile + health + curation + gaps + counts)
-// in one call — for the redesigned subnet-detail header/overview.
-export const subnetOverviewQuery = (netuid: number) =>
-  queryOptions({
-    queryKey: k("subnet-overview", netuid),
-    queryFn: async ({ signal }) => {
-      const res = await apiFetch<SubnetOverview>(`/api/v1/subnets/${netuid}/overview`, {
-        signal,
-      });
-      return { data: (res.data ?? { netuid }) as SubnetOverview, meta: res.meta, url: res.url };
-    },
-    staleTime: STALE_MED,
-  });
-
 function normalizeCompareSubnet(raw: unknown): CompareSubnet | undefined {
   if (!isPlainRecord(raw)) return undefined;
   const netuid = optionalNumber(raw.netuid);
@@ -1473,16 +1458,6 @@ export const subnetCandidatesQuery = (netuid: number) =>
     staleTime: STALE_LONG,
   });
 
-export const surfacesQuery = (params?: QueryParams) =>
-  queryOptions({
-    queryKey: k("surfaces", params ?? {}),
-    queryFn: async ({ signal }) => {
-      const res = await fetchList<unknown>("/api/v1/surfaces", "surfaces", params, signal);
-      return { ...res, data: res.data.map(normalizeSurface) } as ApiResult<Surface[]>;
-    },
-    staleTime: STALE_MED,
-  });
-
 /**
  * Strict next-cursor extractor. The API has historically returned cursors as
  * strings or numbers; defend against bad shapes (objects, booleans, NaN,
@@ -1704,16 +1679,6 @@ export const endpointsQuery = (params?: QueryParams) =>
     staleTime: STALE_MED,
   });
 
-export const rpcEndpointsQuery = () =>
-  queryOptions({
-    queryKey: k("rpc-endpoints"),
-    queryFn: async ({ signal }) => {
-      const res = await fetchList<unknown>("/api/v1/rpc/endpoints", "endpoints", undefined, signal);
-      return { ...res, data: res.data.map(normalizeEndpoint) } as ApiResult<Endpoint[]>;
-    },
-    staleTime: STALE_MED,
-  });
-
 // Pool rows are { id, kind, endpoint_count, eligible_count, best_endpoint_id,
 // endpoints[] }; the pools table reads name/members_count/proxy_enabled/
 // archive_capable. Derive those from the real fields (region is not modelled,
@@ -1912,16 +1877,6 @@ export const agentResourcesQuery = () =>
     queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>("/api/v1/agent-resources", { signal });
       return { ...res, data: normalizeAgentResources(res.data) } as ApiResult<AgentResources>;
-    },
-    staleTime: STALE_MED,
-  });
-
-export const endpointPoolsQuery = () =>
-  queryOptions({
-    queryKey: k("endpoint-pools"),
-    queryFn: async ({ signal }) => {
-      const res = await fetchList<unknown>("/api/v1/endpoint-pools", "pools", undefined, signal);
-      return { ...res, data: res.data.map(normalizePool) } as ApiResult<RpcPool[]>;
     },
     staleTime: STALE_MED,
   });
