@@ -450,6 +450,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
       "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
@@ -4318,6 +4325,34 @@
           "name": "limit",
           "schema": {
             "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/events.json",
+      "cache": "short",
+      "description": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+      "id": "block-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
             "minimum": 1,
             "type": "integer"
           }

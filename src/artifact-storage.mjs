@@ -61,6 +61,9 @@ export const R2_ONLY_PATTERNS = [
   // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
   // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/extrinsics\.json$/,
+  // Per-block events sub-resource (#1852): computed live from the account_events
+  // D1 tier at /api/v1/blocks/{ref}/events — never written as a file.
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/events\.json$/,
   // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
   // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
   // (0x extrinsic_hash) — never written as files.

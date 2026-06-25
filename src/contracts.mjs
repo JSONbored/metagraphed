@@ -990,6 +990,12 @@ export const PUBLIC_ARTIFACTS = [
     "BlockExtrinsicsArtifact",
   ),
   artifact(
+    "block-events",
+    "/metagraph/blocks/{ref}/events.json",
+    "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
+    "BlockEventsArtifact",
+  ),
+  artifact(
     "extrinsics-feed",
     "/metagraph/extrinsics.json",
     "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
@@ -1772,6 +1778,20 @@ export const API_ROUTES = [
     ["blocks", "analytics"],
     [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-events",
+    "GET",
+    "/api/v1/blocks/{ref}/events",
+    "/metagraph/blocks/{ref}/events.json",
+    "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
     [{ name: "ref", schema: { type: "string" } }],

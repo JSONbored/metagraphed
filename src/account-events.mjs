@@ -270,6 +270,28 @@ export function buildSubnetEvents(rows, netuid, { limit, offset } = {}) {
   };
 }
 
+// The decoded chain events in ONE block (#1852, block explorer): account_events
+// filtered by block_number, in natural read order (event_index ASC). Mirrors
+// buildBlockExtrinsics — ref is the original {ref} (numeric or 0x hash), so a
+// cold/unknown ref returns schema-stable block_number:null + events:[].
+export function buildBlockEvents(
+  rows,
+  ref,
+  blockNumber,
+  { limit, offset } = {},
+) {
+  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  return {
+    schema_version: 1,
+    ref: ref ?? null,
+    block_number: blockNumber ?? null,
+    event_count: events.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    events,
+  };
+}
+
 // The subnets where this account's hotkey is currently registered.
 export function buildAccountSubnets(rows, ss58) {
   const subnets = (rows || []).map(formatRegistration).filter(Boolean);

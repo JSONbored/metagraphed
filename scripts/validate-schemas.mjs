@@ -41,6 +41,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "blocks-feed",
   "block-detail",
   "block-extrinsics",
+  "block-events",
   "extrinsics-feed",
   "extrinsic-detail",
   "registry-leaderboards",

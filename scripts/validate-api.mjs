@@ -192,6 +192,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/blocks/1000000/events",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
+    },
+  ],
+  [
     "/api/v1/extrinsics",
     (body) => {
       assert.equal(Array.isArray(body.data.extrinsics), true);
