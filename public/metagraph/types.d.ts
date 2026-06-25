@@ -1356,13 +1356,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time. */
+        /** @description One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows). */
         AccountEvent: {
             amount_tao?: number | null;
             block_number: number | null;
             coldkey?: string | null;
             event_index?: number | null;
             event_kind: string | null;
+            extrinsic_index?: number | null;
             hotkey?: string | null;
             netuid?: number | null;
             /** Format: date-time */
@@ -2325,8 +2326,9 @@ export interface components {
             signer?: string | null;
             success?: boolean | null;
         };
-        /** @description Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file). */
+        /** @description Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file). */
         ExtrinsicDetailArtifact: {
+            events?: components["schemas"]["AccountEvent"][];
             extrinsic: components["schemas"]["Extrinsic"] | null;
             ref?: string | null;
             schema_version: number;
@@ -7996,6 +7998,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event_kind": "example"
+                     *           }
+                     *         ],
                      *         "extrinsic": {
                      *           "block_number": 5000000,
                      *           "call_args": {},

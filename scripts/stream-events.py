@@ -115,6 +115,12 @@ def decode_head(s, block_number):
         ent = extract(e.get("event_id"), e.get("attributes"))
         if ent is None:
             continue
+        # Link the event to its emitting extrinsic (#1849), kept 1:1 with the CI
+        # poller's fetch-events.py emit: the ApplyExtrinsic-phase extrinsic_idx,
+        # null for Initialization/Finalization events.
+        xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+        if not isinstance(xidx, int) or xidx < 0:
+            xidx = None
         event_rows.append(
             {
                 "block_number": block_number,
@@ -126,6 +132,7 @@ def decode_head(s, block_number):
                 "uid": ent["uid"],
                 "amount_tao": ent["amount_tao"],
                 "observed_at": head_ts if head_ts else None,
+                "extrinsic_index": xidx,
             }
         )
     # Block-explorer block + extrinsic rows (#1345 Option B). The _fe helpers are

@@ -21,6 +21,10 @@ export const EVENT_INSERT_COLUMNS = [
   "uid",
   "amount_tao",
   "observed_at",
+  // The 0-based index of the extrinsic that emitted this event (#1849), read from
+  // the event's phase=ApplyExtrinsic; null for Initialization/Finalization events.
+  // 10 cols x ROWS_PER_STMT(10) = 100 bound params — exactly D1's ceiling.
+  "extrinsic_index",
 ];
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
@@ -53,6 +57,7 @@ export function formatAccountEvent(row) {
     uid: row.uid ?? null,
     amount_tao: row.amount_tao ?? null,
     observed_at: toIso(row.observed_at),
+    extrinsic_index: row.extrinsic_index ?? null,
   };
 }
 
@@ -175,7 +180,7 @@ export function eventInsertStatements(db, rows) {
 // ---- Entity API builders (#1347) -------------------------------------------
 // The columns the account handlers SELECT for an event row.
 export const ACCOUNT_EVENT_COLUMNS =
-  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at";
+  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at, extrinsic_index";
 
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
