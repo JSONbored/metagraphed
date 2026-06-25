@@ -5,6 +5,10 @@
 // for tests; the Worker runs the D1 I/O.
 import { clampInt } from "../workers/config.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
+import {
+  EXTRINSIC_READ_COLUMNS,
+  buildAccountExtrinsics,
+} from "./extrinsics.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneAccountEvents runs in HEALTH_PRUNE_CRON.
@@ -476,4 +480,83 @@ export async function loadAccountSubnets(d1, ss58) {
     [ss58],
   );
   return buildAccountSubnets(rows, ss58);
+}
+
+// ---- Account tail loaders (history, extrinsics, transfers) -----------------
+// These complete the account chain-data surface for the MCP server, following
+// the same loader-sharing pattern as loadAccount{Summary,Events,Subnets}.
+
+// Columns selected from the account_events_daily rollup (#1854). Only hotkey-
+// attributed rows are written, so a coldkey-only ss58 may return zero days.
+const ACCOUNT_DAY_COLUMNS =
+  "day, netuid, event_count, event_kinds, first_block, last_block";
+
+// Per-day activity series for one account, from the account_events_daily
+// rollup. ?netuid narrows to one subnet; ?from / ?to are YYYY-MM-DD bounds
+// (lexicographic on the TEXT `day` column). Newest day first. Clamps limit to
+// 1-1000 (default 100); clamps offset to 0-1 000 000. Null-safe on cold store.
+export async function loadAccountHistory(
+  d1,
+  ss58,
+  { netuid, from, to, limit, offset } = {},
+) {
+  const lim = clampInt(limit, 100, 1, 1000);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  const params = [ss58];
+  let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
+  if (netuid != null && Number.isInteger(netuid)) {
+    sql += " AND netuid = ?";
+    params.push(netuid);
+  }
+  if (from) {
+    sql += " AND day >= ?";
+    params.push(from);
+  }
+  if (to) {
+    sql += " AND day <= ?";
+    params.push(to);
+  }
+  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
+  params.push(lim, off);
+  const rows = await d1(sql, params);
+  return buildAccountHistory(rows, ss58, { limit: lim, offset: off });
+}
+
+// Extrinsics signed by this account, newest first. Matched by the extrinsic
+// SIGNER only (not hotkey/coldkey union) — `extrinsics` carries a single
+// `signer` column. Clamps limit to 1-1000 (default 100); clamps offset.
+export async function loadAccountExtrinsics(d1, ss58, { limit, offset } = {}) {
+  const lim = clampInt(limit, 100, 1, 1000);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  const rows = await d1(
+    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
+    [ss58, lim, off],
+  );
+  return buildAccountExtrinsics(rows, ss58, { limit: lim, offset: off });
+}
+
+// Native-TAO transfer feed for this account, from account_events where
+// event_kind='Transfer' (hotkey=from, coldkey=to). direction: 'sent' | 'received'
+// | null (both). Newest first. Clamps limit to 1-1000 (default 100).
+export async function loadAccountTransfers(
+  d1,
+  ss58,
+  { direction, limit, offset } = {},
+) {
+  const lim = clampInt(limit, 100, 1, 1000);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  let sideClause = "(hotkey = ? OR coldkey = ?)";
+  let sideParams = [ss58, ss58];
+  if (direction === "sent") {
+    sideClause = "hotkey = ?";
+    sideParams = [ss58];
+  } else if (direction === "received") {
+    sideClause = "coldkey = ?";
+    sideParams = [ss58];
+  }
+  const rows = await d1(
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
+    [...sideParams, lim, off],
+  );
+  return buildAccountTransfers(rows, ss58, { limit: lim, offset: off });
 }
