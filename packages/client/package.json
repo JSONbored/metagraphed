@@ -1,6 +1,6 @@
 {
   "name": "@jsonbored/metagraphed",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "Typed TypeScript client for the metagraph.sh backend API — operational metadata, health, schemas, and interface discovery for Bittensor subnets.",
   "license": "Apache-2.0",
   "type": "module",

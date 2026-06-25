@@ -16,6 +16,7 @@ import {
   buildEvidenceSubjectNetuidIndex,
   buildRpcEndpointArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   classifyNativeName,
   artifactFilePath,
   artifactOutputPath,
@@ -1577,6 +1578,45 @@ describe("script utility contracts", () => {
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
   });
 
+  test("readCommittedManifestGeneratedAt preserves timestamp on local builds", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-manifest-"));
+    const manifestPath = path.join(dir, "r2-manifest.json");
+    const timestamp = "2026-06-18T00:00:00.000Z";
+    await writeFile(manifestPath, JSON.stringify({ generated_at: timestamp }));
+
+    // No publish env vars set → reads and returns committed timestamp.
+    const saved = process.env.METAGRAPH_BUILD_TIMESTAMP;
+    const savedRun = process.env.METAGRAPH_RUN_ID;
+    delete process.env.METAGRAPH_BUILD_TIMESTAMP;
+    delete process.env.METAGRAPH_RUN_ID;
+    try {
+      assert.equal(
+        await readCommittedManifestGeneratedAt(manifestPath),
+        timestamp,
+      );
+
+      // Missing file → returns null (caller falls back to generatedAt).
+      assert.equal(
+        await readCommittedManifestGeneratedAt(path.join(dir, "missing.json")),
+        null,
+      );
+
+      // METAGRAPH_BUILD_TIMESTAMP set → skip read, return null.
+      process.env.METAGRAPH_BUILD_TIMESTAMP = "2026-06-25T00:00:00.000Z";
+      assert.equal(await readCommittedManifestGeneratedAt(manifestPath), null);
+      delete process.env.METAGRAPH_BUILD_TIMESTAMP;
+
+      // METAGRAPH_RUN_ID set → skip read, return null.
+      process.env.METAGRAPH_RUN_ID = "run-abc";
+      assert.equal(await readCommittedManifestGeneratedAt(manifestPath), null);
+    } finally {
+      if (saved !== undefined) process.env.METAGRAPH_BUILD_TIMESTAMP = saved;
+      if (savedRun !== undefined) process.env.METAGRAPH_RUN_ID = savedRun;
+      else delete process.env.METAGRAPH_RUN_ID;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test("surface freshness TTL + staleness flag (#1006)", () => {
     // Per-kind TTL map with a default fallback for unlisted kinds.
     assert.equal(surfaceFreshnessTtlDays("subnet-api"), 30);
@@ -2034,6 +2074,22 @@ describe("script utility contracts", () => {
     );
     const degradedEndpoint = endpointResources.endpoints.find(
       (endpoint) => endpoint.surface_id === "root-degraded-rpc",
+    );
+    // method-support weights each supported method by 5 (capped at 20), and must
+    // do so identically whether methods_supported is object- or array-shaped
+    // (regression: the array branch dropped the x5 multiplier, scoring 5x low).
+    assert.equal(
+      endpointResources.endpoints
+        .find((endpoint) => endpoint.surface_id === "root-rpc")
+        .score_reasons.find((reason) => reason.reason === "method-support")
+        .points,
+      10, // object shape: 2 methods x 5
+    );
+    assert.equal(
+      degradedEndpoint.score_reasons.find(
+        (reason) => reason.reason === "method-support",
+      ).points,
+      5, // array shape: 1 method x 5 (was 1 before the fix)
     );
     assert.equal(incidents.incidents[0].endpoint_id, failedEndpoint.id);
     assert.equal(

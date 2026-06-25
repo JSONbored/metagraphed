@@ -376,10 +376,13 @@ describe("analytics edge cache", () => {
   // await tags the *Promise*, and withEdgeCache checks the awaited Response, which
   // never matches, leaving the per-response guard inert (masked only by the coarser
   // module-level generation counter). Pin the awaits in the source so a regression
-  // is caught even where the two guards happen to coincide in the harness.
+  // is caught even where the two guards happen to coincide in the harness. The
+  // handlers + their cache guard live in request-handlers/analytics.mjs (#1763).
   test("REGRESSION #1760: every analytics handler awaits envelopeResponse at its fallback-tag site", () => {
     const source = readFileSync(
-      fileURLToPath(new URL("../workers/api.mjs", import.meta.url)),
+      fileURLToPath(
+        new URL("../workers/request-handlers/analytics.mjs", import.meta.url),
+      ),
       "utf8",
     );
     // The bare `const response = envelopeResponse(` form is the bug: the response
