@@ -16,9 +16,24 @@ import {
   probeSurface,
   probeUrl,
   rollupSubnetStatus,
+  normalizeProbeStatus,
   statusForClassification,
   summarizeRpcProbe,
 } from "../src/health-probe-core.mjs";
+
+describe("normalizeProbeStatus", () => {
+  test("passes through canonical values", () => {
+    for (const status of ["ok", "degraded", "failed", "unknown"]) {
+      assert.equal(normalizeProbeStatus(status), status);
+    }
+  });
+  test("maps unrecognized, null, and missing values to unknown", () => {
+    assert.equal(normalizeProbeStatus("weird"), "unknown");
+    assert.equal(normalizeProbeStatus(null), "unknown");
+    assert.equal(normalizeProbeStatus(undefined), "unknown");
+    assert.equal(normalizeProbeStatus(""), "unknown");
+  });
+});
 
 describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
   test("empty / all-unknown → unknown", () => {

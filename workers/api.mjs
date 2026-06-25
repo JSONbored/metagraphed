@@ -9,6 +9,7 @@ import { applyQueryFilters } from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
+  exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   weakEtag,
 } from "./http.mjs";
@@ -38,12 +39,13 @@ import {
   analyticsQueryError,
   configureAnalytics,
   d1All,
-  d1Runner,
   handleBulkHealthTrends,
   handleGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
+  hasD1FallbackRows,
+  markD1FallbackResponse,
   validateQueryParams,
   withEdgeCache,
 } from "./request-handlers/analytics.mjs";
@@ -57,15 +59,20 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetValidators,
+  handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
   handleAccount,
+  handleAccountHistory,
   handleAccountBalance,
   handleAccountEvents,
   handleAccountExtrinsics,
+  handleAccountTransfers,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
+  handleBlockExtrinsics,
+  handleBlockEvents,
   handleExtrinsics,
   handleExtrinsic,
 } from "./request-handlers/entities.mjs";
@@ -117,6 +124,7 @@ import { dailyLatencyColumns } from "../src/health-sql.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
+  formatTrajectory,
   formatUptime,
   LEADERBOARD_BOARDS,
   mergeFreshness,
@@ -127,7 +135,6 @@ import {
   overlayOverviewHealth,
   overlaySubnetEconomics,
   overlaySubnetHealth,
-  loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
@@ -175,10 +182,14 @@ import {
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
+  ACCOUNT_TRANSFERS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
+  BLOCK_EXTRINSICS_PATH_PATTERN,
+  BLOCK_EVENTS_PATH_PATTERN,
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
@@ -208,6 +219,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -792,20 +804,26 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // for deletion, so a day is never dropped from D1 before it exists in R2. Its
     // own cron minute so the ~33k-row work never piles onto the probe/prune/fast
     // crons; each step is .catch-isolated.
+    // Pin a single `now` so the backlog archive and the prune derive the SAME
+    // retention cutoff. The archive does ~33k-row R2 work and can straddle a UTC
+    // midnight; if archive and prune each called Date.now() independently, the
+    // prune's cutoff could be one day larger and delete a day from D1 that the
+    // archive never wrote to R2 — the exact gap this archive-before-prune closes.
+    const now = Date.now();
     const rolled = await rollupNeuronDaily(env).catch(() => ({
       rolled: false,
     }));
     const archived = await archiveNeuronDaily(env).catch(() => ({
       archived: false,
     }));
-    const archivedPrunable = await archivePrunableNeuronDaily(env).catch(
-      () => ({
-        archived: false,
-      }),
-    );
+    const archivedPrunable = await archivePrunableNeuronDaily(env, {
+      now,
+    }).catch(() => ({
+      archived: false,
+    }));
     const pruned =
       archived.archived && archivedPrunable.archived
-        ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+        ? await pruneNeuronDaily(env, { now }).catch(() => ({ pruned: false }))
         : { pruned: false, reason: "archive-not-confirmed" };
     return { rolled, archived, archivedPrunable, pruned };
   }
@@ -1161,8 +1179,33 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    // Per-subnet chain-event stream (#1345): account_events filtered by netuid.
+    // Live + continuously appended, so served direct (no edge cache) like the
+    // account-events route — envelopeResponse's ETag + "short" cache govern it.
+    const subnetEventsMatch = SUBNET_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetEventsMatch) {
+      return handleSubnetEvents(
+        request,
+        env,
+        Number(subnetEventsMatch[1]),
+        resolved.url,
+      );
+    }
     // Account entity routes (#1347): computed live from the account_events +
     // neurons D1 tiers. More-specific paths first (each pattern is anchored).
+    const accountHistoryMatch = ACCOUNT_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountHistoryMatch) {
+      return handleAccountHistory(
+        request,
+        env,
+        accountHistoryMatch[1],
+        resolved.url,
+      );
+    }
     const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1191,6 +1234,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountTransfersMatch = ACCOUNT_TRANSFERS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountTransfersMatch) {
+      return handleAccountTransfers(
+        request,
+        env,
+        accountTransfersMatch[1],
+        resolved.url,
+      );
+    }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1202,7 +1256,24 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleAccount(request, env, accountMatch[1]);
     }
     // Block-explorer routes (#1345): computed live from the `blocks` D1 tier.
-    // Detail (more specific) before the feed; each pattern is anchored.
+    // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
+    const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (blockExtrinsicsMatch) {
+      return handleBlockExtrinsics(
+        request,
+        env,
+        blockExtrinsicsMatch[1],
+        resolved.url,
+      );
+    }
+    const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (blockEventsMatch) {
+      return handleBlockEvents(request, env, blockEventsMatch[1], resolved.url);
+    }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2049,8 +2120,19 @@ async function handleApiRequest(
 async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetTrajectory(d1Runner(env), netuid);
-  return envelopeResponse(
+  const rows = await d1All(
+    env,
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
+     FROM subnet_snapshots
+     WHERE netuid = ?
+     ORDER BY snapshot_date DESC
+     LIMIT 400`,
+    [netuid],
+  );
+  const data = formatTrajectory({ netuid, rows });
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -2062,6 +2144,7 @@ async function handleTrajectory(request, env, netuid, url) {
     },
     "short",
   );
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces, served
@@ -2120,7 +2203,7 @@ async function handleUptime(request, env, netuid, url) {
     rows,
     now: new Date().toISOString(),
   });
-  return envelopeResponse(
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -2132,6 +2215,7 @@ async function handleUptime(request, env, netuid, url) {
     },
     "short",
   );
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // Small {meta, completeness} projection over profiles.json, cached in-isolate.
@@ -2289,7 +2373,7 @@ async function handleLeaderboards(request, env, url) {
     economicsRows,
     subnetMeta,
   });
-  return envelopeResponse(
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -2303,6 +2387,9 @@ async function handleLeaderboards(request, env, url) {
     },
     "standard",
   );
+  return hasD1FallbackRows(healthRows, rpcRows, growthSamples)
+    ? markD1FallbackResponse(response)
+    : response;
 }
 
 // The data domains /api/v1/compare can place side by side: registry structure
@@ -2489,7 +2576,7 @@ async function handleCompare(request, env, url) {
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
-  return envelopeResponse(
+  const response = envelopeResponse(
     request,
     {
       data,
@@ -2503,6 +2590,9 @@ async function handleCompare(request, env, url) {
     },
     "standard",
   );
+  return hasD1FallbackRows(healthRows)
+    ? markD1FallbackResponse(response)
+    : response;
 }
 
 function matchRawArtifact(pathname) {
@@ -2937,6 +3027,7 @@ async function handleEventsRequest(request, env) {
   headers.set("content-type", "text/event-stream; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("access-control-allow-origin", "*");
+  exposeCustomResponseHeaders(headers);
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
   headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");

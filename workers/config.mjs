@@ -45,6 +45,9 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Per-subnet chain-event stream (#1345 block explorer): account_events filtered
+// by netuid, served live from the event tier.
+export const SUBNET_EVENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/events$/;
 // Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345): time
 // series read from the neuron_daily rollup tier.
 export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
@@ -57,6 +60,10 @@ export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/events$/;
+// Per-account daily-history series (#1854): the durable per-day activity from the
+// account_events_daily rollup. Dispatched BEFORE the bare ACCOUNT_PATH_PATTERN.
+export const ACCOUNT_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/history$/;
 // Account entity routes (#1347):
 export const ACCOUNT_SUBNETS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;
@@ -64,6 +71,10 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 // matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
 export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/extrinsics$/;
+// Per-account native-TAO transfers (#1850): the Balances.Transfer feed for this
+// account, from account_events (event_kind='Transfer'); ?direction=all|sent|received.
+export const ACCOUNT_TRANSFERS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/transfers$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =
@@ -74,12 +85,25 @@ export const ACCOUNT_BALANCE_PATH_PATTERN =
 export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
 export const BLOCK_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})$/;
+// Per-block extrinsics sub-resource (#1845): the extrinsics in one block, by the
+// same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE the
+// detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/extrinsics$/;
+// Per-block events sub-resource (#1852): the decoded chain events in one block,
+// by the same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE
+// the detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EVENTS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/events$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
 export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+// Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
+// composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
+// the hash is best-effort/nullable). Single capture group; the handler branches.
 export const EXTRINSIC_DETAIL_PATH_PATTERN =
-  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64})$/;
+  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64}|\d+-\d+)$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
@@ -177,6 +201,10 @@ export const MAX_BLOCKS_INGEST_ROWS = 500; // cap per array (blocks[], extrinsic
 // re-drain idempotent.
 export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
 export const MAX_STAGED_EVENT_ROWS = 10_000;
+// loadStagedNeurons retries the post-upsert snapshot prune when upserts span
+// multiple D1 batches. A transient DELETE failure must not leave deregistered
+// ghost rows until the next cron tick.
+export const NEURON_SNAPSHOT_PRUNE_RETRIES = 3;
 // Block-explorer hot window (#1345): the staged `blocks` sidecar caps. One block
 // row per finalized block in the rolling poller window, so the row volume is far
 // lower than the per-block event count — but keep the same byte ceiling +
