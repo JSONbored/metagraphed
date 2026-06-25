@@ -41,6 +41,13 @@ from substrateinterface import SubstrateInterface
 
 RPC = os.environ.get("EVENTS_RPC_URL", "wss://entrypoint-finney.opentensor.ai:443")
 INGEST_URL = os.environ.get("EVENTS_INGEST_URL")
+# Block-explorer ingest (#1345 Option B) — same host as the events endpoint, so it
+# is derived: only EVENTS_INGEST_URL must be set (overridable for odd routings).
+BLOCKS_INGEST_URL = os.environ.get("BLOCKS_INGEST_URL") or (
+    INGEST_URL.replace("/internal/events", "/internal/blocks")
+    if INGEST_URL
+    else None
+)
 SECRET = os.environ.get("METAGRAPH_EVENTS_INGEST_SECRET")
 TOKEN_HEADER = "x-metagraph-events-token"
 PUSH_TIMEOUT = 15
@@ -62,14 +69,12 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 extract = _fe.extract
 
-# TODO(#1345 block explorer, Option B): this realtime streamer only POSTs
-# account_events to the events ingest endpoint (/api/v1/internal/events). The
-# block-explorer `blocks` tier is currently filled by the CI poller
-# (fetch-events.py emits the blocks sidecar → R2 → loadStagedBlocks) only. To
-# stream blocks in realtime too we'd need (1) a blocks ingest endpoint mirroring
-# handleEventIngest + (2) a per-head emit here using _fe.block_extras(s, bn, bh,
-# len(events)). Deliberately deferred for the first slice — the CI poller is the
-# backstop and INSERT OR IGNORE on block_number makes any future overlap free.
+# Block-explorer realtime (#1345 Option B): besides account_events, each finalized
+# head also emits its `blocks` row + `extrinsics` rows (via _fe.block_extras +
+# _fe.extrinsics_for_block) POSTed to /api/v1/internal/blocks. This closes the
+# blocks/extrinsics realtime gap the coalesced CI poller alone left (~58%; #1749);
+# the CI poller stays the self-healing backstop and INSERT OR IGNORE on the PKs
+# makes the overlap free.
 
 _stop = False
 
@@ -85,7 +90,10 @@ signal.signal(signal.SIGINT, _handle_signal)
 
 
 def decode_head(s, block_number):
-    """Decode the SubtensorModule events of one finalized block → ingest rows."""
+    """Decode one finalized block → account_events + block/extrinsic rows (#1345 B).
+
+    Returns {"events": [...], "block": {...}|None, "extrinsics": [...]}.
+    """
     block_hash = s.get_block_hash(block_number)
     # Read the block's timestamp AT THIS block_hash. Querying Timestamp.Now
     # without a block_hash resolves at the chain's current best block, which
@@ -97,10 +105,9 @@ def decode_head(s, block_number):
         head_ts = int(s.query("Timestamp", "Now", block_hash=block_hash).value)
     except Exception:
         head_ts = None
-    rows = []
-    for event_index, ev in enumerate(
-        s.query("System", "Events", block_hash=block_hash)
-    ):
+    events = s.query("System", "Events", block_hash=block_hash)
+    event_rows = []
+    for event_index, ev in enumerate(events):
         v = ev.value if isinstance(ev.value, dict) else {}
         e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
         if e.get("module_id") != "SubtensorModule":
@@ -108,7 +115,7 @@ def decode_head(s, block_number):
         ent = extract(e.get("event_id"), e.get("attributes"))
         if ent is None:
             continue
-        rows.append(
+        event_rows.append(
             {
                 "block_number": block_number,
                 "event_index": event_index,
@@ -121,22 +128,29 @@ def decode_head(s, block_number):
                 "observed_at": head_ts if head_ts else None,
             }
         )
-    return rows
+    # Block-explorer block + extrinsic rows (#1345 Option B). The _fe helpers are
+    # best-effort (never raise); the caller supplies observed_at (the same block
+    # timestamp the events use). A None block row / empty extrinsics is fine — the
+    # Worker's validators drop incomplete rows before they touch D1.
+    block_row = _fe.block_extras(s, block_number, block_hash, len(events))
+    if block_row is not None:
+        block_row["observed_at"] = head_ts
+    extrinsic_rows = _fe.extrinsics_for_block(s, block_number, block_hash, events)
+    for xrow in extrinsic_rows:
+        xrow["observed_at"] = head_ts
+    return {"events": event_rows, "block": block_row, "extrinsics": extrinsic_rows}
 
 
-def push(rows):
-    """POST rows to the ingest endpoint. Returns True on success; logs WARN +
-    returns False on a transient network failure (the CI poller backstop covers
-    the gap). A TLS/certificate verification failure is NOT a transient blip —
-    it's logged at ERROR and the process exits, so a possible MITM on the
-    secret-bearing POST is surfaced (Railway restarts a transient one; a persistent
-    one crash-loops to the retry cap + goes visibly down) rather than silently
-    swallowed."""
-    if not rows:
-        return True
+def push(url, payload):
+    """POST a JSON payload to an ingest endpoint. Returns True on success; logs WARN
+    + returns False on a transient network failure (the CI poller backstop covers
+    the gap). A TLS/certificate verification failure is NOT a transient blip — it's
+    logged at ERROR and the process exits, so a possible MITM on the secret-bearing
+    POST is surfaced (Railway restarts a transient one; a persistent one crash-loops
+    to the retry cap + goes visibly down) rather than silently swallowed."""
     req = urllib.request.Request(
-        INGEST_URL,
-        data=json.dumps(rows).encode(),
+        url,
+        data=json.dumps(payload).encode(),
         method="POST",
         headers={
             "content-type": "application/json",
@@ -208,14 +222,29 @@ def run():
                 if _stop:
                     return True  # non-None return cancels the subscription
                 bn = obj["header"]["number"]
-                rows = decode_head(s, bn)
-                ok = push(rows)
+                decoded = decode_head(s, bn)
+                event_rows = decoded["events"]
+                # account_events → /internal/events
+                ok = push(INGEST_URL, event_rows) if event_rows else True
+                # blocks + extrinsics → /internal/blocks (#1345 Option B)
+                block_payload = {
+                    "blocks": [decoded["block"]] if decoded["block"] else [],
+                    "extrinsics": decoded["extrinsics"],
+                }
+                if block_payload["blocks"] or block_payload["extrinsics"]:
+                    ok = push(BLOCKS_INGEST_URL, block_payload) and ok
                 stats["blocks"] += 1
-                stats["events"] += len(rows)
+                stats["events"] += len(event_rows)
                 stats["latest"] = bn
                 if not ok:
                     stats["push_fail"] += 1
-                log.debug("block %s: %d events %s", bn, len(rows), "ok" if ok else "FAIL")
+                log.debug(
+                    "block %s: %d events, %d extrinsics %s",
+                    bn,
+                    len(event_rows),
+                    len(decoded["extrinsics"]),
+                    "ok" if ok else "FAIL",
+                )
                 if stats["blocks"] % SUMMARY_EVERY == 0:
                     log.info(
                         "healthy · %d blocks · %d events · latest=#%s · push_failures=%d",

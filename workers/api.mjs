@@ -181,6 +181,8 @@ import {
   MAX_ASK_BODY_BYTES,
   MAX_BACKFILL_INGEST_BODY_BYTES,
   MAX_BACKFILL_INGEST_ROWS,
+  MAX_BLOCKS_INGEST_BODY_BYTES,
+  MAX_BLOCKS_INGEST_ROWS,
   MAX_BULK_TREND_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
@@ -906,6 +908,104 @@ export async function handleEventIngest(request, env) {
   });
 }
 
+// POST /api/v1/internal/blocks (#1345 Option B): the realtime block-explorer ingest
+// path for the finalized-head streamer (#1361). Same auth as /internal/events (the
+// shared METAGRAPH_EVENTS_INGEST_SECRET over EVENTS_INGEST_TOKEN_HEADER). Body is
+// {blocks:[...], extrinsics:[...]}, loaded with the SAME parameterized INSERT OR
+// IGNORE as the staged-batch loaders — idempotent on the PKs (block_number;
+// (block_number, extrinsic_index)). NOT in the public contract. Closes the
+// blocks/extrinsics realtime gap (the coalesced CI poller alone missed ~58%; #1749).
+export async function handleBlockIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "blocks_ingest_disabled",
+      "Realtime block ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "Block store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > MAX_BLOCKS_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BLOCKS_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
+      400,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
+      400,
+    );
+  }
+  const incomingBlocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+  const incomingExtrinsics = Array.isArray(parsed.extrinsics)
+    ? parsed.extrinsics
+    : [];
+  if (
+    incomingBlocks.length > MAX_BLOCKS_INGEST_ROWS ||
+    incomingExtrinsics.length > MAX_BLOCKS_INGEST_ROWS
+  ) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BLOCKS_INGEST_ROWS} rows per array (blocks, extrinsics).`,
+      413,
+    );
+  }
+  // Report rows ACTUALLY inserted (INSERT OR IGNORE on the PKs drops the expected
+  // streamer/poller overlap), summing per-statement D1 meta.changes. Block
+  // statements come first in the batch, then extrinsic statements.
+  const blockStmts = blockInsertStatements(db, validBlockRows(incomingBlocks));
+  const extrinsicStmts = extrinsicInsertStatements(
+    db,
+    validExtrinsicRows(incomingExtrinsics),
+  );
+  let blocksInserted = 0;
+  let extrinsicsInserted = 0;
+  if (blockStmts.length || extrinsicStmts.length) {
+    const results = await db.batch([...blockStmts, ...extrinsicStmts]);
+    results.forEach((result, i) => {
+      const changes = result?.meta?.changes ?? 0;
+      if (i < blockStmts.length) blocksInserted += changes;
+      else extrinsicsInserted += changes;
+    });
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      blocks_inserted: blocksInserted,
+      extrinsics_inserted: extrinsicsInserted,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
+}
+
 // POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
 // backfill ingest for scripts/backfill-neuron-history.py. Disabled (503) until the
 // dedicated METAGRAPH_BACKFILL_SECRET is configured (falls back to the events-ingest
@@ -1237,6 +1337,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
   if (url.pathname === "/api/v1/internal/events") {
     return handleEventIngest(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/blocks") {
+    return handleBlockIngest(request, env);
   }
   if (url.pathname === "/api/v1/internal/backfill-neurons") {
     return handleNeuronBackfill(request, env);
