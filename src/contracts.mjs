@@ -948,6 +948,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "AccountExtrinsicsArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -970,6 +976,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/blocks/{ref}.json",
     "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
     "BlockDetailArtifact",
+  ),
+  artifact(
+    "block-extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+    "BlockExtrinsicsArtifact",
   ),
   artifact(
     "extrinsics-feed",
@@ -1669,6 +1681,20 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "account-extrinsics",
+    "GET",
+    "/api/v1/accounts/{ss58}/extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "account-subnets",
     "GET",
     "/api/v1/accounts/{ss58}/subnets",
@@ -1713,6 +1739,20 @@ export const API_ROUTES = [
     "short",
     ["blocks", "analytics"],
     [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-extrinsics",
+    "GET",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(

@@ -54,6 +54,8 @@ import {
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
+  buildAccountExtrinsics,
+  buildBlockExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
@@ -269,6 +271,36 @@ export async function handleAccountEvents(request, env, ss58, url) {
   );
 }
 
+// GET /api/v1/accounts/{ss58}/extrinsics: the extrinsics this account SIGNED
+// (newest first), from the extrinsics D1 tier (#1844). Matched by the extrinsic
+// signer only — NOT the hotkey or coldkey union the account_events routes use,
+// since `extrinsics` carries a single `signer` column. ?limit (<=1000) / ?offset.
+// Cold/absent store → schema-stable zero (never 404).
+export async function handleAccountExtrinsics(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const rows = await d1All(
+    env,
+    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
+    [ss58, limit, offset],
+  );
+  const data = buildAccountExtrinsics(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/extrinsics.json`,
+        data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
 // registered (the cross-subnet footprint), from the neurons tier.
 export async function handleAccountSubnets(request, env, ss58) {
@@ -435,6 +467,50 @@ export async function handleBlock(request, env, ref) {
         env,
         `/metagraph/blocks/${ref}.json`,
         data.block?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/blocks/{ref}/extrinsics: the extrinsics in one block (#1845), in
+// natural read order (extrinsic_index ASC). ref is a numeric block_number OR a 0x
+// block_hash — a hash ref is resolved to its block_number first (idx_blocks_hash),
+// then extrinsics are read by the (block_number, extrinsic_index) PK prefix. ?limit
+// (<=100) / ?offset. Unknown ref / cold store → 200 with block_number:null +
+// extrinsics:[] (schema-stable, never 404).
+export async function handleBlockExtrinsics(request, env, ref, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let blockNumber = isHash ? null : Number(ref);
+  if (isHash) {
+    const blockRows = await d1All(
+      env,
+      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
+      [ref],
+    );
+    blockNumber = blockRows[0]?.block_number ?? null;
+  }
+  const rows =
+    blockNumber == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?`,
+          [blockNumber, limit, offset],
+        );
+  const data = buildBlockExtrinsics(rows, ref, blockNumber, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/blocks/${ref}/extrinsics.json`,
+        data.extrinsics[0]?.observed_at ?? null,
       ),
     },
     "short",

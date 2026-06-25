@@ -65,6 +65,11 @@ export const ACCOUNT_EVENTS_PATH_PATTERN = new RegExp(
 export const ACCOUNT_SUBNETS_PATH_PATTERN = new RegExp(
   `^/api/v1/accounts/(${SS58_ADDRESS_BODY})/subnets$`,
 );
+// Per-account signed extrinsics (#1844): the extrinsics this account signed,
+// matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
+export const ACCOUNT_EXTRINSICS_PATH_PATTERN = new RegExp(
+  `^/api/v1/accounts/(${SS58_ADDRESS_BODY})/extrinsics$`,
+);
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =
@@ -75,6 +80,11 @@ export const ACCOUNT_BALANCE_PATH_PATTERN =
 export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
 export const BLOCK_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})$/;
+// Per-block extrinsics sub-resource (#1845): the extrinsics in one block, by the
+// same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE the
+// detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/extrinsics$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
