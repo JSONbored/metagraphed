@@ -105,6 +105,24 @@
         "timeout_ms": 10000
       },
       "notes": "Official Targon source repository."
+    },
+    {
+      "id": "sn-4-targon-subnet-api",
+      "name": "Targon inventory API",
+      "kind": "subnet-api",
+      "url": "https://api.targon.com/tha/v2/inventory",
+      "provider": "targon",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://docs.targon.com/api/inventory"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": { "state": "community-submitted", "submitted_by": "nickmopen" }
     }
   ],
   "social": { "x": "https://x.com/targoncompute" },

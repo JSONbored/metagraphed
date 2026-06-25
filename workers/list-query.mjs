@@ -339,6 +339,19 @@ function validateListQuery(params, config) {
         };
       }
     }
+    const minKey = `min_${field}`;
+    const maxKey = `max_${field}`;
+    if (!params.has(minKey) || !params.has(maxKey)) {
+      continue;
+    }
+    const minValue = numberParam(params.get(minKey));
+    const maxValue = numberParam(params.get(maxKey));
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      return {
+        parameter: minKey,
+        message: `${minKey} must not be greater than ${maxKey}.`,
+      };
+    }
   }
 
   return null;
