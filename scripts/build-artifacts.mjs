@@ -3223,11 +3223,22 @@ const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+// When neither METAGRAPH_BUILD_TIMESTAMP nor METAGRAPH_RUN_ID is set (local
+// dev build), preserve the committed manifest's run_prefix so a plain
+// `npm run build` never clobbers the live timestamp with the 1970 epoch
+// placeholder. The publish workflow always sets METAGRAPH_BUILD_TIMESTAMP, so
+// production writes always use the real timestamp. Mirrors the same fix
+// applied to scripts/r2-manifest.mjs in #1829.
+const committedManifest =
+  process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID
+    ? null
+    : await readJson(artifactFile("r2-manifest.json")).catch(() => null);
+const manifestGeneratedAt = committedManifest?.generated_at ?? generatedAt;
 await writeJson(
   artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
-    generatedAt,
+    generatedAt: manifestGeneratedAt,
   }),
 );
 
