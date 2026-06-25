@@ -346,6 +346,7 @@
           "enum": [
             "native",
             "candidate-discovered",
+            "community-seeded",
             "machine-verified",
             "maintainer-reviewed",
             "adapter-backed"

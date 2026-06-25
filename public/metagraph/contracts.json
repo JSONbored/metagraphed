@@ -516,10 +516,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
       "storage_tier": "r2"
     },
     {
@@ -538,6 +556,15 @@
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
       "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
       "storage_tier": "r2"
     },
     {

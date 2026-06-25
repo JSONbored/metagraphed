@@ -23,7 +23,9 @@ test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "signer",
     "call_module",
     "call_function",
+    "call_args",
     "success",
+    "fee_tao",
     "observed_at",
   ]);
 });
@@ -70,13 +72,13 @@ test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", 
     observed_at: 1,
   }));
   const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 12 per statement = 3 statements (12, 12, 6)
+  // 30 rows / 10 per statement = 3 statements (10, 10, 10)
   assert.equal(stmts.length, 3);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (8 cols x 12 rows = 96 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 8 * 12);
-  // All eight columns appear in the column list.
+  // Every value is BOUND (10 cols x 10 rows = 100 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 10 * 10);
+  // All ten columns appear in the column list.
   for (const col of EXTRINSIC_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -91,8 +93,8 @@ test("extrinsicInsertStatements binds missing fields as null (never interpolates
   const [stmt] = extrinsicInsertStatements(db, [
     { block_number: 7, extrinsic_index: 2, observed_at: 9 },
   ]);
-  // extrinsic_hash, signer, call_module, call_function, success default to null.
-  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, 9]);
+  // extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao default to null.
+  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, null, 9]);
 });
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
@@ -103,6 +105,8 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     signer: "5Signer",
     call_module: "SubtensorModule",
     call_function: "add_stake",
+    call_args: '[{"name":"hotkey","value":"5H..."}]',
+    fee_tao: 0.0125,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -112,8 +116,38 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.signer, "5Signer");
   assert.equal(out.call_module, "SubtensorModule");
   assert.equal(out.call_function, "add_stake");
+  assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
+  assert.equal(out.fee_tao, 0.0125);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
+  // Substrate call args are canonically a LIST of {name,value} descriptors.
+  const arr = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '[{"name":"netuid","value":1}]',
+  });
+  assert.deepEqual(arr.call_args, [{ name: "netuid", value: 1 }]);
+  // An object payload is also tolerated.
+  const obj = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '{"netuid":1}',
+  });
+  assert.deepEqual(obj.call_args, { netuid: 1 });
+  // Malformed JSON -> null (never throws).
+  const bad = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: "not-json",
+  });
+  assert.equal(bad.call_args, null);
+  // Absent -> null; fee_tao absent -> null.
+  const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
+  assert.equal(sparse.call_args, null);
+  assert.equal(sparse.fee_tao, null);
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {
@@ -329,6 +363,80 @@ test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () 
   );
   assert.equal(res.status, 200);
   assert.ok(/WHERE block_number = \?/.test(boundSql));
+});
+
+test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(
+      "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=1000&to=2000",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.ok(/signer = \?/.test(boundSql));
+  assert.ok(/call_module = \?/.test(boundSql));
+  assert.ok(/call_function = \?/.test(boundSql));
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(/block_number >= \?/.test(boundSql));
+  assert.ok(/block_number <= \?/.test(boundSql));
+  assert.ok(/observed_at >= \?/.test(boundSql));
+  assert.ok(/observed_at <= \?/.test(boundSql));
+  // success=false binds the literal 0 (never !=1, which would leak NULL rows).
+  assert.ok(boundParams.includes(0));
+  assert.ok(boundParams.includes("5Signer"));
+  // limit + offset are the last two bound params.
+  assert.equal(boundParams.at(-2), 50);
+  assert.equal(boundParams.at(-1), 0);
+});
+
+test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  await handleRequest(req("/api/v1/extrinsics?success=true"), env, {});
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(boundParams.includes(1));
+
+  // A non-true/false success value adds no condition (no WHERE).
+  await handleRequest(req("/api/v1/extrinsics?success=maybe"), env, {});
+  assert.ok(!/success = \?/.test(boundSql));
+  assert.ok(!/WHERE/.test(boundSql));
 });
 
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {

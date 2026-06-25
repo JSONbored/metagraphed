@@ -49,6 +49,13 @@ Required on every surface: `id, name, kind, url, provider, auth_required, author
 sse · sdk · example · repo-registry · data-artifact` — all auto-reviewable. Higher-trust within these
 (harder review, airtight ownership proof): authed/paid APIs and unknown providers.
 
+> **`source-repo` and `website` have a native-chain dedup gate.** The build pipeline auto-promotes
+> these kinds from SubnetIdentitiesV3 on-chain data. `validate:surface` will reject any community
+> `source-repo` or `website` surface whose `(kind, netuid, normalized-url)` triple matches a
+> machine-promoted native-chain candidate (`classification: live` or `redirected`). Focus contributor
+> effort on callable surfaces the machine cannot discover: `openapi`, `subnet-api`, `sse`,
+> `data-artifact`, `sdk`.
+
 > **Base-layer chain endpoints** (`subtensor-rpc` / `subtensor-wss` / `archive`) are NOT contributor
 > surfaces — they are maintainer-curated network infrastructure served through the endpoint lane (the
 > `/rpc` proxy + `/api/v1/rpc/*`). They stay valid in the schema (for `registry/subnets/root.json` +
@@ -76,6 +83,7 @@ under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA 
 out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
+`validate:migrations` (unique, gap-free D1 migration prefixes) ·
 `cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `worker:bundle:budget`
 (gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
 fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
@@ -147,6 +155,11 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 - **Never re-title** the same surface as a different `kind`, provider, or subnet to dodge dedup. The
   gate compares the actual file diff, not the PR title.
 - **Never pad** — no docs/website surfaces invented to bulk a PR, no generated-artifact noise.
+- **Don't duplicate machine-promoted native-chain surfaces.** `validate:surface` loads
+  `registry/candidates/generated/public-sources.json` + `registry/verification/promotions.json` at
+  start-up and rejects any community surface whose `(kind, netuid, normalized-url)` triple matches a
+  native-chain candidate already classified `live` or `redirected`. These surfaces are auto-promoted by
+  `generateBaselineOverlaySet` — a community submission adds no signal and will fail CI.
 - A contribution's value is the **verified surface**, not the PR. Low-effort / bulk-generated /
   no-real-surface PRs are closed.
 
@@ -176,6 +189,8 @@ local paths, env dumps, or private notes.
 - More than the one subnet file touched (generated artifacts, scripts, workflows, a second subnet).
 - A `source_url` that 404s or doesn't back the claim; an invented/unpublished surface.
 - A duplicate of an existing surface or an open PR; the same surface re-titled by `kind`.
+- A community `source-repo` or `website` surface whose URL the machine already promotes from
+  SubnetIdentitiesV3 — `validate:surface` rejects it (CI fails → gate closes).
 - Secrets/PATs/wallet paths, private/localhost URLs, real credentials in `auth`.
 - Hand-set health/uptime/`verification` (probe-derived only).
 - UI/frontend changes (those belong in metagraphed-ui).
