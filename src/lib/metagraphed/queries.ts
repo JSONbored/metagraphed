@@ -2,12 +2,14 @@ import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
+import { extrinsicHashPathSegment } from "./extrinsics";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import type {
   AdapterSnapshot,
   AgentResource,
   AgentResources,
   Block,
+  Extrinsic,
   Candidate,
   Compare,
   CompareSubnet,
@@ -817,6 +819,64 @@ export const blockQuery = (ref: string) =>
         signal,
       );
       return { ...res, data: normalizeBlock(res.data) } as ApiResult<Block | null>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// Extrinsic (transaction) explorer — the block explorer's sibling feed. The list
+// is offset-paginated and newest-first; the detail is keyed by 0x extrinsic_hash.
+function normalizeExtrinsic(raw: unknown): Extrinsic | null {
+  if (!isRecord(raw)) return null;
+  const blockNumber = firstFiniteNumber(raw.block_number);
+  const extrinsicHash = firstString(raw.extrinsic_hash);
+  // A row needs at least a hash or a (block, index) coordinate to key/link on.
+  const extrinsicIndex = firstFiniteNumber(raw.extrinsic_index);
+  if (!extrinsicHash && (blockNumber == null || extrinsicIndex == null)) {
+    return null;
+  }
+  return {
+    ...(raw as object),
+    block_number: blockNumber ?? null,
+    extrinsic_index: extrinsicIndex ?? null,
+    extrinsic_hash: extrinsicHash ?? null,
+    signer: firstString(raw.signer) ?? null,
+    call_module: firstString(raw.call_module) ?? null,
+    call_function: firstString(raw.call_function) ?? null,
+    success: typeof raw.success === "boolean" ? raw.success : null,
+    observed_at: firstString(raw.observed_at),
+  } as Extrinsic;
+}
+
+/** Recent extrinsics feed — newest first, offset-paginated (limit ≤ 100). */
+export const extrinsicsQuery = (params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("extrinsics", params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>("/api/v1/extrinsics", "extrinsics", params, signal);
+      const data = res.data.flatMap((row) => {
+        const x = normalizeExtrinsic(row);
+        return x ? [x] : [];
+      });
+      return { ...res, data } as ApiResult<Extrinsic[]>;
+    },
+    // Extrinsics turn over with every block once the poller is live.
+    staleTime: STALE_SHORT,
+  });
+
+/** Single extrinsic by 0x extrinsic_hash. `null` when unknown/cold. */
+export const extrinsicQuery = (hash: string) =>
+  queryOptions({
+    queryKey: k("extrinsic", hash),
+    queryFn: async ({ signal }) => {
+      const res = await fetchDetail<unknown>(
+        `/api/v1/extrinsics/${extrinsicHashPathSegment(hash)}`,
+        "extrinsic",
+        signal,
+      );
+      return {
+        ...res,
+        data: normalizeExtrinsic(res.data),
+      } as ApiResult<Extrinsic | null>;
     },
     staleTime: STALE_SHORT,
   });

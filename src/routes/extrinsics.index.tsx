@@ -1,0 +1,257 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AppShell } from "@/components/metagraphed/app-shell";
+import { TimeAgo } from "@/components/metagraphed/time-ago";
+import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { EmptyState, Skeleton } from "@/components/metagraphed/states";
+import { PageHero } from "@/components/metagraphed/page-hero";
+import { ListShell } from "@/components/metagraphed/list-shell";
+import { PageSizeSelect } from "@/components/metagraphed/table-controls";
+import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { ShareButton } from "@/components/metagraphed/share-button";
+import { extrinsicsQuery } from "@/lib/metagraphed/queries";
+import { formatNumber } from "@/lib/metagraphed/format";
+import { shortHash } from "@/lib/metagraphed/blocks";
+import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
+import { API_BASE } from "@/lib/metagraphed/config";
+import type { Extrinsic } from "@/lib/metagraphed/types";
+
+const extrinsicsSearchSchema = z.object({
+  limit: fallback(z.number().int().min(1).max(100), 50).default(50),
+  offset: fallback(z.number().int().min(0), 0).default(0),
+});
+
+export const Route = createFileRoute("/extrinsics/")({
+  validateSearch: zodValidator(extrinsicsSearchSchema),
+  head: () => ({
+    meta: [
+      { title: "Extrinsics — Metagraphed" },
+      {
+        name: "description",
+        content:
+          "Recent Bittensor extrinsics (transactions) indexed from the chain — block, call, signer, and success, newest first.",
+      },
+      { property: "og:title", content: "Extrinsics — Metagraphed" },
+      {
+        property: "og:description",
+        content:
+          "Recent Bittensor extrinsics (transactions) indexed from the chain — block, call, signer, and success, newest first.",
+      },
+    ],
+  }),
+  component: ExtrinsicsPage,
+});
+
+function ExtrinsicsPage() {
+  return (
+    <AppShell>
+      <PageHero
+        eyebrow="Explorer"
+        live
+        title="Extrinsics"
+        description="Recent Bittensor extrinsics (transactions) indexed directly from the chain — newest first, with call, signer, and success."
+        actions={<ShareButton />}
+      />
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+          <ExtrinsicsTable />
+        </Suspense>
+      </QueryErrorBoundary>
+      <ApiSourceFooter paths={["/api/v1/extrinsics"]} artifacts={["/metagraph/extrinsics.json"]} />
+    </AppShell>
+  );
+}
+
+function SuccessBadge({ success }: { success?: boolean | null }) {
+  if (success == null) return <span className="text-ink-muted">—</span>;
+  return success ? (
+    <span className="text-emerald-500">ok</span>
+  ) : (
+    <span className="text-rose-500">fail</span>
+  );
+}
+
+function ExtrinsicsTable() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
+  const rows = (useSuspenseQuery(extrinsicsQuery({ limit: search.limit, offset: search.offset }))
+    .data.data ?? []) as Extrinsic[];
+
+  // Offset pagination: the API returns newest-first pages with no total. A full
+  // page (rows === limit) implies more may exist; a short page is the tail.
+  const hasPrev = search.offset > 0;
+  const hasNext = rows.length === search.limit;
+
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }) as never });
+
+  const goPrev = () => setSearch({ offset: Math.max(0, search.offset - search.limit) });
+  const goNext = () => setSearch({ offset: search.offset + search.limit });
+
+  const rowKey = (x: Extrinsic) =>
+    x.extrinsic_hash || `${x.block_number ?? "?"}-${x.extrinsic_index ?? "?"}`;
+
+  const filters = (
+    <>
+      <span className="font-mono text-[11px] text-ink-muted">Newest first</span>
+      <PageSizeSelect
+        value={search.limit}
+        onChange={(n) => setSearch({ limit: n, offset: 0 })}
+        options={[10, 25, 50, 100]}
+      />
+    </>
+  );
+
+  const emptyNode = (
+    <EmptyState
+      title="No extrinsics indexed yet"
+      description="The chain poller fills this every few minutes — check back shortly, or open the API directly."
+      action={{
+        label: "Open /api/v1/extrinsics",
+        href: `${API_BASE}/api/v1/extrinsics`,
+        external: true,
+      }}
+    />
+  );
+
+  const footerNode = (
+    <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/30 px-4 py-2 text-[11px] font-mono text-ink-muted">
+      <span>
+        {rows.length
+          ? `${formatNumber(search.offset + 1)}–${formatNumber(search.offset + rows.length)}`
+          : "0"}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={!hasPrev}
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
+        >
+          <ChevronLeft className="size-3" /> Newer
+        </button>
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={!hasNext}
+          className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1.5 font-medium hover:border-ink/30 disabled:opacity-40 disabled:cursor-not-allowed min-h-9"
+        >
+          Older <ChevronRight className="size-3" />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <ListShell
+      filters={filters}
+      isEmpty={rows.length === 0}
+      empty={emptyNode}
+      cards={rows.map((x) => (
+        <HashCardOrLink key={rowKey(x)} x={x} />
+      ))}
+      table={
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-sticky-offset z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-[0_1px_0_0_var(--border)]">
+            <tr>
+              <th className="px-4 py-2.5">Hash</th>
+              <th className="px-4 py-2.5">Block</th>
+              <th className="px-4 py-2.5">Call</th>
+              <th className="px-4 py-2.5">Signer</th>
+              <th className="px-4 py-2.5">Result</th>
+              <th className="px-4 py-2.5 text-right">Observed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((x) => (
+              <tr key={rowKey(x)} className="mg-row-accent hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {x.extrinsic_hash ? (
+                    <Link
+                      to="/extrinsics/$hash"
+                      params={{ hash: x.extrinsic_hash }}
+                      className="font-medium text-ink-strong hover:underline"
+                      title={x.extrinsic_hash}
+                    >
+                      {shortHash(x.extrinsic_hash)}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[12px]">
+                  {x.block_number != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(x.block_number) }}
+                      className="text-ink hover:underline"
+                    >
+                      #{formatNumber(x.block_number)}
+                      {x.extrinsic_index != null ? (
+                        <span className="text-ink-muted">·{x.extrinsic_index}</span>
+                      ) : null}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
+                  {extrinsicCall(x.call_module, x.call_function)}
+                </td>
+                <td
+                  className="px-4 py-2.5 font-mono text-[11px] text-ink-muted"
+                  title={x.signer ?? undefined}
+                >
+                  {shortHash(x.signer) ?? "—"}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px]">
+                  <SuccessBadge success={x.success} />
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                  <TimeAgo at={x.observed_at} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      }
+      footer={footerNode}
+    />
+  );
+}
+
+function HashCardOrLink({ x }: { x: Extrinsic }) {
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-mono text-[12px] font-medium text-ink-strong truncate">
+          {shortHash(x.extrinsic_hash) ?? "(no hash)"}
+        </div>
+        <span className="font-mono text-[11px] text-ink-muted">
+          <TimeAgo at={x.observed_at} />
+        </span>
+      </div>
+      <div className="mt-1 font-mono text-[11px] text-ink truncate">
+        {extrinsicCall(x.call_module, x.call_function)}
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-ink-muted">
+        <span>{x.block_number != null ? `#${formatNumber(x.block_number)}` : "—"}</span>
+        <span>{shortHash(x.signer) ?? "no signer"}</span>
+        <SuccessBadge success={x.success} />
+      </div>
+    </>
+  );
+  const className = "block rounded border border-border bg-card p-3 min-h-11 active:bg-surface";
+  return x.extrinsic_hash ? (
+    <Link to="/extrinsics/$hash" params={{ hash: x.extrinsic_hash }} className={className}>
+      {inner}
+    </Link>
+  ) : (
+    <div className={className}>{inner}</div>
+  );
+}

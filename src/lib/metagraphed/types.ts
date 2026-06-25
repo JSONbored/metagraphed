@@ -775,6 +775,19 @@ export interface Block {
   [key: string]: unknown;
 }
 
+/** One extrinsic (transaction) from /api/v1/extrinsics, newest-first. */
+export interface Extrinsic {
+  block_number: number | null;
+  extrinsic_index: number | null;
+  extrinsic_hash: string | null;
+  signer?: string | null;
+  call_module?: string | null;
+  call_function?: string | null;
+  success?: boolean | null;
+  observed_at?: string; // iso
+  [key: string]: unknown;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;
