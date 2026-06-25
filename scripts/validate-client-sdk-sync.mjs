@@ -18,7 +18,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readJson, repoRoot } from "./lib.mjs";
+import { repoRoot } from "./lib.mjs";
 
 // The contract surface the published client re-exports. A change to any of these
 // versus the merge base means the npm package's shipped types/openapi would
@@ -72,22 +72,35 @@ function git(args) {
   }).trim();
 }
 
-// Resolve the merge base to diff against. Prefer the explicit base SHA the
-// trusted workflow passes (PR contents are untrusted); fall back to the merge
-// base with origin/<base-ref> for a local run.
-function resolveBaseRef() {
-  const explicitBase = valueAfter("--base-sha") || process.env.BASE_SHA;
-  if (explicitBase) return explicitBase;
-  const baseRef = valueAfter("--base-ref") || process.env.BASE_REF || "main";
+function resolveHeadRef() {
+  return valueAfter("--head-sha") || process.env.HEAD_SHA || "HEAD";
+}
+
+export function resolveDiffBase({ explicitBase, baseRef, headRef, gitFn }) {
+  if (explicitBase) return gitFn(["merge-base", explicitBase, headRef]);
+
   try {
-    return git(["merge-base", `origin/${baseRef}`, "HEAD"]);
+    return gitFn(["merge-base", `origin/${baseRef}`, headRef]);
   } catch {
-    return git(["merge-base", baseRef, "HEAD"]);
+    try {
+      return gitFn(["merge-base", baseRef, headRef]);
+    } catch {
+      return headRef;
+    }
   }
 }
 
-function resolveHeadRef() {
-  return valueAfter("--head-sha") || process.env.HEAD_SHA || "HEAD";
+// Resolve the merge base to diff against. In CI the trusted workflow passes the
+// PR base tip and head SHA explicitly; do not diff those endpoints directly,
+// because a stale PR would include files changed only on the base branch.
+// Instead, resolve the true merge base for the supplied endpoints.
+function resolveBaseRef(headRef) {
+  return resolveDiffBase({
+    explicitBase: valueAfter("--base-sha") || process.env.BASE_SHA,
+    baseRef: valueAfter("--base-ref") || process.env.BASE_REF || "main",
+    headRef,
+    gitFn: git,
+  });
 }
 
 function changedFilesFromGit(baseRef, headRef) {
@@ -108,16 +121,13 @@ function clientVersionAt(ref) {
 }
 
 async function main() {
-  const baseRef = resolveBaseRef();
   const headRef = resolveHeadRef();
+  const baseRef = resolveBaseRef(headRef);
 
   const changedFiles = changedFilesFromGit(baseRef, headRef);
 
   const baseVersion = clientVersionAt(baseRef);
-  const headManifest = await readJson(
-    path.join(repoRoot, CLIENT_MANIFEST_PATH),
-  );
-  const headVersion = headManifest.version ?? null;
+  const headVersion = clientVersionAt(headRef);
   const versionChanged = baseVersion !== headVersion;
 
   const result = evaluateClientSdkSync({ changedFiles, versionChanged });
