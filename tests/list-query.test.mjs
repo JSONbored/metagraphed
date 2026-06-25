@@ -267,7 +267,10 @@ describe("list-query numeric range filters", () => {
       "subnets",
     );
     assert.equal(bad.error.parameter, "min_surface_count");
-    assert.match(bad.error.message, /must not be greater than max_surface_count/);
+    assert.match(
+      bad.error.message,
+      /must not be greater than max_surface_count/,
+    );
   });
 
   test("equal min_ and max_ bounds form a single-value inclusive range", () => {
