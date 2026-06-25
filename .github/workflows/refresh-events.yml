@@ -81,6 +81,11 @@ jobs:
       - name: Poll finney events (first-party, public RPC, no key)
         run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
+          # Chain RPC endpoint, behind a SECRET so the private archive node's URL is
+          # never exposed in the repo or run logs once we switch to it (ADR 0012 /
+          # #1349). Falls back to the public finney endpoint when the secret is unset,
+          # so swapping = set/clear the one `SUBTENSOR_RPC_URL` secret — no code change.
+          EVENTS_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL || 'wss://entrypoint-finney.opentensor.ai:443' }}
           # Bounded overlap: ~250 blocks ≈ 50 min of chain is re-scanned every
           # run so staged-but-not-yet-loaded event batches can be regenerated if
           # the single pending R2 object is overwritten before the Worker drains it.
@@ -88,10 +93,11 @@ jobs:
           # Highest block already staged; the poller resumes from cursor+1 to recover
           # a coalescing gap (bounded by EVENTS_MAX_LOOKBACK) and uses it for lag/health.
           EVENTS_CURSOR: ${{ steps.cursor.outputs.block }}
-          # Cap on gap recovery. Default (unset) = prune horizon, correct for PUBLIC
-          # RPC. When EVENTS_RPC_URL points at the ARCHIVE node (ADR 0012 / #1349),
-          # raise this (e.g. "1000000") so a long scheduler gap is recovered in full.
-          # EVENTS_MAX_LOOKBACK: "1000000"
+          # Cap on gap recovery (non-sensitive → a VARIABLE, not a secret). Default
+          # 300 = prune horizon, correct for PUBLIC RPC. Once EVENTS_RPC_URL points at
+          # the ARCHIVE node, set the `EVENTS_MAX_LOOKBACK` repo variable high (e.g.
+          # 1000000) so a long scheduler gap is recovered in full.
+          EVENTS_MAX_LOOKBACK: ${{ vars.EVENTS_MAX_LOOKBACK || '300' }}
           # Emit a ::warning:: (and webhook alert, if configured) when the cursor
           # falls within a window of the public-RPC prune horizon.
           METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
