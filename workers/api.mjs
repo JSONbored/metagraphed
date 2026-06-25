@@ -142,10 +142,7 @@ import {
   rollupAccountEventsDaily,
   validEventRows,
 } from "../src/account-events.mjs";
-import {
-  blockInsertStatements,
-  validBlockRows,
-} from "../src/blocks.mjs";
+import { blockInsertStatements, validBlockRows } from "../src/blocks.mjs";
 import {
   extrinsicInsertStatements,
   validExtrinsicRows,
