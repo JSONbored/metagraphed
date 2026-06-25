@@ -47,6 +47,7 @@ import {
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
+  formatAccountEvent,
 } from "../../src/account-events.mjs";
 import {
   BLOCK_READ_COLUMNS,
@@ -666,6 +667,10 @@ export async function handleExtrinsics(request, env, url) {
 // extrinsic_index) PK hit. Served live from the `extrinsics` D1 tier; an unknown
 // ref / cold store / malformed composite → 200 with extrinsic:null (schema-stable,
 // mirrors handleBlock's numeric-OR-hash branch — NEVER 404/throw).
+//
+// When the extrinsic resolves, the indexed account_events it emitted (#1849) are
+// embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
+// Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
 export async function handleExtrinsic(request, env, ref) {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
   let rows;
@@ -690,7 +695,24 @@ export async function handleExtrinsic(request, env, ref) {
           )
         : [];
   }
-  const data = buildExtrinsic(rows[0], ref);
+  // Embed the emitted events once we have the resolved (block_number,
+  // extrinsic_index). A second sequential read; d1All swallows a missing-column
+  // error pre-migration → [] (the embed is additive, never breaks the detail).
+  let events = [];
+  const resolved = rows[0];
+  if (
+    resolved &&
+    resolved.block_number != null &&
+    resolved.extrinsic_index != null
+  ) {
+    const eventRows = await d1All(
+      env,
+      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? AND extrinsic_index = ? ORDER BY event_index ASC LIMIT 50`,
+      [resolved.block_number, resolved.extrinsic_index],
+    );
+    events = eventRows.map(formatAccountEvent).filter(Boolean);
+  }
+  const data = buildExtrinsic(resolved, ref, events);
   return envelopeResponse(
     request,
     {

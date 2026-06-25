@@ -58,7 +58,7 @@ test("eventInsertStatements builds chunked parameterized INSERT OR IGNORE", () =
   assert.ok(prepared[0].includes("VALUES (?"));
 });
 
-test("EVENT_INSERT_COLUMNS is the stable load contract (#1346)", () => {
+test("EVENT_INSERT_COLUMNS is the stable load contract (#1346/#1849)", () => {
   assert.deepEqual(EVENT_INSERT_COLUMNS, [
     "block_number",
     "event_index",
@@ -69,7 +69,10 @@ test("EVENT_INSERT_COLUMNS is the stable load contract (#1346)", () => {
     "uid",
     "amount_tao",
     "observed_at",
+    "extrinsic_index",
   ]);
+  // 10 cols x ROWS_PER_STMT(10) = 100 bound params — exactly D1's ceiling.
+  assert.equal(EVENT_INSERT_COLUMNS.length, 10);
 });
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
@@ -95,10 +98,12 @@ test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
     uid: null,
     amount_tao: 12.5,
     observed_at: 1750000000000,
+    extrinsic_index: 2,
   });
   assert.equal(out.event_kind, "StakeAdded");
   assert.equal(out.amount_tao, 12.5);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+  assert.equal(out.extrinsic_index, 2);
 });
 
 test("formatAccountEvent is null-safe on junk + sparse rows", () => {

@@ -125,12 +125,15 @@ export function formatExtrinsic(row) {
 
 // Per-extrinsic detail artifact. `extrinsic` is null when the ref didn't resolve
 // (cold store or unknown extrinsic) — schema-stable, never throws (mirrors the
-// block detail route's `block:null`).
-export function buildExtrinsic(row, ref) {
+// block detail route's `block:null`). `events` are the indexed account_events this
+// extrinsic emitted (#1849), already formatted + bounded by the handler; defaults
+// to [] (empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store).
+export function buildExtrinsic(row, ref, events = []) {
   return {
     schema_version: 1,
     ref: ref ?? null,
     extrinsic: formatExtrinsic(row),
+    events: events || [],
   };
 }
 

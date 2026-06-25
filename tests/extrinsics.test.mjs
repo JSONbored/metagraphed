@@ -281,7 +281,7 @@ function req(path) {
 }
 
 // A D1 mock that routes by SQL shape so the extrinsic handlers get realistic rows.
-function dbWith({ feed, detail } = {}) {
+function dbWith({ feed, detail, events } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
@@ -289,6 +289,10 @@ function dbWith({ feed, detail } = {}) {
           bind() {
             return {
               async all() {
+                // Emitted-events embed (#1849): FROM account_events — check the
+                // table BEFORE the generic composite WHERE (both share that shape).
+                if (/FROM account_events/.test(sql))
+                  return { results: events || [] };
                 if (/WHERE extrinsic_hash = \?/.test(sql))
                   return { results: detail ? [detail] : [] };
                 // Composite-id detail (#1848): WHERE block_number=? AND extrinsic_index=?.
@@ -504,6 +508,44 @@ test("GET /extrinsics/{block}-{index} is schema-stable when cold (#1848)", async
   const body = await res.json();
   assert.equal(body.data.ref, "777-0");
   assert.equal(body.data.extrinsic, null);
+  // The events embed (#1849) is always present + empty when the ref is cold.
+  assert.deepEqual(body.data.events, []);
+});
+
+test("GET /extrinsics/{ref} embeds the events the extrinsic emitted (#1849)", async () => {
+  const hash = `0x${"e".repeat(64)}`;
+  const env = dbWith({
+    detail: {
+      block_number: 1234,
+      extrinsic_index: 2,
+      extrinsic_hash: hash,
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      success: 1,
+      observed_at: 1750009000000,
+    },
+    events: [
+      {
+        block_number: 1234,
+        event_index: 5,
+        event_kind: "StakeAdded",
+        hotkey: "5Hk",
+        coldkey: "5Co",
+        netuid: 7,
+        uid: 3,
+        amount_tao: 1.5,
+        observed_at: 1750009000000,
+        extrinsic_index: 2,
+      },
+    ],
+  });
+  const res = await handleRequest(req(`/api/v1/extrinsics/${hash}`), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.extrinsic.extrinsic_index, 2);
+  assert.equal(body.data.events.length, 1);
+  assert.equal(body.data.events[0].event_kind, "StakeAdded");
+  assert.equal(body.data.events[0].extrinsic_index, 2);
 });
 
 test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () => {
