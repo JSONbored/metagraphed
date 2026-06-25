@@ -36,6 +36,7 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
                             on a cold start → fall back to the window floor
       ACCOUNT_EVENTS_JSON   events output path (default dist/account-events.json)
       EVENTS_CURSOR_OUT     next-cursor sidecar path (default dist/events-cursor.json)
+      EVENTS_BATCH_BLOCKS   max blocks emitted in one staged batch (default EVENTS_WINDOW)
       BLOCKS_JSON           per-block sidecar path (default dist/blocks.json) — the
                             block-explorer hot window (#1345), staged + loaded into
                             D1 `blocks` the same way the events JSON is
@@ -98,6 +99,11 @@ PRUNE_HORIZON = int(os.environ.get("EVENTS_PRUNE_HORIZON", "300"))
 # ARCHIVE node (ADR 0012) set EVENTS_MAX_LOOKBACK high so a long scheduler gap is
 # recovered in full; the archive still holds every block.
 MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
+# Producer-side batch guard for cursor recovery. The Worker drains one pending R2
+# object at a time, with byte/row caps; keep each recovery poll bounded so archive
+# mode advances through long gaps over multiple safe staged batches instead of
+# producing one pathological object.
+BATCH_BLOCKS = max(1, int(os.environ.get("EVENTS_BATCH_BLOCKS", str(WINDOW))))
 
 
 def _parse_cursor(raw):
@@ -116,6 +122,21 @@ def _parse_cursor(raw):
     except (TypeError, ValueError):
         return None
     return n if n >= 0 else None
+
+
+def compute_scan_range(cursor, head, window, max_lookback=PRUNE_HORIZON, batch_blocks=None):
+    """Inclusive block range to scan for one staged producer batch.
+
+    The start preserves cursor-driven gap recovery. The end is capped by
+    `batch_blocks` (default: `window`) so a long archive-node recovery is emitted
+    as several bounded staged batches. This keeps each pending R2 object inside the
+    Worker's progressive-drain envelope and lets the workflow promote only the
+    highest block actually staged in this run.
+    """
+    start = compute_from_block(cursor, head, window, max_lookback)
+    limit = window if batch_blocks is None else max(1, int(batch_blocks))
+    end = min(head, start + limit - 1)
+    return start, end
 
 
 def compute_from_block(cursor, head, window, max_lookback=PRUNE_HORIZON):
@@ -402,6 +423,23 @@ def extract(event_id, attrs):
     }
 
 
+def _lag_alert_needed(head_bn, cursor, window=WINDOW, horizon=PRUNE_HORIZON):
+    """True when the cursor is far enough behind the finalized head that un-fetched
+    blocks risk being pruned before the next run.
+
+    No alert on a cold cursor (nothing to lag). And none when the overlap window
+    already covers the whole prune horizon (``horizon - window <= 0``): blocks can
+    then never age out unseen, so the bare ``horizon - window`` threshold would be
+    zero/negative and otherwise fire on every run (even at lag 0).
+    """
+    if cursor is None:
+        return False
+    overlap_floor = horizon - window
+    if overlap_floor <= 0:
+        return False
+    return (head_bn - cursor) >= overlap_floor
+
+
 def _emit_lag_alert(head_bn, cursor):
     """If the cursor is within ~one window of the prune horizon, warn loudly.
 
@@ -410,13 +448,9 @@ def _emit_lag_alert(head_bn, cursor):
     falling behind faster than it can catch up is VISIBLE before blocks are pruned
     out from under it — not silently lost. No-op on a cold cursor (nothing to lag).
     """
-    if cursor is None:
+    if not _lag_alert_needed(head_bn, cursor):
         return
     lag = head_bn - cursor
-    # Alert once the lag is within a window of the prune horizon (i.e. the next
-    # missed/coalesced run could push un-fetched blocks past the prune point).
-    if lag < PRUNE_HORIZON - WINDOW:
-        return
     msg = (
         f"chain-event poller lagging: cursor={cursor} is {lag} blocks behind "
         f"finalized head {head_bn} (prune horizon ~{PRUNE_HORIZON}). Blocks risk "
@@ -454,7 +488,7 @@ def main():
             "finalized head timestamp is required for account_events"
         ) from e
     cursor = _parse_cursor(os.environ.get("EVENTS_CURSOR"))
-    start = compute_from_block(cursor, head_bn, WINDOW, MAX_LOOKBACK)
+    start, end = compute_scan_range(cursor, head_bn, WINDOW, MAX_LOOKBACK, BATCH_BLOCKS)
     _emit_lag_alert(head_bn, cursor)
 
     rows = []
@@ -462,7 +496,7 @@ def main():
     extrinsics = []
     scanned = 0
     skipped = 0
-    for bn in range(start, head_bn + 1):
+    for bn in range(start, end + 1):
         observed_at = head_ts - (head_bn - bn) * BLOCK_MS
         try:
             bh = s.get_block_hash(bn)
@@ -529,19 +563,18 @@ def main():
     with open(EXTRINSICS_OUT, "w") as fh:
         json.dump(extrinsics, fh)
 
-    # Next-cursor sidecar: the highest block we covered this run (the finalized
-    # head we scanned through). The workflow stages the events first, then — only
-    # on a successful stage — promotes this to events/cursor.json in R2. Because
-    # staging and D1 loading are asynchronous, compute_from_block still re-scans
-    # the overlap window every run; the cursor is retained for lag/health alerts,
-    # not as proof that staged rows have already been imported into D1.
-    next_cursor = max(head_bn, cursor) if cursor is not None else head_bn
+    # Next-cursor sidecar: the highest block we covered in THIS bounded batch.
+    # The workflow stages the events first, then — only on a successful stage —
+    # promotes this to events/cursor.json in R2. Long archive recovery therefore
+    # advances over multiple bounded pending objects instead of one oversized
+    # object; compute_from_block still re-scans the overlap window once current.
+    next_cursor = max(end, cursor) if cursor is not None else end
     os.makedirs(os.path.dirname(CURSOR_OUT) or ".", exist_ok=True)
     with open(CURSOR_OUT, "w") as fh:
         json.dump({"block_number": next_cursor}, fh)
 
     sys.stderr.write(
-        f"wrote {len(rows)} events from blocks {start}..{head_bn} "
+        f"wrote {len(rows)} events from blocks {start}..{end} (head={head_bn}) "
         f"(cursor_in={cursor}, scanned {scanned}, skipped {skipped}) -> {OUT}; "
         f"wrote {len(blocks)} block rows -> {BLOCKS_OUT}; "
         f"wrote {len(extrinsics)} extrinsic rows -> {EXTRINSICS_OUT}; "

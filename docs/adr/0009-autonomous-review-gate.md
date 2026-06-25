@@ -22,10 +22,13 @@ a separate repo + GitHub App) that is the **sole adjudicator** — the maintaine
 disposition is deterministic at the edges and conservative in the middle:
 
 - **Auto-CLOSE** on a deterministic fail — duplicate, dead/private `source_url`, a
-  secret, **no linked issue**, a clear reviewer reject, or red CI.
+  secret, a clear reviewer reject, or red CI.
 - **Auto-MERGE** only when content is verified (owner-matched, fresh) with **both
-  AI reviewers ≥ 0.9**, CI green, mergeable-clean, and a valid linked issue.
+  AI reviewers ≥ 0.9**, CI green, and mergeable-clean.
 - **Hold for a human** only when genuinely uncertain.
+
+A linked issue is **optional** — its absence is never a close reason; when one
+exists the gate verifies the PR against the issue's intent.
 
 The default posture is **close-when-in-doubt**: a redundant or unprovable PR costs
 the contributor a re-submission, not the registry its integrity.
@@ -35,9 +38,9 @@ the contributor a re-submission, not the registry its integrity.
 - **Throughput without a maintainer bottleneck** — the flywheel scales; recovery
   from an auto-close is a fresh PR, not a negotiation.
 - **The gate is the contract.** Contributors (and AI tools) must get a PR _right
-  before pushing_ — one focused subnet file (ADR 0008), a public `url` plus an
-  independent `source_url` that proves it, and a linked issue. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
-  and the `contributing-to-metagraphed` skill for the checklist.
+  before pushing_ — one focused subnet file (ADR 0008), and a public `url` plus an
+  independent `source_url` that proves it. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md)
+  and the `metagraphed` skill for the checklist.
 - **metagraphed stays adjudication-free** — no manual pre-escalation, no stored
   trust gating; the gate lives outside this repo and is configured there.
 - **Trade-off:** an external adjudicator is a dependency, and a wrong auto-close is
