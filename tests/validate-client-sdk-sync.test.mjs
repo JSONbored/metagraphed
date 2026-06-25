@@ -7,6 +7,7 @@ import {
   CONTRACT_PATHS,
   CLIENT_MANIFEST_PATH,
   evaluateClientSdkSync,
+  resolveDiffBase,
 } from "../scripts/validate-client-sdk-sync.mjs";
 
 describe("client-SDK drift gate (diff logic)", () => {
@@ -72,5 +73,57 @@ describe("client-SDK drift gate (diff logic)", () => {
       versionChanged: true,
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("client-SDK drift gate (git range resolution)", () => {
+  it("resolves an explicit PR base tip to the merge base before diffing", () => {
+    const calls = [];
+    const result = resolveDiffBase({
+      explicitBase: "base-tip",
+      baseRef: "main",
+      headRef: "pr-head",
+      gitFn(args) {
+        calls.push(args);
+        return "common-ancestor";
+      },
+    });
+
+    expect(result).toBe("common-ancestor");
+    expect(calls).toEqual([["merge-base", "base-tip", "pr-head"]]);
+  });
+
+  it("falls back from origin/base-ref to the local base ref", () => {
+    const calls = [];
+    const result = resolveDiffBase({
+      explicitBase: undefined,
+      baseRef: "feature-base",
+      headRef: "HEAD",
+      gitFn(args) {
+        calls.push(args);
+        if (args[1] === "origin/feature-base")
+          throw new Error("missing remote");
+        return "local-common-ancestor";
+      },
+    });
+
+    expect(result).toBe("local-common-ancestor");
+    expect(calls).toEqual([
+      ["merge-base", "origin/feature-base", "HEAD"],
+      ["merge-base", "feature-base", "HEAD"],
+    ]);
+  });
+
+  it("uses the head ref as a no-op local fallback when no base ref exists", () => {
+    const result = resolveDiffBase({
+      explicitBase: undefined,
+      baseRef: "main",
+      headRef: "HEAD",
+      gitFn() {
+        throw new Error("missing base");
+      },
+    });
+
+    expect(result).toBe("HEAD");
   });
 });
