@@ -525,6 +525,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
       "id": "account-extrinsics",
       "path": "/metagraph/accounts/{ss58}/extrinsics.json",

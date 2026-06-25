@@ -62,6 +62,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleAccount,
+  handleAccountHistory,
   handleAccountBalance,
   handleAccountEvents,
   handleAccountExtrinsics,
@@ -180,6 +181,7 @@ import {
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_TRANSFERS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
@@ -1192,6 +1194,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     // Account entity routes (#1347): computed live from the account_events +
     // neurons D1 tiers. More-specific paths first (each pattern is anchored).
+    const accountHistoryMatch = ACCOUNT_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountHistoryMatch) {
+      return handleAccountHistory(
+        request,
+        env,
+        accountHistoryMatch[1],
+        resolved.url,
+      );
+    }
     const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );

@@ -134,6 +134,7 @@ def decode_head(s, block_number):
                 "netuid": ent["netuid"],
                 "uid": ent["uid"],
                 "amount_tao": ent["amount_tao"],
+                "alpha_amount": ent["alpha_amount"],
                 "observed_at": head_ts if head_ts else None,
                 "extrinsic_index": xidx,
             }

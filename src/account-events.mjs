@@ -20,10 +20,13 @@ export const EVENT_INSERT_COLUMNS = [
   "netuid",
   "uid",
   "amount_tao",
+  // The alpha leg of a stake swap (#1856): subnet alpha bought/sold, in TAO units.
+  // Only StakeAdded/StakeRemoved carry it; null for every other kind. Display-only.
+  "alpha_amount",
   "observed_at",
   // The 0-based index of the extrinsic that emitted this event (#1849), read from
   // the event's phase=ApplyExtrinsic; null for Initialization/Finalization events.
-  // 10 cols x ROWS_PER_STMT(10) = 100 bound params — exactly D1's ceiling.
+  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
   "extrinsic_index",
 ];
 
@@ -56,6 +59,7 @@ export function formatAccountEvent(row) {
     netuid: row.netuid ?? null,
     uid: row.uid ?? null,
     amount_tao: row.amount_tao ?? null,
+    alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
     extrinsic_index: row.extrinsic_index ?? null,
   };
@@ -151,14 +155,14 @@ export function validEventRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for account_events rows, chunked
-// under D1's 100-bound-param limit (9 cols x 10 = 90). Idempotent on (block_number,
+// under D1's 100-bound-param limit (11 cols x 9 = 99). Idempotent on (block_number,
 // event_index). Values are ALWAYS bound, never interpolated — a tampered payload
 // can only fail, never inject. Shared by loadStagedEvents (#1346) + the ingest
 // endpoint (#1360).
 export function eventInsertStatements(db, rows) {
   const cols = EVENT_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 10;
+  const ROWS_PER_STMT = 9;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -180,7 +184,7 @@ export function eventInsertStatements(db, rows) {
 // ---- Entity API builders (#1347) -------------------------------------------
 // The columns the account handlers SELECT for an event row.
 export const ACCOUNT_EVENT_COLUMNS =
-  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at, extrinsic_index";
+  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index";
 
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
@@ -242,8 +246,13 @@ export function buildAccountSummary(
   };
 }
 
-// Paginated event history for one account (newest first).
-export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
+// Paginated event history for one account (newest first). next_cursor (#1851) is
+// the opaque keyset token for the next page, or null at end-of-window.
+export function buildAccountEvents(
+  rows,
+  ss58,
+  { limit, offset, nextCursor } = {},
+) {
   const events = (rows || []).map(formatAccountEvent).filter(Boolean);
   return {
     schema_version: 1,
@@ -251,6 +260,7 @@ export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
     event_count: events.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     events,
   };
 }
@@ -289,6 +299,39 @@ export function buildBlockEvents(
     limit: limit ?? null,
     offset: offset ?? null,
     events,
+  };
+}
+
+// One account_events_daily row → a clean API day object (#1854). Splits the
+// event_kinds GROUP_CONCAT CSV (rollupAccountEventsDaily) back into an array.
+export function formatAccountDay(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    day: row.day ?? null,
+    netuid: row.netuid ?? null,
+    event_count: row.event_count ?? null,
+    event_kinds:
+      typeof row.event_kinds === "string" && row.event_kinds.length > 0
+        ? row.event_kinds.split(",").filter(Boolean)
+        : [],
+    first_block: row.first_block ?? null,
+    last_block: row.last_block ?? null,
+  };
+}
+
+// The durable per-day activity series for one account (#1854), from the
+// account_events_daily rollup (hotkey-keyed). NOTE the rollup writes only
+// hotkey-attributed rows, so a coldkey-only ss58 returns zero days even when
+// /events shows activity — surfaced in the route comment + contract description.
+export function buildAccountHistory(rows, ss58, { limit, offset } = {}) {
+  const days = (rows || []).map(formatAccountDay).filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    day_count: days.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    days,
   };
 }
 

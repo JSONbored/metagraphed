@@ -12,10 +12,11 @@ import {
   pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
-test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
+test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345/#1855)", () => {
   assert.deepEqual(EXTRINSIC_INSERT_COLUMNS, [
     "block_number",
     "extrinsic_index",
@@ -26,8 +27,11 @@ test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "call_args",
     "success",
     "fee_tao",
+    "tip_tao",
     "observed_at",
   ]);
+  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
+  assert.equal(EXTRINSIC_INSERT_COLUMNS.length, 11);
 });
 
 test("validExtrinsicRows enforces the strict row shape (#1345)", () => {
@@ -72,13 +76,13 @@ test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", 
     observed_at: 1,
   }));
   const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 10 per statement = 3 statements (10, 10, 10)
-  assert.equal(stmts.length, 3);
+  // 30 rows / 9 per statement = 4 statements (9, 9, 9, 3)
+  assert.equal(stmts.length, 4);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (10 cols x 10 rows = 100 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 10 * 10);
-  // All ten columns appear in the column list.
+  // Every value is BOUND (11 cols x 9 rows = 99 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 11 * 9);
+  // All eleven columns appear in the column list.
   for (const col of EXTRINSIC_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -93,8 +97,20 @@ test("extrinsicInsertStatements binds missing fields as null (never interpolates
   const [stmt] = extrinsicInsertStatements(db, [
     { block_number: 7, extrinsic_index: 2, observed_at: 9 },
   ]);
-  // extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao default to null.
-  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, null, 9]);
+  // hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao default to null.
+  assert.deepEqual(stmt.v, [
+    7,
+    2,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    9,
+  ]);
 });
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
@@ -107,6 +123,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     call_function: "add_stake",
     call_args: '[{"name":"hotkey","value":"5H..."}]',
     fee_tao: 0.0125,
+    tip_tao: 0.5,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -118,6 +135,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.call_function, "add_stake");
   assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
   assert.equal(out.fee_tao, 0.0125);
+  assert.equal(out.tip_tao, 0.5);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
@@ -335,6 +353,51 @@ test("GET /extrinsics returns the recent feed newest-first (#1345)", async () =>
   assert.equal(body.data.extrinsics[0].call_function, "add_stake");
   assert.equal(body.data.extrinsics[0].success, true);
   assert.equal(body.data.limit, 50);
+});
+
+test("GET /extrinsics?cursor= seeks by the composite keyset + emits next_cursor (#1851)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return {
+                  results: [
+                    {
+                      block_number: 150,
+                      extrinsic_index: 4,
+                      extrinsic_hash: `0x${"a".repeat(64)}`,
+                      observed_at: 1,
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(`/api/v1/extrinsics?limit=1&cursor=${encodeCursor([200, 2])}`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  // Row-value seek on the (block_number, extrinsic_index) PK, no OFFSET.
+  assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(boundSql));
+  assert.ok(!/OFFSET/.test(boundSql));
+  assert.ok(boundParams.includes(200));
+  assert.ok(boundParams.includes(2));
+  // Full page → next_cursor past the last row (150, 4).
+  assert.equal(body.data.next_cursor, encodeCursor([150, 4]));
 });
 
 test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async () => {

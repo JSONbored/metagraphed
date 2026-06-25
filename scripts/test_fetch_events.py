@@ -269,5 +269,101 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["amount_tao"])
 
 
+class _Ev:
+    """Minimal stand-in for a decoded event (`.value` is the SCALE-decoded dict)."""
+
+    def __init__(self, value):
+        self.value = value
+
+
+def _fee_paid(idx, fee_rao, tip_rao):
+    return _Ev(
+        {
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": idx,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": ["5Who", fee_rao, tip_rao],
+            },
+        }
+    )
+
+
+class TipMapTest(unittest.TestCase):
+    def test_tip_map_reads_the_third_attribute(self):
+        # tip is the 3rd field [who, actual_fee, tip]; converted rao -> TAO (#1855).
+        tip_map = _fe._tip_map([_fee_paid(0, 12_500_000, 500_000_000)])
+        self.assertAlmostEqual(tip_map[0], 0.5)
+
+    def test_tip_map_dict_attributes(self):
+        ev = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 3,
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": {"who": "5Who", "actual_fee": 1, "tip": 2_000_000_000},
+                },
+            }
+        )
+        self.assertAlmostEqual(_fe._tip_map([ev])[3], 2.0)
+
+    def test_tip_map_ignores_non_feepaid_and_non_apply_phase(self):
+        other_module = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 0,
+                "event": {"module_id": "Balances", "event_id": "Transfer", "attributes": []},
+            }
+        )
+        init_phase = _Ev(
+            {
+                "phase": "Initialization",
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": ["5Who", 1, 2],
+                },
+            }
+        )
+        self.assertEqual(_fe._tip_map([other_module, init_phase]), {})
+
+    def test_tip_map_never_raises_on_shape_drift(self):
+        self.assertEqual(_fe._tip_map([_Ev("not-a-dict"), _Ev({})]), {})
+
+
+class StakeAlphaExtractorTest(unittest.TestCase):
+    """The alpha leg of stake events (#1856): _stake reads a[3] = alpha_rao."""
+
+    _ALPHA = 9_250_000_000  # 9.25 alpha (in rao units)
+
+    def test_stake_added_carries_the_alpha_leg(self):
+        # [coldkey, hotkey, tao_rao, alpha_rao, netuid]
+        result = _extract(
+            "StakeAdded", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+        self.assertEqual(result["netuid"], 7)
+
+    def test_stake_removed_carries_the_alpha_leg(self):
+        result = _extract(
+            "StakeRemoved", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+
+    def test_missing_alpha_leg_is_null(self):
+        # A short payload (no a[3]) → alpha_amount null, never raises.
+        result = _extract("StakeAdded", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
+
+    def test_non_stake_kind_has_no_alpha(self):
+        # Transfer carries no alpha leg → null (extract() defaults the key).
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

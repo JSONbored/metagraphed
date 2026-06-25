@@ -91,10 +91,63 @@
         ],
         "type": "object"
       },
+      "AccountDay": {
+        "additionalProperties": true,
+        "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "type": "object"
+      },
       "AccountEvent": {
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "properties": {
+          "alpha_amount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "amount_tao": {
             "type": [
               "number",
@@ -198,6 +251,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -248,6 +307,41 @@
           "ss58",
           "extrinsic_count",
           "extrinsics"
+        ],
+        "type": "object"
+      },
+      "AccountHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Durable per-day activity series for one account (#1854), newest day first, from the hotkey-keyed account_events_daily rollup. NOTE: the rollup writes only hotkey-attributed rows, so an ss58 with no hotkey activity returns zero days even when /events (which matches the hotkey or coldkey) shows activity. ?netuid / ?from / ?to narrow the series. Served live at /api/v1/accounts/{ss58}/history (no static file).",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/AccountDay"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "day_count",
+          "days"
         ],
         "type": "object"
       },
@@ -1504,7 +1598,7 @@
       },
       "BlockDetailArtifact": {
         "additionalProperties": true,
-        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null).",
         "properties": {
           "block": {
             "oneOf": [
@@ -1514,6 +1608,18 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "next_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "prev_block_number": {
+            "type": [
+              "integer",
+              "null"
             ]
           },
           "ref": {
@@ -1637,6 +1743,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -3998,7 +4110,7 @@
       },
       "Extrinsic": {
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "properties": {
           "block_number": {
             "type": [
@@ -4059,6 +4171,12 @@
           "success": {
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "tip_tao": {
+            "type": [
+              "number",
               "null"
             ]
           }
@@ -4122,6 +4240,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
