@@ -1589,7 +1589,7 @@
           }
         }
       },
-"AccountBalanceArtifact": {
+      "AccountBalanceArtifact": {
         "type": "object",
         "additionalProperties": true,
         "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
@@ -1601,7 +1601,7 @@
           "queried_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
-            "Block": {
+      "Block": {
         "type": "object",
         "additionalProperties": false,
         "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",

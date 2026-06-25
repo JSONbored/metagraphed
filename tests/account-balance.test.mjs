@@ -28,7 +28,11 @@ test("GET /accounts/{ss58}/balance returns balance_tao for a valid address", asy
       }),
     }),
     async () => {
-      const res = await handleRequest(req(`/api/v1/accounts/${SS58}/balance`), {}, {});
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
       assert.equal(res.status, 200);
       const body = await res.json();
       // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
@@ -71,7 +75,11 @@ test("GET /accounts/{ss58}/balance returns 503 with balance_tao:null on RPC fail
       throw new Error("network error");
     },
   };
-  const res = await handleRequest(req(`/api/v1/accounts/${SS58}/balance`), env, {});
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/balance`),
+    env,
+    {},
+  );
   assert.equal(res.status, 503);
   const body = await res.json();
   assert.equal(body.schema_version, 1);
@@ -92,7 +100,11 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
       get: async (_key, _opts) => cached,
     },
   };
-  const res = await handleRequest(req(`/api/v1/accounts/${SS58}/balance`), env, {});
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/balance`),
+    env,
+    {},
+  );
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.balance_tao, 99.0);
