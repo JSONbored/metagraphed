@@ -24,6 +24,18 @@ function gradeFor(score) {
   return "F";
 }
 
+// Round the displayed uptime ratio to 4 decimals WITHOUT letting a sub-perfect
+// ratio round up to an exact 1: (0.99996).toFixed(4) === "1.0000", which would
+// make a 99.996%-uptime surface report `uptime_ratio: 1` and render a "100%"
+// badge (the formatUptimePercent `value < 1` guard can't recover it — the ratio
+// is already collapsed to 1 upstream). Only a genuine okCount === samples ratio
+// (exactly 1) keeps the perfect value; any sub-1 ratio clamps to the largest
+// 4-decimal value below 1.
+function displayUptimeRatio(ratio) {
+  const rounded = Number(ratio.toFixed(4));
+  return rounded >= 1 && ratio < 1 ? 0.9999 : rounded;
+}
+
 // Score a single rolled-up window of stats. Returns null when there are no
 // samples (no probe data → no score, by design). `latencySamples` is how many
 // healthy probes backed `avgLatencyMs`, distinct from `samples` (the uptime total).
@@ -52,7 +64,7 @@ export function scoreFromStats({
   return {
     score,
     grade: gradeFor(score),
-    uptime_ratio: Number(uptimeRatio.toFixed(4)),
+    uptime_ratio: displayUptimeRatio(uptimeRatio),
     avg_latency_ms: avgLatencyMs == null ? null : Math.round(avgLatencyMs),
     sample_count: samples,
     latency_sample_count: latencySamples,
