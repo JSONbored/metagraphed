@@ -298,6 +298,13 @@ def block_extras(s, bn, bh, event_count):
         extrinsic_count = len(s.get_block(block_hash=bh)["extrinsics"])
     except Exception:
         extrinsic_count = None
+    spec_version = None
+    try:
+        rv = s.get_block_runtime_version(block_hash=bh)
+        if isinstance(rv, dict):
+            spec_version = rv.get("specVersion") or rv.get("spec_version")
+    except Exception:
+        pass
     return {
         "block_number": bn,
         "block_hash": str(bh),
@@ -305,6 +312,7 @@ def block_extras(s, bn, bh, event_count):
         "author": _block_author(s, bh, header),
         "extrinsic_count": extrinsic_count,
         "event_count": event_count,
+        "spec_version": spec_version,
     }
 
 

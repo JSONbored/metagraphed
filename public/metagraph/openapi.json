@@ -1237,7 +1237,7 @@
       },
       "Block": {
         "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash/spec_version are best-effort (nullable); observed_at is the block time.",
         "properties": {
           "author": {
             "type": [
@@ -1279,6 +1279,13 @@
           "parent_hash": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "spec_version": {
+            "description": "Substrate runtime spec_version active at this block height; null for blocks indexed before this field was added.",
+            "type": [
+              "integer",
               "null"
             ]
           }
@@ -13651,7 +13658,8 @@
                       "event_count": 1,
                       "extrinsic_count": 1,
                       "observed_at": "2026-06-01T00:00:00.000Z",
-                      "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1"
+                      "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                      "spec_version": 1
                     },
                     "ref": "example",
                     "schema_version": 1

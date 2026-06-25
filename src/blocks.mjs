@@ -20,6 +20,7 @@ export const BLOCK_INSERT_COLUMNS = [
   "author",
   "extrinsic_count",
   "event_count",
+  "spec_version",
   "observed_at",
 ];
 
@@ -44,13 +45,13 @@ export function validBlockRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for blocks rows, chunked under
-// D1's 100-bound-param limit (7 cols x 14 = 98). Idempotent on block_number (the
+// D1's 100-bound-param limit (8 cols x 12 = 96). Idempotent on block_number (the
 // primary key). Values are ALWAYS bound, never interpolated — a tampered payload
 // can only fail, never inject. Mirrors eventInsertStatements (#1346).
 export function blockInsertStatements(db, rows) {
   const cols = BLOCK_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 14;
+  const ROWS_PER_STMT = 12;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -90,7 +91,7 @@ export async function pruneBlocks(env, overrides = {}) {
 // ---- Block API builders ----------------------------------------------------
 // The columns the block handlers SELECT for a block row.
 export const BLOCK_READ_COLUMNS =
-  "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, observed_at";
+  "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at";
 
 // One D1 blocks row → a clean API block object. Null-safe on junk/sparse rows.
 export function formatBlock(row) {
@@ -102,6 +103,7 @@ export function formatBlock(row) {
     author: row.author ?? null,
     extrinsic_count: row.extrinsic_count ?? null,
     event_count: row.event_count ?? null,
+    spec_version: row.spec_version ?? null,
     observed_at: toIso(row.observed_at),
   };
 }

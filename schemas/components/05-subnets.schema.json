@@ -1592,7 +1592,7 @@
       "Block": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash/spec_version are best-effort (nullable); observed_at is the block time.",
         "required": ["block_number"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1601,6 +1601,7 @@
           "author": { "type": ["string", "null"] },
           "extrinsic_count": { "type": ["integer", "null"] },
           "event_count": { "type": ["integer", "null"] },
+          "spec_version": { "description": "Substrate runtime spec_version active at this block height; null for blocks indexed before this field was added.", "type": ["integer", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },

@@ -23,6 +23,7 @@ test("BLOCK_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "author",
     "extrinsic_count",
     "event_count",
+    "spec_version",
     "observed_at",
   ]);
 });
@@ -52,19 +53,19 @@ test("blockInsertStatements builds chunked parameterized INSERT OR IGNORE", () =
       return { bind: (...v) => ({ sql, v }) };
     },
   };
-  const rows = Array.from({ length: 30 }, (_, i) => ({
+  const rows = Array.from({ length: 24 }, (_, i) => ({
     block_number: i,
     block_hash: `0x${i}`,
     observed_at: 1,
   }));
   const stmts = blockInsertStatements(db, rows);
-  // 30 rows / 14 per statement = 3 statements
-  assert.equal(stmts.length, 3);
+  // 24 rows / 12 per statement = 2 statements
+  assert.equal(stmts.length, 2);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO blocks ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (7 cols x 14 rows = 98 params on a full chunk).
-  assert.equal(stmts[0].v.length, 7 * 14);
-  // All seven columns appear in the column list.
+  // Every value is BOUND (8 cols x 12 rows = 96 params on a full chunk).
+  assert.equal(stmts[0].v.length, 8 * 12);
+  // All eight columns appear in the column list.
   for (const col of BLOCK_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -79,8 +80,8 @@ test("blockInsertStatements binds missing fields as null (never interpolates)", 
   const [stmt] = blockInsertStatements(db, [
     { block_number: 7, block_hash: "0x7", observed_at: 9 },
   ]);
-  // parent_hash, author, extrinsic_count, event_count default to null.
-  assert.deepEqual(stmt.v, [7, "0x7", null, null, null, null, 9]);
+  // parent_hash, author, extrinsic_count, event_count, spec_version default to null.
+  assert.deepEqual(stmt.v, [7, "0x7", null, null, null, null, null, 9]);
 });
 
 test("formatBlock maps a D1 row to an API block (ISO time)", () => {
@@ -183,10 +184,28 @@ test("BLOCK_READ_COLUMNS lists the served block columns", () => {
     "author",
     "extrinsic_count",
     "event_count",
+    "spec_version",
     "observed_at",
   ]) {
     assert.ok(BLOCK_READ_COLUMNS.includes(c), `missing ${c}`);
   }
+});
+
+test("formatBlock passes through spec_version (integer and null)", () => {
+  const withSpec = formatBlock({
+    block_number: 500,
+    block_hash: "0xabc",
+    observed_at: 1750000000000,
+    spec_version: 194,
+  });
+  assert.equal(withSpec.spec_version, 194);
+
+  const noSpec = formatBlock({
+    block_number: 500,
+    block_hash: "0xabc",
+    observed_at: 1750000000000,
+  });
+  assert.equal(noSpec.spec_version, null);
 });
 
 test("pruneBlocks deletes below the retention cutoff", async () => {

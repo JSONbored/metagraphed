@@ -1597,7 +1597,7 @@ export interface components {
          * @enum {unknown}
          */
         BittensorNetwork: "finney" | "test" | "local";
-        /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time. */
+        /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash/spec_version are best-effort (nullable); observed_at is the block time. */
         Block: {
             author?: string | null;
             block_hash?: string | null;
@@ -1607,6 +1607,8 @@ export interface components {
             /** Format: date-time */
             observed_at?: string | null;
             parent_hash?: string | null;
+            /** @description Substrate runtime spec_version active at this block height; null for blocks indexed before this field was added. */
+            spec_version?: number | null;
         };
         /** @description Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). */
         BlockDetailArtifact: {
@@ -5481,7 +5483,8 @@ export interface operations {
                      *           "event_count": 1,
                      *           "extrinsic_count": 1,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
-                     *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1"
+                     *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "spec_version": 1
                      *         },
                      *         "ref": "example",
                      *         "schema_version": 1
