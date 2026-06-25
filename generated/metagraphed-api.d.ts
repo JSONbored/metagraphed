@@ -1385,7 +1385,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency. */
+        /** @description Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Aggregates are bounded to the newest retained signer rows, not all-time. tx_count is the count of sampled extrinsics this account signed; modules_called is the top call_modules by frequency within that bounded sample. */
         AccountActivity: {
             /** Format: date-time */
             last_tx_at?: string | null;

@@ -387,9 +387,13 @@ export function buildAccountTransfers(rows, ss58, { limit, offset } = {}) {
 // Events match either key (a coldkey controls hotkeys); a registration is hotkey-only.
 const ACCOUNT_EVENT_MATCH = "hotkey = ? OR coldkey = ?";
 const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
+// Bound public account-summary signing activity to the newest signer rows. This
+// keeps /api/v1/accounts/{ss58} from doing full retained-history aggregates for
+// high-volume signers on every unauthenticated request.
+export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
 
 // Cross-subnet summary: event aggregates, per-kind counts, the 10 newest events,
-// current registrations, and signing-activity aggregates from the extrinsics tier.
+// current registrations, and bounded signing-activity aggregates from the extrinsics tier.
 export async function loadAccountSummary(d1, ss58) {
   const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
     await Promise.all([
@@ -409,14 +413,15 @@ export async function loadAccountSummary(d1, ss58) {
         `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${ACCOUNT_EVENT_MATCH} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
         [ss58, ss58],
       ),
-      // Signing activity from the extrinsics tier, matched by signer.
+      // Signing activity from the extrinsics tier, matched by signer and
+      // explicitly bounded to the newest rows before aggregation.
       d1(
-        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM extrinsics WHERE signer = ?`,
-        [ss58],
+        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
+        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
       ),
       d1(
-        `SELECT call_module, COUNT(*) AS count FROM extrinsics WHERE signer = ? GROUP BY call_module ORDER BY count DESC LIMIT 10`,
-        [ss58],
+        `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC LIMIT 10`,
+        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
       ),
     ]);
   return buildAccountSummary(ss58, {
