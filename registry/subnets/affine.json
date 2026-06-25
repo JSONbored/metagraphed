@@ -1,0 +1,52 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Affine",
+  "netuid": 120,
+  "schema_version": 1,
+  "slug": "sn-120",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-source-repo",
+      "kind": "source-repo",
+      "name": "Affine source repository",
+      "notes": "Official Affine (SN120) source repository, identified via on-chain subnet identity.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://github.com/AffineFoundation/affine",
+        "https://api.taomarketcap.com/public/v1/subnets/120"
+      ],
+      "url": "https://github.com/AffineFoundation/affine"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-website",
+      "kind": "website",
+      "name": "Affine website",
+      "notes": "Official Affine (SN120) project website, identified via on-chain subnet identity.",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://api.taomarketcap.com/public/v1/subnets/120"
+      ],
+      "url": "https://www.affine.io/"
+    }
+  ]
+}
