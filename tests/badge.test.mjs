@@ -7,6 +7,7 @@ import {
   gradeColor,
   parseBadgePath,
   parseBadgeOptions,
+  formatUptimePercent,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -46,6 +47,7 @@ function makeLoadReliability(byNetuids) {
 
 const RELIABILITY = {
   7: { score: 99, grade: "A", uptime_ratio: 0.9983 }, // subnet 7
+  3: { score: 100, grade: "A", uptime_ratio: 0.99996 }, // subnet 3: just under 1
   "7,12": { score: 88, grade: "D", uptime_ratio: 0.88 }, // provider datura
 };
 
@@ -243,12 +245,30 @@ describe("badge — handleBadgeRequest", () => {
   });
 });
 
+describe("formatUptimePercent", () => {
+  test("floors the ratio so a sub-100% value never reads 100% (#1721)", () => {
+    assert.equal(formatUptimePercent(0.99996), "99.99%"); // not "100%"
+    assert.equal(formatUptimePercent(0.999999), "99.99%");
+    assert.equal(formatUptimePercent(1), "100%"); // only an exact 1
+    assert.equal(formatUptimePercent(0.9983), "99.83%");
+    assert.equal(formatUptimePercent(0.88), "88%");
+    assert.equal(formatUptimePercent(0), "0%");
+    assert.equal(formatUptimePercent(null), "0%"); // non-numeric → 0
+  });
+});
+
 describe("badge — uptime / reliability metric", () => {
   test("subnet uptime renders the window % colored by the A grade", async () => {
     const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=uptime");
     assert.match(text, /99\.83%/); // 0.9983 → trimmed percent
     assert.match(text, /#2ea44f/); // grade A → green
     assert.ok(!text.includes("/100")); // not the readiness rendering
+  });
+
+  test("a sub-100% ratio is floored, never rounded up to 100% (#1721)", async () => {
+    const { text } = await badge("/api/v1/subnets/3/badge.svg?metric=uptime");
+    // 0.99996 floors to 99.99% — the value must not overstate as a perfect 100%.
+    assert.match(text, /aria-label="metagraphed: 99\.99%"/);
   });
 
   test("metric=reliability is an alias for uptime", async () => {
