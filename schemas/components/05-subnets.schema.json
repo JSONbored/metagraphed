@@ -1594,6 +1594,7 @@
           "event_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer" },
           "offset": { "type": "integer" },
+          "next_cursor": { "type": ["string", "null"] },
           "events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
@@ -1723,6 +1724,7 @@
           "block_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": ["integer", "null"] },
           "offset": { "type": ["integer", "null"] },
+          "next_cursor": { "type": ["string", "null"] },
           "blocks": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Block" }
@@ -1809,6 +1811,7 @@
           "extrinsic_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": ["integer", "null"] },
           "offset": { "type": ["integer", "null"] },
+          "next_cursor": { "type": ["string", "null"] },
           "extrinsics": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Extrinsic" }

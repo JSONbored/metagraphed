@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset. */
+        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). */
         get: operations["accountEvents"];
         put?: never;
         post?: never;
@@ -198,7 +198,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345). */
+        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345). */
         get: operations["blocksFeed"];
         put?: never;
         post?: never;
@@ -487,7 +487,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345). */
+        /** Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345). */
         get: operations["extrinsicsFeed"];
         put?: never;
         post?: never;
@@ -1414,6 +1414,7 @@ export interface components {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
             limit?: number;
+            next_cursor?: string | null;
             offset?: number;
             schema_version: number;
             ss58: string;
@@ -1804,6 +1805,7 @@ export interface components {
             block_count: number;
             blocks: components["schemas"]["Block"][];
             limit?: number | null;
+            next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
         } & {
@@ -2407,6 +2409,7 @@ export interface components {
             extrinsic_count: number;
             extrinsics: components["schemas"]["Extrinsic"][];
             limit?: number | null;
+            next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
         } & {
@@ -4917,6 +4920,7 @@ export interface operations {
                 kind?: string;
                 limit?: number;
                 offset?: number;
+                cursor?: string;
             };
             header?: never;
             path: {
@@ -4946,6 +4950,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1,
                      *         "ss58": "example"
@@ -5889,6 +5894,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                cursor?: string;
             };
             header?: never;
             path?: never;
@@ -5915,6 +5921,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1
                      *       },
@@ -8158,6 +8165,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                cursor?: string;
                 block?: number;
                 signer?: string;
                 call_module?: string;
@@ -8194,6 +8202,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1
                      *       },

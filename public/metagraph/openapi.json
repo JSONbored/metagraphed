@@ -212,6 +212,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -1651,6 +1657,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -4136,6 +4148,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -13120,6 +13138,14 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -13136,6 +13162,7 @@
                       }
                     ],
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1,
                     "ss58": "example"
@@ -13239,7 +13266,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
         "tags": [
           "accounts",
           "analytics"
@@ -14338,6 +14365,14 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -14353,6 +14388,7 @@
                       }
                     ],
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1
                   },
@@ -14455,7 +14491,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset. Computed live from the first-party blocks D1 tier (#1345).",
+        "summary": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345).",
         "tags": [
           "blocks",
           "analytics"
@@ -17768,6 +17804,14 @@
           },
           {
             "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "block",
             "required": false,
             "schema": {
@@ -17862,6 +17906,7 @@
                       }
                     ],
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1
                   },
@@ -17964,7 +18009,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
         "tags": [
           "extrinsics",
           "analytics"

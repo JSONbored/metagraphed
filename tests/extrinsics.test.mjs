@@ -12,6 +12,7 @@ import {
   pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -335,6 +336,51 @@ test("GET /extrinsics returns the recent feed newest-first (#1345)", async () =>
   assert.equal(body.data.extrinsics[0].call_function, "add_stake");
   assert.equal(body.data.extrinsics[0].success, true);
   assert.equal(body.data.limit, 50);
+});
+
+test("GET /extrinsics?cursor= seeks by the composite keyset + emits next_cursor (#1851)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return {
+                  results: [
+                    {
+                      block_number: 150,
+                      extrinsic_index: 4,
+                      extrinsic_hash: `0x${"a".repeat(64)}`,
+                      observed_at: 1,
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(`/api/v1/extrinsics?limit=1&cursor=${encodeCursor([200, 2])}`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  // Row-value seek on the (block_number, extrinsic_index) PK, no OFFSET.
+  assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(boundSql));
+  assert.ok(!/OFFSET/.test(boundSql));
+  assert.ok(boundParams.includes(200));
+  assert.ok(boundParams.includes(2));
+  // Full page → next_cursor past the last row (150, 4).
+  assert.equal(body.data.next_cursor, encodeCursor([150, 4]));
 });
 
 test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async () => {

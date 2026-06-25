@@ -52,6 +52,7 @@ import {
   buildBlockEvents,
   formatAccountEvent,
 } from "../../src/account-events.mjs";
+import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
   buildBlock,
@@ -304,7 +305,12 @@ export async function handleAccount(request, env, ss58) {
 // GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
 // optional ?kind= filter, ?limit (<=1000) / ?offset.
 export async function handleAccountEvents(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "kind",
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
@@ -315,10 +321,29 @@ export async function handleAccountEvents(request, env, ss58, url) {
     sql += " AND event_kind = ?";
     params.push(kind);
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  // Keyset cursor (#1851): a row-value seek on (block_number, event_index). The
+  // within-block tiebreak (event_index) isn't in the per-account access indexes
+  // (idx_account_events_hotkey, idx_account_events_coldkey), so it's a small
+  // per-block in-memory sort — acceptable at per-account volume. Takes precedence
+  // over offset; malformed cursor → ignored.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildAccountEvents(rows, ss58, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildAccountEvents(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -572,16 +597,36 @@ export async function handleAccountBalance(request, env, ss58) {
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
 export async function handleBlocks(request, env, url) {
-  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const rows = await d1All(
-    env,
-    `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-    [limit, offset],
-  );
-  const data = buildBlockFeed(rows, { limit, offset });
+  // Keyset cursor (#1851) takes precedence over offset when present: WHERE
+  // block_number < ? (PK-ordered, stable under head inserts). A malformed cursor
+  // decodes to null → ignored (falls back to offset), preserving never-throw.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  let rows;
+  if (cur) {
+    rows = await d1All(
+      env,
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
+      [cur[0], limit],
+    );
+  } else {
+    rows = await d1All(
+      env,
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
+      [limit, offset],
+    );
+  }
+  // next_cursor only when the page was full (more rows likely); null at the end.
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last ? encodeCursor([last.block_number]) : null;
+  const data = buildBlockFeed(rows, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -722,6 +767,7 @@ export async function handleExtrinsics(request, env, url) {
   const validationError = validateQueryParams(url, [
     "limit",
     "offset",
+    "cursor",
     "block",
     "signer",
     "call_module",
@@ -769,12 +815,29 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("observed_at <= ?");
     params.push(clampInt(sp.get("to"), 0, 0, MAX));
   }
+  // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
+  // PK, ANDed with any active filters. Takes precedence over offset; a malformed
+  // cursor decodes to null → ignored. SQLite row-value comparison is PK-covered.
+  const cur = decodeCursor(sp.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("(block_number, extrinsic_index) < (?, ?)");
+    params.push(cur[0], cur[1]);
+  }
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildExtrinsicFeed(rows, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.extrinsic_index])
+    : null;
+  const data = buildExtrinsicFeed(rows, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {

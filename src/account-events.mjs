@@ -242,8 +242,13 @@ export function buildAccountSummary(
   };
 }
 
-// Paginated event history for one account (newest first).
-export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
+// Paginated event history for one account (newest first). next_cursor (#1851) is
+// the opaque keyset token for the next page, or null at end-of-window.
+export function buildAccountEvents(
+  rows,
+  ss58,
+  { limit, offset, nextCursor } = {},
+) {
   const events = (rows || []).map(formatAccountEvent).filter(Boolean);
   return {
     schema_version: 1,
@@ -251,6 +256,7 @@ export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
     event_count: events.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     events,
   };
 }

@@ -118,14 +118,16 @@ export function buildBlock(row, ref) {
 }
 
 // Recent-block feed artifact (newest first). Null-safe on a cold/absent store
-// (returns a schema-stable zero).
-export function buildBlockFeed(rows, { limit, offset } = {}) {
+// (returns a schema-stable zero). next_cursor (#1851) is the opaque keyset token
+// for the next page, or null at end-of-window; the caller computes it.
+export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
   const blocks = (rows || []).map(formatBlock).filter(Boolean);
   return {
     schema_version: 1,
     block_count: blocks.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     blocks,
   };
 }
