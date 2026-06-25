@@ -510,6 +510,72 @@ describe("script utility contracts", () => {
     );
   });
 
+  test("README dedupe keeps distinct tenants on multi-label public suffix hosts", () => {
+    const repo = { owner: "ExampleProject", repo: "subnet-42" };
+    const pagesDevLinks = [
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "Tenant A API",
+        url: "https://exampleproject-a.pages.dev/api",
+      },
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "Tenant B API",
+        url: "https://exampleproject-b.pages.dev/api",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(pagesDevLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      [
+        "https://exampleproject-a.pages.dev/api",
+        "https://exampleproject-b.pages.dev/api",
+      ],
+    );
+
+    const coUkLinks = [
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "ExampleProject foo API",
+        url: "https://foo.co.uk/api",
+      },
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "ExampleProject bar API",
+        url: "https://bar.co.uk/api",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(coUkLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      ["https://foo.co.uk/api", "https://bar.co.uk/api"],
+    );
+
+    const sameSiteLinks = [
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Install",
+        url: "https://docs.exampleproject.ai/install",
+      },
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Advanced",
+        url: "https://docs.exampleproject.ai/advanced",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(sameSiteLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      ["https://docs.exampleproject.ai/install"],
+    );
+  });
+
   test("README link review rejects malformed and generic references", () => {
     assert.equal(isReviewableReadmeLink(null), false);
     assert.equal(
