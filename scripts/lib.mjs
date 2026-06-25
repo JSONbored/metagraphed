@@ -1565,6 +1565,21 @@ export function buildTimestamp() {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
 }
 
+/**
+ * Returns the committed manifest's `generated_at` when running a local build
+ * (no publish env vars set), so `npm run build` never clobbers the live
+ * timestamp with the 1970 epoch placeholder. Returns null during publish runs
+ * (METAGRAPH_BUILD_TIMESTAMP or METAGRAPH_RUN_ID set) or when no manifest
+ * exists yet — callers fall back to generatedAt in those cases.
+ */
+export async function readCommittedManifestGeneratedAt(manifestPath) {
+  if (process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID) {
+    return null;
+  }
+  const manifest = await readJson(manifestPath).catch(() => null);
+  return manifest?.generated_at ?? null;
+}
+
 // Strip embedded URLs/emails/bare-domains from free text — they shred into junk
 // search tokens ("https"/"com"/"gg") and read poorly.
 export function stripUrls(value) {
