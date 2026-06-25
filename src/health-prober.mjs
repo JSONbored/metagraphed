@@ -726,7 +726,16 @@ export async function rollupDailyUptime(env, overrides = {}) {
        ? AS day,
        COUNT(*) AS samples,
        SUM(ok) AS ok_count,
-       ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
+       -- Only a genuinely perfect day (every probe ok) stores 1; a sub-perfect
+       -- day whose 4-dp round would reach 1.0 (e.g. 0.99996) is clamped down to
+       -- 0.9999, mirroring displayUptimeRatio (#1799). Without this the stored
+       -- ratio contradicts the co-computed degraded status, and the per-day
+       -- series reports 100% for a day that had a failed probe.
+       CASE
+         WHEN SUM(ok) = COUNT(*) THEN 1.0
+         WHEN ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) >= 1.0 THEN 0.9999
+         ELSE ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4)
+       END AS uptime_ratio,
        ${latencyStatColumns({ roundedAvg: true, includeMinMax: false })},
        CASE
          WHEN SUM(ok) = COUNT(*) THEN 'ok'
