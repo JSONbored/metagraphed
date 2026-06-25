@@ -2848,7 +2848,6 @@ export interface components {
             [key: string]: unknown;
         });
         R2ManifestEntry: {
-            content_sha256?: string;
             content_type: string;
             key: string;
             latest_key: string;

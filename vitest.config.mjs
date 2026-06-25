@@ -31,6 +31,14 @@ export default defineConfig({
       // lcov for the Codecov upload (codecov/codecov-action reads
       // coverage/lcov.info); json-summary/text for local + CI readouts.
       reporter: ["text", "json-summary", "lcov"],
+      // Only the in-process scripts are listed. The heavily-exercised build
+      // scripts (scripts/build-artifacts.mjs and its siblings) are intentionally
+      // coverage-invisible: the artifact-build tests run them via execFileSync as
+      // a child process, so the in-process V8 collector never sees those lines.
+      // Adding them to `include` would report a misleading ~0% and risk tripping
+      // the floors below. If their coverage is ever wanted, add targeted unit
+      // tests of their pure helpers (imported in-process) rather than the
+      // execFileSync entrypoint.
       include: [
         "src/**/*.mjs",
         "workers/**/*.mjs",

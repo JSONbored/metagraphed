@@ -6,7 +6,7 @@ export const ARTIFACT_STORAGE_TIERS = {
 
 export const R2_STAGING_RELATIVE_ROOT = "dist/metagraph-r2/metagraph";
 
-const R2_ONLY_PATTERNS = [
+export const R2_ONLY_PATTERNS = [
   /^adapters\/[^/]+\.json$/,
   /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
@@ -159,7 +159,7 @@ const R2_ONLY_PATTERNS = [
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API
 // contract plus the small coverage "shop window". These only change when the
 // API/schema changes — exactly what belongs in version control.
-const DUAL_PATTERNS = [
+export const DUAL_PATTERNS = [
   /^api-index\.json$/,
   // r2-manifest.json: the publish MANIFEST (what's in R2 + per-artifact hashes),
   // read by the upload/kv/verify pipeline — kept committed as publish

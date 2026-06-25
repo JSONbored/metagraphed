@@ -253,6 +253,9 @@ jobs:
       - name: Worker deploy dry-run
         run: npm run worker:deploy:dry-run
 
+      - name: Worker bundle-size budget
+        run: npm run worker:bundle:budget
+
       - name: Public-safety scan
         run: npm run scan:public-safety
 
