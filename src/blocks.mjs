@@ -1,13 +1,14 @@
-// Block explorer hot window (#1345 epic, first vertical slice): the D1 `blocks`
-// tier — first-party per-block headers decoded DIRECTLY from finney by the same
+// Block explorer (#1345 epic, first vertical slice): the D1 `blocks` tier —
+// first-party per-block headers decoded DIRECTLY from finney by the same
 // chain-direct poller (scripts/fetch-events.py) that fills account_events, NOT
 // Taostats. This module holds the load contract, the row→API shaping, and the
-// retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
+// (currently inactive) retention prune. Pure + exported for tests; the Worker
+// runs the D1 I/O.
 
-// Hot window for raw blocks; rows older than this are pruned (mirrors the
-// account_events 90d window). Deep block history is the optional archive-RPC
-// upgrade (#1349).
-export const BLOCK_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+// Retention constant kept for tests. pruneBlocks is NOT called by the cron —
+// the block explorer requires full historical depth (ADR 0012); prune is
+// deferred to the Postgres migration (#1519).
+export const BLOCK_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
 
 // Columns written to blocks — THE load contract. scripts/fetch-events.py emits
 // rows with exactly these keys; loadStagedBlocks binds them in this order. Values

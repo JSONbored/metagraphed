@@ -1,14 +1,14 @@
-// Block explorer hot window (#1345 epic, second vertical slice): the D1
-// `extrinsics` tier — first-party per-extrinsic (transaction) records decoded
-// DIRECTLY from finney by the same chain-direct poller (scripts/fetch-events.py)
-// that fills account_events + blocks, NOT Taostats. This module holds the load
-// contract, the row→API shaping, and the retention prune. Pure + exported for
+// Block explorer (#1345 epic, second vertical slice): the D1 `extrinsics` tier —
+// first-party per-extrinsic (transaction) records decoded DIRECTLY from finney by
+// the same chain-direct poller (scripts/fetch-events.py) that fills account_events
+// + blocks, NOT Taostats. This module holds the load contract, the row→API
+// shaping, and the (currently inactive) retention prune. Pure + exported for
 // tests; the Worker runs the D1 I/O.
 
-// Hot window for raw extrinsics; rows older than this are pruned (mirrors the
-// account_events + blocks 90d window). Deep extrinsic history is the optional
-// archive-RPC upgrade (#1349).
-export const EXTRINSIC_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+// Retention constant kept for tests. pruneExtrinsics is NOT called by the cron —
+// the block explorer requires full historical depth (ADR 0012); prune is deferred
+// to the Postgres migration (#1519).
+export const EXTRINSIC_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
 
 // Columns written to extrinsics — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedExtrinsics binds them in this

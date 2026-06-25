@@ -423,6 +423,23 @@ def extract(event_id, attrs):
     }
 
 
+def _lag_alert_needed(head_bn, cursor, window=WINDOW, horizon=PRUNE_HORIZON):
+    """True when the cursor is far enough behind the finalized head that un-fetched
+    blocks risk being pruned before the next run.
+
+    No alert on a cold cursor (nothing to lag). And none when the overlap window
+    already covers the whole prune horizon (``horizon - window <= 0``): blocks can
+    then never age out unseen, so the bare ``horizon - window`` threshold would be
+    zero/negative and otherwise fire on every run (even at lag 0).
+    """
+    if cursor is None:
+        return False
+    overlap_floor = horizon - window
+    if overlap_floor <= 0:
+        return False
+    return (head_bn - cursor) >= overlap_floor
+
+
 def _emit_lag_alert(head_bn, cursor):
     """If the cursor is within ~one window of the prune horizon, warn loudly.
 
@@ -431,13 +448,9 @@ def _emit_lag_alert(head_bn, cursor):
     falling behind faster than it can catch up is VISIBLE before blocks are pruned
     out from under it — not silently lost. No-op on a cold cursor (nothing to lag).
     """
-    if cursor is None:
+    if not _lag_alert_needed(head_bn, cursor):
         return
     lag = head_bn - cursor
-    # Alert once the lag is within a window of the prune horizon (i.e. the next
-    # missed/coalesced run could push un-fetched blocks past the prune point).
-    if lag < PRUNE_HORIZON - WINDOW:
-        return
     msg = (
         f"chain-event poller lagging: cursor={cursor} is {lag} blocks behind "
         f"finalized head {head_bn} (prune horizon ~{PRUNE_HORIZON}). Blocks risk "

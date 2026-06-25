@@ -140,17 +140,11 @@ import {
 import {
   eventInsertStatements,
   rollupAccountEventsDaily,
-  pruneAccountEvents,
   validEventRows,
 } from "../src/account-events.mjs";
-import {
-  blockInsertStatements,
-  pruneBlocks,
-  validBlockRows,
-} from "../src/blocks.mjs";
+import { blockInsertStatements, validBlockRows } from "../src/blocks.mjs";
 import {
   extrinsicInsertStatements,
-  pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
 import {
@@ -762,21 +756,14 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       };
     }
     const [pruned] = await Promise.all([
-      // .catch-isolated like every sibling prune below — a rejection here (e.g. a
-      // transient D1 error) must degrade to a no-op for this tick, not abort the
-      // whole Promise.all and discard the snapshot write + the other prunes.
+      // .catch-isolated — a transient D1 error must degrade to a no-op for this
+      // tick, not abort the whole Promise.all and discard the snapshot write.
       pruneHealthHistory(env).catch(() => ({ pruned: false })),
-      pruneAccountEvents(env).catch(() => ({ pruned: false })),
-      // Block-explorer hot window (#1345): prune `blocks` past the 90d retention
-      // on the same hourly maintenance cron. No rollup (the block hot window has
-      // no durable daily aggregate yet), so it isn't gated on a rollup like the
-      // events prune; .catch-isolated so it can never break the shared cron.
-      pruneBlocks(env).catch(() => ({ pruned: false })),
-      // Block-explorer extrinsic slice (#1345): prune `extrinsics` past the 90d
-      // retention on the same hourly maintenance cron. No rollup (the extrinsic
-      // hot window has no durable daily aggregate yet), so it isn't gated on a
-      // rollup; .catch-isolated so it can never break the shared cron.
-      pruneExtrinsics(env).catch(() => ({ pruned: false })),
+      // blocks / extrinsics / account_events are NOT pruned here — the block
+      // explorer requires full historical depth (ADR 0012). Retention is deferred
+      // to the Postgres migration (#1519) where a cold tier backs older rows
+      // before any D1 prune can run. The prune functions remain in src/ for
+      // tests; removing these calls is the only safe wire-cut.
       snapshotPromise,
     ]);
     return pruned;
