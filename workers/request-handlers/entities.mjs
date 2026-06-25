@@ -239,33 +239,49 @@ async function accountMeta(env, artifactPath, generatedAt) {
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
 export async function handleAccount(request, env, ss58) {
   const where = "hotkey = ? OR coldkey = ?";
-  const [aggRows, kindRows, regRows, recentRows] = await Promise.all([
-    d1All(
-      env,
-      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
-      [ss58],
-    ),
-    d1All(
-      env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-      [ss58, ss58],
-    ),
-  ]);
+  const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
+    await Promise.all([
+      d1All(
+        env,
+        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
+        [ss58, ss58],
+      ),
+      d1All(
+        env,
+        `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
+        [ss58, ss58],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+        [ss58],
+      ),
+      d1All(
+        env,
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+        [ss58, ss58],
+      ),
+      // Signing activity (#1847): aggregates from the extrinsics tier by signer
+      // (idx_extrinsics_signer). Single [ss58] bind. Hot-window-bounded, not
+      // all-time. Matched by signer only — see formatAccountActivity.
+      d1All(
+        env,
+        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM extrinsics WHERE signer = ?`,
+        [ss58],
+      ),
+      d1All(
+        env,
+        `SELECT call_module, COUNT(*) AS count FROM extrinsics WHERE signer = ? GROUP BY call_module ORDER BY count DESC LIMIT 10`,
+        [ss58],
+      ),
+    ]);
   const data = buildAccountSummary(ss58, {
     agg: aggRows[0],
     kinds: kindRows,
     registrations: regRows,
     recent: recentRows,
+    activity: activityRows[0],
+    modules: moduleRows,
   });
   return envelopeResponse(
     request,

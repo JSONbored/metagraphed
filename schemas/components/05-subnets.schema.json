@@ -1554,6 +1554,31 @@
           "recent_events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
+          },
+          "activity": { "$ref": "#/components/schemas/AccountActivity" }
+        }
+      },
+      "AccountActivity": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency.",
+        "required": ["tx_count", "modules_called"],
+        "properties": {
+          "tx_count": { "type": "integer", "minimum": 0 },
+          "last_tx_block": { "type": ["integer", "null"] },
+          "last_tx_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_fee_tao": { "type": ["number", "null"] },
+          "modules_called": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["call_module", "count"],
+              "properties": {
+                "call_module": { "type": ["string", "null"] },
+                "count": { "type": "integer", "minimum": 0 }
+              }
+            }
           }
         }
       },

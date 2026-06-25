@@ -1317,6 +1317,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency. */
+        AccountActivity: {
+            /** Format: date-time */
+            last_tx_at?: string | null;
+            last_tx_block?: number | null;
+            modules_called: {
+                call_module: string | null;
+                count: number;
+            }[];
+            total_fee_tao?: number | null;
+            tx_count: number;
+        };
         /** @description Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure. */
         AccountBalanceArtifact: {
             balance_tao?: number | null;
@@ -1386,6 +1398,7 @@ export interface components {
         };
         /** @description Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). */
         AccountSummaryArtifact: {
+            activity?: components["schemas"]["AccountActivity"];
             event_count: number;
             event_kinds?: components["schemas"]["AccountEventKindCount"][];
             first_block?: number | null;
@@ -4583,6 +4596,18 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "activity": {
+                     *           "last_tx_at": "2026-06-01T00:00:00.000Z",
+                     *           "last_tx_block": 5000000,
+                     *           "modules_called": [
+                     *             {
+                     *               "call_module": "example",
+                     *               "count": 1
+                     *             }
+                     *           ],
+                     *           "total_fee_tao": 0.5,
+                     *           "tx_count": 1
+                     *         },
                      *         "event_count": 1,
                      *         "event_kinds": [
                      *           {
