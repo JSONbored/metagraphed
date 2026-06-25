@@ -59,3 +59,19 @@ export function paginate<T>(rows: T[], page: number, pageSize: number): T[] {
   const start = (page - 1) * pageSize;
   return rows.slice(start, start + pageSize);
 }
+
+/**
+ * Join a list of rows with a per-key health map, overlaying `health` and
+ * back-filling `updated_at` from the probe's `last_checked` when the row lacks
+ * its own. Rows without a matching health entry pass through unchanged
+ * (same reference). Pure + allocation-light so callers can safely memoize it.
+ */
+export function joinHealth<
+  T extends { netuid: number; updated_at?: string | null },
+  H extends { health?: string; last_checked?: string | null },
+>(rows: T[], healthMap: Record<number, H | undefined>): Array<T | (T & { health?: string })> {
+  return rows.map((s) => {
+    const h = healthMap[s.netuid];
+    return h ? { ...s, health: h.health, updated_at: s.updated_at ?? h.last_checked } : s;
+  });
+}

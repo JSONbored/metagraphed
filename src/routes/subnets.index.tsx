@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { Network, Radio, Layers, Activity } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { BrandIcon, prefetchBrandIcon } from "@/components/metagraphed/brand-icon";
@@ -39,7 +39,7 @@ import {
   subnetHealthMapQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
-import { matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
+import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
 import type { Subnet } from "@/lib/metagraphed/types";
 
@@ -210,17 +210,26 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
 
   // Per-subnet probe health (the list rows don't carry it; join it from
   // /api/v1/health so the Health + Updated columns and the health filter work).
-  const healthMap = useSuspenseQuery(subnetHealthMapQuery()).data.data ?? {};
+  // Key the `?? {}` fallback off the raw query value so `healthMap` keeps a
+  // stable reference across renders — otherwise a fresh `{}` each render would
+  // defeat the `all` memo below.
+  const healthMapRaw = useSuspenseQuery(subnetHealthMapQuery()).data.data;
+  const healthMap = useMemo(() => healthMapRaw ?? {}, [healthMapRaw]);
 
   const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
-  const all = pages
-    .flatMap((p) => (p.data ?? []) as Subnet[])
-    .map((s) => {
-      const h = healthMap[s.netuid];
-      return h ? { ...s, health: h.health, updated_at: s.updated_at ?? h.last_checked } : s;
-    });
+  // Join the fetched pages with per-subnet probe health. Memoized on its real
+  // inputs (the page set + the health map) so a keystroke/hover that only
+  // re-renders the route doesn't re-flatten and re-clone every row.
+  const all = useMemo(
+    () =>
+      joinHealth(
+        pages.flatMap((p) => (p.data ?? []) as Subnet[]),
+        healthMap,
+      ),
+    [pages, healthMap],
+  );
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
   // Treat the URL cursor as the immutable starting point for this infinite query.
@@ -245,21 +254,35 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
 
   const filtersActive = !!(search.q || search.curation || search.health || search.sort);
 
-  const filtered = all.filter((s) => {
-    if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
-    if (search.curation && s.curation_level !== search.curation) return false;
-    if (search.health && s.health !== search.health) return false;
-    return true;
-  });
-  const rows = sortBy(
-    filtered,
-    search.sort,
-    search.order,
-    (row, key) => (row as Record<string, unknown>)[key],
+  // Client-side filter + sort (the list API only honors q + cursor/limit).
+  // Both are memoized on the joined rows and the exact search params they read,
+  // so they only recompute when one of those actually changes — not on every
+  // keystroke-driven re-render.
+  const filtered = useMemo(
+    () =>
+      all.filter((s) => {
+        if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
+        if (search.curation && s.curation_level !== search.curation) return false;
+        if (search.health && s.health !== search.health) return false;
+        return true;
+      }),
+    [all, search.q, search.curation, search.health],
+  );
+  const rows = useMemo(
+    () =>
+      sortBy(
+        filtered,
+        search.sort,
+        search.order,
+        (row, key) => (row as Record<string, unknown>)[key],
+      ),
+    [filtered, search.sort, search.order],
   );
 
   // Warm the favicon cache for visible rows during idle time so scrolling
-  // feels instant. The browser dedupes the eventual <img> request.
+  // feels instant. The browser dedupes the eventual <img> request. `rows` is
+  // memoized above, so this effect only re-runs when the visible row set
+  // actually changes — not on every keystroke/hover-driven re-render.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const ric =

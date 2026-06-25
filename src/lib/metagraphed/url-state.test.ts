@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchesQuery, sortBy, paginate } from "./url-state";
+import { joinHealth, matchesQuery, sortBy, paginate } from "./url-state";
 
 describe("matchesQuery", () => {
   it("matches everything for an empty needle", () => {
@@ -62,6 +62,45 @@ describe("sortBy", () => {
     const sorted = sortBy(rows, "n", "asc", accessor);
     expect(sorted).not.toBe(rows);
     expect(rows.map((r) => r.n)).toEqual([3, 1]);
+  });
+});
+
+describe("joinHealth", () => {
+  it("overlays health from the map onto matching rows", () => {
+    const rows = [{ netuid: 1 }, { netuid: 2 }];
+    const out = joinHealth(rows, { 1: { health: "ok" } });
+    expect(out[0]).toMatchObject({ netuid: 1, health: "ok" });
+  });
+
+  it("back-fills updated_at from last_checked only when the row lacks one", () => {
+    const rows = [
+      { netuid: 1, updated_at: "row-time" },
+      { netuid: 2, updated_at: null },
+      { netuid: 3 },
+    ];
+    const map = {
+      1: { health: "ok", last_checked: "probe-time" },
+      2: { health: "warn", last_checked: "probe-time" },
+      3: { health: "down", last_checked: "probe-time" },
+    };
+    const out = joinHealth(rows, map);
+    // Row's own updated_at wins.
+    expect(out[0]).toMatchObject({ updated_at: "row-time", health: "ok" });
+    // null/missing falls back to the probe's last_checked.
+    expect(out[1]).toMatchObject({ updated_at: "probe-time", health: "warn" });
+    expect(out[2]).toMatchObject({ updated_at: "probe-time", health: "down" });
+  });
+
+  it("passes rows without a health entry through by reference (unchanged)", () => {
+    const rows = [{ netuid: 9, updated_at: "x" }];
+    const out = joinHealth(rows, { 1: { health: "ok" } });
+    expect(out[0]).toBe(rows[0]);
+  });
+
+  it("does not mutate the input rows", () => {
+    const rows = [{ netuid: 1, updated_at: null as string | null }];
+    joinHealth(rows, { 1: { health: "ok", last_checked: "probe-time" } });
+    expect(rows[0].updated_at).toBeNull();
   });
 });
 
