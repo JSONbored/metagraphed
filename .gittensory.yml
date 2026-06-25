@@ -16,6 +16,11 @@ wantedPaths:
   - "registry/adapters/**"
 
 blockedPaths:
+  # Root files can control trusted workflows, dependencies, deploys, or the
+  # gate itself. Any root-file edit makes the PR a maintainer-reviewed change,
+  # not an autonomously mergeable community data submission.
+  - "*"
+  - ".*"
   - "src/**"
   - "scripts/**"
   - "workers/**"
