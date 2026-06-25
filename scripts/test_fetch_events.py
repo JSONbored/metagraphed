@@ -392,5 +392,38 @@ class TakeDelegateExtractorTest(unittest.TestCase):
         self.assertEqual(take["hotkey"], delegate["hotkey"])
 
 
+class ColdkeySwapExtractorTest(unittest.TestCase):
+    # Subtensor emits `ColdkeySwapped { old_coldkey, new_coldkey }` — there is no
+    # `ColdkeySwapScheduled` variant, so the extractor must be keyed on the real
+    # event name or every coldkey swap is dropped (extract() returns None).
+    def test_coldkey_swapped_is_a_registered_event(self):
+        # The dispatcher must recognize the real chain event name.
+        self.assertIn("ColdkeySwapped", _fe.EXTRACTORS)
+        self.assertNotIn("ColdkeySwapScheduled", _fe.EXTRACTORS)
+
+    def test_coldkey_swapped_positional(self):
+        # [old_coldkey, new_coldkey] → old as coldkey, new as hotkey (target).
+        result = _extract("ColdkeySwapped", [_SS58_A, _SS58_B])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_coldkey_swapped_named_dict_form(self):
+        result = _extract(
+            "ColdkeySwapped", {"old_coldkey": _SS58_A, "new_coldkey": _SS58_B}
+        )
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_phantom_scheduled_name_is_not_captured(self):
+        # The old (wrong) key name must no longer extract anything.
+        self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
+
+    def test_shape_drift_never_raises(self):
+        # A short payload must yield null keys, never raise.
+        result = _extract("ColdkeySwapped", [])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["hotkey"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
