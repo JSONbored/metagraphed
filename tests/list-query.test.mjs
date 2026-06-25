@@ -1,9 +1,37 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { applyQueryFilters } from "../workers/list-query.mjs";
+import {
+  applyQueryFilters,
+  paginationLinkHeader,
+} from "../workers/list-query.mjs";
 
 function query(path) {
   return new URL(`https://api.metagraph.sh${path}`);
+}
+
+// Parse an RFC 8288 Link header value into { rel: URL }, so a test can assert on
+// the relation set and the cursor each page link points at.
+function parseLink(value) {
+  const links = {};
+  for (const part of String(value || "").split(",")) {
+    const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
+    if (match) {
+      links[match[2]] = new URL(match[1]);
+    }
+  }
+  return links;
+}
+
+// Build a paginated page's Link header end-to-end: real pagination meta from
+// applyQueryFilters fed straight into paginationLinkHeader, the same wiring the
+// Worker uses.
+function pageLink(path) {
+  const url = query(path);
+  const data = {
+    subnets: Array.from({ length: 5 }, (_, i) => ({ netuid: i })),
+  };
+  const { meta } = applyQueryFilters(data, url, "subnets");
+  return paginationLinkHeader(url, meta.pagination);
 }
 
 describe("list-query field projection", () => {
@@ -210,5 +238,97 @@ describe("list-query numeric range filters", () => {
 
     assert.equal(bad.error.parameter, "max_surface_count");
     assert.match(bad.error.message, /must be a number/);
+  });
+});
+
+describe("list-query pagination Link header", () => {
+  test("first page: next + last only (no earlier page exists)", () => {
+    const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&limit=2"));
+    assert.deepEqual(Object.keys(links).sort(), ["last", "next"]);
+    assert.equal(links.next.searchParams.get("cursor"), "2");
+    assert.equal(links.last.searchParams.get("cursor"), "4"); // floor((5-1)/2)*2
+  });
+
+  test("middle page: every relation, with stride-aligned offsets", () => {
+    const links = parseLink(
+      pageLink("/api/v1/subnets?sort=netuid&limit=2&cursor=2"),
+    );
+    assert.deepEqual(Object.keys(links).sort(), [
+      "first",
+      "last",
+      "next",
+      "prev",
+    ]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "0");
+    assert.equal(links.next.searchParams.get("cursor"), "4");
+    assert.equal(links.last.searchParams.get("cursor"), "4");
+  });
+
+  test("last page: first + prev only (no later page exists)", () => {
+    const links = parseLink(
+      pageLink("/api/v1/subnets?sort=netuid&limit=2&cursor=4"),
+    );
+    assert.deepEqual(Object.keys(links).sort(), ["first", "prev"]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "2");
+  });
+
+  test("last points at the final page when total is a multiple of limit", () => {
+    // limit=1 makes total (5) an exact multiple of limit — the only case where
+    // the `(total - 1)` correction matters. last must be 4 (the final row), not
+    // a naive floor(total/limit)*limit = 5, which is an empty page past the end.
+    const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&limit=1"));
+    assert.equal(links.next.searchParams.get("cursor"), "1");
+    assert.equal(links.last.searchParams.get("cursor"), "4");
+  });
+
+  test("prev clamps to 0 when the cursor is less than one full page in", () => {
+    // cursor=1, limit=3 → prev = max(0, 1 - 3); without the clamp the link
+    // would carry a negative cursor. first and prev both land on page 0.
+    const links = parseLink(
+      pageLink("/api/v1/subnets?sort=netuid&limit=3&cursor=1"),
+    );
+    assert.equal(links.prev.searchParams.get("cursor"), "0");
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+  });
+
+  test("links pin the resolved limit even when the client omits it", () => {
+    // ?cursor=2 with no limit → the default window (100) is resolved and pinned
+    // onto every page link, so a client can keep walking with a stable window.
+    const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&cursor=2"));
+    assert.equal(links.prev.searchParams.get("limit"), "100");
+    assert.equal(links.first.searchParams.get("limit"), "100");
+  });
+
+  test("empty result emits no Link header", () => {
+    // netuid=999 matches no row → total 0 → no walkable page.
+    assert.equal(pageLink("/api/v1/subnets?netuid=999&limit=2"), null);
+  });
+
+  test("an unpaged request (no limit/cursor) emits no Link header", () => {
+    assert.equal(pageLink("/api/v1/subnets?sort=netuid"), null);
+  });
+
+  test("each page link is absolute and carries the active query through", () => {
+    const links = parseLink(
+      pageLink("/api/v1/subnets?sort=netuid&order=desc&limit=2&cursor=2"),
+    );
+    for (const rel of ["first", "prev", "next", "last"]) {
+      const target = links[rel];
+      assert.equal(target.origin, "https://api.metagraph.sh");
+      assert.equal(target.pathname, "/api/v1/subnets");
+      assert.equal(target.searchParams.get("sort"), "netuid");
+      assert.equal(target.searchParams.get("order"), "desc");
+      assert.equal(target.searchParams.get("limit"), "2"); // resolved window pinned
+    }
+  });
+
+  test("a non-list (no pagination meta) collection yields no header", () => {
+    assert.equal(
+      paginationLinkHeader(query("/api/v1/subnets"), undefined),
+      null,
+    );
+    assert.equal(paginationLinkHeader(query("/api/v1/subnets"), {}), null);
   });
 });

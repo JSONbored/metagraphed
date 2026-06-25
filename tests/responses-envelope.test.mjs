@@ -1,12 +1,52 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { dataResponse, envelopeResponse } from "../workers/responses.mjs";
-import { errorResponse, ifNoneMatchSatisfied } from "../workers/http.mjs";
+import {
+  errorResponse,
+  ifNoneMatchSatisfied,
+  linkHeader,
+} from "../workers/http.mjs";
 
 const reqWith = (ifNoneMatch) =>
   new Request("https://metagraph.sh/api/v1/anything", {
     headers: ifNoneMatch == null ? {} : { "if-none-match": ifNoneMatch },
   });
+
+test("linkHeader joins entries into an RFC 8288 header value", () => {
+  assert.equal(
+    linkHeader([
+      { uri: "https://x/a", rel: "next" },
+      { uri: "https://x/b", rel: "prev" },
+    ]),
+    '<https://x/a>; rel="next", <https://x/b>; rel="prev"',
+  );
+  assert.equal(linkHeader([]), "");
+});
+
+test("envelopeResponse applies extra headers and skips null values", async () => {
+  const payload = { data: { ok: 1 }, meta: { contract_version: "test" } };
+  const res = await envelopeResponse(reqWith(null), payload, "standard", {
+    link: '<https://x/next>; rel="next"',
+    "x-skip-me": null,
+  });
+  assert.equal(res.headers.get("link"), '<https://x/next>; rel="next"');
+  assert.equal(res.headers.has("x-skip-me"), false);
+});
+
+test("envelopeResponse keeps extra headers on a 304 short-circuit", async () => {
+  const payload = { data: { ok: 1 }, meta: { contract_version: "test" } };
+  const first = await envelopeResponse(reqWith(null), payload, "standard", {
+    link: '<https://x/next>; rel="next"',
+  });
+  const res = await envelopeResponse(
+    reqWith(first.headers.get("etag")),
+    payload,
+    "standard",
+    { link: '<https://x/next>; rel="next"' },
+  );
+  assert.equal(res.status, 304);
+  assert.equal(res.headers.get("link"), '<https://x/next>; rel="next"');
+});
 
 // Regression guard: the two success builders (dataResponse + envelopeResponse)
 // must emit the identical SuccessEnvelope shape. dataResponse previously added an

@@ -5,7 +5,7 @@ import {
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.mjs";
-import { applyQueryFilters } from "./list-query.mjs";
+import { applyQueryFilters, paginationLinkHeader } from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
@@ -1667,6 +1667,21 @@ function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
   );
 }
 
+// Re-inserts the /{network}/ segment that resolveNetworkPrefix strips before
+// dispatch, so a self-referential link (e.g. the pagination Link header) stays
+// on the network the client asked for. Mainnet (prefix "") is a no-op.
+function networkPublicUrl(url, network) {
+  if (!network.prefix) {
+    return url;
+  }
+  const publicUrl = new URL(url);
+  publicUrl.pathname = publicUrl.pathname.replace(
+    /^\/(api\/v1|metagraph)(\/|$)/,
+    `/$1/${network.prefix}$2`,
+  );
+  return publicUrl;
+}
+
 // Friendly per-subnet routes: /api/v1/subnets/<slug>/... resolves to the netuid
 // (e.g. /api/v1/subnets/allways → /api/v1/subnets/7). Worker-only — the slug→
 // netuid map is read from the served subnets.json and cached per isolate; no new
@@ -2078,6 +2093,13 @@ async function handleApiRequest(
       responseData = { ...responseData, ...patch };
     }
   }
+  // Advertise the page chain via an RFC 8288 Link header on paginated list
+  // responses. networkPublicUrl restores the prefix stripped before dispatch;
+  // paginationLinkHeader returns null (no header) for non-list/single-page data.
+  const linkValue = paginationLinkHeader(
+    networkPublicUrl(url, network),
+    transformed.meta.pagination,
+  );
   const response = await envelopeResponse(
     request,
     {
@@ -2097,6 +2119,7 @@ async function handleApiRequest(
       },
     },
     matched.cache,
+    linkValue ? { link: linkValue } : {},
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
   // are skipped even when their live store is cold and the response falls back
