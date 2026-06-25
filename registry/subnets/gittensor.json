@@ -382,6 +382,21 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io-5",
+      "kind": "data-artifact",
+      "name": "Gittensor data-artifact",
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "gildardodev"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/prs"
     }
   ],
   "website_url": "https://gittensor.io/"

@@ -33,6 +33,70 @@
       },
       "source_urls": ["https://stats.bitcast.network/docs"],
       "url": "https://stats.bitcast.network/"
+    },
+    {
+      "id": "sn-93-bitcast-website",
+      "name": "Bitcast website",
+      "kind": "website",
+      "url": "https://www.bitcast.network/",
+      "provider": "bitcast-network",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official Bitcast website (page title \"bitcast\"), linked from the bitcast-network/bitcast README. Distinct from the stats subdomain set as the legacy website_url."
+    },
+    {
+      "id": "sn-93-bitcast-briefs",
+      "name": "Bitcast briefs / creator portal",
+      "kind": "dashboard",
+      "url": "https://creator.bitcast.network/briefs",
+      "provider": "bitcast-network",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public Bitcast briefs / creator portal (active campaigns). The README's \"active briefs\" link (dashboard.bitcast.network) 301-redirects to this canonical creator.bitcast.network host. Distinct from the stats dashboard."
+    },
+    {
+      "id": "sn-93-bitcast-deploy",
+      "name": "Bitcast deploy repository",
+      "kind": "source-repo",
+      "url": "https://github.com/bitcast-network/bitcast-deploy",
+      "provider": "bitcast-network",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/bitcast-network/bitcast-deploy"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Bitcast validator deployment repo; its GitHub description and README state \"bittensor subnet #93\" / \"netuid-93\". In the team's bitcast-network org, distinct from the top-level bitcast repo."
+    },
+    {
+      "id": "sn-93-bitcast-x",
+      "name": "Bitcast X subnet-mechanism repository",
+      "kind": "source-repo",
+      "url": "https://github.com/bitcast-network/bitcast-x",
+      "provider": "bitcast-network",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/bitcast-network/bitcast-x"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org."
     }
   ]
 }

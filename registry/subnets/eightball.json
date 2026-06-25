@@ -89,6 +89,44 @@
         "timeout_ms": 10000
       },
       "notes": "README documentation covering SN125 wallet binding, R2-hosted binding bundles, reward mechanics, and Polygon contract addresses."
+    },
+    {
+      "id": "sn-125-eightball-subnet-api",
+      "name": "8 Ball markets API",
+      "kind": "subnet-api",
+      "url": "https://8ball125.com/api/markets",
+      "provider": "eightball",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "notes": "Public no-auth REST API for SN125 prediction markets (markets, market by id, fee, price-history); documented on the official 8ball125.com site. Rate limited per IP."
+    },
+    {
+      "id": "sn-125-eightball-data-artifact",
+      "name": "8 Ball deployment manifest",
+      "kind": "data-artifact",
+      "url": "https://8ball125.com/deployment.json",
+      "provider": "eightball",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://8ball125.com/",
+        "https://github.com/Barbariandev/8Ball_miner"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "notes": "Static JSON manifest of the SN125 on-chain deployment (Polygon chain 137: USDC/CTF and prediction-market contract addresses); referenced by the public 8ball125.com API docs."
     }
   ]
 }
