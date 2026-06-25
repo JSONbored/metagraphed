@@ -6159,10 +6159,6 @@
       "R2ManifestEntry": {
         "additionalProperties": false,
         "properties": {
-          "content_sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
           "content_type": {
             "type": "string"
           },
