@@ -78,9 +78,12 @@ one-file surface PR runs the same gates as a code PR. Two parallel jobs both bui
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
 `validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
-under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA artifacts like
-`public/datasets/` + the llms.txt catalogs are gitignored, and the README catalog is refreshed
-out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
+under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/CONTENT-derived artifacts
+are NOT: `public/datasets/` + the llms.txt catalogs are gitignored, the README catalog is refreshed
+out-of-band by `readme-catalog-refresh.yml`, and `operational-surfaces.json` is committed-but-excluded —
+adding a probe-enabled operational-kind surface (subnet-api/sse/data-artifact) regenerates the prober's
+input list, which a one-file surface PR does not commit; it is served fresh on deploy) · `validate` ·
+`validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
 `validate:migrations` (unique, gap-free D1 migration prefixes) ·
