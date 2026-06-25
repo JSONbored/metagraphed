@@ -1017,7 +1017,9 @@ export async function loadSubnetTrajectory(d1, netuid) {
      LIMIT 400`,
     [netuid],
   );
-  return formatTrajectory({ netuid, rows });
+  // Return rows alongside the formatted data so callers can check fallback
+  // status (e.g. hasD1FallbackRows(rows)) without re-running the query.
+  return { data: formatTrajectory({ netuid, rows }), rows };
 }
 
 function diff(now, then) {

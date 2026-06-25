@@ -124,9 +124,9 @@ import { dailyLatencyColumns } from "../src/health-sql.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
-  formatTrajectory,
   formatUptime,
   LEADERBOARD_BOARDS,
+  loadSubnetTrajectory,
   mergeFreshness,
   mergeRpcEndpoints,
   overlayArtifactEndpoints,
@@ -2120,18 +2120,10 @@ async function handleApiRequest(
 async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const rows = await d1All(
-    env,
-    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
-            validator_count, miner_count, total_stake_tao, alpha_price_tao,
-            emission_share
-     FROM subnet_snapshots
-     WHERE netuid = ?
-     ORDER BY snapshot_date DESC
-     LIMIT 400`,
-    [netuid],
+  const { data, rows } = await loadSubnetTrajectory(
+    (sql, params) => d1All(env, sql, params),
+    netuid,
   );
-  const data = formatTrajectory({ netuid, rows });
   const response = envelopeResponse(
     request,
     {

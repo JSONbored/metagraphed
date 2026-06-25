@@ -976,7 +976,8 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
-      return loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+      const { data } = await loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+      return data;
     },
   },
   {
