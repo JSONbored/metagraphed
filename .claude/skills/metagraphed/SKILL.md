@@ -125,6 +125,9 @@ npm install        # required before any validator runs
 example, repo-registry` — all auto-reviewable; authed/paid APIs + unknown providers are higher-trust
   (airtight ownership proof). Base-layer chain endpoints (`subtensor-rpc/wss`, `archive`) are
   maintainer-curated infra (the endpoint lane), not contributor surfaces.
+  **Prefer high-value callable kinds** (`openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`) —
+  `source-repo` and `website` are auto-promoted from on-chain identity data, and `validate:surface`
+  rejects them if the machine already has the URL (CI fails → gate closes). See `reference.md §5`.
 
 ### Phase A2 — Edit the ONE subnet file
 

@@ -2,13 +2,11 @@
 // first-party per-block headers decoded DIRECTLY from finney by the same
 // chain-direct poller (scripts/fetch-events.py) that fills account_events, NOT
 // Taostats. This module holds the load contract, the row→API shaping, and the
-// (currently inactive) retention prune. Pure + exported for tests; the Worker
-// runs the D1 I/O.
+// retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
 
-// Retention constant kept for tests. pruneBlocks is NOT called by the cron —
-// the block explorer requires full historical depth (ADR 0012); prune is
-// deferred to the Postgres migration (#1519).
-export const BLOCK_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
+// D1 safety-valve: 365-day retention prevents unbounded growth before the
+// Postgres cold tier (#1519) ships. pruneBlocks runs in the HEALTH_PRUNE_CRON.
+export const BLOCK_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Columns written to blocks — THE load contract. scripts/fetch-events.py emits
 // rows with exactly these keys; loadStagedBlocks binds them in this order. Values
@@ -20,6 +18,7 @@ export const BLOCK_INSERT_COLUMNS = [
   "author",
   "extrinsic_count",
   "event_count",
+  "spec_version",
   "observed_at",
 ];
 
@@ -44,13 +43,13 @@ export function validBlockRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for blocks rows, chunked under
-// D1's 100-bound-param limit (7 cols x 14 = 98). Idempotent on block_number (the
+// D1's 100-bound-param limit (8 cols x 12 = 96). Idempotent on block_number (the
 // primary key). Values are ALWAYS bound, never interpolated — a tampered payload
 // can only fail, never inject. Mirrors eventInsertStatements (#1346).
 export function blockInsertStatements(db, rows) {
   const cols = BLOCK_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 14;
+  const ROWS_PER_STMT = 12;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -90,7 +89,7 @@ export async function pruneBlocks(env, overrides = {}) {
 // ---- Block API builders ----------------------------------------------------
 // The columns the block handlers SELECT for a block row.
 export const BLOCK_READ_COLUMNS =
-  "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, observed_at";
+  "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at";
 
 // One D1 blocks row → a clean API block object. Null-safe on junk/sparse rows.
 export function formatBlock(row) {
@@ -102,6 +101,7 @@ export function formatBlock(row) {
     author: row.author ?? null,
     extrinsic_count: row.extrinsic_count ?? null,
     event_count: row.event_count ?? null,
+    spec_version: row.spec_version ?? null,
     observed_at: toIso(row.observed_at),
   };
 }

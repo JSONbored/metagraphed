@@ -68,6 +68,7 @@
     "validate:intake": "node scripts/validate-intake.mjs",
     "validate:private-boundary": "node scripts/validate-private-boundary.mjs",
     "validate:workflows": "node scripts/validate-workflows.mjs",
+    "validate:migrations": "node scripts/validate-migrations.mjs",
     "openapi:generate": "node scripts/generate-openapi.mjs --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.mjs",
     "types:generate": "node scripts/generate-types.mjs",

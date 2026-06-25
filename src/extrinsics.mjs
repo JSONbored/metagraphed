@@ -2,13 +2,12 @@
 // first-party per-extrinsic (transaction) records decoded DIRECTLY from finney by
 // the same chain-direct poller (scripts/fetch-events.py) that fills account_events
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
-// shaping, and the (currently inactive) retention prune. Pure + exported for
-// tests; the Worker runs the D1 I/O.
+// shaping, and the retention prune. Pure + exported for tests; the Worker runs
+// the D1 I/O.
 
-// Retention constant kept for tests. pruneExtrinsics is NOT called by the cron —
-// the block explorer requires full historical depth (ADR 0012); prune is deferred
-// to the Postgres migration (#1519).
-export const EXTRINSIC_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
+// D1 safety-valve: 365-day retention prevents unbounded growth before the
+// Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
+export const EXTRINSIC_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Columns written to extrinsics — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedExtrinsics binds them in this
@@ -20,7 +19,9 @@ export const EXTRINSIC_INSERT_COLUMNS = [
   "signer",
   "call_module",
   "call_function",
+  "call_args",
   "success",
+  "fee_tao",
   "observed_at",
 ];
 
@@ -45,14 +46,14 @@ export function validExtrinsicRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for extrinsics rows, chunked
-// under D1's 100-bound-param limit (8 cols x 12 = 96). Idempotent on
+// under D1's 100-bound-param limit (10 cols x 10 = 100). Idempotent on
 // (block_number, extrinsic_index) (the primary key). Values are ALWAYS bound,
 // never interpolated — a tampered payload can only fail, never inject. Mirrors
 // blockInsertStatements (#1345).
 export function extrinsicInsertStatements(db, rows) {
   const cols = EXTRINSIC_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 12;
+  const ROWS_PER_STMT = 10;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -94,12 +95,20 @@ export async function pruneExtrinsics(env, overrides = {}) {
 // ---- Extrinsic API builders ------------------------------------------------
 // The columns the extrinsic handlers SELECT for an extrinsic row.
 export const EXTRINSIC_READ_COLUMNS =
-  "block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, success, observed_at";
+  "block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao, observed_at";
 
 // One D1 extrinsics row → a clean API extrinsic object. Null-safe on junk/sparse
 // rows. success is normalized to a boolean (null when undeterminable).
 export function formatExtrinsic(row) {
   if (!row || typeof row !== "object") return null;
+  let call_args = null;
+  if (row.call_args != null) {
+    try {
+      call_args = JSON.parse(row.call_args);
+    } catch {
+      call_args = null;
+    }
+  }
   return {
     block_number: row.block_number ?? null,
     extrinsic_index: row.extrinsic_index ?? null,
@@ -107,7 +116,9 @@ export function formatExtrinsic(row) {
     signer: row.signer ?? null,
     call_module: row.call_module ?? null,
     call_function: row.call_function ?? null,
+    call_args,
     success: row.success == null ? null : row.success === 1,
+    fee_tao: row.fee_tao ?? null,
     observed_at: toIso(row.observed_at),
   };
 }
