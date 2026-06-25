@@ -92,12 +92,14 @@ test("formatBlock maps a D1 row to an API block (ISO time)", () => {
     author: "5Author",
     extrinsic_count: 4,
     event_count: 12,
+    spec_version: 201,
     observed_at: 1750000000000,
   });
   assert.equal(out.block_number, 1000);
   assert.equal(out.block_hash, "0xhash");
   assert.equal(out.author, "5Author");
   assert.equal(out.extrinsic_count, 4);
+  assert.equal(out.spec_version, 201);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 

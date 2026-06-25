@@ -1604,7 +1604,7 @@
       "Block": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
         "required": ["block_number"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1613,6 +1613,7 @@
           "author": { "type": ["string", "null"] },
           "extrinsic_count": { "type": ["integer", "null"] },
           "event_count": { "type": ["integer", "null"] },
+          "spec_version": { "type": ["integer", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
@@ -1651,7 +1652,7 @@
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "required": ["block_number", "extrinsic_index"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1660,6 +1661,8 @@
           "signer": { "type": ["string", "null"] },
           "call_module": { "type": ["string", "null"] },
           "call_function": { "type": ["string", "null"] },
+          "call_args": { "type": ["object", "array", "null"] },
+          "fee_tao": { "type": ["number", "null"] },
           "success": { "type": ["boolean", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }

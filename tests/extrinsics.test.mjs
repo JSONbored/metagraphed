@@ -105,6 +105,8 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     signer: "5Signer",
     call_module: "SubtensorModule",
     call_function: "add_stake",
+    call_args: '[{"name":"hotkey","value":"5H..."}]',
+    fee_tao: 0.0125,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -114,8 +116,38 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.signer, "5Signer");
   assert.equal(out.call_module, "SubtensorModule");
   assert.equal(out.call_function, "add_stake");
+  assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
+  assert.equal(out.fee_tao, 0.0125);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
+  // Substrate call args are canonically a LIST of {name,value} descriptors.
+  const arr = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '[{"name":"netuid","value":1}]',
+  });
+  assert.deepEqual(arr.call_args, [{ name: "netuid", value: 1 }]);
+  // An object payload is also tolerated.
+  const obj = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '{"netuid":1}',
+  });
+  assert.deepEqual(obj.call_args, { netuid: 1 });
+  // Malformed JSON -> null (never throws).
+  const bad = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: "not-json",
+  });
+  assert.equal(bad.call_args, null);
+  // Absent -> null; fee_tao absent -> null.
+  const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
+  assert.equal(sparse.call_args, null);
+  assert.equal(sparse.fee_tao, null);
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {

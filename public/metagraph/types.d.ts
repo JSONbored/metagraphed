@@ -1624,7 +1624,7 @@ export interface components {
          * @enum {unknown}
          */
         BittensorNetwork: "finney" | "test" | "local";
-        /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time. */
+        /** @description One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time. */
         Block: {
             author?: string | null;
             block_hash?: string | null;
@@ -1634,6 +1634,7 @@ export interface components {
             /** Format: date-time */
             observed_at?: string | null;
             parent_hash?: string | null;
+            spec_version?: number | null;
         };
         /** @description Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). */
         BlockDetailArtifact: {
@@ -2223,13 +2224,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
+        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
         Extrinsic: {
             block_number: number | null;
+            call_args?: Record<string, never> | unknown[] | null;
             call_function?: string | null;
             call_module?: string | null;
             extrinsic_hash?: string | null;
             extrinsic_index: number | null;
+            fee_tao?: number | null;
             /** Format: date-time */
             observed_at?: string | null;
             signer?: string | null;
@@ -5612,7 +5615,8 @@ export interface operations {
                      *           "event_count": 1,
                      *           "extrinsic_count": 1,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
-                     *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1"
+                     *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "spec_version": 1
                      *         },
                      *         "ref": "example",
                      *         "schema_version": 1
@@ -7647,10 +7651,12 @@ export interface operations {
                      *       "data": {
                      *         "extrinsic": {
                      *           "block_number": 5000000,
+                     *           "call_args": {},
                      *           "call_function": "example",
                      *           "call_module": "example",
                      *           "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "extrinsic_index": 1,
+                     *           "fee_tao": 0.5,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "signer": "example",
                      *           "success": false
