@@ -36,6 +36,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "account-summary",
   "account-events",
   "account-extrinsics",
+  "account-transfers",
   "account-subnets",
   "account-balance",
   "blocks-feed",

@@ -47,6 +47,7 @@ import {
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
+  buildAccountTransfers,
   buildSubnetEvents,
   formatAccountEvent,
 } from "../../src/account-events.mjs";
@@ -355,6 +356,53 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
         env,
         `/metagraph/accounts/${ss58}/extrinsics.json`,
         data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/transfers: the native-TAO Balances.Transfer feed for
+// this account (#1850), newest first, from the account_events tier (event_kind=
+// 'Transfer', where the poller stores hotkey=from / coldkey=to). ?direction=
+// all|sent|received narrows by side; ?limit (<=1000) / ?offset. This is the
+// native-TAO transfer feed only, NOT a full balance ledger. Cold/absent store →
+// schema-stable zero (never 404).
+export async function handleAccountTransfers(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, [
+    "direction",
+    "limit",
+    "offset",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const direction = url.searchParams.get("direction");
+  // sent => this account is the sender (hotkey=from); received => recipient
+  // (coldkey=to); default/all => either side.
+  let sideClause = "(hotkey = ? OR coldkey = ?)";
+  let sideParams = [ss58, ss58];
+  if (direction === "sent") {
+    sideClause = "hotkey = ?";
+    sideParams = [ss58];
+  } else if (direction === "received") {
+    sideClause = "coldkey = ?";
+    sideParams = [ss58];
+  }
+  const rows = await d1All(
+    env,
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
+    [...sideParams, limit, offset],
+  );
+  const data = buildAccountTransfers(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/transfers.json`,
+        data.transfers[0]?.observed_at ?? null,
       ),
     },
     "short",

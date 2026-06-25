@@ -241,3 +241,57 @@ test("GET /accounts/{ss58}/extrinsics is schema-stable when D1 is cold (never 40
   assert.equal(body.data.extrinsic_count, 0);
   assert.equal(Array.isArray(body.data.extrinsics), true);
 });
+
+test("GET /accounts/{ss58}/transfers reshapes Transfer rows directionally (#1850)", async () => {
+  const env = dbWith({
+    // The poller stores hotkey=from / coldkey=to for Transfer events.
+    events: [
+      {
+        block_number: 300,
+        event_index: 0,
+        event_kind: "Transfer",
+        hotkey: SS58, // sender == queried account → "sent"
+        coldkey: "5Recipient",
+        netuid: null,
+        uid: null,
+        amount_tao: 4.2,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?direction=sent`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ss58, SS58);
+  assert.equal(body.data.transfer_count, 1);
+  assert.equal(body.data.transfers[0].from, SS58);
+  assert.equal(body.data.transfers[0].to, "5Recipient");
+  assert.equal(body.data.transfers[0].amount_tao, 4.2);
+  assert.equal(body.data.transfers[0].direction, "sent");
+});
+
+test("GET /accounts/{ss58}/transfers rejects an unsupported query param (#1850)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?bogus=1`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
+test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ss58, SS58);
+  assert.equal(body.data.transfer_count, 0);
+  assert.equal(Array.isArray(body.data.transfers), true);
+});
