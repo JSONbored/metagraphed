@@ -12,17 +12,20 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Activity,
+  ArrowRightLeft,
   Bot,
   Compass,
   Copy,
   ExternalLink,
   FileJson,
   Gauge,
+  Hash,
   Layers,
   Network,
   Search,
   Sparkles,
   Star,
+  User,
   Wifi,
   Workflow,
 } from "lucide-react";
@@ -38,6 +41,8 @@ import {
 } from "@/components/ui/command";
 import { searchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
+import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { shortHash } from "@/lib/metagraphed/blocks";
 import { SCOPES, type SearchScope } from "./search-scope";
 import {
   loadRecent,
@@ -117,6 +122,21 @@ const ROUTE_INDEX: Array<{
     scope: "route",
   },
   { label: "About", to: "/about", hint: "Methodology & scope", icon: Compass, scope: "route" },
+  { label: "Blocks", to: "/blocks", hint: "Chain block explorer", icon: Hash, scope: "route" },
+  {
+    label: "Extrinsics",
+    to: "/extrinsics",
+    hint: "Transaction explorer",
+    icon: ArrowRightLeft,
+    scope: "route",
+  },
+  {
+    label: "Accounts",
+    to: "/accounts",
+    hint: "Hotkey & coldkey activity",
+    icon: User,
+    scope: "route",
+  },
 ];
 
 interface SearchHit {
@@ -266,6 +286,63 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       return bx - ax;
     });
   }, [debounced, scope]);
+
+  const navigateTargets = useMemo(() => {
+    if (!debounced) return [];
+    const q = debounced.trim();
+    const targets: Array<{
+      label: string;
+      hint: string;
+      target: Target;
+      kind: string;
+      icon: typeof User;
+    }> = [];
+    if (isValidSs58(q)) {
+      targets.push({
+        label: `Account ${shortHash(q, 8) ?? q}`,
+        hint: q,
+        target: { to: "/accounts/$ss58", params: { ss58: q } },
+        kind: "account",
+        icon: User,
+      });
+    }
+    if (/^(?:0|[1-9][0-9]{0,9})$/.test(q)) {
+      targets.push({
+        label: `Block #${q}`,
+        hint: "jump to block by number",
+        target: { to: "/blocks/$ref", params: { ref: q } },
+        kind: "block",
+        icon: Hash,
+      });
+    }
+    if (/^0x[0-9a-fA-F]{64}$/.test(q)) {
+      targets.push(
+        {
+          label: `Block ${shortHash(q, 8) ?? q}`,
+          hint: "by block hash",
+          target: { to: "/blocks/$ref", params: { ref: q } },
+          kind: "block",
+          icon: Hash,
+        },
+        {
+          label: `Extrinsic ${shortHash(q, 8) ?? q}`,
+          hint: "by extrinsic hash",
+          target: { to: "/extrinsics/$hash", params: { hash: q } },
+          kind: "extrinsic",
+          icon: ArrowRightLeft,
+        },
+      );
+    } else if (/^0x[0-9a-fA-F]{1,63}$/.test(q)) {
+      targets.push({
+        label: `Block ${shortHash(q, 8) ?? q}`,
+        hint: "by block hash (partial)",
+        target: { to: "/blocks/$ref", params: { ref: q } },
+        kind: "block",
+        icon: Hash,
+      });
+    }
+    return targets;
+  }, [debounced]);
 
   const resolveHref = useCallback((hit: SearchHit): Target => {
     const kind = (hit.kind ?? "").toLowerCase();
@@ -434,6 +511,35 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
               </ul>
             </div>
           </div>
+        ) : null}
+
+        {navigateTargets.length > 0 ? (
+          <CommandGroup heading="Go to">
+            {navigateTargets.map((n) => {
+              const Icon = n.icon;
+              return (
+                <CommandItem
+                  key={`nav-${n.kind}-${n.label}`}
+                  value={`nav ${n.kind} ${n.label}`}
+                  onSelect={() => openTarget(n.target, n.kind, modifier)}
+                  className="group/item flex items-center gap-3"
+                >
+                  <Icon className="size-4 text-ink-muted shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-ink-strong truncate">{n.label}</div>
+                    <div className="font-mono text-[10px] text-ink-muted truncate">{n.hint}</div>
+                  </div>
+                  <ItemActions
+                    onCopy={() => copyLink(n.target, n.label)}
+                    onNewTab={() => openInNewTab(n.target, n.kind)}
+                  />
+                  <CommandShortcut className="font-mono text-[10px] uppercase tracking-widest">
+                    {n.kind}
+                  </CommandShortcut>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
         ) : null}
 
         {filteredRoutes.length > 0 ? (
