@@ -94,6 +94,7 @@
     "cloudflare:verify:dry-run": "node scripts/cloudflare-verify.mjs",
     "worker:test": "node scripts/worker-test.mjs",
     "worker:deploy:dry-run": "node scripts/worker-deploy-dry-run.mjs",
+    "worker:bundle:budget": "node scripts/worker-bundle-budget.mjs",
     "smoke:live": "node scripts/smoke-live-api.mjs",
     "lint": "eslint .",
     "format:check": "prettier --check .",

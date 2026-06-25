@@ -76,8 +76,9 @@ under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA 
 out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
-`cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `scan:public-safety` ·
-`validate:private-boundary`.
+`cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `worker:bundle:budget`
+(gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
+fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
 
 Codecov is configured in `codecov.yml`; run `npm run test:coverage` unsharded locally (CI shards +
 merges, so a single shard under-reports).
