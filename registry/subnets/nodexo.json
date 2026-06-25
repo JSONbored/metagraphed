@@ -84,6 +84,22 @@
       "source_urls": ["https://nodexo.ai/", "https://docs.nodexo.ai/"],
       "rate_limit_notes": "Not probe-enabled because simple Node/HEAD probes currently receive connection resets from the origin.",
       "notes": "Official Nodexo console surface. Authentication may be required for account-specific workflows."
+    },
+    {
+      "id": "sn-106-nodexo-source-repo",
+      "name": "Nodexo subnet source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/nodexo-ai/nodexo",
+      "provider": "nodexo",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://nodexo.ai/", "https://github.com/nodexo-ai"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "notes": "Official Nodexo (SN106) miner/validator/CLI source repo under the github.com/nodexo-ai org linked from the project website."
     }
   ]
 }

@@ -17,7 +17,7 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS } from "../config.mjs";
+import { DAY_MS, clampInt } from "../config.mjs";
 import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
@@ -44,14 +44,14 @@ import {
 } from "../../src/neuron-history.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
-  buildAccountEvents,
-  buildAccountSubnets,
-  buildAccountSummary,
   buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
   buildBlockEvents,
   formatAccountEvent,
+  loadAccountSummary,
+  loadAccountEvents,
+  loadAccountSubnets,
 } from "../../src/account-events.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
@@ -222,13 +222,8 @@ export async function handleSubnetHistory(request, env, netuid, url) {
 }
 
 // ---- Account entity handlers (#1347) ---------------------------------------
-function clampInt(raw, def, min, max) {
-  if (raw == null || raw === "") return def;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return def;
-  return Math.max(min, Math.min(max, Math.trunc(n)));
-}
-
+// SQL + pagination live in src/account-events.mjs (loadAccount*), shared with the
+// MCP account tools; these handlers add only the REST envelope + meta.
 async function accountMeta(env, artifactPath, generatedAt) {
   return {
     artifact_path: artifactPath,
@@ -244,51 +239,7 @@ async function accountMeta(env, artifactPath, generatedAt) {
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
 export async function handleAccount(request, env, ss58) {
-  const where = "hotkey = ? OR coldkey = ?";
-  const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
-    await Promise.all([
-      d1All(
-        env,
-        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
-        [ss58, ss58],
-      ),
-      d1All(
-        env,
-        `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
-        [ss58, ss58],
-      ),
-      d1All(
-        env,
-        `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
-        [ss58],
-      ),
-      d1All(
-        env,
-        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-        [ss58, ss58],
-      ),
-      // Signing activity (#1847): aggregates from the extrinsics tier by signer
-      // (idx_extrinsics_signer). Single [ss58] bind. Hot-window-bounded, not
-      // all-time. Matched by signer only — see formatAccountActivity.
-      d1All(
-        env,
-        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM extrinsics WHERE signer = ?`,
-        [ss58],
-      ),
-      d1All(
-        env,
-        `SELECT call_module, COUNT(*) AS count FROM extrinsics WHERE signer = ? GROUP BY call_module ORDER BY count DESC LIMIT 10`,
-        [ss58],
-      ),
-    ]);
-  const data = buildAccountSummary(ss58, {
-    agg: aggRows[0],
-    kinds: kindRows,
-    registrations: regRows,
-    recent: recentRows,
-    activity: activityRows[0],
-    modules: moduleRows,
-  });
+  const data = await loadAccountSummary(d1Runner(env), ss58);
   return envelopeResponse(
     request,
     {
@@ -313,38 +264,12 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const kind = url.searchParams.get("kind");
-  const params = [ss58, ss58];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (hotkey = ? OR coldkey = ?)`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  // Keyset cursor (#1851): a row-value seek on (block_number, event_index). The
-  // within-block tiebreak (event_index) isn't in the per-account access indexes
-  // (idx_account_events_hotkey, idx_account_events_coldkey), so it's a small
-  // per-block in-memory sort — acceptable at per-account volume. Takes precedence
-  // over offset; malformed cursor → ignored.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
-  const useCursor = Boolean(cur);
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  const data = buildAccountEvents(rows, ss58, { limit, offset, nextCursor });
+  const data = await loadAccountEvents(d1Runner(env), ss58, {
+    limit: url.searchParams.get("limit"),
+    offset: url.searchParams.get("offset"),
+    kind: url.searchParams.get("kind"),
+    cursor: url.searchParams.get("cursor"),
+  });
   return envelopeResponse(
     request,
     {
@@ -506,12 +431,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 // GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
 // registered (the cross-subnet footprint), from the neurons tier.
 export async function handleAccountSubnets(request, env, ss58) {
-  const rows = await d1All(
-    env,
-    `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY netuid`,
-    [ss58],
-  );
-  const data = buildAccountSubnets(rows, ss58);
+  const data = await loadAccountSubnets(d1Runner(env), ss58);
   return envelopeResponse(
     request,
     {
