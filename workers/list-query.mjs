@@ -148,18 +148,25 @@ function searchRows(rows, params, keys) {
   if (!q || keys.length === 0) {
     return rows;
   }
-  const needle = q.toLowerCase();
-  return rows.filter((row) =>
-    keys
+  const terms = q
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => term.toLowerCase());
+  if (terms.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) => {
+    const haystack = keys
       .flatMap((key) => {
         const value = row[key];
         return Array.isArray(value) ? value : [value];
       })
       .filter(Boolean)
       .join(" ")
-      .toLowerCase()
-      .includes(needle),
-  );
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
 }
 
 function sortRows(rows, params) {
