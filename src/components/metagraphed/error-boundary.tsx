@@ -30,10 +30,13 @@ export class QueryErrorBoundary extends Component<Props, State> {
   }
 
   reset = () => {
-    // Invalidate active queries so a transient failure gets a fresh fetch on
-    // retry. Without this, reset() re-renders the same errored cache entry and
-    // the boundary trips again immediately (infinite retry loop).
-    void this.context?.invalidateQueries({ type: "active" });
+    // Reset query state so a transient failure gets a fresh fetch on retry.
+    // The failed query is unmounted while the error fallback is shown, so it is
+    // NOT "active" — an invalidate({ type: "active" }) would no-op and retry
+    // would re-render the same errored cache entry, tripping the boundary again
+    // (infinite retry loop). resetQueries() clears the errored state so the
+    // remounted query refetches from scratch.
+    void this.context?.resetQueries();
     this.setState({ error: null });
   };
 
