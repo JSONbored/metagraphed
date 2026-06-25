@@ -2031,10 +2031,10 @@ export interface components {
             surface_count: number;
         };
         /**
-         * @description Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).
+         * @description Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).
          * @enum {unknown}
          */
-        CurationLevel: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+        CurationLevel: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
         CurationMetadata: {
             gap_notes?: string[];
             level: components["schemas"]["CurationLevel"];
@@ -7997,7 +7997,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -8866,7 +8866,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 subnet_type?: "root" | "application";
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
@@ -9763,7 +9763,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
@@ -10072,7 +10072,7 @@ export interface operations {
     reviewEnrichmentQueue: {
         parameters: {
             query?: {
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
                 identity_level?: "none" | "directory" | "partial" | "complete";
@@ -10498,7 +10498,7 @@ export interface operations {
         parameters: {
             query?: {
                 netuid?: number;
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 fields?: string;
                 limit?: number;
@@ -11743,7 +11743,7 @@ export interface operations {
                 netuid?: number;
                 netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
                 status?: "active" | "inactive";
                 subnet_type?: "root" | "application";
@@ -12580,7 +12580,7 @@ export interface operations {
     subnetGaps: {
         parameters: {
             query?: {
-                curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
                 fields?: string;
                 limit?: number;
