@@ -44,6 +44,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
+- `/metagraph/search-index.json`: slim search index — the same documents as `search.json` without the per-document token blobs, for fast browser typeahead and listing.
 - `/metagraph/coverage.json`: count parity and coverage levels.
 - `/metagraph/economics.json`: per-subnet validator/economic metrics (counts, stake, registration cost, alpha price, emission share).
 - `/metagraph/curation.json`: curation state for every active subnet.
@@ -198,6 +199,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/schemas`: fetch captured schema index.
 - `/api/v1/adapters/{slug}`: fetch adapter-backed public metrics.
 - `/api/v1/search`: fetch compact search index.
+- `/api/v1/search-index`: fetch the slim search index — the same documents as `/api/v1/search` without the per-document token blobs, for fast browser typeahead and listing.
 - `/api/v1/contracts`: fetch artifact contract metadata.
 - `/api/v1/openapi.json`: fetch OpenAPI 3.1 contract.
 - `/api/v1/build`: fetch generated build summary.
