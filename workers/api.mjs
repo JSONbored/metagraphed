@@ -44,6 +44,8 @@ import {
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
+  hasD1FallbackRows,
+  markD1FallbackResponse,
   validateQueryParams,
   withEdgeCache,
 } from "./request-handlers/analytics.mjs";
