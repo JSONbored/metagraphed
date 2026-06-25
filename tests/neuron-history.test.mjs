@@ -787,6 +787,62 @@ describe("handleScheduled rollup cron (#1345)", () => {
     assert.equal(result.archivedPrunable.archived, true);
     assert.deepEqual(result.pruned, { pruned: false });
   });
+
+  test("archive and prune share one now() so a day-boundary tick can't drop an un-archived day", async () => {
+    const latestDay = "2026-06-21";
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              run: () => Promise.resolve({ meta: { changes: 1 } }),
+              all: () => {
+                if (sql.includes("MAX(snapshot_date)")) {
+                  return Promise.resolve({ results: [{ day: latestDay }] });
+                }
+                if (sql.includes("DISTINCT snapshot_date")) {
+                  return Promise.resolve({ results: [] });
+                }
+                return Promise.resolve({
+                  results: [
+                    {
+                      netuid: 7,
+                      uid: 0,
+                      snapshot_date: latestDay,
+                      stake_tao: 1,
+                    },
+                  ],
+                });
+              },
+            };
+          },
+        };
+      },
+    };
+    const env = {
+      METAGRAPH_HEALTH_DB: db,
+      METAGRAPH_ARCHIVE: { put: () => Promise.resolve() },
+    };
+    // Date.now advances a full day on every call: if the archive and prune each
+    // sampled it independently they'd derive retention cutoffs a day apart. The
+    // single now pinned in handleScheduled must keep the two cutoffs identical.
+    const realNow = Date.now;
+    let call = 0;
+    Date.now = () =>
+      Date.parse("2026-06-21T23:59:59.000Z") + call++ * 86_400_000;
+    try {
+      const result = await handleScheduled(
+        { cron: NEURON_HISTORY_ROLLUP_CRON },
+        env,
+        ctx,
+      );
+      assert.equal(result.archivedPrunable.archived, true);
+      assert.equal(result.pruned.pruned, true);
+      assert.equal(result.pruned.cutoff, result.archivedPrunable.cutoff);
+    } finally {
+      Date.now = realNow;
+    }
+  });
 });
 
 describe("backfill ingest helpers (#1345 Phase 1)", () => {
