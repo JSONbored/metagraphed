@@ -2552,7 +2552,7 @@ async function handleBulkHealthTrends(
       windows,
       windowDays: HEALTH_TREND_WINDOWS,
     });
-    const response = envelopeResponse(
+    const response = await envelopeResponse(
       request,
       {
         data,
@@ -2626,7 +2626,7 @@ async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
       observedAt: meta?.last_run_at || null,
       windows,
     });
-    const response = envelopeResponse(
+    const response = await envelopeResponse(
       request,
       {
         data,
@@ -2838,7 +2838,7 @@ async function handleHealthPercentiles(request, env, netuid, url, ctx = {}) {
       observedAt: meta?.last_run_at || null,
       rows,
     });
-    const response = envelopeResponse(
+    const response = await envelopeResponse(
       request,
       {
         data,
@@ -2927,7 +2927,7 @@ async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
       incidentRows,
       maxIncidents: MAX_INCIDENT_ROWS,
     });
-    const response = envelopeResponse(
+    const response = await envelopeResponse(
       request,
       {
         data,
