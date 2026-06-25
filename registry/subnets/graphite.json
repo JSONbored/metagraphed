@@ -99,6 +99,24 @@
       "schema_url": "https://api.graphite-ai.net/openapi.json",
       "source_urls": ["https://api.graphite-ai.net/docs"],
       "url": "https://api.graphite-ai.net/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-ai-data-artifact",
+      "kind": "data-artifact",
+      "name": "Graphite past problems dataset",
+      "notes": "Official Graphite SN43 dataset of past TSP problems, pushed daily as .tsv files; the GraphiteAI subnet_tools repo syncs from this HF_REPO.",
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/GraphiteAI/subnet_tools/blob/main/.example.env"
+      ],
+      "url": "https://huggingface.co/datasets/Graphite-AI/Graphite_Past_Problems"
     }
   ],
   "website_url": "https://graphite-ai.net/"
