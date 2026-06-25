@@ -36,14 +36,11 @@ jobs:
       # First-party chain-direct fetch (pinned bittensor, matching sync-subnets):
       # get_all_metagraphs_info for the per-UID core + SubtensorModule.ValidatorTrust
       # storage; rank is derived from incentive. Units parity-verified vs the prior
-      # Taostats source (#1348). No Taostats, no API key.
+      # Taostats source (#1348). No Taostats, no API key. Keep secrets out of this
+      # PyPI execution boundary; pass --network explicitly for trusted local/manual
+      # runs, but CI uses the public finney default.
       - name: Fetch per-UID metagraph (Bittensor SDK)
         run: uvx --from bittensor==10.4.0 python scripts/fetch-metagraph-native.py
-        env:
-          # Same hidden chain-RPC secret as the events poller (ADR 0012 / #1349).
-          # Unset → the script defaults to "finney"; set it to the private node URL
-          # to route the metagraph fetch through our own infra without exposing it.
-          SUBTENSOR_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL }}
 
       - name: Upload unsigned neuron snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -63,9 +60,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # Keep the secret-bearing job in a fresh workspace. The unpinned PyPI
-      # execution boundary above can only pass the JSON data artifact forward, not
-      # mutated repository scripts, shell startup files, or node_modules.
+      # Keep the signing secret in a fresh workspace. The PyPI execution boundary
+      # above can only pass the JSON data artifact forward, not mutated repository
+      # scripts, shell startup files, node_modules, or hidden RPC endpoints.
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
