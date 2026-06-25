@@ -984,6 +984,12 @@ export const PUBLIC_ARTIFACTS = [
     "UptimeArtifact",
   ),
   artifact(
+    "subnet-reliability",
+    "/metagraph/subnets/{netuid}/reliability.json",
+    "Composite reliability scorecard (0–100) per operational surface for one subnet (7d/30d/90d window), served live from the surface_uptime_daily D1 rollup (no static file).",
+    "ReliabilityScorecardArtifact",
+  ),
+  artifact(
     "global-incidents",
     "/metagraph/incidents.json",
     "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live from D1 at /api/v1/incidents (no static file).",
@@ -1733,6 +1739,17 @@ export const API_ROUTES = [
     "short",
     ["health", "subnets", "analytics"],
     [{ name: "window", schema: { type: "string", enum: ["90d", "1y"] } }],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-reliability",
+    "GET",
+    "/api/v1/subnets/{netuid}/reliability",
+    "/metagraph/subnets/{netuid}/reliability.json",
+    "Fetch a composite reliability scorecard (0–100) per operational surface for one subnet over a 7d, 30d, or 90d window. Lighter than /uptime: scored rollup only, no per-day series (computed live from the surface_uptime_daily D1 rollup).",
+    "short",
+    ["health", "subnets", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d", "90d"] } }],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

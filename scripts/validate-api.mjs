@@ -181,6 +181,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/reliability",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.surfaces), true);
+      assert.equal(body.data.source, "live-cron-prober");
+      assert.equal("reliability" in body.data, true);
+    },
+  ],
+  [
     "/api/v1/registry/leaderboards",
     (body) => {
       assert.equal(typeof body.data.boards, "object");

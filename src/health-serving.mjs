@@ -1120,6 +1120,99 @@ export function formatUptime({
   };
 }
 
+// Compact reliability scorecard for one subnet: composite 0–100 scores per surface
+// plus a subnet rollup, without the per-day uptime series that /uptime carries.
+export function formatReliabilityScorecard({
+  netuid,
+  window,
+  observedAt = null,
+  rows,
+  now = null,
+}) {
+  const reliabilityRows = (rows || []).map((row) => ({
+    ...row,
+    surface_id: surfaceLookupKey(row),
+  }));
+  const reliability = computeReliability(reliabilityRows, {
+    window: window || null,
+    now,
+  });
+  const surfaces = Object.entries(reliability.surfaces || {})
+    .map(([surfaceKey, score]) => ({
+      surface_id: score?.surface_id || surfaceKey,
+      surface_key: surfaceKey,
+      ...score,
+    }))
+    .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
+  return {
+    schema_version: 1,
+    netuid,
+    window: window || null,
+    observed_at: observedAt || null,
+    source: "live-cron-prober",
+    reliability: reliability.subnet,
+    surfaces,
+  };
+}
+
+// D1-backed reliability scorecard for GET /api/v1/subnets/{netuid}/reliability.
+export async function loadReliabilityScorecard({
+  d1,
+  db,
+  netuid,
+  windowDays = 30,
+  observedAt = null,
+  now = null,
+  limit = 5000,
+}) {
+  const nowMs = now ? Date.parse(now) : Date.now();
+  const computedAt = new Date(nowMs).toISOString();
+  const window = windowKeyForDays(windowDays);
+  const cutoff = new Date(nowMs - windowDays * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const sql = `SELECT MAX(surface_id) AS surface_id,
+            COALESCE(surface_key, surface_id) AS surface_key,
+            day,
+            SUM(samples) AS samples,
+            SUM(ok_count) AS ok_count,
+            ${dailyLatencyColumns({ roundedAvg: true })}
+     FROM surface_uptime_daily
+     WHERE netuid = ? AND day >= ?
+     GROUP BY COALESCE(surface_key, surface_id), day
+     ORDER BY day DESC
+     LIMIT ?`;
+  const params = [netuid, cutoff, limit];
+  try {
+    const rows = d1
+      ? await d1(sql, params)
+      : db?.prepare
+        ? (await db.prepare(sql).bind(...params).all())?.results || []
+        : [];
+    return formatReliabilityScorecard({
+      netuid,
+      window,
+      observedAt,
+      rows,
+      now: computedAt,
+    });
+  } catch {
+    return formatReliabilityScorecard({
+      netuid,
+      window,
+      observedAt,
+      rows: [],
+      now: computedAt,
+    });
+  }
+}
+
+function windowKeyForDays(days) {
+  if (days === 7) return "7d";
+  if (days === 90) return "90d";
+  return "30d";
+}
+
 // Load + score a subnet's reliability from surface_uptime_daily over a window.
 // Mirrors resolveLiveHealth's I/O posture (the caller passes the D1 binding);
 // returns null when D1 is unbound/cold or no history has accrued.

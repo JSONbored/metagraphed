@@ -125,6 +125,8 @@ import {
   overlayOverviewHealth,
   overlaySubnetEconomics,
   overlaySubnetHealth,
+  loadReliabilityScorecard,
+  loadSubnetReliability,
   loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
@@ -204,6 +206,8 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  RELIABILITY_PATH_PATTERN,
+  RELIABILITY_WINDOWS,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -1092,6 +1096,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
       );
     }
+    const reliabilityMatch = RELIABILITY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (reliabilityMatch) {
+      return withEdgeCache(request, ctx, env, "reliability", () =>
+        handleReliability(
+          request,
+          env,
+          Number(reliabilityMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1254,7 +1271,8 @@ function isMainnetOnlyApiPath(pathname) {
     PERCENTILES_PATH_PATTERN.test(pathname) ||
     INCIDENTS_PATH_PATTERN.test(pathname) ||
     TRAJECTORY_PATH_PATTERN.test(pathname) ||
-    UPTIME_PATH_PATTERN.test(pathname)
+    UPTIME_PATH_PATTERN.test(pathname) ||
+    RELIABILITY_PATH_PATTERN.test(pathname)
   );
 }
 
@@ -2110,6 +2128,44 @@ async function handleUptime(request, env, netuid, url) {
       meta: await analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/uptime.json`,
+        data.observed_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// Composite reliability scorecard (0–100) for one subnet's operational surfaces,
+// served live from the surface_uptime_daily rollup. Lighter than /uptime: no
+// per-day series — just the scored rollup integrators use for ranking.
+async function handleReliability(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam = url.searchParams.get("window") || "30d";
+  if (!Object.hasOwn(RELIABILITY_WINDOWS, windowParam)) {
+    return errorResponse(
+      "invalid_query",
+      "Query parameter `window` must be one of: 7d, 30d, 90d.",
+      400,
+      { parameter: "window" },
+    );
+  }
+  const healthMeta = await readHealthMetaKv(env);
+  const data = await loadReliabilityScorecard({
+    d1: d1Runner(env),
+    netuid,
+    windowDays: RELIABILITY_WINDOWS[windowParam],
+    observedAt: healthMeta?.last_run_at || null,
+    now: new Date().toISOString(),
+    limit: MAX_UPTIME_ROWS,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await analyticsMeta(
+        env,
+        `/metagraph/subnets/${netuid}/reliability.json`,
         data.observed_at,
       ),
     },
