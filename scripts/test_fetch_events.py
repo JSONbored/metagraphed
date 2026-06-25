@@ -269,5 +269,70 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["amount_tao"])
 
 
+class _Ev:
+    """Minimal stand-in for a decoded event (`.value` is the SCALE-decoded dict)."""
+
+    def __init__(self, value):
+        self.value = value
+
+
+def _fee_paid(idx, fee_rao, tip_rao):
+    return _Ev(
+        {
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": idx,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": ["5Who", fee_rao, tip_rao],
+            },
+        }
+    )
+
+
+class TipMapTest(unittest.TestCase):
+    def test_tip_map_reads_the_third_attribute(self):
+        # tip is the 3rd field [who, actual_fee, tip]; converted rao -> TAO (#1855).
+        tip_map = _fe._tip_map([_fee_paid(0, 12_500_000, 500_000_000)])
+        self.assertAlmostEqual(tip_map[0], 0.5)
+
+    def test_tip_map_dict_attributes(self):
+        ev = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 3,
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": {"who": "5Who", "actual_fee": 1, "tip": 2_000_000_000},
+                },
+            }
+        )
+        self.assertAlmostEqual(_fe._tip_map([ev])[3], 2.0)
+
+    def test_tip_map_ignores_non_feepaid_and_non_apply_phase(self):
+        other_module = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 0,
+                "event": {"module_id": "Balances", "event_id": "Transfer", "attributes": []},
+            }
+        )
+        init_phase = _Ev(
+            {
+                "phase": "Initialization",
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": ["5Who", 1, 2],
+                },
+            }
+        )
+        self.assertEqual(_fe._tip_map([other_module, init_phase]), {})
+
+    def test_tip_map_never_raises_on_shape_drift(self):
+        self.assertEqual(_fe._tip_map([_Ev("not-a-dict"), _Ev({})]), {})
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

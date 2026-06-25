@@ -2423,7 +2423,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
+        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
         Extrinsic: {
             block_number: number | null;
             call_args?: Record<string, never> | unknown[] | null;
@@ -2436,6 +2436,7 @@ export interface components {
             observed_at?: string | null;
             signer?: string | null;
             success?: boolean | null;
+            tip_tao?: number | null;
         };
         /** @description Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file). */
         ExtrinsicDetailArtifact: {
@@ -8481,7 +8482,8 @@ export interface operations {
                      *           "fee_tao": 0.5,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "signer": "example",
-                     *           "success": false
+                     *           "success": false,
+                     *           "tip_tao": 0.5
                      *         },
                      *         "ref": "example",
                      *         "schema_version": 1

@@ -452,6 +452,41 @@ def _fee_map(events):
     return out
 
 
+def _tip_map(events):
+    """Map extrinsic_index -> tip_tao from TransactionPayment.TransactionFeePaid events (#1855).
+
+    tip is the priority tip the signer added on top of the inclusion fee (the 3rd
+    field of TransactionFeePaid: [who, actual_fee, tip]). Separate from fee_tao —
+    most extrinsics tip 0. Correlated by extrinsic_idx, same as _fee_map. NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes")
+            if isinstance(attrs, dict):
+                tip_rao = attrs.get("tip")
+            elif isinstance(attrs, list) and len(attrs) > 2:
+                tip_rao = attrs[2]  # [who, actual_fee, tip]
+            else:
+                tip_rao = None
+            if tip_rao is not None:
+                out[idx] = _tao(tip_rao)
+    except Exception:
+        return out
+    return out
+
+
 def _extrinsic_success_map(events):
     """Map extrinsic_index -> success(1/0) from the block's already-decoded events.
 
@@ -504,6 +539,7 @@ def extrinsics_for_block(s, bn, bh, events):
         return rows
     success_map = _extrinsic_success_map(events)
     fee_map = _fee_map(events)
+    tip_map = _tip_map(events)
     for extrinsic_index, ext in enumerate(extrinsics):
         try:
             value = ext.value if ext is not None else None
@@ -522,6 +558,7 @@ def extrinsics_for_block(s, bn, bh, events):
                     "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
                     "fee_tao": fee_map.get(extrinsic_index),
+                    "tip_tao": tip_map.get(extrinsic_index),
                 }
             )
         except Exception:
