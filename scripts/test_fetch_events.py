@@ -24,6 +24,7 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
+compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
@@ -80,6 +81,19 @@ class ComputeFromBlockTest(unittest.TestCase):
         got = compute_from_block(cursor, self.HEAD, self.WINDOW)
         self.assertEqual(got, cursor + 1)
         self.assertLess(got, self.floor())
+
+    def test_scan_range_caps_long_archive_recovery_to_bounded_batch(self):
+        stale = self.HEAD - 5_000
+        start, end = compute_scan_range(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, stale + 1)
+        self.assertEqual(end, start + self.WINDOW - 1)
+        self.assertLess(end, self.HEAD)
+
+    def test_scan_range_promotes_to_head_when_batch_reaches_head(self):
+        cursor = self.HEAD - 20
+        start, end = compute_scan_range(cursor, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, self.floor())
+        self.assertEqual(end, self.HEAD)
 
     def test_cursor_ahead_of_head_reorg_uses_floor(self):
         # Reorg / clock skew left the cursor at or past the head → re-scan the
@@ -168,6 +182,34 @@ class ParseCursorTest(unittest.TestCase):
     def test_negative_is_cold(self):
         self.assertIsNone(_parse_cursor("-1"))
         self.assertIsNone(_parse_cursor(-7))
+
+
+_lag_alert_needed = _fe._lag_alert_needed
+
+
+class LagAlertNeededTest(unittest.TestCase):
+    def test_cold_cursor_never_alerts(self):
+        self.assertFalse(_lag_alert_needed(10_000, None, window=256, horizon=300))
+
+    def test_alerts_at_and_above_the_overlap_floor(self):
+        # floor = horizon - window = 44; lag >= 44 alerts, below does not.
+        self.assertFalse(
+            _lag_alert_needed(10_000, 10_000 - 43, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 44, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 100, window=256, horizon=300)
+        )
+
+    def test_window_ge_horizon_never_alerts(self):
+        # When the overlap window covers the whole prune horizon, blocks can never
+        # age out unseen — must NOT alert (regression: a bare horizon-window
+        # threshold goes <= 0 and would fire every run, even at lag 0).
+        self.assertFalse(_lag_alert_needed(10_000, 10_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
 
 
 if __name__ == "__main__":
