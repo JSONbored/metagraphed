@@ -408,6 +408,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-extrinsics",
       "path": "/metagraph/accounts/{ss58}/extrinsics.json",
       "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
@@ -4205,6 +4212,55 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/history.json",
+      "cache": "short",
+      "description": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+      "id": "account-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "format": "date",
             "type": "string"
           }
         },

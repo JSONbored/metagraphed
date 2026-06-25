@@ -146,6 +146,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/extrinsics",
     (body) => {
       assert.equal(Array.isArray(body.data.extrinsics), true);

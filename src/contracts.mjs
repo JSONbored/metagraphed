@@ -954,6 +954,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+    "AccountHistoryArtifact",
+  ),
+  artifact(
     "account-extrinsics",
     "/metagraph/accounts/{ss58}/extrinsics.json",
     "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
@@ -1708,6 +1714,23 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "string", format: "date" } },
+      { name: "to", schema: { type: "string", format: "date" } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],

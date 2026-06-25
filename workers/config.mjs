@@ -60,6 +60,10 @@ export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/events$/;
+// Per-account daily-history series (#1854): the durable per-day activity from the
+// account_events_daily rollup. Dispatched BEFORE the bare ACCOUNT_PATH_PATTERN.
+export const ACCOUNT_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/history$/;
 // Account entity routes (#1347):
 export const ACCOUNT_SUBNETS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;

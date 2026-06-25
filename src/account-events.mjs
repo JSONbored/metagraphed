@@ -292,6 +292,39 @@ export function buildBlockEvents(
   };
 }
 
+// One account_events_daily row → a clean API day object (#1854). Splits the
+// event_kinds GROUP_CONCAT CSV (rollupAccountEventsDaily) back into an array.
+export function formatAccountDay(row) {
+  if (!row || typeof row !== "object") return null;
+  return {
+    day: row.day ?? null,
+    netuid: row.netuid ?? null,
+    event_count: row.event_count ?? null,
+    event_kinds:
+      typeof row.event_kinds === "string" && row.event_kinds.length > 0
+        ? row.event_kinds.split(",").filter(Boolean)
+        : [],
+    first_block: row.first_block ?? null,
+    last_block: row.last_block ?? null,
+  };
+}
+
+// The durable per-day activity series for one account (#1854), from the
+// account_events_daily rollup (hotkey-keyed). NOTE the rollup writes only
+// hotkey-attributed rows, so a coldkey-only ss58 returns zero days even when
+// /events shows activity — surfaced in the route comment + contract description.
+export function buildAccountHistory(rows, ss58, { limit, offset } = {}) {
+  const days = (rows || []).map(formatAccountDay).filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    day_count: days.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    days,
+  };
+}
+
 // The subnets where this account's hotkey is currently registered.
 export function buildAccountSubnets(rows, ss58) {
   const subnets = (rows || []).map(formatRegistration).filter(Boolean);
