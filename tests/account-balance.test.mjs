@@ -273,3 +273,88 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
     },
   );
 });
+
+test("GET /accounts/{ss58}/balance rejects non-base58 captures before RPC", async () => {
+  let fetchCalls = 0;
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const bad = "5" + "0".repeat(47);
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${bad}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal(fetchCalls, 0);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance applies per-client RPC rate limiting", async () => {
+  let limiterKey;
+  let fetchCalls = 0;
+  const env = {
+    RPC_RATE_LIMITER: {
+      limit: async ({ key }) => {
+        limiterKey = key;
+        return { success: false };
+      },
+    },
+  };
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const res = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/${SS58}/balance`,
+          {
+            headers: { "cf-connecting-ip": "203.0.113.9" },
+          },
+        ),
+        env,
+        {},
+      );
+      assert.equal(res.status, 429);
+      assert.equal(limiterKey, "balance:203.0.113.9");
+      assert.equal(fetchCalls, 0);
+      assert.equal(res.headers.get("x-ratelimit-limit"), "100");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async () => {
+  let putKey, putValue, putOptions;
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async (key, value, options) => {
+        putKey = key;
+        putValue = JSON.parse(value);
+        putOptions = options;
+      },
+    },
+  };
+  await withFetchStub(
+    async () => ({ ok: false }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      assert.equal(putKey, `balance:${SS58}`);
+      assert.equal(putValue.balance_tao, null);
+      assert.equal(putOptions.expirationTtl, 10);
+    },
+  );
+});
