@@ -12,7 +12,7 @@ name: Backfill Chain Events (historical range)
 # safe chunk); space chunks ~5 min apart so the Worker drains each pending object
 # before the next overwrites it, then confirm with a D1 gap query and re-run any
 # range that didn't land (idempotent). Defaults to the free OnFinality WS archive;
-# override via the rpc_url input or the SUBTENSOR_RPC_URL secret (e.g. our own node).
+# override only via the maintainer-controlled SUBTENSOR_RPC_URL secret (e.g. our own node).
 on:
   workflow_dispatch:
     inputs:
@@ -22,10 +22,6 @@ on:
       to_block:
         description: Last block to backfill (inclusive)
         required: true
-      rpc_url:
-        description: WS archive endpoint (blank → SUBTENSOR_RPC_URL secret, else OnFinality)
-        required: false
-        default: ""
 
 permissions:
   contents: read
@@ -66,9 +62,10 @@ jobs:
         env:
           FROM_BLOCK: ${{ inputs.from_block }}
           TO_BLOCK: ${{ inputs.to_block }}
-          # blank input → the SUBTENSOR_RPC_URL secret → (still blank) the script's
-          # OnFinality default. Set the secret to our own node to backfill from it.
-          SUBTENSOR_RPC_URL: ${{ inputs.rpc_url || secrets.SUBTENSOR_RPC_URL }}
+          # Secret only → (still blank) the script's OnFinality default. Set the
+          # secret to our own archive to backfill from it; workflow callers cannot
+          # choose an endpoint for a production-signed staging batch.
+          SUBTENSOR_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL }}
 
       # Sign + stage all three batches exactly like refresh-events (same HMAC signer,
       # same R2 token, same pending object names) so the Worker's loadStaged* accepts

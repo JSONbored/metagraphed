@@ -120,6 +120,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/events",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
     (body) => {
       assert.equal(
@@ -138,10 +146,34 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/transfers",
+    (body) => {
+      assert.equal(Array.isArray(body.data.transfers), true);
+      assert.equal(typeof body.data.transfer_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
     (body) => {
       assert.equal(Array.isArray(body.data.subnets), true);
       assert.equal(typeof body.data.subnet_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/balance",
+    (body) => {
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal("balance_tao" in body.data, true);
     },
   ],
   [
@@ -156,6 +188,22 @@ const checks = [
     (body) => {
       assert.equal(body.data.ref, "1000000");
       assert.equal("block" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000/extrinsics",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000/events",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
     },
   ],
   [

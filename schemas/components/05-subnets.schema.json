@@ -1489,7 +1489,7 @@
       "AccountEvent": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "required": ["block_number", "event_kind"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1500,7 +1500,8 @@
           "netuid": { "type": ["integer", "null"] },
           "uid": { "type": ["integer", "null"] },
           "amount_tao": { "type": ["number", "null"] },
-          "observed_at": { "type": ["string", "null"], "format": "date-time" }
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "extrinsic_index": { "type": ["integer", "null"] }
         }
       },
       "AccountRegistration": {
@@ -1554,6 +1555,31 @@
           "recent_events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
+          },
+          "activity": { "$ref": "#/components/schemas/AccountActivity" }
+        }
+      },
+      "AccountActivity": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency.",
+        "required": ["tx_count", "modules_called"],
+        "properties": {
+          "tx_count": { "type": "integer", "minimum": 0 },
+          "last_tx_block": { "type": ["integer", "null"] },
+          "last_tx_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_fee_tao": { "type": ["number", "null"] },
+          "modules_called": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["call_module", "count"],
+              "properties": {
+                "call_module": { "type": ["string", "null"] },
+                "count": { "type": "integer", "minimum": 0 }
+              }
+            }
           }
         }
       },
@@ -1574,6 +1600,76 @@
           }
         }
       },
+      "SubnetEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
+        "required": ["schema_version", "netuid", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
+      "AccountExtrinsicsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "required": ["schema_version", "ss58", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
+      "AccountTransfersArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file).",
+        "required": ["schema_version", "ss58", "transfer_count", "transfers"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "transfer_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "transfers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["block_number", "from", "to"],
+              "properties": {
+                "block_number": { "type": ["integer", "null"] },
+                "event_index": { "type": ["integer", "null"] },
+                "from": { "type": ["string", "null"] },
+                "to": { "type": ["string", "null"] },
+                "amount_tao": { "type": ["number", "null"] },
+                "direction": {
+                  "type": ["string", "null"],
+                  "enum": ["sent", "received", null]
+                },
+                "observed_at": {
+                  "type": ["string", "null"],
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
       "AccountSubnetsArtifact": {
         "type": "object",
         "additionalProperties": true,
@@ -1589,10 +1685,22 @@
           }
         }
       },
+      "AccountBalanceArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
+        "required": ["schema_version", "ss58"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "balance_tao": { "type": ["number", "null"] },
+          "queried_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "Block": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
         "required": ["block_number"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1601,6 +1709,7 @@
           "author": { "type": ["string", "null"] },
           "extrinsic_count": { "type": ["integer", "null"] },
           "event_count": { "type": ["integer", "null"] },
+          "spec_version": { "type": ["integer", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }
       },
@@ -1636,10 +1745,46 @@
           }
         }
       },
+      "BlockExtrinsicsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "ref", "extrinsic_count", "extrinsics"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "extrinsics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Extrinsic" }
+          }
+        }
+      },
+      "BlockEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "ref", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "required": ["block_number", "extrinsic_index"],
         "properties": {
           "block_number": { "type": ["integer", "null"] },
@@ -1648,6 +1793,8 @@
           "signer": { "type": ["string", "null"] },
           "call_module": { "type": ["string", "null"] },
           "call_function": { "type": ["string", "null"] },
+          "call_args": { "type": ["object", "array", "null"] },
+          "fee_tao": { "type": ["number", "null"] },
           "success": { "type": ["boolean", "null"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" }
         }
@@ -1671,7 +1818,7 @@
       "ExtrinsicDetailArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
         "required": ["schema_version", "extrinsic"],
         "properties": {
           "schema_version": { "type": "integer" },
@@ -1681,6 +1828,10 @@
               { "$ref": "#/components/schemas/Extrinsic" },
               { "type": "null" }
             ]
+          },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
           }
         }
       },

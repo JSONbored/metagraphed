@@ -373,6 +373,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
@@ -401,9 +408,30 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
       "storage_tier": "r2"
     },
     {
@@ -418,6 +446,20 @@
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
       "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -4052,6 +4094,40 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/events.json",
+      "cache": "short",
+      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "id": "subnet-events",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "cache": "short",
       "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
@@ -4150,12 +4226,91 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+      "id": "account-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/transfers.json",
+      "cache": "short",
+      "description": "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+      "id": "account-transfers",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/transfers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "all",
+              "sent",
+              "received"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/accounts/{ss58}/subnets.json",
       "cache": "short",
       "description": "Fetch the subnets where an account's hotkey is currently registered (its cross-subnet footprint), computed live from the neurons D1 tier.",
       "id": "account-subnets",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/subnets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/balance.json",
+      "cache": "short",
+      "description": "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+      "id": "account-balance",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/balance",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
@@ -4202,9 +4357,65 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+      "id": "block-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/events.json",
+      "cache": "short",
+      "description": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+      "id": "block-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/extrinsics.json",
       "cache": "short",
-      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
       "id": "extrinsics-feed",
       "method": "GET",
       "path": "/api/v1/extrinsics",
@@ -4233,13 +4444,69 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "name": "signer",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_function",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "success",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
         }
       ]
     },
     {
       "artifact_path": "/metagraph/extrinsics/{hash}.json",
       "cache": "short",
-      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
       "id": "extrinsic-detail",
       "method": "GET",
       "path": "/api/v1/extrinsics/{hash}",
