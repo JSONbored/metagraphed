@@ -2313,6 +2313,13 @@ export interface components {
         GapsEntry: {
             coverage_level: components["schemas"]["CoverageLevel"];
             curation_level: components["schemas"]["CurationLevel"];
+            /** @description 0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving. */
+            gap_priority?: number;
+            /**
+             * @description Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.
+             * @enum {unknown}
+             */
+            gap_severity?: "critical" | "warning" | "info";
             gaps: components["schemas"]["Gaps"];
             name: string;
             netuid: number;
@@ -4089,6 +4096,8 @@ export interface components {
             auth_required: boolean;
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
+            /** @description Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling. */
+            curation_level?: components["schemas"]["CurationLevel"];
             id: string;
             /** @description Stable surface identity (#1005): a hash of netuid|kind|url, invariant across display-name/slug renames. Prefer this over the hand-authored id for durable references; D1 history + endpoint links re-key onto it. */
             key?: string;

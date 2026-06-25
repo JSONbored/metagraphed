@@ -2246,6 +2246,15 @@
           },
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
+          },
+          "gap_severity": {
+            "enum": ["critical", "warning", "info"],
+            "description": "Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale."
+          },
+          "gap_priority": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving."
           }
         },
         "additionalProperties": false

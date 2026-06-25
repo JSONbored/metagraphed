@@ -4211,6 +4211,19 @@
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
           },
+          "gap_priority": {
+            "description": "0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gap_severity": {
+            "description": "Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.",
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ]
+          },
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
           },
@@ -11374,6 +11387,14 @@
           },
           "classification": {
             "$ref": "#/components/schemas/Classification"
+          },
+          "curation_level": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurationLevel"
+              }
+            ],
+            "description": "Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling."
           },
           "id": {
             "type": "string"
