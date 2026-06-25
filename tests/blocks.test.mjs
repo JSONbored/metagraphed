@@ -242,7 +242,7 @@ function req(path) {
 }
 
 // A D1 mock that routes by SQL shape so the block handlers get realistic rows.
-function dbWith({ feed, detail } = {}) {
+function dbWith({ feed, detail, neighbors } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
@@ -250,6 +250,9 @@ function dbWith({ feed, detail } = {}) {
           bind() {
             return {
               async all() {
+                // prev/next neighbor query (#1853): the MAX/MIN CASE aggregate.
+                if (/MAX\(CASE WHEN block_number </.test(sql))
+                  return { results: [neighbors || { prev: null, next: null }] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
                 if (/WHERE block_hash = \?|WHERE block_number = \?/.test(sql))
@@ -366,6 +369,28 @@ test("GET /blocks/{number} returns detail by block_number (#1345)", async () => 
   assert.equal(body.data.block.block_hash, "0xabc");
 });
 
+test("GET /blocks/{ref} emits nearest stored prev/next neighbors (#1853)", async () => {
+  const env = dbWith({
+    detail: { block_number: 1234, block_hash: "0xabc", observed_at: 1 },
+    neighbors: { prev: 1230, next: 1240 }, // gaps skipped (pruned/missing)
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1234"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.prev_block_number, 1230);
+  assert.equal(body.data.next_block_number, 1240);
+});
+
+test("GET /blocks/{ref} nulls neighbors at a window edge (#1853)", async () => {
+  const env = dbWith({
+    detail: { block_number: 1, block_hash: "0x1", observed_at: 1 },
+    neighbors: { prev: null, next: 2 }, // oldest stored block: no prev
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.prev_block_number, null);
+  assert.equal(body.data.next_block_number, 2);
+});
+
 test("GET /blocks/{hash} resolves a 0x block_hash ref (#1345)", async () => {
   const hash = `0x${"a".repeat(64)}`;
   const env = dbWith({
@@ -388,6 +413,9 @@ test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", asy
   const body = await res.json();
   assert.equal(body.data.ref, "777");
   assert.equal(body.data.block, null);
+  // No anchor when the block didn't resolve → neighbors null (#1853).
+  assert.equal(body.data.prev_block_number, null);
+  assert.equal(body.data.next_block_number, null);
 });
 
 test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {

@@ -1808,9 +1808,11 @@ export interface components {
             parent_hash?: string | null;
             spec_version?: number | null;
         };
-        /** @description Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). */
+        /** @description Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null). */
         BlockDetailArtifact: {
             block: components["schemas"]["Block"] | null;
+            next_block_number?: number | null;
+            prev_block_number?: number | null;
             ref?: string | null;
             schema_version: number;
         } & {
@@ -6190,6 +6192,8 @@ export interface operations {
                      *           "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "spec_version": 1
                      *         },
+                     *         "next_block_number": 5000000,
+                     *         "prev_block_number": 5000000,
                      *         "ref": "example",
                      *         "schema_version": 1
                      *       },

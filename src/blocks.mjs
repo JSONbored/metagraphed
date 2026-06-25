@@ -108,12 +108,18 @@ export function formatBlock(row) {
 
 // Per-block detail artifact. `block` is null when the ref didn't resolve (cold
 // store or unknown block) — schema-stable, never throws (mirrors the neuron
-// detail route's `neuron:null`).
-export function buildBlock(row, ref) {
+// detail route's `neuron:null`). prev/next_block_number (#1853) are the nearest
+// STORED neighbors for chain-walk nav (the handler computes them, skipping pruned
+// gaps); both null when the block is null or at a window edge. parent_hash (on the
+// block object) already provides the backward hash edge.
+export function buildBlock(row, ref, { prev, next } = {}) {
+  const block = formatBlock(row);
   return {
     schema_version: 1,
     ref: ref ?? null,
-    block: formatBlock(row),
+    block,
+    prev_block_number: block ? (prev ?? null) : null,
+    next_block_number: block ? (next ?? null) : null,
   };
 }
 

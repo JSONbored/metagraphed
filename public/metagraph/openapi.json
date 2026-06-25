@@ -1606,7 +1606,7 @@
       },
       "BlockDetailArtifact": {
         "additionalProperties": true,
-        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null).",
         "properties": {
           "block": {
             "oneOf": [
@@ -1616,6 +1616,18 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "next_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "prev_block_number": {
+            "type": [
+              "integer",
+              "null"
             ]
           },
           "ref": {
@@ -14791,6 +14803,8 @@
                       "parent_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                       "spec_version": 1
                     },
+                    "next_block_number": 5000000,
+                    "prev_block_number": 5000000,
                     "ref": "example",
                     "schema_version": 1
                   },
