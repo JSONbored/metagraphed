@@ -52,14 +52,42 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;");
 }
 
+// East Asian Wide / Fullwidth and astral (emoji) code points render about one em
+// wide — far wider than the 6.5px lowercase default they would otherwise fall
+// through to. Treating them as full-width keeps textWidth a safe overestimate so
+// a CJK or emoji label can't clip its own segment (#1650).
+function isWideCodePoint(cp) {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+    (cp >= 0x2e80 && cp <= 0x303e) || // CJK radicals, Kangxi
+    (cp >= 0x3041 && cp <= 0x33ff) || // Hiragana/Katakana .. CJK symbols
+    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Ext A
+    (cp >= 0x4e00 && cp <= 0x9fff) || // CJK Unified Ideographs
+    (cp >= 0xa000 && cp <= 0xa4cf) || // Yi
+    (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul Syllables
+    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+    (cp >= 0xfe30 && cp <= 0xfe4f) || // CJK Compatibility Forms
+    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Forms
+    (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth signs
+    cp >= 0x1f000 // emoji + astral CJK extensions
+  );
+}
+
 // Approximate px width of text in the 11px sans the badge renders with. Per-char
 // widths are a safe overestimate so text never overflows its segment.
 function textWidth(text) {
   let w = 0;
   for (const ch of String(text)) {
-    if (/[ilj.,:'!|]/.test(ch)) w += 3;
-    else if (/[A-Z0-9mw%@]/.test(ch)) w += 8;
-    else w += 6.5;
+    const cp = ch.codePointAt(0);
+    if (cp <= 0x7f) {
+      if (/[ilj.,:'!|]/.test(ch)) w += 3;
+      else if (/[A-Z0-9mw%@]/.test(ch)) w += 8;
+      else w += 6.5;
+    } else if (isWideCodePoint(cp)) {
+      w += 11; // ~1em: safe overestimate for full-width / emoji glyphs
+    } else {
+      w += 8; // other non-ASCII (e.g. accented Latin): at least capital width
+    }
   }
   return Math.ceil(w);
 }

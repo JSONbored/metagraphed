@@ -187,6 +187,9 @@ def _stake(a):  # [coldkey, hotkey, tao_rao, alpha_rao, netuid, ...]
         "coldkey": _ss58(a[0]),
         "hotkey": _ss58(a[1]),
         "amount_tao": _tao(a[2]),
+        # The alpha leg of the swap (#1856): how much subnet alpha the TAO bought
+        # (StakeAdded) or sold (StakeRemoved). Null on shape drift / other kinds.
+        "alpha_amount": _tao(a[3]) if len(a) > 3 else None,
         "netuid": _idx(a[4]) if len(a) > 4 else None,
     }
 
@@ -452,6 +455,41 @@ def _fee_map(events):
     return out
 
 
+def _tip_map(events):
+    """Map extrinsic_index -> tip_tao from TransactionPayment.TransactionFeePaid events (#1855).
+
+    tip is the priority tip the signer added on top of the inclusion fee (the 3rd
+    field of TransactionFeePaid: [who, actual_fee, tip]). Separate from fee_tao —
+    most extrinsics tip 0. Correlated by extrinsic_idx, same as _fee_map. NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes")
+            if isinstance(attrs, dict):
+                tip_rao = attrs.get("tip")
+            elif isinstance(attrs, list) and len(attrs) > 2:
+                tip_rao = attrs[2]  # [who, actual_fee, tip]
+            else:
+                tip_rao = None
+            if tip_rao is not None:
+                out[idx] = _tao(tip_rao)
+    except Exception:
+        return out
+    return out
+
+
 def _extrinsic_success_map(events):
     """Map extrinsic_index -> success(1/0) from the block's already-decoded events.
 
@@ -504,6 +542,7 @@ def extrinsics_for_block(s, bn, bh, events):
         return rows
     success_map = _extrinsic_success_map(events)
     fee_map = _fee_map(events)
+    tip_map = _tip_map(events)
     for extrinsic_index, ext in enumerate(extrinsics):
         try:
             value = ext.value if ext is not None else None
@@ -522,6 +561,7 @@ def extrinsics_for_block(s, bn, bh, events):
                     "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
                     "fee_tao": fee_map.get(extrinsic_index),
+                    "tip_tao": tip_map.get(extrinsic_index),
                 }
             )
         except Exception:
@@ -543,6 +583,7 @@ def extract(event_id, attrs):
         "netuid": f.get("netuid"),
         "uid": f.get("uid"),
         "amount_tao": f.get("amount_tao"),
+        "alpha_amount": f.get("alpha_amount"),
     }
 
 
@@ -653,6 +694,13 @@ def main():
             ent = extract(eid, e.get("attributes"))
             if ent is None:
                 continue
+            # Link the event to the extrinsic that emitted it (#1849): the
+            # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
+            # _extrinsic_success_map correlate on). Initialization / Finalization
+            # phase events have no extrinsic — store null.
+            xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+            if not isinstance(xidx, int) or xidx < 0:
+                xidx = None
             rows.append(
                 {
                     "block_number": bn,
@@ -663,7 +711,9 @@ def main():
                     "netuid": ent["netuid"],
                     "uid": ent["uid"],
                     "amount_tao": ent["amount_tao"],
+                    "alpha_amount": ent["alpha_amount"],
                     "observed_at": observed_at,
+                    "extrinsic_index": xidx,
                 }
             )
 
