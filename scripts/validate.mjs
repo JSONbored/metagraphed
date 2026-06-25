@@ -83,6 +83,7 @@ const candidateStates = new Set([
 const curationLevels = new Set([
   "native",
   "candidate-discovered",
+  "community-seeded",
   "machine-verified",
   "maintainer-reviewed",
   "adapter-backed",

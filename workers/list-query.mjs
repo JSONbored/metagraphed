@@ -175,7 +175,24 @@ function sortRows(rows, params) {
     return rows;
   }
   const direction = params.get("order") === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => compareValues(a[key], b[key]) * direction);
+  // Keep rows that are missing the sort field (null / undefined) out of the
+  // ordered comparison and append them after the sorted rows, so incomplete
+  // rows always sink to the end regardless of direction. Otherwise an absent
+  // value coerces to "" and sorts *first* in ascending order, putting the least
+  // complete rows at the top of the list — and flips to the end on desc, so the
+  // same gap shuffles position just by toggling order.
+  const present = [];
+  const missing = [];
+  for (const row of rows) {
+    const value = row == null ? undefined : row[key];
+    if (value === null || value === undefined) {
+      missing.push(row);
+    } else {
+      present.push(row);
+    }
+  }
+  present.sort((a, b) => compareValues(a[key], b[key]) * direction);
+  return [...present, ...missing];
 }
 
 function compareValues(a, b) {
