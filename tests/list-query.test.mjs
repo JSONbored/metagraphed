@@ -31,7 +31,9 @@ function pageLink(path) {
     subnets: Array.from({ length: 5 }, (_, i) => ({ netuid: i })),
   };
   const { meta } = applyQueryFilters(data, url, "subnets");
-  return paginationLinkHeader(url, meta.pagination);
+  return paginationLinkHeader(url, meta.pagination, {
+    queryCollection: "subnets",
+  });
 }
 
 describe("list-query field projection", () => {
@@ -392,6 +394,19 @@ describe("list-query pagination Link header", () => {
       assert.equal(target.searchParams.get("order"), "desc");
       assert.equal(target.searchParams.get("limit"), "2"); // resolved window pinned
     }
+  });
+
+  test("drops ignored query parameters from cacheable page links", () => {
+    const links = parseLink(
+      pageLink(
+        "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+      ),
+    );
+
+    assert.equal(links.next.searchParams.get("sort"), "netuid");
+    assert.equal(links.next.searchParams.get("limit"), "2");
+    assert.equal(links.next.searchParams.has("utm_campaign"), false);
+    assert.equal(links.next.searchParams.has("token"), false);
   });
 
   test("a non-list (no pagination meta) collection yields no header", () => {
