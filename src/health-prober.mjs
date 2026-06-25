@@ -17,6 +17,7 @@
 import {
   isUnsafePublicUrl,
   mapLimit,
+  normalizeProbeStatus,
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
@@ -349,7 +350,7 @@ function summarizeGroup(rows) {
   let lastOk = 0;
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
     if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);

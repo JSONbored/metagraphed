@@ -390,14 +390,17 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("unrecognized status values roll up as unknown, not ok", () => {
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
-    assert.equal(out.failed_count, 0);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.ok_count, 0);
+    assert.equal(out.failed_count, 0);
+  });
+  test("null or missing status is treated as unknown", () => {
+    const out = summarizeRows([row(null), { status: undefined }]);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([
@@ -2275,6 +2278,29 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(
       scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
       null,
+    );
+  });
+
+  test("a sub-perfect ratio that rounds to 1 is not reported as a perfect 1", () => {
+    // 24999/25000 = 0.99996; (0.99996).toFixed(4) === "1.0000", which would
+    // otherwise overstate a 99.996%-uptime subnet as a perfect-uptime "100%"
+    // badge. Clamp the displayed ratio to the largest 4-decimal value below 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 24999, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9999,
+    );
+    // a genuine okCount === samples ratio still reports an exact 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .uptime_ratio,
+      1,
+    );
+    // an ordinary sub-1 ratio is unchanged (rounded to 4 decimals as before).
+    assert.equal(
+      scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9983,
     );
   });
 

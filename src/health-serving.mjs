@@ -8,7 +8,10 @@
 // objects + D1 rows in.
 
 import { computeReliability, scoreFromStats } from "./reliability.mjs";
-import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import {
+  rollupSubnetStatus,
+  normalizeProbeStatus,
+} from "./health-probe-core.mjs";
 import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
@@ -107,7 +110,7 @@ export function summarizeRows(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
