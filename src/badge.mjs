@@ -174,9 +174,11 @@ function averageReadiness(netuids, subnetsIndex) {
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
-// uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%".
-function formatUptimePercent(ratio) {
-  const pct = Math.round((Number(ratio) || 0) * 10000) / 100;
+// uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%". Floor
+// rather than round so a genuinely sub-100% ratio is never overstated as a
+// perfect "100%" (0.99996 → "99.99%"); only an exact 1 renders "100%".
+export function formatUptimePercent(ratio) {
+  const pct = Math.floor((Number(ratio) || 0) * 10000) / 100;
   return `${pct}%`;
 }
 
