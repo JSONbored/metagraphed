@@ -67,7 +67,7 @@ test("GET /accounts/{ss58}/balance returns 400 for a too-short address", async (
   assert.equal(res.status, 400);
 });
 
-test("GET /accounts/{ss58}/balance returns 503 with balance_tao:null on RPC failure", async () => {
+test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC failure", async () => {
   // No fetch mock — the Worker's global fetch will fail or env has no fetch.
   // Simulate by providing an env whose fetch throws.
   const env = {
@@ -80,7 +80,7 @@ test("GET /accounts/{ss58}/balance returns 503 with balance_tao:null on RPC fail
     env,
     {},
   );
-  assert.equal(res.status, 503);
+  assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.schema_version, 1);
   assert.equal(body.ss58, SS58);
@@ -109,4 +109,157 @@ test("GET /accounts/{ss58}/balance serves from KV cache when available", async (
   const body = await res.json();
   assert.equal(body.balance_tao, 99.0);
   assert.equal(body.queried_at, "2026-06-25T00:00:00.000Z");
+});
+
+test("GET /accounts/{ss58}/balance falls through on KV read failure", async () => {
+  // KV.get throws → non-fatal, should fall through to RPC (which also fails here).
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => {
+        throw new Error("kv error");
+      },
+    },
+  };
+  await withFetchStub(
+    async () => { throw new Error("rpc down"); },
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.balance_tao, null);
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () => {
+  // Real Bittensor RPC returns free+reserved as 0x-prefixed hex u128 strings.
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: {
+          data: {
+            free: "0x77359400",   // 2_000_000_000 rao in hex
+            reserved: "0x1DCD6500", // 500_000_000 rao in hex
+          },
+        },
+      }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      // 2_000_000_000 + 500_000_000 = 2_500_000_000 rao = 2.5 TAO
+      assert.ok(typeof body.balance_tao === "number");
+      assert.ok(body.balance_tao > 0);
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance returns null when RPC responds non-ok", async () => {
+  await withFetchStub(
+    async () => ({ ok: false }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.balance_tao, null);
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance returns null when RPC data.free is absent", async () => {
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({ jsonrpc: "2.0", id: 1, result: { data: {} } }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.balance_tao, null);
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance writes to KV on successful RPC fetch", async () => {
+  let putKey, putValue;
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => null, // cache miss → fall through to RPC
+      put: async (key, value) => {
+        putKey = key;
+        putValue = JSON.parse(value);
+      },
+    },
+  };
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { data: { free: 1_000_000_000, reserved: 0 } },
+      }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      assert.equal(putKey, `balance:${SS58}`);
+      assert.ok(typeof putValue.balance_tao === "number");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async () => { throw new Error("kv write error"); },
+    },
+  };
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { data: { free: 1_000_000_000, reserved: 0 } },
+      }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        env,
+        {},
+      );
+      // KV write failure is non-fatal — still returns the balance.
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.ok(typeof body.balance_tao === "number");
+    },
+  );
 });

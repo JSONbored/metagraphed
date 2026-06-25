@@ -343,8 +343,8 @@ const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
 // for one account, queried from the finney RPC at request time. 60s KV cache via
-// METAGRAPH_CONTROL. Returns 400 on invalid ss58; 503 with balance_tao:null on
-// RPC failure (so callers always get a schema-stable JSON body).
+// METAGRAPH_CONTROL. Returns 400 on invalid ss58; 200 with balance_tao:null on
+// RPC failure (schema-stable, consistent with blocks/extrinsics null-on-miss).
 export async function handleAccountBalance(request, env, ss58) {
   if (!SS58_GUARD.test(ss58)) {
     return errorResponse(
@@ -409,7 +409,7 @@ export async function handleAccountBalance(request, env, ss58) {
       }
     }
   } catch {
-    // RPC fetch failed — return 503 with balance_tao: null below.
+    // RPC fetch failed — balance_tao stays null, return 200 below.
   }
 
   const payload = {
@@ -431,7 +431,7 @@ export async function handleAccountBalance(request, env, ss58) {
   }
 
   return new Response(JSON.stringify(payload), {
-    status: rpcOk ? 200 : 503,
+    status: 200,
     headers: {
       "content-type": JSON_CONTENT_TYPE,
       "access-control-allow-origin": "*",

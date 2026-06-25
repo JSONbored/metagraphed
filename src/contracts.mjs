@@ -1684,7 +1684,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/balance",
     "/metagraph/accounts/{ss58}/balance.json",
-    "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (503).",
+    "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
     "short",
     ["accounts"],
     [],
