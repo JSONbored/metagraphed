@@ -365,6 +365,80 @@ test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () 
   assert.ok(/WHERE block_number = \?/.test(boundSql));
 });
 
+test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(
+      "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=1000&to=2000",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.ok(/signer = \?/.test(boundSql));
+  assert.ok(/call_module = \?/.test(boundSql));
+  assert.ok(/call_function = \?/.test(boundSql));
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(/block_number >= \?/.test(boundSql));
+  assert.ok(/block_number <= \?/.test(boundSql));
+  assert.ok(/observed_at >= \?/.test(boundSql));
+  assert.ok(/observed_at <= \?/.test(boundSql));
+  // success=false binds the literal 0 (never !=1, which would leak NULL rows).
+  assert.ok(boundParams.includes(0));
+  assert.ok(boundParams.includes("5Signer"));
+  // limit + offset are the last two bound params.
+  assert.equal(boundParams.at(-2), 50);
+  assert.equal(boundParams.at(-1), 0);
+});
+
+test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  await handleRequest(req("/api/v1/extrinsics?success=true"), env, {});
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(boundParams.includes(1));
+
+  // A non-true/false success value adds no condition (no WHERE).
+  await handleRequest(req("/api/v1/extrinsics?success=maybe"), env, {});
+  assert.ok(!/success = \?/.test(boundSql));
+  assert.ok(!/WHERE/.test(boundSql));
+});
+
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {
   const hash = `0x${"c".repeat(64)}`;
   const env = dbWith({

@@ -17193,6 +17193,78 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "signer",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "call_module",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "call_function",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "success",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "block_start",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "block_end",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -17311,7 +17383,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
         "tags": [
           "extrinsics",
           "analytics"

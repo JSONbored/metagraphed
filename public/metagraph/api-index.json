@@ -4293,7 +4293,7 @@
     {
       "artifact_path": "/metagraph/extrinsics.json",
       "cache": "short",
-      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset / optional ?block=<n>. Computed live from the first-party extrinsics D1 tier (#1345).",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
       "id": "extrinsics-feed",
       "method": "GET",
       "path": "/api/v1/extrinsics",
@@ -4318,6 +4318,62 @@
         },
         {
           "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "signer",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_function",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "success",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
           "schema": {
             "minimum": 0,
             "type": "integer"
