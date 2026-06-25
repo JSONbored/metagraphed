@@ -205,12 +205,7 @@ vite.config.ts.timestamp-*
 !.claude/commands/
 !.claude/skills/
 
-# Python bytecode (scripts/classify-validation-route.py — the CI route classifier)
-__pycache__/
-*.pyc
-
-# Transient route-classification artifacts written at the repo root by the
-# classify-validation-route action / scripts/classify-validation-route.py
+# Transient artifacts written at the repo root by the validate.yml inline diff step.
 /changed-files.txt
 /submitted-artifact-files.txt
 /validate-route.json

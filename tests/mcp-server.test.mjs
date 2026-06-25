@@ -13,6 +13,7 @@ import {
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -666,6 +667,11 @@ describe("MCP transport handling", () => {
     );
     assert.equal(response.status, 429);
     assert.equal(response.headers.get("retry-after"), "60");
+    // The rate-limit hints must be readable by a cross-origin browser client.
+    assert.equal(
+      response.headers.get("access-control-expose-headers"),
+      EXPOSED_RESPONSE_HEADERS_VALUE,
+    );
     assert.equal(rateLimitKey, "203.0.113.7");
     const body = await response.json();
     assert.match(body.error.message, /Too many MCP requests/);

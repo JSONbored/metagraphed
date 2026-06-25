@@ -106,12 +106,32 @@ function contentHash(text) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
+const EMBED_TEXT_MAX_CODE_POINTS = 1500;
+
+// Cap a string to at most `max` Unicode code points. A plain `.slice()` counts
+// UTF-16 code units, so a non-BMP character (e.g. an emoji) straddling the
+// boundary is severed into a lone high surrogate, leaving a string that is not
+// well-formed UTF-16 — which UTF-8-encodes to a U+FFFD replacement. Iterating
+// the string yields whole code points, so the cap never splits an astral char.
+function truncateByCodePoints(value, max) {
+  // .length is an upper bound on the code-point count, so this fast path is safe.
+  if (value.length <= max) return value;
+  let out = "";
+  let count = 0;
+  for (const cp of value) {
+    if (count >= max) break;
+    out += cp;
+    count += 1;
+  }
+  return out;
+}
+
 export function embeddingText(doc) {
   // Capability facets (what a subnet IS + what it EXPOSES) are appended after the
   // free-text tokens so they explicitly bias the embedding toward capability —
   // "inference api", "sse stream", "data-artifact" queries rank on what a subnet
   // can do, not just its prose. Non-subnet docs simply omit these (empty).
-  return [
+  const joined = [
     doc.title,
     doc.subtitle,
     ...(Array.isArray(doc.tokens) ? doc.tokens : []),
@@ -119,8 +139,8 @@ export function embeddingText(doc) {
     ...(Array.isArray(doc.service_kinds) ? doc.service_kinds : []),
   ]
     .filter(Boolean)
-    .join(" ")
-    .slice(0, 1500);
+    .join(" ");
+  return truncateByCodePoints(joined, EMBED_TEXT_MAX_CODE_POINTS);
 }
 
 // Vectorize ids are capped at 64 bytes; long surface ids are folded to a stable

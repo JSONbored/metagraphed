@@ -24,7 +24,11 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
+compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
+_block_author = _fe._block_author
+AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
+PRUNE_HORIZON = _fe.PRUNE_HORIZON
 
 
 class ComputeFromBlockTest(unittest.TestCase):
@@ -52,16 +56,44 @@ class ComputeFromBlockTest(unittest.TestCase):
         )
         self.assertLess(self.floor(), cursor + 1)
 
-    def test_stale_cursor_older_than_window_is_capped_at_floor(self):
-        # A cursor far older than the window must NOT trigger a whole-chain rescan;
-        # the floor wins, bounding the scan to `window` blocks.
-        stale = self.HEAD - 5_000  # gap (5000) >> window (250)
+    def test_stale_cursor_recovers_back_to_the_lookback_bound(self):
+        # A cursor far older than the lookback bound: recover the gap, but only as
+        # far back as `head - max_lookback` (default = prune horizon — no point
+        # reaching past the public-RPC prune wall). NOT capped at the window floor
+        # (we DO recover beyond the overlap), and NOT the ancient cursor + 1.
+        stale = self.HEAD - 5_000  # gap (5000) >> lookback (PRUNE_HORIZON)
         got = compute_from_block(stale, self.HEAD, self.WINDOW)
-        self.assertEqual(got, self.floor())
-        # And the scan span never exceeds `window` blocks.
-        self.assertLessEqual(self.HEAD - got + 1, self.WINDOW)
-        # Importantly we did NOT resume from the ancient cursor+1.
-        self.assertNotEqual(got, stale + 1)
+        self.assertEqual(got, self.HEAD - PRUNE_HORIZON)
+        self.assertLess(got, self.floor())  # recovered earlier than the overlap
+        self.assertNotEqual(got, stale + 1)  # but bounded — not the ancient cursor
+
+    def test_archive_lookback_recovers_the_full_gap(self):
+        # Against an archive (no prune wall), a high max_lookback recovers the WHOLE
+        # coalescing gap: the scan resumes from cursor + 1.
+        stale = self.HEAD - 5_000
+        got = compute_from_block(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(got, stale + 1)
+
+    def test_gap_within_lookback_resumes_from_cursor(self):
+        # A gap wider than the window but inside the lookback bound is fully
+        # recovered from cursor + 1 — not just the overlap floor.
+        cursor = self.HEAD - (PRUNE_HORIZON - 20)
+        got = compute_from_block(cursor, self.HEAD, self.WINDOW)
+        self.assertEqual(got, cursor + 1)
+        self.assertLess(got, self.floor())
+
+    def test_scan_range_caps_long_archive_recovery_to_bounded_batch(self):
+        stale = self.HEAD - 5_000
+        start, end = compute_scan_range(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, stale + 1)
+        self.assertEqual(end, start + self.WINDOW - 1)
+        self.assertLess(end, self.HEAD)
+
+    def test_scan_range_promotes_to_head_when_batch_reaches_head(self):
+        cursor = self.HEAD - 20
+        start, end = compute_scan_range(cursor, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, self.floor())
+        self.assertEqual(end, self.HEAD)
 
     def test_cursor_ahead_of_head_reorg_uses_floor(self):
         # Reorg / clock skew left the cursor at or past the head → re-scan the
@@ -92,12 +124,43 @@ class ComputeFromBlockTest(unittest.TestCase):
     def test_never_negative_near_genesis(self):
         # Window larger than the head must clamp the floor to 0, never go negative.
         self.assertEqual(compute_from_block(None, 5, 250), 0)
-        # With a low cursor near genesis we still use the overlap floor because
-        # staging is not proof of D1 persistence.
+        # A low cursor near genesis clamps to 0 too (the floor is already 0 and the
+        # lookback bound never pushes the start negative).
         self.assertEqual(compute_from_block(2, 5, 250), 0)
         self.assertGreaterEqual(compute_from_block(2, 5, 250), 0)
         # A None cursor with head 0 and any window clamps to 0 (not -249).
         self.assertEqual(compute_from_block(None, 0, 250), 0)
+
+
+class BlockAuthorTest(unittest.TestCase):
+    class QueryResult:
+        def __init__(self, value):
+            self.value = value
+
+    class Substrate:
+        def query(self, module, storage, block_hash=None):
+            return BlockAuthorTest.QueryResult(["0x00", "0x01", "0x02"])
+
+        def ss58_encode(self, pubkey):
+            return f"5AUTHORITY{pubkey}"
+
+    def header(self, data):
+        return {"digest": {"logs": [{"PreRuntime": [AURA_ENGINE_ID, data]}]}}
+
+    def test_aura_digest_requires_exactly_eight_slot_bytes(self):
+        substrate = self.Substrate()
+        for data in ("0x", "0x01", "0x01000000000000", "0x010000000000000000"):
+            with self.subTest(data=data):
+                self.assertIsNone(
+                    _block_author(substrate, "0xblock", self.header(data))
+                )
+
+    def test_aura_digest_decodes_eight_byte_slot(self):
+        substrate = self.Substrate()
+        self.assertEqual(
+            _block_author(substrate, "0xblock", self.header("0x0100000000000000")),
+            "5AUTHORITY01",
+        )
 
 
 class ParseCursorTest(unittest.TestCase):
@@ -119,6 +182,91 @@ class ParseCursorTest(unittest.TestCase):
     def test_negative_is_cold(self):
         self.assertIsNone(_parse_cursor("-1"))
         self.assertIsNone(_parse_cursor(-7))
+
+
+_lag_alert_needed = _fe._lag_alert_needed
+
+
+class LagAlertNeededTest(unittest.TestCase):
+    def test_cold_cursor_never_alerts(self):
+        self.assertFalse(_lag_alert_needed(10_000, None, window=256, horizon=300))
+
+    def test_alerts_at_and_above_the_overlap_floor(self):
+        # floor = horizon - window = 44; lag >= 44 alerts, below does not.
+        self.assertFalse(
+            _lag_alert_needed(10_000, 10_000 - 43, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 44, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 100, window=256, horizon=300)
+        )
+
+    def test_window_ge_horizon_never_alerts(self):
+        # When the overlap window covers the whole prune horizon, blocks can never
+        # age out unseen — must NOT alert (regression: a bare horizon-window
+        # threshold goes <= 0 and would fire every run, even at lag 0).
+        self.assertFalse(_lag_alert_needed(10_000, 10_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
+
+
+_extract = _fe.extract
+_SS58_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+_SS58_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+_RAO_100 = 100_000_000_000  # 100 TAO in rao
+
+
+class TransferExtractorTest(unittest.TestCase):
+    """Tests for the Balances.Transfer extractor (#1814)."""
+
+    def test_list_form_positional(self):
+        # Older runtimes emit [from, to, amount] as positional list
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named(self):
+        # Newer runtimes emit named-field dict
+        result = _extract("Transfer", {"from": _SS58_A, "to": _SS58_B, "amount": _RAO_100})
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_zero_amount(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B, 0])
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_from_gives_null_hotkey(self):
+        result = _extract("Transfer", ["not-an-address", _SS58_B, _RAO_100])
+        self.assertIsNone(result["hotkey"])
+        self.assertEqual(result["coldkey"], _SS58_B)
+
+    def test_invalid_to_gives_null_coldkey(self):
+        result = _extract("Transfer", [_SS58_A, "not-an-address", _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+
+    def test_missing_amount_gives_null(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_non_transfer_balances_event_ignored(self):
+        # Balances.Deposit, Balances.Reserved, etc. — no extractor → None
+        self.assertIsNone(_extract("Deposit", [_SS58_A, _RAO_100]))
+        self.assertIsNone(_extract("Reserved", [_SS58_A, _RAO_100]))
+
+    def test_shape_drift_never_raises(self):
+        # Completely wrong shape (empty list) must never raise — all fields null
+        result = _extract("Transfer", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
 
 
 if __name__ == "__main__":

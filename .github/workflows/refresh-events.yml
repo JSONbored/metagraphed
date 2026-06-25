@@ -50,15 +50,15 @@ jobs:
       - name: Install
         run: npm ci
 
-      # Read the durable high-water cursor (highest block previously staged) from
-      # R2 before polling. The window alone is a FIXED look-back: if the scheduler
-      # coalesces/drops runs for longer than the window, blocks older than
-      # head-window are never fetched and silently lost. The cursor closes that gap
-      # — the scan resumes from cursor+1 (capped by the window floor). A cold start
-      # (no object yet) is fine: `get` fails, we leave EVENTS_CURSOR blank, and the
-      # poller falls back to the window floor. `|| true` so a missing object (or a
-      # transient R2 blip) never fails the run; the window floor still makes the
-      # poll correct, just without long-gap recovery for this one tick.
+      # Read the high-water cursor (highest block previously staged) from R2 before
+      # polling. The poller scans `min(window-floor, cursor+1) .. head` (ADR 0012): it
+      # always re-scans the overlap window AND extends back to cursor+1 to recover a
+      # scheduler-coalescing gap, bounded by EVENTS_MAX_LOOKBACK. On PUBLIC RPC that
+      # bound is the prune horizon (gaps wider than it are already pruned — best-effort,
+      # lossy by construction); pointed at the ARCHIVE node (ADR 0012 / #1349) with a
+      # high EVENTS_MAX_LOOKBACK, recovery is COMPLETE. A cold start (no object yet) is
+      # fine: `get` fails, EVENTS_CURSOR stays blank → window floor. `|| true` so a
+      # missing object or transient R2 blip never fails the run.
       - name: Read event cursor from R2
         id: cursor
         run: |
@@ -75,23 +75,68 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Check staged event drains are clear
+        id: pending
+        run: |
+          set +e
+          pending=0
+          max_staged_bytes=4194304
+          for key in \
+            events/account-events-pending.json \
+            events/blocks-pending.json \
+            events/extrinsics-pending.json; do
+            staged_file="/tmp/${key##*/}"
+            rm -f "${staged_file}"
+            npx wrangler r2 object get "metagraphed-artifacts/${key}" --file="${staged_file}" --remote >/dev/null 2>&1
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              size=$(wc -c < "${staged_file}" | tr -d ' ')
+              if [ "${size}" -gt "${max_staged_bytes}" ]; then
+                echo "${key} is ${size} bytes, above the Worker drain cap; allow this producer tick to replace it"
+              else
+                echo "${key} is still pending; skip this producer tick so the Worker can drain it"
+                pending=1
+              fi
+            fi
+          done
+          echo "skip=${pending}" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # substrate-interface is PINNED to an exact, verified version: this step runs
       # with Cloudflare secrets in scope, so we never auto-pull a future (possibly
       # compromised) release from PyPI. Bump deliberately after re-verifying.
       - name: Poll finney events (first-party, public RPC, no key)
+        if: steps.pending.outputs.skip != '1'
         run: uv run --with substrate-interface==1.8.1 python scripts/fetch-events.py
         env:
+          # Chain RPC endpoint, behind a SECRET so the private archive node's URL is
+          # never exposed in the repo or run logs once we switch to it (ADR 0012 /
+          # #1349). Falls back to the public finney endpoint when the secret is unset,
+          # so swapping = set/clear the one `SUBTENSOR_RPC_URL` secret — no code change.
+          EVENTS_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL || 'wss://entrypoint-finney.opentensor.ai:443' }}
           # Bounded overlap: ~250 blocks ≈ 50 min of chain is re-scanned every
           # run so staged-but-not-yet-loaded event batches can be regenerated if
           # the single pending R2 object is overwritten before the Worker drains it.
           EVENTS_WINDOW: "250"
-          # Highest block already staged; used for lag/health accounting only.
+          # Highest block already staged; the poller resumes from cursor+1 to recover
+          # a coalescing gap (bounded by EVENTS_MAX_LOOKBACK) and uses it for lag/health.
           EVENTS_CURSOR: ${{ steps.cursor.outputs.block }}
+          # Cap on gap recovery (non-sensitive → a VARIABLE, not a secret). Default
+          # 300 = prune horizon, correct for PUBLIC RPC. Once EVENTS_RPC_URL points at
+          # the ARCHIVE node, set the `EVENTS_MAX_LOOKBACK` repo variable high (e.g.
+          # 1000000) so a long scheduler gap is recovered over bounded batches.
+          EVENTS_MAX_LOOKBACK: ${{ vars.EVENTS_MAX_LOOKBACK || '300' }}
+          # Producer-side cap: one staged object covers at most this many blocks;
+          # cursor recovery continues on later ticks after pending objects drain.
+          EVENTS_BATCH_BLOCKS: ${{ vars.EVENTS_BATCH_BLOCKS || '250' }}
           # Emit a ::warning:: (and webhook alert, if configured) when the cursor
           # falls within a window of the public-RPC prune horizon.
           METAGRAPH_ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
 
       - name: Sign staged chain-event batch
+        if: steps.pending.outputs.skip != '1'
         run: node scripts/sign-staged-neurons.mjs dist/account-events.json
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
@@ -99,6 +144,7 @@ jobs:
       # Stage to R2 (the token's existing R2 permission); the Worker loads it into
       # D1 through its binding (loadStagedEvents) — no API-token D1 permission.
       - name: Stage events to R2 for the Worker to load into D1
+        if: steps.pending.outputs.skip != '1'
         run: npx wrangler r2 object put metagraphed-artifacts/events/account-events-pending.json --file=dist/account-events.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -111,11 +157,13 @@ jobs:
       # fast-load cron (no API-token D1 permission). INSERT OR IGNORE on
       # block_number makes overlapping windows idempotent.
       - name: Sign staged block batch
+        if: steps.pending.outputs.skip != '1'
         run: node scripts/sign-staged-neurons.mjs dist/blocks.json
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
       - name: Stage blocks to R2 for the Worker to load into D1
+        if: steps.pending.outputs.skip != '1'
         run: npx wrangler r2 object put metagraphed-artifacts/events/blocks-pending.json --file=dist/blocks.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -129,11 +177,13 @@ jobs:
       # permission). INSERT OR IGNORE on (block_number, extrinsic_index) makes
       # overlapping windows idempotent.
       - name: Sign staged extrinsic batch
+        if: steps.pending.outputs.skip != '1'
         run: node scripts/sign-staged-neurons.mjs dist/extrinsics.json
         env:
           METAGRAPH_STAGING_SIGNING_KEY: ${{ secrets.METAGRAPH_STAGING_SIGNING_KEY }}
 
       - name: Stage extrinsics to R2 for the Worker to load into D1
+        if: steps.pending.outputs.skip != '1'
         run: npx wrangler r2 object put metagraphed-artifacts/events/extrinsics-pending.json --file=dist/extrinsics.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -144,6 +194,7 @@ jobs:
       # it to R2 for lag/health accounting. The poller still re-scans the bounded
       # overlap window because R2 staging is not proof of asynchronous D1 import.
       - name: Advance event cursor in R2
+        if: steps.pending.outputs.skip != '1'
         run: npx wrangler r2 object put metagraphed-artifacts/events/cursor.json --file=dist/events-cursor.json --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -24,6 +24,12 @@ const MIN_ICON_BYTES = 100; // reject empty / 1x1 placeholder responses
 const MAX_ICON_BYTES = 256 * 1024; // bound Worker memory and R2 object size
 const FETCH_TIMEOUT_MS = 3000;
 const CACHE_CONTROL = "public, max-age=2592000, immutable"; // 30d, per contract
+// Negative-cache windows split by cause: a structurally-invalid / non-allowlisted
+// host is a stable "no" (cache a day), but an allowlisted host whose upstream
+// aggregators *transiently* failed must retry soon — otherwise one bad minute
+// blackholes a real icon for 24h. (#1124 frontend-surfacing freshness audit.)
+const NEGATIVE_CACHE_STABLE = "public, max-age=86400"; // 24h — won't resolve
+const NEGATIVE_CACHE_TRANSIENT = "public, max-age=600"; // 10m — retry soon
 const BLOCKED_TLDS = new Set(["localhost", "local", "internal"]);
 // A real-ish UA — DuckDuckGo/Google's favicon endpoints bot-block the default Worker
 // user-agent (a cause of the prod 404s).
@@ -92,16 +98,22 @@ function collectHosts(value, hosts = new Set()) {
   return hosts;
 }
 
-const allowlistMemo = new WeakMap();
+// In-isolate memo of the derived host allowlist, TTL'd so a newly published
+// provider/subnet host becomes allowed within one interval instead of staying
+// rejected until the isolate recycles. Same {env, value, expiresAt} pattern as
+// the Worker's readHealthMetaKv (#1375); the previous WeakMap had no expiry.
+const ICON_ALLOWLIST_TTL_MS = 300_000; // 5 min
+let allowlistMemo = { env: null, value: null, expiresAt: 0 };
 
-async function iconHostAllowlist(env, options = {}) {
+async function iconHostAllowlist(env, options = {}, now = Date.now()) {
   const configured = String(env?.METAGRAPH_ICON_ALLOWED_HOSTS || "")
     .split(",")
     .map(normalizeHost)
     .filter(Boolean);
   if (!options.readArtifact) return new Set(configured);
-  const cached = allowlistMemo.get(env);
-  if (cached) return cached;
+  if (allowlistMemo.env === env && now < allowlistMemo.expiresAt) {
+    return allowlistMemo.value;
+  }
   const hosts = new Set(configured);
   for (const path of [
     "/metagraph/subnets.json",
@@ -115,7 +127,7 @@ async function iconHostAllowlist(env, options = {}) {
       // Missing artifacts fail closed except for explicit configured hosts.
     }
   }
-  allowlistMemo.set(env, hosts);
+  allowlistMemo = { env, value: hosts, expiresAt: now + ICON_ALLOWLIST_TTL_MS };
   return hosts;
 }
 
@@ -167,25 +179,32 @@ function etagFor(host, size) {
   return `"icon-${host}-${size}"`;
 }
 
-function imageResponse(body, contentType, etag, extra = {}) {
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "content-type": contentType || "image/png",
-      "cache-control": CACHE_CONTROL,
-      etag,
-      "access-control-allow-origin": "*",
-      "x-content-type-options": "nosniff",
-      ...extra,
-    },
-  });
+// A HEAD must carry the same status + headers as the GET but no body (mirrors the
+// discovery handler's `request.method === "HEAD" ? null : ...`). We pass the GET's
+// byte length through so HEAD still advertises an accurate content-length.
+function imageResponse(body, contentType, etag, extra = {}, head = false) {
+  const byteLength =
+    body && typeof body === "object" && "byteLength" in body
+      ? body.byteLength
+      : null;
+  const headers = {
+    "content-type": contentType || "image/png",
+    "cache-control": CACHE_CONTROL,
+    etag,
+    "access-control-allow-origin": "*",
+    "x-content-type-options": "nosniff",
+    ...extra,
+  };
+  if (head && byteLength != null)
+    headers["content-length"] = String(byteLength);
+  return new Response(head ? null : body, { status: 200, headers });
 }
 
-function notFound() {
-  return new Response("icon not found", {
+function notFound(cacheControl = NEGATIVE_CACHE_STABLE) {
+  return new Response(null, {
     status: 404,
     headers: {
-      "cache-control": "public, max-age=86400", // negative-cache a day
+      "cache-control": cacheControl,
       "access-control-allow-origin": "*",
     },
   });
@@ -195,6 +214,7 @@ export async function handleIconProxy(request, env, url, options = {}) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("method not allowed", { status: 405 });
   }
+  const isHead = request.method === "HEAD";
   const host = normalizeHost(url.searchParams.get("host"));
   if (!host) {
     return new Response("invalid host", {
@@ -202,9 +222,11 @@ export async function handleIconProxy(request, env, url, options = {}) {
       headers: { "access-control-allow-origin": "*" },
     });
   }
-  const allowlist = await iconHostAllowlist(env, options);
+  const now = typeof options.now === "number" ? options.now : Date.now();
+  const allowlist = await iconHostAllowlist(env, options, now);
   if (!allowlist.has(host)) {
-    return notFound();
+    // Stable "no": this host isn't (yet) a registered surface. Cache a full day.
+    return notFound(NEGATIVE_CACHE_STABLE);
   }
 
   const size = clampSize(url.searchParams.get("size"));
@@ -219,13 +241,22 @@ export async function handleIconProxy(request, env, url, options = {}) {
   const bucket = env?.METAGRAPH_ARCHIVE;
   const cacheKey = `${ICON_CACHE_PREFIX}/${host}/${size}`;
 
-  // R2 cache hit -> single edge read.
+  // R2 cache hit -> single edge read. A HEAD short-circuits to a bodyless 200 but
+  // still wants an accurate content-length, so prefer R2's stored object size and
+  // release the body stream we won't send.
   if (bucket?.get) {
     try {
       const cached = await bucket.get(cacheKey);
       if (cached) {
         const ct = cached.httpMetadata?.contentType || "image/png";
-        return imageResponse(cached.body, ct, etag, { "x-icon-cache": "hit" });
+        const extra = { "x-icon-cache": "hit" };
+        if (isHead) {
+          if (typeof cached.size === "number")
+            extra["content-length"] = String(cached.size);
+          await cached.body?.cancel?.();
+          return imageResponse(null, ct, etag, extra, true);
+        }
+        return imageResponse(cached.body, ct, etag, extra);
       }
     } catch {
       // fall through to live resolution
@@ -236,6 +267,12 @@ export async function handleIconProxy(request, env, url, options = {}) {
   // Worker UA); follow redirects (the aggregators 30x to their own CDNs); no
   // cf.cacheEverything (it forced caching of redirect/non-200 responses and broke
   // resolution) — successful icons are cached in R2 below.
+  //
+  // Track whether any source *transiently* failed (network error / timeout / abort,
+  // or a 5xx upstream) vs. a clean negative (4xx / non-image). An allowlisted host
+  // that only saw transient failures must be retried soon, so it gets the short
+  // negative-cache window; a clean negative is a stable "no" and keeps 24h.
+  let transient = false;
   for (const src of faviconSources(host, size)) {
     try {
       const controller = new AbortController();
@@ -245,7 +282,10 @@ export async function handleIconProxy(request, env, url, options = {}) {
         redirect: "follow",
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (res.status >= 500) transient = true; // upstream blip, not a real "no"
+        continue;
+      }
       const ct = res.headers.get("content-type") || "image/png";
       if (!ct.startsWith("image/")) {
         await res.body?.cancel?.();
@@ -262,10 +302,13 @@ export async function handleIconProxy(request, env, url, options = {}) {
           // caching is best-effort
         }
       }
-      return imageResponse(buf, ct, etag, { "x-icon-cache": "miss" });
+      return imageResponse(buf, ct, etag, { "x-icon-cache": "miss" }, isHead);
     } catch {
-      // try the next source
+      // A thrown fetch is a network error / timeout / abort — transient.
+      transient = true;
     }
   }
-  return notFound();
+  // Allowlisted host, every source failed: short window if it was transient (retry
+  // soon), full day if every source gave a clean negative.
+  return notFound(transient ? NEGATIVE_CACHE_TRANSIENT : NEGATIVE_CACHE_STABLE);
 }

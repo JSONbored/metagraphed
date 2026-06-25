@@ -12,6 +12,7 @@ import {
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -23,6 +24,7 @@ test("BLOCK_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "author",
     "extrinsic_count",
     "event_count",
+    "spec_version",
     "observed_at",
   ]);
 });
@@ -58,13 +60,13 @@ test("blockInsertStatements builds chunked parameterized INSERT OR IGNORE", () =
     observed_at: 1,
   }));
   const stmts = blockInsertStatements(db, rows);
-  // 30 rows / 14 per statement = 3 statements
+  // 30 rows / 12 per statement = 3 statements (12, 12, 6)
   assert.equal(stmts.length, 3);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO blocks ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (7 cols x 14 rows = 98 params on a full chunk).
-  assert.equal(stmts[0].v.length, 7 * 14);
-  // All seven columns appear in the column list.
+  // Every value is BOUND (8 cols x 12 rows = 96 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 8 * 12);
+  // All eight columns appear in the column list.
   for (const col of BLOCK_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -79,8 +81,8 @@ test("blockInsertStatements binds missing fields as null (never interpolates)", 
   const [stmt] = blockInsertStatements(db, [
     { block_number: 7, block_hash: "0x7", observed_at: 9 },
   ]);
-  // parent_hash, author, extrinsic_count, event_count default to null.
-  assert.deepEqual(stmt.v, [7, "0x7", null, null, null, null, 9]);
+  // parent_hash, author, extrinsic_count, event_count, spec_version default to null.
+  assert.deepEqual(stmt.v, [7, "0x7", null, null, null, null, null, 9]);
 });
 
 test("formatBlock maps a D1 row to an API block (ISO time)", () => {
@@ -91,12 +93,14 @@ test("formatBlock maps a D1 row to an API block (ISO time)", () => {
     author: "5Author",
     extrinsic_count: 4,
     event_count: 12,
+    spec_version: 201,
     observed_at: 1750000000000,
   });
   assert.equal(out.block_number, 1000);
   assert.equal(out.block_hash, "0xhash");
   assert.equal(out.author, "5Author");
   assert.equal(out.extrinsic_count, 4);
+  assert.equal(out.spec_version, 201);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
@@ -238,7 +242,7 @@ function req(path) {
 }
 
 // A D1 mock that routes by SQL shape so the block handlers get realistic rows.
-function dbWith({ feed, detail } = {}) {
+function dbWith({ feed, detail, neighbors } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
@@ -246,6 +250,9 @@ function dbWith({ feed, detail } = {}) {
           bind() {
             return {
               async all() {
+                // prev/next neighbor query (#1853): the MAX/MIN CASE aggregate.
+                if (/MAX\(CASE WHEN block_number </.test(sql))
+                  return { results: [neighbors || { prev: null, next: null }] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
                 if (/WHERE block_hash = \?|WHERE block_number = \?/.test(sql))
@@ -293,6 +300,55 @@ test("GET /blocks clamps limit to <=100 + rejects unsupported params", async () 
   assert.equal(bad.status, 400);
 });
 
+test("GET /blocks?cursor= seeks by keyset + emits next_cursor (#1851)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                // Return exactly `limit` rows so a next_cursor is emitted.
+                return {
+                  results: [
+                    { block_number: 150, block_hash: "0x150", observed_at: 1 },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(`/api/v1/blocks?limit=1&cursor=${encodeCursor([200])}`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  // Keyset seek (not OFFSET) and the cursor's block_number is bound.
+  assert.ok(/WHERE block_number < \?/.test(boundSql));
+  assert.ok(!/OFFSET/.test(boundSql));
+  assert.equal(boundParams[0], 200);
+  // A full page → next_cursor points past the last row (block 150).
+  assert.equal(body.data.next_cursor, encodeCursor([150]));
+});
+
+test("GET /blocks emits next_cursor:null when the page is not full (#1851)", async () => {
+  const env = dbWith({
+    feed: [{ block_number: 9, block_hash: "0x9", observed_at: 1 }],
+  });
+  const res = await handleRequest(req("/api/v1/blocks?limit=50"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.next_cursor, null);
+});
+
 test("GET /blocks/{number} returns detail by block_number (#1345)", async () => {
   const env = dbWith({
     detail: {
@@ -311,6 +367,28 @@ test("GET /blocks/{number} returns detail by block_number (#1345)", async () => 
   assert.equal(body.data.ref, "1234");
   assert.equal(body.data.block.block_number, 1234);
   assert.equal(body.data.block.block_hash, "0xabc");
+});
+
+test("GET /blocks/{ref} emits nearest stored prev/next neighbors (#1853)", async () => {
+  const env = dbWith({
+    detail: { block_number: 1234, block_hash: "0xabc", observed_at: 1 },
+    neighbors: { prev: 1230, next: 1240 }, // gaps skipped (pruned/missing)
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1234"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.prev_block_number, 1230);
+  assert.equal(body.data.next_block_number, 1240);
+});
+
+test("GET /blocks/{ref} nulls neighbors at a window edge (#1853)", async () => {
+  const env = dbWith({
+    detail: { block_number: 1, block_hash: "0x1", observed_at: 1 },
+    neighbors: { prev: null, next: 2 }, // oldest stored block: no prev
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.prev_block_number, null);
+  assert.equal(body.data.next_block_number, 2);
 });
 
 test("GET /blocks/{hash} resolves a 0x block_hash ref (#1345)", async () => {
@@ -335,6 +413,9 @@ test("GET /blocks/{ref} is schema-stable when cold (block:null, never 404)", asy
   const body = await res.json();
   assert.equal(body.data.ref, "777");
   assert.equal(body.data.block, null);
+  // No anchor when the block didn't resolve → neighbors null (#1853).
+  assert.equal(body.data.prev_block_number, null);
+  assert.equal(body.data.next_block_number, null);
 });
 
 test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
@@ -343,4 +424,81 @@ test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
   const body = await res.json();
   assert.equal(body.data.block_count, 0);
   assert.equal(Array.isArray(body.data.blocks), true);
+});
+
+test("GET /blocks/{number}/extrinsics returns the block's extrinsics (#1845)", async () => {
+  const env = dbWith({
+    feed: [
+      {
+        block_number: 1234,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "Timestamp",
+        call_function: "set",
+        success: 1,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req("/api/v1/blocks/1234/extrinsics"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "1234");
+  assert.equal(body.data.block_number, 1234);
+  assert.equal(body.data.extrinsic_count, 1);
+  assert.equal(body.data.extrinsics[0].call_function, "set");
+});
+
+test("GET /blocks/{hash}/extrinsics resolves the hash then lists extrinsics (#1845)", async () => {
+  const hash = `0x${"a".repeat(64)}`;
+  const env = dbWith({
+    detail: { block_number: 9 },
+    feed: [
+      {
+        block_number: 9,
+        extrinsic_index: 1,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/blocks/${hash}/extrinsics`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, hash);
+  assert.equal(body.data.block_number, 9);
+  assert.equal(body.data.extrinsics[0].extrinsic_index, 1);
+});
+
+test("GET /blocks/{hash}/extrinsics is schema-stable when the hash is unknown (#1845)", async () => {
+  const hash = `0x${"d".repeat(64)}`;
+  const res = await handleRequest(
+    req(`/api/v1/blocks/${hash}/extrinsics`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, hash);
+  assert.equal(body.data.block_number, null);
+  assert.equal(body.data.extrinsic_count, 0);
+  assert.equal(Array.isArray(body.data.extrinsics), true);
+});
+
+test("GET /blocks/{ref}/extrinsics rejects an unsupported query param (#1845)", async () => {
+  const res = await handleRequest(
+    req("/api/v1/blocks/1234/extrinsics?bogus=1"),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
 });

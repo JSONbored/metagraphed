@@ -110,6 +110,42 @@
       "schema_url": "https://api.oroagents.com/openapi.json",
       "source_urls": ["https://oroagents.com/"],
       "url": "https://api.oroagents.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-subnet-api",
+      "kind": "subnet-api",
+      "name": "ORO public leaderboard API",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://oroagents.com/",
+        "https://api.oroagents.com/openapi.json"
+      ],
+      "url": "https://api.oroagents.com/v1/public/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-data-artifact",
+      "kind": "data-artifact",
+      "name": "ORO top-miner snapshot",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://oroagents.com/",
+        "https://api.oroagents.com/openapi.json"
+      ],
+      "url": "https://api.oroagents.com/v1/public/top"
     }
   ],
   "website_url": "https://oroagents.com/"

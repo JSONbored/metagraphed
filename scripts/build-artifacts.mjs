@@ -18,6 +18,7 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   cleanDescription,
   deriveDescriptionFromNotes,
   deriveDomainTags,
@@ -100,6 +101,41 @@ const execFileAsync = promisify(execFile);
 const FRESHNESS_STALE_AFTER_DAYS =
   Number(process.env.METAGRAPH_FRESHNESS_STALE_AFTER_DAYS) || 7;
 const FRESHNESS_DEMOTION_FACTOR = 0.5;
+
+// #1757: the high-value interface/identity surface kinds the backend already
+// ranks gaps by (reviewPriorityScore weights these 12 pts each). Shared by the
+// gap-priority score and the per-gap-row `gap_severity` so the API exposes the
+// SAME weighting the review queue uses, instead of consumers inventing a
+// divergent `core>=1 && missing>=3` threshold. "Core" callable/integration kinds
+// (the ones that make a subnet agent-usable) drive the critical/warning split.
+const HIGH_VALUE_GAP_KINDS = [
+  "source-repo",
+  "docs",
+  "website",
+  "openapi",
+  "subnet-api",
+];
+const CORE_INTERFACE_GAP_KINDS = ["openapi", "subnet-api"];
+
+// Resolve a per-gap-row severity (critical/warning/info — the EndpointIncidentSeverity
+// vocabulary already in the contract) from the subnet's missing surface kinds,
+// using the existing high-value/core classification rather than a new scale.
+function gapRowSeverity(missingKinds) {
+  const missing = new Set(missingKinds || []);
+  const missingHighValue = HIGH_VALUE_GAP_KINDS.filter((kind) =>
+    missing.has(kind),
+  );
+  const missingCore = CORE_INTERFACE_GAP_KINDS.some((kind) =>
+    missing.has(kind),
+  );
+  if (missingCore && missingHighValue.length >= 3) {
+    return "critical";
+  }
+  if (missingHighValue.length >= 2) {
+    return "warning";
+  }
+  return "info";
+}
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -846,14 +882,29 @@ const curationIndex = mergedSubnets.map((subnet) => ({
   surface_count: subnet.surface_count,
 }));
 
-const gapsIndex = mergedSubnets.map((subnet) => ({
-  coverage_level: subnet.coverage_level,
-  curation_level: subnet.curation.level,
-  gaps: subnet.gaps,
-  name: subnet.name,
-  netuid: subnet.netuid,
-  slug: subnet.slug,
-}));
+const gapsIndex = mergedSubnets.map((subnet) => {
+  const missingKinds = subnet.gaps.missing_kinds || [];
+  return {
+    coverage_level: subnet.coverage_level,
+    curation_level: subnet.curation.level,
+    gaps: subnet.gaps,
+    // #1757: per-gap-row severity + priority derived from the EXISTING backend
+    // weighted model (the high-value identity/interface kinds reviewPriorityScore
+    // ranks + reviewPriorityScore itself), so consumers stop inventing a divergent
+    // `core>=1 && missing>=3` scale. severity uses the EndpointIncidentSeverity
+    // vocabulary (critical/warning/info) already in the contract; gap_priority is
+    // the same 0-100 priority_score the review/gap-priorities artifact exposes.
+    gap_severity: gapRowSeverity(missingKinds),
+    gap_priority: reviewPriorityScore(
+      subnet,
+      surfacesByNetuidForCounts.get(subnet.netuid) || [],
+      activeCandidatesByNetuid.get(subnet.netuid) || [],
+    ),
+    name: subnet.name,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+  };
+});
 
 // Generic hosting/social domains that must NOT form a shared-team cluster — a
 // github.com repo URL is not a shared team. Providers on these fall back to
@@ -3173,11 +3224,14 @@ const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+const manifestGeneratedAt =
+  (await readCommittedManifestGeneratedAt(artifactFile("r2-manifest.json"))) ??
+  generatedAt;
 await writeJson(
   artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
-    generatedAt,
+    generatedAt: manifestGeneratedAt,
   }),
 );
 
@@ -6782,7 +6836,7 @@ async function walkIfExists(dirPath, onFile) {
 function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
   const missingKinds = subnet.gaps.missing_kinds || [];
   const highValueMissing = missingKinds.filter((kind) =>
-    ["source-repo", "docs", "website", "openapi", "subnet-api"].includes(kind),
+    HIGH_VALUE_GAP_KINDS.includes(kind),
   );
   const adapterBonus =
     surfacesForSubnet.filter((surface) =>

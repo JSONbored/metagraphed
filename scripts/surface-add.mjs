@@ -3,7 +3,7 @@
 // model that replaces the per-candidate-file lane (registry/candidates/community).
 // The surface lands with authority:"community" + review.state:"community-submitted";
 // the Gittensory Gate / maintainer review promotes it in place, and the build's
-// prober owns verification/health. See .claude/skills/contributing-to-metagraphed.
+// prober owns verification/health. See .claude/skills/metagraphed.
 //
 //   npm run surface:add -- --netuid 7 --kind docs \
 //     --url https://docs.example.com \
@@ -12,7 +12,7 @@
 //
 // Debut provider (slug not registered yet)? Add --provider-name "<Team>" and
 // --provider-url <https://public-site> and surface:add also scaffolds
-// registry/providers/community/<slug>.json so the PR validates in one shot.
+// registry/providers/<slug>.json so the PR validates in one shot.
 import path from "node:path";
 import {
   isJsonContentType,
@@ -29,7 +29,7 @@ import {
   stableStringify,
   writeRepositoryJson,
 } from "./lib.mjs";
-import { normalizeGitHubLogin } from "./submission-policy.mjs";
+import { normalizeGitHubLogin } from "./registry-identity.mjs";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");

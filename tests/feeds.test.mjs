@@ -76,12 +76,15 @@ function makeReadArtifact(fixtures) {
     );
 }
 
-async function feed(pathname, { accept, deps, method = "GET" } = {}) {
+async function feed(
+  pathname,
+  { accept, deps, method = "GET", ifNoneMatch } = {},
+) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
-  const request = new Request(url, {
-    method,
-    headers: accept ? { accept } : {},
-  });
+  const headers = {};
+  if (accept) headers.accept = accept;
+  if (ifNoneMatch) headers["if-none-match"] = ifNoneMatch;
+  const request = new Request(url, { method, headers });
   const readArtifact =
     deps ||
     makeReadArtifact({
@@ -419,6 +422,110 @@ describe("feeds — handleFeedRequest", () => {
     const taggedItems = JSON.parse(tagged.text).items.length;
     // Every registry item carries the "registry" tag, so the two match.
     assert.equal(taggedItems, allItems);
+  });
+});
+
+describe("feeds — ETag + conditional requests", () => {
+  // Every feed kind × format emits a weak ETag and honors a matching
+  // If-None-Match with a bodyless 304 carrying the same validators.
+  for (const kind of ["registry", "incidents", "subnets/7"]) {
+    for (const ext of ["", ".rss", ".atom", ".json"]) {
+      test(`${kind}${ext} emits an ETag and 304s on a matching If-None-Match`, async () => {
+        const path = `/api/v1/feeds/${kind}${ext}`;
+        const first = await feed(path);
+        assert.equal(first.res.status, 200);
+        const etag = first.res.headers.get("etag");
+        assert.match(etag, /^W\/"[0-9a-f]+"$/, "a weak ETag is emitted");
+
+        const second = await feed(path, { ifNoneMatch: etag });
+        assert.equal(second.res.status, 304);
+        assert.equal(second.text, "", "a 304 carries no body");
+        assert.equal(
+          second.res.headers.get("etag"),
+          etag,
+          "the 304 echoes the validator",
+        );
+        assert.match(
+          second.res.headers.get("cache-control"),
+          /max-age=600/,
+          "the 304 carries the same cache-control",
+        );
+      });
+    }
+  }
+
+  test("the ETag is stable across identical requests", async () => {
+    const a = await feed("/api/v1/feeds/registry");
+    const b = await feed("/api/v1/feeds/registry");
+    assert.equal(a.res.headers.get("etag"), b.res.headers.get("etag"));
+  });
+
+  test("the ETag differs across formats and feed kinds", async () => {
+    const rss = await feed("/api/v1/feeds/registry.rss");
+    const atom = await feed("/api/v1/feeds/registry.atom");
+    const incidents = await feed("/api/v1/feeds/incidents.rss");
+    assert.notEqual(
+      rss.res.headers.get("etag"),
+      atom.res.headers.get("etag"),
+      "rss and atom render differently → different ETag",
+    );
+    assert.notEqual(
+      rss.res.headers.get("etag"),
+      incidents.res.headers.get("etag"),
+      "different feed kinds → different ETag",
+    );
+  });
+
+  test("a stale If-None-Match still gets a full 200 body", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry", {
+      ifNoneMatch: 'W/"stale"',
+    });
+    assert.equal(res.status, 200);
+    assert.ok(text.length > 0);
+    assert.ok(res.headers.get("etag"));
+  });
+
+  test("a tag-filtered feed has its own ETag and 304s on a match", async () => {
+    const path = "/api/v1/feeds/registry?tag=coverage";
+    const unfiltered = await feed("/api/v1/feeds/registry");
+    const filtered = await feed(path);
+    assert.notEqual(
+      filtered.res.headers.get("etag"),
+      unfiltered.res.headers.get("etag"),
+      "the tag filter changes the body → a distinct ETag",
+    );
+    const revalidate = await feed(path, {
+      ifNoneMatch: filtered.res.headers.get("etag"),
+    });
+    assert.equal(revalidate.res.status, 304);
+  });
+
+  test("HEAD emits the ETag and honors a conditional 304", async () => {
+    const head = await feed("/api/v1/feeds/registry", { method: "HEAD" });
+    assert.equal(head.res.status, 200);
+    const etag = head.res.headers.get("etag");
+    assert.ok(etag);
+    const revalidate = await feed("/api/v1/feeds/registry", {
+      method: "HEAD",
+      ifNoneMatch: etag,
+    });
+    assert.equal(revalidate.res.status, 304);
+    assert.equal(revalidate.text, "");
+  });
+
+  test("If-None-Match: * always 304s a present feed", async () => {
+    const { res } = await feed("/api/v1/feeds/registry", { ifNoneMatch: "*" });
+    assert.equal(res.status, 304);
+  });
+
+  test("weak/strong validators compare equal (RFC 7232 weak comparison)", async () => {
+    const { res } = await feed("/api/v1/feeds/registry");
+    const weak = res.headers.get("etag"); // W/"…"
+    const strong = weak.replace(/^W\//, ""); // "…"
+    const revalidate = await feed("/api/v1/feeds/registry", {
+      ifNoneMatch: strong,
+    });
+    assert.equal(revalidate.res.status, 304);
   });
 });
 

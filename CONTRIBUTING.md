@@ -41,7 +41,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR (or run `npm run provider:new`); provider identity still gets reviewed before it's trusted.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR; provider identity still gets reviewed before it's trusted.
 
 Add a surface locally — three steps:
 
@@ -97,8 +97,8 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 
 ## Deeper docs
 
-- [`docs/submission-gate.md`](docs/submission-gate.md) — full community submission contract.
 - [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
 - [`docs/api-stability.md`](docs/api-stability.md) — API/contract stability guarantees.
+- [`docs/adr/`](docs/adr/) — architecture decision records (why the system is built this way); [`RELEASING.md`](RELEASING.md) — the release runbook.
 
 By contributing you agree your work is released under the repository's [AGPL-3.0 License](LICENSE) — or Apache-2.0 for contributions to the client SDKs under `packages/client/` and `python/`.

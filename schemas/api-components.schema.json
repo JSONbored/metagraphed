@@ -4,9 +4,143 @@
   "additionalProperties": false,
   "components": {
     "schemas": {
+      "AccountActivity": {
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Hot-window aggregates (retention-bounded), not all-time. tx_count is the count of extrinsics this account signed; modules_called is the top call_modules by frequency.",
+        "properties": {
+          "last_tx_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_tx_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "modules_called": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "call_module": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "call_module",
+                "count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_fee_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tx_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tx_count",
+          "modules_called"
+        ],
+        "type": "object"
+      },
+      "AccountBalanceArtifact": {
+        "additionalProperties": true,
+        "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
+        "properties": {
+          "balance_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58"
+        ],
+        "type": "object"
+      },
+      "AccountDay": {
+        "additionalProperties": true,
+        "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "type": "object"
+      },
       "AccountEvent": {
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "properties": {
           "amount_tao": {
             "type": [
@@ -35,6 +169,12 @@
           "event_kind": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
               "null"
             ]
           },
@@ -105,6 +245,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -120,6 +266,76 @@
           "ss58",
           "event_count",
           "events"
+        ],
+        "type": "object"
+      },
+      "AccountExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
+      "AccountHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Durable per-day activity series for one account (#1854), newest day first, from the hotkey-keyed account_events_daily rollup. NOTE: the rollup writes only hotkey-attributed rows, so an ss58 with no hotkey activity returns zero days even when /events (which matches the hotkey or coldkey) shows activity. ?netuid / ?from / ?to narrow the series. Served live at /api/v1/accounts/{ss58}/history (no static file).",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/AccountDay"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "day_count",
+          "days"
         ],
         "type": "object"
       },
@@ -188,6 +404,9 @@
         "additionalProperties": true,
         "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
         "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/AccountActivity"
+          },
           "event_count": {
             "minimum": 0,
             "type": "integer"
@@ -252,6 +471,97 @@
           "ss58",
           "event_count",
           "registrations"
+        ],
+        "type": "object"
+      },
+      "AccountTransfersArtifact": {
+        "additionalProperties": true,
+        "description": "The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file).",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "transfers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "amount_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "block_number": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "direction": {
+                  "enum": [
+                    "sent",
+                    "received",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "event_index": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "from": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "observed_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "from",
+                "to"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "transfer_count",
+          "transfers"
         ],
         "type": "object"
       },
@@ -1223,7 +1533,7 @@
       },
       "Block": {
         "additionalProperties": false,
-        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); observed_at is the block time.",
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
         "properties": {
           "author": {
             "type": [
@@ -1267,6 +1577,12 @@
               "string",
               "null"
             ]
+          },
+          "spec_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1276,7 +1592,7 @@
       },
       "BlockDetailArtifact": {
         "additionalProperties": true,
-        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file).",
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null).",
         "properties": {
           "block": {
             "oneOf": [
@@ -1286,6 +1602,18 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "next_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "prev_block_number": {
+            "type": [
+              "integer",
+              "null"
             ]
           },
           "ref": {
@@ -1301,6 +1629,94 @@
         "required": [
           "schema_version",
           "block"
+        ],
+        "type": "object"
+      },
+      "BlockEventsArtifact": {
+        "additionalProperties": true,
+        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "BlockExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "extrinsic_count",
+          "extrinsics"
         ],
         "type": "object"
       },
@@ -1321,6 +1737,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -1957,8 +2379,7 @@
           },
           "subnets": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/CompareSubnetEntry"
             },
             "type": "array"
           }
@@ -1967,6 +2388,140 @@
           "schema_version",
           "source",
           "subnets"
+        ],
+        "type": "object"
+      },
+      "CompareSubnetEntry": {
+        "additionalProperties": false,
+        "description": "One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row.",
+        "properties": {
+          "economics": {
+            "additionalProperties": false,
+            "properties": {
+              "alpha_price_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "emission_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "miner_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_readiness": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "open_slots": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "registration_allowed": {
+                "type": "boolean"
+              },
+              "registration_cost_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_stake_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validator_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "health": {
+            "additionalProperties": false,
+            "properties": {
+              "avg_latency_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ok_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "structure": {
+            "additionalProperties": false,
+            "properties": {
+              "completeness_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "operational_interface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "found"
         ],
         "type": "object"
       },
@@ -3549,11 +4104,18 @@
       },
       "Extrinsic": {
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "properties": {
           "block_number": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "call_args": {
+            "type": [
+              "object",
+              "array",
               "null"
             ]
           },
@@ -3578,6 +4140,12 @@
           "extrinsic_index": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "fee_tao": {
+            "type": [
+              "number",
               "null"
             ]
           },
@@ -3609,8 +4177,14 @@
       },
       "ExtrinsicDetailArtifact": {
         "additionalProperties": true,
-        "description": "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file).",
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
         "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
           "extrinsic": {
             "oneOf": [
               {
@@ -3654,6 +4228,12 @@
           "limit": {
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -4077,6 +4657,19 @@
           },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
+          },
+          "gap_priority": {
+            "description": "0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gap_severity": {
+            "description": "Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.",
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ]
           },
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
@@ -6004,10 +6597,6 @@
       "R2ManifestEntry": {
         "additionalProperties": false,
         "properties": {
-          "content_sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
           "content_type": {
             "type": "string"
           },
@@ -9627,6 +10216,41 @@
           }
         ]
       },
+      "SubnetEventsArtifact": {
+        "additionalProperties": true,
+        "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
+        "properties": {
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "netuid": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
+      },
       "SubnetEvidenceArtifact": {
         "$ref": "#/components/schemas/EvidenceLedgerArtifact"
       },
@@ -11241,6 +11865,14 @@
           },
           "classification": {
             "$ref": "#/components/schemas/Classification"
+          },
+          "curation_level": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurationLevel"
+              }
+            ],
+            "description": "Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling."
           },
           "id": {
             "type": "string"
