@@ -26,7 +26,7 @@ export function formatFreshnessAbsolute(updatedAt?: string | null): string | nul
   return t.toLocaleString();
 }
 
-function relative(diffMs: number): string {
+export function relative(diffMs: number): string {
   const sec = Math.max(0, Math.round(diffMs / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);

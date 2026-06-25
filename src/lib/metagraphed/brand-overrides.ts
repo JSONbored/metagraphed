@@ -54,7 +54,7 @@ export const ICON_PROXY_URL: string | null =
 
 const BLOCKED_PROXY_TLDS = new Set(["localhost", "local", "internal"]);
 
-function isIpLiteral(host: string): boolean {
+export function isIpLiteral(host: string): boolean {
   if (host.startsWith("[") && host.endsWith("]")) return true;
   if (host.includes(":")) return true;
   const parts = host.split(".");

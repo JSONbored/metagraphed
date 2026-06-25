@@ -28,7 +28,7 @@ let cached: string | null = null;
  * executable URL — this is the taint barrier for CodeQL js/xss-through-dom
  * (the base is read from localStorage and rendered as a link in the footer).
  */
-function sanitizeApiBase(value: string | null | undefined): string | null {
+export function sanitizeApiBase(value: string | null | undefined): string | null {
   if (!value) return null;
   const trimmed = value.trim().replace(/\/$/, "");
   // Scheme allowlist on the value that actually flows downstream — only an
