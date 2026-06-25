@@ -327,22 +327,35 @@ def _extrinsic_signer(value):
         return None
 
 
+def _safe_json(v):
+    """Best-effort JSON serialization of a decoded call_args value.
+    Returns None if the value cannot be serialized (e.g. contains non-JSON
+    substrate objects). NEVER raises."""
+    try:
+        return json.dumps(v, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _extrinsic_call(value):
-    """Best-effort (call_module, call_function) from a decoded extrinsic, else
-    (None, None). The serialized `call` carries string names; null on shape drift.
-    NEVER raises."""
+    """Best-effort (call_module, call_function, call_args_json) from a decoded
+    extrinsic, else (None, None, None). call_args_json is a compact JSON string
+    of the decoded arguments or None on shape drift/non-serializable. NEVER raises.
+    """
     try:
         call = value.get("call") if isinstance(value, dict) else None
         if not isinstance(call, dict):
-            return (None, None)
+            return (None, None, None)
         cm = call.get("call_module")
         cf = call.get("call_function")
+        ca = call.get("call_args")
         return (
             cm if isinstance(cm, str) else None,
             cf if isinstance(cf, str) else None,
+            _safe_json(ca) if ca is not None else None,
         )
     except Exception:
-        return (None, None)
+        return (None, None, None)
 
 
 def _extrinsic_success_map(events):
@@ -402,7 +415,7 @@ def extrinsics_for_block(s, bn, bh, events):
             if not isinstance(value, dict):
                 continue  # an undecodable extrinsic — skip this row only
             xhash = value.get("extrinsic_hash")
-            call_module, call_function = _extrinsic_call(value)
+            call_module, call_function, call_args = _extrinsic_call(value)
             rows.append(
                 {
                     "block_number": bn,
@@ -411,6 +424,7 @@ def extrinsics_for_block(s, bn, bh, events):
                     "signer": _extrinsic_signer(value),
                     "call_module": call_module,
                     "call_function": call_function,
+                    "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
                 }
             )
