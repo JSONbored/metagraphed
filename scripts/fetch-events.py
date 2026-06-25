@@ -244,12 +244,15 @@ def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, h
     return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
 
 
-def _take_changed(a):  # TakeDecreased/TakeIncreased: {hotkey, coldkey, ...} or [hotkey, coldkey, ...]
+def _take_changed(a):  # TakeDecreased/TakeIncreased: {coldkey, hotkey, take} or [coldkey, hotkey, take]
+    # Subtensor emits these coldkey-first: Event::TakeIncreased(coldkey, hotkey, take)
+    # / TakeDecreased(coldkey, hotkey, take). The variants are positional tuples, so
+    # the list branch must read a[0]=coldkey, a[1]=hotkey (same order as DelegateAdded).
     if isinstance(a, dict):
-        hk, ck = a.get("hotkey"), a.get("coldkey")
+        ck, hk = a.get("coldkey"), a.get("hotkey")
     else:
-        hk = a[0] if len(a) > 0 else None
-        ck = a[1] if len(a) > 1 else None
+        ck = a[0] if len(a) > 0 else None
+        hk = a[1] if len(a) > 1 else None
     return {"hotkey": _ss58(hk), "coldkey": _ss58(ck)}
 
 

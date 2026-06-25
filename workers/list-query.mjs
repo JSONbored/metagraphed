@@ -148,18 +148,25 @@ function searchRows(rows, params, keys) {
   if (!q || keys.length === 0) {
     return rows;
   }
-  const needle = q.toLowerCase();
-  return rows.filter((row) =>
-    keys
+  const terms = q
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => term.toLowerCase());
+  if (terms.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) => {
+    const haystack = keys
       .flatMap((key) => {
         const value = row[key];
         return Array.isArray(value) ? value : [value];
       })
       .filter(Boolean)
       .join(" ")
-      .toLowerCase()
-      .includes(needle),
-  );
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
 }
 
 function sortRows(rows, params) {
@@ -168,7 +175,24 @@ function sortRows(rows, params) {
     return rows;
   }
   const direction = params.get("order") === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => compareValues(a[key], b[key]) * direction);
+  // Keep rows that are missing the sort field (null / undefined) out of the
+  // ordered comparison and append them after the sorted rows, so incomplete
+  // rows always sink to the end regardless of direction. Otherwise an absent
+  // value coerces to "" and sorts *first* in ascending order, putting the least
+  // complete rows at the top of the list — and flips to the end on desc, so the
+  // same gap shuffles position just by toggling order.
+  const present = [];
+  const missing = [];
+  for (const row of rows) {
+    const value = row == null ? undefined : row[key];
+    if (value === null || value === undefined) {
+      missing.push(row);
+    } else {
+      present.push(row);
+    }
+  }
+  present.sort((a, b) => compareValues(a[key], b[key]) * direction);
+  return [...present, ...missing];
 }
 
 function compareValues(a, b) {
@@ -279,6 +303,19 @@ function validateListQuery(params, config) {
           message: `${key} must be a number.`,
         };
       }
+    }
+    const minKey = `min_${field}`;
+    const maxKey = `max_${field}`;
+    if (!params.has(minKey) || !params.has(maxKey)) {
+      continue;
+    }
+    const minValue = numberParam(params.get(minKey));
+    const maxValue = numberParam(params.get(maxKey));
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      return {
+        parameter: minKey,
+        message: `${minKey} must not be greater than ${maxKey}.`,
+      };
     }
   }
 
