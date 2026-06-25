@@ -116,18 +116,18 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 
 ## 4. npm scripts you'll actually use
 
-| Need                                      | Command                                                                                                                                                                                                                    |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                    |
-| List / register providers                 | `npm run providers:list` (debut a new provider via `surface:add --provider-name`)                                                                                                                                          |
-| Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` and it scaffolds the provider stub too              |
-| Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                       |
-| Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                 |
-| Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                               |
-| Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                            |
-| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows` |
-| Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                       |
-| Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                   |
+| Need                                      | Command                                                                                                                                                                                                                                                     |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                                                     |
+| List / register providers                 | `npm run providers:list` (debut a new provider via `surface:add --provider-name`)                                                                                                                                                                           |
+| Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` (the `website_url`, **must be a public URL**) and it scaffolds the provider stub too |
+| Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                                                        |
+| Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                                                  |
+| Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                |
+| Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                             |
+| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows`                                  |
+| Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                        |
+| Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                    |
 
 > `surface:add`, `subnet:new`, and `validate:surface` are the single-file-model commands. They fully
 > replaced the retired `candidate:new` / `validate:candidate` intake lane — and `surface:add`
@@ -180,6 +180,8 @@ local paths, env dumps, or private notes.
 - Hand-set health/uptime/`verification` (probe-derived only).
 - UI/frontend changes (those belong in metagraphed-ui).
 - Editing the contract by hand without `npm run build` (contract-drift), or stale committed artifacts.
+- Committing generated artifacts — `public/datasets/*` or any `public/metagraph/*` outside the reviewed
+  contract (regenerated on build/deploy; `ci-verify-submitted-artifacts` rejects them).
 
 ---
 
