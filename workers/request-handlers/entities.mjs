@@ -55,6 +55,7 @@ import {
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
+  buildAccountExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
@@ -305,6 +306,36 @@ export async function handleAccountEvents(request, env, ss58, url) {
         env,
         `/metagraph/accounts/${ss58}/events.json`,
         data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/extrinsics: the extrinsics this account SIGNED
+// (newest first), from the extrinsics D1 tier (#1844). Matched by the extrinsic
+// signer only — NOT the hotkey or coldkey union the account_events routes use,
+// since `extrinsics` carries a single `signer` column. ?limit (<=1000) / ?offset.
+// Cold/absent store → schema-stable zero (never 404).
+export async function handleAccountExtrinsics(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const rows = await d1All(
+    env,
+    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
+    [ss58, limit, offset],
+  );
+  const data = buildAccountExtrinsics(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/extrinsics.json`,
+        data.extrinsics[0]?.observed_at ?? null,
       ),
     },
     "short",

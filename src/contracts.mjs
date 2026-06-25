@@ -948,6 +948,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "AccountExtrinsicsArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -1663,6 +1669,20 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-extrinsics",
+    "GET",
+    "/api/v1/accounts/{ss58}/extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],

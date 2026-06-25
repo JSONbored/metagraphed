@@ -62,6 +62,7 @@ import {
   handleAccount,
   handleAccountBalance,
   handleAccountEvents,
+  handleAccountExtrinsics,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
@@ -174,6 +175,7 @@ import {
 import {
   ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
@@ -1177,6 +1179,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (accountSubnetsMatch) {
       return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
+    }
+    const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountExtrinsicsMatch) {
+      return handleAccountExtrinsics(
+        request,
+        env,
+        accountExtrinsicsMatch[1],
+        resolved.url,
+      );
     }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,

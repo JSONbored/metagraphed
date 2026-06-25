@@ -153,6 +153,41 @@
         ],
         "type": "object"
       },
+      "AccountExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
       "AccountRegistration": {
         "additionalProperties": false,
         "description": "A subnet where this account's hotkey is currently registered (#1347), from the neurons D1 tier.",

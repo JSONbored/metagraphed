@@ -146,3 +146,20 @@ export function buildExtrinsicFeed(rows, { limit, offset } = {}) {
     extrinsics,
   };
 }
+
+// Per-account signed-extrinsic feed artifact (#1844, newest first). The account's
+// extrinsics are matched by the extrinsic SIGNER only, NOT the hotkey or coldkey
+// union the account_events routes use — `extrinsics` carries a single `signer`
+// column. extrinsic_count is the PAGE count (matches the feed + account-events
+// convention), not a grand total. Null-safe on a cold store.
+export function buildAccountExtrinsics(rows, ss58, { limit, offset } = {}) {
+  const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
+  return {
+    schema_version: 1,
+    ss58,
+    extrinsic_count: extrinsics.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    extrinsics,
+  };
+}

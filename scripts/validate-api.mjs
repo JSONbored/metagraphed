@@ -138,6 +138,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
     (body) => {
       assert.equal(Array.isArray(body.data.subnets), true);

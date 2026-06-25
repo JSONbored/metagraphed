@@ -87,6 +87,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/subnets/{netuid}/history.json`: schema for a subnet's per-day metagraph history (one snapshot/day) served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/history` (no static file).
 - `/metagraph/accounts/{ss58}.json`: schema for a cross-subnet account summary (chain-event aggregates joined to current registrations), served live from the `account_events` + `neurons` D1 tiers at `GET /api/v1/accounts/{ss58}` (no static file).
 - `/metagraph/accounts/{ss58}/events.json`: schema for an account's paginated chain-event history, served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/events` (no static file).
+- `/metagraph/accounts/{ss58}/extrinsics.json`: schema for the extrinsics an account signed (by signer), served live from the `extrinsics` D1 tier at `GET /api/v1/accounts/{ss58}/extrinsics` (no static file).
 - `/metagraph/accounts/{ss58}/subnets.json`: schema for the subnets where an account's hotkey is currently registered, served live from the `neurons` D1 tier at `GET /api/v1/accounts/{ss58}/subnets` (no static file).
 - `/metagraph/accounts/{ss58}/balance.json`: schema for an account's live TAO balance (free + reserved), queried from the finney RPC at request time with a 60s KV cache, served at `GET /api/v1/accounts/{ss58}/balance` (no static file).
 - `/metagraph/blocks.json`: schema for the recent-block feed (newest first) of the block explorer, served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks` (no static file).
@@ -139,6 +140,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}/history`: fetch a subnet's per-day metagraph history over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
 - `/api/v1/accounts/{ss58}`: fetch a cross-subnet account summary (chain-event aggregates joined to current registrations + stake) for a hotkey or coldkey (live from the `account_events` + `neurons` D1 tiers).
 - `/api/v1/accounts/{ss58}/events`: fetch an account's paginated chain-event history, newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
+- `/api/v1/accounts/{ss58}/extrinsics`: fetch the extrinsics an account signed (matched by signer), newest first; `?limit` (<=1000) / `?offset` (live from the `extrinsics` D1 tier).
 - `/api/v1/accounts/{ss58}/subnets`: fetch the subnets where an account's hotkey is currently registered (live from the `neurons` D1 tier).
 - `/api/v1/accounts/{ss58}/balance`: fetch an account's live TAO balance (free + reserved, in TAO), queried from the finney RPC at request time with a 60s KV cache; `balance_tao` is null on RPC failure.
 - `/api/v1/blocks`: fetch the recent-block feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` (live from the first-party `blocks` D1 tier).
