@@ -1789,6 +1789,22 @@ export function registrableHostDomain(hostname) {
   );
 }
 
+// Same-site check for candidate discovery (#1910): exact hostname match or the
+// same registrable host (honors multi-label public suffixes via registrableHostDomain).
+export function isLikelyProjectDomain(baseUrl, candidateUrl) {
+  try {
+    const base = new URL(baseUrl);
+    const candidate = new URL(candidateUrl);
+    return (
+      candidate.hostname === base.hostname ||
+      registrableHostDomain(candidate.hostname) ===
+        registrableHostDomain(base.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
 // project's registrable domain so the OpenAPI spec sweep reaches APIs that live
 // on api.<domain> (or docs.<domain>) rather than the marketing root — the

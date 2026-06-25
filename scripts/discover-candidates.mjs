@@ -15,7 +15,7 @@ import {
   OPENAPI_PROBE_PATHS,
   probeOpenApiSpec,
   readJson,
-  registrableHostDomain,
+  isLikelyProjectDomain,
   README_KIND_LIMITS,
   README_LINK_LIMIT,
   repoRoot,
@@ -1438,20 +1438,6 @@ function classifyDiscoveredLink(url, label, baseUrl) {
     return { kind: "website", label: "website page" };
   }
   return null;
-}
-
-function isLikelyProjectDomain(baseUrl, candidateUrl) {
-  try {
-    const base = new URL(baseUrl);
-    const candidate = new URL(candidateUrl);
-    return (
-      candidate.hostname === base.hostname ||
-      registrableHostDomain(candidate.hostname) ===
-        registrableHostDomain(base.hostname)
-    );
-  } catch {
-    return false;
-  }
 }
 
 function isGenericHost(hostname) {
