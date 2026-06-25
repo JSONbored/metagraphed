@@ -9,22 +9,24 @@ Worker's loadStagedEvents bulk-loads it into D1 with INSERT OR IGNORE keyed
 (block_number, event_index) — idempotent, so an overlapping window re-inserts
 harmlessly.
 
-Recent-window scan (BOOTSTRAP tier — ADR 0012): each run re-scans a fixed
-`head - EVENTS_WINDOW + 1 .. head`. compute_from_block clamps to that window floor
-and does NOT chase the cursor (see its docstring + the tests for why). The
-EVENTS_CURSOR the workflow reads from R2 is retained for lag/health accounting
-only (see _emit_lag_alert) — NOT for gap recovery. After a successful stage the
-workflow advances the cursor to `events-cursor.json` (the max block scanned this
-run, written below).
+Recent-window scan + cursor-driven gap recovery (ADR 0012): each run scans
+`compute_from_block(cursor, head, window, max_lookback) .. head` — the overlap
+window floor `head - EVENTS_WINDOW + 1` (always re-scanned; idempotent), extended
+back to `cursor + 1` when the scheduler coalesced runs for longer than the window,
+so the gap since the last staged block is recovered (bounded by
+EVENTS_MAX_LOOKBACK). After a successful stage the workflow advances the cursor to
+`events-cursor.json`.
 
-LIMITATION — this is a best-effort live-forward tier, not complete history. When
-GitHub's scheduler coalesces/drops runs for longer than ~EVENTS_WINDOW blocks
-(observed: the */5 cron collapses to ~1.5-4.5h), blocks produced between runs but
-older than the window are never fetched, and public nodes prune them (~300 blocks)
-before any later run could reach them — so they are permanently lost (measured:
-~58% of the block range). Gap-free, complete ingestion is the self-hosted
-continuous indexer against an archive node (ADR 0012 / #1349); this poller is the
-bootstrap for it.
+SOURCE MATTERS — completeness depends on whether old blocks are still fetchable:
+  - PUBLIC RPC (the $0 bootstrap): nodes prune state at ~300 blocks AND GitHub
+    coalesces the */5 cron to ~1.5-4.5h, so gaps wider than the prune horizon are
+    gone before a later run reaches them. EVENTS_MAX_LOOKBACK defaults to the prune
+    horizon (no point scanning past it). This tier is best-effort and lossy by
+    construction (measured: ~58% of the block range).
+  - ARCHIVE node (ADR 0012 / #1349 — the durable target): retains every block, so
+    pointing EVENTS_RPC_URL at it and raising EVENTS_MAX_LOOKBACK makes the cursor
+    recovery COMPLETE — any coalescing gap is back-filled in full. The continuous
+    indexer is the eventual low-latency end state.
 
 Run:  uv run --with substrate-interface python scripts/fetch-events.py
 Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
@@ -90,6 +92,12 @@ EXTRINSICS_OUT = os.environ.get("EXTRINSICS_JSON", "dist/extrinsics.json")
 # head, the poller is losing the race against pruning and blocks between the prune
 # horizon and the cursor can no longer be re-fetched. Surfaced as a workflow alert.
 PRUNE_HORIZON = int(os.environ.get("EVENTS_PRUNE_HORIZON", "300"))
+# Upper bound on cursor-driven gap recovery: one run never scans more than this
+# many blocks back from the head. Default = PRUNE_HORIZON — against PUBLIC RPC there
+# is no point reaching past the prune wall (those blocks are gone). Against an
+# ARCHIVE node (ADR 0012) set EVENTS_MAX_LOOKBACK high so a long scheduler gap is
+# recovered in full; the archive still holds every block.
+MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
 
 
 def _parse_cursor(raw):
@@ -110,21 +118,34 @@ def _parse_cursor(raw):
     return n if n >= 0 else None
 
 
-def compute_from_block(cursor, head, window):
+def compute_from_block(cursor, head, window, max_lookback=PRUNE_HORIZON):
     """First block to scan this run — the testable core of the cursor logic.
 
-    Always re-scan the bounded overlap window: `head - window + 1`, clamped to
-    >= 0. The workflow stages events to R2 and the Worker imports that pending
-    object into D1 asynchronously, so a promoted cursor only proves that a range
-    was staged, not that it was durably loaded. Re-scanning the overlap every run
-    lets a later run recreate a recent staged batch if the single pending R2
-    object was overwritten before the Worker drained it; D1 uses idempotent
-    inserts, so duplicated overlap rows are harmless.
+    Returns the EARLIER of the overlap floor and `cursor + 1`, bounded below by the
+    lookback limit:
 
-    The cursor is still useful for lag/health accounting, but it must not move
-    the start block ahead of the overlap floor.
+      - **Overlap floor** `head - window + 1` is ALWAYS re-scanned. The workflow
+        stages events to R2 and the Worker imports that pending object into D1
+        asynchronously, so a promoted cursor only proves a range was staged, not
+        durably loaded; re-scanning the overlap lets a later run recreate a recent
+        staged batch if the single pending R2 object was overwritten before the
+        Worker drained it (D1 inserts are idempotent, so the duplicate is harmless).
+      - **`cursor + 1`** extends the scan back when the scheduler coalesced/dropped
+        runs for longer than the window, so the GAP since the last staged block is
+        recovered instead of silently lost. (Start never moves *ahead* of the
+        overlap floor — `min` keeps the overlap re-scan intact.)
+      - **`head - max_lookback`** bounds how far back one run reaches. Default is
+        the prune horizon: against PUBLIC RPC there is no point scanning past the
+        prune wall (those blocks are gone). Against an ARCHIVE node (ADR 0012) raise
+        EVENTS_MAX_LOOKBACK so a long coalescing gap is recovered in full.
+
+    Cold cursor (None) → just the overlap floor.
     """
-    return max(0, head - window + 1)
+    floor = max(0, head - window + 1)
+    if cursor is None:
+        return floor
+    earliest = max(0, head - max_lookback)
+    return max(earliest, min(floor, cursor + 1))
 
 
 def _ss58(v):
@@ -433,7 +454,7 @@ def main():
             "finalized head timestamp is required for account_events"
         ) from e
     cursor = _parse_cursor(os.environ.get("EVENTS_CURSOR"))
-    start = compute_from_block(cursor, head_bn, WINDOW)
+    start = compute_from_block(cursor, head_bn, WINDOW, MAX_LOOKBACK)
     _emit_lag_alert(head_bn, cursor)
 
     rows = []

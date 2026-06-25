@@ -18,7 +18,7 @@ change.
 | [0009](0009-autonomous-review-gate.md)      | Autonomous contributor review gate (the Gittensory Gate)                                                                | Accepted · in use                                                                                                |
 | [0010](0010-chain-direct-block-explorer.md) | Chain-direct block explorer + first-party event indexer                                                                 | Accepted (partial) · ingestion/serving shipped, deep history pending infra                                       |
 | [0011](0011-retire-submission-preflight.md) | Retire the metagraphed-side submission preflight (the gate is external; `validate-surface`/`validate-intake` own shape) | Accepted · implemented                                                                                           |
-| [0012](0012-chain-data-ingestion.md)        | Chain-data ingestion — bootstrap poller → self-hosted archive indexer (gap-free, prune-proof)                           | Proposed · bootstrap loses ~58% to cron-coalescing + RPC pruning; durable fix is infra                           |
+| [0012](0012-chain-data-ingestion.md)        | Chain-data ingestion — bootstrap poller → self-hosted archive indexer (gap-free, prune-proof)                           | Accepted · poller made archive-ready (cursor recovery); continuous indexer is the end state                      |
 
 ## Keeping these current
 

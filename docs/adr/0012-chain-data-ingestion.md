@@ -1,8 +1,9 @@
 # ADR 0012 — Chain-data ingestion: bootstrap poller → self-hosted archive indexer
 
-- **Status:** Proposed (recommended) — pending ratification + infrastructure
-  provisioning. The measured problem and the bootstrap's limits are facts; the
-  target architecture is the recommended decision.
+- **Status:** Accepted — ratified 2026-06-24 (the self-hosted archive node is being
+  provisioned). The bootstrap poller is now archive-ready (cursor-driven gap
+  recovery, #1749) and stays as the interim tier until the continuous indexer is
+  live.
 - **Date:** 2026-06-24
 - **Relates to:** ADR 0010 (chain-direct block explorer — this is the Phase-2
   ingestion it deferred), ADR 0006 (provenance-tiered storage), and the
@@ -41,31 +42,30 @@ extra coverage any window/cursor tweak can buy is ~50 blocks per run, against
 130–1,025-block gaps. The disease is a scheduler we don't control plus a node that
 prunes — not the scan logic.
 
-## Decision (proposed)
+## Decision
 
 Treat the public-RPC + GitHub-cron poller as the **bootstrap tier only**, and make
-the durable ingestion a **continuously-running, first-party indexer against an
-archive node** — the own-the-core direction already chosen for the infrastructure
-program:
+the durable ingestion a **continuously-running, first-party indexer against a
+self-hosted archive node** — the own-the-core direction:
 
 - **Continuous indexer** — a long-running service (not a cron job) that follows the
   finalized head block-by-block from a durable cursor. No scheduler to coalesce ⇒
   **zero trigger gaps**.
-- **Archive node** — retains full historical state ⇒ **no prune wall** ⇒ complete
-  history and arbitrary backfill. Self-hosted (own-the-core) is the recommended
-  end state; a **managed archive RPC** (≈$50–200/mo) is the lower-ops alternative
-  and an acceptable first step.
+- **Self-hosted archive node** — retains full historical state ⇒ **no prune wall** ⇒
+  complete history and arbitrary backfill. (A managed archive RPC is the lower-ops
+  fallback, but self-hosting is the chosen end state.)
 - **Provenance-tiered sink** (ADR 0006) — Postgres in the own-the-core plan, D1
   today — written with the same idempotent keys, so the serving layer is unchanged.
 
-**Migration.** The indexer supersedes `fetch-events.py` + `refresh-events.yml`; the
-bootstrap is retired once the indexer is live and has backfilled the recent window.
-Until then the bootstrap stays (best-effort, gappy) and its docs must state the
-limitation honestly — no cursor-recovery claim it does not implement.
+**Resolved (2026-06-24):** self-hosted archive node (not managed RPC); build now
+(the node is being provisioned).
 
-**Open sub-decisions (why this is Proposed, not Accepted):** self-hosted archive
-node vs managed archive RPC (control vs cost/ops); and build now vs fold into the
-broader own-the-core migration.
+**Migration / interim.** The bootstrap poller is made **archive-ready now** (#1749):
+`compute_from_block` does cursor-driven gap recovery bounded by `EVENTS_MAX_LOOKBACK`
+(default = prune horizon for public RPC; raise it once `EVENTS_RPC_URL` points at the
+archive ⇒ complete gap recovery on the existing pipeline). The continuous indexer
+then supersedes `fetch-events.py` + `refresh-events.yml`, reusing this module's decode
+functions; the bootstrap is retired once the indexer is live and has backfilled.
 
 ## Consequences
 
