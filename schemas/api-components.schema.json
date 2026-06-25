@@ -6395,6 +6395,96 @@
         ],
         "type": "object"
       },
+      "ReliabilityScorecardArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reliability": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReliabilityScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "avg_latency_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "grade": {
+                  "type": "string"
+                },
+                "latency_sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "surface_key": {
+                  "type": "string"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "surface_id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
         "properties": {
