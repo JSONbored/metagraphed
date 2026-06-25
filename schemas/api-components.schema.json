@@ -1532,6 +1532,50 @@
         ],
         "type": "object"
       },
+      "BlockEventsArtifact": {
+        "additionalProperties": true,
+        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
+      },
       "BlockExtrinsicsArtifact": {
         "additionalProperties": true,
         "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",

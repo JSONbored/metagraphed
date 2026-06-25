@@ -1763,6 +1763,24 @@
           }
         }
       },
+      "BlockEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "required": ["schema_version", "ref", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ref": { "type": ["string", "null"] },
+          "block_number": { "type": ["integer", "null"] },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
       "Extrinsic": {
         "type": "object",
         "additionalProperties": false,

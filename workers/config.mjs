@@ -86,6 +86,11 @@ export const BLOCK_DETAIL_PATH_PATTERN =
 // detail pattern (which is $-anchored, so it won't swallow the sub-path).
 export const BLOCK_EXTRINSICS_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/extrinsics$/;
+// Per-block events sub-resource (#1852): the decoded chain events in one block,
+// by the same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE
+// the detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EVENTS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/events$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).

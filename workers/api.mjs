@@ -70,6 +70,7 @@ import {
   handleBlocks,
   handleBlock,
   handleBlockExtrinsics,
+  handleBlockEvents,
   handleExtrinsics,
   handleExtrinsic,
 } from "./request-handlers/entities.mjs";
@@ -185,6 +186,7 @@ import {
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
   BLOCK_EXTRINSICS_PATH_PATTERN,
+  BLOCK_EVENTS_PATH_PATTERN,
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
@@ -1251,6 +1253,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         blockExtrinsicsMatch[1],
         resolved.url,
       );
+    }
+    const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (blockEventsMatch) {
+      return handleBlockEvents(request, env, blockEventsMatch[1], resolved.url);
     }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,

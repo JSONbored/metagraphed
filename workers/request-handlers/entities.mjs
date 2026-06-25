@@ -49,6 +49,7 @@ import {
   buildAccountSummary,
   buildAccountTransfers,
   buildSubnetEvents,
+  buildBlockEvents,
   formatAccountEvent,
 } from "../../src/account-events.mjs";
 import {
@@ -659,6 +660,50 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
         env,
         `/metagraph/blocks/${ref}/extrinsics.json`,
         data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/blocks/{ref}/events: the decoded chain events in one block (#1852),
+// in natural read order (event_index ASC). ref is a numeric block_number OR a 0x
+// block_hash — a hash ref is resolved to its block_number first (idx_blocks_hash),
+// then events are read by the (block_number, event_index) PK prefix. ?limit
+// (<=1000) / ?offset. Unknown ref / cold store → 200 with block_number:null +
+// events:[] (schema-stable, never 404). Mirrors handleBlockExtrinsics.
+export async function handleBlockEvents(request, env, ref, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let blockNumber = isHash ? null : Number(ref);
+  if (isHash) {
+    const blockRows = await d1All(
+      env,
+      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
+      [ref],
+    );
+    blockNumber = blockRows[0]?.block_number ?? null;
+  }
+  const rows =
+    blockNumber == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? ORDER BY event_index ASC LIMIT ? OFFSET ?`,
+          [blockNumber, limit, offset],
+        );
+  const data = buildBlockEvents(rows, ref, blockNumber, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/blocks/${ref}/events.json`,
+        data.events[0]?.observed_at ?? null,
       ),
     },
     "short",
