@@ -22,6 +22,7 @@ import { SchemaDriftDetail } from "@/components/metagraphed/schema-drift-detail"
 import { SchemaSnapshotSummary } from "@/components/metagraphed/schema-snapshot-summary";
 import { useCopy } from "@/hooks/use-copy";
 import { schemasQuery, contractsQuery, metagraphedQueryKey } from "@/lib/metagraphed/queries";
+import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
@@ -180,7 +181,7 @@ function SchemasHero() {
   const { data: cRes } = useSuspenseQuery(contractsQuery());
   const schemas = (sRes.data ?? []) as SchemaInfo[];
   const drift = schemas.filter((s) => s.drift).length;
-  const fresh = schemas.filter((s) => (s.drift_status ?? "").toLowerCase() === "new").length;
+  const fresh = schemas.filter((s) => normalizeDriftStatus(s.drift_status) === "new").length;
   const stable = schemas.length - drift - fresh;
   const subnets = new Set(schemas.map((s) => s.netuid).filter((n) => n != null)).size;
   const contractsCount = (cRes.data ?? []).length;

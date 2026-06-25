@@ -2,6 +2,7 @@ import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
+import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import type {
   AdapterSnapshot,
   AgentResource,
@@ -2144,7 +2145,7 @@ function normalizeSchema(raw: unknown): SchemaInfo {
   if (!raw || typeof raw !== "object") return raw as SchemaInfo;
   const s = raw as Record<string, unknown>;
   const snap = (s.snapshot as Record<string, unknown> | undefined) ?? {};
-  const drift = (s.drift_status as string | undefined) ?? (snap.drift_status as string | undefined);
+  const drift = normalizeDriftStatus(s.drift_status) ?? normalizeDriftStatus(snap.drift_status);
   return {
     ...(s as object),
     id:
@@ -2159,7 +2160,7 @@ function normalizeSchema(raw: unknown): SchemaInfo {
     // A "new" schema has no previous published version to diff against, so it is
     // a baseline, not drift — counting it as drift made every fresh snapshot read
     // as "drifting". It surfaces as its own state (drift_status === "new").
-    drift: drift != null && drift.toLowerCase() !== "unchanged" && drift.toLowerCase() !== "new",
+    drift: isSchemaDrift(drift),
     artifact_path: s.path as string | undefined,
     hash: typeof s.hash === "string" ? s.hash : undefined,
     previous_hash: typeof s.previous_hash === "string" ? s.previous_hash : undefined,

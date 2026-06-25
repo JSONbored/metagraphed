@@ -10,6 +10,7 @@ import {
   ExternalLink as ExtIcon,
 } from "lucide-react";
 import { schemasQuery, evidenceQuery } from "@/lib/metagraphed/queries";
+import { normalizeDriftStatus } from "@/lib/metagraphed/schema-drift";
 import { classNames } from "@/lib/metagraphed/format";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { InfoTooltip } from "@/components/metagraphed/info-tooltip";
@@ -52,7 +53,7 @@ const KIND_TONE: Record<DriftKind, { dot: string; fill: string; ring: string; la
 };
 
 function classifyDrift(s: SchemaInfo): DriftKind {
-  const raw = (s.drift_status ?? "").toLowerCase();
+  const raw = normalizeDriftStatus(s.drift_status) ?? "";
   if (!raw && !s.drift) return "unchanged";
   // A brand-new schema has no previous version to diff — its own state, not drift.
   if (raw === "new" || raw.includes("new")) return "new";
