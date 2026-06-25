@@ -259,6 +259,28 @@ describe("list-query numeric range filters", () => {
     assert.equal(bad.error.parameter, "max_surface_count");
     assert.match(bad.error.message, /must be a number/);
   });
+
+  test("contradictory min_ > max_ on the same field is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=9&max_surface_count=2"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "min_surface_count");
+    assert.match(
+      bad.error.message,
+      /must not be greater than max_surface_count/,
+    );
+  });
+
+  test("equal min_ and max_ bounds form a single-value inclusive range", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_surface_count=5&max_surface_count=5"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [3]);
+  });
 });
 
 describe("list-query free-text search", () => {
