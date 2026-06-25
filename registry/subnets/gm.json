@@ -11,7 +11,7 @@
     "marketplace",
     "tee"
   ],
-  "source_repo": null,
+  "source_repo": "https://github.com/taostat/gm-miner",
   "website_url": "https://saygm.com/",
   "docs_url": null,
   "dashboard_url": null,
