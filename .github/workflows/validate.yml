@@ -254,6 +254,9 @@ jobs:
       - name: Validate workflows
         run: npm run validate:workflows
 
+      - name: Validate migration sequence
+        run: npm run validate:migrations
+
       - name: Validate Cloudflare config
         run: npm run cloudflare:verify:dry-run
 

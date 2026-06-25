@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { composeCompareData, handleRequest } from "../workers/api.mjs";
+import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 // composeCompareData is the pure projection at the heart of /api/v1/compare;
 // these craft the resolved source rows directly so every found/missing/dimension
@@ -98,6 +102,73 @@ describe("composeCompareData", () => {
     assert.equal("structure" in s, false);
     assert.equal("health" in s, false);
     assert.equal(s.economics.open_slots, 3);
+  });
+
+  test("composeCompareData output validates against the CompareArtifact contract", async () => {
+    const generatedAt = "2026-06-24T12:00:00.000Z";
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    const validate = ajv.compile({
+      $id: "https://metagraph.sh/test/compare-artifact.json",
+      components: openapi.components,
+      $ref: "#/components/schemas/CompareArtifact",
+    });
+
+    const data = composeCompareData({
+      requestedNetuids: [1, 2, 99999],
+      dimensions: ["structure", "economics", "health"],
+      subnetMeta: new Map([
+        [1, { name: "Apex", slug: "apex" }],
+        [2, { name: "Beta", slug: "beta" }],
+      ]),
+      structureRows: [
+        {
+          netuid: 1,
+          completeness_score: 80,
+          surface_count: 5,
+          operational_interface_count: 2,
+        },
+      ],
+      economicsRows: [
+        {
+          netuid: 2,
+          registration_cost_tao: 1.5,
+          registration_allowed: true,
+          open_slots: 3,
+          emission_share: 0.12,
+          alpha_price_tao: 0.04,
+          validator_count: 8,
+          miner_count: 64,
+          total_stake_tao: 1200,
+          miner_readiness: 72,
+        },
+      ],
+      healthRows: [
+        { netuid: 1, surface_count: 5, ok_count: 4, avg_latency_ms: 120 },
+      ],
+      observedAt: generatedAt,
+    });
+
+    assert.equal(validate(data), true, ajv.errorsText(validate.errors));
+
+    const structureOnly = composeCompareData({
+      requestedNetuids: [1],
+      dimensions: ["structure"],
+      subnetMeta: new Map([[1, { name: "Apex", slug: "apex" }]]),
+      structureRows: [],
+      economicsRows: [],
+      healthRows: [],
+      observedAt: null,
+    });
+    assert.equal(
+      validate(structureOnly),
+      true,
+      ajv.errorsText(validate.errors),
+    );
   });
 });
 

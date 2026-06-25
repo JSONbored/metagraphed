@@ -18,6 +18,7 @@
 // handlers back and dispatches them from the router.
 
 import { DAY_MS } from "../config.mjs";
+import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -46,7 +47,13 @@ import {
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
+  buildAccountTransfers,
+  buildAccountHistory,
+  buildSubnetEvents,
+  buildBlockEvents,
+  formatAccountEvent,
 } from "../../src/account-events.mjs";
+import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
   buildBlock,
@@ -54,6 +61,8 @@ import {
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
+  buildAccountExtrinsics,
+  buildBlockExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
@@ -236,33 +245,49 @@ async function accountMeta(env, artifactPath, generatedAt) {
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
 export async function handleAccount(request, env, ss58) {
   const where = "hotkey = ? OR coldkey = ?";
-  const [aggRows, kindRows, regRows, recentRows] = await Promise.all([
-    d1All(
-      env,
-      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
-      [ss58],
-    ),
-    d1All(
-      env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-      [ss58, ss58],
-    ),
-  ]);
+  const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
+    await Promise.all([
+      d1All(
+        env,
+        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
+        [ss58, ss58],
+      ),
+      d1All(
+        env,
+        `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
+        [ss58, ss58],
+      ),
+      d1All(
+        env,
+        `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+        [ss58],
+      ),
+      d1All(
+        env,
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+        [ss58, ss58],
+      ),
+      // Signing activity (#1847): aggregates from the extrinsics tier by signer
+      // (idx_extrinsics_signer). Single [ss58] bind. Hot-window-bounded, not
+      // all-time. Matched by signer only — see formatAccountActivity.
+      d1All(
+        env,
+        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM extrinsics WHERE signer = ?`,
+        [ss58],
+      ),
+      d1All(
+        env,
+        `SELECT call_module, COUNT(*) AS count FROM extrinsics WHERE signer = ? GROUP BY call_module ORDER BY count DESC LIMIT 10`,
+        [ss58],
+      ),
+    ]);
   const data = buildAccountSummary(ss58, {
     agg: aggRows[0],
     kinds: kindRows,
     registrations: regRows,
     recent: recentRows,
+    activity: activityRows[0],
+    modules: moduleRows,
   });
   return envelopeResponse(
     request,
@@ -281,7 +306,12 @@ export async function handleAccount(request, env, ss58) {
 // GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
 // optional ?kind= filter, ?limit (<=1000) / ?offset.
 export async function handleAccountEvents(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "kind",
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
@@ -292,10 +322,29 @@ export async function handleAccountEvents(request, env, ss58, url) {
     sql += " AND event_kind = ?";
     params.push(kind);
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  // Keyset cursor (#1851): a row-value seek on (block_number, event_index). The
+  // within-block tiebreak (event_index) isn't in the per-account access indexes
+  // (idx_account_events_hotkey, idx_account_events_coldkey), so it's a small
+  // per-block in-memory sort — acceptable at per-account volume. Takes precedence
+  // over offset; malformed cursor → ignored.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildAccountEvents(rows, ss58, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildAccountEvents(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -304,6 +353,150 @@ export async function handleAccountEvents(request, env, ss58, url) {
         env,
         `/metagraph/accounts/${ss58}/events.json`,
         data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/history (#1854): the durable per-day activity
+// series for an account, from the account_events_daily rollup. ?netuid filters
+// to one subnet; ?from / ?to are YYYY-MM-DD bounds (lexicographic on the TEXT
+// `day` column); ?limit (<=1000) / ?offset. Newest day first. Cold/absent store
+// → schema-stable zero (never 404).
+//
+// SCOPE: the rollup writes only hotkey-attributed rows, so an ss58 with no
+// hotkey activity returns zero days even when /events shows activity — a
+// documented limitation of the hotkey-keyed rollup, not a bug (the contract
+// description spells out the contrast with /events in full).
+const ACCOUNT_DAY_COLUMNS =
+  "day, netuid, event_count, event_kinds, first_block, last_block";
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export async function handleAccountHistory(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, [
+    "netuid",
+    "from",
+    "to",
+    "limit",
+    "offset",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
+  if ((from && !DAY_RE.test(from)) || (to && !DAY_RE.test(to))) {
+    return errorResponse(
+      "invalid_param",
+      "from/to must be YYYY-MM-DD dates.",
+      400,
+    );
+  }
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const netuid = url.searchParams.get("netuid");
+  const params = [ss58];
+  let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
+  if (netuid != null && /^\d+$/.test(netuid)) {
+    sql += " AND netuid = ?";
+    params.push(Number(netuid));
+  }
+  if (from) {
+    sql += " AND day >= ?";
+    params.push(from);
+  }
+  if (to) {
+    sql += " AND day <= ?";
+    params.push(to);
+  }
+  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
+  params.push(limit, offset);
+  const rows = await d1All(env, sql, params);
+  const data = buildAccountHistory(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/history.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/extrinsics: the extrinsics this account SIGNED
+// (newest first), from the extrinsics D1 tier (#1844). Matched by the extrinsic
+// signer only — NOT the hotkey or coldkey union the account_events routes use,
+// since `extrinsics` carries a single `signer` column. ?limit (<=1000) / ?offset.
+// Cold/absent store → schema-stable zero (never 404).
+export async function handleAccountExtrinsics(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const rows = await d1All(
+    env,
+    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
+    [ss58, limit, offset],
+  );
+  const data = buildAccountExtrinsics(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/extrinsics.json`,
+        data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/transfers: the native-TAO Balances.Transfer feed for
+// this account (#1850), newest first, from the account_events tier (event_kind=
+// 'Transfer', where the poller stores hotkey=from / coldkey=to). ?direction=
+// all|sent|received narrows by side; ?limit (<=1000) / ?offset. This is the
+// native-TAO transfer feed only, NOT a full balance ledger. Cold/absent store →
+// schema-stable zero (never 404).
+export async function handleAccountTransfers(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, [
+    "direction",
+    "limit",
+    "offset",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const direction = url.searchParams.get("direction");
+  // sent => this account is the sender (hotkey=from); received => recipient
+  // (coldkey=to); default/all => either side.
+  let sideClause = "(hotkey = ? OR coldkey = ?)";
+  let sideParams = [ss58, ss58];
+  if (direction === "sent") {
+    sideClause = "hotkey = ?";
+    sideParams = [ss58];
+  } else if (direction === "received") {
+    sideClause = "coldkey = ?";
+    sideParams = [ss58];
+  }
+  const rows = await d1All(
+    env,
+    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
+    [...sideParams, limit, offset],
+  );
+  const data = buildAccountTransfers(rows, ss58, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/transfers.json`,
+        data.transfers[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -333,21 +526,175 @@ export async function handleAccountSubnets(request, env, ss58) {
   );
 }
 
+// GET /api/v1/subnets/{netuid}/events (#1345 block explorer): the first-party
+// chain-event stream for one subnet — account_events filtered by netuid, newest
+// first (the idx_account_events_netuid index this tier was built for). Optional
+// ?kind= filter; ?limit (<=1000)/?offset. Cold/absent store → schema-stable zero
+// (never 404), mirroring handleAccountEvents.
+export async function handleSubnetEvents(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const kind = url.searchParams.get("kind");
+  const params = [netuid];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
+  params.push(limit, offset);
+  const rows = await d1All(env, sql, params);
+  const data = buildSubnetEvents(rows, netuid, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/events.json`,
+        data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// Basic ss58 guard: Bittensor hotkeys start with '5', base58 chars, 47-48 chars.
+// The ACCOUNT_BALANCE_PATH_PATTERN captures any non-slash segment so this check
+// is the first-pass validity gate before the RPC call.
+const SS58_GUARD = /^5[a-zA-Z0-9]{46,47}$/;
+const BALANCE_KV_TTL = 60; // seconds
+const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+
+// GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
+// for one account, queried from the finney RPC at request time. 60s KV cache via
+// METAGRAPH_CONTROL. Returns 400 on invalid ss58; 200 with balance_tao:null on
+// RPC failure (schema-stable, consistent with blocks/extrinsics null-on-miss).
+// Served through the shared envelopeResponse so it carries the same ok/data
+// envelope, weak ETag, contract-version header, and 304/HEAD handling as every
+// other route — the body matches the AccountBalanceArtifact data schema.
+export async function handleAccountBalance(request, env, ss58) {
+  if (!SS58_GUARD.test(ss58)) {
+    return errorResponse(
+      "invalid_ss58",
+      "ss58 address must start with '5' and be 47-48 alphanumeric characters.",
+      400,
+    );
+  }
+
+  const cacheKey = `balance:${ss58}`;
+  const kv = env.METAGRAPH_CONTROL;
+
+  const respond = (data) =>
+    envelopeResponse(
+      request,
+      { data, meta: { contract_version: contractVersion(env) } },
+      "short",
+    );
+
+  // KV cache hit — return immediately without touching the RPC.
+  if (kv?.get) {
+    try {
+      const cached = await kv.get(cacheKey, { type: "json" });
+      if (cached) return respond(cached);
+    } catch {
+      // KV read failure is non-fatal — fall through to the live RPC.
+    }
+  }
+
+  const queriedAt = new Date().toISOString();
+  let balanceTao = null;
+  let rpcOk = false;
+
+  try {
+    const rpcResp = await fetch(FINNEY_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "system_account",
+        params: [ss58],
+      }),
+    });
+    if (rpcResp.ok) {
+      const rpcBody = await rpcResp.json();
+      const data = rpcBody?.result?.data;
+      if (data && typeof data.free !== "undefined") {
+        // free + reserved are hex-encoded u128 rao values (1 TAO = 1e9 rao).
+        const freeRao =
+          typeof data.free === "string"
+            ? Number(BigInt(data.free))
+            : Number(data.free);
+        const reservedRao =
+          typeof data.reserved === "string"
+            ? Number(BigInt(data.reserved))
+            : Number(data.reserved ?? 0);
+        balanceTao = (freeRao + reservedRao) / 1e9;
+        rpcOk = true;
+      }
+    }
+  } catch {
+    // RPC fetch failed — balance_tao stays null, return 200 below.
+  }
+
+  const data = {
+    schema_version: 1,
+    ss58,
+    balance_tao: balanceTao,
+    queried_at: queriedAt,
+  };
+
+  // Cache only on success so a transient RPC failure doesn't poison the cache.
+  if (rpcOk && kv?.put) {
+    try {
+      await kv.put(cacheKey, JSON.stringify(data), {
+        expirationTtl: BALANCE_KV_TTL,
+      });
+    } catch {
+      // KV write failure is non-fatal.
+    }
+  }
+
+  return respond(data);
+}
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
 export async function handleBlocks(request, env, url) {
-  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const rows = await d1All(
-    env,
-    `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-    [limit, offset],
-  );
-  const data = buildBlockFeed(rows, { limit, offset });
+  // Keyset cursor (#1851) takes precedence over offset when present: WHERE
+  // block_number < ? (PK-ordered, stable under head inserts). A malformed cursor
+  // decodes to null → ignored (falls back to offset), preserving never-throw.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  let rows;
+  if (cur) {
+    rows = await d1All(
+      env,
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
+      [cur[0], limit],
+    );
+  } else {
+    rows = await d1All(
+      env,
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
+      [limit, offset],
+    );
+  }
+  // next_cursor only when the page was full (more rows likely); null at the end.
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last ? encodeCursor([last.block_number]) : null;
+  const data = buildBlockFeed(rows, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -373,7 +720,23 @@ export async function handleBlock(request, env, ref) {
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
   const param = isHash ? ref : Number(ref);
   const rows = await d1All(env, sql, [param]);
-  const data = buildBlock(rows[0], ref);
+  // prev/next chain-walk neighbors (#1853): one bounded query for the nearest
+  // STORED block numbers around the resolved height (skips pruned gaps; null at
+  // the window edges). Derived from the resolved row's number (works for the hash
+  // path too). Only when the block resolved — a cold/unknown ref has no anchor.
+  let prev = null;
+  let next = null;
+  const resolvedNumber = rows[0]?.block_number;
+  if (Number.isInteger(resolvedNumber)) {
+    const nbr = await d1All(
+      env,
+      `SELECT MAX(CASE WHEN block_number < ? THEN block_number END) AS prev, MIN(CASE WHEN block_number > ? THEN block_number END) AS next FROM blocks`,
+      [resolvedNumber, resolvedNumber],
+    );
+    prev = nbr[0]?.prev ?? null;
+    next = nbr[0]?.next ?? null;
+  }
+  const data = buildBlock(rows[0], ref, { prev, next });
   return envelopeResponse(
     request,
     {
@@ -388,31 +751,177 @@ export async function handleBlock(request, env, ref) {
   );
 }
 
+// GET /api/v1/blocks/{ref}/extrinsics: the extrinsics in one block (#1845), in
+// natural read order (extrinsic_index ASC). ref is a numeric block_number OR a 0x
+// block_hash — a hash ref is resolved to its block_number first (idx_blocks_hash),
+// then extrinsics are read by the (block_number, extrinsic_index) PK prefix. ?limit
+// (<=100) / ?offset. Unknown ref / cold store → 200 with block_number:null +
+// extrinsics:[] (schema-stable, never 404).
+export async function handleBlockExtrinsics(request, env, ref, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let blockNumber = isHash ? null : Number(ref);
+  if (isHash) {
+    const blockRows = await d1All(
+      env,
+      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
+      [ref],
+    );
+    blockNumber = blockRows[0]?.block_number ?? null;
+  }
+  const rows =
+    blockNumber == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?`,
+          [blockNumber, limit, offset],
+        );
+  const data = buildBlockExtrinsics(rows, ref, blockNumber, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/blocks/${ref}/extrinsics.json`,
+        data.extrinsics[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/blocks/{ref}/events: the decoded chain events in one block (#1852),
+// in natural read order (event_index ASC). ref is a numeric block_number OR a 0x
+// block_hash — a hash ref is resolved to its block_number first (idx_blocks_hash),
+// then events are read by the (block_number, event_index) PK prefix. ?limit
+// (<=1000) / ?offset. Unknown ref / cold store → 200 with block_number:null +
+// events:[] (schema-stable, never 404). Mirrors handleBlockExtrinsics.
+export async function handleBlockEvents(request, env, ref, url) {
+  const validationError = validateQueryParams(url, ["limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let blockNumber = isHash ? null : Number(ref);
+  if (isHash) {
+    const blockRows = await d1All(
+      env,
+      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
+      [ref],
+    );
+    blockNumber = blockRows[0]?.block_number ?? null;
+  }
+  const rows =
+    blockNumber == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? ORDER BY event_index ASC LIMIT ? OFFSET ?`,
+          [blockNumber, limit, offset],
+        );
+  const data = buildBlockEvents(rows, ref, blockNumber, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/blocks/${ref}/events.json`,
+        data.events[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/extrinsics: the recent-extrinsic feed (newest first), served live
 // from the `extrinsics` D1 tier (#1345 block explorer). ?limit clamp <=100,
-// ?offset, optional ?block=<n> to scope to one block. Cold/absent store →
-// schema-stable zero (never throws). Reuses the chain-events meta
-// (source:"chain-events") since the same first-party poller fills this tier.
+// ?offset, and a conjunctive (AND-ed) filter set (#1846): ?block=<n>, ?signer=,
+// ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end
+// (block range), ?from/?to (observed_at epoch-ms range). All optional; an inverted
+// range simply matches nothing (never throws). Cold/absent store → schema-stable
+// zero. Reuses the chain-events meta since the same first-party poller fills this
+// tier. The per-row shape is bound, never interpolated.
 export async function handleExtrinsics(request, env, url) {
   const validationError = validateQueryParams(url, [
     "limit",
     "offset",
+    "cursor",
     "block",
+    "signer",
+    "call_module",
+    "call_function",
+    "success",
+    "block_start",
+    "block_end",
+    "from",
+    "to",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const blockParam = url.searchParams.get("block");
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  const sp = url.searchParams;
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const conds = [];
   const params = [];
-  if (blockParam != null) {
-    sql += " WHERE block_number = ?";
-    params.push(clampInt(blockParam, 0, 0, Number.MAX_SAFE_INTEGER));
+  const eq = (col, val) => {
+    conds.push(`${col} = ?`);
+    params.push(val);
+  };
+  if (sp.get("block") != null)
+    eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  if (sp.get("signer")) eq("signer", sp.get("signer"));
+  if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
+  if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
+  // success is stored 1/0/NULL; bind the literal so success=false never leaks
+  // NULL (undeterminable) rows. Any non-true/false value is ignored.
+  const successRaw = sp.get("success");
+  if (successRaw === "true") eq("success", 1);
+  else if (successRaw === "false") eq("success", 0);
+  if (sp.get("block_start") != null) {
+    conds.push("block_number >= ?");
+    params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
   }
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  if (sp.get("block_end") != null) {
+    conds.push("block_number <= ?");
+    params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
+  }
+  if (sp.get("from") != null) {
+    conds.push("observed_at >= ?");
+    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+  }
+  if (sp.get("to") != null) {
+    conds.push("observed_at <= ?");
+    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+  }
+  // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
+  // PK, ANDed with any active filters. Takes precedence over offset; a malformed
+  // cursor decodes to null → ignored. SQLite row-value comparison is PK-covered.
+  const cur = decodeCursor(sp.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("(block_number, extrinsic_index) < (?, ?)");
+    params.push(cur[0], cur[1]);
+  }
+  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildExtrinsicFeed(rows, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.extrinsic_index])
+    : null;
+  const data = buildExtrinsicFeed(rows, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -427,24 +936,66 @@ export async function handleExtrinsics(request, env, url) {
   );
 }
 
-// GET /api/v1/extrinsics/{hash}: per-extrinsic detail (#1345). hash is a 0x
-// extrinsic_hash. Served live from the `extrinsics` D1 tier; an unknown hash /
-// cold store → 200 with extrinsic:null (schema-stable, mirrors the block detail
-// route — NEVER 404/throw).
-export async function handleExtrinsic(request, env, hash) {
-  const rows = await d1All(
-    env,
-    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-    [hash],
-  );
-  const data = buildExtrinsic(rows[0], hash);
+// GET /api/v1/extrinsics/{ref}: per-extrinsic detail (#1345/#1848). ref is EITHER
+// a 0x extrinsic_hash OR the canonical composite id "<block_number>-<extrinsic_index>".
+// The hash is best-effort/nullable in the decoder, so the composite id is the
+// guaranteed-present identifier; the composite path does a direct (block_number,
+// extrinsic_index) PK hit. Served live from the `extrinsics` D1 tier; an unknown
+// ref / cold store / malformed composite → 200 with extrinsic:null (schema-stable,
+// mirrors handleBlock's numeric-OR-hash branch — NEVER 404/throw).
+//
+// When the extrinsic resolves, the indexed account_events it emitted (#1849) are
+// embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
+// Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
+export async function handleExtrinsic(request, env, ref) {
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let rows;
+  if (isHash) {
+    rows = await d1All(
+      env,
+      `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
+      [ref],
+    );
+  } else {
+    // Composite "<block>-<index>": coerce both halves; a non-finite half is a
+    // miss (extrinsic:null), never a bad bind.
+    const [b, i] = ref.split("-");
+    const blockNumber = Number(b);
+    const extrinsicIndex = Number(i);
+    rows =
+      Number.isInteger(blockNumber) && Number.isInteger(extrinsicIndex)
+        ? await d1All(
+            env,
+            `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
+            [blockNumber, extrinsicIndex],
+          )
+        : [];
+  }
+  // Embed the emitted events once we have the resolved (block_number,
+  // extrinsic_index). A second sequential read; d1All swallows a missing-column
+  // error pre-migration → [] (the embed is additive, never breaks the detail).
+  let events = [];
+  const resolved = rows[0];
+  if (
+    resolved &&
+    resolved.block_number != null &&
+    resolved.extrinsic_index != null
+  ) {
+    const eventRows = await d1All(
+      env,
+      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? AND extrinsic_index = ? ORDER BY event_index ASC LIMIT 50`,
+      [resolved.block_number, resolved.extrinsic_index],
+    );
+    events = eventRows.map(formatAccountEvent).filter(Boolean);
+  }
+  const data = buildExtrinsic(resolved, ref, events);
   return envelopeResponse(
     request,
     {
       data,
       meta: await accountMeta(
         env,
-        `/metagraph/extrinsics/${hash}.json`,
+        `/metagraph/extrinsics/${ref}.json`,
         data.extrinsic?.observed_at ?? null,
       ),
     },
