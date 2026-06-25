@@ -2278,6 +2278,29 @@ describe("computeReliability (score from uptime history)", () => {
     );
   });
 
+  test("a sub-perfect ratio that rounds to 1 is not reported as a perfect 1", () => {
+    // 24999/25000 = 0.99996; (0.99996).toFixed(4) === "1.0000", which would
+    // otherwise overstate a 99.996%-uptime subnet as a perfect-uptime "100%"
+    // badge. Clamp the displayed ratio to the largest 4-decimal value below 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 24999, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9999,
+    );
+    // a genuine okCount === samples ratio still reports an exact 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .uptime_ratio,
+      1,
+    );
+    // an ordinary sub-1 ratio is unchanged (rounded to 4 decimals as before).
+    assert.equal(
+      scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9983,
+    );
+  });
+
   test("covers grade B, null latency, missing day, and nullish rows", () => {
     // grade B (95-98)
     assert.equal(
