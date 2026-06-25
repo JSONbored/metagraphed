@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "lium.io",
+  "netuid": 51,
+  "schema_version": 1,
+  "slug": "sn-51",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-51-lium-subnet-api",
+      "kind": "subnet-api",
+      "name": "Lium platform API",
+      "provider": "lium",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://docs.lium.io/developers/openapi",
+        "https://lium.io/api/openapi.json"
+      ],
+      "url": "https://lium.io/api/version"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "authority": "community",
+  "id": "lium",
+  "kind": "subnet-team",
+  "name": "Lium",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://lium.io/"
+}
