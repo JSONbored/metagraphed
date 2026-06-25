@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
-import { formatReliabilityScorecard, loadReliabilityScorecard } from "../src/health-serving.mjs";
+import {
+  formatReliabilityScorecard,
+  loadReliabilityScorecard,
+} from "../src/health-serving.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 const req = (path) => new Request(`https://api.metagraph.sh${path}`);
 
 function d1With(rows) {
   return {
-    prepare(sql) {
+    prepare(_sql) {
       return {
         bind(...args) {
           this.args = args;
@@ -16,7 +19,9 @@ function d1With(rows) {
         },
         async all() {
           const netuid = Number(this.args?.[0]);
-          const filtered = rows.filter((row) => row.netuid == null || row.netuid === netuid);
+          const filtered = rows.filter(
+            (row) => row.netuid == null || row.netuid === netuid,
+          );
           return { results: filtered.map(({ netuid: _n, ...row }) => row) };
         },
       };
@@ -28,7 +33,9 @@ function kvWith(entries) {
   return {
     async get(key, opts) {
       if (!(key in entries)) return null;
-      return opts?.type === "json" ? entries[key] : JSON.stringify(entries[key]);
+      return opts?.type === "json"
+        ? entries[key]
+        : JSON.stringify(entries[key]);
     },
   };
 }
@@ -117,7 +124,11 @@ describe("GET /api/v1/subnets/{netuid}/reliability", () => {
 
   test("defaults to 30d and returns null reliability when D1 is cold", async () => {
     const env = createLocalArtifactEnv();
-    const res = await handleRequest(req("/api/v1/subnets/7/reliability"), env, {});
+    const res = await handleRequest(
+      req("/api/v1/subnets/7/reliability"),
+      env,
+      {},
+    );
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.window, "30d");
@@ -152,7 +163,10 @@ describe("GET /api/v1/subnets/{netuid}/reliability", () => {
 
 describe("loadReliabilityScorecard (D1-backed)", () => {
   test("returns null reliability when D1 is cold", async () => {
-    const out = await loadReliabilityScorecard({ d1: async () => [], netuid: 7 });
+    const out = await loadReliabilityScorecard({
+      d1: async () => [],
+      netuid: 7,
+    });
     assert.equal(out.reliability, null);
     assert.deepEqual(out.surfaces, []);
   });

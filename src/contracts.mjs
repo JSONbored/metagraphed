@@ -1749,7 +1749,12 @@ export const API_ROUTES = [
     "Fetch a composite reliability scorecard (0–100) per operational surface for one subnet over a 7d, 30d, or 90d window. Lighter than /uptime: scored rollup only, no per-day series (computed live from the surface_uptime_daily D1 rollup).",
     "short",
     ["health", "subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d", "90d"] } }],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

@@ -34,6 +34,9 @@ export const R2_ONLY_PATTERNS = [
   /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
+  // Per-subnet reliability scorecard: computed live from surface_uptime_daily at
+  // /api/v1/subnets/{netuid}/reliability — never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/reliability\.json$/,
   // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
   // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
   // never written as files.

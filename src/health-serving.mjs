@@ -1210,7 +1210,12 @@ export async function loadReliabilityScorecard({
     const rows = d1
       ? await d1(sql, params)
       : db?.prepare
-        ? (await db.prepare(sql).bind(...params).all())?.results || []
+        ? (
+            await db
+              .prepare(sql)
+              .bind(...params)
+              .all()
+          )?.results || []
         : [];
     return formatReliabilityScorecard({
       netuid,
