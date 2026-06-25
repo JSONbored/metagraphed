@@ -653,6 +653,13 @@ def main():
             ent = extract(eid, e.get("attributes"))
             if ent is None:
                 continue
+            # Link the event to the extrinsic that emitted it (#1849): the
+            # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
+            # _extrinsic_success_map correlate on). Initialization / Finalization
+            # phase events have no extrinsic — store null.
+            xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+            if not isinstance(xidx, int) or xidx < 0:
+                xidx = None
             rows.append(
                 {
                     "block_number": bn,
@@ -664,6 +671,7 @@ def main():
                     "uid": ent["uid"],
                     "amount_tao": ent["amount_tao"],
                     "observed_at": observed_at,
+                    "extrinsic_index": xidx,
                 }
             )
 

@@ -9,6 +9,7 @@ import { applyQueryFilters } from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
+  exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   weakEtag,
 } from "./http.mjs";
@@ -57,13 +58,17 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetValidators,
+  handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
   handleAccount,
+  handleAccountBalance,
   handleAccountEvents,
+  handleAccountExtrinsics,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
+  handleBlockExtrinsics,
   handleExtrinsics,
   handleExtrinsic,
 } from "./request-handlers/entities.mjs";
@@ -171,10 +176,13 @@ import {
   withinRateLimit,
 } from "../src/ai-search.mjs";
 import {
+  ACCOUNT_BALANCE_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
+  ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
+  BLOCK_EXTRINSICS_PATH_PATTERN,
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
@@ -204,6 +212,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -788,20 +797,26 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
     // for deletion, so a day is never dropped from D1 before it exists in R2. Its
     // own cron minute so the ~33k-row work never piles onto the probe/prune/fast
     // crons; each step is .catch-isolated.
+    // Pin a single `now` so the backlog archive and the prune derive the SAME
+    // retention cutoff. The archive does ~33k-row R2 work and can straddle a UTC
+    // midnight; if archive and prune each called Date.now() independently, the
+    // prune's cutoff could be one day larger and delete a day from D1 that the
+    // archive never wrote to R2 — the exact gap this archive-before-prune closes.
+    const now = Date.now();
     const rolled = await rollupNeuronDaily(env).catch(() => ({
       rolled: false,
     }));
     const archived = await archiveNeuronDaily(env).catch(() => ({
       archived: false,
     }));
-    const archivedPrunable = await archivePrunableNeuronDaily(env).catch(
-      () => ({
-        archived: false,
-      }),
-    );
+    const archivedPrunable = await archivePrunableNeuronDaily(env, {
+      now,
+    }).catch(() => ({
+      archived: false,
+    }));
     const pruned =
       archived.archived && archivedPrunable.archived
-        ? await pruneNeuronDaily(env).catch(() => ({ pruned: false }))
+        ? await pruneNeuronDaily(env, { now }).catch(() => ({ pruned: false }))
         : { pruned: false, reason: "archive-not-confirmed" };
     return { rolled, archived, archivedPrunable, pruned };
   }
@@ -1157,6 +1172,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    // Per-subnet chain-event stream (#1345): account_events filtered by netuid.
+    // Live + continuously appended, so served direct (no edge cache) like the
+    // account-events route — envelopeResponse's ETag + "short" cache govern it.
+    const subnetEventsMatch = SUBNET_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetEventsMatch) {
+      return handleSubnetEvents(
+        request,
+        env,
+        Number(subnetEventsMatch[1]),
+        resolved.url,
+      );
+    }
     // Account entity routes (#1347): computed live from the account_events +
     // neurons D1 tiers. More-specific paths first (each pattern is anchored).
     const accountEventsMatch = ACCOUNT_EVENTS_PATH_PATTERN.exec(
@@ -1176,12 +1205,40 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (accountSubnetsMatch) {
       return handleAccountSubnets(request, env, accountSubnetsMatch[1]);
     }
+    const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountExtrinsicsMatch) {
+      return handleAccountExtrinsics(
+        request,
+        env,
+        accountExtrinsicsMatch[1],
+        resolved.url,
+      );
+    }
+    const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountBalanceMatch) {
+      return handleAccountBalance(request, env, accountBalanceMatch[1]);
+    }
     const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
     if (accountMatch) {
       return handleAccount(request, env, accountMatch[1]);
     }
     // Block-explorer routes (#1345): computed live from the `blocks` D1 tier.
-    // Detail (more specific) before the feed; each pattern is anchored.
+    // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
+    const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (blockExtrinsicsMatch) {
+      return handleBlockExtrinsics(
+        request,
+        env,
+        blockExtrinsicsMatch[1],
+        resolved.url,
+      );
+    }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -2916,6 +2973,7 @@ async function handleEventsRequest(request, env) {
   headers.set("content-type", "text/event-stream; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("access-control-allow-origin", "*");
+  exposeCustomResponseHeaders(headers);
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-metagraph-contract-version", contractVersion(env));
   headers.set("x-metagraph-events", unchanged ? "unchanged" : "snapshot");
