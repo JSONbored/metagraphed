@@ -53,6 +53,7 @@ import type {
   Surface,
   SurfaceLatencyPercentiles,
   SurfaceSla,
+  SurfaceSlaIncident,
   Trajectory,
   TrajectoryDelta,
   TrajectoryPoint,
@@ -1070,7 +1071,7 @@ function normalizeSurfaceLatencyPercentiles(raw: unknown): SurfaceLatencyPercent
   });
 }
 
-function normalizeSurfaceSla(raw: unknown): SurfaceSla | undefined {
+export function normalizeSurfaceSla(raw: unknown): SurfaceSla | undefined {
   if (!isPlainRecord(raw) || typeof raw.surface_id !== "string") return undefined;
 
   return {
@@ -1079,7 +1080,12 @@ function normalizeSurfaceSla(raw: unknown): SurfaceSla | undefined {
     uptime_ratio: optionalNumber(raw.uptime_ratio),
     incident_count: optionalNumber(raw.incident_count),
     downtime_ms: optionalNumber(raw.downtime_ms),
-    incidents: Array.isArray(raw.incidents) ? raw.incidents : undefined,
+    // Drop malformed elements (null / strings / non-objects) so downstream
+    // flattenSurfaceIncidents can safely read inc.started_at etc. without
+    // throwing on a single bad element and crashing the whole operational view.
+    incidents: Array.isArray(raw.incidents)
+      ? (raw.incidents.filter(isPlainRecord) as SurfaceSlaIncident[])
+      : undefined,
   };
 }
 
@@ -2074,7 +2080,7 @@ export type ProviderCounts = {
   subnets: number;
 };
 
-function normalizeProvider(raw: unknown, slug: string): Provider {
+export function normalizeProvider(raw: unknown, slug: string): Provider {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
     string,
     unknown
@@ -2084,6 +2090,10 @@ function normalizeProvider(raw: unknown, slug: string): Provider {
   const website = pickStr(inner.website_url, inner.homepage, inner.website);
   const docs = pickStr(inner.docs_url, inner.docs);
   return {
+    // Spread raw fields FIRST so the normalized/computed fields below win on
+    // collision (mirrors normalizeProviderListItem). Spreading `...inner` last
+    // let raw nulls (e.g. name: null) clobber the slug fallback → blank names.
+    ...inner,
     slug: (inner.id as string) ?? (inner.slug as string) ?? slug,
     name: pickStr(inner.name) ?? slug,
     kind: pickStr(inner.kind),
@@ -2102,7 +2112,6 @@ function normalizeProvider(raw: unknown, slug: string): Provider {
     surfaces_count:
       (inner.surface_count as number | undefined) ?? (inner.surfaces_count as number | undefined),
     generated_at: pickStr(root.generated_at as string, inner.generated_at as string),
-    ...inner,
     icon_url: (inner.icon_url as Provider["icon_url"]) ?? (inner.logo_url as string),
   } as Provider;
 }

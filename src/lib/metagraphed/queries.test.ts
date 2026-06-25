@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 
-import { normalizeSubnet, normalizeSubnetProfile, normalizeGap, normalizeCompare } from "./queries";
+import {
+  normalizeSubnet,
+  normalizeSubnetProfile,
+  normalizeGap,
+  normalizeCompare,
+  normalizeSurfaceSla,
+  flattenSurfaceIncidents,
+  normalizeProvider,
+} from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
 // field-alias coalescing. They feed representative live-API payloads (the shapes
@@ -306,5 +314,53 @@ describe("normalizeCompare", () => {
     const out = normalizeCompare(null);
     expect(out.subnets).toEqual([]);
     expect(out.dimensions).toEqual([]);
+  });
+});
+
+describe("normalizeSurfaceSla / flattenSurfaceIncidents", () => {
+  // A malformed incidents array (null / string / partial-object elements) used
+  // to flow straight into flattenSurfaceIncidents, where reading `inc.started_at`
+  // on a `null` element threw and crashed the entire subnet operational view
+  // (~5 components). normalizeSurfaceSla now filters elements through the same
+  // isPlainRecord guard every sibling normalizer uses.
+  it("drops malformed incident elements through the isPlainRecord guard", () => {
+    const sla = normalizeSurfaceSla({
+      surface_id: "sfc-1",
+      incidents: [null, "x", { started_at: 123 }],
+    });
+    expect(sla?.incidents).toEqual([{ started_at: 123 }]);
+  });
+
+  it("flattenSurfaceIncidents does not throw on a normalized malformed payload", () => {
+    const sla = normalizeSurfaceSla({
+      surface_id: "sfc-1",
+      incidents: [null, "x", { started_at: 123 }],
+    });
+    const flat = flattenSurfaceIncidents(sla ? [sla] : []);
+    expect(flat).toHaveLength(1);
+    expect(flat[0].surface_id).toBe("sfc-1");
+    expect(flat[0].started_at).toBe(new Date(123).toISOString());
+    expect(flat[0].severity).toBe("high");
+  });
+});
+
+describe("normalizeProvider", () => {
+  // The detail normalizer used to spread `...inner` AFTER the computed fields,
+  // so a raw `name: null` from the API clobbered the slug fallback and the
+  // provider detail page rendered a blank name. `...inner` now leads the object
+  // (mirroring normalizeProviderListItem) so the computed fields win.
+  it("keeps the slug fallback when the raw name is null", () => {
+    const out = normalizeProvider({ provider: { slug: "acme", name: null } }, "acme");
+    expect(out.name).toBe("acme");
+    expect(out.slug).toBe("acme");
+  });
+
+  it("preserves passthrough raw fields without clobbering computed ones", () => {
+    const out = normalizeProvider(
+      { provider: { slug: "acme", name: "Acme", extra_field: "kept" } },
+      "acme",
+    );
+    expect(out.name).toBe("Acme");
+    expect((out as Record<string, unknown>).extra_field).toBe("kept");
   });
 });
