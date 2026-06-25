@@ -126,10 +126,7 @@ function fullCallableStack(netuid = 1) {
 
 describe("readinessTier", () => {
   test("returns buildable when has_callable_api is true", () => {
-    assert.equal(
-      readinessTier({ has_callable_api: true }),
-      "buildable",
-    );
+    assert.equal(readinessTier({ has_callable_api: true }), "buildable");
     assert.equal(
       readinessTier({
         has_callable_api: true,
@@ -572,7 +569,10 @@ describe("buildAgentReadiness", () => {
     assert.ok(
       result.blockers.some((blocker) => blocker.code === "base-layer-only"),
     );
-    assert.equal(result.blockers.find((b) => b.code === "base-layer-only").severity, "hard");
+    assert.equal(
+      result.blockers.find((b) => b.code === "base-layer-only").severity,
+      "hard",
+    );
   });
 
   test("inactive lifecycle adds hard blocker", () => {
@@ -619,7 +619,9 @@ describe("buildAgentReadiness", () => {
     });
     assert.equal(result.status, "blocked");
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "missing-callable-service"),
+      result.blockers.some(
+        (blocker) => blocker.code === "missing-callable-service",
+      ),
     );
     assert.ok(result.missing_fields.includes("surfaces"));
   });
@@ -642,7 +644,9 @@ describe("buildAgentReadiness", () => {
       callableCount: 0,
     });
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "service-not-callable"),
+      result.blockers.some(
+        (blocker) => blocker.code === "service-not-callable",
+      ),
     );
     assert.equal(result.blocker_level, "hard-blocked");
   });
@@ -666,7 +670,9 @@ describe("buildAgentReadiness", () => {
     assert.equal(result.status, "candidate");
     assert.equal(result.blocker_level, "needs-review");
     assert.ok(
-      result.blockers.some((blocker) => blocker.code === "candidate-api-needs-review"),
+      result.blockers.some(
+        (blocker) => blocker.code === "candidate-api-needs-review",
+      ),
     );
   });
 
@@ -702,7 +708,10 @@ describe("buildAgentReadiness", () => {
       candidates: [],
     });
     const result = buildAgentReadiness({
-      subnet: mockSubnet({ source_repo: "https://github.com/a/b", docs_url: "https://docs.example.com" }),
+      subnet: mockSubnet({
+        source_repo: "https://github.com/a/b",
+        docs_url: "https://docs.example.com",
+      }),
       profile: mockProfile({ completeness_score: 80 }),
       services: [service],
       readiness,
@@ -729,7 +738,10 @@ describe("buildAgentReadiness", () => {
       candidates: [],
     });
     const result = buildAgentReadiness({
-      subnet: mockSubnet({ source_repo: "https://github.com/a/b", docs_url: "https://docs.example.com" }),
+      subnet: mockSubnet({
+        source_repo: "https://github.com/a/b",
+        docs_url: "https://docs.example.com",
+      }),
       profile: mockProfile({ completeness_score: 80 }),
       services: [service],
       readiness,
@@ -874,9 +886,7 @@ describe("summarizeAgentReadinessBlockers", () => {
         agent_readiness: {
           status: "base-layer",
           blocker_level: "hard-blocked",
-          blockers: [
-            { code: "base-layer-only", severity: "hard" },
-          ],
+          blockers: [{ code: "base-layer-only", severity: "hard" }],
         },
       },
       {
@@ -905,7 +915,10 @@ describe("summarizeAgentReadinessBlockers", () => {
   });
 
   test("handles missing agent_readiness as unknown", () => {
-    const summary = summarizeAgentReadinessBlockers([{}, { agent_readiness: null }]);
+    const summary = summarizeAgentReadinessBlockers([
+      {},
+      { agent_readiness: null },
+    ]);
     assert.equal(summary.by_status.unknown, 2);
     assert.equal(summary.by_level.unknown, 2);
     assert.deepEqual(summary.by_severity, {});
@@ -926,7 +939,10 @@ describe("summarizeAgentReadinessBlockers", () => {
       },
     ]);
     assert.deepEqual(Object.keys(summary.by_code), ["alpha", "zebra"]);
-    assert.deepEqual(Object.keys(summary.by_severity), ["hard", "missing-data"]);
+    assert.deepEqual(Object.keys(summary.by_severity), [
+      "hard",
+      "missing-data",
+    ]);
   });
 });
 
@@ -949,7 +965,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "none", status: "callable" },
-        dimensions: { callable_service_count: 1, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 1,
+          candidate_operational_count: 0,
+        },
         gaps: [],
         score: 80,
       }),
@@ -958,7 +977,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "none", status: "callable" },
-        dimensions: { callable_service_count: 1, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 1,
+          candidate_operational_count: 0,
+        },
         gaps: [{ code: "x" }],
         score: 90,
       }),
@@ -967,7 +989,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "none", status: "callable" },
-        dimensions: { callable_service_count: 1, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 1,
+          candidate_operational_count: 0,
+        },
         gaps: [],
         score: 79,
       }),
@@ -979,7 +1004,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "missing-data", status: "callable" },
-        dimensions: { callable_service_count: 2, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 2,
+          candidate_operational_count: 0,
+        },
         gaps: [{ code: "missing-fixture" }],
         score: 60,
       }),
@@ -991,7 +1019,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "needs-review", status: "candidate" },
-        dimensions: { callable_service_count: 0, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 0,
+        },
         gaps: [],
         score: 10,
       }),
@@ -1000,7 +1031,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "missing-data", status: "blocked" },
-        dimensions: { callable_service_count: 0, candidate_operational_count: 1 },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 1,
+        },
         gaps: [],
         score: 5,
       }),
@@ -1011,8 +1045,14 @@ describe("coverageDepthTier", () => {
   test("needs-evidence status maps to needs-evidence tier", () => {
     assert.equal(
       coverageDepthTier({
-        agentReadiness: { blocker_level: "missing-data", status: "needs-evidence" },
-        dimensions: { callable_service_count: 0, candidate_operational_count: 0 },
+        agentReadiness: {
+          blocker_level: "missing-data",
+          status: "needs-evidence",
+        },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 0,
+        },
         gaps: [],
         score: 5,
       }),
@@ -1024,7 +1064,10 @@ describe("coverageDepthTier", () => {
     assert.equal(
       coverageDepthTier({
         agentReadiness: { blocker_level: "missing-data", status: "blocked" },
-        dimensions: { callable_service_count: 0, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 0,
+        },
         gaps: [],
         score: 0,
       }),
@@ -1138,7 +1181,10 @@ describe("scoreCoverageDepthDimensions", () => {
       agentReadiness: { blocker_level: "hard-blocked" },
       completenessScore: 0,
     });
-    assert.equal(score, Math.round(COVERAGE_DEPTH_WEIGHTS.callable_service * 0.3));
+    assert.equal(
+      score,
+      Math.round(COVERAGE_DEPTH_WEIGHTS.callable_service * 0.3),
+    );
   });
 
   test("partial schema coverage scales schema weight", () => {
@@ -1194,7 +1240,10 @@ describe("scoreCoverageDepthDimensions", () => {
     });
     assert.equal(official, COVERAGE_DEPTH_WEIGHTS.provenance);
     assert.equal(provider, Math.round(COVERAGE_DEPTH_WEIGHTS.provenance * 0.6));
-    assert.equal(registry, Math.round(COVERAGE_DEPTH_WEIGHTS.provenance * 0.35));
+    assert.equal(
+      registry,
+      Math.round(COVERAGE_DEPTH_WEIGHTS.provenance * 0.35),
+    );
     assert.ok(official > provider);
     assert.ok(provider > registry);
   });
@@ -1208,7 +1257,13 @@ describe("scoreCoverageDepthDimensions", () => {
     };
     for (const [level, factor] of Object.entries(levels)) {
       const score = scoreCoverageDepthDimensions({
-        dimensions: { ...emptyDimensions, callable_service_count: 1, schema_service_count: 1, fixture_status_counts: { available: 1 }, fixture_available_count: 1 },
+        dimensions: {
+          ...emptyDimensions,
+          callable_service_count: 1,
+          schema_service_count: 1,
+          fixture_status_counts: { available: 1 },
+          fixture_available_count: 1,
+        },
         agentReadiness: { blocker_level: level },
         completenessScore: 0,
       });
@@ -1235,7 +1290,10 @@ describe("scoreCoverageDepthDimensions", () => {
   });
 
   test("COVERAGE_DEPTH_WEIGHTS sum to 100", () => {
-    const sum = Object.values(COVERAGE_DEPTH_WEIGHTS).reduce((a, b) => a + b, 0);
+    const sum = Object.values(COVERAGE_DEPTH_WEIGHTS).reduce(
+      (a, b) => a + b,
+      0,
+    );
     assert.equal(sum, 100);
   });
 });
@@ -1286,18 +1344,29 @@ describe("coverageDepthPriorityScore", () => {
 
   test("callable base is higher than candidate base", () => {
     const callable = coverageDepthPriorityScore({
-      row: row({ dimensions: { callable_service_count: 1, candidate_operational_count: 0 } }),
+      row: row({
+        dimensions: {
+          callable_service_count: 1,
+          candidate_operational_count: 0,
+        },
+      }),
       gaps: [{ severity: "missing-data" }],
     });
     const candidate = coverageDepthPriorityScore({
       row: row({
-        dimensions: { callable_service_count: 0, candidate_operational_count: 1 },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 1,
+        },
       }),
       gaps: [{ severity: "missing-data" }],
     });
     const bare = coverageDepthPriorityScore({
       row: row({
-        dimensions: { callable_service_count: 0, candidate_operational_count: 0 },
+        dimensions: {
+          callable_service_count: 0,
+          candidate_operational_count: 0,
+        },
       }),
       gaps: [{ severity: "missing-data" }],
     });
@@ -1539,7 +1608,11 @@ describe("buildCoverageDepthArtifact", () => {
     const services = [];
     const readiness = [];
     const agentReadiness = [];
-    for (let netuid = 1; netuid <= COVERAGE_DEPTH_QUEUE_LIMIT + 5; netuid += 1) {
+    for (
+      let netuid = 1;
+      netuid <= COVERAGE_DEPTH_QUEUE_LIMIT + 5;
+      netuid += 1
+    ) {
       const service = mockService({ schema_artifact: null });
       const subnet = mockSubnet({ netuid, slug: `sn-${netuid}` });
       const profile = mockProfile({ completeness_score: 40 });
@@ -1600,9 +1673,7 @@ describe("buildCoverageDepthArtifact", () => {
     );
     const row = subnet.rows.find((entry) => entry.netuid === 7);
     assert.ok(row.top_gap_codes.includes("missing-fixture"));
-    assert.ok(
-      subnet.summary.gap_code_counts["missing-fixture"] >= 1,
-    );
+    assert.ok(subnet.summary.gap_code_counts["missing-fixture"] >= 1);
   });
 
   test("emits partial-schema-coverage when mixed schema state", () => {
@@ -1717,7 +1788,10 @@ describe("buildCoverageDepthArtifact", () => {
       }),
     );
     const codes = artifact.rows[0].top_gaps.map((gap) => gap.code);
-    assert.equal(codes.filter((c) => c === "missing-callable-service").length, 1);
+    assert.equal(
+      codes.filter((c) => c === "missing-callable-service").length,
+      1,
+    );
   });
 
   test("root subnet excluded from ranked_queue (priority 0)", () => {
