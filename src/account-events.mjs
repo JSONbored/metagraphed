@@ -1,13 +1,12 @@
 // Chain-event index (#1346, epic #1345): the D1 `account_events` tier — first-party
 // per-entity activity decoded DIRECTLY from finney by scripts/fetch-events.py
 // (substrate System.Events), NOT Taostats. This module holds the load contract,
-// the daily rollup, the (currently inactive) prune, and the row→API shaping
-// (#1347). Pure + exported for tests; the Worker runs the D1 I/O.
+// the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
+// for tests; the Worker runs the D1 I/O.
 
-// Retention constant kept for tests. pruneAccountEvents is NOT called by the cron
-// — the block explorer requires full historical depth (ADR 0012); prune is
-// deferred to the Postgres migration (#1519).
-export const EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
+// D1 safety-valve: 365-day retention prevents unbounded growth before the
+// Postgres cold tier (#1519) ships. pruneAccountEvents runs in HEALTH_PRUNE_CRON.
+export const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Columns written to account_events — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedEvents binds them in this order.

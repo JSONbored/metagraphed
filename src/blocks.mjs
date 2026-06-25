@@ -2,13 +2,11 @@
 // first-party per-block headers decoded DIRECTLY from finney by the same
 // chain-direct poller (scripts/fetch-events.py) that fills account_events, NOT
 // Taostats. This module holds the load contract, the row→API shaping, and the
-// (currently inactive) retention prune. Pure + exported for tests; the Worker
-// runs the D1 I/O.
+// retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
 
-// Retention constant kept for tests. pruneBlocks is NOT called by the cron —
-// the block explorer requires full historical depth (ADR 0012); prune is
-// deferred to the Postgres migration (#1519).
-export const BLOCK_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // reference only
+// D1 safety-valve: 365-day retention prevents unbounded growth before the
+// Postgres cold tier (#1519) ships. pruneBlocks runs in the HEALTH_PRUNE_CRON.
+export const BLOCK_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Columns written to blocks — THE load contract. scripts/fetch-events.py emits
 // rows with exactly these keys; loadStagedBlocks binds them in this order. Values

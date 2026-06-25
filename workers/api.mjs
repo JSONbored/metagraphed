@@ -139,12 +139,18 @@ import {
 } from "../src/neuron-history.mjs";
 import {
   eventInsertStatements,
+  pruneAccountEvents,
   rollupAccountEventsDaily,
   validEventRows,
 } from "../src/account-events.mjs";
-import { blockInsertStatements, validBlockRows } from "../src/blocks.mjs";
+import {
+  blockInsertStatements,
+  pruneBlocks,
+  validBlockRows,
+} from "../src/blocks.mjs";
 import {
   extrinsicInsertStatements,
+  pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
 import {
@@ -759,11 +765,14 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       // .catch-isolated — a transient D1 error must degrade to a no-op for this
       // tick, not abort the whole Promise.all and discard the snapshot write.
       pruneHealthHistory(env).catch(() => ({ pruned: false })),
-      // blocks / extrinsics / account_events are NOT pruned here — the block
-      // explorer requires full historical depth (ADR 0012). Retention is deferred
-      // to the Postgres migration (#1519) where a cold tier backs older rows
-      // before any D1 prune can run. The prune functions remain in src/ for
-      // tests; removing these calls is the only safe wire-cut.
+      // D1 safety-valve: prune chain-explorer tables at a 365-day window so D1
+      // never hits the 10 GB cap before the Postgres cold tier (#1519) ships.
+      // account_events is safe here — rollupAccountEventsDaily (above) already
+      // aggregated the daily summaries. blocks + extrinsics have no daily rollup
+      // yet, so older raw rows are discarded. All three are .catch-isolated.
+      pruneAccountEvents(env).catch(() => ({ pruned: false })),
+      pruneBlocks(env).catch(() => ({ pruned: false })),
+      pruneExtrinsics(env).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
     return pruned;
