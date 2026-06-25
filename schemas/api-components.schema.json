@@ -140,8 +140,14 @@
       },
       "AccountEvent": {
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "properties": {
+          "alpha_amount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "amount_tao": {
             "type": [
               "number",
@@ -4104,7 +4110,7 @@
       },
       "Extrinsic": {
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "properties": {
           "block_number": {
             "type": [
@@ -4165,6 +4171,12 @@
           "success": {
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "tip_tao": {
+            "type": [
+              "number",
               "null"
             ]
           }
