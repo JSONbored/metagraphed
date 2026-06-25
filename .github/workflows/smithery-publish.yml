@@ -62,9 +62,42 @@ jobs:
             || { echo "::error::$SMITHERY_MCP_URL did not return a valid MCP initialize — aborting publish"; exit 1; }
 
       - name: Install Smithery CLI
-        # Pinned (not @latest) for reproducible, supply-chain-reviewable runs;
-        # bump deliberately when adopting a newer CLI.
-        run: npm install -g smithery@1.2.0
+        # Keep the secret-bearing publish step from trusting a lockless, mutable
+        # npm resolution directly. Fetch the pinned package tarball, verify the
+        # bytes npm selected, install without lifecycle scripts, then require
+        # registry signatures for the installed package graph before any
+        # SMITHERY_API_KEY-bearing process runs.
+        run: |
+          set -euo pipefail
+          npm pack --json smithery@1.2.0 > /tmp/smithery-pack.json
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const crypto = require("node:crypto");
+          const [pack] = JSON.parse(fs.readFileSync("/tmp/smithery-pack.json", "utf8"));
+          if (!pack?.filename || !pack?.integrity) {
+            throw new Error(`missing npm pack integrity metadata: ${JSON.stringify(pack)}`);
+          }
+          const [algorithm, expected] = pack.integrity.split("-");
+          if (algorithm !== "sha512" || !expected) {
+            throw new Error(`unexpected npm pack integrity: ${pack.integrity}`);
+          }
+          const actual = crypto
+            .createHash(algorithm)
+            .update(fs.readFileSync(pack.filename))
+            .digest("base64");
+          if (actual !== expected) {
+            throw new Error(`integrity mismatch for ${pack.filename}`);
+          }
+          fs.writeFileSync("/tmp/smithery-tarball", pack.filename);
+          console.log(`verified ${pack.filename} with ${algorithm}`);
+          NODE
+          mkdir -p /tmp/smithery-cli
+          tarball="$(pwd)/$(cat /tmp/smithery-tarball)"
+          cd /tmp/smithery-cli
+          npm init -y >/dev/null
+          npm install --ignore-scripts "$tarball"
+          npm audit signatures
+          echo "/tmp/smithery-cli/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Publish to Smithery
         env:

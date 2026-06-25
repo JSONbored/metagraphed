@@ -89,6 +89,24 @@
       "schema_url": "https://api.subnet90.com/openapi.json",
       "source_urls": ["https://subnet90.com/"],
       "url": "https://api.subnet90.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-subnet-api",
+      "kind": "subnet-api",
+      "name": "DegenBrain pending-markets API",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "url": "https://api.subnet90.com/api/markets/pending"
     }
   ],
   "website_url": "https://subnet90.com/"
