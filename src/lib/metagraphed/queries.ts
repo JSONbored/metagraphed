@@ -719,27 +719,32 @@ function firstFiniteNumber(...values: unknown[]): number | undefined {
   );
 }
 
-function normalizeSubnet(raw: unknown): Subnet {
+export function normalizeSubnet(raw: unknown): Subnet {
   if (!raw || typeof raw !== "object") return raw as Subnet;
   const s = raw as Record<string, unknown>;
   return {
     ...(s as object),
     netuid: firstFiniteNumber(s.netuid) ?? (s.netuid as number),
+    // `name` is the curated identity; fall back to the on-chain `native_name`
+    // (a distinct field, not a legacy alias — both are emitted).
     name: firstString(s.name, s.native_name),
-    type: firstString(s.subnet_type, s.type) as Subnet["type"] | undefined,
-    participants: firstFiniteNumber(s.participants, s.participant_count),
-    surfaces_count: firstFiniteNumber(s.surfaces_count, s.surface_count),
-    candidates_count: firstFiniteNumber(s.candidates_count, s.candidate_count),
+    type: firstString(s.subnet_type) as Subnet["type"] | undefined,
+    // Output keys here (`participants`, `surfaces_count`, `candidates_count`)
+    // are the aliases the UI reads; the API serves the canonical singulars.
+    participants: firstFiniteNumber(s.participant_count),
+    surfaces_count: firstFiniteNumber(s.surface_count),
+    candidates_count: firstFiniteNumber(s.candidate_count),
     // chain `status` is "active" → "unknown" here; the real probe health is
     // joined from /api/v1/health in the table. Default to "unknown" (never
     // undefined) so the health filter matches unprobed rows.
     health: statusToHealth(s.health) ?? statusToHealth(s.status) ?? "unknown",
+    // Output `icon_url` is sourced from the API's `logo_url` field.
     icon_url: firstString(s.icon_url, s.logo_url),
     // API key is website_url; the BrandIcon favicon fallback reads `website`.
-    website: firstString(s.website, s.website_url),
+    website: firstString(s.website_url),
     // API key is source_repo; the BrandIcon GitHub-avatar fallback reads `repo`
     // (CORS-clean + Worker-reachable — the most reliable icon source).
-    repo: firstString(s.repo, s.source_repo),
+    repo: firstString(s.source_repo),
     updated_at: firstString(s.updated_at, s.last_checked, s.last_ok),
   } as Subnet;
 }
@@ -868,7 +873,7 @@ function pickStr(...vals: unknown[]): string | undefined {
   return undefined;
 }
 
-function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
+export function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
   const root = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}) as Record<
     string,
     unknown
@@ -890,10 +895,13 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     (root.gaps as Record<string, unknown> | undefined) ??
     {};
 
-  const website = pickStr(links.website_url, links.website, subnet.website_url);
-  const docs = pickStr(links.docs_url, links.docs, subnet.docs_url);
-  const repo = pickStr(links.source_repo, links.repo, subnet.source_repo);
-  const dashboard = pickStr(links.dashboard_url, links.dashboard, subnet.dashboard_url);
+  // `primary_links` emits the canonical *_url / source_repo names only; the
+  // `subnet.*` reads are a cross-source fallback (a different object that
+  // carries the same canonical names), not a legacy alias.
+  const website = pickStr(links.website_url, subnet.website_url);
+  const docs = pickStr(links.docs_url, subnet.docs_url);
+  const repo = pickStr(links.source_repo, subnet.source_repo);
+  const dashboard = pickStr(links.dashboard_url, subnet.dashboard_url);
 
   const status = statusToHealth((subnet.status as string) ?? (profile.status as string));
 
@@ -911,7 +919,7 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     block: subnet.block as number | undefined,
     registered_at_block: subnet.registered_at_block as number | undefined,
     tempo: subnet.tempo as number | undefined,
-    participants: (subnet.participant_count as number) ?? (subnet.participants as number),
+    participants: subnet.participant_count as number,
     mechanism_count: subnet.mechanism_count as number | undefined,
     // links
     website,
@@ -1275,7 +1283,7 @@ function normalizeCompareSubnet(raw: unknown): CompareSubnet | undefined {
   };
 }
 
-function normalizeCompare(raw: unknown): Compare {
+export function normalizeCompare(raw: unknown): Compare {
   const d = isPlainRecord(raw) ? raw : {};
   const subnets = Array.isArray(d.subnets)
     ? d.subnets.flatMap((subnet) => {
@@ -2110,7 +2118,7 @@ function stringArrayFromUnknown(value: unknown): string[] {
   });
 }
 
-function normalizeGap(raw: unknown): Gap {
+export function normalizeGap(raw: unknown): Gap {
   const r = (raw ?? {}) as Record<string, unknown>;
   const g = (r.gaps as Record<string, unknown> | undefined) ?? {};
   const missing = stringArrayFromUnknown(g.missing_kinds);
