@@ -105,6 +105,8 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     signer: "5Signer",
     call_module: "SubtensorModule",
     call_function: "add_stake",
+    call_args: '[{"name":"hotkey","value":"5H..."}]',
+    fee_tao: 0.0125,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -114,8 +116,38 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.signer, "5Signer");
   assert.equal(out.call_module, "SubtensorModule");
   assert.equal(out.call_function, "add_stake");
+  assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
+  assert.equal(out.fee_tao, 0.0125);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
+  // Substrate call args are canonically a LIST of {name,value} descriptors.
+  const arr = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '[{"name":"netuid","value":1}]',
+  });
+  assert.deepEqual(arr.call_args, [{ name: "netuid", value: 1 }]);
+  // An object payload is also tolerated.
+  const obj = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: '{"netuid":1}',
+  });
+  assert.deepEqual(obj.call_args, { netuid: 1 });
+  // Malformed JSON -> null (never throws).
+  const bad = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    call_args: "not-json",
+  });
+  assert.equal(bad.call_args, null);
+  // Absent -> null; fee_tao absent -> null.
+  const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
+  assert.equal(sparse.call_args, null);
+  assert.equal(sparse.fee_tao, null);
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {
@@ -249,7 +281,7 @@ function req(path) {
 }
 
 // A D1 mock that routes by SQL shape so the extrinsic handlers get realistic rows.
-function dbWith({ feed, detail } = {}) {
+function dbWith({ feed, detail, events } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
@@ -257,7 +289,16 @@ function dbWith({ feed, detail } = {}) {
           bind() {
             return {
               async all() {
+                // Emitted-events embed (#1849): FROM account_events — check the
+                // table BEFORE the generic composite WHERE (both share that shape).
+                if (/FROM account_events/.test(sql))
+                  return { results: events || [] };
                 if (/WHERE extrinsic_hash = \?/.test(sql))
+                  return { results: detail ? [detail] : [] };
+                // Composite-id detail (#1848): WHERE block_number=? AND extrinsic_index=?.
+                if (
+                  /WHERE block_number = \? AND extrinsic_index = \?/.test(sql)
+                )
                   return { results: detail ? [detail] : [] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
@@ -333,6 +374,80 @@ test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () 
   assert.ok(/WHERE block_number = \?/.test(boundSql));
 });
 
+test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(
+      "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=1000&to=2000",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.ok(/signer = \?/.test(boundSql));
+  assert.ok(/call_module = \?/.test(boundSql));
+  assert.ok(/call_function = \?/.test(boundSql));
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(/block_number >= \?/.test(boundSql));
+  assert.ok(/block_number <= \?/.test(boundSql));
+  assert.ok(/observed_at >= \?/.test(boundSql));
+  assert.ok(/observed_at <= \?/.test(boundSql));
+  // success=false binds the literal 0 (never !=1, which would leak NULL rows).
+  assert.ok(boundParams.includes(0));
+  assert.ok(boundParams.includes("5Signer"));
+  // limit + offset are the last two bound params.
+  assert.equal(boundParams.at(-2), 50);
+  assert.equal(boundParams.at(-1), 0);
+});
+
+test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846)", async () => {
+  let boundSql;
+  let boundParams;
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        boundSql = sql;
+        return {
+          bind(...p) {
+            boundParams = p;
+            return {
+              async all() {
+                return { results: [] };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  await handleRequest(req("/api/v1/extrinsics?success=true"), env, {});
+  assert.ok(/success = \?/.test(boundSql));
+  assert.ok(boundParams.includes(1));
+
+  // A non-true/false success value adds no condition (no WHERE).
+  await handleRequest(req("/api/v1/extrinsics?success=maybe"), env, {});
+  assert.ok(!/success = \?/.test(boundSql));
+  assert.ok(!/WHERE/.test(boundSql));
+});
+
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {
   const hash = `0x${"c".repeat(64)}`;
   const env = dbWith({
@@ -363,6 +478,74 @@ test("GET /extrinsics/{hash} is schema-stable when cold (extrinsic:null, never 4
   const body = await res.json();
   assert.equal(body.data.ref, hash);
   assert.equal(body.data.extrinsic, null);
+});
+
+test("GET /extrinsics/{block}-{index} resolves by the composite id (#1848)", async () => {
+  const env = dbWith({
+    detail: {
+      block_number: 1234,
+      extrinsic_index: 3,
+      extrinsic_hash: null,
+      call_module: "Timestamp",
+      call_function: "set",
+      success: 1,
+      observed_at: 1750009000000,
+    },
+  });
+  const res = await handleRequest(req("/api/v1/extrinsics/1234-3"), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "1234-3");
+  assert.equal(body.data.extrinsic.block_number, 1234);
+  assert.equal(body.data.extrinsic.extrinsic_index, 3);
+  // A null-hash extrinsic — previously unaddressable — is now reachable.
+  assert.equal(body.data.extrinsic.extrinsic_hash, null);
+});
+
+test("GET /extrinsics/{block}-{index} is schema-stable when cold (#1848)", async () => {
+  const res = await handleRequest(req("/api/v1/extrinsics/777-0"), {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "777-0");
+  assert.equal(body.data.extrinsic, null);
+  // The events embed (#1849) is always present + empty when the ref is cold.
+  assert.deepEqual(body.data.events, []);
+});
+
+test("GET /extrinsics/{ref} embeds the events the extrinsic emitted (#1849)", async () => {
+  const hash = `0x${"e".repeat(64)}`;
+  const env = dbWith({
+    detail: {
+      block_number: 1234,
+      extrinsic_index: 2,
+      extrinsic_hash: hash,
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      success: 1,
+      observed_at: 1750009000000,
+    },
+    events: [
+      {
+        block_number: 1234,
+        event_index: 5,
+        event_kind: "StakeAdded",
+        hotkey: "5Hk",
+        coldkey: "5Co",
+        netuid: 7,
+        uid: 3,
+        amount_tao: 1.5,
+        observed_at: 1750009000000,
+        extrinsic_index: 2,
+      },
+    ],
+  });
+  const res = await handleRequest(req(`/api/v1/extrinsics/${hash}`), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.extrinsic.extrinsic_index, 2);
+  assert.equal(body.data.events.length, 1);
+  assert.equal(body.data.events[0].event_kind, "StakeAdded");
+  assert.equal(body.data.events[0].extrinsic_index, 2);
 });
 
 test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () => {
