@@ -9,15 +9,22 @@ Worker's loadStagedEvents bulk-loads it into D1 with INSERT OR IGNORE keyed
 (block_number, event_index) — idempotent, so an overlapping window re-inserts
 harmlessly.
 
-Durable high-water cursor (#1346 audit fix): the scan no longer starts at a
-FIXED `head - window`. The refresh-events workflow reads the last successfully
-staged block from R2 (events/cursor.json) and passes it as EVENTS_CURSOR; we
-scan `compute_from_block(cursor, head, window) .. head`. So a long gap (GitHub's
-scheduler coalescing/dropping runs for longer than the window) is recovered from
-the cursor instead of silently lost, while EVENTS_WINDOW stays as a generous
-overlap floor that keeps a cold/empty cursor safe and the load idempotent. After
-a successful stage the workflow advances the cursor to `events-cursor.json`
-(the max block scanned this run, written below).
+Recent-window scan (BOOTSTRAP tier — ADR 0012): each run re-scans a fixed
+`head - EVENTS_WINDOW + 1 .. head`. compute_from_block clamps to that window floor
+and does NOT chase the cursor (see its docstring + the tests for why). The
+EVENTS_CURSOR the workflow reads from R2 is retained for lag/health accounting
+only (see _emit_lag_alert) — NOT for gap recovery. After a successful stage the
+workflow advances the cursor to `events-cursor.json` (the max block scanned this
+run, written below).
+
+LIMITATION — this is a best-effort live-forward tier, not complete history. When
+GitHub's scheduler coalesces/drops runs for longer than ~EVENTS_WINDOW blocks
+(observed: the */5 cron collapses to ~1.5-4.5h), blocks produced between runs but
+older than the window are never fetched, and public nodes prune them (~300 blocks)
+before any later run could reach them — so they are permanently lost (measured:
+~58% of the block range). Gap-free, complete ingestion is the self-hosted
+continuous indexer against an archive node (ADR 0012 / #1349); this poller is the
+bootstrap for it.
 
 Run:  uv run --with substrate-interface python scripts/fetch-events.py
 Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)

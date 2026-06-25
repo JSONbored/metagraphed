@@ -50,15 +50,16 @@ jobs:
       - name: Install
         run: npm ci
 
-      # Read the durable high-water cursor (highest block previously staged) from
-      # R2 before polling. The window alone is a FIXED look-back: if the scheduler
-      # coalesces/drops runs for longer than the window, blocks older than
-      # head-window are never fetched and silently lost. The cursor closes that gap
-      # — the scan resumes from cursor+1 (capped by the window floor). A cold start
-      # (no object yet) is fine: `get` fails, we leave EVENTS_CURSOR blank, and the
-      # poller falls back to the window floor. `|| true` so a missing object (or a
-      # transient R2 blip) never fails the run; the window floor still makes the
-      # poll correct, just without long-gap recovery for this one tick.
+      # Read the high-water cursor (highest block previously staged) from R2 before
+      # polling. NOTE: the poller scans only a FIXED recent window (head-window..head)
+      # and does NOT resume from the cursor — compute_from_block clamps to the window
+      # floor by design; the cursor is passed for lag/health accounting only (it warns
+      # when the poller nears the prune horizon). So when the scheduler coalesces/drops
+      # runs for longer than ~window blocks, the blocks between runs are lost — they are
+      # pruned before a later run could reach them. This is the bootstrap tier;
+      # complete, gap-free ingestion is the self-hosted archive indexer (ADR 0012 /
+      # #1349). A cold start (no object yet) is fine: `get` fails, EVENTS_CURSOR stays
+      # blank. `|| true` so a missing object or transient R2 blip never fails the run.
       - name: Read event cursor from R2
         id: cursor
         run: |
