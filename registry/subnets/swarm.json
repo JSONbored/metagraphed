@@ -1,0 +1,52 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Swarm",
+  "netuid": 124,
+  "schema_version": 1,
+  "slug": "sn-124",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-source-repo",
+      "kind": "source-repo",
+      "name": "Swarm source repository",
+      "notes": "Official Swarm (SN124) source repository, identified via on-chain subnet identity.",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://github.com/swarm-subnet/swarm",
+        "https://api.taomarketcap.com/public/v1/subnets/124"
+      ],
+      "url": "https://github.com/swarm-subnet/swarm"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-124-swarm-website",
+      "kind": "website",
+      "name": "Swarm website",
+      "notes": "Official Swarm (SN124) project website, identified via on-chain subnet identity.",
+      "provider": "swarm",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "source_urls": [
+        "https://www.swarm124.com/",
+        "https://api.taomarketcap.com/public/v1/subnets/124"
+      ],
+      "url": "https://www.swarm124.com/"
+    }
+  ]
+}
