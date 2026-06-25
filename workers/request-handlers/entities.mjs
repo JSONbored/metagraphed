@@ -640,17 +640,19 @@ export async function handleBlock(request, env, ref) {
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
   const param = isHash ? ref : Number(ref);
   const rows = await d1All(env, sql, [param]);
-  // prev/next chain-walk neighbors (#1853): one bounded query for the nearest
-  // STORED block numbers around the resolved height (skips pruned gaps; null at
-  // the window edges). Derived from the resolved row's number (works for the hash
-  // path too). Only when the block resolved — a cold/unknown ref has no anchor.
+  // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
+  // nearest STORED block numbers around the resolved height (skips pruned gaps;
+  // null at the window edges). Derived from the resolved row's number (works for
+  // the hash path too). Only when the block resolved — a cold/unknown ref has no
+  // anchor. Keep these as WHERE-bounded subqueries so public detail requests use
+  // the block_number primary key instead of scanning the retained blocks table.
   let prev = null;
   let next = null;
   const resolvedNumber = rows[0]?.block_number;
   if (Number.isInteger(resolvedNumber)) {
     const nbr = await d1All(
       env,
-      `SELECT MAX(CASE WHEN block_number < ? THEN block_number END) AS prev, MIN(CASE WHEN block_number > ? THEN block_number END) AS next FROM blocks`,
+      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
     );
     prev = nbr[0]?.prev ?? null;

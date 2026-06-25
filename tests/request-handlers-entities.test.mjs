@@ -216,8 +216,12 @@ function dbWith({
               record(sql, params);
               return {
                 async all() {
-                  // Block prev/next neighbor aggregate (#1853).
-                  if (/MAX\(CASE WHEN block_number </.test(sql)) {
+                  // Block prev/next neighbor lookup (#1853).
+                  if (
+                    /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                      sql,
+                    )
+                  ) {
                     return {
                       results: [blockNeighbors || { prev: null, next: null }],
                     };
@@ -1261,7 +1265,7 @@ describe("handleBlock", () => {
   });
 
   test("happy path resolves by numeric block_number", async () => {
-    const { env } = dbWith({
+    const { env, captures } = dbWith({
       blockDetail: blockRow(),
       blockNeighbors: { prev: 1230, next: 1240 },
     });
@@ -1272,6 +1276,13 @@ describe("handleBlock", () => {
         String(BLOCK_NUM),
       ),
     );
+    const neighborSql = captures.sql.find((sql) =>
+      /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+        sql,
+      ),
+    );
+    assert.ok(neighborSql);
+    assert.ok(!/MAX\(CASE WHEN block_number </.test(neighborSql));
     assert.equal(body.data.block.block_number, BLOCK_NUM);
     assert.equal(body.data.prev_block_number, 1230);
     assert.equal(body.data.next_block_number, 1240);

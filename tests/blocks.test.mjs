@@ -250,8 +250,12 @@ function dbWith({ feed, detail, neighbors } = {}) {
           bind() {
             return {
               async all() {
-                // prev/next neighbor query (#1853): the MAX/MIN CASE aggregate.
-                if (/MAX\(CASE WHEN block_number </.test(sql))
+                // prev/next neighbor query (#1853): indexed scalar subqueries.
+                if (
+                  /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                    sql,
+                  )
+                )
                   return { results: [neighbors || { prev: null, next: null }] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
