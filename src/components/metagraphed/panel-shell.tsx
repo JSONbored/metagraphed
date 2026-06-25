@@ -5,6 +5,7 @@ import { SectionAnchor, type SectionTone } from "@/components/metagraphed/sectio
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { classNames, isStaleFreshness, isUsableTimestamp } from "@/lib/metagraphed/format";
+import { reportError } from "@/lib/error-reporting";
 
 interface MetaInfo {
   generatedAt?: string;
@@ -153,9 +154,13 @@ class PanelErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   static getDerivedStateFromError(error: unknown) {
     return { error };
   }
-  componentDidCatch(error: unknown) {
-    // eslint-disable-next-line no-console
-    console.error("[PanelShell]", error);
+  componentDidCatch(error: unknown, info: { componentStack?: string }) {
+    // Single centralized seam — real telemetry is wired behind reportError.
+    reportError(error, {
+      boundary: "panel_shell",
+      context: this.props.context,
+      componentStack: info.componentStack,
+    });
   }
   retry = async () => {
     await this.props.onRefresh();
