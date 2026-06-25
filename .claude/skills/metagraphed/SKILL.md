@@ -1,5 +1,5 @@
 ---
-name: contributing-to-metagraphed
+name: metagraphed
 description: >-
   Use when writing, validating, or preparing ANY contribution or pull request to the
   JSONbored/metagraphed repo — adding/enriching a subnet's public surfaces (the most common
@@ -50,20 +50,19 @@ Most contributions are **Path A**. Do **not** mix the two in one PR.
 The Gittensory Gate is **not advisory**. Once your checks settle, for a **contributor** PR (you are
 not the repo owner or an automation bot) it takes a one-shot disposition:
 
-| Situation                                                                                                                                                         | Gate action                             |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Content **verified** (owner-matched, fresh, grounded) + **both** AI reviewers confidently approve (≥0.9) + CI green + mergeable-clean + a valid linked issue      | **auto-approve → MERGE**                |
-| A **deterministic fail** — duplicate surface, placeholder, private/localhost URL, secret, dead `source_url`                                                       | **CLOSE** (one-shot)                    |
-| **Every** reviewer returns a clear reject                                                                                                                         | **CLOSE** (one-shot)                    |
-| **No linked issue** (repo hard-rule)                                                                                                                              | **CLOSE / fail** — link a tracked issue |
-| Any CI check failed                                                                                                                                               | **CLOSE** (cites the failing check)     |
-| Legitimate but **uncertain** — a reviewer wanted merge but under 0.9, a reviewer said `manual`, reviewers split, owner-mismatch, stale repo, unfetchable evidence | **MANUAL** (held, not closed)           |
-| CI still pending / unverified fork run                                                                                                                            | **no action** — waits                   |
+| Situation                                                                                                                                                         | Gate action                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Content **verified** (owner-matched, fresh, grounded) + **both** AI reviewers confidently approve (≥0.9) + CI green + mergeable-clean                             | **auto-approve → MERGE**            |
+| A **deterministic fail** — duplicate surface, placeholder, private/localhost URL, secret, dead `source_url`                                                       | **CLOSE** (one-shot)                |
+| **Every** reviewer returns a clear reject                                                                                                                         | **CLOSE** (one-shot)                |
+| Any CI check failed                                                                                                                                               | **CLOSE** (cites the failing check) |
+| Legitimate but **uncertain** — a reviewer wanted merge but under 0.9, a reviewer said `manual`, reviewers split, owner-mismatch, stale repo, unfetchable evidence | **MANUAL** (held, not closed)       |
+| CI still pending / unverified fork run                                                                                                                            | **no action** — waits               |
 
 So a flawed contributor PR is **closed, not coached** — recovery means fixing the problem and opening
-a **fresh** PR. **Verified + green + a real linked issue ⇒ merged; a clear adverse signal ⇒ closed;
-genuine uncertainty ⇒ held for a human.** (Owner / automation-bot PRs are exempt from auto-close — but
-assume you are a contributor.)
+a **fresh** PR. **Verified + green ⇒ merged; a clear adverse signal ⇒ closed; genuine uncertainty ⇒
+held for a human.** (Owner / automation-bot PRs are exempt from auto-close — but assume you are a
+contributor.)
 
 ---
 
@@ -86,9 +85,11 @@ assume you are a contributor.)
 5. **Public-safe only.** No secrets, PATs, wallet/hotkey/coldkey paths, private/localhost URLs, or
    validator-local data anywhere — in files, commits, or PR text. `auth` fields are _placeholders_
    (`Bearer <token>`), never real credentials.
-6. **Link a tracked issue.** The gate hard-fails a PR with no linked issue. Put `Closes #<n>` (or a
-   `Refs #<n>`) in the PR body. For surface work, the per-subnet enrichment issues under
-   [epic #427](https://github.com/JSONbored/metagraphed/issues/427) are the linkable home.
+6. **Link an issue when one exists (optional).** A linked issue is **not required** — a PR with no
+   linked issue is judged on its own merit and is **never** closed for the missing link. When an issue
+   does track the work, reference it (`Closes #<n>` / `Refs #<n>`) in the PR body and the gate verifies
+   the PR against that issue's intent. For surface work, the per-subnet enrichment issues under
+   [epic #427](https://github.com/JSONbored/metagraphed/issues/427) are the natural home to link.
 7. **Schema is the contract — regenerate + commit (Path B).** Editing `schemas/` means
    `npm run build` then committing `openapi.json` + types/clients in the same PR, or
    `validate:contract-drift` fails CI.
@@ -141,7 +142,9 @@ npm run surface:add -- \
   --source-url https://github.com/example/project/blob/main/README.md \
   --provider <provider-slug> --submitted-by <github-login> --write
   # Debut provider (slug not registered)? Add the team identity and surface:add scaffolds
-  # registry/providers/<slug>.json (flat — trust is the authority field) in the SAME PR:
+  # registry/providers/<slug>.json (flat — trust is the authority field) in the SAME PR.
+  # --provider-url is the provider's website_url and MUST be a public URL (validate
+  # rejects private/localhost), as must any logo/docs/github/team/contact/social URL:
   #   --provider-name "Example Team" --provider-url https://example.com
 ```
 
@@ -192,13 +195,14 @@ submission lane.)
   `registry/subnets/<slug>.json`.
 - **Commit (Conventional):** `feat(registry): add SN43 Example subnet-api surface (#<issue>)`.
 - **PR body:** fill `.github/pull_request_template.md` honestly — a real Summary, the `url` +
-  `source_url` proof, the validation commands you ran, and **`Closes #<issue>`**. No AI attribution.
+  `source_url` proof, the validation commands you ran, and **`Closes #<issue>`** if an issue tracks
+  this (optional — not required). No AI attribution.
 
 ### Phase A5 — Let the gate adjudicate
 
-Watch `Validate` and `Gittensory Gate` go green. Verified + green + linked issue → merged. A
-deterministic fail (dup / dead source / private URL) or a clear reject → closed; fix and open a fresh
-PR. Genuine uncertainty → held for a human — don't open a duplicate.
+Watch `Validate` and `Gittensory Gate` go green. Verified + green → merged. A deterministic fail
+(dup / dead source / private URL) or a clear reject → closed; fix and open a fresh PR. Genuine
+uncertainty → held for a human — don't open a duplicate.
 
 ---
 
@@ -253,9 +257,9 @@ clean `npm run build` (see the build-gotchas note in `reference.md`).
 
 ### Phase B5 — Commit + PR
 
-Conventional Commit (no AI attribution), `Closes #<issue>`, fill the PR template with the validation
-commands you actually ran. Sync with `main` if it moved (`git fetch upstream && git rebase
-upstream/main`) — a base conflict closes a contributor PR.
+Conventional Commit (no AI attribution); `Closes #<issue>` if an issue tracks the work (optional); fill
+the PR template with the validation commands you actually ran. Sync with `main` if it moved
+(`git fetch upstream && git rebase upstream/main`) — a base conflict closes a contributor PR.
 
 ---
 
@@ -268,7 +272,7 @@ upstream/main`) — a base conflict closes a contributor PR.
       `review.state: community-submitted`; `public_safe: true`; no health/`verification`/secrets set by hand.
 - [ ] Not a duplicate of an existing surface or an open PR; not the same surface re-titled by `kind`.
 - [ ] `npm run validate:surface` + `npm run scan:public-safety` clean.
-- [ ] Conventional Commit (no AI attribution); PR template filled; **`Closes #<issue>`** present.
+- [ ] Conventional Commit (no AI attribution); PR template filled; **`Closes #<issue>`** if an issue tracks it (optional).
 
 **Path B (code/schema):**
 
@@ -276,7 +280,7 @@ upstream/main`) — a base conflict closes a contributor PR.
 - [ ] Regenerated + committed: `npm run build` artifacts (OpenAPI/types/contracts) as applicable.
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
-- [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>`.
+- [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).
 
 If every box is checked, the PR has the best chance of a one-shot approve-and-merge. If any box can't
 be checked, **keep working — don't push.**

@@ -19,6 +19,42 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.22.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.21.0...platform-v0.22.0) (2026-06-25)
+
+
+### Features
+
+* **contract:** emit derived classification fields + canonical names additively ([#1783](https://github.com/JSONbored/metagraphed/issues/1783)) ([eed5eba](https://github.com/JSONbored/metagraphed/commit/eed5ebae879d1d2a56e189ceffb0ddcccb9ed8e3))
+* **events:** archive-ready cursor-driven gap recovery (ADR 0012) ([#1752](https://github.com/JSONbored/metagraphed/issues/1752)) ([2006b2c](https://github.com/JSONbored/metagraphed/commit/2006b2ce63ea03cae25353fc2f3d7f5b8a14b17c))
+* **events:** historical backfill workflow for the block-explorer tiers ([#1749](https://github.com/JSONbored/metagraphed/issues/1749)) ([#1784](https://github.com/JSONbored/metagraphed/issues/1784)) ([142712c](https://github.com/JSONbored/metagraphed/commit/142712ce392df0a4745d416137d656511b914ff7))
+* **events:** stream blocks + extrinsics in realtime ([#1345](https://github.com/JSONbored/metagraphed/issues/1345) Option B) ([#1754](https://github.com/JSONbored/metagraphed/issues/1754)) ([8555ac6](https://github.com/JSONbored/metagraphed/commit/8555ac68710433df6bb3e2d943b9de8501a4d8b6))
+
+
+### Bug Fixes
+
+* **api:** await envelopeResponse so the per-response D1-fallback cache guard works ([#1780](https://github.com/JSONbored/metagraphed/issues/1780)) ([e1027d6](https://github.com/JSONbored/metagraphed/commit/e1027d6a0d14dc4683e1ae6f30da2555c2211ccf)), closes [#1760](https://github.com/JSONbored/metagraphed/issues/1760)
+* **blocks:** reject malformed Aura slot digests ([#1728](https://github.com/JSONbored/metagraphed/issues/1728)) ([d79db54](https://github.com/JSONbored/metagraphed/commit/d79db547ab8e7a8d4ad6899086f5e9545ae93b60))
+* **events:** retry archive RPC on rate-limit in the historical backfill ([#1786](https://github.com/JSONbored/metagraphed/issues/1786)) ([ec1160c](https://github.com/JSONbored/metagraphed/commit/ec1160c0a2760fd1891cd291058ecb196cdab1ce))
+* **scripts:** harden build-network-registry main-module guard against spaced paths ([#1775](https://github.com/JSONbored/metagraphed/issues/1775)) ([9edeb2d](https://github.com/JSONbored/metagraphed/commit/9edeb2d84f5f5ca60fc1dd73ffcb6989a7d92925))
+* **smoke:** fail fast on unsubstituted route placeholders + PR-time substitution test ([#1777](https://github.com/JSONbored/metagraphed/issues/1777)) ([e47a105](https://github.com/JSONbored/metagraphed/commit/e47a105c317736d7b3caf2ca7861e2585db86353))
+* **test:** date health/trends rows relative to now (de-time-bomb) ([#1747](https://github.com/JSONbored/metagraphed/issues/1747)) ([8930e4a](https://github.com/JSONbored/metagraphed/commit/8930e4a0cc0a0c098621a84146df85e44e1458f5))
+* **webhooks:** make the redelivery sweep order deterministic ([#1731](https://github.com/JSONbored/metagraphed/issues/1731)) ([90028a5](https://github.com/JSONbored/metagraphed/commit/90028a570c509a7f4f2a4e58e2984b53f9a9de55)), closes [#1730](https://github.com/JSONbored/metagraphed/issues/1730)
+
+
+### Performance
+
+* **api:** tighten edge-cache keying, cache aggregating entity handlers, and harden the cron/limits ([#1782](https://github.com/JSONbored/metagraphed/issues/1782)) ([94709b5](https://github.com/JSONbored/metagraphed/commit/94709b551ed894dabb9126c5db7ab9d870c47cea))
+
+
+### Documentation
+
+* add RELEASING.md (release surfaces + MCP publish steps) ([#1735](https://github.com/JSONbored/metagraphed/issues/1735)) ([92c72a0](https://github.com/JSONbored/metagraphed/commit/92c72a098cefbb7e5d1e8fac34236c85574f4fcd))
+* **adr:** add ADR index + fix stale statuses + cross-link ([#1740](https://github.com/JSONbored/metagraphed/issues/1740)) ([9fe9161](https://github.com/JSONbored/metagraphed/commit/9fe91615e0465f84d0d81ea227472c5e0c9df8fa))
+* **adr:** record three undocumented decisions (0008–0010) ([#1743](https://github.com/JSONbored/metagraphed/issues/1743)) ([15e44d7](https://github.com/JSONbored/metagraphed/commit/15e44d7bbbc00ecb73c052fccfb8fee0e3682c0c))
+* **enrichment:** point contributors at the single-file surface model, not the retired candidate lane ([#1736](https://github.com/JSONbored/metagraphed/issues/1736)) ([019646e](https://github.com/JSONbored/metagraphed/commit/019646ea1e00502190e5e0cea3007637ba17286d)), closes [#1734](https://github.com/JSONbored/metagraphed/issues/1734)
+* **events:** record chain-ingestion architecture (ADR 0012) + fix false poller docs ([#1750](https://github.com/JSONbored/metagraphed/issues/1750)) ([d99da90](https://github.com/JSONbored/metagraphed/commit/d99da909ef1721e3d5c0c44b0c60cb009cdd625d))
+* **submission-gate:** realign the contributor PR-shape contract to the single-file surface model ([#1742](https://github.com/JSONbored/metagraphed/issues/1742)) ([a3bfdb2](https://github.com/JSONbored/metagraphed/commit/a3bfdb22118cb15831627124f60f56e65f56a271)), closes [#1741](https://github.com/JSONbored/metagraphed/issues/1741)
+
 ## [0.21.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.20.1...platform-v0.21.0) (2026-06-24)
 
 
