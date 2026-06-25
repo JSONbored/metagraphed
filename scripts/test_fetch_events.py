@@ -27,6 +27,7 @@ compute_from_block = _fe.compute_from_block
 compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
+_fee_map = _fe._fee_map
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
 PRUNE_HORIZON = _fe.PRUNE_HORIZON
 
@@ -161,6 +162,55 @@ class BlockAuthorTest(unittest.TestCase):
             _block_author(substrate, "0xblock", self.header("0x0100000000000000")),
             "5AUTHORITY01",
         )
+
+
+class FeeMapTest(unittest.TestCase):
+    """_fee_map extracts BOTH actual_fee and tip from TransactionFeePaid (#1855)."""
+
+    class Ev:
+        def __init__(self, value):
+            self.value = value
+
+    def _paid(self, idx, attrs):
+        return self.Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": idx,
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": attrs,
+                },
+            }
+        )
+
+    def test_list_attrs_capture_fee_and_tip(self):
+        # [who, actual_fee, tip] in rao; _tao divides by 1e9.
+        out = _fee_map([self._paid(0, ["5Who", 1_000_000_000, 250_000_000])])
+        self.assertEqual(out[0]["fee_tao"], 1.0)
+        self.assertEqual(out[0]["tip_tao"], 0.25)
+
+    def test_dict_attrs_capture_fee_and_tip(self):
+        out = _fee_map(
+            [
+                self._paid(
+                    2,
+                    {"who": "5Who", "actual_fee": 2_000_000_000, "tip": 0},
+                )
+            ]
+        )
+        self.assertEqual(out[2]["fee_tao"], 2.0)
+        self.assertEqual(out[2]["tip_tao"], 0.0)
+
+    def test_missing_tip_is_none(self):
+        # A 2-element list (no tip leg) → tip_tao None, fee still captured.
+        out = _fee_map([self._paid(1, ["5Who", 500_000_000])])
+        self.assertEqual(out[1]["fee_tao"], 0.5)
+        self.assertIsNone(out[1]["tip_tao"])
+
+    def test_non_fee_events_ignored_and_never_raises(self):
+        self.assertEqual(_fee_map([self.Ev("not-a-dict")]), {})
+        self.assertEqual(_fee_map([self.Ev({"phase": "Finalization"})]), {})
 
 
 class ParseCursorTest(unittest.TestCase):

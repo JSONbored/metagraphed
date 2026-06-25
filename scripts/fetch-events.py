@@ -417,12 +417,14 @@ def _extrinsic_call(value):
 
 
 def _fee_map(events):
-    """Map extrinsic_index -> fee_tao from TransactionPayment.TransactionFeePaid events.
+    """Map extrinsic_index -> {"fee_tao", "tip_tao"} from the block's
+    TransactionPayment.TransactionFeePaid events.
 
     Substrate emits one TransactionPayment.TransactionFeePaid per fee-paying extrinsic
-    (fields: who, actual_fee, tip). Inherents and unsigned extrinsics do not emit it.
-    Correlated by extrinsic_idx (same ApplyExtrinsic phase as ExtrinsicSuccess/Failed).
-    NEVER raises.
+    (fields: who, actual_fee, tip). actual_fee is the inclusion fee; tip is the
+    priority tip paid ON TOP of it (#1855) — captured in the same pass, zero new RPC.
+    Inherents and unsigned extrinsics do not emit it. Correlated by extrinsic_idx
+    (same ApplyExtrinsic phase as ExtrinsicSuccess/Failed). NEVER raises.
     """
     out = {}
     try:
@@ -441,12 +443,18 @@ def _fee_map(events):
             attrs = e.get("attributes")
             if isinstance(attrs, dict):
                 fee_rao = attrs.get("actual_fee")
+                tip_rao = attrs.get("tip")
             elif isinstance(attrs, list) and len(attrs) > 1:
                 fee_rao = attrs[1]  # [who, actual_fee, tip]
+                tip_rao = attrs[2] if len(attrs) > 2 else None
             else:
                 fee_rao = None
-            if fee_rao is not None:
-                out[idx] = _tao(fee_rao)
+                tip_rao = None
+            if fee_rao is not None or tip_rao is not None:
+                out[idx] = {
+                    "fee_tao": _tao(fee_rao) if fee_rao is not None else None,
+                    "tip_tao": _tao(tip_rao) if tip_rao is not None else None,
+                }
     except Exception:
         return out
     return out
@@ -521,7 +529,8 @@ def extrinsics_for_block(s, bn, bh, events):
                     "call_function": call_function,
                     "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
-                    "fee_tao": fee_map.get(extrinsic_index),
+                    "fee_tao": fee_map.get(extrinsic_index, {}).get("fee_tao"),
+                    "tip_tao": fee_map.get(extrinsic_index, {}).get("tip_tao"),
                 }
             )
         except Exception:

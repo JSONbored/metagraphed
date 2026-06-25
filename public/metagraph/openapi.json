@@ -4106,7 +4106,7 @@
       },
       "Extrinsic": {
         "additionalProperties": false,
-        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip paid ON TOP of the fee (#1855, nullable, populated for newly-ingested rows only); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
         "properties": {
           "block_number": {
             "type": [
@@ -4167,6 +4167,12 @@
           "success": {
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "tip_tao": {
+            "type": [
+              "number",
               "null"
             ]
           }
@@ -18315,7 +18321,8 @@
                       "fee_tao": 0.5,
                       "observed_at": "2026-06-01T00:00:00.000Z",
                       "signer": "example",
-                      "success": false
+                      "success": false,
+                      "tip_tao": 0.5
                     },
                     "ref": "example",
                     "schema_version": 1

@@ -27,6 +27,7 @@ test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "call_args",
     "success",
     "fee_tao",
+    "tip_tao",
     "observed_at",
   ]);
 });
@@ -73,13 +74,13 @@ test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", 
     observed_at: 1,
   }));
   const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 10 per statement = 3 statements (10, 10, 10)
-  assert.equal(stmts.length, 3);
+  // 30 rows / 9 per statement = 4 statements (9, 9, 9, 3) after #1855 added tip_tao.
+  assert.equal(stmts.length, 4);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (10 cols x 10 rows = 100 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 10 * 10);
-  // All ten columns appear in the column list.
+  // Every value is BOUND (11 cols x 9 rows = 99 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 11 * 9);
+  // All eleven columns appear in the column list.
   for (const col of EXTRINSIC_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -94,8 +95,21 @@ test("extrinsicInsertStatements binds missing fields as null (never interpolates
   const [stmt] = extrinsicInsertStatements(db, [
     { block_number: 7, extrinsic_index: 2, observed_at: 9 },
   ]);
-  // extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao default to null.
-  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, null, 9]);
+  // extrinsic_hash, signer, call_module, call_function, call_args, success,
+  // fee_tao, tip_tao all default to null.
+  assert.deepEqual(stmt.v, [
+    7,
+    2,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    9,
+  ]);
 });
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
@@ -108,6 +122,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     call_function: "add_stake",
     call_args: '[{"name":"hotkey","value":"5H..."}]',
     fee_tao: 0.0125,
+    tip_tao: 0.005,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -119,6 +134,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.call_function, "add_stake");
   assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
   assert.equal(out.fee_tao, 0.0125);
+  assert.equal(out.tip_tao, 0.005);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
@@ -149,6 +165,7 @@ test("formatExtrinsic parses call_args (array, object, parse-failure->null)", ()
   const sparse = formatExtrinsic({ block_number: 1, extrinsic_index: 0 });
   assert.equal(sparse.call_args, null);
   assert.equal(sparse.fee_tao, null);
+  assert.equal(sparse.tip_tao, null);
 });
 
 test("formatExtrinsic normalizes success (0->false, null->null)", () => {

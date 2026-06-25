@@ -22,6 +22,9 @@ export const EXTRINSIC_INSERT_COLUMNS = [
   "call_args",
   "success",
   "fee_tao",
+  // Priority tip paid ON TOP of the inclusion fee (#1855), from the same
+  // TransactionFeePaid event _fee_map reads; null for unsigned/tip-free extrinsics.
+  "tip_tao",
   "observed_at",
 ];
 
@@ -46,14 +49,14 @@ export function validExtrinsicRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for extrinsics rows, chunked
-// under D1's 100-bound-param limit (10 cols x 10 = 100). Idempotent on
-// (block_number, extrinsic_index) (the primary key). Values are ALWAYS bound,
-// never interpolated — a tampered payload can only fail, never inject. Mirrors
-// blockInsertStatements (#1345).
+// under D1's 100-bound-param limit (11 cols x 9 = 99 ≤ 100, after #1855 added
+// tip_tao). Idempotent on (block_number, extrinsic_index) (the primary key).
+// Values are ALWAYS bound, never interpolated — a tampered payload can only fail,
+// never inject. Mirrors blockInsertStatements (#1345).
 export function extrinsicInsertStatements(db, rows) {
   const cols = EXTRINSIC_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 10;
+  const ROWS_PER_STMT = 9;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -95,7 +98,7 @@ export async function pruneExtrinsics(env, overrides = {}) {
 // ---- Extrinsic API builders ------------------------------------------------
 // The columns the extrinsic handlers SELECT for an extrinsic row.
 export const EXTRINSIC_READ_COLUMNS =
-  "block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao, observed_at";
+  "block_number, extrinsic_index, extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao, observed_at";
 
 // One D1 extrinsics row → a clean API extrinsic object. Null-safe on junk/sparse
 // rows. success is normalized to a boolean (null when undeterminable).
@@ -119,6 +122,7 @@ export function formatExtrinsic(row) {
     call_args,
     success: row.success == null ? null : row.success === 1,
     fee_tao: row.fee_tao ?? null,
+    tip_tao: row.tip_tao ?? null,
     observed_at: toIso(row.observed_at),
   };
 }
