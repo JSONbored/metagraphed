@@ -141,6 +141,54 @@ describe("list-query pagination order", () => {
   });
 });
 
+describe("list-query sort with missing values", () => {
+  const data = {
+    subnets: [
+      { netuid: 1, tempo: 100 },
+      { netuid: 2 }, // tempo absent
+      { netuid: 3, tempo: 50 },
+      { netuid: 4, tempo: null }, // tempo explicitly null
+      { netuid: 5, tempo: 360 },
+    ],
+  };
+  const order = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("ascending sort keeps rows missing the field at the end, not the front", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=tempo"),
+      "subnets",
+    );
+    // present ascending (50, 100, 360) then the absent/null rows last.
+    assert.deepEqual(order(result), [3, 1, 5, 2, 4]);
+  });
+
+  test("descending sort still keeps missing rows last (not flipped to the front)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=tempo&order=desc"),
+      "subnets",
+    );
+    // present descending (360, 100, 50) then the absent/null rows last.
+    assert.deepEqual(order(result), [5, 1, 3, 2, 4]);
+  });
+
+  test("toggling order does not move incomplete rows out of the tail", () => {
+    const asc = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=tempo&order=asc"),
+      "subnets",
+    );
+    const desc = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=tempo&order=desc"),
+      "subnets",
+    );
+    assert.deepEqual(order(asc).slice(-2).sort(), [2, 4]);
+    assert.deepEqual(order(desc).slice(-2).sort(), [2, 4]);
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
@@ -330,5 +378,69 @@ describe("list-query pagination Link header", () => {
       null,
     );
     assert.equal(paginationLinkHeader(query("/api/v1/subnets"), {}), null);
+  });
+});
+
+describe("list-query free-text search", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        name: "Gradients Training",
+        slug: "gradients",
+      },
+      {
+        netuid: 2,
+        name: "Chutes",
+        slug: "chutes",
+      },
+      {
+        netuid: 3,
+        name: "Training Hub",
+        slug: "gradients-hub",
+      },
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("matches every whitespace-separated term independently across searchable fields", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=gradients%20training"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("term order does not matter", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=training%20gradients"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("a single term keeps substring semantics", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=chutes"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2]);
+  });
+
+  test("whitespace-only q is treated as no search", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?q=%20%20"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 2, 3]);
+  });
+
+  test("an absent q is a no-op", () => {
+    const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
+    assert.deepEqual(netuids(result), [1, 2, 3]);
   });
 });
