@@ -102,6 +102,33 @@ test("registry validates", () => {
   runNode("scripts/validate.mjs");
 });
 
+test("registry validation accepts the community-seeded curation level", () => {
+  const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
+  const fixture = tamperedOverlayFixture("sn-1-community-seeded");
+  fixture.curation.level = "community-seeded";
+  fixture.curation.review_state = "unreviewed";
+
+  let result;
+  try {
+    writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
+    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
+  } finally {
+    rmSync(overlayPath, { force: true });
+  }
+
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+  assert.doesNotMatch(
+    output,
+    /sn-1-community-seeded: invalid curation\.level/,
+    "community-seeded must be an accepted curation.level (added to schema in #1822)",
+  );
+});
+
 test("registry validation warns but does not block on cross-netuid on-chain name collisions", () => {
   const nativePath = "registry/native/finney-subnets.json";
   const original = readFileSync(nativePath, "utf8");

@@ -187,6 +187,9 @@ def _stake(a):  # [coldkey, hotkey, tao_rao, alpha_rao, netuid, ...]
         "coldkey": _ss58(a[0]),
         "hotkey": _ss58(a[1]),
         "amount_tao": _tao(a[2]),
+        # The alpha leg of the swap (#1856): how much subnet alpha the TAO bought
+        # (StakeAdded) or sold (StakeRemoved). Null on shape drift / other kinds.
+        "alpha_amount": _tao(a[3]) if len(a) > 3 else None,
         "netuid": _idx(a[4]) if len(a) > 4 else None,
     }
 
@@ -241,12 +244,15 @@ def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, h
     return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
 
 
-def _take_changed(a):  # TakeDecreased/TakeIncreased: {hotkey, coldkey, ...} or [hotkey, coldkey, ...]
+def _take_changed(a):  # TakeDecreased/TakeIncreased: {coldkey, hotkey, take} or [coldkey, hotkey, take]
+    # Subtensor emits these coldkey-first: Event::TakeIncreased(coldkey, hotkey, take)
+    # / TakeDecreased(coldkey, hotkey, take). The variants are positional tuples, so
+    # the list branch must read a[0]=coldkey, a[1]=hotkey (same order as DelegateAdded).
     if isinstance(a, dict):
-        hk, ck = a.get("hotkey"), a.get("coldkey")
+        ck, hk = a.get("coldkey"), a.get("hotkey")
     else:
-        hk = a[0] if len(a) > 0 else None
-        ck = a[1] if len(a) > 1 else None
+        ck = a[0] if len(a) > 0 else None
+        hk = a[1] if len(a) > 1 else None
     return {"hotkey": _ss58(hk), "coldkey": _ss58(ck)}
 
 
@@ -580,6 +586,7 @@ def extract(event_id, attrs):
         "netuid": f.get("netuid"),
         "uid": f.get("uid"),
         "amount_tao": f.get("amount_tao"),
+        "alpha_amount": f.get("alpha_amount"),
     }
 
 
@@ -707,6 +714,7 @@ def main():
                     "netuid": ent["netuid"],
                     "uid": ent["uid"],
                     "amount_tao": ent["amount_tao"],
+                    "alpha_amount": ent["alpha_amount"],
                     "observed_at": observed_at,
                     "extrinsic_index": xidx,
                 }
