@@ -924,6 +924,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+    "SubnetEventsArtifact",
+  ),
+  artifact(
     "subnet-neuron-history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
     "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
@@ -1605,6 +1611,21 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-events",
+    "GET",
+    "/api/v1/subnets/{netuid}/events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

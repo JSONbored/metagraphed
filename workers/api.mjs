@@ -57,6 +57,7 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetValidators,
+  handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
   handleAccount,
@@ -206,6 +207,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -1157,6 +1159,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
           Number(validatorsMatch[1]),
           resolved.url,
         ),
+      );
+    }
+    // Per-subnet chain-event stream (#1345): account_events filtered by netuid.
+    // Live + continuously appended, so served direct (no edge cache) like the
+    // account-events route — envelopeResponse's ETag + "short" cache govern it.
+    const subnetEventsMatch = SUBNET_EVENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetEventsMatch) {
+      return handleSubnetEvents(
+        request,
+        env,
+        Number(subnetEventsMatch[1]),
+        resolved.url,
       );
     }
     // Account entity routes (#1347): computed live from the account_events +

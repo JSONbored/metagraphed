@@ -1574,6 +1574,23 @@
           }
         }
       },
+      "SubnetEventsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
+        "required": ["schema_version", "netuid", "event_count", "events"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer" },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AccountEvent" }
+          }
+        }
+      },
       "AccountSubnetsArtifact": {
         "type": "object",
         "additionalProperties": true,

@@ -42,6 +42,9 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
+  // Per-subnet chain-event stream (#1345): account_events filtered by netuid at
+  // /api/v1/subnets/{netuid}/events — live D1, never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/events\.json$/,
   // Account entity tiers (#1347): computed live from account_events + neurons at
   // /api/v1/accounts/{ss58}(/events|/subnets) — never written as files.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,

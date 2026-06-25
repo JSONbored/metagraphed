@@ -47,6 +47,7 @@ import {
   buildAccountEvents,
   buildAccountSubnets,
   buildAccountSummary,
+  buildSubnetEvents,
 } from "../../src/account-events.mjs";
 import {
   BLOCK_READ_COLUMNS,
@@ -328,6 +329,41 @@ export async function handleAccountSubnets(request, env, ss58) {
         env,
         `/metagraph/accounts/${ss58}/subnets.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/events (#1345 block explorer): the first-party
+// chain-event stream for one subnet — account_events filtered by netuid, newest
+// first (the idx_account_events_netuid index this tier was built for). Optional
+// ?kind= filter; ?limit (<=1000)/?offset. Cold/absent store → schema-stable zero
+// (never 404), mirroring handleAccountEvents.
+export async function handleSubnetEvents(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
+  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const kind = url.searchParams.get("kind");
+  const params = [netuid];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
+  params.push(limit, offset);
+  const rows = await d1All(env, sql, params);
+  const data = buildSubnetEvents(rows, netuid, { limit, offset });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/events.json`,
+        data.events[0]?.observed_at ?? null,
       ),
     },
     "short",

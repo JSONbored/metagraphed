@@ -231,6 +231,21 @@ export function buildAccountEvents(rows, ss58, { limit, offset } = {}) {
   };
 }
 
+// The first-party chain-event stream for one subnet (#1345 block explorer):
+// the same account_events rows, filtered by netuid instead of account. Mirrors
+// buildAccountEvents — newest-first, schema-stable zero for a cold/unknown subnet.
+export function buildSubnetEvents(rows, netuid, { limit, offset } = {}) {
+  const events = (rows || []).map(formatAccountEvent).filter(Boolean);
+  return {
+    schema_version: 1,
+    netuid,
+    event_count: events.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    events,
+  };
+}
+
 // The subnets where this account's hotkey is currently registered.
 export function buildAccountSubnets(rows, ss58) {
   const subnets = (rows || []).map(formatRegistration).filter(Boolean);
