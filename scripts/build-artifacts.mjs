@@ -18,6 +18,7 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   cleanDescription,
   deriveDescriptionFromNotes,
   deriveDomainTags,
@@ -3223,11 +3224,14 @@ const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+const manifestGeneratedAt =
+  (await readCommittedManifestGeneratedAt(artifactFile("r2-manifest.json"))) ??
+  generatedAt;
 await writeJson(
   artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
-    generatedAt,
+    generatedAt: manifestGeneratedAt,
   }),
 );
 

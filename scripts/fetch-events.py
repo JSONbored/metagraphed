@@ -36,6 +36,7 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
                             on a cold start → fall back to the window floor
       ACCOUNT_EVENTS_JSON   events output path (default dist/account-events.json)
       EVENTS_CURSOR_OUT     next-cursor sidecar path (default dist/events-cursor.json)
+      EVENTS_BATCH_BLOCKS   max blocks emitted in one staged batch (default EVENTS_WINDOW)
       BLOCKS_JSON           per-block sidecar path (default dist/blocks.json) — the
                             block-explorer hot window (#1345), staged + loaded into
                             D1 `blocks` the same way the events JSON is
@@ -98,6 +99,11 @@ PRUNE_HORIZON = int(os.environ.get("EVENTS_PRUNE_HORIZON", "300"))
 # ARCHIVE node (ADR 0012) set EVENTS_MAX_LOOKBACK high so a long scheduler gap is
 # recovered in full; the archive still holds every block.
 MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
+# Producer-side batch guard for cursor recovery. The Worker drains one pending R2
+# object at a time, with byte/row caps; keep each recovery poll bounded so archive
+# mode advances through long gaps over multiple safe staged batches instead of
+# producing one pathological object.
+BATCH_BLOCKS = max(1, int(os.environ.get("EVENTS_BATCH_BLOCKS", str(WINDOW))))
 
 
 def _parse_cursor(raw):
@@ -116,6 +122,21 @@ def _parse_cursor(raw):
     except (TypeError, ValueError):
         return None
     return n if n >= 0 else None
+
+
+def compute_scan_range(cursor, head, window, max_lookback=PRUNE_HORIZON, batch_blocks=None):
+    """Inclusive block range to scan for one staged producer batch.
+
+    The start preserves cursor-driven gap recovery. The end is capped by
+    `batch_blocks` (default: `window`) so a long archive-node recovery is emitted
+    as several bounded staged batches. This keeps each pending R2 object inside the
+    Worker's progressive-drain envelope and lets the workflow promote only the
+    highest block actually staged in this run.
+    """
+    start = compute_from_block(cursor, head, window, max_lookback)
+    limit = window if batch_blocks is None else max(1, int(batch_blocks))
+    end = min(head, start + limit - 1)
+    return start, end
 
 
 def compute_from_block(cursor, head, window, max_lookback=PRUNE_HORIZON):
@@ -166,6 +187,9 @@ def _stake(a):  # [coldkey, hotkey, tao_rao, alpha_rao, netuid, ...]
         "coldkey": _ss58(a[0]),
         "hotkey": _ss58(a[1]),
         "amount_tao": _tao(a[2]),
+        # The alpha leg of the swap (#1856): how much subnet alpha the TAO bought
+        # (StakeAdded) or sold (StakeRemoved). Null on shape drift / other kinds.
+        "alpha_amount": _tao(a[3]) if len(a) > 3 else None,
         "netuid": _idx(a[4]) if len(a) > 4 else None,
     }
 
@@ -195,6 +219,62 @@ def _root(a):  # {coldkey} (named) or [coldkey]
     return {"coldkey": _ss58(ck)}
 
 
+def _transfer(a):  # Balances.Transfer: [from, to, amount] or {from, to, amount}
+    if isinstance(a, dict):
+        sender, recipient, amount = a.get("from"), a.get("to"), a.get("amount")
+    else:
+        sender = a[0] if len(a) > 0 else None
+        recipient = a[1] if len(a) > 1 else None
+        amount = a[2] if len(a) > 2 else None
+    # hotkey = sender, coldkey = recipient (pragmatic reuse of the index columns)
+    return {"hotkey": _ss58(sender), "coldkey": _ss58(recipient), "amount_tao": _tao(amount)}
+
+
+def _net(a):  # NetworkAdded/NetworkRemoved: {netuid, ...} or [netuid, ...]
+    netuid = a.get("netuid") if isinstance(a, dict) else (a[0] if len(a) > 0 else None)
+    return {"netuid": _idx(netuid)}
+
+
+def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, hotkey, ...]
+    if isinstance(a, dict):
+        ck, hk = a.get("coldkey"), a.get("hotkey")
+    else:
+        ck = a[0] if len(a) > 0 else None
+        hk = a[1] if len(a) > 1 else None
+    return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
+
+
+def _take_changed(a):  # TakeDecreased/TakeIncreased: {coldkey, hotkey, take} or [coldkey, hotkey, take]
+    # Subtensor emits these coldkey-first: Event::TakeIncreased(coldkey, hotkey, take)
+    # / TakeDecreased(coldkey, hotkey, take). The variants are positional tuples, so
+    # the list branch must read a[0]=coldkey, a[1]=hotkey (same order as DelegateAdded).
+    if isinstance(a, dict):
+        ck, hk = a.get("coldkey"), a.get("hotkey")
+    else:
+        ck = a[0] if len(a) > 0 else None
+        hk = a[1] if len(a) > 1 else None
+    return {"hotkey": _ss58(hk), "coldkey": _ss58(ck)}
+
+
+def _hotkey_swapped(a):  # HotkeySwapped: {coldkey, old_hotkey, new_hotkey} or [coldkey, old_hotkey, new_hotkey]
+    if isinstance(a, dict):
+        ck, hk = a.get("coldkey"), a.get("new_hotkey")
+    else:
+        ck = a[0] if len(a) > 0 else None
+        hk = a[2] if len(a) > 2 else None
+    return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
+
+
+def _coldkey_swap(a):  # ColdkeySwapScheduled: {old_coldkey, new_coldkey, ...} or [old_coldkey, new_coldkey, ...]
+    if isinstance(a, dict):
+        old_ck, new_ck = a.get("old_coldkey"), a.get("new_coldkey")
+    else:
+        old_ck = a[0] if len(a) > 0 else None
+        new_ck = a[1] if len(a) > 1 else None
+    # old_coldkey as coldkey (primary actor), new_coldkey as hotkey (target)
+    return {"coldkey": _ss58(old_ck), "hotkey": _ss58(new_ck)}
+
+
 EXTRACTORS = {
     "NeuronRegistered": _registered,
     "StakeAdded": _stake,
@@ -203,6 +283,18 @@ EXTRACTORS = {
     "AxonServed": _axon,
     "WeightsSet": _weights,
     "RootClaimed": _root,
+    # Subnet lifecycle (#1816)
+    "NetworkAdded": _net,
+    "NetworkRemoved": _net,
+    # Delegation (#1816)
+    "DelegateAdded": _delegate_added,
+    "TakeDecreased": _take_changed,
+    "TakeIncreased": _take_changed,
+    # Key rotation (#1816)
+    "HotkeySwapped": _hotkey_swapped,
+    "ColdkeySwapScheduled": _coldkey_swap,
+    # Balances pallet — native TAO transfers between accounts (#1814)
+    "Transfer": _transfer,
 }
 
 
@@ -264,6 +356,11 @@ def block_extras(s, bn, bh, event_count):
         extrinsic_count = len(s.get_block(block_hash=bh)["extrinsics"])
     except Exception:
         extrinsic_count = None
+    try:
+        rt = s.get_block_runtime_version(block_hash=bh)
+        spec_version = rt.get("specVersion") or rt.get("spec_version") if isinstance(rt, dict) else None
+    except Exception:
+        spec_version = None
     return {
         "block_number": bn,
         "block_hash": str(bh),
@@ -271,6 +368,7 @@ def block_extras(s, bn, bh, event_count):
         "author": _block_author(s, bh, header),
         "extrinsic_count": extrinsic_count,
         "event_count": event_count,
+        "spec_version": spec_version,
     }
 
 
@@ -293,22 +391,106 @@ def _extrinsic_signer(value):
         return None
 
 
+def _safe_json(v):
+    """Best-effort JSON serialization of a decoded call_args value.
+    Returns None if the value cannot be serialized (e.g. contains non-JSON
+    substrate objects). NEVER raises."""
+    try:
+        return json.dumps(v, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _extrinsic_call(value):
-    """Best-effort (call_module, call_function) from a decoded extrinsic, else
-    (None, None). The serialized `call` carries string names; null on shape drift.
-    NEVER raises."""
+    """Best-effort (call_module, call_function, call_args_json) from a decoded
+    extrinsic, else (None, None, None). call_args_json is a compact JSON string
+    of the decoded arguments or None on shape drift/non-serializable. NEVER raises.
+    """
     try:
         call = value.get("call") if isinstance(value, dict) else None
         if not isinstance(call, dict):
-            return (None, None)
+            return (None, None, None)
         cm = call.get("call_module")
         cf = call.get("call_function")
+        ca = call.get("call_args")
         return (
             cm if isinstance(cm, str) else None,
             cf if isinstance(cf, str) else None,
+            _safe_json(ca) if ca is not None else None,
         )
     except Exception:
-        return (None, None)
+        return (None, None, None)
+
+
+def _fee_map(events):
+    """Map extrinsic_index -> fee_tao from TransactionPayment.TransactionFeePaid events.
+
+    Substrate emits one TransactionPayment.TransactionFeePaid per fee-paying extrinsic
+    (fields: who, actual_fee, tip). Inherents and unsigned extrinsics do not emit it.
+    Correlated by extrinsic_idx (same ApplyExtrinsic phase as ExtrinsicSuccess/Failed).
+    NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes")
+            if isinstance(attrs, dict):
+                fee_rao = attrs.get("actual_fee")
+            elif isinstance(attrs, list) and len(attrs) > 1:
+                fee_rao = attrs[1]  # [who, actual_fee, tip]
+            else:
+                fee_rao = None
+            if fee_rao is not None:
+                out[idx] = _tao(fee_rao)
+    except Exception:
+        return out
+    return out
+
+
+def _tip_map(events):
+    """Map extrinsic_index -> tip_tao from TransactionPayment.TransactionFeePaid events (#1855).
+
+    tip is the priority tip the signer added on top of the inclusion fee (the 3rd
+    field of TransactionFeePaid: [who, actual_fee, tip]). Separate from fee_tao —
+    most extrinsics tip 0. Correlated by extrinsic_idx, same as _fee_map. NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes")
+            if isinstance(attrs, dict):
+                tip_rao = attrs.get("tip")
+            elif isinstance(attrs, list) and len(attrs) > 2:
+                tip_rao = attrs[2]  # [who, actual_fee, tip]
+            else:
+                tip_rao = None
+            if tip_rao is not None:
+                out[idx] = _tao(tip_rao)
+    except Exception:
+        return out
+    return out
 
 
 def _extrinsic_success_map(events):
@@ -362,13 +544,15 @@ def extrinsics_for_block(s, bn, bh, events):
     except Exception:
         return rows
     success_map = _extrinsic_success_map(events)
+    fee_map = _fee_map(events)
+    tip_map = _tip_map(events)
     for extrinsic_index, ext in enumerate(extrinsics):
         try:
             value = ext.value if ext is not None else None
             if not isinstance(value, dict):
                 continue  # an undecodable extrinsic — skip this row only
             xhash = value.get("extrinsic_hash")
-            call_module, call_function = _extrinsic_call(value)
+            call_module, call_function, call_args = _extrinsic_call(value)
             rows.append(
                 {
                     "block_number": bn,
@@ -377,7 +561,10 @@ def extrinsics_for_block(s, bn, bh, events):
                     "signer": _extrinsic_signer(value),
                     "call_module": call_module,
                     "call_function": call_function,
+                    "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
+                    "fee_tao": fee_map.get(extrinsic_index),
+                    "tip_tao": tip_map.get(extrinsic_index),
                 }
             )
         except Exception:
@@ -399,7 +586,25 @@ def extract(event_id, attrs):
         "netuid": f.get("netuid"),
         "uid": f.get("uid"),
         "amount_tao": f.get("amount_tao"),
+        "alpha_amount": f.get("alpha_amount"),
     }
+
+
+def _lag_alert_needed(head_bn, cursor, window=WINDOW, horizon=PRUNE_HORIZON):
+    """True when the cursor is far enough behind the finalized head that un-fetched
+    blocks risk being pruned before the next run.
+
+    No alert on a cold cursor (nothing to lag). And none when the overlap window
+    already covers the whole prune horizon (``horizon - window <= 0``): blocks can
+    then never age out unseen, so the bare ``horizon - window`` threshold would be
+    zero/negative and otherwise fire on every run (even at lag 0).
+    """
+    if cursor is None:
+        return False
+    overlap_floor = horizon - window
+    if overlap_floor <= 0:
+        return False
+    return (head_bn - cursor) >= overlap_floor
 
 
 def _emit_lag_alert(head_bn, cursor):
@@ -410,13 +615,9 @@ def _emit_lag_alert(head_bn, cursor):
     falling behind faster than it can catch up is VISIBLE before blocks are pruned
     out from under it — not silently lost. No-op on a cold cursor (nothing to lag).
     """
-    if cursor is None:
+    if not _lag_alert_needed(head_bn, cursor):
         return
     lag = head_bn - cursor
-    # Alert once the lag is within a window of the prune horizon (i.e. the next
-    # missed/coalesced run could push un-fetched blocks past the prune point).
-    if lag < PRUNE_HORIZON - WINDOW:
-        return
     msg = (
         f"chain-event poller lagging: cursor={cursor} is {lag} blocks behind "
         f"finalized head {head_bn} (prune horizon ~{PRUNE_HORIZON}). Blocks risk "
@@ -454,7 +655,7 @@ def main():
             "finalized head timestamp is required for account_events"
         ) from e
     cursor = _parse_cursor(os.environ.get("EVENTS_CURSOR"))
-    start = compute_from_block(cursor, head_bn, WINDOW, MAX_LOOKBACK)
+    start, end = compute_scan_range(cursor, head_bn, WINDOW, MAX_LOOKBACK, BATCH_BLOCKS)
     _emit_lag_alert(head_bn, cursor)
 
     rows = []
@@ -462,7 +663,7 @@ def main():
     extrinsics = []
     scanned = 0
     skipped = 0
-    for bn in range(start, head_bn + 1):
+    for bn in range(start, end + 1):
         observed_at = head_ts - (head_bn - bn) * BLOCK_MS
         try:
             bh = s.get_block_hash(bn)
@@ -490,12 +691,19 @@ def main():
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") != "SubtensorModule":
+            if e.get("module_id") not in ("SubtensorModule", "Balances"):
                 continue
             eid = e.get("event_id")
             ent = extract(eid, e.get("attributes"))
             if ent is None:
                 continue
+            # Link the event to the extrinsic that emitted it (#1849): the
+            # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
+            # _extrinsic_success_map correlate on). Initialization / Finalization
+            # phase events have no extrinsic — store null.
+            xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+            if not isinstance(xidx, int) or xidx < 0:
+                xidx = None
             rows.append(
                 {
                     "block_number": bn,
@@ -506,7 +714,9 @@ def main():
                     "netuid": ent["netuid"],
                     "uid": ent["uid"],
                     "amount_tao": ent["amount_tao"],
+                    "alpha_amount": ent["alpha_amount"],
                     "observed_at": observed_at,
+                    "extrinsic_index": xidx,
                 }
             )
 
@@ -529,19 +739,18 @@ def main():
     with open(EXTRINSICS_OUT, "w") as fh:
         json.dump(extrinsics, fh)
 
-    # Next-cursor sidecar: the highest block we covered this run (the finalized
-    # head we scanned through). The workflow stages the events first, then — only
-    # on a successful stage — promotes this to events/cursor.json in R2. Because
-    # staging and D1 loading are asynchronous, compute_from_block still re-scans
-    # the overlap window every run; the cursor is retained for lag/health alerts,
-    # not as proof that staged rows have already been imported into D1.
-    next_cursor = max(head_bn, cursor) if cursor is not None else head_bn
+    # Next-cursor sidecar: the highest block we covered in THIS bounded batch.
+    # The workflow stages the events first, then — only on a successful stage —
+    # promotes this to events/cursor.json in R2. Long archive recovery therefore
+    # advances over multiple bounded pending objects instead of one oversized
+    # object; compute_from_block still re-scans the overlap window once current.
+    next_cursor = max(end, cursor) if cursor is not None else end
     os.makedirs(os.path.dirname(CURSOR_OUT) or ".", exist_ok=True)
     with open(CURSOR_OUT, "w") as fh:
         json.dump({"block_number": next_cursor}, fh)
 
     sys.stderr.write(
-        f"wrote {len(rows)} events from blocks {start}..{head_bn} "
+        f"wrote {len(rows)} events from blocks {start}..{end} (head={head_bn}) "
         f"(cursor_in={cursor}, scanned {scanned}, skipped {skipped}) -> {OUT}; "
         f"wrote {len(blocks)} block rows -> {BLOCKS_OUT}; "
         f"wrote {len(extrinsics)} extrinsic rows -> {EXTRINSICS_OUT}; "

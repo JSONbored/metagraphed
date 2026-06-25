@@ -83,6 +83,7 @@ const candidateStates = new Set([
 const curationLevels = new Set([
   "native",
   "candidate-discovered",
+  "community-seeded",
   "machine-verified",
   "maintainer-reviewed",
   "adapter-backed",
@@ -123,6 +124,13 @@ function assert(condition, message) {
   }
 }
 
+function assertPublicHttpUrl(owner, key, value) {
+  assert(
+    normalizePublicHttpUrl(value),
+    `${owner}: ${key} must be a public HTTP(S) URL`,
+  );
+}
+
 function validateProvider(provider) {
   assert(
     provider.schema_version === 1,
@@ -137,21 +145,18 @@ function validateProvider(provider) {
     providerKinds.has(provider.kind),
     `${provider.id}: invalid provider kind`,
   );
-  assert(
-    isValidUrl(provider.website_url),
-    `${provider.id}: website_url must be a URL`,
-  );
+  assertPublicHttpUrl(provider.id, "website_url", provider.website_url);
   for (const key of ["docs_url", "github_url", "team_url", "contact_url"]) {
     if (provider[key] === undefined) {
       continue;
     }
-    assert(isValidUrl(provider[key]), `${provider.id}: ${key} must be a URL`);
+    assertPublicHttpUrl(provider.id, key, provider[key]);
   }
   if (provider.logo_url !== undefined) {
-    assert(
-      normalizePublicHttpUrl(provider.logo_url),
-      `${provider.id}: logo_url must be a public HTTP(S) URL`,
-    );
+    assertPublicHttpUrl(provider.id, "logo_url", provider.logo_url);
+  }
+  for (const [key, value] of Object.entries(provider.social || {})) {
+    assertPublicHttpUrl(provider.id, `social.${key}`, value);
   }
   assert(
     authorities.has(provider.authority),

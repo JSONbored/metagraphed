@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import worker, { handleRequest } from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const env = createLocalArtifactEnv();
 
@@ -1252,6 +1253,11 @@ describe("Worker runtime", () => {
       assert.equal(response.status, 200);
       assert.equal(called, true);
       assert.ok(response.headers.get("x-metagraph-rpc-provider"));
+      // The proxy's rate-limit and x-metagraph-rpc-* headers must be CORS-readable.
+      assert.equal(
+        response.headers.get("access-control-expose-headers"),
+        EXPOSED_RESPONSE_HEADERS_VALUE,
+      );
 
       // The /wss route targets WebSocket-only endpoints that cannot be
       // HTTP-POSTed, so it is rejected with a clean 400 rather than proxied.
