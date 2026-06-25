@@ -24,6 +24,7 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
+compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
@@ -80,6 +81,19 @@ class ComputeFromBlockTest(unittest.TestCase):
         got = compute_from_block(cursor, self.HEAD, self.WINDOW)
         self.assertEqual(got, cursor + 1)
         self.assertLess(got, self.floor())
+
+    def test_scan_range_caps_long_archive_recovery_to_bounded_batch(self):
+        stale = self.HEAD - 5_000
+        start, end = compute_scan_range(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, stale + 1)
+        self.assertEqual(end, start + self.WINDOW - 1)
+        self.assertLess(end, self.HEAD)
+
+    def test_scan_range_promotes_to_head_when_batch_reaches_head(self):
+        cursor = self.HEAD - 20
+        start, end = compute_scan_range(cursor, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, self.floor())
+        self.assertEqual(end, self.HEAD)
 
     def test_cursor_ahead_of_head_reorg_uses_floor(self):
         # Reorg / clock skew left the cursor at or past the head → re-scan the
