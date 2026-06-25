@@ -2223,13 +2223,19 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
-        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time. */
+        /** @description One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments as JSON when available; success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); fee_tao is the TransactionPayment fee in TAO when emitted; observed_at is the block time. */
         Extrinsic: {
             block_number: number | null;
+            /** @description Decoded extrinsic call arguments parsed from the D1 call_args JSON payload, or null when unavailable or unparsable. */
+            call_args?: {
+                [key: string]: unknown;
+            } | unknown[] | string | number | boolean | null;
             call_function?: string | null;
             call_module?: string | null;
             extrinsic_hash?: string | null;
             extrinsic_index: number | null;
+            /** @description Transaction fee in TAO from TransactionPayment.TransactionFeePaid, or null when unavailable. */
+            fee_tao?: number | null;
             /** Format: date-time */
             observed_at?: string | null;
             signer?: string | null;
@@ -7647,10 +7653,12 @@ export interface operations {
                      *       "data": {
                      *         "extrinsic": {
                      *           "block_number": 5000000,
+                     *           "call_args": {},
                      *           "call_function": "example",
                      *           "call_module": "example",
                      *           "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *           "extrinsic_index": 1,
+                     *           "fee_tao": 0.5,
                      *           "observed_at": "2026-06-01T00:00:00.000Z",
                      *           "signer": "example",
                      *           "success": false
