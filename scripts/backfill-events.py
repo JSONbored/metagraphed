@@ -32,6 +32,7 @@ import json
 import os
 import sys
 import time
+from urllib.parse import urlsplit, urlunsplit
 
 # Reuse fetch-events.py's verified decode (hyphenated → load by path, same as the
 # streamer + the unit tests do).
@@ -43,6 +44,50 @@ _spec.loader.exec_module(_fe)
 # A real WS archive (full historical state + block bodies). NOT the Subway HTTP
 # proxy — that doesn't speak substrate-interface's WS protocol (#1749).
 DEFAULT_ARCHIVE = "wss://bittensor-finney.api.onfinality.io/public-ws"
+FINNEY_GENESIS_HASH = (
+    "0x2f0555cc76fc2840a25a6ea3b9637146806f1f44b090c175ffde2a7e5ab36c03"
+)
+TRUSTED_ARCHIVE_URLS = frozenset([DEFAULT_ARCHIVE])
+
+
+def _normalize_url(url):
+    parts = urlsplit((url or "").strip())
+    if parts.scheme not in {"ws", "wss"} or not parts.netloc:
+        raise ValueError("SUBTENSOR_RPC_URL must be a ws:// or wss:// archive URL")
+    host = (parts.hostname or "").lower()
+    netloc = host
+    if parts.port is not None:
+        netloc = f"{host}:{parts.port}"
+    return urlunsplit((parts.scheme.lower(), netloc, parts.path.rstrip("/"), "", ""))
+
+
+def _trusted_archive_urls():
+    extra = os.environ.get("BACKFILL_TRUSTED_ARCHIVE_URLS", "")
+    urls = list(TRUSTED_ARCHIVE_URLS) + [u for u in extra.split(",") if u.strip()]
+    return frozenset(_normalize_url(u) for u in urls)
+
+
+def _select_archive_url():
+    selected = _normalize_url(os.environ.get("SUBTENSOR_RPC_URL") or DEFAULT_ARCHIVE)
+    trusted = _trusted_archive_urls()
+    if selected not in trusted:
+        allowed = ", ".join(sorted(trusted))
+        raise ValueError(
+            "SUBTENSOR_RPC_URL is not trusted for production backfill; "
+            f"allowed: {allowed}"
+        )
+    return selected
+
+
+def _verify_finney_chain(substrate):
+    genesis = substrate.get_block_hash(0)
+    if str(genesis).strip().lower() != FINNEY_GENESIS_HASH:
+        raise ValueError("archive endpoint is not finney mainnet: genesis hash mismatch")
+
+
+def _header_number(substrate, block_hash):
+    header = substrate.get_block_header(block_hash=block_hash)["header"]
+    return int(header["number"])
 
 
 def main():
@@ -55,7 +100,10 @@ def main():
     if args.from_block < 0 or args.to_block < args.from_block:
         sys.exit("--from must be >= 0 and <= --to")
 
-    url = os.environ.get("SUBTENSOR_RPC_URL") or DEFAULT_ARCHIVE
+    try:
+        url = _select_archive_url()
+    except ValueError as e:
+        sys.exit(str(e))
     s = SubstrateInterface(url=url)
     # Free archives (OnFinality) rate-limit (JSON-RPC -32029 "Too Many Requests")
     # under rapid block-by-block scanning. Wrap the RPC layer so EVERY call backs off
@@ -82,11 +130,16 @@ def main():
             return _orig_rpc(method, params, *a, **k)
 
         s.rpc_request = _rpc_request
+    try:
+        _verify_finney_chain(s)
+    except ValueError as e:
+        sys.exit(str(e))
+
     # Anchor observed_at on the current finalized head's timestamp; finney is exactly
     # 12.0s/block, so height-derivation matches the live poller's clock with no
     # per-block Timestamp query (one fewer archive round-trip per block).
     head = s.get_chain_finalised_head()
-    head_bn = s.get_block_header(block_hash=head)["header"]["number"]
+    head_bn = _header_number(s, head)
     head_ts = int(s.query("Timestamp", "Now", block_hash=head).value)
 
     rows, blocks, extrinsics = [], [], []
@@ -95,6 +148,8 @@ def main():
         observed_at = head_ts - (head_bn - bn) * _fe.BLOCK_MS
         try:
             bh = s.get_block_hash(bn)
+            if _header_number(s, bh) != bn:
+                raise ValueError("block header number mismatch")
             events = s.query("System", "Events", block_hash=bh)
         except Exception as e:  # transient/shape drift → skip this block, keep going
             skipped += 1
@@ -113,7 +168,7 @@ def main():
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") != "SubtensorModule":
+            if e.get("module_id") not in ("SubtensorModule", "Balances"):
                 continue
             ent = _fe.extract(e.get("event_id"), e.get("attributes"))
             if ent is None:

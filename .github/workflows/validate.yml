@@ -217,6 +217,19 @@ jobs:
       - name: Validate generated API types
         run: npm run validate:types
 
+      # Client-SDK drift gate: a contract-only PR (schemas → generated →
+      # openapi.json) is NOT under packages/client/**, so release-please never
+      # bumps the `client` component and the published @jsonbored/metagraphed
+      # silently lags the live contract. This fails the PR when a contract file
+      # changed versus the merge base but packages/client/package.json "version"
+      # was not bumped. Diff-scoped: non-contract PRs never fire.
+      - name: Validate client-SDK sync (contract ↔ published version)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npm run validate:client-sdk-sync
+
       - name: Validate artifact size budgets
         run: npm run validate:artifact-budgets
 
@@ -240,6 +253,9 @@ jobs:
 
       - name: Validate workflows
         run: npm run validate:workflows
+
+      - name: Validate migration sequence
+        run: npm run validate:migrations
 
       - name: Validate Cloudflare config
         run: npm run cloudflare:verify:dry-run
