@@ -24,6 +24,7 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
+compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
@@ -80,6 +81,19 @@ class ComputeFromBlockTest(unittest.TestCase):
         got = compute_from_block(cursor, self.HEAD, self.WINDOW)
         self.assertEqual(got, cursor + 1)
         self.assertLess(got, self.floor())
+
+    def test_scan_range_caps_long_archive_recovery_to_bounded_batch(self):
+        stale = self.HEAD - 5_000
+        start, end = compute_scan_range(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, stale + 1)
+        self.assertEqual(end, start + self.WINDOW - 1)
+        self.assertLess(end, self.HEAD)
+
+    def test_scan_range_promotes_to_head_when_batch_reaches_head(self):
+        cursor = self.HEAD - 20
+        start, end = compute_scan_range(cursor, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, self.floor())
+        self.assertEqual(end, self.HEAD)
 
     def test_cursor_ahead_of_head_reorg_uses_floor(self):
         # Reorg / clock skew left the cursor at or past the head → re-scan the
@@ -168,6 +182,187 @@ class ParseCursorTest(unittest.TestCase):
     def test_negative_is_cold(self):
         self.assertIsNone(_parse_cursor("-1"))
         self.assertIsNone(_parse_cursor(-7))
+
+
+_lag_alert_needed = _fe._lag_alert_needed
+
+
+class LagAlertNeededTest(unittest.TestCase):
+    def test_cold_cursor_never_alerts(self):
+        self.assertFalse(_lag_alert_needed(10_000, None, window=256, horizon=300))
+
+    def test_alerts_at_and_above_the_overlap_floor(self):
+        # floor = horizon - window = 44; lag >= 44 alerts, below does not.
+        self.assertFalse(
+            _lag_alert_needed(10_000, 10_000 - 43, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 44, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 100, window=256, horizon=300)
+        )
+
+    def test_window_ge_horizon_never_alerts(self):
+        # When the overlap window covers the whole prune horizon, blocks can never
+        # age out unseen — must NOT alert (regression: a bare horizon-window
+        # threshold goes <= 0 and would fire every run, even at lag 0).
+        self.assertFalse(_lag_alert_needed(10_000, 10_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
+
+
+_extract = _fe.extract
+_SS58_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+_SS58_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+_RAO_100 = 100_000_000_000  # 100 TAO in rao
+
+
+class TransferExtractorTest(unittest.TestCase):
+    """Tests for the Balances.Transfer extractor (#1814)."""
+
+    def test_list_form_positional(self):
+        # Older runtimes emit [from, to, amount] as positional list
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named(self):
+        # Newer runtimes emit named-field dict
+        result = _extract("Transfer", {"from": _SS58_A, "to": _SS58_B, "amount": _RAO_100})
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_zero_amount(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B, 0])
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_from_gives_null_hotkey(self):
+        result = _extract("Transfer", ["not-an-address", _SS58_B, _RAO_100])
+        self.assertIsNone(result["hotkey"])
+        self.assertEqual(result["coldkey"], _SS58_B)
+
+    def test_invalid_to_gives_null_coldkey(self):
+        result = _extract("Transfer", [_SS58_A, "not-an-address", _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+
+    def test_missing_amount_gives_null(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_non_transfer_balances_event_ignored(self):
+        # Balances.Deposit, Balances.Reserved, etc. — no extractor → None
+        self.assertIsNone(_extract("Deposit", [_SS58_A, _RAO_100]))
+        self.assertIsNone(_extract("Reserved", [_SS58_A, _RAO_100]))
+
+    def test_shape_drift_never_raises(self):
+        # Completely wrong shape (empty list) must never raise — all fields null
+        result = _extract("Transfer", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
+
+
+class _Ev:
+    """Minimal stand-in for a decoded event (`.value` is the SCALE-decoded dict)."""
+
+    def __init__(self, value):
+        self.value = value
+
+
+def _fee_paid(idx, fee_rao, tip_rao):
+    return _Ev(
+        {
+            "phase": "ApplyExtrinsic",
+            "extrinsic_idx": idx,
+            "event": {
+                "module_id": "TransactionPayment",
+                "event_id": "TransactionFeePaid",
+                "attributes": ["5Who", fee_rao, tip_rao],
+            },
+        }
+    )
+
+
+class TipMapTest(unittest.TestCase):
+    def test_tip_map_reads_the_third_attribute(self):
+        # tip is the 3rd field [who, actual_fee, tip]; converted rao -> TAO (#1855).
+        tip_map = _fe._tip_map([_fee_paid(0, 12_500_000, 500_000_000)])
+        self.assertAlmostEqual(tip_map[0], 0.5)
+
+    def test_tip_map_dict_attributes(self):
+        ev = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 3,
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": {"who": "5Who", "actual_fee": 1, "tip": 2_000_000_000},
+                },
+            }
+        )
+        self.assertAlmostEqual(_fe._tip_map([ev])[3], 2.0)
+
+    def test_tip_map_ignores_non_feepaid_and_non_apply_phase(self):
+        other_module = _Ev(
+            {
+                "phase": "ApplyExtrinsic",
+                "extrinsic_idx": 0,
+                "event": {"module_id": "Balances", "event_id": "Transfer", "attributes": []},
+            }
+        )
+        init_phase = _Ev(
+            {
+                "phase": "Initialization",
+                "event": {
+                    "module_id": "TransactionPayment",
+                    "event_id": "TransactionFeePaid",
+                    "attributes": ["5Who", 1, 2],
+                },
+            }
+        )
+        self.assertEqual(_fe._tip_map([other_module, init_phase]), {})
+
+    def test_tip_map_never_raises_on_shape_drift(self):
+        self.assertEqual(_fe._tip_map([_Ev("not-a-dict"), _Ev({})]), {})
+
+
+class StakeAlphaExtractorTest(unittest.TestCase):
+    """The alpha leg of stake events (#1856): _stake reads a[3] = alpha_rao."""
+
+    _ALPHA = 9_250_000_000  # 9.25 alpha (in rao units)
+
+    def test_stake_added_carries_the_alpha_leg(self):
+        # [coldkey, hotkey, tao_rao, alpha_rao, netuid]
+        result = _extract(
+            "StakeAdded", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+        self.assertEqual(result["netuid"], 7)
+
+    def test_stake_removed_carries_the_alpha_leg(self):
+        result = _extract(
+            "StakeRemoved", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+
+    def test_missing_alpha_leg_is_null(self):
+        # A short payload (no a[3]) → alpha_amount null, never raises.
+        result = _extract("StakeAdded", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
+
+    def test_non_stake_kind_has_no_alpha(self):
+        # Transfer carries no alpha leg → null (extract() defaults the key).
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
 
 
 if __name__ == "__main__":

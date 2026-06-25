@@ -219,7 +219,11 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
       archive_support: live.archive_support ?? endpoint.archive_support,
       health_source: "probe-derived",
       health_stale: false,
-      observed_at: live.last_ok || liveRpcPool.last_run_at,
+      // observed_at is when this status was observed, i.e. the sweep time. rpc-pool
+      // rows carry only last_ok (last SUCCESS), so a failing/degraded endpoint's
+      // last_ok is a stale prior-success time — using it would label a fresh
+      // failed observation with an hours-old timestamp. Prefer the run time.
+      observed_at: liveRpcPool.last_run_at || live.last_ok || null,
     };
   });
   return {
