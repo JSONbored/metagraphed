@@ -442,6 +442,8 @@ export interface Gap {
   netuid?: number;
   category?: string;
   severity?: "low" | "medium" | "high";
+  /** Served by the API as a numeric priority score (higher = more urgent). */
+  gap_priority?: number;
   title?: string;
   description?: string;
   suggested_action?: string;

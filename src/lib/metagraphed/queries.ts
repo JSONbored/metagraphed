@@ -2115,6 +2115,12 @@ function stringArrayFromUnknown(value: unknown): string[] {
   });
 }
 
+const GAP_SEVERITY_MAP: Record<string, Gap["severity"]> = {
+  critical: "high",
+  warning: "medium",
+  info: "low",
+};
+
 export function normalizeGap(raw: unknown): Gap {
   const r = (raw ?? {}) as Record<string, unknown>;
   const g = (r.gaps as Record<string, unknown> | undefined) ?? {};
@@ -2123,13 +2129,15 @@ export function normalizeGap(raw: unknown): Gap {
   const netuid = r.netuid as number | undefined;
   const name = (r.name as string) ?? (netuid != null ? `SN${netuid}` : "subnet");
   const core = missing.filter((kind) => kind === "openapi" || kind === "subnet-api").length;
-  const severity =
+  const severityFallback: Gap["severity"] =
     core >= 1 && missing.length >= 3 ? "high" : missing.length >= 2 ? "medium" : "low";
+  const severity = GAP_SEVERITY_MAP[r.gap_severity as string] ?? severityFallback;
   return {
     id: (r.slug as string) ?? `gap-${netuid}`,
     netuid,
     category: (r.curation_level as string) ?? (r.coverage_level as string),
     severity,
+    gap_priority: typeof r.gap_priority === "number" ? r.gap_priority : undefined,
     title: `${name} — ${missing.length} missing surface${missing.length === 1 ? "" : "s"}`,
     description: missing.length ? `Missing: ${missing.join(", ")}` : undefined,
     suggested_action: notes[0],
