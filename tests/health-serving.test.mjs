@@ -141,6 +141,54 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
+
+  test("a failing endpoint's observed_at is the sweep time, not its stale last_ok", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [{ id: "a", status: "ok", health_source: "probe-derived" }],
+    };
+    const live = {
+      last_run_at: "2026-06-11T00:00:00Z",
+      endpoints: [
+        {
+          id: "a",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          // last successful probe was hours ago; the endpoint is failing now.
+          last_ok: "2026-06-10T08:00:00Z",
+        },
+      ],
+    };
+    const a = mergeRpcEndpoints(stat, live).endpoints.find((e) => e.id === "a");
+    // health_stale:false claims a fresh observation, so observed_at must be the
+    // run time — not the stale last-success timestamp.
+    assert.equal(a.health_stale, false);
+    assert.equal(a.observed_at, "2026-06-11T00:00:00Z");
+  });
+
+  test("observed_at falls back to last_ok, then null, when the run time is absent", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [
+        { id: "a", status: "ok" },
+        { id: "b", status: "ok" },
+      ],
+    };
+    // No last_run_at on the pool → fall back to the endpoint's last_ok, then null.
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", last_ok: "2026-06-10T08:00:00Z" },
+        { id: "b", status: "failed" },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live).endpoints;
+    assert.equal(
+      merged.find((e) => e.id === "a").observed_at,
+      "2026-06-10T08:00:00Z",
+    );
+    assert.equal(merged.find((e) => e.id === "b").observed_at, null);
+  });
 });
 
 describe("overlayRpcPoolEligibility", () => {
@@ -2227,6 +2275,29 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(
       scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
       null,
+    );
+  });
+
+  test("a sub-perfect ratio that rounds to 1 is not reported as a perfect 1", () => {
+    // 24999/25000 = 0.99996; (0.99996).toFixed(4) === "1.0000", which would
+    // otherwise overstate a 99.996%-uptime subnet as a perfect-uptime "100%"
+    // badge. Clamp the displayed ratio to the largest 4-decimal value below 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 24999, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9999,
+    );
+    // a genuine okCount === samples ratio still reports an exact 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .uptime_ratio,
+      1,
+    );
+    // an ordinary sub-1 ratio is unchanged (rounded to 4 decimals as before).
+    assert.equal(
+      scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9983,
     );
   });
 

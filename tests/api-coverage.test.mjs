@@ -8,6 +8,7 @@ import {
   weightedPickEndpoint,
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const req = (path, init) =>
   new Request(`https://api.metagraph.sh${path}`, init);
@@ -1406,5 +1407,44 @@ describe("semantic-search HEAD probe", () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(await res.text(), "");
+  });
+});
+
+// --- Access-Control-Expose-Headers --------------------------------------------
+// Cross-origin scripts can only read the Fetch safelist unless the server names
+// the rest in Access-Control-Expose-Headers. Assert the canonical list rides on
+// each CORS-open surface: the standard builder (list), the error path (ask), and
+// the hand-rolled SSE headers. RPC and MCP are covered in their own suites.
+describe("Access-Control-Expose-Headers", () => {
+  const expose = (res) => res.headers.get("access-control-expose-headers");
+
+  test("list endpoint exposes the canonical custom-header list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the ask error path exposes the list", async () => {
+    // AI is disabled locally, so this is the 503 path through the shared builder.
+    const res = await handleRequest(
+      req("/api/v1/ask", { method: "POST", body: "{}" }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the SSE event surface exposes the list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/events"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
   });
 });

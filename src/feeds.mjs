@@ -17,6 +17,8 @@
 // modified); incident items carry "incident", "sn<netuid>", and
 // "ongoing"/"resolved". An unknown tag yields an empty (but valid) feed.
 
+import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.mjs";
+
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
 const FEED_MAX_ITEMS = 50;
@@ -421,14 +423,22 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   };
 
   const body = SERIALIZERS[format](meta, items);
+  // The body is deterministic for its inputs, so its hash is a stable validator.
+  const etag = await weakEtag(body);
+  const headers = {
+    "content-type": FEED_CONTENT_TYPES[format],
+    "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
+    vary: "Accept",
+    "x-content-type-options": "nosniff",
+    etag,
+  };
+  // Unchanged poll → cheap 304, same validators, no body.
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   return new Response(request.method === "HEAD" ? null : body, {
     status: 200,
-    headers: {
-      "content-type": FEED_CONTENT_TYPES[format],
-      "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
-      vary: "Accept",
-      "x-content-type-options": "nosniff",
-    },
+    headers,
   });
 }
 

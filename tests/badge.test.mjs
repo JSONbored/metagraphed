@@ -93,6 +93,21 @@ describe("badge — rendering", () => {
     );
   });
 
+  test("renderBadge sizes emoji / CJK labels at least as wide as a capital", () => {
+    // sanitizeLabel admits emoji, but textWidth used to size every non-ASCII
+    // glyph at the 6.5px lowercase default — narrower than the 8px capital `W`,
+    // so an emoji label clipped its own segment (#1650).
+    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const capW = widthOf(renderBadge("ok", "#000", { label: "W" }));
+    const emoji = widthOf(renderBadge("ok", "#000", { label: "😀" }));
+    const cjk = widthOf(renderBadge("ok", "#000", { label: "字" }));
+    assert.ok(
+      emoji >= capW,
+      `emoji width ${emoji} should be >= W width ${capW}`,
+    );
+    assert.ok(cjk >= capW, `CJK width ${cjk} should be >= W width ${capW}`);
+  });
+
   test("renderBadge style=flat-square drops the gradient + rounding", () => {
     const flat = renderBadge("92/100", "#2ea44f");
     assert.match(flat, /linearGradient/);
