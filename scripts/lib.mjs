@@ -1774,6 +1774,37 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// Hostname-only registrable unit for dedupe / same-site checks (#1636, #1910).
+// Mirrors clusterDomainFromUrl but accepts bare hostnames and always returns a
+// string (falls back to the last-two-label heuristic for bare suffix hosts).
+export function registrableHostDomain(hostname) {
+  const host = String(hostname || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!host) return "";
+  const labels = host.split(".").filter(Boolean);
+  return (
+    clusterDomainFromUrl(`https://${host}/`) ??
+    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
+  );
+}
+
+// Same-site check for candidate discovery (#1910): exact hostname match or the
+// same registrable host (honors multi-label public suffixes via registrableHostDomain).
+export function isLikelyProjectDomain(baseUrl, candidateUrl) {
+  try {
+    const base = new URL(baseUrl);
+    const candidate = new URL(candidateUrl);
+    return (
+      candidate.hostname === base.hostname ||
+      registrableHostDomain(candidate.hostname) ===
+        registrableHostDomain(base.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
 // project's registrable domain so the OpenAPI spec sweep reaches APIs that live
 // on api.<domain> (or docs.<domain>) rather than the marketing root — the
