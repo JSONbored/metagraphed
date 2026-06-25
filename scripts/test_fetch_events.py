@@ -29,6 +29,8 @@ _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
 PRUNE_HORIZON = _fe.PRUNE_HORIZON
+event_rows_for_events = _fe.event_rows_for_events
+_can_append_event_block = _fe._can_append_event_block
 
 
 class ComputeFromBlockTest(unittest.TestCase):
@@ -182,6 +184,37 @@ class ParseCursorTest(unittest.TestCase):
     def test_negative_is_cold(self):
         self.assertIsNone(_parse_cursor("-1"))
         self.assertIsNone(_parse_cursor(-7))
+
+class EventRowBatchCapTest(unittest.TestCase):
+    class Event:
+        def __init__(self, module_id, event_id, attributes):
+            self.value = {
+                "event": {
+                    "module_id": module_id,
+                    "event_id": event_id,
+                    "attributes": attributes,
+                }
+            }
+
+    def test_event_rows_for_events_matches_transfer_shape(self):
+        rows = event_rows_for_events(
+            123,
+            [self.Event("Balances", "Transfer", [_SS58_A, _SS58_B, _RAO_100])],
+            456,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["block_number"], 123)
+        self.assertEqual(rows[0]["event_index"], 0)
+        self.assertEqual(rows[0]["event_kind"], "Transfer")
+        self.assertEqual(rows[0]["hotkey"], _SS58_A)
+        self.assertEqual(rows[0]["coldkey"], _SS58_B)
+        self.assertAlmostEqual(rows[0]["amount_tao"], 100.0)
+        self.assertEqual(rows[0]["observed_at"], 456)
+
+    def test_can_append_event_block_keeps_batches_under_cap(self):
+        existing = [{}] * 3
+        self.assertTrue(_can_append_event_block(existing, [{}] * 2, max_rows=5))
+        self.assertFalse(_can_append_event_block(existing, [{}] * 3, max_rows=5))
 
 
 _lag_alert_needed = _fe._lag_alert_needed
