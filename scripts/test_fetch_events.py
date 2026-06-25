@@ -365,5 +365,32 @@ class StakeAlphaExtractorTest(unittest.TestCase):
         self.assertIsNone(result["alpha_amount"])
 
 
+class TakeDelegateExtractorTest(unittest.TestCase):
+    # Subtensor emits TakeIncreased/TakeDecreased/DelegateAdded coldkey-first:
+    # Event::Take*(coldkey, hotkey, take). The positional list must map a[0] to
+    # coldkey and a[1] to hotkey — not the reverse.
+    def test_take_increased_positional_is_coldkey_first(self):
+        result = _extract("TakeIncreased", [_SS58_A, _SS58_B, 100])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_take_decreased_positional_is_coldkey_first(self):
+        result = _extract("TakeDecreased", [_SS58_A, _SS58_B, 50])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_take_changed_named_dict_form(self):
+        result = _extract("TakeIncreased", {"coldkey": _SS58_A, "hotkey": _SS58_B})
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_take_matches_delegate_added_key_order(self):
+        # Identical (coldkey, hotkey, take) shape → identical key mapping.
+        take = _extract("TakeIncreased", [_SS58_A, _SS58_B, 100])
+        delegate = _extract("DelegateAdded", [_SS58_A, _SS58_B, 100])
+        self.assertEqual(take["coldkey"], delegate["coldkey"])
+        self.assertEqual(take["hotkey"], delegate["hotkey"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
