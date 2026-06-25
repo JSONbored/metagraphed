@@ -65,7 +65,12 @@ def _at(arr, i):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--network", default="finney")
+    # Default from the SUBTENSOR_RPC_URL env (the hidden chain-RPC secret; ADR 0012)
+    # so the metagraph fetch routes through our own node without exposing its URL;
+    # falls back to "finney" when unset. An explicit --network still overrides.
+    parser.add_argument(
+        "--network", default=os.environ.get("SUBTENSOR_RPC_URL") or "finney"
+    )
     args = parser.parse_args()
 
     s = bt.SubtensorApi(network=args.network)

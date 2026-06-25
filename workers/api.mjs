@@ -13,12 +13,10 @@ import {
   weakEtag,
 } from "./http.mjs";
 import {
-  d1TimeoutMs,
   latestPointer,
   logEvent,
   readArtifact,
   readHealthKv,
-  withTimeout,
 } from "./storage.mjs";
 import {
   contractStaleness,
@@ -35,6 +33,58 @@ import {
   agentToolsResponse,
   handleBadgeSvgRequest,
 } from "./request-handlers/discovery.mjs";
+import {
+  analyticsMeta,
+  analyticsQueryError,
+  configureAnalytics,
+  d1All,
+  d1Runner,
+  handleBulkHealthTrends,
+  handleGlobalIncidents,
+  handleHealthIncidents,
+  handleHealthPercentiles,
+  handleHealthTrends,
+  validateQueryParams,
+  withEdgeCache,
+} from "./request-handlers/analytics.mjs";
+import {
+  loadStagedNeurons,
+  loadStagedEvents,
+  loadStagedBlocks,
+  loadStagedExtrinsics,
+} from "./request-handlers/staging.mjs";
+import {
+  handleSubnetMetagraph,
+  handleNeuron,
+  handleSubnetValidators,
+  handleNeuronHistory,
+  handleSubnetHistory,
+  handleAccount,
+  handleAccountEvents,
+  handleAccountSubnets,
+  handleBlocks,
+  handleBlock,
+  handleExtrinsics,
+  handleExtrinsic,
+} from "./request-handlers/entities.mjs";
+import {
+  classifyUpstreamAttempt,
+  configureRpcProxy,
+  graphqlRateLimited,
+  handleRpcProxyRequest,
+  handleRpcUsage,
+  handleSurfaceVerify,
+  isRpcEndpointEjected,
+  orderSafeRpcEndpoints,
+  proxyWithFailover,
+  readRpcPoolArtifact,
+  recordRpcFailure,
+  recordRpcSuccess,
+  rpcCachePolicy,
+  RPC_POOL_ARTIFACT_TTL_MS,
+  selectSafeRpcEndpoint,
+  weightedPickEndpoint,
+} from "./request-handlers/rpc-proxy.mjs";
 import {
   buildChangeEvent,
   deliveryStoragePrefix,
@@ -58,31 +108,18 @@ import {
   pruneHealthHistory,
   rollupDailyUptime,
   runHealthProber,
-  workerResolvedUrlSafetyGuard,
-  workerWebSocketConnector,
   writeSubnetSnapshot,
 } from "../src/health-prober.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
-import {
-  dailyLatencyColumns,
-  latencyStatColumns,
-  rankedChecksCte,
-} from "../src/health-sql.mjs";
-import { findSurface, verifySurface } from "../src/surface-verify.mjs";
-import { SURFACE_ALIASES_PATH } from "../src/surface-aliases.mjs";
+import { dailyLatencyColumns } from "../src/health-sql.mjs";
 import {
   buildGlobalHealth,
-  formatBulkTrends,
-  formatGlobalIncidents,
-  formatIncidents,
   formatLeaderboards,
   formatPercentiles,
   formatRpcUsage,
   formatTrends,
   formatTrajectory,
   formatUptime,
-  INCIDENT_GAP_MS,
-  MIN_INCIDENT_SAMPLES,
   LEADERBOARD_BOARDS,
   mergeFreshness,
   mergeRpcEndpoints,
@@ -90,18 +127,11 @@ import {
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
-  overlayRpcPoolEligibility,
   overlaySubnetEconomics,
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
-import {
-  NEURON_INSERT_COLUMNS,
-  loadSubnetMetagraph,
-  loadSubnetValidators,
-  loadNeuron,
-} from "../src/metagraph-neurons.mjs";
 import {
   rollupNeuronDaily,
   archiveNeuronDaily,
@@ -109,35 +139,20 @@ import {
   pruneNeuronDaily,
   neuronDailyUpsertStatements,
   validNeuronDailyRows,
-  buildNeuronHistory,
-  buildSubnetHistory,
-  parseHistoryWindow,
-  NEURON_DAILY_READ_COLUMNS,
-  MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
-  buildAccountEvents,
-  buildAccountSubnets,
-  buildAccountSummary,
   eventInsertStatements,
   rollupAccountEventsDaily,
   pruneAccountEvents,
   validEventRows,
 } from "../src/account-events.mjs";
 import {
-  BLOCK_READ_COLUMNS,
   blockInsertStatements,
-  buildBlock,
-  buildBlockFeed,
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
 import {
-  EXTRINSIC_READ_COLUMNS,
   extrinsicInsertStatements,
-  buildExtrinsic,
-  buildExtrinsicFeed,
   pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
@@ -166,41 +181,27 @@ import {
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
-  ANALYTICS_WINDOW_PARAM,
-  ANALYTICS_WINDOWS,
   BULK_TRENDS_PATH_PATTERN,
   DAY_MS,
-  DENIED_RPC_PREFIXES,
   EMBEDDING_SYNC_CRON,
   EVENTS_INGEST_TOKEN_HEADER,
   EVENTS_LOAD_CRON,
   HEALTH_PRUNE_CRON,
-  HEALTH_TREND_WINDOWS,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
   MAX_BACKFILL_INGEST_BODY_BYTES,
   MAX_BACKFILL_INGEST_ROWS,
-  MAX_BULK_TREND_ROWS,
+  MAX_BLOCKS_INGEST_BODY_BYTES,
+  MAX_BLOCKS_INGEST_ROWS,
   MAX_EVENTS_INGEST_BODY_BYTES,
   MAX_EVENTS_INGEST_ROWS,
-  MAX_STAGED_EVENTS_BYTES,
-  MAX_STAGED_EVENT_ROWS,
-  MAX_STAGED_BLOCKS_BYTES,
-  MAX_STAGED_BLOCK_ROWS,
-  MAX_STAGED_EXTRINSICS_BYTES,
-  MAX_STAGED_EXTRINSIC_ROWS,
-  MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
-  MAX_INCIDENT_ROWS,
-  MAX_RPC_BODY_BYTES,
   MAX_UPTIME_ROWS,
   MAX_WEBHOOK_BODY_BYTES,
   NEURON_HISTORY_ROLLUP_CRON,
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
-  RPC_USAGE_BUCKETS,
-  SAFE_RPC_METHODS,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
@@ -208,7 +209,6 @@ import {
   SUBNET_VALIDATORS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
-  TRUSTED_RPC_UPSTREAM_ORIGINS,
   UPTIME_PATH_PATTERN,
   UPTIME_WINDOWS,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -262,13 +262,31 @@ function isStaticEdgeCacheEligible(matched, network) {
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
 const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 
-function canonicalOverlayCacheSearch(url, matched) {
+// Reduce a request's query string to its canonical, cache-relevant form: keep
+// only the params that actually steer the response body (the collection's
+// filters / search / sort / pagination / projection), single-valued, and emit
+// them in a deterministic order. URLSearchParams.set sorts nothing, but the
+// fixed iteration order below makes `?b=2&a=1` and `?a=1&b=2&unused=x` collapse
+// to the same key — so param order and ignored params stop fragmenting the
+// cache. Routes with no query collection (pure static artifacts) honour no
+// params at all, so their canonical search is the empty string. Shared by both
+// the static edge cache and the live-overlay collection cache.
+function canonicalCacheSearch(url, matched) {
   const config = API_QUERY_COLLECTIONS[matched.queryCollection];
   if (!config) return "";
   const filterNames =
     matched.queryFilterNames?.length > 0
       ? matched.queryFilterNames
       : Object.keys(config.filters);
+  // Range filters expose `min_<field>`/`max_<field>` params; csv/array filters
+  // expose their own param names. All of these change the filtered body, so they
+  // must be part of the cache key (omitting them would collide distinct queries).
+  const rangeNames = (config.range_filters || []).flatMap((field) => [
+    `min_${field}`,
+    `max_${field}`,
+  ]);
+  const csvNames = Object.keys(config.csv_filters || {});
+  const arrayNames = Object.keys(config.array_filters || {});
   const cacheableNames = [
     "q",
     "fields",
@@ -277,6 +295,9 @@ function canonicalOverlayCacheSearch(url, matched) {
     "sort",
     "order",
     ...filterNames,
+    ...csvNames,
+    ...arrayNames,
+    ...rangeNames,
   ];
   const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
   for (const name of cacheableNames) {
@@ -295,531 +316,41 @@ export default {
   },
 };
 
-// Sanity bounds for an authenticated, HMAC-signed staged neuron batch (the data
-// is already trusted; these are defense-in-depth caps so a malformed signed file
-// can't blow up the D1 load). The byte cap intentionally allows the
-// expected all-subnet signed JSON envelope (~33k rows) while still bounding
-// memory use before parsing. netuid and uid are both u16 on-chain, so each is
-// capped at the u16 max (65535) — matching the existing netuid guard in
-// src/webhooks.mjs and avoiding rejection of legitimately high subnet ids.
-const STAGED_NEURONS_KEY = "metagraph/neurons-pending.json";
-const STAGED_EVENTS_KEY = "events/account-events-pending.json";
-const STAGED_BLOCKS_KEY = "events/blocks-pending.json";
-const STAGED_EXTRINSICS_KEY = "events/extrinsics-pending.json";
-const MAX_STAGED_NEURONS_BYTES = 32_000_000;
-const MAX_STAGED_NEURON_ROWS = 50_000;
-const MAX_STAGED_NEURON_STRING_BYTES = 512;
-const MAX_STAGED_NETUID = 65_535;
-const MAX_STAGED_UID = 65_535;
-const MAX_STAGED_REFRESHED_NETUIDS = 256;
+// The staged-artifact loaders now live in request-handlers/staging.mjs (#1763).
+// Re-export them so the scheduled cron drain (handleScheduled) and the staging
+// tests keep importing them from this module.
+export {
+  loadStagedNeurons,
+  loadStagedEvents,
+  loadStagedBlocks,
+  loadStagedExtrinsics,
+};
 
-function neuronStagingSignPayload(rows, refreshed_netuids, captured_at) {
-  if (refreshed_netuids == null && captured_at == null) {
-    return JSON.stringify(rows);
-  }
-  return JSON.stringify({ rows, refreshed_netuids, captured_at });
-}
+// The RPC-proxy subsystem now lives in request-handlers/rpc-proxy.mjs (#1763).
+// The router dispatches the handlers directly via the imports above; these
+// helpers + constants are re-exported only so the rpc-cache / rpc-failover /
+// rpc-endpoint-selection / rpc-pool-cache tests keep importing them from this
+// module (their public test surface is api.mjs, not the new file).
+export {
+  classifyUpstreamAttempt,
+  isRpcEndpointEjected,
+  orderSafeRpcEndpoints,
+  proxyWithFailover,
+  readRpcPoolArtifact,
+  recordRpcFailure,
+  recordRpcSuccess,
+  rpcCachePolicy,
+  RPC_POOL_ARTIFACT_TTL_MS,
+  selectSafeRpcEndpoint,
+  weightedPickEndpoint,
+};
 
-function parseNeuronStagingMeta(envelope, rows) {
-  const hasRefreshed = envelope?.refreshed_netuids !== undefined;
-  const hasCaptured = envelope?.captured_at !== undefined;
-  if (!hasRefreshed && !hasCaptured) {
-    return { legacy: true };
-  }
-  if (!hasRefreshed || !hasCaptured) {
-    return { invalid: true };
-  }
-  const refreshed_netuids = envelope.refreshed_netuids;
-  const captured_at = envelope.captured_at;
-  if (
-    !Array.isArray(refreshed_netuids) ||
-    refreshed_netuids.length > MAX_STAGED_REFRESHED_NETUIDS ||
-    !Number.isInteger(captured_at) ||
-    captured_at < 0
-  ) {
-    return { invalid: true };
-  }
-  const refreshedSet = new Set();
-  for (const netuid of refreshed_netuids) {
-    if (
-      !Number.isInteger(netuid) ||
-      netuid < 0 ||
-      netuid > MAX_STAGED_NETUID ||
-      refreshedSet.has(netuid)
-    ) {
-      return { invalid: true };
-    }
-    refreshedSet.add(netuid);
-  }
-  for (const row of rows) {
-    if (row.captured_at !== captured_at || !refreshedSet.has(row.netuid)) {
-      return { invalid: true };
-    }
-  }
-  return { legacy: false, refreshed_netuids, captured_at };
-}
-
-function eventStagingSignPayload(rows) {
-  return JSON.stringify(rows);
-}
-
-function blockStagingSignPayload(rows) {
-  return JSON.stringify(rows);
-}
-
-function extrinsicStagingSignPayload(rows) {
-  return JSON.stringify(rows);
-}
-
-async function signedEventEnvelope(signingKey, rows) {
-  return {
-    schema_version: 1,
-    hmac_sha256: await hmacHex(signingKey, eventStagingSignPayload(rows)),
-    rows,
-  };
-}
-
-async function signedBlockEnvelope(signingKey, rows) {
-  return {
-    schema_version: 1,
-    hmac_sha256: await hmacHex(signingKey, blockStagingSignPayload(rows)),
-    rows,
-  };
-}
-
-async function signedExtrinsicEnvelope(signingKey, rows) {
-  return {
-    schema_version: 1,
-    hmac_sha256: await hmacHex(signingKey, extrinsicStagingSignPayload(rows)),
-    rows,
-  };
-}
-
+// Byte length of a UTF-8 string. Shared by the realtime ingest handlers below to
+// bound request bodies before parsing. (The staging loaders carry their own copy;
+// it is a pure stdlib one-liner, so a tiny duplicate beats a cross-module import
+// for a leaf used on both sides of the extraction.)
 function utf8Bytes(value) {
   return new TextEncoder().encode(value);
-}
-
-function timingSafeStringEqual(a, b) {
-  const left = utf8Bytes(String(a || ""));
-  const right = utf8Bytes(String(b || ""));
-  if (left.length !== right.length) return false;
-  let diff = 0;
-  for (let i = 0; i < left.length; i += 1) diff |= left[i] ^ right[i];
-  return diff === 0;
-}
-
-async function hmacHex(key, value) {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    utf8Bytes(key),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("HMAC", cryptoKey, utf8Bytes(value));
-  return [...new Uint8Array(sig)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function validStagedNeuronRow(row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  if (
-    !Number.isInteger(row.netuid) ||
-    row.netuid < 0 ||
-    row.netuid > MAX_STAGED_NETUID
-  )
-    return false;
-  if (!Number.isInteger(row.uid) || row.uid < 0 || row.uid > MAX_STAGED_UID)
-    return false;
-  for (const [key, value] of Object.entries(row)) {
-    if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
-    if (
-      typeof value === "string" &&
-      utf8Bytes(value).length > MAX_STAGED_NEURON_STRING_BYTES
-    )
-      return false;
-    if (typeof value === "number" && !Number.isFinite(value)) return false;
-    if (
-      typeof value === "boolean" ||
-      typeof value === "bigint" ||
-      typeof value === "symbol" ||
-      typeof value === "function"
-    )
-      return false;
-  }
-  return true;
-}
-
-// Load a staged per-UID metagraph snapshot from R2 into D1 (#1303). The
-// refresh-metagraph CI job fetches the metagraph first-party (#1348), wraps the
-// neuron rows in an HMAC-signed envelope, and writes it to R2
-// (metagraph/neurons-pending.json) using its existing R2 permission; we load only
-// authenticated, bounded, schema-valid rows through the METAGRAPH_HEALTH_DB
-// binding — which needs no API-token D1 permission — with PARAMETERIZED inserts
-// (values are always bound, never interpolated). After every batch succeeds we
-// delete older rows for the coverage represented by the staged payload: legacy
-// bare-array snapshots replace the full table, while coverage envelopes replace
-// only their refreshed subnets. Then delete the staged object so it loads exactly
-// once.
-export async function loadStagedNeurons(env) {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  const db = env.METAGRAPH_HEALTH_DB;
-  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
-  if (!bucket?.get || !db?.prepare || !signingKey) {
-    return { ok: false, reason: "unavailable" };
-  }
-  const object = await bucket.get(STAGED_NEURONS_KEY);
-  if (!object) return { ok: false, reason: "none" };
-  if (Number(object.size || 0) > MAX_STAGED_NEURONS_BYTES) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "too_large" };
-  }
-  let envelope;
-  try {
-    envelope = await object.json();
-  } catch {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "parse_failed" };
-  }
-  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
-  if (
-    envelope?.schema_version !== 1 ||
-    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
-  ) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  if (rows.length > MAX_STAGED_NEURON_ROWS) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "too_many_rows" };
-  }
-  if (!rows.length || rows.some((row) => !validStagedNeuronRow(row))) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "invalid" };
-  }
-  const stagingMeta = parseNeuronStagingMeta(envelope, rows);
-  if (stagingMeta.invalid) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "invalid" };
-  }
-  const expected = await hmacHex(
-    signingKey,
-    neuronStagingSignPayload(
-      rows,
-      stagingMeta.legacy ? null : stagingMeta.refreshed_netuids,
-      stagingMeta.legacy ? null : stagingMeta.captured_at,
-    ),
-  );
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const cols = NEURON_INSERT_COLUMNS;
-  const colList = cols.join(",");
-  const ROWS_PER_STMT = 5;
-  const STMTS_PER_BATCH = 50;
-  const statements = [];
-  for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
-    const chunk = rows.slice(i, i + ROWS_PER_STMT);
-    const tuples = chunk
-      .map(() => `(${cols.map(() => "?").join(",")})`)
-      .join(",");
-    const values = chunk.flatMap((row) => cols.map((c) => row[c] ?? null));
-    statements.push(
-      db
-        .prepare(`INSERT OR REPLACE INTO neurons (${colList}) VALUES ${tuples}`)
-        .bind(...values),
-    );
-  }
-  // A staged snapshot is replacement data for its declared coverage: every row
-  // shares one captured_at stamp (set once by the producer). If ANY batch throws,
-  // bail WITHOUT deleting prior rows or the staged object — the prior snapshot
-  // stays as a fallback and the next cron retries the same staged file.
-  try {
-    for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-      await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-    }
-  } catch {
-    return { ok: false, reason: "load_failed" };
-  }
-  // Snapshot-replace (#1303): only after EVERY upsert batch succeeds, delete
-  // rows older than this snapshot's stamp for the same replacement scope. Legacy
-  // bare-array snapshots have no coverage metadata, so they replace the whole
-  // table. Coverage envelopes can intentionally represent a partial refresh, so
-  // prune only those refreshed netuids; otherwise a subnet that failed to fetch
-  // could be erased by an unrelated newer captured_at stamp.
-  let snapshotCapturedAt = 0;
-  for (const row of rows) {
-    if (
-      Number.isInteger(row.captured_at) &&
-      row.captured_at > snapshotCapturedAt
-    )
-      snapshotCapturedAt = row.captured_at;
-  }
-  let purged;
-  try {
-    const prune = stagingMeta.legacy
-      ? db
-          .prepare(`DELETE FROM neurons WHERE captured_at < ?`)
-          .bind(snapshotCapturedAt)
-      : db
-          .prepare(
-            `DELETE FROM neurons WHERE netuid IN (${stagingMeta.refreshed_netuids
-              .map(() => "?")
-              .join(",")}) AND captured_at < ?`,
-          )
-          .bind(...stagingMeta.refreshed_netuids, stagingMeta.captured_at);
-    const result = await prune.run();
-    purged = result?.meta?.changes ?? 0;
-  } catch {
-    // Rows are already loaded; a failed prune just leaves stale rows for the next
-    // run to clear. Do NOT delete the staged object — let the next cron re-prune.
-    return { ok: false, reason: "purge_failed" };
-  }
-  await bucket.delete(STAGED_NEURONS_KEY);
-  return { ok: true, rows: rows.length, purged };
-}
-
-// Load a staged chain-event batch from R2 into D1 (#1346, epic #1345). The
-// refresh-events CI job decodes finney's System.Events first-party (no Taostats),
-// signs rows with METAGRAPH_STAGING_SIGNING_KEY, and writes the envelope to R2;
-// we load only authenticated rows through the binding (no API-token D1 permission)
-// with PARAMETERIZED INSERT OR IGNORE keyed (block_number, event_index) — so
-// overlapping poller windows re-insert harmlessly (idempotent, no cursor needed).
-// Then delete the object (or rewrite a signed remainder) so each batch loads once.
-export async function loadStagedEvents(env) {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  const db = env.METAGRAPH_HEALTH_DB;
-  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
-  if (!bucket?.get || !db?.prepare || !signingKey) {
-    return { ok: false, reason: "unavailable" };
-  }
-  const key = STAGED_EVENTS_KEY;
-  const object = await bucket.get(key);
-  if (!object) return { ok: false, reason: "none" };
-  // Byte cap: never materialize a pathological body. `size` is object metadata,
-  // available before the body is streamed. Do NOT delete — that would drop rows the
-  // producer staged; leave it (loud) and let the overlapping poller's next window
-  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
-  // producer, not parsed here.
-  if (Number(object.size || 0) > MAX_STAGED_EVENTS_BYTES) {
-    console.warn(
-      `loadStagedEvents: staged file ${object.size} bytes exceeds ${MAX_STAGED_EVENTS_BYTES}; skipping (poller overlap self-heals)`,
-    );
-    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
-  }
-  let envelope;
-  try {
-    envelope = await object.json();
-  } catch {
-    await bucket.delete(key);
-    return { ok: false, reason: "parse_failed" };
-  }
-  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
-  if (
-    envelope?.schema_version !== 1 ||
-    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
-  ) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const expected = await hmacHex(signingKey, eventStagingSignPayload(rows));
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const validRows = validEventRows(rows);
-  if (!validRows.length) {
-    await bucket.delete(key);
-    return { ok: false, reason: "empty" };
-  }
-  // Row cap: bound the D1 writes + subrequests per */3 tick. Drain up to the cap
-  // now; if rows remain, rewrite the object with ONLY the signed remainder so the
-  // next tick continues — never delete while rows are un-persisted. Order matters:
-  // write to D1 FIRST, then shrink R2. A crash between them re-reads the full file
-  // next tick and re-inserts the loaded rows harmlessly (INSERT OR IGNORE), so
-  // nothing is dropped.
-  const batch =
-    validRows.length > MAX_STAGED_EVENT_ROWS
-      ? validRows.slice(0, MAX_STAGED_EVENT_ROWS)
-      : validRows;
-  const remainder =
-    validRows.length > MAX_STAGED_EVENT_ROWS
-      ? validRows.slice(MAX_STAGED_EVENT_ROWS)
-      : [];
-  const statements = eventInsertStatements(db, batch);
-  const STMTS_PER_BATCH = 50;
-  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-  }
-  if (remainder.length) {
-    await bucket.put(
-      key,
-      JSON.stringify(await signedEventEnvelope(signingKey, remainder)),
-    );
-    return { ok: true, rows: batch.length, remaining: remainder.length };
-  }
-  await bucket.delete(key);
-  return { ok: true, rows: batch.length };
-}
-
-// Block-explorer hot window (#1345): load the R2-staged `blocks` sidecar into D1
-// `blocks`. Mirrors loadStagedEvents EXACTLY — same byte/row caps, the same
-// HMAC-authenticated envelope, the same write-D1-first / shrink-R2-after
-// progressive drain, and delete-on-success. Idempotent: INSERT OR IGNORE on
-// block_number means an overlapping poller window (or a re-drain after a crash
-// between the D1 write and the R2 shrink) re-inserts harmlessly. Called from the
-// same */3 fast-load cron that owns loadStagedEvents (NO new cron — the drain is
-// gated to one cron to remove cross-cron R2 read-modify-write clobbering).
-export async function loadStagedBlocks(env) {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  const db = env.METAGRAPH_HEALTH_DB;
-  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
-  if (!bucket?.get || !db?.prepare || !signingKey) {
-    return { ok: false, reason: "unavailable" };
-  }
-  const key = STAGED_BLOCKS_KEY;
-  const object = await bucket.get(key);
-  if (!object) return { ok: false, reason: "none" };
-  // Byte cap: never materialize a pathological body. Do NOT delete on overflow —
-  // the overlapping poller's next window self-heals it (same stance as events).
-  if (Number(object.size || 0) > MAX_STAGED_BLOCKS_BYTES) {
-    console.warn(
-      `loadStagedBlocks: staged file ${object.size} bytes exceeds ${MAX_STAGED_BLOCKS_BYTES}; skipping (poller overlap self-heals)`,
-    );
-    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
-  }
-  let envelope;
-  try {
-    envelope = await object.json();
-  } catch {
-    await bucket.delete(key);
-    return { ok: false, reason: "parse_failed" };
-  }
-  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
-  if (
-    envelope?.schema_version !== 1 ||
-    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
-  ) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const expected = await hmacHex(signingKey, blockStagingSignPayload(rows));
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const validRows = validBlockRows(rows);
-  if (!validRows.length) {
-    await bucket.delete(key);
-    return { ok: false, reason: "empty" };
-  }
-  // Row cap + progressive drain: write D1 FIRST, then shrink R2. A crash between
-  // them re-reads the full file next tick and re-inserts the loaded rows
-  // harmlessly (INSERT OR IGNORE on block_number) — nothing is dropped.
-  const batch =
-    validRows.length > MAX_STAGED_BLOCK_ROWS
-      ? validRows.slice(0, MAX_STAGED_BLOCK_ROWS)
-      : validRows;
-  const remainder =
-    validRows.length > MAX_STAGED_BLOCK_ROWS
-      ? validRows.slice(MAX_STAGED_BLOCK_ROWS)
-      : [];
-  const statements = blockInsertStatements(db, batch);
-  const STMTS_PER_BATCH = 50;
-  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-  }
-  if (remainder.length) {
-    await bucket.put(
-      key,
-      JSON.stringify(await signedBlockEnvelope(signingKey, remainder)),
-    );
-    return { ok: true, rows: batch.length, remaining: remainder.length };
-  }
-  await bucket.delete(key);
-  return { ok: true, rows: batch.length };
-}
-
-// Block-explorer extrinsic slice (#1345): load the R2-staged `extrinsics` sidecar
-// into D1 `extrinsics`. Mirrors loadStagedBlocks EXACTLY — same byte/row caps, the
-// same HMAC-authenticated envelope, the same write-D1-first / shrink-R2-after
-// progressive drain, and delete-on-success. Idempotent: INSERT OR IGNORE on
-// (block_number, extrinsic_index) means an overlapping poller window (or a re-drain
-// after a crash between the D1 write and the R2 shrink) re-inserts harmlessly.
-// Called from the same */3 fast-load cron that owns loadStagedBlocks (NO new cron —
-// the drain is gated to one cron to remove cross-cron R2 read-modify-write
-// clobbering).
-export async function loadStagedExtrinsics(env) {
-  const bucket = env.METAGRAPH_ARCHIVE;
-  const db = env.METAGRAPH_HEALTH_DB;
-  const signingKey = env.METAGRAPH_STAGING_SIGNING_KEY;
-  if (!bucket?.get || !db?.prepare || !signingKey) {
-    return { ok: false, reason: "unavailable" };
-  }
-  const key = STAGED_EXTRINSICS_KEY;
-  const object = await bucket.get(key);
-  if (!object) return { ok: false, reason: "none" };
-  // Byte cap: never materialize a pathological body. Do NOT delete on overflow —
-  // the overlapping poller's next window self-heals it (same stance as blocks).
-  if (Number(object.size || 0) > MAX_STAGED_EXTRINSICS_BYTES) {
-    console.warn(
-      `loadStagedExtrinsics: staged file ${object.size} bytes exceeds ${MAX_STAGED_EXTRINSICS_BYTES}; skipping (poller overlap self-heals)`,
-    );
-    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
-  }
-  let envelope;
-  try {
-    envelope = await object.json();
-  } catch {
-    await bucket.delete(key);
-    return { ok: false, reason: "parse_failed" };
-  }
-  const rows = Array.isArray(envelope?.rows) ? envelope.rows : [];
-  if (
-    envelope?.schema_version !== 1 ||
-    !/^[a-f0-9]{64}$/.test(String(envelope?.hmac_sha256 || ""))
-  ) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const expected = await hmacHex(signingKey, extrinsicStagingSignPayload(rows));
-  if (!timingSafeStringEqual(expected, envelope.hmac_sha256)) {
-    await bucket.delete(key);
-    return { ok: false, reason: "unauthenticated" };
-  }
-  const validRows = validExtrinsicRows(rows);
-  if (!validRows.length) {
-    await bucket.delete(key);
-    return { ok: false, reason: "empty" };
-  }
-  // Row cap + progressive drain: write D1 FIRST, then shrink R2. A crash between
-  // them re-reads the full file next tick and re-inserts the loaded rows
-  // harmlessly (INSERT OR IGNORE on (block_number, extrinsic_index)) — nothing is
-  // dropped.
-  const batch =
-    validRows.length > MAX_STAGED_EXTRINSIC_ROWS
-      ? validRows.slice(0, MAX_STAGED_EXTRINSIC_ROWS)
-      : validRows;
-  const remainder =
-    validRows.length > MAX_STAGED_EXTRINSIC_ROWS
-      ? validRows.slice(MAX_STAGED_EXTRINSIC_ROWS)
-      : [];
-  const statements = extrinsicInsertStatements(db, batch);
-  const STMTS_PER_BATCH = 50;
-  for (let i = 0; i < statements.length; i += STMTS_PER_BATCH) {
-    await db.batch(statements.slice(i, i + STMTS_PER_BATCH));
-  }
-  if (remainder.length) {
-    await bucket.put(
-      key,
-      JSON.stringify(await signedExtrinsicEnvelope(signingKey, remainder)),
-    );
-    return { ok: true, rows: batch.length, remaining: remainder.length };
-  }
-  await bucket.delete(key);
-  return { ok: true, rows: batch.length };
 }
 
 // POST /api/v1/internal/events (#1360): the realtime ingest path for the
@@ -904,6 +435,104 @@ export async function handleEventIngest(request, env) {
     status: 200,
     headers: { "content-type": JSON_CONTENT_TYPE },
   });
+}
+
+// POST /api/v1/internal/blocks (#1345 Option B): the realtime block-explorer ingest
+// path for the finalized-head streamer (#1361). Same auth as /internal/events (the
+// shared METAGRAPH_EVENTS_INGEST_SECRET over EVENTS_INGEST_TOKEN_HEADER). Body is
+// {blocks:[...], extrinsics:[...]}, loaded with the SAME parameterized INSERT OR
+// IGNORE as the staged-batch loaders — idempotent on the PKs (block_number;
+// (block_number, extrinsic_index)). NOT in the public contract. Closes the
+// blocks/extrinsics realtime gap (the coalesced CI poller alone missed ~58%; #1749).
+export async function handleBlockIngest(request, env) {
+  if (request.method !== "POST") {
+    return errorResponse("method_not_allowed", "POST only.", 405);
+  }
+  const configured = env.METAGRAPH_EVENTS_INGEST_SECRET;
+  if (!configured) {
+    return errorResponse(
+      "blocks_ingest_disabled",
+      "Realtime block ingest requires METAGRAPH_EVENTS_INGEST_SECRET to be configured.",
+      503,
+    );
+  }
+  const provided = request.headers.get(EVENTS_INGEST_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, configured)) {
+    return errorResponse(
+      "unauthorized",
+      `Provide a valid ${EVENTS_INGEST_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  const db = env.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) {
+    return errorResponse("unavailable", "Block store unavailable.", 503);
+  }
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > MAX_BLOCKS_INGEST_BODY_BYTES) {
+    return errorResponse(
+      "payload_too_large",
+      `Body exceeds ${MAX_BLOCKS_INGEST_BODY_BYTES} bytes.`,
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
+      400,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return errorResponse(
+      "invalid_body",
+      "Body must be a JSON object {blocks:[...], extrinsics:[...]}.",
+      400,
+    );
+  }
+  const incomingBlocks = Array.isArray(parsed.blocks) ? parsed.blocks : [];
+  const incomingExtrinsics = Array.isArray(parsed.extrinsics)
+    ? parsed.extrinsics
+    : [];
+  if (
+    incomingBlocks.length > MAX_BLOCKS_INGEST_ROWS ||
+    incomingExtrinsics.length > MAX_BLOCKS_INGEST_ROWS
+  ) {
+    return errorResponse(
+      "too_many_rows",
+      `At most ${MAX_BLOCKS_INGEST_ROWS} rows per array (blocks, extrinsics).`,
+      413,
+    );
+  }
+  // Report rows ACTUALLY inserted (INSERT OR IGNORE on the PKs drops the expected
+  // streamer/poller overlap), summing per-statement D1 meta.changes. Block
+  // statements come first in the batch, then extrinsic statements.
+  const blockStmts = blockInsertStatements(db, validBlockRows(incomingBlocks));
+  const extrinsicStmts = extrinsicInsertStatements(
+    db,
+    validExtrinsicRows(incomingExtrinsics),
+  );
+  let blocksInserted = 0;
+  let extrinsicsInserted = 0;
+  if (blockStmts.length || extrinsicStmts.length) {
+    const results = await db.batch([...blockStmts, ...extrinsicStmts]);
+    results.forEach((result, i) => {
+      const changes = result?.meta?.changes ?? 0;
+      if (i < blockStmts.length) blocksInserted += changes;
+      else extrinsicsInserted += changes;
+    });
+  }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      blocks_inserted: blocksInserted,
+      extrinsics_inserted: extrinsicsInserted,
+    }),
+    { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
+  );
 }
 
 // POST /api/v1/internal/backfill-neurons (#1345 Phase 1): the historical metagraph
@@ -1136,7 +765,10 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       };
     }
     const [pruned] = await Promise.all([
-      pruneHealthHistory(env),
+      // .catch-isolated like every sibling prune below — a rejection here (e.g. a
+      // transient D1 error) must degrade to a no-op for this tick, not abort the
+      // whole Promise.all and discard the snapshot write + the other prunes.
+      pruneHealthHistory(env).catch(() => ({ pruned: false })),
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
       // Block-explorer hot window (#1345): prune `blocks` past the 90d retention
       // on the same hourly maintenance cron. No rollup (the block hot window has
@@ -1237,6 +869,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // finalized-head streamer (#1361). POST-only; runs before the read-only gate.
   if (url.pathname === "/api/v1/internal/events") {
     return handleEventIngest(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/blocks") {
+    return handleBlockIngest(request, env);
   }
   if (url.pathname === "/api/v1/internal/backfill-neurons") {
     return handleNeuronBackfill(request, env);
@@ -1477,22 +1112,32 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (subnetHistoryMatch) {
-      return handleSubnetHistory(
-        request,
-        env,
-        Number(subnetHistoryMatch[1]),
-        resolved.url,
+      // GROUP BY daily aggregation, deterministic per cron snapshot — edge-cache
+      // on last_run_at like the sibling analytics routes (pathname carries the
+      // netuid, search carries ?window). Cheap single-row lookups stay uncached.
+      return withEdgeCache(request, ctx, env, "subnet-history", () =>
+        handleSubnetHistory(
+          request,
+          env,
+          Number(subnetHistoryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
     if (metagraphMatch) {
-      return handleSubnetMetagraph(
-        request,
-        env,
-        Number(metagraphMatch[1]),
-        resolved.url,
+      // Full per-subnet metagraph (range read over the neurons tier), deterministic
+      // per cron snapshot — edge-cache on last_run_at; ?validator_permit rides the
+      // search into the key.
+      return withEdgeCache(request, ctx, env, "subnet-metagraph", () =>
+        handleSubnetMetagraph(
+          request,
+          env,
+          Number(metagraphMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1508,11 +1153,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (validatorsMatch) {
-      return handleSubnetValidators(
-        request,
-        env,
-        Number(validatorsMatch[1]),
-        resolved.url,
+      // Validator slice of the metagraph (filtered range read), deterministic per
+      // cron snapshot — edge-cache on last_run_at like the sibling routes.
+      return withEdgeCache(request, ctx, env, "subnet-validators", () =>
+        handleSubnetValidators(
+          request,
+          env,
+          Number(validatorsMatch[1]),
+          resolved.url,
+        ),
       );
     }
     // Account entity routes (#1347): computed live from the account_events +
@@ -1951,35 +1600,6 @@ const subnetSlugIndexByNetwork = new Map(); // network.id -> { map, builtAt }
 const LEADERBOARD_PROFILES_TTL_MS = 300_000;
 let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
-// rpc/pools.json is R2-only and static per-build (it changes only on redeploy).
-// The RPC proxy reads it on every POST to /rpc/v1/* before failover, so a burst
-// turns into N R2 reads of the same artifact (#1309). Memoize the successful read
-// per-isolate (5 min TTL, same as the other in-isolate caches). The per-endpoint
-// health that actually changes is overlaid separately from KV (readHealthKv) on
-// every request, so caching the static pool never staleness-pins live eligibility.
-// Keyed on env so tests / multi-binding callers never cross-read; only ok reads
-// are cached so a transient R2 miss isn't sticky.
-export const RPC_POOL_ARTIFACT_TTL_MS = 300_000;
-let rpcPoolArtifactCache = { env: null, value: null, expiresAt: 0 };
-
-export async function readRpcPoolArtifact(env, now = Date.now()) {
-  if (
-    rpcPoolArtifactCache.env === env &&
-    now < rpcPoolArtifactCache.expiresAt
-  ) {
-    return rpcPoolArtifactCache.value;
-  }
-  const poolArtifact = await readArtifact(env, "/metagraph/rpc/pools.json");
-  if (poolArtifact.ok) {
-    rpcPoolArtifactCache = {
-      env,
-      value: poolArtifact,
-      expiresAt: now + RPC_POOL_ARTIFACT_TTL_MS,
-    };
-  }
-  return poolArtifact;
-}
-
 // KV_HEALTH_META is written by the health cron (~15 min cadence) and read by
 // every analytics handler (percentiles, incidents, trends, uptime, trajectory,
 // leaderboards). Each handler reads it independently; this in-isolate memo
@@ -1999,6 +1619,21 @@ export async function readHealthMetaKv(env, now = Date.now()) {
   }
   return value;
 }
+
+// Wire the api.mjs-local snapshot-meta reader into the extracted analytics module
+// (workers/request-handlers/analytics.mjs, #1763). The analytics handlers + their
+// edge-cache guard own the D1-fallback state; they only need this one in-isolate
+// memoized KV read, which stays here because the deferred handler clusters and a
+// test import it from api.mjs. Injecting the stable reference (rather than having
+// analytics.mjs import it back) keeps the two modules from importing each other.
+configureAnalytics({ readHealthMetaKv });
+
+// Same wiring for the extracted RPC-proxy module (workers/request-handlers/
+// rpc-proxy.mjs, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
+// for its observed_at stamp. Injecting the stable reference keeps rpc-proxy.mjs
+// from importing api.mjs back (it owns the RPC_HEALTH breaker + pool-artifact memo
+// itself; this is the only api.mjs-local helper it depends on).
+configureRpcProxy({ readHealthMetaKv });
 
 // economics:current is a large blob (one row per subnet) that resolveLiveEconomics
 // reads on every /api/v1/economics request AND every /api/v1/subnets/{netuid}
@@ -2153,7 +1788,7 @@ async function handleApiRequest(
     ? new Request(
         `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}${url.pathname}${url.search}`,
+        )}${url.pathname}${canonicalCacheSearch(url, matched)}`,
       )
     : null;
   // Live-overlay collection cache (the large /api/v1/endpoints index). Excluded
@@ -2177,7 +1812,7 @@ async function handleApiRequest(
       overlayCacheKey = new Request(
         `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalOverlayCacheSearch(url, matched)}`,
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalCacheSearch(url, matched)}`,
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
@@ -2942,400 +2577,6 @@ async function handleTrajectory(request, env, netuid, url) {
   return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
-// --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
-// (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
-// unbound/cold D1 returns a schema-stable empty payload, like the other
-// D1-backed analytics routes.
-async function metagraphMeta(env, artifactPath, generatedAt) {
-  return {
-    artifact_path: artifactPath,
-    cache: "short",
-    contract_version: contractVersion(env),
-    generated_at: generatedAt,
-    published_at: await publishedAt(env),
-    source: "metagraph-snapshot",
-  };
-}
-
-async function handleSubnetMetagraph(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["validator_permit"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
-    validatorsOnly,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/metagraph.json`,
-        data.captured_at,
-      ),
-    },
-    "short",
-  );
-}
-
-async function handleNeuron(request, env, netuid, uid) {
-  // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
-  // tiers (health/economics never 404 on a cold store).
-  const data = await loadNeuron(d1Runner(env), netuid, uid);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/neurons/${uid}.json`,
-        data.captured_at,
-      ),
-    },
-    "short",
-  );
-}
-
-async function handleSubnetValidators(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetValidators(d1Runner(env), netuid);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/validators.json`,
-        data.captured_at,
-      ),
-    },
-    "short",
-  );
-}
-
-// ---- Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345) --
-// Served from the dated neuron_daily rollup tier (D1). Cold/absent store → 200
-// with empty points (never 404), consistent with the live metagraph tiers.
-
-// GET /api/v1/subnets/{netuid}/neurons/{uid}/history?window=7d|30d|90d|1y|all
-// Per-UID time series (one point per snapshot_date, newest first, bounded).
-async function handleNeuronHistory(request, env, netuid, uid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const { label, days, error } = parseHistoryWindow(
-    url.searchParams.get("window"),
-  );
-  if (error) return analyticsQueryError(error);
-  const params = [netuid, uid];
-  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
-  if (days != null) {
-    // Cutoff computed in JS and bound as a plain YYYY-MM-DD (idx_neuron_daily_uid_date covers it).
-    const cutoff = new Date(Date.now() - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    sql += " AND snapshot_date >= ?";
-    params.push(cutoff);
-  }
-  sql += " ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildNeuronHistory(rows, netuid, uid, { window: label });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/neurons/${uid}/history.json`,
-        data.points[0]?.captured_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/subnets/{netuid}/history?window=7d|30d|90d|1y|all
-// Per-subnet daily aggregates over time (count + totals) for a history sparkline,
-// without shipping every UID's row.
-async function handleSubnetHistory(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const { label, days, error } = parseHistoryWindow(
-    url.searchParams.get("window"),
-  );
-  if (error) return analyticsQueryError(error);
-  const params = [netuid];
-  let sql =
-    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
-    "SUM(validator_permit) AS validator_count, " +
-    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
-    "FROM neuron_daily WHERE netuid = ?";
-  if (days != null) {
-    const cutoff = new Date(Date.now() - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    sql += " AND snapshot_date >= ?";
-    params.push(cutoff);
-  }
-  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(MAX_HISTORY_POINTS);
-  const rows = await d1All(env, sql, params);
-  const data = buildSubnetHistory(rows, netuid, { window: label });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/history.json`,
-        null,
-      ),
-    },
-    "short",
-  );
-}
-
-// ---- Account entity handlers (#1347) ---------------------------------------
-function clampInt(raw, def, min, max) {
-  if (raw == null || raw === "") return def;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return def;
-  return Math.max(min, Math.min(max, Math.trunc(n)));
-}
-
-async function accountMeta(env, artifactPath, generatedAt) {
-  return {
-    artifact_path: artifactPath,
-    cache: "short",
-    contract_version: contractVersion(env),
-    generated_at: generatedAt,
-    published_at: await publishedAt(env),
-    source: "chain-events",
-  };
-}
-
-// GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
-// (account_events, matched by hotkey OR coldkey) joined to current registrations
-// (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
-async function handleAccount(request, env, ss58) {
-  const where = "hotkey = ? OR coldkey = ?";
-  const [aggRows, kindRows, regRows, recentRows] = await Promise.all([
-    d1All(
-      env,
-      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${where}`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${where} GROUP BY event_kind ORDER BY count DESC`,
-      [ss58, ss58],
-    ),
-    d1All(
-      env,
-      `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
-      [ss58],
-    ),
-    d1All(
-      env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${where} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-      [ss58, ss58],
-    ),
-  ]);
-  const data = buildAccountSummary(ss58, {
-    agg: aggRows[0],
-    kinds: kindRows,
-    registrations: regRows,
-    recent: recentRows,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}.json`,
-        data.last_seen_at,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/accounts/{ss58}/events: paginated event history (newest first),
-// optional ?kind= filter, ?limit (<=1000) / ?offset.
-async function handleAccountEvents(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const kind = url.searchParams.get("kind");
-  const params = [ss58, ss58];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (hotkey = ? OR coldkey = ?)`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
-  const rows = await d1All(env, sql, params);
-  const data = buildAccountEvents(rows, ss58, { limit, offset });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/events.json`,
-        data.events[0]?.observed_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
-// registered (the cross-subnet footprint), from the neurons tier.
-async function handleAccountSubnets(request, env, ss58) {
-  const rows = await d1All(
-    env,
-    `SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons WHERE hotkey = ? ORDER BY netuid`,
-    [ss58],
-  );
-  const data = buildAccountSubnets(rows, ss58);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/accounts/${ss58}/subnets.json`,
-        null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/blocks: the recent-block feed (newest first), served live from the
-// `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
-// absent store → schema-stable zero (never throws). Reuses the chain-events meta
-// (source:"chain-events") since the same first-party poller fills this tier.
-async function handleBlocks(request, env, url) {
-  const validationError = validateQueryParams(url, ["limit", "offset"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const rows = await d1All(
-    env,
-    `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-    [limit, offset],
-  );
-  const data = buildBlockFeed(rows, { limit, offset });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        "/metagraph/blocks.json",
-        data.blocks[0]?.observed_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
-// block_number OR a 0x block_hash. Served live from the `blocks` D1 tier; an
-// unknown ref / cold store → 200 with block:null (schema-stable, mirrors the
-// neuron detail route — NEVER 404/throw).
-async function handleBlock(request, env, ref) {
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  const sql = isHash
-    ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
-    : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  const param = isHash ? ref : Number(ref);
-  const rows = await d1All(env, sql, [param]);
-  const data = buildBlock(rows[0], ref);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/blocks/${ref}.json`,
-        data.block?.observed_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/extrinsics: the recent-extrinsic feed (newest first), served live
-// from the `extrinsics` D1 tier (#1345 block explorer). ?limit clamp <=100,
-// ?offset, optional ?block=<n> to scope to one block. Cold/absent store →
-// schema-stable zero (never throws). Reuses the chain-events meta
-// (source:"chain-events") since the same first-party poller fills this tier.
-async function handleExtrinsics(request, env, url) {
-  const validationError = validateQueryParams(url, [
-    "limit",
-    "offset",
-    "block",
-  ]);
-  if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const blockParam = url.searchParams.get("block");
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
-  const params = [];
-  if (blockParam != null) {
-    sql += " WHERE block_number = ?";
-    params.push(clampInt(blockParam, 0, 0, Number.MAX_SAFE_INTEGER));
-  }
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
-  const rows = await d1All(env, sql, params);
-  const data = buildExtrinsicFeed(rows, { limit, offset });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        "/metagraph/extrinsics.json",
-        data.extrinsics[0]?.observed_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
-// GET /api/v1/extrinsics/{hash}: per-extrinsic detail (#1345). hash is a 0x
-// extrinsic_hash. Served live from the `extrinsics` D1 tier; an unknown hash /
-// cold store → 200 with extrinsic:null (schema-stable, mirrors the block detail
-// route — NEVER 404/throw).
-async function handleExtrinsic(request, env, hash) {
-  const rows = await d1All(
-    env,
-    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-    [hash],
-  );
-  const data = buildExtrinsic(rows[0], hash);
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await accountMeta(
-        env,
-        `/metagraph/extrinsics/${hash}.json`,
-        data.extrinsic?.observed_at ?? null,
-      ),
-    },
-    "short",
-  );
-}
-
 // Long-term daily uptime history for one subnet's operational surfaces, served
 // live from the surface_uptime_daily rollup (PR3). 90d/1y window. Returns a
 // schema-stable empty payload when D1 is unbound/cold or no history has accrued
@@ -3782,871 +3023,6 @@ async function handleCompare(request, env, url) {
   return hasD1FallbackRows(healthRows)
     ? markD1FallbackResponse(response)
     : response;
-}
-
-// Best-effort, async usage telemetry for the RPC proxy (B3). A telemetry write
-// must never add latency to, or fail, a proxied call — so it runs under
-// ctx.waitUntil and swallows every error (notably "no such table" before the
-// 0004 migration is applied). When the binding/ctx is absent (tests, local dev)
-// it is a no-op. The proxy degrades to "no analytics", never to "broken".
-function recordRpcUsage(env, ctx, event) {
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare || typeof ctx?.waitUntil !== "function") return;
-  try {
-    const write = db
-      .prepare(
-        `INSERT INTO rpc_proxy_events
-           (observed_at, network, endpoint_id, provider, ok, status, attempts, latency_ms, cache)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        event.observed_at,
-        event.network,
-        event.endpoint_id ?? null,
-        event.provider ?? null,
-        event.ok ? 1 : 0,
-        event.status ?? null,
-        event.attempts ?? null,
-        event.latency_ms ?? null,
-        event.cache ?? null,
-      )
-      .run();
-    ctx.waitUntil(Promise.resolve(write).catch(() => {}));
-  } catch {
-    // prepare/bind threw synchronously (malformed binding); drop the sample.
-  }
-}
-
-// RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,
-// failover + error rate, cache-hit rate, and the per-endpoint distribution that
-// shows whether the load balancer is actually spreading traffic. Computed live
-// from the rpc_proxy_events D1 telemetry; cold/unmigrated D1 returns a
-// schema-stable zeroed payload (d1All swallows the missing-table error).
-async function handleRpcUsage(request, env, url) {
-  const { label, days, error } = analyticsWindow(url);
-  if (error) return analyticsQueryError(error);
-  const since = Date.now() - days * DAY_MS;
-  const bucketConfig = RPC_USAGE_BUCKETS[label];
-  const [totalsRows, latencyRows, endpointRows, networkRows, bucketRows] =
-    await Promise.all([
-      d1All(
-        env,
-        `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
-                SUM(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,
-                SUM(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,
-                AVG(latency_ms) AS avg_latency_ms
-         FROM rpc_proxy_events
-         WHERE observed_at >= ?`,
-        [since],
-      ),
-      d1All(
-        env,
-        `WITH ranked AS (
-           SELECT latency_ms,
-                  ROW_NUMBER() OVER (ORDER BY latency_ms) AS rn,
-                  COUNT(*) OVER () AS cnt
-           FROM rpc_proxy_events
-           WHERE observed_at >= ? AND latency_ms IS NOT NULL
-         )
-         SELECT MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + (0.50 * cnt > CAST(0.50 * cnt AS INTEGER)) THEN latency_ms END) AS p50,
-                MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + (0.95 * cnt > CAST(0.95 * cnt AS INTEGER)) THEN latency_ms END) AS p95
-         FROM ranked`,
-        [since],
-      ),
-      d1All(
-        env,
-        `SELECT endpoint_id, provider,
-                COUNT(*) AS requests,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
-                AVG(latency_ms) AS avg_latency_ms
-         FROM rpc_proxy_events
-         WHERE observed_at >= ? AND endpoint_id IS NOT NULL
-         GROUP BY endpoint_id, provider
-         ORDER BY requests DESC
-         LIMIT 50`,
-        [since],
-      ),
-      d1All(
-        env,
-        `SELECT network,
-                COUNT(*) AS requests,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count
-         FROM rpc_proxy_events
-         WHERE observed_at >= ?
-         GROUP BY network
-         ORDER BY requests DESC`,
-        [since],
-      ),
-      d1All(
-        env,
-        // Buckets are aligned to absolute boundaries but `since` is not, so a
-        // full window spans maxBuckets+1 buckets. Keep the most-recent
-        // maxBuckets (inner ORDER BY ts DESC LIMIT) — dropping the partial
-        // oldest bucket rather than the current one — then re-order ascending
-        // for the chart. A bare `ORDER BY ts ASC LIMIT` would drop the current
-        // bucket, leaving the series permanently missing its leading edge.
-        `SELECT ts, requests, errors, avg_latency_ms FROM (
-           SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
-                  COUNT(*) AS requests,
-                  SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
-                  AVG(latency_ms) AS avg_latency_ms
-           FROM rpc_proxy_events
-           WHERE observed_at >= ?
-           GROUP BY ts
-           ORDER BY ts DESC
-           LIMIT ?
-         )
-         ORDER BY ts ASC`,
-        [
-          bucketConfig.bucketMs,
-          bucketConfig.bucketMs,
-          since,
-          bucketConfig.maxBuckets,
-        ],
-      ),
-    ]);
-  const meta = await readHealthMetaKv(env);
-  const data = formatRpcUsage({
-    window: label,
-    observedAt: meta?.last_run_at || null,
-    totals: totalsRows[0],
-    latency: latencyRows[0],
-    endpointRows,
-    networkRows,
-    bucketRows,
-    bucketGranularity: bucketConfig.granularity,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(env, "/metagraph/rpc/usage.json", null),
-    },
-    "short",
-  );
-}
-
-async function verifyMeta(env) {
-  return {
-    artifact_path: null,
-    cache: "short",
-    contract_version: contractVersion(env),
-    generated_at: null,
-    published_at: await publishedAt(env),
-    source: "live-probe",
-  };
-}
-
-// #358: live-probe one catalogued surface on demand. Safe by construction — the
-// URL always comes from operational-surfaces.json (already public_safe, the exact
-// URLs the 15-minute cron probes), never the caller. Gated by the RPC rate limiter
-// plus a 60s per-surface Cache-API entry so repeat calls can't fan out into real
-// outbound probes. An agent (or the verify_integration MCP tool) calls this to
-// confirm "callable right now" before wiring.
-async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
-  if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey = resolveClientIp(request);
-    const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
-    if (!success) {
-      return errorResponse(
-        "verify_rate_limited",
-        "Too many verify requests from this client; slow down.",
-        429,
-        {},
-        {
-          "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
-          "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
-          "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
-          "x-ratelimit-remaining": "0",
-        },
-      );
-    }
-  }
-
-  const catalog = await readArtifact(
-    env,
-    "/metagraph/operational-surfaces.json",
-  );
-  if (!catalog.ok) {
-    return errorResponse(
-      "surfaces_unavailable",
-      "The operational-surface catalog is unavailable.",
-      503,
-    );
-  }
-  let surface = findSurface(catalog.data?.surfaces, surfaceId);
-  if (!surface) {
-    const aliases = await readArtifact(env, SURFACE_ALIASES_PATH);
-    if (aliases.ok) {
-      surface = findSurface(catalog.data?.surfaces, surfaceId, aliases.data);
-    }
-  }
-  if (!surface) {
-    return errorResponse(
-      "surface_not_found",
-      `No catalogued surface with id, key, or deprecated id "${surfaceId}".`,
-      404,
-      { surface_id: surfaceId },
-    );
-  }
-
-  const canonicalSurfaceId = surface.surface_key || surface.surface_id;
-  const cache = globalThis.caches?.default || null;
-  const cacheKey = cache
-    ? new Request(
-        `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
-      )
-    : null;
-  if (cache) {
-    const hit = await cache.match(cacheKey);
-    if (hit) {
-      const cached = await hit.json();
-      return envelopeResponse(
-        request,
-        { data: { ...cached, from_cache: true }, meta: await verifyMeta(env) },
-        "short",
-      );
-    }
-  }
-
-  const result = await verifySurface(surface, {
-    isUnsafeUrl: workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch }),
-    connect: workerWebSocketConnector(globalThis.fetch),
-  });
-  if (cache) {
-    const stored = new Response(JSON.stringify(result), {
-      headers: {
-        "content-type": "application/json",
-        "cache-control": "public, s-maxage=60",
-      },
-    });
-    ctx?.waitUntil?.(cache.put(cacheKey, stored));
-  }
-  return envelopeResponse(
-    request,
-    { data: { ...result, from_cache: false }, meta: await verifyMeta(env) },
-    "short",
-  );
-}
-
-async function handleRpcProxyRequest(request, env, url, ctx = {}) {
-  if (request.method !== "POST") {
-    return errorResponse(
-      "method_not_allowed",
-      "The RPC proxy only accepts POST requests.",
-      405,
-      {},
-      {
-        allow: "POST, OPTIONS",
-      },
-    );
-  }
-
-  if (env.METAGRAPH_ENABLE_RPC_PROXY !== "true") {
-    return errorResponse(
-      "rpc_proxy_disabled",
-      "Read-only RPC proxying is intentionally disabled until endpoint scoring, abuse controls, and method filtering are enabled.",
-      501,
-    );
-  }
-
-  // Per-client abuse control. Skipped when the ratelimit binding is absent
-  // (local dev / not yet provisioned) so tests and local runs are unaffected;
-  // enforced on Cloudflare where the binding is bound.
-  if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey = resolveClientIp(request);
-    const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
-    if (!success) {
-      return errorResponse(
-        "rpc_rate_limited",
-        "Too many RPC proxy requests from this client; slow down.",
-        429,
-        {},
-        {
-          "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
-          "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
-          "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
-          "x-ratelimit-remaining": "0",
-        },
-      );
-    }
-  }
-
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_RPC_BODY_BYTES) {
-    return errorResponse(
-      "rpc_body_too_large",
-      "RPC request body is too large for the read-only proxy.",
-      413,
-    );
-  }
-
-  let bodyText;
-  let rpcBody;
-  try {
-    bodyText = await request.text();
-    if (new TextEncoder().encode(bodyText).length > MAX_RPC_BODY_BYTES) {
-      return errorResponse(
-        "rpc_body_too_large",
-        "RPC request body is too large for the read-only proxy.",
-        413,
-      );
-    }
-    rpcBody = JSON.parse(bodyText);
-  } catch {
-    return errorResponse(
-      "rpc_invalid_json",
-      "RPC request body must be a JSON object.",
-      400,
-    );
-  }
-
-  if (
-    !rpcBody ||
-    Array.isArray(rpcBody) ||
-    typeof rpcBody !== "object" ||
-    typeof rpcBody.method !== "string"
-  ) {
-    return errorResponse(
-      "rpc_invalid_request",
-      "Only single JSON-RPC request objects are supported.",
-      400,
-    );
-  }
-
-  if (!isSafeRpcMethod(rpcBody.method)) {
-    return errorResponse(
-      "rpc_method_blocked",
-      `RPC method is not allowed through this proxy: ${rpcBody.method}`,
-      403,
-      {
-        allowed_methods: [...SAFE_RPC_METHODS].sort(),
-      },
-    );
-  }
-
-  const poolArtifact = await readRpcPoolArtifact(env);
-  if (!poolArtifact.ok) {
-    return errorResponse(
-      poolArtifact.code,
-      poolArtifact.message,
-      poolArtifact.status,
-      {
-        artifact_path: "/metagraph/rpc/pools.json",
-      },
-    );
-  }
-
-  // The proxy forwards an HTTP JSON-RPC POST, so it can only reach HTTP(S)
-  // upstreams. The /wss route points at WebSocket-only endpoints that cannot be
-  // HTTP-POSTed, so reject it with a clear error instead of failing the upstream
-  // fetch (which would surface as a 500).
-  if (url.pathname.endsWith("/wss")) {
-    return errorResponse(
-      "rpc_websocket_unsupported",
-      "WebSocket JSON-RPC is not available through this HTTP proxy. POST to /rpc/v1/finney for HTTP JSON-RPC, or connect to a public WSS endpoint directly.",
-      400,
-    );
-  }
-  // Network-aware pool selection: /rpc/v1/{network} → its pool (finney→finney-rpc,
-  // test→test-rpc). An unknown network 404s instead of silently routing to
-  // mainnet. `network` also tags the B3 usage telemetry below.
-  const network = url.pathname.split("/")[3] || "";
-  const poolId = RPC_PROXY_POOLS[network];
-  if (!poolId) {
-    return errorResponse(
-      "rpc_network_unsupported",
-      `Unknown RPC network "${network || "(none)"}". Supported networks: ${Object.keys(RPC_PROXY_POOLS).join(", ")}.`,
-      404,
-      { supported_networks: Object.keys(RPC_PROXY_POOLS) },
-    );
-  }
-  const staticPool = (poolArtifact.data.pools || []).find(
-    (candidate) => candidate.id === poolId,
-  );
-  // Overlay the 15-minute cron health so the proxy avoids sustained-down endpoints
-  // (the in-isolate breaker still handles instantaneous failures). Falls back to
-  // the static pool when the live snapshot is cold (always the case for the static
-  // testnet pool, which is intentionally not probe-derived).
-  const liveRpcPool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
-  const pool = overlayRpcPoolEligibility(staticPool, liveRpcPool);
-  // startedAt anchors end-to-end proxy latency for the B3 usage telemetry; the
-  // recorder is best-effort + async (never adds latency to / fails the call).
-  const startedAt = Date.now();
-  const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
-  if (!candidates.length) {
-    recordRpcUsage(env, ctx, {
-      observed_at: startedAt,
-      network,
-      endpoint_id: null,
-      provider: null,
-      ok: false,
-      status: unsafeEndpoint ? 502 : 503,
-      attempts: 0,
-      latency_ms: Date.now() - startedAt,
-      cache: "bypass",
-    });
-    if (unsafeEndpoint) {
-      return errorResponse(
-        "rpc_endpoint_unsafe",
-        "Eligible RPC endpoint URL is not allowed by the Worker upstream safety policy.",
-        502,
-        { endpoint_id: unsafeEndpoint.id || null, pool_id: poolId },
-      );
-    }
-    return errorResponse(
-      "rpc_endpoint_unavailable",
-      "No eligible public RPC endpoint is available for proxy routing.",
-      503,
-      { pool_id: poolId },
-    );
-  }
-
-  // Response cache for idempotent reads (Cache API). Cache hit short-circuits
-  // the upstream call; a successful, cacheable response is stored async.
-  const cachePolicy = rpcCachePolicy(rpcBody.method, rpcBody.params);
-  const cache = cachePolicy.cacheable ? globalThis.caches?.default : null;
-  let cacheKey = null;
-  if (cache) {
-    cacheKey = await rpcCacheKey(network, rpcBody.method, rpcBody.params);
-    const hit = await cache.match(cacheKey);
-    if (hit) {
-      // Only the JSON-RPC `result` is cached (never caller-controlled envelope
-      // fields like `id`), so rebuild the envelope with THIS request's id. This
-      // stops a cache entry primed by one caller from replaying that caller's id
-      // back to a later requester.
-      let cachedPayload = null;
-      try {
-        cachedPayload = JSON.parse(await hit.text());
-      } catch {
-        // Malformed cache entry; treat as a miss and re-fetch below.
-      }
-      if (cachedPayload && cachedPayload.result !== undefined) {
-        const headers = new Headers(hit.headers);
-        headers.set("cache-control", "no-store");
-        headers.set("x-metagraph-rpc-cache", "hit");
-        setRpcRateLimitHeaders(headers);
-        recordRpcUsage(env, ctx, {
-          observed_at: startedAt,
-          network,
-          endpoint_id: null,
-          provider: null,
-          ok: true,
-          status: 200,
-          attempts: 0,
-          latency_ms: Date.now() - startedAt,
-          cache: "hit",
-        });
-        return new Response(
-          JSON.stringify(rpcResultEnvelope(rpcBody, cachedPayload.result)),
-          { status: 200, headers },
-        );
-      }
-    }
-  }
-
-  const response = await proxyWithFailover(candidates, { bodyText, poolId });
-  // The endpoint headers are set ONLY when an upstream served (streamRpcResponse);
-  // the all-failed path returns a bare 502, so a missing endpoint-id header marks
-  // a routing failure (ok=false). Recorded once here — every downstream return
-  // reuses this same response, so its served-endpoint/status/attempts are stable.
-  const servedEndpointId = response.headers.get("x-metagraph-rpc-endpoint-id");
-  recordRpcUsage(env, ctx, {
-    observed_at: startedAt,
-    network,
-    endpoint_id: servedEndpointId,
-    provider: response.headers.get("x-metagraph-rpc-provider"),
-    ok: Boolean(servedEndpointId),
-    status: response.status,
-    attempts:
-      Number(response.headers.get("x-metagraph-rpc-attempts")) ||
-      candidates.length,
-    latency_ms: Date.now() - startedAt,
-    cache: cacheKey ? "miss" : "bypass",
-  });
-  if (!cacheKey) {
-    return response;
-  }
-  const headers = new Headers(response.headers);
-  headers.set("x-metagraph-rpc-cache", "miss");
-  if (response.status !== 200) {
-    return new Response(response.body, { status: response.status, headers });
-  }
-
-  // Cacheable method, cache miss: inspect a bounded clone so oversized upstream
-  // results are streamed back to the client instead of buffered in the Worker.
-  let inspect;
-  try {
-    inspect = await readResponseTextWithLimit(
-      response.clone(),
-      RPC_CLASSIFY_BODY_LIMIT_BYTES,
-    );
-  } catch {
-    // Classification is best-effort: a flaky upstream body should not turn a
-    // proxied response into a Worker exception while cache inspection is active.
-    return new Response(response.body, { status: response.status, headers });
-  }
-  if (!inspect.truncated) {
-    let parsed = null;
-    try {
-      parsed = JSON.parse(inspect.text);
-    } catch {
-      // body is not JSON; leave parsed null so it is not cached.
-    }
-    if (parsed && parsed.result !== undefined && parsed.error === undefined) {
-      // Persist ONLY the cacheable `result` — not the upstream envelope, which
-      // carries the priming caller's `id`. The envelope is rebuilt per request
-      // on a cache hit above.
-      const cached = new Response(JSON.stringify({ result: parsed.result }), {
-        status: 200,
-        headers: {
-          "content-type": JSON_CONTENT_TYPE,
-          "cache-control": `public, s-maxage=${cachePolicy.ttl}`,
-        },
-      });
-      ctx?.waitUntil?.(cache.put(cacheKey, cached));
-    }
-  }
-  return new Response(response.body, { status: response.status, headers });
-}
-
-const RPC_MAX_ATTEMPTS = 3;
-const RPC_ATTEMPT_TIMEOUT_MS = 6000;
-const RPC_CLASSIFY_BODY_LIMIT_BYTES = 64 * 1024;
-// /rpc/v1/{network} → the pool id served from rpc/pools.json. Adding a network
-// here (plus its pool + allowlisted origins) is all the proxy needs to serve it.
-const RPC_PROXY_POOLS = { finney: "finney-rpc", test: "test-rpc" };
-// Max blocks an endpoint may trail the freshest reported tip before the proxy
-// demotes it behind synced nodes. Bittensor block time is ~12s, so ~10 blocks
-// (~15 min) tolerates cross-provider probe-timing skew while still routing around
-// a genuinely stalled/lagging node.
-const BLOCK_LAG_TOLERANCE = 10;
-
-// JSON-RPC error codes that signal node trouble (retry another upstream) rather
-// than a client/application error (return immediately so we don't mask a real
-// error by trying every node).
-const TRANSIENT_RPC_ERROR_CODES = new Set([-32603]); // internal error
-
-// In-isolate circuit breaker: count consecutive transient failures per endpoint
-// and temporarily eject (deprioritise) repeat offenders. Per-isolate only (no
-// global view, resets on cold start) — cheap and enough to ride out the burst
-// that matters. RPC_HEALTH is the module-default map; injectable for tests.
-const RPC_HEALTH = new Map(); // endpointId -> { fails, ejectedUntil }
-const RPC_EJECT_THRESHOLD = 3;
-const RPC_EJECT_COOLDOWN_MS = 30_000;
-
-export function recordRpcFailure(map, id, now) {
-  const entry = map.get(id) || { fails: 0, ejectedUntil: 0 };
-  entry.fails += 1;
-  if (entry.fails >= RPC_EJECT_THRESHOLD && entry.ejectedUntil <= now) {
-    entry.ejectedUntil = now + RPC_EJECT_COOLDOWN_MS;
-  }
-  map.set(id, entry);
-}
-
-export function recordRpcSuccess(map, id) {
-  map.delete(id);
-}
-
-export function isRpcEndpointEjected(map, id, now) {
-  const entry = map.get(id);
-  return Boolean(entry && entry.ejectedUntil > now);
-}
-
-// Per-method response-cache policy for idempotent reads. Default-deny: only
-// block-pinned (by an explicit block number/hash param) or quasi-static reads
-// are cacheable; head-moving forms (param-less block reads, finalized head,
-// system_health) are never cached.
-export function rpcCachePolicy(method, params) {
-  const args = Array.isArray(params) ? params : [];
-  switch (method) {
-    case "chain_getBlockHash":
-      return args.length &&
-        (typeof args[0] === "number" || /^\d+$/.test(String(args[0])))
-        ? { cacheable: true, ttl: 3600 }
-        : { cacheable: false, ttl: 0 };
-    case "chain_getBlock":
-    case "chain_getHeader":
-      return args.length &&
-        typeof args[0] === "string" &&
-        args[0].startsWith("0x")
-        ? { cacheable: true, ttl: 3600 }
-        : { cacheable: false, ttl: 0 };
-    case "state_getRuntimeVersion":
-    case "system_chain":
-    case "system_name":
-    case "system_version":
-    case "system_properties":
-    case "rpc_methods":
-      return { cacheable: true, ttl: 300 };
-    default:
-      return { cacheable: false, ttl: 0 };
-  }
-}
-
-// Build a minimal JSON-RPC success envelope around a cached `result`, echoing
-// the current request's `id` (when present) so cache hits never replay another
-// caller's id.
-function rpcResultEnvelope(requestBody, result) {
-  const envelope = { jsonrpc: "2.0" };
-  if (Object.prototype.hasOwnProperty.call(requestBody, "id")) {
-    envelope.id = requestBody.id;
-  }
-  envelope.result = result;
-  return envelope;
-}
-
-async function rpcCacheKey(network, method, params) {
-  const normalized = JSON.stringify([
-    network,
-    method,
-    Array.isArray(params) ? params : [],
-  ]);
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(normalized),
-  );
-  const hash = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-  return new Request(
-    `https://rpc-cache.metagraph.internal/${network}/${method}/${hash}`,
-  );
-}
-
-// Decide how to treat one upstream attempt: "transient" (fail over to the next
-// endpoint), "success"/"fatal" (return this upstream's response to the client).
-export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
-  if (thrown) return "transient"; // network error or AbortSignal timeout
-  if (status >= 500 || status === 429) return "transient";
-  if (status >= 400) return "fatal"; // upstream rejected the request itself
-  if (parsedBody && typeof parsedBody === "object" && parsedBody.error) {
-    if (TRANSIENT_RPC_ERROR_CODES.has(Number(parsedBody.error.code))) {
-      return "transient";
-    }
-  }
-  return "success";
-}
-
-async function readResponseTextWithLimit(response, maxBytes) {
-  if (!response.body?.getReader) {
-    const text = await response.text();
-    return {
-      text: text.slice(0, maxBytes),
-      truncated: new TextEncoder().encode(text).byteLength > maxBytes,
-    };
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let bytes = 0;
-  let text = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    bytes += value.byteLength;
-    if (bytes > maxBytes) {
-      reader.cancel().catch(() => {});
-      return { text, truncated: true };
-    }
-    text += decoder.decode(value, { stream: true });
-  }
-  text += decoder.decode();
-  return { text, truncated: false };
-}
-
-function streamRpcResponse(upstream, endpoint, attempts, status) {
-  const headers = apiHeaders("short");
-  headers.set("cache-control", "no-store");
-  headers.set("content-type", JSON_CONTENT_TYPE);
-  headers.set("x-metagraph-rpc-endpoint-id", endpoint.id);
-  headers.set("x-metagraph-rpc-provider", endpoint.provider);
-  headers.set("x-metagraph-rpc-attempts", String(attempts.length + 1));
-  setRpcRateLimitHeaders(headers);
-  return new Response(upstream.body, { status: status || 502, headers });
-}
-
-// Advisory rate-limit headers on RPC proxy responses. The Cloudflare rate-limit
-// binding (RPC_RATE_LIMITER) only returns {success}, so an exact remaining/reset
-// is unavailable — we surface the static policy (mirrors wrangler.jsonc:
-// 100 requests / 60s) plus Retry-After on a 429.
-const RPC_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
-function setRpcRateLimitHeaders(headers) {
-  headers.set("x-ratelimit-limit", String(RPC_RATE_LIMIT.limit));
-  headers.set(
-    "x-ratelimit-policy",
-    `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
-  );
-}
-
-// Per-client abuse control for the GraphQL endpoint. GraphQL is POST-only and
-// runs before the read-only method gate, so — unlike the GET REST routes that
-// the edge can cache — every call hits the worker and fans out into one or more
-// artifact reads + query execution. That makes it at least as expensive as the
-// RPC proxy, so it shares the SAME strict limiter binding, bucket strategy
-// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. Skipped
-// only when the binding is absent (local dev / CI), matching the RPC/MCP paths.
-// Returns a 429 Response when the caller is over the limit, else null.
-async function graphqlRateLimited(request, env) {
-  if (!env.RPC_RATE_LIMITER?.limit) return null;
-  const { success } = await env.RPC_RATE_LIMITER.limit({
-    key: resolveClientIp(request),
-  });
-  if (success) return null;
-  return errorResponse(
-    "graphql_rate_limited",
-    "Too many GraphQL requests from this client; slow down.",
-    429,
-    {},
-    {
-      "retry-after": String(RPC_RATE_LIMIT.windowSeconds),
-      "x-ratelimit-limit": String(RPC_RATE_LIMIT.limit),
-      "x-ratelimit-policy": `${RPC_RATE_LIMIT.limit};w=${RPC_RATE_LIMIT.windowSeconds}`,
-      "x-ratelimit-remaining": "0",
-    },
-  );
-}
-
-// Try each ordered endpoint in turn; return the first success / non-transient
-// response, and a clean 502 only when every attempt is a transient failure.
-// Transient HTTP statuses are classified before reading bodies, and JSON-RPC
-// error-envelope inspection is bounded so large upstream responses can stream.
-export async function proxyWithFailover(
-  orderedEndpoints,
-  {
-    bodyText,
-    poolId,
-    fetchFn = fetch,
-    maxAttempts = RPC_MAX_ATTEMPTS,
-    timeoutMs = RPC_ATTEMPT_TIMEOUT_MS,
-    healthMap = RPC_HEALTH,
-  },
-) {
-  const attempts = [];
-  const limit = Math.min(orderedEndpoints.length, maxAttempts);
-  for (let index = 0; index < limit; index += 1) {
-    const endpoint = orderedEndpoints[index];
-    let status = 0;
-    let upstream = null;
-    let parsedBody = null;
-    let thrown = false;
-    try {
-      upstream = await fetchFn(endpoint.url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: bodyText,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      status = upstream.status;
-    } catch {
-      thrown = true;
-    }
-
-    if (
-      classifyUpstreamAttempt({ thrown, status, parsedBody }) === "transient"
-    ) {
-      await upstream?.body?.cancel?.();
-      recordRpcFailure(healthMap, endpoint.id, Date.now());
-      attempts.push({
-        endpoint_id: endpoint.id,
-        reason: thrown ? "unreachable" : `status-${status}`,
-      });
-      continue;
-    }
-
-    if (upstream && status < 400) {
-      let clientBodyToCancel = null;
-      try {
-        if (upstream.body?.tee) {
-          const [inspectBody, clientBody] = upstream.body.tee();
-          clientBodyToCancel = clientBody;
-          const inspect = await readResponseTextWithLimit(
-            new Response(inspectBody),
-            RPC_CLASSIFY_BODY_LIMIT_BYTES,
-          );
-          if (!inspect.truncated) {
-            try {
-              parsedBody = JSON.parse(inspect.text);
-            } catch {
-              parsedBody = null;
-            }
-            if (
-              classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
-              "transient"
-            ) {
-              await clientBody.cancel();
-              recordRpcFailure(healthMap, endpoint.id, Date.now());
-              attempts.push({
-                endpoint_id: endpoint.id,
-                reason: `status-${status}`,
-              });
-              continue;
-            }
-          }
-          upstream = new Response(clientBody, {
-            status: upstream.status,
-            statusText: upstream.statusText,
-            headers: upstream.headers,
-          });
-        } else {
-          const inspect = await readResponseTextWithLimit(
-            upstream,
-            RPC_CLASSIFY_BODY_LIMIT_BYTES,
-          );
-          if (!inspect.truncated) {
-            try {
-              parsedBody = JSON.parse(inspect.text);
-            } catch {
-              parsedBody = null;
-            }
-            if (
-              classifyUpstreamAttempt({ thrown, status, parsedBody }) ===
-              "transient"
-            ) {
-              recordRpcFailure(healthMap, endpoint.id, Date.now());
-              attempts.push({
-                endpoint_id: endpoint.id,
-                reason: `status-${status}`,
-              });
-              continue;
-            }
-          }
-          upstream = new Response(inspect.text, {
-            status,
-            headers: upstream.headers,
-          });
-        }
-      } catch {
-        await clientBodyToCancel?.cancel?.().catch(() => {});
-        await upstream?.body?.cancel?.().catch(() => {});
-        recordRpcFailure(healthMap, endpoint.id, Date.now());
-        attempts.push({
-          endpoint_id: endpoint.id,
-          reason: "body-read-error",
-        });
-        continue;
-      }
-    }
-
-    // The endpoint responded (success, or an application-level error) — it is
-    // reachable, so clear any breaker state for it.
-    recordRpcSuccess(healthMap, endpoint.id);
-    return streamRpcResponse(upstream, endpoint, attempts, status);
-  }
-
-  // Every attempt failed transiently. Return a fixed message — never echo an
-  // upstream error body (leak hygiene).
-  return errorResponse(
-    "rpc_upstream_unavailable",
-    "All eligible RPC upstreams failed; try again shortly.",
-    502,
-    {
-      pool_id: poolId,
-      attempts: attempts.map((a) => a.endpoint_id),
-      last_reason: attempts.at(-1)?.reason || null,
-    },
-  );
 }
 
 function matchRawArtifact(pathname) {
@@ -5405,174 +3781,4 @@ function corsPreflight(request) {
   );
   headers.set("access-control-max-age", "86400");
   return new Response(null, { status: 204, headers });
-}
-
-// Build the FULL ordered candidate list of eligible, upstream-safe, HTTP(S)
-// endpoints for the proxy to fail over across. Ordering is a weighted shuffle
-// (favour higher score, keep load spread) so failover walks best→worst without
-// always hammering one upstream. wss:// endpoints are dropped (not HTTP-
-// proxyable); a genuinely unsafe URL is reported (for a 502) only when no safe
-// endpoint exists. Circuit-breaker-ejected endpoints are deprioritised to the
-// back (never removed) so a fully-ejected pool still self-heals via half-open
-// retries. randomFn / healthMap / now injectable for tests.
-export function orderSafeRpcEndpoints(
-  pool,
-  randomFn = Math.random,
-  { healthMap = RPC_HEALTH, now = Date.now() } = {},
-) {
-  const safe = [];
-  let unsafeEndpoint = null;
-  for (const endpoint of pool?.endpoints || []) {
-    if (!endpoint?.pool_eligible) {
-      continue;
-    }
-    if (!isSafeRpcEndpointUrl(endpoint.url)) {
-      unsafeEndpoint ||= endpoint;
-      continue;
-    }
-    // Safe origin but wss:// — not HTTP-POST-able; skip without flagging unsafe.
-    if (endpoint.url.startsWith("https://")) {
-      safe.push(endpoint);
-    }
-  }
-
-  const remaining = [...safe];
-  const shuffled = [];
-  while (remaining.length) {
-    const pick = weightedPickEndpoint(remaining, randomFn);
-    shuffled.push(pick);
-    remaining.splice(remaining.indexOf(pick), 1);
-  }
-  const live = shuffled.filter(
-    (e) => !isRpcEndpointEjected(healthMap, e.id, now),
-  );
-  const ejected = shuffled.filter((e) =>
-    isRpcEndpointEjected(healthMap, e.id, now),
-  );
-  // Prefer the most-synced live nodes (like cosmos.directory's "most up-to-date"
-  // routing): any endpoint more than BLOCK_LAG_TOLERANCE behind the freshest
-  // reported tip is demoted behind the synced set — it would serve stale reads.
-  // Endpoints with no readable block height keep their place (can't judge them);
-  // the weighted-random order within each band is preserved for load spread.
-  const liveBlocks = live
-    .map((e) => Number(e.latest_block))
-    .filter((b) => Number.isFinite(b) && b > 0);
-  const maxBlock = liveBlocks.length ? Math.max(...liveBlocks) : null;
-  const isLagging = (endpoint) => {
-    const block = Number(endpoint.latest_block);
-    return (
-      maxBlock != null &&
-      Number.isFinite(block) &&
-      block > 0 &&
-      maxBlock - block > BLOCK_LAG_TOLERANCE
-    );
-  };
-  const synced = live.filter((endpoint) => !isLagging(endpoint));
-  const lagging = live.filter(isLagging);
-  const ordered = [...synced, ...lagging, ...ejected];
-  return {
-    endpoints: ordered,
-    unsafeEndpoint: ordered.length ? null : unsafeEndpoint,
-  };
-}
-
-// Back-compat single-pick wrapper (still used by tests): the first of the
-// weighted-ordered list.
-export function selectSafeRpcEndpoint(pool, randomFn = Math.random) {
-  const { endpoints, unsafeEndpoint } = orderSafeRpcEndpoints(pool, randomFn);
-  return { endpoint: endpoints[0] ?? null, unsafeEndpoint };
-}
-
-// Weighted-random pick favouring higher-scored (healthier/faster) endpoints,
-// falling back to uniform weighting when scores are absent so traffic still
-// spreads. randomFn is injectable for deterministic tests.
-export function weightedPickEndpoint(endpoints, randomFn = Math.random) {
-  if (endpoints.length === 1) {
-    return endpoints[0];
-  }
-  const weights = endpoints.map((endpoint) =>
-    Number.isFinite(endpoint.score) && endpoint.score > 0 ? endpoint.score : 1,
-  );
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  let cursor = randomFn() * total;
-  for (let index = 0; index < endpoints.length; index += 1) {
-    cursor -= weights[index];
-    if (cursor < 0) {
-      return endpoints[index];
-    }
-  }
-  return endpoints[endpoints.length - 1];
-}
-
-function isSafeRpcEndpointUrl(value) {
-  if (typeof value !== "string") {
-    return false;
-  }
-
-  let parsed;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return false;
-  }
-
-  if (!["https:", "wss:"].includes(parsed.protocol)) {
-    return false;
-  }
-
-  if (!TRUSTED_RPC_UPSTREAM_ORIGINS.has(parsed.origin)) {
-    return false;
-  }
-
-  return !isPrivateOrLocalHostname(parsed.hostname);
-}
-
-function isPrivateOrLocalHostname(hostname) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (host === "localhost" || host.endsWith(".localhost")) {
-    return true;
-  }
-
-  const ipv4 = parseIpv4Address(host);
-  if (ipv4) {
-    const [first, second] = ipv4;
-    return (
-      first === 0 ||
-      first === 10 ||
-      first === 127 ||
-      (first === 169 && second === 254) ||
-      (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168)
-    );
-  }
-
-  return (
-    host === "::" ||
-    host === "::1" ||
-    host.startsWith("fc") ||
-    host.startsWith("fd") ||
-    host.startsWith("fe80") ||
-    host.startsWith("::ffff:127.") ||
-    host.startsWith("::ffff:10.") ||
-    host.startsWith("::ffff:169.254.") ||
-    host.startsWith("::ffff:192.168.") ||
-    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-  );
-}
-
-function parseIpv4Address(host) {
-  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  if (!match) {
-    return null;
-  }
-
-  const octets = match.slice(1).map(Number);
-  return octets.every((octet) => octet >= 0 && octet <= 255) ? octets : null;
-}
-
-function isSafeRpcMethod(method) {
-  if (DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))) {
-    return false;
-  }
-  return SAFE_RPC_METHODS.has(method);
 }

@@ -28,22 +28,22 @@ to trust a surface. "community-submitted" ≠ verified truth until the gate/buil
 
 Required on every surface: `id, name, kind, url, provider, auth_required, authority, public_safe`.
 
-| Field                           | Type / values                                                                                                                                                                                                                 | Who sets it                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `id`                            | `^[a-z0-9][a-z0-9-]*$`, unique in the file (convention `sn-<netuid>-<provider>-<kind>`)                                                                                                                                       | you (helper)                                                 |
-| `name`                          | human label                                                                                                                                                                                                                   | you                                                          |
-| `kind`                          | see enum below                                                                                                                                                                                                                | you                                                          |
-| `url`                           | public URI you can fetch                                                                                                                                                                                                      | you                                                          |
-| `provider`                      | registered provider slug `^[a-z0-9][a-z0-9-]*$`                                                                                                                                                                               | you (`providers:list` / `provider:new`)                      |
-| `authority`                     | `official` · `provider-claimed` · **`community`** · `registry-observed`                                                                                                                                                       | you → **`community`**                                        |
-| `auth_required` / `public_safe` | boolean                                                                                                                                                                                                                       | you (`false` / `true` for auto-review kinds)                 |
-| `source_urls`                   | array of URIs that **prove** the claim                                                                                                                                                                                        | you (≥1, required in practice)                               |
-| `review`                        | `{ state, submitted_by?, submitted_at?, confidence?, review_notes? }` — `state` ∈ `community-submitted · maintainer-reviewed · rejected` (HUMAN-governance axis only; machine verify/freshness is the separate probe overlay) | you set `community-submitted`; a maintainer promotes/rejects |
-| `verification`                  | `{ classification, verified_at, status_code, latency_ms, confidence_score, … }`                                                                                                                                               | **build prober only — never by hand**                        |
-| `schema_url` / `schema_status`  | OpenAPI URL · `machine-readable`/`ui-only`/`not-captured`                                                                                                                                                                     | you (optional)                                               |
-| `rate_limit`                    | `{ requests, window, burst?, scope?, cost_notes? }` (`requests`+`window` required)                                                                                                                                            | you (optional, integration-only)                             |
-| `auth`                          | `{ scheme, location?, name?, value_format?, … }` — **placeholders only, never a secret**                                                                                                                                      | you (optional)                                               |
-| `probe`                         | `{ enabled, method, expect, timeout_ms? }` (`method` ∈ GET/HEAD/JSON-RPC/WSS-RPC)                                                                                                                                             | you (optional)                                               |
+| Field                           | Type / values                                                                                                                                                                                                                 | Who sets it                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `id`                            | `^[a-z0-9][a-z0-9-]*$`, unique in the file (convention `sn-<netuid>-<provider>-<kind>`)                                                                                                                                       | you (helper)                                                    |
+| `name`                          | human label                                                                                                                                                                                                                   | you                                                             |
+| `kind`                          | see enum below                                                                                                                                                                                                                | you                                                             |
+| `url`                           | public URI you can fetch                                                                                                                                                                                                      | you                                                             |
+| `provider`                      | registered provider slug `^[a-z0-9][a-z0-9-]*$`                                                                                                                                                                               | you (`providers:list`; debut via `surface:add --provider-name`) |
+| `authority`                     | `official` · `provider-claimed` · **`community`** · `registry-observed`                                                                                                                                                       | you → **`community`**                                           |
+| `auth_required` / `public_safe` | boolean                                                                                                                                                                                                                       | you (`false` / `true` for auto-review kinds)                    |
+| `source_urls`                   | array of URIs that **prove** the claim                                                                                                                                                                                        | you (≥1, required in practice)                                  |
+| `review`                        | `{ state, submitted_by?, submitted_at?, confidence?, review_notes? }` — `state` ∈ `community-submitted · maintainer-reviewed · rejected` (HUMAN-governance axis only; machine verify/freshness is the separate probe overlay) | you set `community-submitted`; a maintainer promotes/rejects    |
+| `verification`                  | `{ classification, verified_at, status_code, latency_ms, confidence_score, … }`                                                                                                                                               | **build prober only — never by hand**                           |
+| `schema_url` / `schema_status`  | OpenAPI URL · `machine-readable`/`ui-only`/`not-captured`                                                                                                                                                                     | you (optional)                                                  |
+| `rate_limit`                    | `{ requests, window, burst?, scope?, cost_notes? }` (`requests`+`window` required)                                                                                                                                            | you (optional, integration-only)                                |
+| `auth`                          | `{ scheme, location?, name?, value_format?, … }` — **placeholders only, never a secret**                                                                                                                                      | you (optional)                                                  |
+| `probe`                         | `{ enabled, method, expect, timeout_ms? }` (`method` ∈ GET/HEAD/JSON-RPC/WSS-RPC)                                                                                                                                             | you (optional)                                                  |
 
 **Contributor `kind` enum (11):** `docs · website · source-repo · openapi · subnet-api · dashboard ·
 sse · sdk · example · repo-registry · data-artifact` — all auto-reviewable. Higher-trust within these
@@ -76,8 +76,9 @@ under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA 
 out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
-`cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `scan:public-safety` ·
-`validate:private-boundary`.
+`cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `worker:bundle:budget`
+(gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
+fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
 
 Codecov is configured in `codecov.yml`; run `npm run test:coverage` unsharded locally (CI shards +
 merges, so a single shard under-reports).
@@ -89,23 +90,24 @@ merges, so a single shard under-reports).
 The review gate is **gittensory** (the old "reviewbot" was converged into gittensory 2026-06-22). It
 posts `Gittensory Gate` + `Gittensory Context` checks and acts on **contributor** PRs with autonomy:
 
-| Condition                                                                                                                                                  | Disposition                          |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Both AI reviewers confidently approve (**≥0.9**) verified + owner-matched + fresh + netuid-grounded content, CI green, mergeable-clean, valid linked issue | **auto-MERGE**                       |
-| **Deterministic fail** — duplicate surface, placeholder, private/localhost URL, secret, dead `source_url`                                                  | **auto-CLOSE**                       |
-| **Every** reviewer returns a clear reject                                                                                                                  | **auto-CLOSE**                       |
-| **No linked issue** (repo hard-rule)                                                                                                                       | **fail / close** — add `Closes #<n>` |
-| Any CI check failed                                                                                                                                        | **CLOSE** (cites the failing check)  |
-| Legitimate but uncertain — a reviewer < 0.9, a reviewer said `manual`, reviewers split, owner-mismatch, stale repo, unfetchable evidence                   | **MANUAL** (held, never auto-closed) |
-| CI pending / unverified fork run                                                                                                                           | no action — waits                    |
+| Condition                                                                                                                                | Disposition                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Both AI reviewers confidently approve (**≥0.9**) verified + owner-matched + fresh + netuid-grounded content, CI green, mergeable-clean   | **auto-MERGE**                       |
+| **Deterministic fail** — duplicate surface, placeholder, private/localhost URL, secret, dead `source_url`                                | **auto-CLOSE**                       |
+| **Every** reviewer returns a clear reject                                                                                                | **auto-CLOSE**                       |
+| Any CI check failed                                                                                                                      | **CLOSE** (cites the failing check)  |
+| Legitimate but uncertain — a reviewer < 0.9, a reviewer said `manual`, reviewers split, owner-mismatch, stale repo, unfetchable evidence | **MANUAL** (held, never auto-closed) |
+| CI pending / unverified fork run                                                                                                         | no action — waits                    |
 
 **Content bar** (benchmarked strict): official/primary sources wherever possible, 100% verifiable, the
 `url` owner must match the subnet's registered identity, source repo fresh, no prompt-injection in
 fetched or submitted text. Make the `source_url` an _independent_ proof of ownership.
 
-**Hard rule for everyone, including maintainers:** a PR with **no linked issue** fails the gate. This
-also blocks release-please bot PRs unless exempted in the gittensory config (that config lives in the
-gittensory system, **not** in this repo). Don't `--admin`-bypass — the policy is deliberate.
+**Linked issues are optional, not a gate.** A PR with **no linked issue** is judged on its own merit —
+the missing link is **never** a fail/close reason (for contributors or maintainers). When an issue
+tracks the work, link it (`Closes #<n>`) and the gate verifies the PR against that issue's intent,
+clause by clause. (What the gate does with a linked issue is configured in the gittensory system,
+**not** in this repo.)
 
 The gate's private scoring rubric/thresholds must **never** appear in this repo —
 `validate:private-boundary` fails CI if they do. Keep gate heuristics in the gittensory system only.
@@ -117,7 +119,7 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 | Need                                      | Command                                                                                                                                                                                                                    |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                    |
-| List / register providers                 | `npm run providers:list` · `npm run provider:new`                                                                                                                                                                          |
+| List / register providers                 | `npm run providers:list` (debut a new provider via `surface:add --provider-name`)                                                                                                                                          |
 | Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` and it scaffolds the provider stub too              |
 | Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                       |
 | Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                 |
@@ -164,8 +166,8 @@ fix(health-serving): stamp merged RPC endpoint observed_at with sweep time (#161
 
 **PR body:** GitHub pre-fills `.github/pull_request_template.md`. Fill it — don't replace it: a real
 `## Summary`, the `url` + `source_url` proof (Path A) or the validation commands you ran (Path B), and
-**`Closes #<issue>`** (the gate hard-fails without a linked issue). No local paths, env dumps, or
-private notes.
+**`Closes #<issue>`** when an issue tracks the work (optional — a missing link never fails a PR). No
+local paths, env dumps, or private notes.
 
 ---
 
@@ -176,7 +178,7 @@ private notes.
 - A duplicate of an existing surface or an open PR; the same surface re-titled by `kind`.
 - Secrets/PATs/wallet paths, private/localhost URLs, real credentials in `auth`.
 - Hand-set health/uptime/`verification` (probe-derived only).
-- No linked issue. UI/frontend changes (those belong in metagraphed-ui).
+- UI/frontend changes (those belong in metagraphed-ui).
 - Editing the contract by hand without `npm run build` (contract-drift), or stale committed artifacts.
 
 ---

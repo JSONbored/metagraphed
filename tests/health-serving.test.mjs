@@ -141,6 +141,54 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
+
+  test("a failing endpoint's observed_at is the sweep time, not its stale last_ok", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [{ id: "a", status: "ok", health_source: "probe-derived" }],
+    };
+    const live = {
+      last_run_at: "2026-06-11T00:00:00Z",
+      endpoints: [
+        {
+          id: "a",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          // last successful probe was hours ago; the endpoint is failing now.
+          last_ok: "2026-06-10T08:00:00Z",
+        },
+      ],
+    };
+    const a = mergeRpcEndpoints(stat, live).endpoints.find((e) => e.id === "a");
+    // health_stale:false claims a fresh observation, so observed_at must be the
+    // run time — not the stale last-success timestamp.
+    assert.equal(a.health_stale, false);
+    assert.equal(a.observed_at, "2026-06-11T00:00:00Z");
+  });
+
+  test("observed_at falls back to last_ok, then null, when the run time is absent", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [
+        { id: "a", status: "ok" },
+        { id: "b", status: "ok" },
+      ],
+    };
+    // No last_run_at on the pool → fall back to the endpoint's last_ok, then null.
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", last_ok: "2026-06-10T08:00:00Z" },
+        { id: "b", status: "failed" },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live).endpoints;
+    assert.equal(
+      merged.find((e) => e.id === "a").observed_at,
+      "2026-06-10T08:00:00Z",
+    );
+    assert.equal(merged.find((e) => e.id === "b").observed_at, null);
+  });
 });
 
 describe("overlayRpcPoolEligibility", () => {
@@ -982,18 +1030,25 @@ describe("worker live health serving", () => {
   });
 
   test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    // Date the rows relative to "now" so they always fall inside the live 7d
+    // window the handler derives from Date.now() (`day >= now − 7d`). A fixed
+    // calendar date ages out of the window and turns this into a time-bomb that
+    // fails repo-wide the day the clock passes it.
+    const recentDay = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
           netuid: 8,
-          date: "2026-06-17",
+          date: recentDay,
           total: 10,
           ok_count: 8,
           avg_latency_ms: 30,
         },
         {
           netuid: 7,
-          date: "2026-06-17",
+          date: recentDay,
           total: 5,
           ok_count: 5,
           avg_latency_ms: 20,

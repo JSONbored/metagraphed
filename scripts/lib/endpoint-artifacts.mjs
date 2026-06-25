@@ -521,7 +521,7 @@ function endpointScoreBreakdown(endpoint) {
       Math.min(Object.values(methodSupport).filter(Boolean).length * 5, 20),
     );
   } else if (Array.isArray(methodSupport)) {
-    add("method-support", Math.min(methodSupport.length, 20));
+    add("method-support", Math.min(methodSupport.length * 5, 20));
   }
   if (Number.isFinite(endpoint.latency_ms))
     add("latency", Math.max(0, 20 - Math.round(endpoint.latency_ms / 100)));

@@ -14,6 +14,7 @@
 
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
   artifactOutputPath,
@@ -293,7 +294,10 @@ export async function buildNetworkRegistry({ prefix, snapshotPath }) {
 // r2-manifest (so the manifest/upload picks the network registries up). A missing
 // snapshot is a skip-with-warning, never a hard failure — testnet data is
 // best-effort and must never block the mainnet publish.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   const summaries = [];
   for (const net of NETWORK_REGISTRIES) {
     const snapshotPath = path.join(repoRoot, net.snapshotPath);
