@@ -9,6 +9,7 @@ import type {
   AdapterSnapshot,
   AgentResource,
   AgentResources,
+  AccountBalance,
   AccountEvent,
   AccountRegistration,
   AccountSummary,
@@ -932,6 +933,33 @@ export const accountQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountSummary>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Live TAO balance (free + reserved) for one account, queried from the finney
+ * RPC at request time (60s server-side KV cache). Separate from accountQuery so
+ * a slow/failed RPC never blocks the rest of the entity page; balance_tao is
+ * null on RPC failure.
+ */
+export const accountBalanceQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-balance", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/balance`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          balance_tao: firstFiniteNumber(d.balance_tao) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } as AccountBalance,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountBalance>;
     },
     staleTime: STALE_SHORT,
   });

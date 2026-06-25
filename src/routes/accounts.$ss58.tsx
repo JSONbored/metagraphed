@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense } from "react";
-import { Activity, Boxes, Clock } from "lucide-react";
+import { Activity, Boxes, Clock, Coins } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -11,7 +11,7 @@ import { PageHero } from "@/components/metagraphed/page-hero";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { accountQuery } from "@/lib/metagraphed/queries";
+import { accountBalanceQuery, accountQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
@@ -67,9 +67,29 @@ function AccountDetail({ ss58 }: { ss58: string }) {
   return <ValidAccountDetail ss58={ss58} />;
 }
 
+// Compact TAO formatter — mirrors the economics panel's fmtTao convention.
+function fmtTao(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
 function ValidAccountDetail({ ss58 }: { ss58: string }) {
   const sourceRef = ss58PathSegment(ss58);
   const account = useSuspenseQuery(accountQuery(ss58)).data.data as AccountSummary;
+  // Balance is a separate live-RPC call: fetched non-blocking so a slow/failed
+  // RPC never stalls or errors the rest of the entity page.
+  const balanceResult = useQuery(accountBalanceQuery(ss58));
+  const balance = balanceResult.data?.data;
+
+  const balanceValue = balanceResult.isPending ? (
+    <span className="text-ink-muted">…</span>
+  ) : balance?.balance_tao != null ? (
+    fmtTao(balance.balance_tao)
+  ) : (
+    "—"
+  );
 
   const hasActivity =
     account.event_count > 0 || account.registrations.length > 0 || account.recent_events.length > 0;
@@ -84,14 +104,20 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         caption="explorer / v1"
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <StatTile
+          icon={Coins}
+          eyebrow="Balance"
+          value={balanceValue}
+          hint={balance?.balance_tao != null ? "free + reserved · live RPC" : "live RPC"}
+          tone="accent"
+        />
         <StatTile icon={Activity} eyebrow="Events" value={formatNumber(account.event_count)} />
         <StatTile icon={Boxes} eyebrow="Subnets" value={formatNumber(account.subnet_count)} />
         <StatTile
           icon={Clock}
           eyebrow="Last seen"
           value={<TimeAgo at={account.last_seen_at ?? undefined} />}
-          tone="accent"
         />
       </div>
 
@@ -246,7 +272,8 @@ function DetailSkeleton() {
   return (
     <>
       <Skeleton className="h-28 w-full mb-8" />
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Skeleton className="h-20" />
         <Skeleton className="h-20" />
         <Skeleton className="h-20" />
         <Skeleton className="h-20" />

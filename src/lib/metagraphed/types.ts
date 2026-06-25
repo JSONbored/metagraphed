@@ -827,6 +827,14 @@ export interface AccountSummary {
   [key: string]: unknown;
 }
 
+/** Live TAO balance for an account from /api/v1/accounts/{ss58}/balance. */
+export interface AccountBalance {
+  ss58: string;
+  /** Free + reserved balance in TAO; null when the RPC lookup failed. */
+  balance_tao: number | null;
+  queried_at?: string | null;
+}
+
 /** Per-subnet on-chain economics from /api/v1/economics. */
 export interface SubnetEconomics {
   netuid: number;
