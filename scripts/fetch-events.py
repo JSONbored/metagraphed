@@ -187,6 +187,9 @@ def _stake(a):  # [coldkey, hotkey, tao_rao, alpha_rao, netuid, ...]
         "coldkey": _ss58(a[0]),
         "hotkey": _ss58(a[1]),
         "amount_tao": _tao(a[2]),
+        # The alpha leg of the swap (#1856): how much subnet alpha the TAO bought
+        # (StakeAdded) or sold (StakeRemoved). Null on shape drift / other kinds.
+        "alpha_amount": _tao(a[3]) if len(a) > 3 else None,
         "netuid": _idx(a[4]) if len(a) > 4 else None,
     }
 
@@ -580,6 +583,7 @@ def extract(event_id, attrs):
         "netuid": f.get("netuid"),
         "uid": f.get("uid"),
         "amount_tao": f.get("amount_tao"),
+        "alpha_amount": f.get("alpha_amount"),
     }
 
 
@@ -707,6 +711,7 @@ def main():
                     "netuid": ent["netuid"],
                     "uid": ent["uid"],
                     "amount_tao": ent["amount_tao"],
+                    "alpha_amount": ent["alpha_amount"],
                     "observed_at": observed_at,
                     "extrinsic_index": xidx,
                 }

@@ -334,5 +334,36 @@ class TipMapTest(unittest.TestCase):
         self.assertEqual(_fe._tip_map([_Ev("not-a-dict"), _Ev({})]), {})
 
 
+class StakeAlphaExtractorTest(unittest.TestCase):
+    """The alpha leg of stake events (#1856): _stake reads a[3] = alpha_rao."""
+
+    _ALPHA = 9_250_000_000  # 9.25 alpha (in rao units)
+
+    def test_stake_added_carries_the_alpha_leg(self):
+        # [coldkey, hotkey, tao_rao, alpha_rao, netuid]
+        result = _extract(
+            "StakeAdded", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+        self.assertEqual(result["netuid"], 7)
+
+    def test_stake_removed_carries_the_alpha_leg(self):
+        result = _extract(
+            "StakeRemoved", [_SS58_A, _SS58_B, _RAO_100, self._ALPHA, 7]
+        )
+        self.assertAlmostEqual(result["alpha_amount"], 9.25)
+
+    def test_missing_alpha_leg_is_null(self):
+        # A short payload (no a[3]) → alpha_amount null, never raises.
+        result = _extract("StakeAdded", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
+
+    def test_non_stake_kind_has_no_alpha(self):
+        # Transfer carries no alpha leg → null (extract() defaults the key).
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertIsNone(result["alpha_amount"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
