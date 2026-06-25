@@ -15,6 +15,7 @@ import {
   OPENAPI_PROBE_PATHS,
   probeOpenApiSpec,
   readJson,
+  registrableHostDomain,
   README_KIND_LIMITS,
   README_LINK_LIMIT,
   repoRoot,
@@ -1445,16 +1446,12 @@ function isLikelyProjectDomain(baseUrl, candidateUrl) {
     const candidate = new URL(candidateUrl);
     return (
       candidate.hostname === base.hostname ||
-      registrableDomain(candidate.hostname) === registrableDomain(base.hostname)
+      registrableHostDomain(candidate.hostname) ===
+        registrableHostDomain(base.hostname)
     );
   } catch {
     return false;
   }
-}
-
-function registrableDomain(hostname) {
-  const parts = hostname.toLowerCase().split(".").filter(Boolean);
-  return parts.slice(-2).join(".");
 }
 
 function isGenericHost(hostname) {

@@ -1774,6 +1774,21 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// Hostname-only registrable unit for dedupe / same-site checks (#1636, #1910).
+// Mirrors clusterDomainFromUrl but accepts bare hostnames and always returns a
+// string (falls back to the last-two-label heuristic for bare suffix hosts).
+export function registrableHostDomain(hostname) {
+  const host = String(hostname || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!host) return "";
+  const labels = host.split(".").filter(Boolean);
+  return (
+    clusterDomainFromUrl(`https://${host}/`) ??
+    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
+  );
+}
+
 // #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
 // project's registrable domain so the OpenAPI spec sweep reaches APIs that live
 // on api.<domain> (or docs.<domain>) rather than the marketing root — the
