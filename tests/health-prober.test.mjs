@@ -383,6 +383,54 @@ describe("runHealthProber", () => {
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
   });
 
+  test("folds an unrecognized probe status into `unknown` in the summary counts (#1739)", async () => {
+    // Per the normalizeProbeStatus contract, every caller that aggregates probe
+    // rows must normalize first so a forward-compat/unknown status can't bypass
+    // the four buckets. The per-subnet rollup (summarizeGroup) already did; the
+    // global summary status_counts must too — otherwise a status like "throttled"
+    // would add a phantom key and leave `unknown` undercounted.
+    const kv = makeKv();
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => SURFACES,
+        probeSurface: async () => ({
+          status: "throttled", // not one of ok|degraded|failed|unknown
+          classification: "rate-limited",
+          latency_ms: null,
+          status_code: 429,
+        }),
+        probeOptions: {},
+      },
+    );
+    // Returned cron counts: both surfaces fold into `unknown`, no phantom key.
+    assert.deepEqual(result.counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 2,
+    });
+    // Served KV summary + meta: same canonical four buckets, nothing extra.
+    const current = kv.json(KV_HEALTH_CURRENT);
+    assert.deepEqual(current.summary.status_counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 2,
+    });
+    const meta = kv.json(KV_HEALTH_META);
+    assert.deepEqual(Object.keys(meta.status_counts).sort(), [
+      "degraded",
+      "failed",
+      "ok",
+      "unknown",
+    ]);
+  });
+
   test("rejects unsafe or implausibly high live RPC block heights", async () => {
     const kv = makeKv();
     const rpcSurfaces = [
