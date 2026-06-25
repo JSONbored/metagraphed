@@ -107,7 +107,11 @@ export function summarizeRows(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    // Fold any unrecognized status into `unknown` so it still counts toward the
+    // rollup; left as a stray key it would be invisible to rollupSubnetStatus
+    // (failed/degraded stay 0) and a fully-unrecognized subnet would read "ok".
+    const status = Object.hasOwn(counts, row.status) ? row.status : "unknown";
+    counts[status] += 1;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {

@@ -390,14 +390,22 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("all-unrecognized statuses fold into unknown, not a false ok (#1738)", () => {
+    // Regression: a status outside the known keys must count as `unknown` so the
+    // rollup can't read a subnet with zero recognized-ok rows as healthy. Left as
+    // a stray key it was invisible to rollupSubnetStatus and reported "ok".
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
-    assert.equal(out.failed_count, 0);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.ok_count, 0);
+    assert.equal(out.failed_count, 0);
+  });
+  test("unrecognized status alongside a real failure still surfaces failed", () => {
+    // The unrecognized row folds into unknown; the failed row must still carry.
+    const out = summarizeRows([row("weird"), row("failed")]);
+    assert.equal(out.status, "failed");
+    assert.equal(out.unknown_count, 1);
+    assert.equal(out.failed_count, 1);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([
