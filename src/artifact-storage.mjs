@@ -77,6 +77,9 @@ export const R2_ONLY_PATTERNS = [
   // like its sibling live routes so the contract maps a schema to the route
   // without the build expecting a committed/staged artifact.
   /^compare\.json$/,
+  // Per-surface integration-readiness scorecard (#1711), computed live from the
+  // curated surfaces tier at /api/v1/surfaces/readiness — never written as a file.
+  /^surfaces\/readiness\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,

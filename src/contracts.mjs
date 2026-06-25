@@ -181,6 +181,35 @@ export const API_QUERY_COLLECTIONS = {
     },
     sort: ["id", "kind", "name", "netuid", "provider"],
   }),
+  // Derived integration-readiness view over the curated surfaces (computed live
+  // at /api/v1/surfaces/readiness). data_key "surfaces" matches the readiness
+  // blob the handler builds; readiness_tier/callable are the computed filters.
+  "surface-readiness": queryCollection("surfaces", {
+    filters: {
+      netuid: integerSchema,
+      kind: enumSchema(QUERY_ENUMS.surfaceKind),
+      provider: textSchema,
+      authority: textSchema,
+      readiness_tier: enumSchema([
+        "ready",
+        "callable-unverified",
+        "blocked",
+        "reference",
+      ]),
+      callable: enumSchema(["true", "false"]),
+    },
+    search: ["surface_id", "subnet_slug", "subnet_name", "provider"],
+    sort: [
+      "netuid",
+      "kind",
+      "provider",
+      "surface_id",
+      "readiness_score",
+      "auth_clarity_score",
+      "rate_limit_clarity_score",
+      "schema_clarity_score",
+    ],
+  }),
   documents: queryCollection("documents", {
     search: ["title", "subtitle", "slug", "tokens"],
     sort: ["kind", "netuid", "slug", "title"],
@@ -1042,6 +1071,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/compare.json",
     "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
     "CompareArtifact",
+  ),
+  artifact(
+    "surface-readiness",
+    "/metagraph/surfaces/readiness.json",
+    "Per-surface integration-readiness scorecard — each curated public surface's auth + rate-limit + schema clarity composed into a 0-100 readiness_score and a tier (ready / callable-unverified / blocked / reference) — computed live from the curated surfaces tier at /api/v1/surfaces/readiness (no static file).",
+    "SurfaceReadinessArtifact",
   ),
   artifact(
     "rpc-usage",
@@ -1941,6 +1976,16 @@ export const API_ROUTES = [
       { name: "dimensions", schema: { type: "string" } },
     ],
     [],
+  ),
+  route(
+    "surface-readiness",
+    "GET",
+    "/api/v1/surfaces/readiness",
+    "/metagraph/surfaces/readiness.json",
+    "Per-surface integration-readiness scorecard: for each curated public surface, its auth detail + rate-limit structure + schema availability composed into clarity sub-scores, a 0-100 `readiness_score`, and a `readiness_tier` (ready / callable-unverified / blocked / reference). Filter by netuid, kind, provider, authority, readiness_tier, callable; search name/slug; sort + paginate. Display-only (never feeds completeness); live up/down is at /api/v1/subnets/{netuid}/health.",
+    "standard",
+    ["surfaces", "registry", "analytics"],
+    listQuery("surface-readiness"),
   ),
   route(
     "rpc-usage",

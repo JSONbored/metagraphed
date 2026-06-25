@@ -252,6 +252,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/surfaces/readiness?limit=1",
+    (body) => {
+      assert.equal(Array.isArray(body.data.surfaces), true);
+      assert.equal(typeof body.data.surface_count, "number");
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");

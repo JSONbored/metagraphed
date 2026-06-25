@@ -1381,6 +1381,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/surfaces/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-surface integration-readiness scorecard: for each curated public surface, its auth detail + rate-limit structure + schema availability composed into clarity sub-scores, a 0-100 `readiness_score`, and a `readiness_tier` (ready / callable-unverified / blocked / reference). Filter by netuid, kind, provider, authority, readiness_tier, callable; search name/slug; sort + paginate. Display-only (never feeds completeness); live up/down is at /api/v1/subnets/{netuid}/health. */
+        get: operations["surfaceReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4460,6 +4477,16 @@ export interface components {
         };
         /** @enum {unknown} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+        SurfaceReadinessArtifact: {
+            generated_at?: string | null;
+            schema_version: number;
+            surface_count?: number;
+            surfaces: {
+                [key: string]: unknown;
+            }[];
+        } & {
+            [key: string]: unknown;
+        };
         SurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
             surfaces: components["schemas"]["Surface"][];
         } & {
@@ -15907,6 +15934,123 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SurfacesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    surfaceReadiness: {
+        parameters: {
+            query?: {
+                netuid?: number;
+                kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                provider?: string;
+                authority?: string;
+                readiness_tier?: "ready" | "callable-unverified" | "blocked" | "reference";
+                callable?: "true" | "false";
+                q?: string;
+                fields?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "netuid" | "kind" | "provider" | "surface_id" | "readiness_score" | "auth_clarity_score" | "rate_limit_clarity_score" | "schema_clarity_score";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "surface_count": 1,
+                     *         "surfaces": [
+                     *           {}
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SurfaceReadinessArtifact"];
                     };
                 };
             };

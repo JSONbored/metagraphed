@@ -12315,6 +12315,35 @@
           "data-artifact"
         ]
       },
+      "SurfaceReadinessArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "generated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "surface_count": {
+            "type": "integer"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "SurfacesArtifact": {
         "allOf": [
           {

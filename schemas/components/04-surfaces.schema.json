@@ -5,6 +5,20 @@
   "type": "object",
   "components": {
     "schemas": {
+      "SurfaceReadinessArtifact": {
+        "type": "object",
+        "required": ["schema_version", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "generated_at": { "type": ["string", "null"] },
+          "surface_count": { "type": "integer" },
+          "surfaces": {
+            "type": "array",
+            "items": { "type": "object", "additionalProperties": true }
+          }
+        },
+        "additionalProperties": true
+      },
       "ProbeConfig": {
         "type": "object",
         "required": ["enabled", "method", "expect"],

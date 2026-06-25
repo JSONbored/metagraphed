@@ -12337,6 +12337,35 @@
           "data-artifact"
         ]
       },
+      "SurfaceReadinessArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "generated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "surface_count": {
+            "type": "integer"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "SurfacesArtifact": {
         "allOf": [
           {
@@ -29836,6 +29865,271 @@
         "summary": "List curated public surfaces.",
         "tags": [
           "surfaces"
+        ]
+      }
+    },
+    "/api/v1/surfaces/readiness": {
+      "get": {
+        "operationId": "surfaceReadiness",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": [
+                "archive",
+                "dashboard",
+                "data-artifact",
+                "docs",
+                "example",
+                "openapi",
+                "repo-registry",
+                "sdk",
+                "source-repo",
+                "sse",
+                "subnet-api",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "authority",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "readiness_tier",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ready",
+                "callable-unverified",
+                "blocked",
+                "reference"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "callable",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fields",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "netuid",
+                "kind",
+                "provider",
+                "surface_id",
+                "readiness_score",
+                "auth_clarity_score",
+                "rate_limit_clarity_score",
+                "schema_clarity_score"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "surface_count": 1,
+                    "surfaces": [
+                      {}
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SurfaceReadinessArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Per-surface integration-readiness scorecard: for each curated public surface, its auth detail + rate-limit structure + schema availability composed into clarity sub-scores, a 0-100 `readiness_score`, and a `readiness_tier` (ready / callable-unverified / blocked / reference). Filter by netuid, kind, provider, authority, readiness_tier, callable; search name/slug; sort + paginate. Display-only (never feeds completeness); live up/down is at /api/v1/subnets/{netuid}/health.",
+        "tags": [
+          "surfaces",
+          "registry",
+          "analytics"
         ]
       }
     }

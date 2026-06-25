@@ -1022,6 +1022,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Per-surface integration-readiness scorecard (computed from the curated
+  // surfaces tier; fileless + edge-cached like the compare/leaderboards routes).
+  if (url.pathname === "/api/v1/surfaces/readiness") {
+    return withEdgeCache(request, ctx, env, "surface-readiness", () =>
+      handleSurfaceReadiness(request, env, url),
+    );
+  }
+
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
   if (url.pathname === "/api/v1/rpc/usage") {
     return handleRpcUsage(request, env, url);
@@ -1335,6 +1343,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    pathname === "/api/v1/surfaces/readiness" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
@@ -2569,6 +2578,132 @@ async function handleCompare(request, env, url) {
         contract_version: contractVersion(env),
         generated_at: data.observed_at,
         source: "registry+economics+live-cron-prober",
+      },
+    },
+    "standard",
+  );
+}
+
+// Surface kinds a caller actually invokes programmatically (vs reference kinds
+// like docs/website/source-repo). Drives the `callable` flag + readiness tier.
+const CALLABLE_READINESS_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+  "subtensor-rpc",
+  "subtensor-wss",
+  "archive",
+]);
+
+// Pure, display-only integration-readiness projection for one curated surface.
+// Composes the caller-actionable auth (#746) + rate-limit (#747) + schema fields
+// into clarity sub-scores, a 0-100 readiness_score, and a tier — so a caller can
+// see "which surfaces can I actually call, and how completely documented is the
+// call" at a glance. NEVER feeds completeness/scoring (display-only, like the
+// auth/rate_limit fields it reads). Exported for unit coverage of every branch.
+export function computeSurfaceReadiness(surface) {
+  const auth = surface.auth ?? null;
+  // auth clarity 0-3: scheme is required when auth is present (#746), so its
+  // presence alone is +1; +1 for a location; +1 for a name or value format.
+  let authClarityScore = 0;
+  if (auth) {
+    authClarityScore =
+      1 + (auth.location ? 1 : 0) + (auth.name || auth.value_format ? 1 : 0);
+  }
+  const rateLimit = surface.rate_limit ?? null;
+  // rate-limit clarity 0-2: requests+window are required when present (#747), so
+  // a structured block is +1; +1 when it also scopes the limit (per-key/ip/...).
+  let rateLimitClarityScore = 0;
+  if (rateLimit) {
+    rateLimitClarityScore = 1 + (rateLimit.scope ? 1 : 0);
+  }
+  // schema clarity 0-2: a machine-readable spec is the strongest signal.
+  const schemaClarityScore =
+    surface.schema_status === "machine-readable"
+      ? 2
+      : surface.schema_status === "ui-only"
+        ? 1
+        : 0;
+
+  const callable = CALLABLE_READINESS_KINDS.has(surface.kind);
+  // Normalize the three clarity dims (max 3 + 2 + 2 = 7) to a 0-100 score.
+  const readinessScore = Math.round(
+    ((authClarityScore + rateLimitClarityScore + schemaClarityScore) / 7) * 100,
+  );
+  // A non-callable (reference) surface is never "ready to call"; a callable one
+  // is graded by how completely its call is documented.
+  let readinessTier;
+  if (!callable) {
+    readinessTier = "reference";
+  } else if (readinessScore >= 70) {
+    readinessTier = "ready";
+  } else if (readinessScore >= 30) {
+    readinessTier = "callable-unverified";
+  } else {
+    readinessTier = "blocked";
+  }
+
+  return {
+    surface_id: surface.id,
+    surface_key: surface.key ?? null,
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug ?? null,
+    subnet_name: surface.subnet_name ?? null,
+    kind: surface.kind,
+    provider: surface.provider ?? null,
+    authority: surface.authority ?? null,
+    url: surface.url,
+    auth_required: surface.auth_required ?? null,
+    auth,
+    rate_limit: rateLimit,
+    schema_status: surface.schema_status ?? null,
+    schema_url: surface.schema_url ?? null,
+    stale: surface.stale ?? null,
+    last_verified_at: surface.last_verified_at ?? null,
+    callable,
+    auth_clarity_score: authClarityScore,
+    rate_limit_clarity_score: rateLimitClarityScore,
+    schema_clarity_score: schemaClarityScore,
+    readiness_score: readinessScore,
+    readiness_tier: readinessTier,
+  };
+}
+
+// Per-surface integration-readiness scorecard: project the curated surfaces tier
+// through computeSurfaceReadiness, then reuse the generic list-query machinery
+// (filter/search/sort/paginate) for free. Fileless + edge-cached like the other
+// computed registry routes; the readiness fields are deterministic from curated
+// data, so live up/down stays on the dedicated /health routes (linked in docs).
+async function handleSurfaceReadiness(request, env, url) {
+  const artifact = await readArtifact(env, "/metagraph/surfaces.json");
+  const surfaces = Array.isArray(artifact.data?.surfaces)
+    ? artifact.data.surfaces
+    : [];
+  const blob = {
+    schema_version: 1,
+    generated_at: artifact.data?.generated_at ?? null,
+    surface_count: surfaces.length,
+    surfaces: surfaces.map(computeSurfaceReadiness),
+  };
+  const transformed = applyQueryFilters(blob, url, "surface-readiness", []);
+  if (transformed.error) {
+    return errorResponse("invalid_query", transformed.error.message, 400, {
+      artifact_path: "/metagraph/surfaces/readiness.json",
+      parameter: transformed.error.parameter,
+    });
+  }
+  return envelopeResponse(
+    request,
+    {
+      data: transformed.data,
+      meta: {
+        artifact_path: "/metagraph/surfaces/readiness.json",
+        cache: "standard",
+        contract_version: contractVersion(env),
+        generated_at: blob.generated_at,
+        source: "registry",
+        ...transformed.meta,
       },
     },
     "standard",

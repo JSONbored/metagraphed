@@ -513,6 +513,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "surface-readiness",
+      "path": "/metagraph/surfaces/readiness.json",
+      "schema_ref": "#/components/schemas/SurfaceReadinessArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
@@ -4673,6 +4680,142 @@
           "name": "dimensions",
           "schema": {
             "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/surfaces/readiness.json",
+      "cache": "standard",
+      "description": "Per-surface integration-readiness scorecard: for each curated public surface, its auth detail + rate-limit structure + schema availability composed into clarity sub-scores, a 0-100 `readiness_score`, and a `readiness_tier` (ready / callable-unverified / blocked / reference). Filter by netuid, kind, provider, authority, readiness_tier, callable; search name/slug; sort + paginate. Display-only (never feeds completeness); live up/down is at /api/v1/subnets/{netuid}/health.",
+      "id": "surface-readiness",
+      "method": "GET",
+      "path": "/api/v1/surfaces/readiness",
+      "public": true,
+      "query_collection": "surface-readiness",
+      "query_filter_names": [
+        "netuid",
+        "kind",
+        "provider",
+        "authority",
+        "readiness_tier",
+        "callable"
+      ],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "authority",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "readiness_tier",
+          "schema": {
+            "enum": [
+              "ready",
+              "callable-unverified",
+              "blocked",
+              "reference"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "callable",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "netuid",
+              "kind",
+              "provider",
+              "surface_id",
+              "readiness_score",
+              "auth_clarity_score",
+              "rate_limit_clarity_score",
+              "schema_clarity_score"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
           }
         }
       ]
