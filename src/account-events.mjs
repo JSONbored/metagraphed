@@ -1,12 +1,12 @@
 // Chain-event index (#1346, epic #1345): the D1 `account_events` tier — first-party
 // per-entity activity decoded DIRECTLY from finney by scripts/fetch-events.py
 // (substrate System.Events), NOT Taostats. This module holds the load contract,
-// the daily rollup + prune (retention), and the row→API shaping (#1347). Pure +
-// exported for tests; the Worker runs the D1 I/O.
+// the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
+// for tests; the Worker runs the D1 I/O.
 
-// Hot window for raw events; rolled into account_events_daily before prune so
-// long-term per-entity history survives (mirrors the 30d surface_checks window).
-export const EVENT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+// D1 safety-valve: 365-day retention prevents unbounded growth before the
+// Postgres cold tier (#1519) ships. pruneAccountEvents runs in HEALTH_PRUNE_CRON.
+export const EVENT_RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Columns written to account_events — THE load contract. scripts/fetch-events.py
 // emits rows with exactly these keys; loadStagedEvents binds them in this order.
@@ -21,6 +21,10 @@ export const EVENT_INSERT_COLUMNS = [
   "uid",
   "amount_tao",
   "observed_at",
+  // The 0-based index of the extrinsic that emitted this event (#1849), read from
+  // the event's phase=ApplyExtrinsic; null for Initialization/Finalization events.
+  // 10 cols x ROWS_PER_STMT(10) = 100 bound params — exactly D1's ceiling.
+  "extrinsic_index",
 ];
 
 // The SubtensorModule events the poller indexes — entity-relevant only, which
@@ -53,6 +57,7 @@ export function formatAccountEvent(row) {
     uid: row.uid ?? null,
     amount_tao: row.amount_tao ?? null,
     observed_at: toIso(row.observed_at),
+    extrinsic_index: row.extrinsic_index ?? null,
   };
 }
 
@@ -175,7 +180,7 @@ export function eventInsertStatements(db, rows) {
 // ---- Entity API builders (#1347) -------------------------------------------
 // The columns the account handlers SELECT for an event row.
 export const ACCOUNT_EVENT_COLUMNS =
-  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at";
+  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at, extrinsic_index";
 
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
@@ -194,9 +199,27 @@ export function formatRegistration(row) {
 // matched by hotkey OR coldkey) joined to current registrations (from neurons,
 // by hotkey). `agg` is the single aggregate row; kinds/registrations/recent are
 // row arrays. Null-safe on a cold/absent store (returns a schema-stable zero).
+// Signing-activity sub-object (#1847) from the extrinsics tier, by signer. These
+// are hot-window aggregates (retention-bounded), not all-time. Matched by signer
+// only — an account queried by a key that did not sign won't line up with the
+// account_events aggregates (which match hotkey OR coldkey). Null-safe on a cold
+// store: tx_count 0, others null, modules_called [].
+export function formatAccountActivity(agg, modules) {
+  const a = agg || {};
+  return {
+    tx_count: a.tx_count ?? 0,
+    last_tx_block: a.last_tx_block ?? null,
+    last_tx_at: toIso(a.last_tx_at),
+    total_fee_tao: a.total_fee_tao ?? null,
+    modules_called: (modules || [])
+      .filter((m) => m && m.call_module)
+      .map((m) => ({ call_module: m.call_module, count: m.count ?? 0 })),
+  };
+}
+
 export function buildAccountSummary(
   ss58,
-  { agg, kinds, registrations, recent } = {},
+  { agg, kinds, registrations, recent, activity, modules } = {},
 ) {
   const a = agg || {};
   return {
@@ -215,6 +238,7 @@ export function buildAccountSummary(
       .map(formatRegistration)
       .filter(Boolean),
     recent_events: (recent || []).map(formatAccountEvent).filter(Boolean),
+    activity: formatAccountActivity(activity, modules),
   };
 }
 

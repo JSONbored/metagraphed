@@ -184,5 +184,90 @@ class ParseCursorTest(unittest.TestCase):
         self.assertIsNone(_parse_cursor(-7))
 
 
+_lag_alert_needed = _fe._lag_alert_needed
+
+
+class LagAlertNeededTest(unittest.TestCase):
+    def test_cold_cursor_never_alerts(self):
+        self.assertFalse(_lag_alert_needed(10_000, None, window=256, horizon=300))
+
+    def test_alerts_at_and_above_the_overlap_floor(self):
+        # floor = horizon - window = 44; lag >= 44 alerts, below does not.
+        self.assertFalse(
+            _lag_alert_needed(10_000, 10_000 - 43, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 44, window=256, horizon=300)
+        )
+        self.assertTrue(
+            _lag_alert_needed(10_000, 10_000 - 100, window=256, horizon=300)
+        )
+
+    def test_window_ge_horizon_never_alerts(self):
+        # When the overlap window covers the whole prune horizon, blocks can never
+        # age out unseen — must NOT alert (regression: a bare horizon-window
+        # threshold goes <= 0 and would fire every run, even at lag 0).
+        self.assertFalse(_lag_alert_needed(10_000, 10_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=300, horizon=300))
+        self.assertFalse(_lag_alert_needed(10_000, 9_000, window=400, horizon=300))
+
+
+_extract = _fe.extract
+_SS58_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+_SS58_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+_RAO_100 = 100_000_000_000  # 100 TAO in rao
+
+
+class TransferExtractorTest(unittest.TestCase):
+    """Tests for the Balances.Transfer extractor (#1814)."""
+
+    def test_list_form_positional(self):
+        # Older runtimes emit [from, to, amount] as positional list
+        result = _extract("Transfer", [_SS58_A, _SS58_B, _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named(self):
+        # Newer runtimes emit named-field dict
+        result = _extract("Transfer", {"from": _SS58_A, "to": _SS58_B, "amount": _RAO_100})
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_zero_amount(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B, 0])
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_from_gives_null_hotkey(self):
+        result = _extract("Transfer", ["not-an-address", _SS58_B, _RAO_100])
+        self.assertIsNone(result["hotkey"])
+        self.assertEqual(result["coldkey"], _SS58_B)
+
+    def test_invalid_to_gives_null_coldkey(self):
+        result = _extract("Transfer", [_SS58_A, "not-an-address", _RAO_100])
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+
+    def test_missing_amount_gives_null(self):
+        result = _extract("Transfer", [_SS58_A, _SS58_B])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_non_transfer_balances_event_ignored(self):
+        # Balances.Deposit, Balances.Reserved, etc. — no extractor → None
+        self.assertIsNone(_extract("Deposit", [_SS58_A, _RAO_100]))
+        self.assertIsNone(_extract("Reserved", [_SS58_A, _RAO_100]))
+
+    def test_shape_drift_never_raises(self):
+        # Completely wrong shape (empty list) must never raise — all fields null
+        result = _extract("Transfer", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

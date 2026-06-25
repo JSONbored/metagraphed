@@ -57,20 +57,37 @@ export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/events$/;
+// Account entity routes (#1347):
 export const ACCOUNT_SUBNETS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;
+// Per-account signed extrinsics (#1844): the extrinsics this account signed,
+// matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
+export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/extrinsics$/;
+// Live TAO balance query (#1818): captures any non-slash segment; the handler
+// applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
+export const ACCOUNT_BALANCE_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/balance$/;
 // Block-explorer routes (#1345): recent feed + per-block detail, computed live
 // from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
 // (32-byte hex = 64 chars).
 export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
 export const BLOCK_DETAIL_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})$/;
+// Per-block extrinsics sub-resource (#1845): the extrinsics in one block, by the
+// same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE the
+// detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/extrinsics$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
 export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+// Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
+// composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
+// the hash is best-effort/nullable). Single capture group; the handler branches.
 export const EXTRINSIC_DETAIL_PATH_PATTERN =
-  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64})$/;
+  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64}|\d+-\d+)$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
