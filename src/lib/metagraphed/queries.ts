@@ -905,7 +905,7 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     description: pickStr(subnet.notes, profile.notes),
     notes: pickStr(subnet.notes, profile.notes),
     subnet_type: pickStr(subnet.subnet_type, profile.subnet_type),
-    categories: (profile.categories as string[]) ?? (subnet.categories as string[]) ?? [],
+    categories: stringArrayFromUnknown(profile.categories ?? subnet.categories),
     block: subnet.block as number | undefined,
     registered_at_block: subnet.registered_at_block as number | undefined,
     tempo: subnet.tempo as number | undefined,
@@ -941,12 +941,12 @@ function normalizeSubnetProfile(raw: unknown, netuid: number): SubnetProfile {
     candidate_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
     candidates_count: (profile.candidate_count as number) ?? (subnet.candidate_count as number),
     monitored_endpoint_count: profile.monitored_endpoint_count as number | undefined,
-    operational_interface_kinds: (profile.operational_interface_kinds as string[]) ?? [],
-    supported_interface_kinds:
-      (profile.supported_interface_kinds as string[]) ?? (gaps.supported_kinds as string[]) ?? [],
-    missing_kinds:
-      (gaps.missing_kinds as string[]) ?? (profile.missing_operational as string[]) ?? [],
-    gap_notes: (gaps.gap_notes as string[]) ?? [],
+    operational_interface_kinds: stringArrayFromUnknown(profile.operational_interface_kinds),
+    supported_interface_kinds: stringArrayFromUnknown(
+      profile.supported_interface_kinds ?? gaps.supported_kinds,
+    ),
+    missing_kinds: stringArrayFromUnknown(gaps.missing_kinds ?? profile.missing_operational),
+    gap_notes: stringArrayFromUnknown(gaps.gap_notes),
     primary_app_surface: profile.primary_app_surface as PrimaryAppSurface | undefined,
     // embedded
     surfaces: (root.surfaces as Surface[]) ?? [],
@@ -2074,7 +2074,7 @@ export const reviewProfileCompletenessQuery = () =>
             : typeof r.completeness_score === "number"
               ? (r.completeness_score as number) / 100
               : undefined,
-        missing: (r.missing_required as string[]) ?? (r.gap_reasons as string[]),
+        missing: stringArrayFromUnknown(r.missing_required ?? r.gap_reasons),
       }));
       return { ...res, data: rows };
     },
