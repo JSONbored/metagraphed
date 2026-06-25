@@ -933,6 +933,45 @@
         },
         "additionalProperties": true
       },
+      "ReliabilityScorecardArtifact": {
+        "type": "object",
+        "required": ["schema_version", "netuid", "source", "surfaces"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"] },
+          "source": { "type": "string" },
+          "reliability": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/ReliabilityScore" },
+              { "type": "null" }
+            ]
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["surface_id"],
+              "properties": {
+                "surface_id": { "type": "string" },
+                "surface_key": { "type": "string" },
+                "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "grade": { "type": "string" },
+                "uptime_ratio": { "type": ["number", "null"] },
+                "avg_latency_ms": { "type": ["integer", "null"] },
+                "sample_count": { "type": "integer", "minimum": 0 },
+                "latency_sample_count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "RegistryLeaderboardsArtifact": {
         "type": "object",
         "required": ["schema_version", "source", "boards"],

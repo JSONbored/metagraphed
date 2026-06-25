@@ -48,6 +48,10 @@ import {
   withEdgeCache,
 } from "./request-handlers/analytics.mjs";
 import {
+  configureReliability,
+  handleSubnetReliability,
+} from "./request-handlers/reliability.mjs";
+import {
   loadStagedNeurons,
   loadStagedEvents,
   loadStagedBlocks,
@@ -125,8 +129,6 @@ import {
   overlayOverviewHealth,
   overlaySubnetEconomics,
   overlaySubnetHealth,
-  loadReliabilityScorecard,
-  loadSubnetReliability,
   loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
@@ -207,7 +209,6 @@ import {
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
   RELIABILITY_PATH_PATTERN,
-  RELIABILITY_WINDOWS,
   TRAJECTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -1101,11 +1102,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
     if (reliabilityMatch) {
       return withEdgeCache(request, ctx, env, "reliability", () =>
-        handleReliability(
+        handleSubnetReliability(
           request,
           env,
           Number(reliabilityMatch[1]),
           resolved.url,
+          { maxRows: MAX_UPTIME_ROWS },
         ),
       );
     }
@@ -1642,6 +1644,7 @@ export async function readHealthMetaKv(env, now = Date.now()) {
 // test import it from api.mjs. Injecting the stable reference (rather than having
 // analytics.mjs import it back) keeps the two modules from importing each other.
 configureAnalytics({ readHealthMetaKv });
+configureReliability({ readHealthMetaKv });
 
 // Same wiring for the extracted RPC-proxy module (workers/request-handlers/
 // rpc-proxy.mjs, #1763): handleRpcUsage needs the in-isolate snapshot-meta read
@@ -2128,44 +2131,6 @@ async function handleUptime(request, env, netuid, url) {
       meta: await analyticsMeta(
         env,
         `/metagraph/subnets/${netuid}/uptime.json`,
-        data.observed_at,
-      ),
-    },
-    "short",
-  );
-}
-
-// Composite reliability scorecard (0–100) for one subnet's operational surfaces,
-// served live from the surface_uptime_daily rollup. Lighter than /uptime: no
-// per-day series — just the scored rollup integrators use for ranking.
-async function handleReliability(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const windowParam = url.searchParams.get("window") || "30d";
-  if (!Object.hasOwn(RELIABILITY_WINDOWS, windowParam)) {
-    return errorResponse(
-      "invalid_query",
-      "Query parameter `window` must be one of: 7d, 30d, 90d.",
-      400,
-      { parameter: "window" },
-    );
-  }
-  const healthMeta = await readHealthMetaKv(env);
-  const data = await loadReliabilityScorecard({
-    d1: d1Runner(env),
-    netuid,
-    windowDays: RELIABILITY_WINDOWS[windowParam],
-    observedAt: healthMeta?.last_run_at || null,
-    now: new Date().toISOString(),
-    limit: MAX_UPTIME_ROWS,
-  });
-  return envelopeResponse(
-    request,
-    {
-      data,
-      meta: await analyticsMeta(
-        env,
-        `/metagraph/subnets/${netuid}/reliability.json`,
         data.observed_at,
       ),
     },

@@ -6417,6 +6417,96 @@
         ],
         "type": "object"
       },
+      "ReliabilityScorecardArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reliability": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReliabilityScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "avg_latency_ms": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "grade": {
+                  "type": "string"
+                },
+                "latency_sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "sample_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "surface_key": {
+                  "type": "string"
+                },
+                "uptime_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "surface_id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "source",
+          "surfaces"
+        ],
+        "type": "object"
+      },
       "ResponseEnvelopeContract": {
         "additionalProperties": false,
         "properties": {
@@ -27257,7 +27347,30 @@
             "content": {
               "application/json": {
                 "example": {
-                  "data": null,
+                  "data": {
+                    "netuid": 7,
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "reliability": {
+                      "avg_latency_ms": 120,
+                      "computed_at": "2026-06-01T00:00:00.000Z",
+                      "day_count": 1,
+                      "grade": "A",
+                      "latency_sample_count": 120,
+                      "sample_count": 1,
+                      "score": 100,
+                      "surface_count": 1,
+                      "uptime_ratio": 0.9966,
+                      "window": "30d"
+                    },
+                    "schema_version": 1,
+                    "source": "live-cron-prober",
+                    "surfaces": [
+                      {
+                        "surface_id": "example"
+                      }
+                    ],
+                    "window": "30d"
+                  },
                   "meta": {
                     "artifact_path": "example",
                     "cache": "short",

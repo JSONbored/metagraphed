@@ -1152,6 +1152,29 @@ export function formatReliabilityScorecard({
     source: "live-cron-prober",
     reliability: reliability.subnet,
     surfaces,
+    summary: summarizeReliabilityGrades(surfaces),
+  };
+}
+
+function summarizeReliabilityGrades(surfaces = []) {
+  const counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+  for (const surface of surfaces) {
+    const grade = surface?.grade;
+    if (grade && Object.hasOwn(counts, grade)) {
+      counts[grade] += 1;
+    }
+  }
+  return {
+    surface_count: surfaces.length,
+    grade_histogram: counts,
+    lowest_score:
+      surfaces.length === 0
+        ? null
+        : Math.min(...surfaces.map((surface) => Number(surface.score) || 0)),
+    highest_score:
+      surfaces.length === 0
+        ? null
+        : Math.max(...surfaces.map((surface) => Number(surface.score) || 0)),
   };
 }
 

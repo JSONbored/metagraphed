@@ -492,6 +492,11 @@ describe("analytics edge cache", () => {
         path: "/api/v1/subnets/7/uptime",
         search: "?window=90d",
       },
+      {
+        keyParts: "reliability",
+        path: "/api/v1/subnets/7/reliability",
+        search: "?window=30d",
+      },
     ];
     originalCaches = globalThis.caches;
     for (const r of routes) {
