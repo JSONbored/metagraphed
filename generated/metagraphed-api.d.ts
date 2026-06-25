@@ -470,7 +470,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown. */
+        /** Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed. */
         get: operations["extrinsicDetail"];
         put?: never;
         post?: never;
@@ -2308,7 +2308,7 @@ export interface components {
             signer?: string | null;
             success?: boolean | null;
         };
-        /** @description Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the hash is unknown or the store is cold (no static file). */
+        /** @description Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file). */
         ExtrinsicDetailArtifact: {
             extrinsic: components["schemas"]["Extrinsic"] | null;
             ref?: string | null;

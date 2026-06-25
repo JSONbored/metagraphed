@@ -992,7 +992,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "extrinsic-detail",
     "/metagraph/extrinsics/{hash}.json",
-    "Per-extrinsic detail (by 0x extrinsic_hash) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
     "ExtrinsicDetailArtifact",
   ),
   artifact(
@@ -1783,7 +1783,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/extrinsics/{hash}",
     "/metagraph/extrinsics/{hash}.json",
-    "Fetch per-extrinsic detail by 0x extrinsic_hash. Computed live from the first-party extrinsics D1 tier (#1345); 200 with extrinsic:null when cold/unknown.",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
     "short",
     ["extrinsics", "analytics"],
     [],

@@ -83,8 +83,11 @@ export const BLOCK_EXTRINSICS_PATH_PATTERN =
 // detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
 // (32-byte blake2b = 64 hex chars).
 export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+// Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
+// composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
+// the hash is best-effort/nullable). Single capture group; the handler branches.
 export const EXTRINSIC_DETAIL_PATH_PATTERN =
-  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64})$/;
+  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64}|\d+-\d+)$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;

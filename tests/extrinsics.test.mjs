@@ -291,6 +291,11 @@ function dbWith({ feed, detail } = {}) {
               async all() {
                 if (/WHERE extrinsic_hash = \?/.test(sql))
                   return { results: detail ? [detail] : [] };
+                // Composite-id detail (#1848): WHERE block_number=? AND extrinsic_index=?.
+                if (
+                  /WHERE block_number = \? AND extrinsic_index = \?/.test(sql)
+                )
+                  return { results: detail ? [detail] : [] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
                 return { results: [] };
@@ -468,6 +473,36 @@ test("GET /extrinsics/{hash} is schema-stable when cold (extrinsic:null, never 4
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.ref, hash);
+  assert.equal(body.data.extrinsic, null);
+});
+
+test("GET /extrinsics/{block}-{index} resolves by the composite id (#1848)", async () => {
+  const env = dbWith({
+    detail: {
+      block_number: 1234,
+      extrinsic_index: 3,
+      extrinsic_hash: null,
+      call_module: "Timestamp",
+      call_function: "set",
+      success: 1,
+      observed_at: 1750009000000,
+    },
+  });
+  const res = await handleRequest(req("/api/v1/extrinsics/1234-3"), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "1234-3");
+  assert.equal(body.data.extrinsic.block_number, 1234);
+  assert.equal(body.data.extrinsic.extrinsic_index, 3);
+  // A null-hash extrinsic — previously unaddressable — is now reachable.
+  assert.equal(body.data.extrinsic.extrinsic_hash, null);
+});
+
+test("GET /extrinsics/{block}-{index} is schema-stable when cold (#1848)", async () => {
+  const res = await handleRequest(req("/api/v1/extrinsics/777-0"), {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "777-0");
   assert.equal(body.data.extrinsic, null);
 });
 

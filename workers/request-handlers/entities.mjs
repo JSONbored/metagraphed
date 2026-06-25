@@ -659,24 +659,45 @@ export async function handleExtrinsics(request, env, url) {
   );
 }
 
-// GET /api/v1/extrinsics/{hash}: per-extrinsic detail (#1345). hash is a 0x
-// extrinsic_hash. Served live from the `extrinsics` D1 tier; an unknown hash /
-// cold store → 200 with extrinsic:null (schema-stable, mirrors the block detail
-// route — NEVER 404/throw).
-export async function handleExtrinsic(request, env, hash) {
-  const rows = await d1All(
-    env,
-    `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-    [hash],
-  );
-  const data = buildExtrinsic(rows[0], hash);
+// GET /api/v1/extrinsics/{ref}: per-extrinsic detail (#1345/#1848). ref is EITHER
+// a 0x extrinsic_hash OR the canonical composite id "<block_number>-<extrinsic_index>".
+// The hash is best-effort/nullable in the decoder, so the composite id is the
+// guaranteed-present identifier; the composite path does a direct (block_number,
+// extrinsic_index) PK hit. Served live from the `extrinsics` D1 tier; an unknown
+// ref / cold store / malformed composite → 200 with extrinsic:null (schema-stable,
+// mirrors handleBlock's numeric-OR-hash branch — NEVER 404/throw).
+export async function handleExtrinsic(request, env, ref) {
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  let rows;
+  if (isHash) {
+    rows = await d1All(
+      env,
+      `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
+      [ref],
+    );
+  } else {
+    // Composite "<block>-<index>": coerce both halves; a non-finite half is a
+    // miss (extrinsic:null), never a bad bind.
+    const [b, i] = ref.split("-");
+    const blockNumber = Number(b);
+    const extrinsicIndex = Number(i);
+    rows =
+      Number.isInteger(blockNumber) && Number.isInteger(extrinsicIndex)
+        ? await d1All(
+            env,
+            `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
+            [blockNumber, extrinsicIndex],
+          )
+        : [];
+  }
+  const data = buildExtrinsic(rows[0], ref);
   return envelopeResponse(
     request,
     {
       data,
       meta: await accountMeta(
         env,
-        `/metagraph/extrinsics/${hash}.json`,
+        `/metagraph/extrinsics/${ref}.json`,
         data.extrinsic?.observed_at ?? null,
       ),
     },
