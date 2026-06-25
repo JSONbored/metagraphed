@@ -31,6 +31,7 @@ import importlib.util
 import json
 import os
 import sys
+import time
 
 # Reuse fetch-events.py's verified decode (hyphenated → load by path, same as the
 # streamer + the unit tests do).
@@ -56,6 +57,31 @@ def main():
 
     url = os.environ.get("SUBTENSOR_RPC_URL") or DEFAULT_ARCHIVE
     s = SubstrateInterface(url=url)
+    # Free archives (OnFinality) rate-limit (JSON-RPC -32029 "Too Many Requests")
+    # under rapid block-by-block scanning. Wrap the RPC layer so EVERY call backs off
+    # and retries on a rate limit instead of skipping the block — the scan then
+    # self-paces to the endpoint's sustainable rate. All per-block calls
+    # (get_block_hash, System.Events query, get_block(_header), Aura query) route
+    # through rpc_request, so one wrap covers them. A non-rate-limit error still
+    # raises (→ the per-block skip / best-effort None). No-op if the attr is absent.
+    _orig_rpc = getattr(s, "rpc_request", None)
+    if _orig_rpc is not None:
+
+        def _rpc_request(method, params, *a, **k):
+            delay = 1.0
+            for _ in range(8):
+                try:
+                    return _orig_rpc(method, params, *a, **k)
+                except Exception as e:  # noqa: BLE001 — inspect, retry only on 429
+                    msg = repr(e)
+                    if "-32029" in msg or "Too Many Requests" in msg:
+                        time.sleep(delay)
+                        delay = min(delay * 2, 30)
+                        continue
+                    raise
+            return _orig_rpc(method, params, *a, **k)
+
+        s.rpc_request = _rpc_request
     # Anchor observed_at on the current finalized head's timestamp; finney is exactly
     # 12.0s/block, so height-derivation matches the live poller's clock with no
     # per-block Timestamp query (one fewer archive round-trip per block).
