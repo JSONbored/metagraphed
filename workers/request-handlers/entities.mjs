@@ -61,6 +61,7 @@ import {
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
+  EXTRINSIC_RETENTION_MS,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
   buildExtrinsic,
@@ -787,6 +788,30 @@ export async function handleExtrinsics(request, env, url) {
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
+  const fromRaw = sp.get("from");
+  const toRaw = sp.get("to");
+  const fromMs = fromRaw == null ? null : clampInt(fromRaw, 0, 0, MAX);
+  const toMs = toRaw == null ? null : clampInt(toRaw, 0, 0, MAX);
+  const nowMs = Date.now();
+  const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
+  // The extrinsics tier is a retained hot window of block timestamps. Reject
+  // impossible time ranges before D1 so unauthenticated future/expired probes
+  // cannot force a primary-key scan just to return an empty page.
+  if (
+    (fromMs != null && fromMs > nowMs + DAY_MS) ||
+    (toMs != null && toMs < observedFloorMs) ||
+    (fromMs != null && toMs != null && fromMs > toMs)
+  ) {
+    const data = buildExtrinsicFeed([], { limit, offset, nextCursor: null });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(env, "/metagraph/extrinsics.json", null),
+      },
+      "short",
+    );
+  }
   const conds = [];
   const params = [];
   const eq = (col, val) => {
@@ -811,13 +836,13 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("block_number <= ?");
     params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
   }
-  if (sp.get("from") != null) {
+  if (fromMs != null) {
     conds.push("observed_at >= ?");
-    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+    params.push(fromMs);
   }
-  if (sp.get("to") != null) {
+  if (toMs != null) {
     conds.push("observed_at <= ?");
-    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+    params.push(toMs);
   }
   // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
   // PK, ANDed with any active filters. Takes precedence over offset; a malformed
@@ -828,7 +853,19 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  const hasObservedRange = fromMs != null || toMs != null;
+  const hasOrderAlignedEquality =
+    sp.get("block") != null ||
+    Boolean(sp.get("signer")) ||
+    Boolean(sp.get("call_module")) ||
+    Boolean(sp.get("call_function")) ||
+    successRaw === "true" ||
+    successRaw === "false";
+  const observedIndexHint =
+    hasObservedRange && !hasOrderAlignedEquality
+      ? " INDEXED BY idx_extrinsics_observed_order"
+      : "";
+  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics${observedIndexHint}`;
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);
