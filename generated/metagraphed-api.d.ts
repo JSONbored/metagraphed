@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset. */
+        get: operations["accountTransfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/adapters/{slug}": {
         parameters: {
             query?: never;
@@ -1447,6 +1464,27 @@ export interface components {
             schema_version: number;
             ss58: string;
             subnet_count?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file). */
+        AccountTransfersArtifact: {
+            limit?: number;
+            offset?: number;
+            schema_version: number;
+            ss58: string;
+            transfer_count: number;
+            transfers: {
+                amount_tao?: number | null;
+                block_number: number | null;
+                /** @enum {string|null} */
+                direction?: "sent" | "received" | null;
+                event_index?: number | null;
+                from: string | null;
+                /** Format: date-time */
+                observed_at?: string | null;
+                to: string | null;
+            }[];
         } & {
             [key: string]: unknown;
         };
@@ -5162,6 +5200,122 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountSubnetsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountTransfers: {
+        parameters: {
+            query?: {
+                direction?: "all" | "sent" | "received";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "limit": 1,
+                     *         "offset": 1,
+                     *         "schema_version": 1,
+                     *         "ss58": "example",
+                     *         "transfer_count": 1,
+                     *         "transfers": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "from": "example",
+                     *             "to": "example"
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountTransfersArtifact"];
                     };
                 };
             };

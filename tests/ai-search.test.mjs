@@ -152,6 +152,17 @@ describe("embedding helpers", () => {
     assert.equal(embeddingText({ title: "A" }), "A");
     assert.ok(embeddingText({ title: "x".repeat(5000) }).length <= 1500);
   });
+  test("embeddingText truncates by code point and stays well-formed UTF-16", () => {
+    // An astral char straddling the 1500-unit boundary must not be severed into
+    // a lone surrogate (#1650): a .slice() cap would leave isWellFormed() false.
+    const text = embeddingText({ title: "a".repeat(1499) + "😀" });
+    assert.ok(text.isWellFormed());
+    assert.ok(!text.endsWith("\uD83D")); // no dangling high surrogate
+    // A long astral run is capped to <= 1500 code points (not UTF-16 units).
+    const astral = embeddingText({ title: "😀".repeat(5000) });
+    assert.ok([...astral].length <= 1500);
+    assert.ok(astral.isWellFormed());
+  });
   test("embeddingText appends capability facets (categories + service_kinds)", () => {
     assert.equal(
       embeddingText({

@@ -153,6 +153,13 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/transfers",
+    (body) => {
+      assert.equal(Array.isArray(body.data.transfers), true);
+      assert.equal(typeof body.data.transfer_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
     (body) => {
       assert.equal(Array.isArray(body.data.subnets), true);

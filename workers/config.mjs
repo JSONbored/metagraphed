@@ -67,6 +67,10 @@ export const ACCOUNT_SUBNETS_PATH_PATTERN =
 // matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
 export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/extrinsics$/;
+// Per-account native-TAO transfers (#1850): the Balances.Transfer feed for this
+// account, from account_events (event_kind='Transfer'); ?direction=all|sent|received.
+export const ACCOUNT_TRANSFERS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/transfers$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =

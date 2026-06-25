@@ -302,3 +302,34 @@ export function buildAccountSubnets(rows, ss58) {
     subnets,
   };
 }
+
+// Per-account native-TAO Transfer feed (#1850), newest first. Reshapes the
+// account_events rows for event_kind='Transfer' — where the _transfer extractor
+// overloads hotkey=from (sender) and coldkey=to (recipient) — into a clean
+// directional {from, to, amount_tao, direction} ledger, hiding the column overload
+// behind the contract. `direction` is derived per-row by comparing the queried
+// ss58: it sent (== from) or received (== to). This is the native-TAO
+// Balances.Transfer feed only, NOT a full balance ledger (stake flows are separate
+// event kinds). Null-safe on a cold store.
+export function buildAccountTransfers(rows, ss58, { limit, offset } = {}) {
+  const transfers = (rows || [])
+    .filter((r) => r && typeof r === "object")
+    .map((r) => ({
+      block_number: r.block_number ?? null,
+      event_index: r.event_index ?? null,
+      from: r.hotkey ?? null,
+      to: r.coldkey ?? null,
+      amount_tao: r.amount_tao ?? null,
+      direction:
+        r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null,
+      observed_at: toIso(r.observed_at),
+    }));
+  return {
+    schema_version: 1,
+    ss58,
+    transfer_count: transfers.length,
+    limit: limit ?? null,
+    offset: offset ?? null,
+    transfers,
+  };
+}

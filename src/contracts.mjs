@@ -960,6 +960,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountExtrinsicsArtifact",
   ),
   artifact(
+    "account-transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+    "AccountTransfersArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -1716,6 +1722,24 @@ export const API_ROUTES = [
     "short",
     ["accounts", "analytics"],
     [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-transfers",
+    "GET",
+    "/api/v1/accounts/{ss58}/transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "sent", "received"] },
+      },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],

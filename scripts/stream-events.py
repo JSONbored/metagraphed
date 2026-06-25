@@ -110,7 +110,10 @@ def decode_head(s, block_number):
     for event_index, ev in enumerate(events):
         v = ev.value if isinstance(ev.value, dict) else {}
         e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-        if e.get("module_id") != "SubtensorModule":
+        # Match the CI poller's coverage (#1850): SubtensorModule + Balances, so
+        # realtime ingest captures native-TAO Transfer events too (extract()
+        # returns None for any non-indexed kind, so this only widens, never noise).
+        if e.get("module_id") not in ("SubtensorModule", "Balances"):
             continue
         ent = extract(e.get("event_id"), e.get("attributes"))
         if ent is None:
