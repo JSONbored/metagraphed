@@ -39,6 +39,11 @@ jobs:
       # Taostats source (#1348). No Taostats, no API key.
       - name: Fetch per-UID metagraph (Bittensor SDK)
         run: uvx --from bittensor==10.4.0 python scripts/fetch-metagraph-native.py
+        env:
+          # Same hidden chain-RPC secret as the events poller (ADR 0012 / #1349).
+          # Unset → the script defaults to "finney"; set it to the private node URL
+          # to route the metagraph fetch through our own infra without exposing it.
+          SUBTENSOR_RPC_URL: ${{ secrets.SUBTENSOR_RPC_URL }}
 
       - name: Upload unsigned neuron snapshot
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

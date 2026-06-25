@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -365,6 +367,74 @@ describe("analytics edge cache", () => {
       "a D1 fallback response must not poison the edge cache",
     );
     assert.equal(cache.store.size, 0);
+  });
+
+  // Regression for #1760: the four D1-backed analytics handlers tag a degraded
+  // response into the D1_FALLBACK_RESPONSES WeakSet so withEdgeCache can refuse to
+  // cache it (the per-response cold-D1 poison guard). That guard is only reachable
+  // if `envelopeResponse` — which is async — is AWAITED at the tag site: a missing
+  // await tags the *Promise*, and withEdgeCache checks the awaited Response, which
+  // never matches, leaving the per-response guard inert (masked only by the coarser
+  // module-level generation counter). Pin the awaits in the source so a regression
+  // is caught even where the two guards happen to coincide in the harness. The
+  // handlers + their cache guard live in request-handlers/analytics.mjs (#1763).
+  test("REGRESSION #1760: every analytics handler awaits envelopeResponse at its fallback-tag site", () => {
+    const source = readFileSync(
+      fileURLToPath(
+        new URL("../workers/request-handlers/analytics.mjs", import.meta.url),
+      ),
+      "utf8",
+    );
+    // The bare `const response = envelopeResponse(` form is the bug: the response
+    // is a Promise the WeakSet can never match. Only the awaited form is allowed
+    // anywhere a response is bound for tagging.
+    assert.equal(
+      /const response = envelopeResponse\(/.test(source),
+      false,
+      "an un-awaited `const response = envelopeResponse(...)` cannot be tagged into the D1-fallback WeakSet",
+    );
+    // The four analytics handlers each tag their degraded response. Each
+    // `markD1FallbackResponse(response)` must operate on a real (awaited) Response.
+    assert.equal(
+      (source.match(/\? markD1FallbackResponse\(response\)/g) || []).length,
+      4,
+      "all four analytics handlers tag their fallback response",
+    );
+  });
+
+  // Exercises the WeakSet tag path end-to-end across all four handlers: each is
+  // forced into a D1 fallback and the degraded response must not be cached. Because
+  // the response is now the awaited Response (not a Promise), markD1FallbackResponse
+  // tags the object withEdgeCache actually inspects.
+  test("REGRESSION #1760: a degraded D1 response is refused by the edge cache across all four handlers", async () => {
+    originalCaches = globalThis.caches;
+    const routes = [
+      "https://api.metagraph.sh/api/v1/health/trends",
+      "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
+      "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
+      "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d",
+    ];
+    for (const url of routes) {
+      const cache = mockCaches();
+      cache.install();
+      const queries = [];
+      const env = analyticsEnv(queries, {
+        d1Error: new Error("D1 unavailable"),
+      });
+      const res = await handleRequest(new Request(url), env, ctx);
+      await Promise.resolve();
+      assert.equal(
+        res.status,
+        200,
+        `${url}: degraded fallback still serves 200`,
+      );
+      assert.deepEqual(
+        cache.putKeys,
+        [],
+        `${url}: a D1 fallback response must not poison the edge cache`,
+      );
+      assert.equal(cache.store.size, 0, `${url}: nothing cached`);
+    }
   });
 
   test("transparency: the cached body equals the uncached body for the same handler", async () => {

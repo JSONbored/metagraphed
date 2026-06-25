@@ -9,15 +9,24 @@ Worker's loadStagedEvents bulk-loads it into D1 with INSERT OR IGNORE keyed
 (block_number, event_index) — idempotent, so an overlapping window re-inserts
 harmlessly.
 
-Durable high-water cursor (#1346 audit fix): the scan no longer starts at a
-FIXED `head - window`. The refresh-events workflow reads the last successfully
-staged block from R2 (events/cursor.json) and passes it as EVENTS_CURSOR; we
-scan `compute_from_block(cursor, head, window) .. head`. So a long gap (GitHub's
-scheduler coalescing/dropping runs for longer than the window) is recovered from
-the cursor instead of silently lost, while EVENTS_WINDOW stays as a generous
-overlap floor that keeps a cold/empty cursor safe and the load idempotent. After
-a successful stage the workflow advances the cursor to `events-cursor.json`
-(the max block scanned this run, written below).
+Recent-window scan + cursor-driven gap recovery (ADR 0012): each run scans
+`compute_from_block(cursor, head, window, max_lookback) .. head` — the overlap
+window floor `head - EVENTS_WINDOW + 1` (always re-scanned; idempotent), extended
+back to `cursor + 1` when the scheduler coalesced runs for longer than the window,
+so the gap since the last staged block is recovered (bounded by
+EVENTS_MAX_LOOKBACK). After a successful stage the workflow advances the cursor to
+`events-cursor.json`.
+
+SOURCE MATTERS — completeness depends on whether old blocks are still fetchable:
+  - PUBLIC RPC (the $0 bootstrap): nodes prune state at ~300 blocks AND GitHub
+    coalesces the */5 cron to ~1.5-4.5h, so gaps wider than the prune horizon are
+    gone before a later run reaches them. EVENTS_MAX_LOOKBACK defaults to the prune
+    horizon (no point scanning past it). This tier is best-effort and lossy by
+    construction (measured: ~58% of the block range).
+  - ARCHIVE node (ADR 0012 / #1349 — the durable target): retains every block, so
+    pointing EVENTS_RPC_URL at it and raising EVENTS_MAX_LOOKBACK makes the cursor
+    recovery COMPLETE — any coalescing gap is back-filled in full. The continuous
+    indexer is the eventual low-latency end state.
 
 Run:  uv run --with substrate-interface python scripts/fetch-events.py
 Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
@@ -27,6 +36,7 @@ Env:  EVENTS_RPC_URL        public finney WS endpoint (default below)
                             on a cold start → fall back to the window floor
       ACCOUNT_EVENTS_JSON   events output path (default dist/account-events.json)
       EVENTS_CURSOR_OUT     next-cursor sidecar path (default dist/events-cursor.json)
+      EVENTS_BATCH_BLOCKS   max blocks emitted in one staged batch (default EVENTS_WINDOW)
       BLOCKS_JSON           per-block sidecar path (default dist/blocks.json) — the
                             block-explorer hot window (#1345), staged + loaded into
                             D1 `blocks` the same way the events JSON is
@@ -69,6 +79,11 @@ import sys
 RAO = 1e9
 BLOCK_MS = 12000  # finney ~12s block time; observed_at derived from height
 DEFAULT_RPC = "wss://entrypoint-finney.opentensor.ai:443"
+# Aura PreRuntime digest engine id == b"aura". Subtensor authors blocks with
+# Aura (CONSENSUS_PALLETS = Aura, Grandpa), so the author is the slot's authority
+# (Aura.Authorities[slot % n]). Verified against finney: consecutive blocks
+# round-robin the 20-validator set.
+AURA_ENGINE_ID = "0x61757261"
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 OUT = os.environ.get("ACCOUNT_EVENTS_JSON", "dist/account-events.json")
 CURSOR_OUT = os.environ.get("EVENTS_CURSOR_OUT", "dist/events-cursor.json")
@@ -78,6 +93,17 @@ EXTRINSICS_OUT = os.environ.get("EXTRINSICS_JSON", "dist/extrinsics.json")
 # head, the poller is losing the race against pruning and blocks between the prune
 # horizon and the cursor can no longer be re-fetched. Surfaced as a workflow alert.
 PRUNE_HORIZON = int(os.environ.get("EVENTS_PRUNE_HORIZON", "300"))
+# Upper bound on cursor-driven gap recovery: one run never scans more than this
+# many blocks back from the head. Default = PRUNE_HORIZON — against PUBLIC RPC there
+# is no point reaching past the prune wall (those blocks are gone). Against an
+# ARCHIVE node (ADR 0012) set EVENTS_MAX_LOOKBACK high so a long scheduler gap is
+# recovered in full; the archive still holds every block.
+MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
+# Producer-side batch guard for cursor recovery. The Worker drains one pending R2
+# object at a time, with byte/row caps; keep each recovery poll bounded so archive
+# mode advances through long gaps over multiple safe staged batches instead of
+# producing one pathological object.
+BATCH_BLOCKS = max(1, int(os.environ.get("EVENTS_BATCH_BLOCKS", str(WINDOW))))
 
 
 def _parse_cursor(raw):
@@ -98,21 +124,49 @@ def _parse_cursor(raw):
     return n if n >= 0 else None
 
 
-def compute_from_block(cursor, head, window):
+def compute_scan_range(cursor, head, window, max_lookback=PRUNE_HORIZON, batch_blocks=None):
+    """Inclusive block range to scan for one staged producer batch.
+
+    The start preserves cursor-driven gap recovery. The end is capped by
+    `batch_blocks` (default: `window`) so a long archive-node recovery is emitted
+    as several bounded staged batches. This keeps each pending R2 object inside the
+    Worker's progressive-drain envelope and lets the workflow promote only the
+    highest block actually staged in this run.
+    """
+    start = compute_from_block(cursor, head, window, max_lookback)
+    limit = window if batch_blocks is None else max(1, int(batch_blocks))
+    end = min(head, start + limit - 1)
+    return start, end
+
+
+def compute_from_block(cursor, head, window, max_lookback=PRUNE_HORIZON):
     """First block to scan this run — the testable core of the cursor logic.
 
-    Always re-scan the bounded overlap window: `head - window + 1`, clamped to
-    >= 0. The workflow stages events to R2 and the Worker imports that pending
-    object into D1 asynchronously, so a promoted cursor only proves that a range
-    was staged, not that it was durably loaded. Re-scanning the overlap every run
-    lets a later run recreate a recent staged batch if the single pending R2
-    object was overwritten before the Worker drained it; D1 uses idempotent
-    inserts, so duplicated overlap rows are harmless.
+    Returns the EARLIER of the overlap floor and `cursor + 1`, bounded below by the
+    lookback limit:
 
-    The cursor is still useful for lag/health accounting, but it must not move
-    the start block ahead of the overlap floor.
+      - **Overlap floor** `head - window + 1` is ALWAYS re-scanned. The workflow
+        stages events to R2 and the Worker imports that pending object into D1
+        asynchronously, so a promoted cursor only proves a range was staged, not
+        durably loaded; re-scanning the overlap lets a later run recreate a recent
+        staged batch if the single pending R2 object was overwritten before the
+        Worker drained it (D1 inserts are idempotent, so the duplicate is harmless).
+      - **`cursor + 1`** extends the scan back when the scheduler coalesced/dropped
+        runs for longer than the window, so the GAP since the last staged block is
+        recovered instead of silently lost. (Start never moves *ahead* of the
+        overlap floor — `min` keeps the overlap re-scan intact.)
+      - **`head - max_lookback`** bounds how far back one run reaches. Default is
+        the prune horizon: against PUBLIC RPC there is no point scanning past the
+        prune wall (those blocks are gone). Against an ARCHIVE node (ADR 0012) raise
+        EVENTS_MAX_LOOKBACK so a long coalescing gap is recovered in full.
+
+    Cold cursor (None) → just the overlap floor.
     """
-    return max(0, head - window + 1)
+    floor = max(0, head - window + 1)
+    if cursor is None:
+        return floor
+    earliest = max(0, head - max_lookback)
+    return max(earliest, min(floor, cursor + 1))
 
 
 def _ss58(v):
@@ -173,25 +227,44 @@ EXTRACTORS = {
 }
 
 
-def _block_author(header):
-    """Best-effort block author (ss58) from the header digest, else None.
+def _block_author(s, block_hash, header):
+    """Block author (ss58) decoded from the Aura PreRuntime digest, else None.
 
-    Author attribution requires session-key → ss58 resolution that public RPC
-    doesn't hand us cleanly; we surface a string only if the header already
-    carries one (some runtimes expose an `author`/`block_author` field). Anything
-    else is left null — nullable author is acceptable for the v1 block explorer
-    (#1345); never block the poll on a perfect decode. NEVER raises.
+    Subtensor authors blocks with Aura: the header's PreRuntime digest log
+    (engine b"aura") carries the slot as a u64 LE; the author is
+    Aura.Authorities[slot % n] at that block, ss58-encoded. Best-effort — returns
+    None on any shape drift / missing data; NEVER raises (a perfect decode must
+    never block the poll). Verified against finney (#1345).
     """
     try:
         if not isinstance(header, dict):
             return None
-        for key in ("author", "block_author"):
-            v = header.get(key)
-            if isinstance(v, str) and v.startswith("5"):
-                return v
+        logs = (header.get("digest") or {}).get("logs") or []
+        slot = None
+        for log in logs:
+            v = log.value if hasattr(log, "value") else log
+            pre = v.get("PreRuntime") if isinstance(v, dict) else None
+            if not pre:
+                continue
+            engine, data = pre[0], pre[1]
+            if engine == AURA_ENGINE_ID:
+                hex_data = data[2:] if str(data).startswith("0x") else str(data)
+                slot_data = bytes.fromhex(hex_data)
+                if len(slot_data) != 8:
+                    return None
+                slot = int.from_bytes(slot_data, "little")
+                break
+        if slot is None:
+            return None
+        authorities = s.query("Aura", "Authorities", block_hash=block_hash).value or []
+        if not authorities:
+            return None
+        pubkey = authorities[slot % len(authorities)]
+        pk = pubkey[2:] if isinstance(pubkey, str) and pubkey.startswith("0x") else pubkey
+        author = s.ss58_encode(pk)
+        return author if isinstance(author, str) and author.startswith("5") else None
     except Exception:
         return None
-    return None
 
 
 def block_extras(s, bn, bh, event_count):
@@ -216,7 +289,7 @@ def block_extras(s, bn, bh, event_count):
         "block_number": bn,
         "block_hash": str(bh),
         "parent_hash": str(parent_hash) if parent_hash is not None else None,
-        "author": _block_author(header),
+        "author": _block_author(s, bh, header),
         "extrinsic_count": extrinsic_count,
         "event_count": event_count,
     }
@@ -402,7 +475,7 @@ def main():
             "finalized head timestamp is required for account_events"
         ) from e
     cursor = _parse_cursor(os.environ.get("EVENTS_CURSOR"))
-    start = compute_from_block(cursor, head_bn, WINDOW)
+    start, end = compute_scan_range(cursor, head_bn, WINDOW, MAX_LOOKBACK, BATCH_BLOCKS)
     _emit_lag_alert(head_bn, cursor)
 
     rows = []
@@ -410,7 +483,7 @@ def main():
     extrinsics = []
     scanned = 0
     skipped = 0
-    for bn in range(start, head_bn + 1):
+    for bn in range(start, end + 1):
         observed_at = head_ts - (head_bn - bn) * BLOCK_MS
         try:
             bh = s.get_block_hash(bn)
@@ -477,19 +550,18 @@ def main():
     with open(EXTRINSICS_OUT, "w") as fh:
         json.dump(extrinsics, fh)
 
-    # Next-cursor sidecar: the highest block we covered this run (the finalized
-    # head we scanned through). The workflow stages the events first, then — only
-    # on a successful stage — promotes this to events/cursor.json in R2. Because
-    # staging and D1 loading are asynchronous, compute_from_block still re-scans
-    # the overlap window every run; the cursor is retained for lag/health alerts,
-    # not as proof that staged rows have already been imported into D1.
-    next_cursor = max(head_bn, cursor) if cursor is not None else head_bn
+    # Next-cursor sidecar: the highest block we covered in THIS bounded batch.
+    # The workflow stages the events first, then — only on a successful stage —
+    # promotes this to events/cursor.json in R2. Long archive recovery therefore
+    # advances over multiple bounded pending objects instead of one oversized
+    # object; compute_from_block still re-scans the overlap window once current.
+    next_cursor = max(end, cursor) if cursor is not None else end
     os.makedirs(os.path.dirname(CURSOR_OUT) or ".", exist_ok=True)
     with open(CURSOR_OUT, "w") as fh:
         json.dump({"block_number": next_cursor}, fh)
 
     sys.stderr.write(
-        f"wrote {len(rows)} events from blocks {start}..{head_bn} "
+        f"wrote {len(rows)} events from blocks {start}..{end} (head={head_bn}) "
         f"(cursor_in={cursor}, scanned {scanned}, skipped {skipped}) -> {OUT}; "
         f"wrote {len(blocks)} block rows -> {BLOCKS_OUT}; "
         f"wrote {len(extrinsics)} extrinsic rows -> {EXTRINSICS_OUT}; "

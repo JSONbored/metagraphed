@@ -89,8 +89,9 @@ complete.
 
 ## Best Auto-Review Contributions
 
-Direct PRs should add exactly one candidate file under
-`registry/candidates/community/*.json` and no generated artifacts.
+Direct PRs should add surface(s) to exactly one `registry/subnets/<slug>.json`
+file (its `surfaces[]` array) and no generated artifacts. The per-candidate-file
+lane (`registry/candidates/community/*.json`) is retired and rejected by CI.
 
 Use:
 

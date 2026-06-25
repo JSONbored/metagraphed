@@ -26,6 +26,12 @@ const validate = ajv.compile(schema);
 const providerIds = new Set(
   (await loadProviders()).map((provider) => provider.id),
 );
+// Base-layer chain endpoints are maintainer-curated network infrastructure that
+// live ONLY on the root subnet (netuid 0) and feed the /rpc endpoint lane — they
+// are NOT per-subnet contributor surfaces. Enforce the boundary here (the
+// contributor template already omits these kinds; this closes the hand-crafted
+// PR gap) without touching the probe-derived endpoint pipeline. See issue #1680.
+const BASE_LAYER_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 
 const fileArgs = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
 const files =
@@ -65,13 +71,20 @@ for (const file of files) {
     if (surface.provider && !providerIds.has(surface.provider)) {
       errors.push(
         `${label}: provider "${surface.provider}" is not a registered slug — ` +
-          "run `npm run providers:list`, or `npm run provider:new` to add it.",
+          "run `npm run providers:list`, or pass `--provider-name` to surface:add to debut it.",
       );
     }
     if (surface.authority === "community" && !surface.review?.state) {
       errors.push(
         `${label}: a community surface must carry review.state ` +
           '(e.g. "community-submitted"). Use `npm run surface:add`.',
+      );
+    }
+    if (BASE_LAYER_KINDS.has(surface.kind) && document.netuid !== 0) {
+      errors.push(
+        `${label}: base-layer endpoint kind "${surface.kind}" is only allowed on the ` +
+          "root subnet (netuid 0) — these are maintainer-curated network infrastructure " +
+          "(the /rpc endpoint lane), not per-subnet contributor surfaces.",
       );
     }
   }

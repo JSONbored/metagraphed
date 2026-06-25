@@ -3,7 +3,6 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
-  artifactContentHash,
   buildTimestamp,
   readJson,
   repoRoot,
@@ -110,8 +109,6 @@ async function buildManifest(generatedAt = buildTimestamp()) {
       latest_key: `latest/${relative}`,
       path: `/metagraph/${relative}`,
       sha256: sha256Hex(raw),
-      // Delta-skip hash (generated_at normalized out); integrity stays on sha256.
-      content_sha256: artifactContentHash(relative, raw),
       size_bytes: fileStat.size,
       storage_tier: artifactStorageTierForRelativePath(relative),
     });

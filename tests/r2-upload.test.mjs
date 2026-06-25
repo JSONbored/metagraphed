@@ -33,7 +33,6 @@ test("R2 latest upload uses real sha256 even when content hash matches", () => {
         ? {
             ...artifact,
             sha256: "0".repeat(64),
-            content_sha256: artifact.content_sha256,
           }
         : artifact,
     ),

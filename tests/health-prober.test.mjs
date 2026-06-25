@@ -1752,6 +1752,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
     };
     assert.deepEqual(await rollupDailyUptime({ METAGRAPH_HEALTH_DB: db }), {
       rolled: false,
+      error: "d1 unavailable",
     });
   });
 

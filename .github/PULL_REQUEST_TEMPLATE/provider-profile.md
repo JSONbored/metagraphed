@@ -14,8 +14,9 @@ This PR adds or updates exactly one provider/operator profile review file.
 ## Checklist
 
 - [ ] This PR changes exactly one `registry/providers/*.json` file.
-- [ ] I generated the file with `npm run provider:new` or matched
-      `docs/examples/submissions/direct-provider-profile.json`.
+- [ ] I matched `docs/examples/submissions/direct-provider-profile.json` (or let
+      `npm run surface:add --provider-name … --provider-url …` scaffold the stub
+      alongside a debut surface).
 - [ ] The profile contains only public-safe metadata.
 - [ ] The provider/operator identity is supported by a public website, GitHub
       org/repo, docs page, status page, or contact page.
@@ -32,6 +33,5 @@ any endpoint pool-eligible.
 
 ## Validation
 
-- [ ] `npm run submission:pr -- --changed-files <changed-files.txt>`
 - [ ] `npm run validate:intake`
 - [ ] `npm run scan:public-safety`

@@ -38,6 +38,9 @@ import {
   sanitizeFixtureBody,
   surfaceFixtureReference,
   writeJson,
+  resolveSurfaceCurationLevel,
+  flattenSurfaces,
+  withSurfaceFreshness,
 } from "../scripts/lib.mjs";
 
 describe("buildEconomicsArtifact", () => {
@@ -1517,5 +1520,188 @@ describe("surfaceFixtureReference (#748)", () => {
     assert.equal(surfaceFixtureReference("sn-9-x", "nope"), null);
     assert.equal(surfaceFixtureReference("", fixture), null);
     assert.equal(surfaceFixtureReference(null, fixture), null);
+  });
+});
+
+describe("resolveSurfaceCurationLevel (#1757)", () => {
+  test("an official surface on an adapter-backed subnet inherits adapter-backed", () => {
+    // The subnet ceiling wins for an official surface even when its own
+    // verification is stale (stale doesn't gate the adapter-backed branch).
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: "official",
+        lastVerifiedAt: null,
+        stale: true,
+        subnetCurationLevel: "adapter-backed",
+      }),
+      "adapter-backed",
+    );
+  });
+
+  test("an official, fresh surface on a maintainer-reviewed subnet inherits that tier", () => {
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: "official",
+        lastVerifiedAt: "2026-06-01T00:00:00Z",
+        stale: false,
+        subnetCurationLevel: "maintainer-reviewed",
+      }),
+      "maintainer-reviewed",
+    );
+  });
+
+  test("a stale official surface on a maintainer-reviewed subnet drops below the ceiling", () => {
+    // verifiedFresh is false (stale === true), so the maintainer-reviewed
+    // branch is skipped; with no fresh verification it lands on the authority
+    // floor, candidate-discovered — NOT maintainer-reviewed.
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: "official",
+        lastVerifiedAt: "2020-01-01T00:00:00Z",
+        stale: true,
+        subnetCurationLevel: "maintainer-reviewed",
+      }),
+      "candidate-discovered",
+    );
+  });
+
+  test("a verified, fresh surface with no subnet ceiling resolves to machine-verified", () => {
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: "community",
+        lastVerifiedAt: "2026-06-01T00:00:00Z",
+        stale: false,
+        subnetCurationLevel: null,
+      }),
+      "machine-verified",
+    );
+  });
+
+  test("an unverified surface with an authority resolves to candidate-discovered", () => {
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: "provider-claimed",
+        lastVerifiedAt: null,
+        stale: false,
+        subnetCurationLevel: null,
+      }),
+      "candidate-discovered",
+    );
+  });
+
+  test("no authority at all falls through to the native floor", () => {
+    assert.equal(
+      resolveSurfaceCurationLevel({
+        authority: null,
+        lastVerifiedAt: null,
+        stale: false,
+        subnetCurationLevel: null,
+      }),
+      "native",
+    );
+  });
+});
+
+describe("flattenSurfaces curation_level (#1757)", () => {
+  test("stamps curation_level from authority + subnet ceiling, sorted by netuid then id", () => {
+    const subnets = [
+      {
+        netuid: 2,
+        slug: "sn-2",
+        name: "Two",
+        curation: { level: "maintainer-reviewed", verified_at: null },
+        surfaces: [
+          {
+            id: "sn-2-docs",
+            kind: "docs",
+            url: "https://two.example/docs",
+            authority: "official",
+            verification: { verified_at: "2026-06-01T00:00:00Z" },
+          },
+        ],
+      },
+      {
+        netuid: 1,
+        slug: "sn-1",
+        name: "One",
+        curation: { level: null, verified_at: null },
+        surfaces: [
+          {
+            id: "sn-1-site",
+            kind: "website",
+            url: "https://one.example",
+            authority: null,
+          },
+        ],
+      },
+    ];
+
+    const flat = flattenSurfaces(subnets);
+
+    // sorted by netuid asc.
+    assert.deepEqual(
+      flat.map((s) => s.netuid),
+      [1, 2],
+    );
+    // netuid 1: no authority, no verification → native floor.
+    const one = flat.find((s) => s.netuid === 1);
+    assert.equal(one.curation_level, "native");
+    assert.equal(one.last_verified_at, null);
+    // netuid 2: official + fresh per-surface verification on a
+    // maintainer-reviewed subnet → inherits maintainer-reviewed.
+    const two = flat.find((s) => s.netuid === 2);
+    assert.equal(two.curation_level, "maintainer-reviewed");
+    assert.equal(two.last_verified_at, "2026-06-01T00:00:00Z");
+  });
+});
+
+describe("withSurfaceFreshness curation_level re-resolution (#1757)", () => {
+  const nowMs = Date.parse("2026-06-24T00:00:00Z");
+
+  test("preserves an already-resolved fresh tier and stamps stale=false", () => {
+    const surfaces = [
+      {
+        id: "sn-1-docs",
+        kind: "docs",
+        authority: "official",
+        last_verified_at: "2026-06-20T00:00:00Z",
+        curation_level: "maintainer-reviewed",
+      },
+    ];
+    const [row] = withSurfaceFreshness(surfaces, nowMs);
+    assert.equal(row.stale, false);
+    // still fresh → the subnet-ceiling tier set in flattenSurfaces is kept.
+    assert.equal(row.curation_level, "maintainer-reviewed");
+  });
+
+  test("demotes a stale surface down to candidate-discovered", () => {
+    // openapi TTL is 30 days; last_verified_at is far older than nowMs.
+    const surfaces = [
+      {
+        id: "sn-1-api",
+        kind: "openapi",
+        authority: "official",
+        last_verified_at: "2020-01-01T00:00:00Z",
+        curation_level: "maintainer-reviewed",
+      },
+    ];
+    const [row] = withSurfaceFreshness(surfaces, nowMs);
+    assert.equal(row.stale, true);
+    assert.equal(row.curation_level, "candidate-discovered");
+  });
+
+  test("resolves a fresh surface that arrives without a precomputed curation_level", () => {
+    // No curation_level on the input → the ?? fallback re-resolves it.
+    const surfaces = [
+      {
+        id: "sn-1-site",
+        kind: "website",
+        authority: "community",
+        last_verified_at: "2026-06-20T00:00:00Z",
+      },
+    ];
+    const [row] = withSurfaceFreshness(surfaces, nowMs);
+    assert.equal(row.stale, false);
+    assert.equal(row.curation_level, "machine-verified");
   });
 });

@@ -24,7 +24,11 @@ _fe = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_fe)
 
 compute_from_block = _fe.compute_from_block
+compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
+_block_author = _fe._block_author
+AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
+PRUNE_HORIZON = _fe.PRUNE_HORIZON
 
 
 class ComputeFromBlockTest(unittest.TestCase):
@@ -52,16 +56,44 @@ class ComputeFromBlockTest(unittest.TestCase):
         )
         self.assertLess(self.floor(), cursor + 1)
 
-    def test_stale_cursor_older_than_window_is_capped_at_floor(self):
-        # A cursor far older than the window must NOT trigger a whole-chain rescan;
-        # the floor wins, bounding the scan to `window` blocks.
-        stale = self.HEAD - 5_000  # gap (5000) >> window (250)
+    def test_stale_cursor_recovers_back_to_the_lookback_bound(self):
+        # A cursor far older than the lookback bound: recover the gap, but only as
+        # far back as `head - max_lookback` (default = prune horizon — no point
+        # reaching past the public-RPC prune wall). NOT capped at the window floor
+        # (we DO recover beyond the overlap), and NOT the ancient cursor + 1.
+        stale = self.HEAD - 5_000  # gap (5000) >> lookback (PRUNE_HORIZON)
         got = compute_from_block(stale, self.HEAD, self.WINDOW)
-        self.assertEqual(got, self.floor())
-        # And the scan span never exceeds `window` blocks.
-        self.assertLessEqual(self.HEAD - got + 1, self.WINDOW)
-        # Importantly we did NOT resume from the ancient cursor+1.
-        self.assertNotEqual(got, stale + 1)
+        self.assertEqual(got, self.HEAD - PRUNE_HORIZON)
+        self.assertLess(got, self.floor())  # recovered earlier than the overlap
+        self.assertNotEqual(got, stale + 1)  # but bounded — not the ancient cursor
+
+    def test_archive_lookback_recovers_the_full_gap(self):
+        # Against an archive (no prune wall), a high max_lookback recovers the WHOLE
+        # coalescing gap: the scan resumes from cursor + 1.
+        stale = self.HEAD - 5_000
+        got = compute_from_block(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(got, stale + 1)
+
+    def test_gap_within_lookback_resumes_from_cursor(self):
+        # A gap wider than the window but inside the lookback bound is fully
+        # recovered from cursor + 1 — not just the overlap floor.
+        cursor = self.HEAD - (PRUNE_HORIZON - 20)
+        got = compute_from_block(cursor, self.HEAD, self.WINDOW)
+        self.assertEqual(got, cursor + 1)
+        self.assertLess(got, self.floor())
+
+    def test_scan_range_caps_long_archive_recovery_to_bounded_batch(self):
+        stale = self.HEAD - 5_000
+        start, end = compute_scan_range(stale, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, stale + 1)
+        self.assertEqual(end, start + self.WINDOW - 1)
+        self.assertLess(end, self.HEAD)
+
+    def test_scan_range_promotes_to_head_when_batch_reaches_head(self):
+        cursor = self.HEAD - 20
+        start, end = compute_scan_range(cursor, self.HEAD, self.WINDOW, 10_000_000)
+        self.assertEqual(start, self.floor())
+        self.assertEqual(end, self.HEAD)
 
     def test_cursor_ahead_of_head_reorg_uses_floor(self):
         # Reorg / clock skew left the cursor at or past the head → re-scan the
@@ -92,12 +124,43 @@ class ComputeFromBlockTest(unittest.TestCase):
     def test_never_negative_near_genesis(self):
         # Window larger than the head must clamp the floor to 0, never go negative.
         self.assertEqual(compute_from_block(None, 5, 250), 0)
-        # With a low cursor near genesis we still use the overlap floor because
-        # staging is not proof of D1 persistence.
+        # A low cursor near genesis clamps to 0 too (the floor is already 0 and the
+        # lookback bound never pushes the start negative).
         self.assertEqual(compute_from_block(2, 5, 250), 0)
         self.assertGreaterEqual(compute_from_block(2, 5, 250), 0)
         # A None cursor with head 0 and any window clamps to 0 (not -249).
         self.assertEqual(compute_from_block(None, 0, 250), 0)
+
+
+class BlockAuthorTest(unittest.TestCase):
+    class QueryResult:
+        def __init__(self, value):
+            self.value = value
+
+    class Substrate:
+        def query(self, module, storage, block_hash=None):
+            return BlockAuthorTest.QueryResult(["0x00", "0x01", "0x02"])
+
+        def ss58_encode(self, pubkey):
+            return f"5AUTHORITY{pubkey}"
+
+    def header(self, data):
+        return {"digest": {"logs": [{"PreRuntime": [AURA_ENGINE_ID, data]}]}}
+
+    def test_aura_digest_requires_exactly_eight_slot_bytes(self):
+        substrate = self.Substrate()
+        for data in ("0x", "0x01", "0x01000000000000", "0x010000000000000000"):
+            with self.subTest(data=data):
+                self.assertIsNone(
+                    _block_author(substrate, "0xblock", self.header(data))
+                )
+
+    def test_aura_digest_decodes_eight_byte_slot(self):
+        substrate = self.Substrate()
+        self.assertEqual(
+            _block_author(substrate, "0xblock", self.header("0x0100000000000000")),
+            "5AUTHORITY01",
+        )
 
 
 class ParseCursorTest(unittest.TestCase):

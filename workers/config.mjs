@@ -149,6 +149,14 @@ export const MAX_EVENTS_INGEST_ROWS = 500;
 // script chunks well under these and the PK upsert makes any re-POST idempotent.
 export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
 export const MAX_BACKFILL_INGEST_ROWS = 2_000;
+// Realtime block-explorer ingest (#1345 Option B): the finalized-head streamer also
+// POSTs the per-block `blocks` row + its `extrinsics` rows to POST
+// /api/v1/internal/blocks, authed by the SAME METAGRAPH_EVENTS_INGEST_SECRET over
+// EVENTS_INGEST_TOKEN_HEADER. Body is {blocks:[...], extrinsics:[...]}; idempotent
+// INSERT OR IGNORE on the PKs. Closes the blocks/extrinsics realtime gap (the
+// coalesced CI poller alone missed ~58% of blocks; #1749).
+export const MAX_BLOCKS_INGEST_BODY_BYTES = 262144; // 256 KB
+export const MAX_BLOCKS_INGEST_ROWS = 500; // cap per array (blocks[], extrinsics[])
 // Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
 // single bounded HTTP body above, a staged file is produced by the CI poller and
 // can grow large on a backfill or a stuck window. The byte cap guards against
