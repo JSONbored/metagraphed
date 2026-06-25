@@ -25,6 +25,7 @@ test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "call_function",
     "call_args",
     "success",
+    "fee_tao",
     "observed_at",
   ]);
 });
@@ -71,13 +72,13 @@ test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", 
     observed_at: 1,
   }));
   const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 12 per statement = 3 statements (12, 12, 6)
+  // 30 rows / 10 per statement = 3 statements (10, 10, 10)
   assert.equal(stmts.length, 3);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (9 cols x 11 rows = 99 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 9 * 11);
-  // All nine columns appear in the column list.
+  // Every value is BOUND (10 cols x 10 rows = 100 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 10 * 10);
+  // All ten columns appear in the column list.
   for (const col of EXTRINSIC_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -92,8 +93,8 @@ test("extrinsicInsertStatements binds missing fields as null (never interpolates
   const [stmt] = extrinsicInsertStatements(db, [
     { block_number: 7, extrinsic_index: 2, observed_at: 9 },
   ]);
-  // extrinsic_hash, signer, call_module, call_function, call_args, success default to null.
-  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, 9]);
+  // extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao default to null.
+  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, null, 9]);
 });
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
