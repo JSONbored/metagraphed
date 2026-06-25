@@ -168,7 +168,7 @@ def main():
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") != "SubtensorModule":
+            if e.get("module_id") not in ("SubtensorModule", "Balances"):
                 continue
             ent = _fe.extract(e.get("event_id"), e.get("attributes"))
             if ent is None:

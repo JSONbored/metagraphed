@@ -216,6 +216,17 @@ def _root(a):  # {coldkey} (named) or [coldkey]
     return {"coldkey": _ss58(ck)}
 
 
+def _transfer(a):  # Balances.Transfer: [from, to, amount] or {from, to, amount}
+    if isinstance(a, dict):
+        sender, recipient, amount = a.get("from"), a.get("to"), a.get("amount")
+    else:
+        sender = a[0] if len(a) > 0 else None
+        recipient = a[1] if len(a) > 1 else None
+        amount = a[2] if len(a) > 2 else None
+    # hotkey = sender, coldkey = recipient (pragmatic reuse of the index columns)
+    return {"hotkey": _ss58(sender), "coldkey": _ss58(recipient), "amount_tao": _tao(amount)}
+
+
 EXTRACTORS = {
     "NeuronRegistered": _registered,
     "StakeAdded": _stake,
@@ -224,6 +235,8 @@ EXTRACTORS = {
     "AxonServed": _axon,
     "WeightsSet": _weights,
     "RootClaimed": _root,
+    # Balances pallet — native TAO transfers between accounts (#1814)
+    "Transfer": _transfer,
 }
 
 
@@ -524,7 +537,7 @@ def main():
         for event_index, ev in enumerate(events):
             v = ev.value if isinstance(ev.value, dict) else {}
             e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") != "SubtensorModule":
+            if e.get("module_id") not in ("SubtensorModule", "Balances"):
                 continue
             eid = e.get("event_id")
             ent = extract(eid, e.get("attributes"))
