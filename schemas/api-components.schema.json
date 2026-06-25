@@ -9535,6 +9535,85 @@
         ],
         "type": "object"
       },
+      "SearchIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "document_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "documents": {
+                "items": {
+                  "$ref": "#/components/schemas/SearchIndexDocument"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "documents"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SearchIndexDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_path": {
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "service_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "artifact_path"
+        ],
+        "type": "object"
+      },
       "SourceHealthArtifact": {
         "allOf": [
           {

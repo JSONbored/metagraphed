@@ -973,6 +973,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing. */
+        get: operations["searchIndex"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/source-health": {
         parameters: {
             query?: never;
@@ -3748,6 +3765,25 @@ export interface components {
             subtitle?: string;
             title: string;
             tokens: string[];
+            /** @enum {unknown} */
+            type: "subnet" | "surface" | "provider";
+            url?: string;
+        };
+        SearchIndexArtifact: components["schemas"]["ArtifactBase"] & ({
+            document_count?: number;
+            documents: components["schemas"]["SearchIndexDocument"][];
+        } & {
+            [key: string]: unknown;
+        });
+        SearchIndexDocument: {
+            artifact_path: string;
+            categories?: string[];
+            id: string;
+            netuid?: number;
+            service_kinds?: string[];
+            slug?: string;
+            subtitle?: string;
+            title: string;
             /** @enum {unknown} */
             type: "subnet" | "surface" | "provider";
             url?: string;
@@ -12268,6 +12304,124 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SearchArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchIndex: {
+        parameters: {
+            query?: {
+                q?: string;
+                fields?: string;
+                limit?: number;
+                cursor?: number;
+                sort?: "kind" | "netuid" | "slug" | "title";
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-06.1",
+                     *         "document_count": 1,
+                     *         "documents": [
+                     *           {
+                     *             "artifact_path": "example",
+                     *             "id": "example",
+                     *             "title": "Example Subnet",
+                     *             "type": "subnet"
+                     *           }
+                     *         ],
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SearchIndexArtifact"];
                     };
                 };
             };
