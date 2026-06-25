@@ -3,11 +3,15 @@ import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
+import { ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import type {
   AdapterSnapshot,
   AgentResource,
   AgentResources,
+  AccountEvent,
+  AccountRegistration,
+  AccountSummary,
   Block,
   Extrinsic,
   Candidate,
@@ -877,6 +881,57 @@ export const extrinsicQuery = (hash: string) =>
         ...res,
         data: normalizeExtrinsic(res.data),
       } as ApiResult<Extrinsic | null>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// Account explorer — cross-subnet activity for one hotkey/coldkey ss58. The
+// /api/v1/accounts/{ss58} summary bundles the aggregate, registrations, and a
+// recent-events sample (schema-stable zero for a cold/unknown account, never an
+// error), so one query drives the whole detail page.
+function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
+  const d = isRecord(raw) ? raw : {};
+  const eventKinds = Array.isArray(d.event_kinds)
+    ? d.event_kinds
+        .filter(isRecord)
+        .map((kind) => ({
+          kind: firstString(kind.kind) ?? "",
+          count: firstFiniteNumber(kind.count) ?? 0,
+        }))
+        .filter((kind) => kind.kind)
+    : [];
+  return {
+    ...(d as object),
+    ss58: firstString(d.ss58) ?? ss58,
+    event_count: firstFiniteNumber(d.event_count) ?? 0,
+    subnet_count: firstFiniteNumber(d.subnet_count) ?? 0,
+    first_block: firstFiniteNumber(d.first_block) ?? null,
+    last_block: firstFiniteNumber(d.last_block) ?? null,
+    first_seen_at: firstString(d.first_seen_at) ?? null,
+    last_seen_at: firstString(d.last_seen_at) ?? null,
+    event_kinds: eventKinds,
+    registrations: Array.isArray(d.registrations)
+      ? (d.registrations.filter(isRecord) as AccountRegistration[])
+      : [],
+    recent_events: Array.isArray(d.recent_events)
+      ? (d.recent_events.filter(isRecord) as AccountEvent[])
+      : [],
+  } as AccountSummary;
+}
+
+/** Cross-subnet activity summary for one account by ss58. */
+export const accountQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}`, {
+        signal,
+      });
+      return {
+        data: normalizeAccountSummary(res.data, ss58),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountSummary>;
     },
     staleTime: STALE_SHORT,
   });
