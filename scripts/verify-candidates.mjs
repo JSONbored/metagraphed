@@ -8,6 +8,7 @@ import {
   isUnsafeResolvedUrl,
   redactCredentialedUrl,
   loadCandidates,
+  readCommittedManifestGeneratedAt,
   readJson,
   repoRoot,
   stableStringify,
@@ -56,7 +57,7 @@ if (!dryRun) {
   );
   await writeJson(
     path.join(repoRoot, "registry/verification/promotions.json"),
-    compactVerificationArtifact(artifact),
+    await compactVerificationArtifact(artifact),
   );
 }
 
@@ -114,14 +115,22 @@ async function loadPreviousVerificationIndex() {
   }
 }
 
-function compactVerificationArtifact(artifactValue) {
+async function compactVerificationArtifact(artifactValue) {
   const observedAt =
     process.env.METAGRAPH_VERIFICATION_OBSERVED_AT ||
     artifactValue.verification_finished_at ||
     null;
+  // Preserve the committed promotions.json `generated_at` on a local build so
+  // `npm run verify:candidates` never clobbers it with the 1970 epoch
+  // placeholder; publish runs (METAGRAPH_BUILD_TIMESTAMP/RUN_ID set) get the
+  // real build timestamp via buildTimestamp(). Mirrors the r2-manifest path.
+  const generatedAt =
+    (await readCommittedManifestGeneratedAt(
+      path.join(repoRoot, "registry/verification/promotions.json"),
+    )) ?? buildTimestamp();
   return {
     schema_version: artifactValue.schema_version,
-    generated_at: buildTimestamp(),
+    generated_at: generatedAt,
     observed_at: observedAt,
     verification_started_at: null,
     verification_finished_at: null,
