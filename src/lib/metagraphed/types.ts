@@ -707,6 +707,56 @@ export interface SubnetEconomics {
   [key: string]: unknown;
 }
 
+/**
+ * One subnet row from the composed /api/v1/compare endpoint, which fuses
+ * registry structure + on-chain economics + live probe health per netuid in a
+ * single request. `found` is false (and the dimension blocks null) for netuids
+ * the registry does not know; `health` is null when the subnet has no probed
+ * surfaces. The compare endpoint carries no curation tier.
+ */
+export interface CompareStructure {
+  completeness_score?: number; // 0–100
+  surface_count?: number;
+  operational_interface_count?: number;
+}
+
+export interface CompareEconomics {
+  registration_cost_tao?: number;
+  registration_allowed?: boolean;
+  open_slots?: number;
+  emission_share?: number;
+  alpha_price_tao?: number;
+  validator_count?: number;
+  miner_count?: number;
+  total_stake_tao?: number;
+  miner_readiness?: number;
+  [key: string]: unknown;
+}
+
+export interface CompareHealth {
+  surface_count?: number;
+  ok_count?: number;
+  avg_latency_ms?: number;
+}
+
+export interface CompareSubnet {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  found: boolean;
+  structure?: CompareStructure;
+  economics?: CompareEconomics;
+  health?: CompareHealth;
+}
+
+export interface Compare {
+  dimensions: string[];
+  requested_netuids: number[];
+  subnets: CompareSubnet[];
+  observed_at?: string;
+  source?: string;
+}
+
 /** One daily on-chain snapshot from /subnets/{n}/history. */
 export interface SubnetHistoryPoint {
   snapshot_date: string;

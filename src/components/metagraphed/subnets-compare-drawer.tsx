@@ -1,10 +1,11 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { X, BarChart3, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useCompareSelection } from "@/lib/metagraphed/compare-selection";
-import { subnetProfileQuery, subnetHealthQuery } from "@/lib/metagraphed/queries";
+import { compareQuery } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
+import type { CompareSubnet, HealthState } from "@/lib/metagraphed/types";
 import { HealthPill, CurationChip } from "./chips";
 
 /**
@@ -87,78 +88,103 @@ export function SubnetsCompareDrawer() {
   );
 }
 
-function CompareGrid({ netuids }: { netuids: number[] }) {
-  const profiles = useQueries({
-    queries: netuids.map((n) => ({ ...subnetProfileQuery(n), retry: 0 })),
-  });
-  const healths = useQueries({
-    queries: netuids.map((n) => ({ ...subnetHealthQuery(n), retry: 0 })),
-  });
+/**
+ * Derive a HealthPill state from the compare endpoint's probe counts: it carries
+ * ok_count / surface_count (no degraded breakdown), so all-ok is "ok", all-down
+ * is "down", a partial mix is "warn", and an absent health block stays "unknown".
+ */
+function compareHealthState(health: CompareSubnet["health"]): HealthState {
+  const total = health?.surface_count;
+  const ok = health?.ok_count;
+  if (total == null || ok == null || total === 0) return "unknown";
+  if (ok >= total) return "ok";
+  if (ok === 0) return "down";
+  return "warn";
+}
 
-  const rows: Array<{ label: string; render: (i: number) => React.ReactNode }> = [
+function CompareGrid({ netuids }: { netuids: number[] }) {
+  const { data, isPending, isError, refetch } = useQuery({ ...compareQuery(netuids), retry: 0 });
+
+  const bySubnet = new Map<number, CompareSubnet>();
+  for (const s of data?.data?.subnets ?? []) bySubnet.set(s.netuid, s);
+
+  const rows: Array<{ label: string; render: (netuid: number) => React.ReactNode }> = [
     {
       label: "Name",
-      render: (i) => {
-        const p = profiles[i]?.data?.data;
+      render: (netuid) => {
+        const s = bySubnet.get(netuid);
         return (
           <Link
             to="/subnets/$netuid"
-            params={{ netuid: netuids[i] }}
+            params={{ netuid }}
             className="font-medium text-ink-strong hover:text-accent inline-flex items-center gap-1"
           >
-            {p?.name ?? `Subnet ${netuids[i]}`}
+            {s?.name ?? `Subnet ${netuid}`}
             <ExternalLink className="size-3 opacity-60" />
           </Link>
         );
       },
     },
     {
+      // The compare endpoint composes structure + economics + health, but carries
+      // no curation tier — render the neutral placeholder for this row.
       label: "Curation",
-      render: (i) => <CurationChip level={profiles[i]?.data?.data?.curation_level} />,
+      render: () => <CurationChip level={undefined} />,
     },
     {
       label: "Health",
-      render: (i) => <HealthPill state={profiles[i]?.data?.data?.health} />,
+      render: (netuid) => <HealthPill state={compareHealthState(bySubnet.get(netuid)?.health)} />,
     },
     {
       label: "Participants",
-      render: (i) => (
-        <span className="font-mono tabular-nums text-ink-strong">
-          {formatNumber(profiles[i]?.data?.data?.participants)}
-        </span>
-      ),
+      render: (netuid) => {
+        const e = bySubnet.get(netuid)?.economics;
+        const participants =
+          e?.validator_count != null || e?.miner_count != null
+            ? (e?.validator_count ?? 0) + (e?.miner_count ?? 0)
+            : undefined;
+        return (
+          <span className="font-mono tabular-nums text-ink-strong">
+            {formatNumber(participants)}
+          </span>
+        );
+      },
     },
     {
       label: "Surfaces",
-      render: (i) => (
+      render: (netuid) => (
         <span className="font-mono tabular-nums text-ink-strong">
-          {profiles[i]?.data?.data?.surface_count ?? "—"}
+          {bySubnet.get(netuid)?.structure?.surface_count ?? "—"}
         </span>
       ),
     },
     {
       label: "Endpoints",
-      render: (i) => (
+      render: (netuid) => (
         <span className="font-mono tabular-nums text-ink-strong">
-          {profiles[i]?.data?.data?.endpoint_count ?? "—"}
+          {bySubnet.get(netuid)?.structure?.operational_interface_count ?? "—"}
         </span>
       ),
     },
     {
       label: "Completeness",
-      render: (i) => {
-        const c = profiles[i]?.data?.data?.completeness;
+      render: (netuid) => {
+        const c = bySubnet.get(netuid)?.structure?.completeness_score;
         return (
           <span className="font-mono tabular-nums text-ink-strong">
-            {c != null ? `${Math.round(c * 100)}%` : "—"}
+            {c != null ? `${Math.round(c)}%` : "—"}
           </span>
         );
       },
     },
     {
       label: "Uptime 24h",
-      render: (i) => {
-        const u = healths[i]?.data?.data?.uptime_24h;
+      render: (netuid) => {
+        const h = bySubnet.get(netuid)?.health;
+        const u =
+          h?.surface_count && h.surface_count > 0 && h.ok_count != null
+            ? h.ok_count / h.surface_count
+            : undefined;
         return (
           <span className="font-mono tabular-nums text-ink-strong">
             {u != null ? `${(u * 100).toFixed(2)}%` : "—"}
@@ -167,22 +193,37 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
       },
     },
     {
-      label: "OK / Warn / Down",
-      render: (i) => {
-        const h = healths[i]?.data?.data;
-        if (!h) return <span className="text-ink-muted">—</span>;
+      label: "OK / Down",
+      render: (netuid) => {
+        const h = bySubnet.get(netuid)?.health;
+        if (!h || h.surface_count == null) return <span className="text-ink-muted">—</span>;
+        const ok = h.ok_count ?? 0;
+        const down = Math.max(0, h.surface_count - ok);
         return (
           <span className="font-mono text-[11px] tabular-nums">
-            <span className="text-health-ok">{h.ok ?? 0}</span>
+            <span className="text-health-ok">{ok}</span>
             {" · "}
-            <span className="text-health-warn">{h.warn ?? 0}</span>
-            {" · "}
-            <span className="text-health-down">{h.down ?? 0}</span>
+            <span className="text-health-down">{down}</span>
           </span>
         );
       },
     },
   ];
+
+  if (isError) {
+    return (
+      <div className="border-t border-border px-3 py-6 text-center">
+        <p className="font-mono text-[11px] text-ink-muted">Could not load comparison.</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 inline-flex h-7 items-center rounded-full border border-border bg-paper px-3 font-mono text-[10px] uppercase tracking-widest text-ink-strong hover:border-accent/60 hover:text-accent transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-border max-h-[55vh] overflow-auto">
@@ -208,9 +249,13 @@ function CompareGrid({ netuids }: { netuids: number[] }) {
               <td className="px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-ink-muted bg-paper/30">
                 {row.label}
               </td>
-              {netuids.map((_, i) => (
-                <td key={i} className="px-3 py-2">
-                  {row.render(i)}
+              {netuids.map((n) => (
+                <td key={n} className="px-3 py-2">
+                  {isPending ? (
+                    <span className="inline-block h-3 w-12 animate-pulse rounded bg-border/60" />
+                  ) : (
+                    row.render(n)
+                  )}
                 </td>
               ))}
             </tr>

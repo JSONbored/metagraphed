@@ -9,6 +9,8 @@ import type {
   AgentResources,
   Block,
   Candidate,
+  Compare,
+  CompareSubnet,
   Coverage,
   CurationLevel,
   Endpoint,
@@ -1224,6 +1226,97 @@ export const subnetOverviewQuery = (netuid: number) =>
       return { data: (res.data ?? { netuid }) as SubnetOverview, meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
+  });
+
+function normalizeCompareSubnet(raw: unknown): CompareSubnet | undefined {
+  if (!isPlainRecord(raw)) return undefined;
+  const netuid = optionalNumber(raw.netuid);
+  if (netuid == null) return undefined;
+
+  const structure = isPlainRecord(raw.structure)
+    ? {
+        completeness_score: optionalNumber(raw.structure.completeness_score),
+        surface_count: optionalNumber(raw.structure.surface_count),
+        operational_interface_count: optionalNumber(raw.structure.operational_interface_count),
+      }
+    : undefined;
+
+  const economics = isPlainRecord(raw.economics)
+    ? {
+        ...raw.economics,
+        registration_cost_tao: optionalNumber(raw.economics.registration_cost_tao),
+        registration_allowed: booleanValue(raw.economics.registration_allowed),
+        open_slots: optionalNumber(raw.economics.open_slots),
+        emission_share: optionalNumber(raw.economics.emission_share),
+        alpha_price_tao: optionalNumber(raw.economics.alpha_price_tao),
+        validator_count: optionalNumber(raw.economics.validator_count),
+        miner_count: optionalNumber(raw.economics.miner_count),
+        total_stake_tao: optionalNumber(raw.economics.total_stake_tao),
+        miner_readiness: optionalNumber(raw.economics.miner_readiness),
+      }
+    : undefined;
+
+  const health = isPlainRecord(raw.health)
+    ? {
+        surface_count: optionalNumber(raw.health.surface_count),
+        ok_count: optionalNumber(raw.health.ok_count),
+        avg_latency_ms: optionalNumber(raw.health.avg_latency_ms),
+      }
+    : undefined;
+
+  return {
+    netuid,
+    name: optionalString(raw.name),
+    slug: optionalString(raw.slug),
+    found: raw.found === true,
+    structure,
+    economics,
+    health,
+  };
+}
+
+function normalizeCompare(raw: unknown): Compare {
+  const d = isPlainRecord(raw) ? raw : {};
+  const subnets = Array.isArray(d.subnets)
+    ? d.subnets.flatMap((subnet) => {
+        const normalized = normalizeCompareSubnet(subnet);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    dimensions: Array.isArray(d.dimensions)
+      ? d.dimensions.filter((v): v is string => typeof v === "string")
+      : [],
+    requested_netuids: Array.isArray(d.requested_netuids)
+      ? d.requested_netuids.filter((v): v is number => typeof v === "number")
+      : [],
+    subnets,
+    observed_at: optionalString(d.observed_at),
+    source: optionalString(d.source),
+  };
+}
+
+/**
+ * Composed side-by-side comparison for up to 128 netuids in one request. Fuses
+ * registry structure + on-chain economics + live probe health per subnet, so the
+ * compare drawer can render its grid from a single call instead of fanning out a
+ * profile + health request per selected netuid.
+ */
+export const compareQuery = (netuids: number[]) =>
+  queryOptions({
+    queryKey: k(
+      "compare",
+      [...netuids].sort((a, b) => a - b),
+    ),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/compare", {
+        params: { netuids: netuids.join(",") },
+        signal,
+      });
+      return { data: normalizeCompare(res.data), meta: res.meta, url: res.url };
+    },
+    enabled: netuids.length > 0,
+    staleTime: STALE_SHORT,
   });
 
 // #1124 port: per-window health trends. NB the live API returns each window as an
