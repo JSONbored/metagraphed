@@ -894,6 +894,87 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_netuids",
+          "schema": {
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_coverage_level",
+          "schema": {
+            "enum": [
+              "native-only",
+              "manifested",
+              "probed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_domain",
+          "schema": {
+            "enum": [
+              "agents",
+              "compute",
+              "data",
+              "finance",
+              "inference",
+              "media",
+              "prediction",
+              "privacy",
+              "robotics",
+              "science",
+              "search",
+              "security",
+              "storage",
+              "training"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_subnet_type",
+          "schema": {
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1040,6 +1121,66 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_subnet_type",
+          "schema": {
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_confidence",
+          "schema": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
             "type": "string"
           }
         },
@@ -1193,6 +1334,41 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1276,6 +1452,34 @@
         },
         {
           "name": "provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
           "schema": {
             "type": "string"
           }
@@ -1418,6 +1622,89 @@
         },
         {
           "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
           "schema": {
             "enum": [
               "ok",
@@ -1574,6 +1861,82 @@
           }
         },
         {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1677,6 +2040,55 @@
         },
         {
           "name": "state",
+          "schema": {
+            "enum": [
+              "schema-invalid",
+              "schema-valid",
+              "maintainer-review",
+              "verified",
+              "stale",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_state",
           "schema": {
             "enum": [
               "schema-invalid",
@@ -1795,6 +2207,48 @@
           }
         },
         {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_state",
+          "schema": {
+            "enum": [
+              "schema-invalid",
+              "schema-valid",
+              "maintainer-review",
+              "verified",
+              "stale",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1878,6 +2332,37 @@
         },
         {
           "name": "authority",
+          "schema": {
+            "enum": [
+              "community",
+              "official",
+              "provider-claimed",
+              "registry-observed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_id",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "data-provider",
+              "docs-provider",
+              "infrastructure-provider",
+              "registry",
+              "subnet-team"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_authority",
           "schema": {
             "enum": [
               "community",
@@ -2041,6 +2526,83 @@
           }
         },
         {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2172,6 +2734,52 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_tier",
+          "schema": {
+            "enum": [
+              "agent-ready",
+              "machine-usable",
+              "candidate-review",
+              "needs-evidence",
+              "hard-blocked",
+              "missing-interface"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_agent_status",
+          "schema": {
+            "enum": [
+              "callable",
+              "base-layer",
+              "candidate",
+              "needs-evidence",
+              "blocked"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_blocker_level",
+          "schema": {
+            "enum": [
+              "none",
+              "hard-blocked",
+              "needs-review",
+              "missing-data"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2253,6 +2861,23 @@
         {
           "name": "q",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_registration_allowed",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
             "type": "string"
           }
         },
@@ -2392,6 +3017,24 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_coverage_level",
+          "schema": {
+            "enum": [
+              "native-only",
+              "manifested",
+              "probed"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2471,6 +3114,37 @@
         },
         {
           "name": "curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_coverage_level",
+          "schema": {
+            "enum": [
+              "native-only",
+              "manifested",
+              "probed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_curation_level",
           "schema": {
             "enum": [
               "native",
@@ -2570,6 +3244,32 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2647,6 +3347,25 @@
         },
         {
           "name": "review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_review_state",
           "schema": {
             "type": "string"
           }
@@ -2785,6 +3504,82 @@
         },
         {
           "name": "native_name_quality",
+          "schema": {
+            "enum": [
+              "chain",
+              "placeholder",
+              "empty"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_confidence",
+          "schema": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_identity_promotion_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_native_name_quality",
           "schema": {
             "enum": [
               "chain",
@@ -2939,6 +3734,88 @@
         },
         {
           "name": "recommended_adapter_kind",
+          "schema": {
+            "enum": [
+              "custom-adapter",
+              "data-artifact-adapter",
+              "generic-openapi-or-custom",
+              "stream-adapter"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_candidate_api_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_operational_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_recommended_adapter_kind",
           "schema": {
             "enum": [
               "custom-adapter",
@@ -3167,6 +4044,144 @@
           }
         },
         {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_direct_submission_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_lane",
+          "schema": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_review_state",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_manual_review_required",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3324,6 +4339,84 @@
           "name": "q",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "not_direct_submission_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_lane",
+          "schema": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         {
@@ -3572,6 +4665,174 @@
           }
         },
         {
+          "name": "not_auto_review_candidate",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_evidence_action",
+          "schema": {
+            "enum": [
+              "submit-new-evidence",
+              "verify-existing-evidence",
+              "replace-stale-evidence",
+              "review-existing-evidence",
+              "maintainer-review-existing-evidence",
+              "monitor"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_identity_level",
+          "schema": {
+            "enum": [
+              "none",
+              "directory",
+              "partial",
+              "complete"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_lane",
+          "schema": {
+            "enum": [
+              "direct-submission",
+              "maintainer-review",
+              "adapter-candidate",
+              "monitoring-followup",
+              "baseline-monitoring"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_manual_review_required",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_missing_kinds",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_profile_level",
+          "schema": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_reason_codes",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_submission_route",
+          "schema": {
+            "enum": [
+              "direct-candidate-pr",
+              "adapter-request",
+              "maintainer-review",
+              "status-report"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_target_action",
+          "schema": {
+            "enum": [
+              "submit-new-candidate",
+              "replace-stale-candidate",
+              "verify-existing-candidate",
+              "review-existing-candidate",
+              "adapter-review",
+              "maintainer-review",
+              "monitoring-followup"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_target_type",
+          "schema": {
+            "enum": [
+              "surface-candidate",
+              "adapter-review",
+              "maintainer-review",
+              "monitoring-followup"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3648,6 +4909,25 @@
         },
         {
           "name": "status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_status",
           "schema": {
             "enum": [
               "ok",
@@ -3794,6 +5074,72 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_classification",
+          "schema": {
+            "enum": [
+              "auth-required",
+              "content-mismatch",
+              "dead",
+              "live",
+              "rate-limited",
+              "redirected",
+              "timeout",
+              "transient",
+              "unsupported",
+              "unsafe",
+              "wrong-chain"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3903,6 +5249,65 @@
         },
         {
           "name": "classification",
+          "schema": {
+            "enum": [
+              "auth-required",
+              "content-mismatch",
+              "dead",
+              "live",
+              "rate-limited",
+              "redirected",
+              "timeout",
+              "transient",
+              "unsupported",
+              "unsafe",
+              "wrong-chain"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_classification",
           "schema": {
             "enum": [
               "auth-required",
@@ -5025,6 +6430,89 @@
           }
         },
         {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_layer",
+          "schema": {
+            "enum": [
+              "bittensor-base",
+              "data-provider",
+              "docs-provider",
+              "subnet-app"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_pool_eligible",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_publication_state",
+          "schema": {
+            "enum": [
+              "candidate",
+              "verified",
+              "monitored",
+              "pool-eligible",
+              "disabled",
+              "rejected"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -5109,6 +6597,23 @@
         },
         {
           "name": "kind",
+          "schema": {
+            "enum": [
+              "subtensor-rpc",
+              "subtensor-wss",
+              "archive"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_id",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_kind",
           "schema": {
             "enum": [
               "subtensor-rpc",
@@ -5241,6 +6746,74 @@
         },
         {
           "name": "state",
+          "schema": {
+            "enum": [
+              "active",
+              "resolved"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_kind",
+          "schema": {
+            "enum": [
+              "archive",
+              "dashboard",
+              "data-artifact",
+              "docs",
+              "example",
+              "openapi",
+              "repo-registry",
+              "sdk",
+              "source-repo",
+              "sse",
+              "subnet-api",
+              "subtensor-rpc",
+              "subtensor-wss",
+              "website"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_provider",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "ok",
+              "degraded",
+              "failed",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_severity",
+          "schema": {
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_state",
           "schema": {
             "enum": [
               "active",

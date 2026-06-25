@@ -6630,6 +6630,10 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                not_netuid?: number;
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
+                not_state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -7262,6 +7266,10 @@ export interface operations {
                 agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
                 blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
                 q?: string;
+                not_netuid?: number;
+                not_tier?: "agent-ready" | "machine-usable" | "candidate-review" | "needs-evidence" | "hard-blocked" | "missing-interface";
+                not_agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
+                not_blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -7454,6 +7462,8 @@ export interface operations {
             query?: {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
+                not_netuid?: number;
+                not_coverage_level?: "native-only" | "manifested" | "probed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -7590,6 +7600,8 @@ export interface operations {
                 netuid?: number;
                 registration_allowed?: "true" | "false";
                 q?: string;
+                not_netuid?: number;
+                not_registration_allowed?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -7737,6 +7749,12 @@ export interface operations {
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
                 state?: "active" | "resolved";
+                not_netuid?: number;
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
+                not_severity?: "critical" | "warning" | "info";
+                not_state?: "active" | "resolved";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -7883,6 +7901,8 @@ export interface operations {
             query?: {
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                not_id?: string;
+                not_kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -8056,6 +8076,13 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                not_netuid?: number;
+                not_pool_eligible?: "true" | "false";
+                not_provider?: string;
+                not_publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -8829,6 +8856,9 @@ export interface operations {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_netuid?: number;
+                not_coverage_level?: "native-only" | "manifested" | "probed";
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -8959,6 +8989,8 @@ export interface operations {
             query?: {
                 netuid?: number;
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                not_netuid?: number;
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9086,6 +9118,11 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                not_netuid?: number;
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
+                not_classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9702,6 +9739,12 @@ export interface operations {
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 q?: string;
+                not_netuid?: number;
+                not_subnet_type?: "root" | "application";
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_review_state?: string;
+                not_confidence?: "low" | "medium" | "high";
+                not_profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9953,6 +9996,9 @@ export interface operations {
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
+                not_id?: string;
+                not_kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
+                not_authority?: "community" | "official" | "provider-claimed" | "registry-observed";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10204,6 +10250,12 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                not_netuid?: number;
+                not_pool_eligible?: "true" | "false";
+                not_publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10599,6 +10651,12 @@ export interface operations {
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
+                not_netuid?: number;
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_reason_codes?: string;
+                not_recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10752,6 +10810,11 @@ export interface operations {
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
                 q?: string;
+                not_direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                not_lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                not_missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_netuid?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10915,6 +10978,17 @@ export interface operations {
                 review_state?: string;
                 manual_review_required?: "true" | "false";
                 q?: string;
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_direct_submission_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                not_identity_level?: "none" | "directory" | "partial" | "complete";
+                not_lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                not_missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_netuid?: number;
+                not_profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                not_reason_codes?: string;
+                not_review_state?: string;
+                not_manual_review_required?: "true" | "false";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11123,6 +11197,19 @@ export interface operations {
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 q?: string;
+                not_auto_review_candidate?: "true" | "false";
+                not_evidence_action?: "submit-new-evidence" | "verify-existing-evidence" | "replace-stale-evidence" | "review-existing-evidence" | "maintainer-review-existing-evidence" | "monitor";
+                not_identity_level?: "none" | "directory" | "partial" | "complete";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_lane?: "direct-submission" | "maintainer-review" | "adapter-candidate" | "monitoring-followup" | "baseline-monitoring";
+                not_manual_review_required?: "true" | "false";
+                not_missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_netuid?: number;
+                not_profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                not_reason_codes?: string;
+                not_submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
+                not_target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
+                not_target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11331,6 +11418,9 @@ export interface operations {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                not_netuid?: number;
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_review_state?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11462,6 +11552,12 @@ export interface operations {
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 native_name_quality?: "chain" | "placeholder" | "empty";
+                not_netuid?: number;
+                not_profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                not_confidence?: "low" | "medium" | "high";
+                not_identity_level?: "none" | "directory" | "partial" | "complete";
+                not_identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_native_name_quality?: "chain" | "placeholder" | "empty";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11658,6 +11754,13 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                not_netuid?: number;
+                not_pool_eligible?: "true" | "false";
+                not_provider?: string;
+                not_publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12593,6 +12696,13 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                not_netuid?: number;
+                not_netuids?: string;
+                not_coverage_level?: "native-only" | "manifested" | "probed";
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
+                not_status?: "active" | "inactive";
+                not_subnet_type?: "root" | "application";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13004,6 +13114,9 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
+                not_state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13135,6 +13248,12 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
+                not_pool_eligible?: "true" | "false";
+                not_provider?: string;
+                not_publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13528,6 +13647,8 @@ export interface operations {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                not_curation_level?: "native" | "candidate-discovered" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_review_state?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13734,6 +13855,10 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
+                not_status?: "ok" | "degraded" | "failed" | "unknown";
+                not_classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15361,6 +15486,8 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15845,6 +15972,9 @@ export interface operations {
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                not_netuid?: number;
+                not_kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                not_provider?: string;
                 fields?: string;
                 limit?: number;
                 cursor?: number;

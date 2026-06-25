@@ -2465,6 +2465,12 @@ function listQuery(collection, options = {}) {
     { name: `min_${field}`, schema: { type: "number" } },
     { name: `max_${field}`, schema: { type: "number" } },
   ]);
+  // Each equality filter F → a `not_F` exclusion parameter accepting the same
+  // values: `?not_F=v` returns the complement of `?F=v`.
+  const negationParameters = filterParameters.map((parameter) => ({
+    name: `not_${parameter.name}`,
+    schema: parameter.schema,
+  }));
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
@@ -2472,6 +2478,7 @@ function listQuery(collection, options = {}) {
       ...filterParameters,
       ...searchParameters,
       ...rangeParameters,
+      ...negationParameters,
       {
         name: "fields",
         schema: fieldListSchema,
