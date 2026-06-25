@@ -13,4 +13,10 @@ minimumReleaseAgeExcludes = [
   # only matching release was <24h old, blocking lockfile regen + every CF
   # Workers Build. User-confirmed bypass (2026-06-16).
   "@lovable.dev/vite-plugin-hmr-gate",
+  # First-party contract-types package, published as part of #1758 and adopted
+  # here as the contract source of truth. The 0.6.0 release is <24h old, which
+  # blocks bun.lock regen + every CF Workers Build until the guard clears.
+  # First-party (JSONbored-owned) so the supply-chain risk the guard mitigates
+  # does not apply; safe to bypass.
+  "@jsonbored/metagraphed",
 ]

@@ -1,6 +1,76 @@
-// Local TS types for Metagraphed API responses.
-// Frontend is NOT contract authority — these are pragmatic shapes for what we
-// render. Unknown extra fields are preserved via index signature.
+// Type entrypoint for the Metagraphed API.
+//
+// The wire contract is owned by the backend and published as
+// `@jsonbored/metagraphed` (generated from the OpenAPI document). That package
+// is the single source of truth for response *shapes*; this file re-exports
+// those contract types and layers the UI's own *normalized render* shapes on
+// top. A contract change therefore surfaces here as a compile error rather than
+// drifting silently (issue #1758).
+//
+// Two axes live in this file:
+//   1. Contract types — re-exported from the package under `Api*`-prefixed
+//      aliases (or their canonical enum names). Do NOT hand-edit these; bump the
+//      package to pick up contract changes.
+//   2. UI render shapes — the post-`normalize*` views the data layer
+//      (`queries.ts`) produces for components. These deliberately rename/flatten
+//      wire fields (e.g. the wire `EndpointResource.status` becomes the UI
+//      `Endpoint.health`, `operator` becomes `provider_slug`) and stay local.
+//      Where a render shape mirrors a contract field it is tied back to the
+//      package type via a `satisfies`/assignment assertion so the link is
+//      compile-time enforced.
+
+import type {
+  AdapterSnapshot as ApiAdapterSnapshot,
+  ApiComponents,
+  ApiEnvelope as ContractApiEnvelope,
+  ApiPaths,
+  ApiSchema,
+  CandidateSurface as ApiCandidateSurface,
+  EndpointPool as ApiEndpointPool,
+  EndpointResource as ApiEndpointResource,
+  ErrorEnvelope as ContractErrorEnvelope,
+  EvidenceClaim as ApiEvidenceClaim,
+  HealthSummary as ApiHealthSummary,
+  HealthSurface as ApiHealthSurface,
+  Provider as ApiProvider,
+  SubnetDetail as ApiSubnetDetail,
+  SubnetIndexEntry as ApiSubnetIndexEntry,
+  SuccessEnvelope as ContractSuccessEnvelope,
+  Surface as ApiSurface,
+} from "@jsonbored/metagraphed";
+
+// --- Contract re-exports (the source of truth) --------------------------------
+// Wire response shapes, generated from the backend OpenAPI document. Consume
+// these when you need the exact contract; the UI render shapes below are derived
+// views over them. Renamed to `Api*` so the canonical names stay free for the
+// normalized UI shapes that components already import.
+export type {
+  ApiAdapterSnapshot,
+  ApiCandidateSurface,
+  ApiComponents,
+  ApiEndpointPool,
+  ApiEndpointResource,
+  ApiEvidenceClaim,
+  ApiHealthSummary,
+  ApiHealthSurface,
+  ApiPaths,
+  ApiProvider,
+  ApiSchema,
+  ApiSubnetDetail,
+  ApiSubnetIndexEntry,
+  ApiSurface,
+  ContractApiEnvelope,
+  ContractErrorEnvelope,
+  ContractSuccessEnvelope,
+};
+
+// Canonical enums, sourced from the contract so the UI can never invent a
+// member the backend doesn't emit (the root cause of the `authority` /
+// `HealthStatus` drifts fixed in #1758).
+export type Authority = ApiSchema<"Authority">;
+export type HealthStatus = ApiSchema<"HealthStatus">;
+export type SurfaceKind = ApiSchema<"SurfaceKind">;
+export type Classification = ApiSchema<"Classification">;
 
 export interface ApiPagination {
   collection?: string;
@@ -36,15 +106,22 @@ export interface ApiEnvelope<T> {
   error?: { code?: string; message?: string; [key: string]: unknown };
 }
 
-export type CurationLevel =
-  | "native"
-  | "candidate-discovered"
-  | "machine-verified"
-  | "maintainer-reviewed"
-  | "adapter-backed";
+// Sourced from the contract (was hand-maintained). If the backend adds/renames a
+// curation tier the assertion below stops compiling, forcing this to track it.
+export type CurationLevel = ApiSchema<"CurationLevel">;
 
+// CoverageLevel has no contract counterpart — it is a UI-only rollup label.
 export type CoverageLevel = "native-only" | "manifested" | "probed";
 
+/**
+ * UI presentation health enum (4 states, mapped for the traffic-light UI). The
+ * canonical wire enum is {@link HealthStatus} (`ok | degraded | failed |
+ * unknown`); this collapses it for display via the explicit, tested
+ * `statusToHealth` adapter in `queries.ts` (degraded→warn, failed→down). Keeping
+ * the two enums distinct — rather than the previous silent string-literal drift
+ * — means the presentation mapping is one auditable function instead of ad-hoc
+ * conversions scattered across normalizers (#1758).
+ */
 export type HealthState = "ok" | "warn" | "down" | "unknown";
 
 export interface Subnet {
@@ -153,8 +230,11 @@ export interface Surface {
   schema_url?: string;
   curation_level?: CurationLevel;
   updated_at?: string;
-  // Per-surface payload fields from /surfaces and /subnets/{n}/surfaces.
-  authority?: string; // official | registry-observed | community | native-chain
+  // Per-surface payload fields from /surfaces and /subnets/{n}/surfaces. The
+  // contract {@link Authority} enum is official | provider-claimed | community |
+  // registry-observed; `| string` tolerates legacy/extra values on this render
+  // shape.
+  authority?: Authority | string;
   // Per-surface HUMAN review/governance state (#1676): community-submitted →
   // maintainer-reviewed | rejected. Distinct from probe-derived health/freshness.
   review?: { state?: string; submitted_by?: string; submitted_at?: string };
@@ -332,7 +412,12 @@ export interface Provider {
   docs?: string;
   repo?: string;
   notes?: string;
-  authority?: "official" | "community" | "third-party" | string;
+  // Sourced from the contract {@link Authority} enum (official | provider-claimed
+  // | community | registry-observed). The UI previously invented a nonexistent
+  // "third-party" member and omitted the real provider-claimed / registry-observed
+  // values; tying it to the package fixes that drift (#1758). `| string` is kept
+  // because this is a normalized render shape that tolerates as-yet-unseen values.
+  authority?: Authority | string;
   endpoints_count?: number;
   surfaces_count?: number;
   endpoint_summary?: ProviderEndpointSummary;
@@ -796,3 +881,60 @@ export interface SubnetNeuronHistory {
   point_count?: number;
   points: SubnetNeuronHistoryPoint[];
 }
+
+// --- Compile-time contract enforcement ---------------------------------------
+//
+// These are type-only assertions (zero runtime cost). They tie this file's UI
+// render shapes + enum mappings back to the published contract, so a backend
+// contract change that this file hasn't tracked becomes a `tsc` error instead of
+// a silent drift (the failure mode #1758 set out to close). To see them bite,
+// edit one of the expected unions below and run `npm run typecheck`.
+
+/** Assert two types are mutually assignable (i.e. structurally equal). */
+type Equals<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+/** Assert `Child` is assignable to `Parent` (a subset relation). */
+type Extends<Child, Parent> = Child extends Parent ? true : false;
+
+/** Compiles only when the assertion type resolves to exactly `true`. */
+type Assert<T extends true> = T;
+
+// The UI's CurationLevel must stay byte-for-byte the contract enum — this is a
+// pure re-export, so equality both proves the alias is wired up and breaks if a
+// future package bump changes the member set.
+type _CurationLevelMatchesContract = Assert<Equals<CurationLevel, ApiSchema<"CurationLevel">>>;
+
+// The canonical health enum the presentation mapping (`statusToHealth`) consumes.
+// If the backend adds/renames a HealthStatus member, the adapter's exhaustive
+// test fails AND this anchor confirms the source enum moved.
+type _HealthStatusMatchesContract = Assert<Equals<HealthStatus, ApiSchema<"HealthStatus">>>;
+
+// `Provider.authority` is now sourced from the contract Authority enum (the
+// `third-party` drift fix). Asserting the contract enum is assignable to the
+// field's type proves every real authority value is representable — i.e. we did
+// not narrow away a backend member.
+type _AuthorityRepresentable = Assert<Extends<Authority, NonNullable<Provider["authority"]>>>;
+type _SurfaceAuthorityRepresentable = Assert<Extends<Authority, NonNullable<Surface["authority"]>>>;
+
+// The render shapes read specific wire fields off the contract types; these
+// assertions fail to compile if the backend renames/removes the consumed field,
+// pinning the normalizers in `queries.ts` to the contract.
+//   - normalizeEndpoint maps the wire `status` (HealthStatus) → UI `health`.
+type _EndpointStatusIsHealthStatus = Assert<Equals<ApiEndpointResource["status"], HealthStatus>>;
+//   - normalizeSurface reads the wire `authority` to derive the chip level.
+type _SurfaceWireHasAuthority = Assert<Extends<ApiSurface["authority"], Authority>>;
+//   - the per-surface health probe carries the canonical status enum.
+type _HealthSurfaceStatusIsHealthStatus = Assert<Equals<ApiHealthSurface["status"], HealthStatus>>;
+
+// Reference the assertion aliases so `noUnusedLocals` / eslint don't strip them;
+// `satisfies true` re-checks each at the value level for good measure.
+export const __contractAssertions = {
+  curationLevel: true as _CurationLevelMatchesContract,
+  healthStatus: true as _HealthStatusMatchesContract,
+  authorityRepresentable: true as _AuthorityRepresentable,
+  surfaceAuthorityRepresentable: true as _SurfaceAuthorityRepresentable,
+  endpointStatusIsHealthStatus: true as _EndpointStatusIsHealthStatus,
+  surfaceWireHasAuthority: true as _SurfaceWireHasAuthority,
+  healthSurfaceStatusIsHealthStatus: true as _HealthSurfaceStatusIsHealthStatus,
+} satisfies Record<string, true>;

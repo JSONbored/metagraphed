@@ -5,6 +5,7 @@
     "": {
       "name": "metagraphed-ui",
       "dependencies": {
+        "@jsonbored/metagraphed": "^0.6.0",
         "@radix-ui/react-accordion": "^1.2.12",
         "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/react-hover-card": "^1.1.15",
@@ -206,6 +207,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@jsonbored/metagraphed": ["@jsonbored/metagraphed@0.6.0", "", {}, "sha512-fMpQ+gVxSVFrNryVaQiP0DTytoOuCBhckddyfYNnFBdz2hpHvDBQ8MtD1ewLMn03fy1hNjgjlA1QcMPAsZF8/w=="],
 
     "@lovable.dev/vite-plugin-dev-server-bridge": ["@lovable.dev/vite-plugin-dev-server-bridge@1.0.1", "", { "peerDependencies": { "vite": ">=5.0.0 <9.0.0" } }, "sha512-uajxKJCKIyvgYSsr2UrQeBlXP0X55hsz8ZD7R1SYnYUWX5BvubLl9xOtMl6zSrO+2UWryEoM9uijuYmrF8b+qQ=="],
 

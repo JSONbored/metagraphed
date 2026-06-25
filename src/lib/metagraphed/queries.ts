@@ -25,6 +25,7 @@ import type {
   GlobalIncidents,
   GlobalIncidentSurface,
   HealthState,
+  HealthStatus,
   HealthSummary,
   HealthTrends,
   HealthTrendSurface,
@@ -1586,11 +1587,43 @@ function asString(v: unknown): string | undefined {
   return undefined;
 }
 
-function statusToHealth(v: unknown): HealthState | undefined {
+/**
+ * Presentation adapter for the canonical contract health enum
+ * ({@link HealthStatus} = `ok | degraded | failed | unknown`) → the UI's 4-state
+ * {@link HealthState} (`ok | warn | down | unknown`). This is the single, tested
+ * place the two enums are reconciled (degraded→warn, failed→down): #1758.
+ *
+ * `satisfies` ties the mapping table to the contract enum, so adding a backend
+ * HealthStatus member becomes a compile error here (the unit test additionally
+ * asserts every member is covered).
+ */
+const HEALTH_STATUS_TO_STATE = {
+  ok: "ok",
+  degraded: "warn",
+  failed: "down",
+  unknown: "unknown",
+} satisfies Record<HealthStatus, HealthState>;
+
+export function healthStatusToState(status: HealthStatus): HealthState {
+  return HEALTH_STATUS_TO_STATE[status];
+}
+
+/**
+ * Tolerant variant for raw, untyped API payloads: maps the canonical enum via
+ * {@link healthStatusToState}, plus a few non-contract classification/legacy
+ * strings the older endpoints still emit. Returns undefined for non-strings so
+ * callers can fall through to a default.
+ */
+export function statusToHealth(v: unknown): HealthState | undefined {
   if (typeof v !== "string") return undefined;
-  if (v === "ok" || v === "live") return "ok";
-  if (v === "degraded" || v === "warn" || v === "redirected" || v === "transient") return "warn";
-  if (v === "failed" || v === "down" || v === "unsupported") return "down";
+  if (v === "ok" || v === "degraded" || v === "failed" || v === "unknown") {
+    return healthStatusToState(v);
+  }
+  // Non-canonical strings (live-probe classifications + already-mapped UI states)
+  // some legacy responses still carry.
+  if (v === "live") return "ok";
+  if (v === "warn" || v === "redirected" || v === "transient") return "warn";
+  if (v === "down" || v === "unsupported") return "down";
   return "unknown";
 }
 
