@@ -56,6 +56,9 @@ export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
 // D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
+// A bare, anchored SS58 address — the same shape the route patterns capture,
+// reused by the MCP account tools so REST and MCP validate the address identically.
+export const SS58_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{47,48}$/;
 export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =
@@ -137,6 +140,16 @@ export const ANONYMOUS_CLIENT_KEY = "anonymous";
 // safe failure mode — worst case all such callers share one limit.
 export function resolveClientIp(request) {
   return request.headers.get("cf-connecting-ip") || ANONYMOUS_CLIENT_KEY;
+}
+
+// Clamp a raw limit/offset (a query-param string or a tool-arg number) into
+// [min, max], falling back to `def` when absent/blank/non-finite. Shared by every
+// paginated route + tool so they bound page size identically.
+export function clampInt(raw, def, min, max) {
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
 }
 
 // Read-only, bounded Substrate/Subtensor methods safe to expose through the

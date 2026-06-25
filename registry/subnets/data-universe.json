@@ -237,6 +237,26 @@
       },
       "source_urls": ["https://github.com/macrocosm-os/data-universe"],
       "url": "https://github.com/macrocosm-os/macrocosmos-py"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-subnet-api",
+      "kind": "subnet-api",
+      "name": "Data Universe on-demand data API (Constellation)",
+      "notes": "SN13 Data Universe real-time on-demand data query (X/Reddit/YouTube) via the Macrocosmos Constellation API (Sn13Service.OnDemandData); requires a Bearer API key (macrocosmos SDK Sn13Client/GravityClient).",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dexterity104"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/macrocosmos-py/blob/main/protos/sn13/v1/sn13_validator.proto",
+        "https://github.com/macrocosm-os/macrocosmos-py/blob/main/src/macrocosmos/resources/_client.py",
+        "https://github.com/macrocosm-os/macrocosmos-py"
+      ],
+      "url": "https://constellation.api.cloud.macrocosmos.ai/sn13.v1.Sn13Service/OnDemandData"
     }
   ],
   "website_url": "https://datauniverse.macrocosmos.ai/"
