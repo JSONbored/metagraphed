@@ -443,6 +443,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-reliability",
+      "path": "/metagraph/subnets/{netuid}/reliability.json",
+      "schema_ref": "#/components/schemas/ReliabilityScorecardArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "global-incidents",
       "path": "/metagraph/incidents.json",
       "schema_ref": "#/components/schemas/GlobalIncidentsArtifact",
@@ -4265,6 +4272,30 @@
             "enum": [
               "90d",
               "1y"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/reliability.json",
+      "cache": "short",
+      "description": "Fetch a composite reliability scorecard (0–100) per operational surface for one subnet over a 7d, 30d, or 90d window. Lighter than /uptime: scored rollup only, no per-day series (computed live from the surface_uptime_daily D1 rollup).",
+      "id": "subnet-reliability",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/reliability",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
             ],
             "type": "string"
           }

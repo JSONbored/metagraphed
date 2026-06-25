@@ -570,6 +570,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Composite reliability scorecard (0–100) per operational surface for one subnet (7d/30d/90d window), served live from the surface_uptime_daily D1 rollup (no static file).",
+      "id": "subnet-reliability",
+      "path": "/metagraph/subnets/{netuid}/reliability.json",
+      "schema_ref": "#/components/schemas/ReliabilityScorecardArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live from D1 at /api/v1/incidents (no static file).",
       "id": "global-incidents",
       "path": "/metagraph/incidents.json",
