@@ -1187,6 +1187,35 @@ export const subnetHealthQuery = (netuid: number) =>
     staleTime: STALE_SHORT,
   });
 
+/**
+ * First-party chain-event stream for one subnet (#1345 block explorer):
+ * registrations, stake, weights, axon, delegation, lifecycle, transfers —
+ * newest first, from the account_events tier filtered by netuid. Schema-stable
+ * zero for a cold/unknown subnet.
+ */
+export const subnetEventsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-events", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/events?limit=100`,
+        { signal },
+      );
+      const d = (res.data ?? {}) as Record<string, unknown>;
+      const events = Array.isArray(d.events) ? (d.events.filter(isRecord) as AccountEvent[]) : [];
+      return {
+        data: {
+          netuid,
+          event_count: firstFiniteNumber(d.event_count) ?? events.length,
+          events,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
+  });
+
 function normalizeSurfaceLatencyPercentile(raw: unknown): SurfaceLatencyPercentiles | undefined {
   if (!isPlainRecord(raw) || typeof raw.surface_id !== "string") return undefined;
 

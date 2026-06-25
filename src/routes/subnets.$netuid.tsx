@@ -33,12 +33,15 @@ import {
   subnetEndpointsQuery,
   subnetHealthQuery,
   subnetCandidatesQuery,
+  subnetEventsQuery,
   fixturesIndexQuery,
   lineageQuery,
 } from "@/lib/metagraphed/queries";
-import { isStaleFreshness } from "@/lib/metagraphed/format";
+import { isStaleFreshness, formatNumber } from "@/lib/metagraphed/format";
+import { shortHash } from "@/lib/metagraphed/blocks";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
+  AccountEvent,
   Endpoint,
   Surface,
   Candidate,
@@ -119,6 +122,7 @@ export const Route = createFileRoute("/subnets/$netuid")({
 
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "activity", label: "Activity" },
   { id: "surfaces", label: "Surfaces" },
   { id: "endpoints", label: "Endpoints" },
   { id: "schemas", label: "Schemas" },
@@ -222,6 +226,7 @@ function ProfileShell({ netuid }: { netuid: number }) {
 
         <div className="mt-6 min-w-0 space-y-8">
           {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
+          {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
           {tab === "schemas" ? <SchemasPanel netuid={netuid} /> : null}
@@ -412,6 +417,96 @@ function SurfacesPanel({ netuid }: { netuid: number }) {
         </Suspense>
       </QueryErrorBoundary>
     </SectionAnchor>
+  );
+}
+
+// On-chain activity stream (#1345): first-party SubtensorModule events for this
+// subnet, decoded direct from finney and served from /api/v1/subnets/{netuid}/events.
+function ActivityPanel({ netuid }: { netuid: number }) {
+  return (
+    <SectionAnchor
+      id="activity"
+      title="On-chain activity"
+      subtitle="First-party chain events for this subnet, newest first."
+      info="Registrations, stake, weights, axon, delegation, lifecycle, and transfers decoded directly from finney System.Events for recent finalized blocks (the rolling first-party event window) — not Taostats."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <ActivityTableLoader netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function ActivityTableLoader({ netuid }: { netuid: number }) {
+  const { data } = useSuspenseQuery(subnetEventsQuery(netuid));
+  const events = (data.data.events ?? []) as AccountEvent[];
+  if (events.length === 0) {
+    return (
+      <TableState
+        variant="empty"
+        title="No recent on-chain activity"
+        description="No first-party chain events are indexed for this subnet in the current window — a quiet or newly-added subnet may have none yet. Registrations, stake, weights, delegation, and transfers will appear here as they're decoded."
+        generatedAt={data.meta?.generated_at}
+      />
+    );
+  }
+  return (
+    <div className="overflow-x-auto rounded border border-border bg-card">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-surface/40">
+          <tr>
+            <th className="px-4 py-2.5">Block</th>
+            <th className="px-4 py-2.5">Kind</th>
+            <th className="px-4 py-2.5">Hotkey</th>
+            <th className="px-4 py-2.5 text-right">Amount</th>
+            <th className="px-4 py-2.5 text-right">Observed</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {events.map((ev, i) => (
+            <tr key={`${ev.block_number}-${ev.event_index}-${i}`} className="hover:bg-surface/40">
+              <td className="px-4 py-2.5 font-mono text-[12px]">
+                {ev.block_number != null ? (
+                  <Link
+                    to="/blocks/$ref"
+                    params={{ ref: String(ev.block_number) }}
+                    className="text-ink hover:underline"
+                  >
+                    #{formatNumber(ev.block_number)}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                {ev.event_kind ?? "—"}
+              </td>
+              <td className="px-4 py-2.5 font-mono text-[11px]">
+                {ev.hotkey ? (
+                  <Link
+                    to="/accounts/$ss58"
+                    params={{ ss58: ev.hotkey }}
+                    className="text-ink-muted hover:text-ink hover:underline"
+                  >
+                    {shortHash(ev.hotkey) ?? ev.hotkey}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+              </td>
+              <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                <TimeAgo at={ev.observed_at} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
