@@ -44,10 +44,7 @@ const LIVE_CLASSIFICATIONS = new Set(["live", "redirected"]);
 const nativeChainLiveKeys = new Set();
 try {
   const publicSources = await readJson(
-    path.join(
-      repoRoot,
-      "registry/candidates/generated/public-sources.json",
-    ),
+    path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
   );
   const promotions = await readJson(
     path.join(repoRoot, "registry/verification/promotions.json"),
@@ -127,7 +124,9 @@ for (const file of files) {
       const normalized = normalizePublicUrl(surface.url);
       if (
         normalized &&
-        nativeChainLiveKeys.has(`${surface.kind}|${document.netuid}|${normalized}`)
+        nativeChainLiveKeys.has(
+          `${surface.kind}|${document.netuid}|${normalized}`,
+        )
       ) {
         errors.push(
           `${label}: "${surface.url}" is already machine-promoted from on-chain ` +
