@@ -92,16 +92,22 @@ function collectHosts(value, hosts = new Set()) {
   return hosts;
 }
 
-const allowlistMemo = new WeakMap();
+// In-isolate memo of the derived host allowlist, TTL'd so a newly published
+// provider/subnet host becomes allowed within one interval instead of staying
+// rejected until the isolate recycles. Same {env, value, expiresAt} pattern as
+// the Worker's readHealthMetaKv (#1375); the previous WeakMap had no expiry.
+const ICON_ALLOWLIST_TTL_MS = 300_000; // 5 min
+let allowlistMemo = { env: null, value: null, expiresAt: 0 };
 
-async function iconHostAllowlist(env, options = {}) {
+async function iconHostAllowlist(env, options = {}, now = Date.now()) {
   const configured = String(env?.METAGRAPH_ICON_ALLOWED_HOSTS || "")
     .split(",")
     .map(normalizeHost)
     .filter(Boolean);
   if (!options.readArtifact) return new Set(configured);
-  const cached = allowlistMemo.get(env);
-  if (cached) return cached;
+  if (allowlistMemo.env === env && now < allowlistMemo.expiresAt) {
+    return allowlistMemo.value;
+  }
   const hosts = new Set(configured);
   for (const path of [
     "/metagraph/subnets.json",
@@ -115,7 +121,7 @@ async function iconHostAllowlist(env, options = {}) {
       // Missing artifacts fail closed except for explicit configured hosts.
     }
   }
-  allowlistMemo.set(env, hosts);
+  allowlistMemo = { env, value: hosts, expiresAt: now + ICON_ALLOWLIST_TTL_MS };
   return hosts;
 }
 

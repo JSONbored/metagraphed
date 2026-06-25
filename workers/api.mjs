@@ -264,13 +264,31 @@ function isStaticEdgeCacheEligible(matched, network) {
 // per-subnet `subnet-endpoints` variant is small and intentionally excluded.
 const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 
-function canonicalOverlayCacheSearch(url, matched) {
+// Reduce a request's query string to its canonical, cache-relevant form: keep
+// only the params that actually steer the response body (the collection's
+// filters / search / sort / pagination / projection), single-valued, and emit
+// them in a deterministic order. URLSearchParams.set sorts nothing, but the
+// fixed iteration order below makes `?b=2&a=1` and `?a=1&b=2&unused=x` collapse
+// to the same key — so param order and ignored params stop fragmenting the
+// cache. Routes with no query collection (pure static artifacts) honour no
+// params at all, so their canonical search is the empty string. Shared by both
+// the static edge cache and the live-overlay collection cache.
+function canonicalCacheSearch(url, matched) {
   const config = API_QUERY_COLLECTIONS[matched.queryCollection];
   if (!config) return "";
   const filterNames =
     matched.queryFilterNames?.length > 0
       ? matched.queryFilterNames
       : Object.keys(config.filters);
+  // Range filters expose `min_<field>`/`max_<field>` params; csv/array filters
+  // expose their own param names. All of these change the filtered body, so they
+  // must be part of the cache key (omitting them would collide distinct queries).
+  const rangeNames = (config.range_filters || []).flatMap((field) => [
+    `min_${field}`,
+    `max_${field}`,
+  ]);
+  const csvNames = Object.keys(config.csv_filters || {});
+  const arrayNames = Object.keys(config.array_filters || {});
   const cacheableNames = [
     "q",
     "fields",
@@ -279,6 +297,9 @@ function canonicalOverlayCacheSearch(url, matched) {
     "sort",
     "order",
     ...filterNames,
+    ...csvNames,
+    ...arrayNames,
+    ...rangeNames,
   ];
   const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
   for (const name of cacheableNames) {
@@ -1236,7 +1257,10 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
       };
     }
     const [pruned] = await Promise.all([
-      pruneHealthHistory(env),
+      // .catch-isolated like every sibling prune below — a rejection here (e.g. a
+      // transient D1 error) must degrade to a no-op for this tick, not abort the
+      // whole Promise.all and discard the snapshot write + the other prunes.
+      pruneHealthHistory(env).catch(() => ({ pruned: false })),
       pruneAccountEvents(env).catch(() => ({ pruned: false })),
       // Block-explorer hot window (#1345): prune `blocks` past the 90d retention
       // on the same hourly maintenance cron. No rollup (the block hot window has
@@ -1580,22 +1604,32 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (subnetHistoryMatch) {
-      return handleSubnetHistory(
-        request,
-        env,
-        Number(subnetHistoryMatch[1]),
-        resolved.url,
+      // GROUP BY daily aggregation, deterministic per cron snapshot — edge-cache
+      // on last_run_at like the sibling analytics routes (pathname carries the
+      // netuid, search carries ?window). Cheap single-row lookups stay uncached.
+      return withEdgeCache(request, ctx, env, "subnet-history", () =>
+        handleSubnetHistory(
+          request,
+          env,
+          Number(subnetHistoryMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const metagraphMatch = SUBNET_METAGRAPH_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
     if (metagraphMatch) {
-      return handleSubnetMetagraph(
-        request,
-        env,
-        Number(metagraphMatch[1]),
-        resolved.url,
+      // Full per-subnet metagraph (range read over the neurons tier), deterministic
+      // per cron snapshot — edge-cache on last_run_at; ?validator_permit rides the
+      // search into the key.
+      return withEdgeCache(request, ctx, env, "subnet-metagraph", () =>
+        handleSubnetMetagraph(
+          request,
+          env,
+          Number(metagraphMatch[1]),
+          resolved.url,
+        ),
       );
     }
     const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1611,11 +1645,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       resolved.url.pathname,
     );
     if (validatorsMatch) {
-      return handleSubnetValidators(
-        request,
-        env,
-        Number(validatorsMatch[1]),
-        resolved.url,
+      // Validator slice of the metagraph (filtered range read), deterministic per
+      // cron snapshot — edge-cache on last_run_at like the sibling routes.
+      return withEdgeCache(request, ctx, env, "subnet-validators", () =>
+        handleSubnetValidators(
+          request,
+          env,
+          Number(validatorsMatch[1]),
+          resolved.url,
+        ),
       );
     }
     // Account entity routes (#1347): computed live from the account_events +
@@ -2256,7 +2294,7 @@ async function handleApiRequest(
     ? new Request(
         `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}${url.pathname}${url.search}`,
+        )}${url.pathname}${canonicalCacheSearch(url, matched)}`,
       )
     : null;
   // Live-overlay collection cache (the large /api/v1/endpoints index). Excluded
@@ -2280,7 +2318,7 @@ async function handleApiRequest(
       overlayCacheKey = new Request(
         `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
           contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalOverlayCacheSearch(url, matched)}`,
+        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalCacheSearch(url, matched)}`,
       );
       const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
@@ -2949,6 +2987,16 @@ async function handleHealthIncidents(request, env, netuid, url, ctx = {}) {
 // per-subnet route but with no netuid filter, grouped by (netuid, surface_id)
 // and capped. Powers a public status page's "recent incidents" feed. Returns a
 // schema-stable empty payload when D1 is unbound/cold.
+//
+// APPROXIMATE NEAR THE SOURCE-ROW CAP: the inner `recent_checks` CTE truncates
+// to the newest MAX_GLOBAL_INCIDENT_SOURCE_ROWS checks before the gap-island
+// pass runs. An incident whose probe samples straddle that boundary is seen only
+// partially, so its started_at / failed_samples can be clipped (or the incident
+// dropped entirely if too few of its samples survive the LIMIT). This is a
+// best-effort recent-incidents feed for a status page, not an exact audit ledger
+// — the per-subnet /incidents route (no global cap) is the authoritative source
+// for a single subnet. Widening this to an exact bound would mean aggregating
+// from surface_uptime_daily (out of scope here).
 async function handleGlobalIncidents(request, env, url) {
   const { label, days, error } = analyticsWindow(url);
   if (error) {
@@ -2958,6 +3006,9 @@ async function handleGlobalIncidents(request, env, url) {
   const incidentRows = await d1All(
     env,
     `WITH recent_checks AS (
+       -- Source-row cap (LIMIT ?): bounds the gap-island scan, but an incident
+       -- straddling this newest-N boundary is only partially counted (see the
+       -- handler doc-note above — this feed is approximate near the cap).
        SELECT netuid, COALESCE(surface_key, surface_id) AS surface_key, surface_id, checked_at, ok
        FROM surface_checks
        WHERE checked_at >= ?
@@ -4036,7 +4087,7 @@ async function verifyMeta(env) {
 // confirm "callable right now" before wiring.
 async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey = resolveClientIp(request);
+    const clientKey = `verify:${resolveClientIp(request)}`;
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -4145,7 +4196,7 @@ async function handleRpcProxyRequest(request, env, url, ctx = {}) {
   // (local dev / not yet provisioned) so tests and local runs are unaffected;
   // enforced on Cloudflare where the binding is bound.
   if (env.RPC_RATE_LIMITER?.limit) {
-    const clientKey = resolveClientIp(request);
+    const clientKey = `rpc:${resolveClientIp(request)}`;
     const { success } = await env.RPC_RATE_LIMITER.limit({ key: clientKey });
     if (!success) {
       return errorResponse(
@@ -4575,13 +4626,16 @@ function setRpcRateLimitHeaders(headers) {
 // the edge can cache — every call hits the worker and fans out into one or more
 // artifact reads + query execution. That makes it at least as expensive as the
 // RPC proxy, so it shares the SAME strict limiter binding, bucket strategy
-// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. Skipped
-// only when the binding is absent (local dev / CI), matching the RPC/MCP paths.
-// Returns a 429 Response when the caller is over the limit, else null.
+// (cf-connecting-ip only; see resolveClientIp), policy, and 429 shape. The key is
+// namespaced (`gql:`) so each surface draws its own independent 100/60s budget —
+// matching the per-surface x-ratelimit headers each one advertises, instead of a
+// caller's RPC traffic silently consuming the GraphQL budget (or vice versa).
+// Skipped only when the binding is absent (local dev / CI), matching the RPC/MCP
+// paths. Returns a 429 Response when the caller is over the limit, else null.
 async function graphqlRateLimited(request, env) {
   if (!env.RPC_RATE_LIMITER?.limit) return null;
   const { success } = await env.RPC_RATE_LIMITER.limit({
-    key: resolveClientIp(request),
+    key: `gql:${resolveClientIp(request)}`,
   });
   if (success) return null;
   return errorResponse(
