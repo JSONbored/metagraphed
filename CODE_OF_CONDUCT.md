@@ -22,7 +22,10 @@ Examples of unacceptable behavior include:
 - Trolling, insulting or derogatory comments, and personal or political attacks
 - Public or private harassment
 - Publishing others' private information, such as a physical or email address, without their explicit permission
+- Plagiarism — copying another contributor's pull request, diff, or work and submitting it as your own (including duplicated or lightly reworded copies filed under a different account), and attempts to game contribution scoring or farm Gittensor rewards through copied submissions
 - Other conduct which could reasonably be considered inappropriate in a professional setting
+
+> **Plagiarism and reward-farming are zero-tolerance.** Deliberate attempts to cheat, copy from other contributors, or farm Gittensor rewards through stolen or duplicated submissions are treated as an immediate, serious violation — offenders are **permanently blocked from contributing**, and the block applies across all of our repositories (`JSONbored/gittensory`, `JSONbored/metagraphed`, `JSONbored/awesome-claude`).
 
 ## Enforcement Responsibilities
 

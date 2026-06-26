@@ -12,6 +12,7 @@ import { JSON_CONTENT_TYPE } from "./config.mjs";
 // CORS-open response. Keep in sync as new client-facing headers are added.
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
+  "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
   // rate-limit family: detect throttling, honour the back-off
   "retry-after",
   "x-ratelimit-limit",
@@ -54,6 +55,11 @@ export function apiHeaders(cacheProfile) {
   headers.set("x-metagraph-cache-profile", cacheProfile);
   headers.set("vary", "Accept-Encoding");
   return headers;
+}
+
+// Join link entries into an RFC 8288 header value: `<uri>; rel="…", …`.
+export function linkHeader(links) {
+  return links.map(({ uri, rel }) => `<${uri}>; rel="${rel}"`).join(", ");
 }
 
 export function errorResponse(

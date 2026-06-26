@@ -283,6 +283,18 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported query param (#1850)"
   assert.equal(res.status, 400);
 });
 
+test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "direction");
+});
+
 test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers`),

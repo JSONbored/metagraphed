@@ -80,6 +80,7 @@ jobs:
         run: |
           set +e
           pending=0
+          max_staged_bytes=4194304
           for key in \
             events/account-events-pending.json \
             events/blocks-pending.json \
@@ -90,8 +91,12 @@ jobs:
             status=$?
             if [ "$status" -eq 0 ]; then
               size=$(wc -c < "${staged_file}" | tr -d ' ')
-              echo "${key} is still pending (${size} bytes); skip this producer tick so it is not overwritten before it is drained or manually remediated"
-              pending=1
+              if [ "$size" -gt "$max_staged_bytes" ]; then
+                echo "${key} is still pending (${size} bytes) but exceeds the Worker drain cap (${max_staged_bytes} bytes); allow this producer tick to replace it"
+              else
+                echo "${key} is still pending (${size} bytes); skip this producer tick so it is not overwritten before it is drained or manually remediated"
+                pending=1
+              fi
             fi
           done
           echo "skip=${pending}" >> "$GITHUB_OUTPUT"
