@@ -85,7 +85,10 @@ import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
 } from "../scripts/verification-quality.mjs";
-import { summarizeGithubMetadata } from "../scripts/snapshot-adapters.mjs";
+import {
+  summarizeGithubMetadata,
+  summarizeGittensorMaster,
+} from "../scripts/snapshot-adapters.mjs";
 
 describe("script utility contracts", () => {
   test("uses public-safe fixture capture parse failure reasons", () => {
@@ -2285,6 +2288,91 @@ describe("adapter github metadata carry-forward", () => {
     assert.equal(summary.captured_count, 0);
     assert.equal(summary.carried_forward_count, 0);
     assert.equal(summary.repositories.length, 0);
+  });
+});
+
+describe("adapter gittensor master summary", () => {
+  const url =
+    "https://raw.githubusercontent.com/entrius/gittensor/main/master_repositories.json";
+
+  test("returns the failed shape when the body is missing or not an object", () => {
+    const summary = summarizeGittensorMaster(url, {
+      ok: false,
+      status: "rate-limited",
+      error: "HTTP 429",
+      status_code: 429,
+      captured_at: "2026-06-10T00:00:00.000Z",
+    });
+    assert.equal(summary.status, "rate-limited");
+    assert.equal(summary.error, "HTTP 429");
+    assert.equal(summary.status_code, 429);
+    assert.equal(summary.repository_count, undefined);
+  });
+
+  test("aggregates shares and ranks the top emission repositories", () => {
+    const summary = summarizeGittensorMaster(url, {
+      ok: true,
+      status_code: 200,
+      content_type: "application/json",
+      latency_ms: 12,
+      captured_at: "2026-06-10T00:00:00.000Z",
+      body: {
+        "org/low": {
+          emission_share: 0.2,
+          maintainer_cut: 0,
+          issue_discovery_share: 0,
+        },
+        "org/high": {
+          emission_share: 0.5,
+          maintainer_cut: 0.1,
+          issue_discovery_share: 0.05,
+        },
+        "org/zero": {
+          emission_share: 0,
+          maintainer_cut: 0.25,
+          issue_discovery_share: 0,
+        },
+      },
+    });
+    assert.equal(summary.status, "captured");
+    assert.equal(summary.repository_count, 3);
+    assert.equal(summary.total_emission_share, 0.7);
+    assert.equal(summary.zero_emission_count, 1);
+    assert.equal(summary.maintainer_cut_repo_count, 2);
+    assert.equal(summary.max_maintainer_cut, 0.25);
+    assert.equal(summary.issue_discovery_enabled_count, 1);
+    assert.deepEqual(
+      summary.top_emission_repositories.map((repo) => repo.repository),
+      ["org/high", "org/low", "org/zero"],
+    );
+  });
+
+  test("treats a JSON null repo value as zero shares without throwing", () => {
+    const summary = summarizeGittensorMaster(url, {
+      ok: true,
+      status_code: 200,
+      captured_at: "2026-06-10T00:00:00.000Z",
+      body: {
+        "org/real": {
+          emission_share: 0.4,
+          maintainer_cut: 0.1,
+          issue_discovery_share: 0.02,
+        },
+        "org/null": null,
+      },
+    });
+    assert.equal(summary.repository_count, 2);
+    assert.equal(summary.total_emission_share, 0.4);
+    assert.equal(summary.zero_emission_count, 1);
+    const nulled = summary.top_emission_repositories.find(
+      (repo) => repo.repository === "org/null",
+    );
+    assert.deepEqual(nulled, {
+      repository: "org/null",
+      emission_share: 0,
+      maintainer_cut: 0,
+      issue_discovery_share: 0,
+    });
   });
 });
 
