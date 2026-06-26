@@ -269,7 +269,7 @@ def _hotkey_swapped(a):  # HotkeySwapped: {coldkey, old_hotkey, new_hotkey} or [
     return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
 
 
-def _coldkey_swap(a):  # ColdkeySwapScheduled: {old_coldkey, new_coldkey, ...} or [old_coldkey, new_coldkey, ...]
+def _coldkey_swap(a):  # ColdkeySwapped: {old_coldkey, new_coldkey} or [old_coldkey, new_coldkey]
     if isinstance(a, dict):
         old_ck, new_ck = a.get("old_coldkey"), a.get("new_coldkey")
     else:
@@ -296,7 +296,7 @@ EXTRACTORS = {
     "TakeIncreased": _take_changed,
     # Key rotation (#1816)
     "HotkeySwapped": _hotkey_swapped,
-    "ColdkeySwapScheduled": _coldkey_swap,
+    "ColdkeySwapped": _coldkey_swap,
     # Balances pallet — native TAO transfers between accounts (#1814)
     "Transfer": _transfer,
 }

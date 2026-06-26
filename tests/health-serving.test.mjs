@@ -1183,6 +1183,43 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
   });
 
+  test("D1 fallback folds unrecognized surface status into unknown in global status_counts", async () => {
+    const now = 1_700_000_600_000;
+    const db = {
+      prepare: () => ({
+        bind: () => ({
+          all: async () => ({
+            results: [
+              {
+                surface_id: "7:subnet-api:x",
+                surface_key: "srf-d1fallback0000",
+                netuid: 7,
+                kind: "subnet-api",
+                provider: "x",
+                url: "https://x",
+                status: "throttled",
+                classification: "rate-limited",
+                latency_ms: null,
+                status_code: 429,
+                last_checked: 1_700_000_000_000,
+                last_ok: null,
+              },
+            ],
+          }),
+        }),
+      }),
+    };
+    const live = await resolveLiveHealth({
+      readHealthKv: async () => null,
+      env: {},
+      db,
+      now: () => now,
+    });
+    assert.equal(live.summary.status_counts.unknown, 1);
+    assert.equal(live.summary.status_counts.throttled, undefined);
+    assert.equal(live.summary.surface_count, 1);
+  });
+
   test("does not return stale D1-only surface_status rows", async () => {
     const db = {
       prepare: () => ({
