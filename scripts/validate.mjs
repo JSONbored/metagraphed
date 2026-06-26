@@ -27,6 +27,7 @@ import {
   repoRoot,
   slugify,
   stableStringify,
+  subnetSurfaceKey,
 } from "./lib.mjs";
 import {
   R2_STAGING_RELATIVE_ROOT,
@@ -226,10 +227,7 @@ function validateSubnet(
       `${surfaceKey}: duplicate global surface id`,
     );
     surfaceIds.add(surface.id);
-    const locator = registrySurfaceKey({
-      ...surface,
-      netuid: subnet.netuid,
-    });
+    const locator = subnetSurfaceKey(surface, subnet.netuid);
     assert(
       !surfaceLocators.has(locator),
       `${surfaceKey}: duplicate public surface locator ${locator}`,
@@ -284,10 +282,7 @@ function validateSubnet(
       const verificationEvidence =
         registryVerificationEvidence.byCandidateId.get(surface.id) ||
         registryVerificationEvidence.byLocator.get(
-          registrySurfaceKey({
-            ...surface,
-            netuid: subnet.netuid,
-          }),
+          subnetSurfaceKey(surface, subnet.netuid),
         );
       assert(
         verificationEvidence !== undefined,
