@@ -16,6 +16,10 @@ import type {
   AccountRegistration,
   AccountSummary,
   Block,
+  ChainActivity,
+  ChainCalls,
+  ChainFees,
+  ChainSigners,
   Extrinsic,
   ExtrinsicCallArg,
   Transfer,
@@ -1359,6 +1363,113 @@ export const accountTransfersQuery = (ss58: string, params?: QueryParams) =>
         return t ? [t] : [];
       });
       return { ...res, data } as ApiResult<Transfer[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+// ---- Chain analytics dashboard (#266, epic #1986) -------------------------
+// Display-only views over the live /api/v1/chain/* aggregates. Each guards only
+// the array containers + the window stamp; the row shapes are our own backend's.
+
+type ChainWindow = "7d" | "30d";
+
+export const chainActivityQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-activity", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/activity", {
+        params: { window },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          day_count: firstFiniteNumber(d.day_count) ?? 0,
+          days: Array.isArray(d.days) ? (d.days as ChainActivity["days"]) : [],
+        } as ChainActivity,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainActivity>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+export const chainCallsQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-calls", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/calls", {
+        params: { window, limit: 12 },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          group_by: firstString(d.group_by) ?? "module",
+          observed_at: firstString(d.observed_at) ?? null,
+          total_extrinsics: firstFiniteNumber(d.total_extrinsics) ?? 0,
+          call_count: firstFiniteNumber(d.call_count) ?? 0,
+          calls: Array.isArray(d.calls) ? (d.calls as ChainCalls["calls"]) : [],
+        } as ChainCalls,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainCalls>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+export const chainSignersQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-signers", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/signers", {
+        params: { window, limit: 20 },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          signer_count: firstFiniteNumber(d.signer_count) ?? 0,
+          signers: Array.isArray(d.signers) ? (d.signers as ChainSigners["signers"]) : [],
+        } as ChainSigners,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainSigners>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+export const chainFeesQuery = (window: ChainWindow = "7d") =>
+  queryOptions({
+    queryKey: k("chain-fees", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>("/api/v1/chain/fees", {
+        params: { window, limit: 12 },
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          schema_version: 1,
+          window,
+          observed_at: firstString(d.observed_at) ?? null,
+          day_count: firstFiniteNumber(d.day_count) ?? 0,
+          daily: Array.isArray(d.daily) ? (d.daily as ChainFees["daily"]) : [],
+          top_fee_payers: Array.isArray(d.top_fee_payers)
+            ? (d.top_fee_payers as ChainFees["top_fee_payers"])
+            : [],
+        } as ChainFees,
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainFees>;
     },
     staleTime: STALE_SHORT,
   });

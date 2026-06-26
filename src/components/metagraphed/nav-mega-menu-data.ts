@@ -60,6 +60,11 @@ export const MEGA_PANELS: MegaPanel[] = [
     blurb: "Recent blocks indexed directly from the chain.",
     apiPath: "/api/v1/blocks",
     browse: [
+      {
+        to: "/explorer",
+        label: "Chain explorer",
+        hint: "Network at a glance — activity, fees, top accounts",
+      },
       { to: "/blocks", label: "Recent blocks", hint: "Newest first" },
       { to: "/blocks", search: { limit: "100" }, label: "100 per page" },
       { to: "/extrinsics", label: "Extrinsics", hint: "Transactions, newest first" },

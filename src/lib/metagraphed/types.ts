@@ -1082,3 +1082,73 @@ export const __contractAssertions = {
   surfaceWireHasAuthority: true as _SurfaceWireHasAuthority,
   healthSurfaceStatusIsHealthStatus: true as _HealthSurfaceStatusIsHealthStatus,
 } satisfies Record<string, true>;
+
+// ---- Chain analytics dashboard (epic #1986) -------------------------------
+
+export interface ChainActivityDay {
+  day: string;
+  block_count: number;
+  extrinsic_count: number;
+  event_count: number;
+  successful_extrinsics: number;
+  success_rate: number | null;
+  unique_signers: number;
+}
+export interface ChainActivity {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  days: ChainActivityDay[];
+}
+export interface ChainCallEntry {
+  call_module: string;
+  call_function: string | null;
+  count: number;
+  share: number | null;
+}
+export interface ChainCalls {
+  schema_version: number;
+  window: string;
+  group_by: string;
+  observed_at: string | null;
+  total_extrinsics: number;
+  call_count: number;
+  calls: ChainCallEntry[];
+}
+export interface ChainSignerEntry {
+  signer: string;
+  tx_count: number;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  last_tx_block: number | null;
+}
+export interface ChainSigners {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  signer_count: number;
+  signers: ChainSignerEntry[];
+}
+export interface ChainFeeDay {
+  day: string;
+  extrinsic_count: number;
+  total_fee_tao: number;
+  avg_fee_tao: number | null;
+  total_tip_tao: number;
+  avg_tip_tao: number | null;
+}
+export interface ChainFeePayer {
+  signer: string;
+  total_fee_tao: number;
+  total_tip_tao: number;
+  extrinsic_count: number;
+}
+export interface ChainFees {
+  schema_version: number;
+  window: string;
+  observed_at: string | null;
+  day_count: number;
+  daily: ChainFeeDay[];
+  top_fee_payers: ChainFeePayer[];
+}
