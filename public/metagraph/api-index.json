@@ -163,6 +163,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "search-index",
+      "path": "/metagraph/search-index.json",
+      "schema_ref": "#/components/schemas/SearchIndexArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
@@ -5570,6 +5577,68 @@
       "id": "search",
       "method": "GET",
       "path": "/api/v1/search",
+      "public": true,
+      "query_collection": "documents",
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "kind",
+              "netuid",
+              "slug",
+              "title"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/search-index.json",
+      "cache": "standard",
+      "description": "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
+      "id": "search-index",
+      "method": "GET",
+      "path": "/api/v1/search-index",
       "public": true,
       "query_collection": "documents",
       "query_filter_names": [],

@@ -1675,20 +1675,33 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
-  test("forces observed-at index hint for standalone time filters", async () => {
+  test("keeps broad standalone time filters planner-selected", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
       req("/api/v1/extrinsics"),
       env,
-      url("/api/v1/extrinsics?from=1750000000000"),
+      url("/api/v1/extrinsics?from=0"),
     );
     const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
     assert.ok(sql);
     assert.ok(
-      /FROM extrinsics INDEXED BY idx_extrinsics_observed_order/.test(sql),
-      "standalone observed_at filters must use the covering timestamp index",
+      !/INDEXED BY/.test(sql),
+      "broad filters must not force a sort-heavy timestamp index",
     );
     assert.ok(/observed_at >= \?/.test(sql));
+  });
+
+  test("ignores malformed time filters instead of broadening them", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=abc"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/INDEXED BY/.test(sql));
+    assert.ok(!/observed_at >= \?/.test(sql));
   });
 
   test("short-circuits impossible future time filters before D1", async () => {
