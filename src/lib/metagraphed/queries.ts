@@ -80,6 +80,7 @@ const MAX_HISTORY_POINTS = 400;
 const MAX_UPTIME_SURFACES = 500;
 const MAX_UPTIME_DAYS = 366;
 const MAX_HEALTH_TREND_SURFACES = 500;
+const MAX_ACCOUNT_EVENTS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -890,6 +891,46 @@ export const extrinsicQuery = (hash: string) =>
 // /api/v1/accounts/{ss58} summary bundles the aggregate, registrations, and a
 // recent-events sample (schema-stable zero for a cold/unknown account, never an
 // error), so one query drives the whole detail page.
+
+function accountEventString(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim() ? value : undefined;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return undefined;
+}
+
+export function normalizeAccountEvent(raw: unknown): AccountEvent | null {
+  if (!isRecord(raw)) return null;
+
+  const blockNumber = coerceFiniteNumber(raw.block_number);
+  const eventIndex = coerceFiniteNumber(raw.event_index);
+  const eventKind = accountEventString(raw.event_kind);
+
+  if (blockNumber == null || eventIndex == null || !eventKind) return null;
+
+  return {
+    ...raw,
+    block_number: blockNumber,
+    event_index: eventIndex,
+    event_kind: eventKind,
+    hotkey: accountEventString(raw.hotkey) ?? null,
+    coldkey: accountEventString(raw.coldkey) ?? null,
+    netuid: coerceFiniteNumber(raw.netuid) ?? null,
+    uid: coerceFiniteNumber(raw.uid) ?? null,
+    amount_tao: coerceFiniteNumber(raw.amount_tao) ?? null,
+    observed_at: accountEventString(raw.observed_at),
+  };
+}
+
+function normalizeAccountEvents(raw: unknown, limit = MAX_ACCOUNT_EVENTS): AccountEvent[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .flatMap((event) => {
+      const normalized = normalizeAccountEvent(event);
+      return normalized ? [normalized] : [];
+    })
+    .slice(0, limit);
+}
+
 function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
   const d = isRecord(raw) ? raw : {};
   const eventKinds = Array.isArray(d.event_kinds)
@@ -914,9 +955,7 @@ function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
     registrations: Array.isArray(d.registrations)
       ? (d.registrations.filter(isRecord) as AccountRegistration[])
       : [],
-    recent_events: Array.isArray(d.recent_events)
-      ? (d.recent_events.filter(isRecord) as AccountEvent[])
-      : [],
+    recent_events: normalizeAccountEvents(d.recent_events),
   } as AccountSummary;
 }
 
@@ -1202,7 +1241,7 @@ export const subnetEventsQuery = (netuid: number) =>
         { signal },
       );
       const d = (res.data ?? {}) as Record<string, unknown>;
-      const events = Array.isArray(d.events) ? (d.events.filter(isRecord) as AccountEvent[]) : [];
+      const events = normalizeAccountEvents(d.events);
       return {
         data: {
           netuid,
