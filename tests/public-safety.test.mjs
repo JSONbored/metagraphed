@@ -311,7 +311,7 @@ describe("captured-fixture body scan", () => {
     // strip: a hyphenated secret attempt must still trip the terminology guard.
     await fs.writeFile(
       TEST_PUBLIC_PATH,
-      "Set coldkey-seedphrase to 5xyzABCDEFGHabcdefgh in your config.\n",
+      "Set coldkey-only-seedphrase to 5xyzABCDEFGHabcdefgh in your config.\n",
       "utf8",
     );
     const output = runScanOutput();

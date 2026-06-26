@@ -1285,6 +1285,57 @@ describe("handleBlocks", () => {
     assert.ok(!/OFFSET/.test(sql));
     assert.equal(body.data.next_cursor, encodeCursor([150]));
   });
+
+  test("applies the conjunctive filter set (#1991)", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url(
+        "/api/v1/blocks?author=5Author&spec_version=423&block_start=100&block_end=200&from=1000&to=2000&min_extrinsics=1&min_events=5",
+      ),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(/author = \?/.test(sql));
+    assert.ok(/spec_version = \?/.test(sql));
+    assert.ok(/block_number >= \?/.test(sql));
+    assert.ok(/block_number <= \?/.test(sql));
+    assert.ok(/observed_at >= \?/.test(sql));
+    assert.ok(/observed_at <= \?/.test(sql));
+    assert.ok(/extrinsic_count >= \?/.test(sql));
+    assert.ok(/event_count >= \?/.test(sql));
+    // every value bound (author string + the 7 clamped ints), never interpolated.
+    const params = captures.params.flat();
+    assert.ok(params.includes("5Author"));
+    assert.ok(params.includes(423));
+    // limit + offset are the last two bound params (no cursor → offset path).
+    assert.equal(params.at(-2), 50);
+    assert.equal(params.at(-1), 0);
+  });
+
+  test("a filter ANDs with the keyset cursor and drops OFFSET", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url(`/api/v1/blocks?author=5Author&cursor=${encodeCursor([300])}`),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(/author = \? AND block_number < \?/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+  });
+
+  test("the unfiltered feed keeps the plain OFFSET path (no WHERE)", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url("/api/v1/blocks?limit=10&offset=20"),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(!/WHERE/.test(sql));
+    assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
+  });
 });
 
 describe("handleBlock", () => {
@@ -1530,6 +1581,103 @@ describe("handleExtrinsics", () => {
     assert.ok(/success = \?/.test(sql));
     assert.ok(/block_number >= \?/.test(sql));
     assert.ok(captures.params.flat().includes(0));
+  });
+
+  test("forces observed-at index hint for standalone time filters", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=1750000000000"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(
+      /FROM extrinsics INDEXED BY idx_extrinsics_observed_order/.test(sql),
+      "standalone observed_at filters must use the covering timestamp index",
+    );
+    assert.ok(/observed_at >= \?/.test(sql));
+  });
+
+  test("short-circuits impossible future time filters before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?from=9007199254740991"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("short-circuits an expired to< retention-floor window before D1", async () => {
+    // to=2000 (1970 epoch) is below the retained hot window floor; every
+    // candidate row would already be pruned, so never touch D1.
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?to=2000"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("short-circuits an inverted from>to window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const now = Date.now();
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?from=${now}&to=${now - 60_000}`),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("a valid recent window is NOT short-circuited and queries D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const now = Date.now();
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url(`/api/v1/extrinsics?from=${now - 60_000}&to=${now}`),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql, "a valid window must reach D1");
+    assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+    assert.ok(/observed_at >= \?/.test(sql));
+    assert.ok(/observed_at <= \?/.test(sql));
+  });
+
+  test("drops the observed-at index hint when an equality filter is present", async () => {
+    // With a (signer) equality the planner should use the order-aligned
+    // signer index, not be forced onto the observed-at one.
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=1750000000000&signer=5Signer"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/INDEXED BY/.test(sql), "equality filter must drop the hint");
+    assert.ok(/signer = \?/.test(sql));
   });
 
   test("cursor seeks on (block_number, extrinsic_index)", async () => {
