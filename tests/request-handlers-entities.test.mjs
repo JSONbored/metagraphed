@@ -1532,7 +1532,7 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
-  test("uses observed-at index hint for standalone time filters", async () => {
+  test("does not force observed-at index hint for standalone time filters", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
       req("/api/v1/extrinsics"),
@@ -1540,7 +1540,9 @@ describe("handleExtrinsics", () => {
       url("/api/v1/extrinsics?from=1750000000000"),
     );
     const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+    assert.ok(sql);
+    assert.ok(!/INDEXED BY/.test(sql), "planner must choose the best index");
+    assert.ok(/observed_at >= \?/.test(sql));
   });
 
   test("short-circuits impossible future time filters before D1", async () => {
