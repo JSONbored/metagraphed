@@ -10,7 +10,12 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { EmptyState, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { ListShell } from "@/components/metagraphed/list-shell";
-import { PageSizeSelect } from "@/components/metagraphed/table-controls";
+import {
+  PageSizeSelect,
+  ResetFiltersButton,
+  SearchInput,
+  SelectFilter,
+} from "@/components/metagraphed/table-controls";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { ShareButton } from "@/components/metagraphed/share-button";
 import { extrinsicsQuery } from "@/lib/metagraphed/queries";
@@ -23,6 +28,11 @@ import type { Extrinsic } from "@/lib/metagraphed/types";
 const extrinsicsSearchSchema = z.object({
   limit: fallback(z.number().int().min(1).max(100), 50).default(50),
   offset: fallback(z.number().int().min(0), 0).default(0),
+  // Server-side filters (#265) wired to the /api/v1/extrinsics conjunctive set.
+  signer: fallback(z.string(), "").default(""),
+  call_module: fallback(z.string(), "").default(""),
+  call_function: fallback(z.string(), "").default(""),
+  success: fallback(z.enum(["", "true", "false"]), "").default(""),
 });
 
 export const Route = createFileRoute("/extrinsics/")({
@@ -79,8 +89,17 @@ function ExtrinsicsTable() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const rows = (useSuspenseQuery(extrinsicsQuery({ limit: search.limit, offset: search.offset }))
-    .data.data ?? []) as Extrinsic[];
+  // Only send filters the user actually set, so an empty bar is the plain feed.
+  const queryParams: Record<string, string | number> = {
+    limit: search.limit,
+    offset: search.offset,
+  };
+  if (search.signer) queryParams.signer = search.signer;
+  if (search.call_module) queryParams.call_module = search.call_module;
+  if (search.call_function) queryParams.call_function = search.call_function;
+  if (search.success) queryParams.success = search.success;
+
+  const rows = (useSuspenseQuery(extrinsicsQuery(queryParams)).data.data ?? []) as Extrinsic[];
 
   // Offset pagination: the API returns newest-first pages with no total. A full
   // page (rows === limit) implies more may exist; a short page is the tail.
@@ -96,13 +115,52 @@ function ExtrinsicsTable() {
   const rowKey = (x: Extrinsic) =>
     x.extrinsic_hash || `${x.block_number ?? "?"}-${x.extrinsic_index ?? "?"}`;
 
+  const filtersActive = Boolean(
+    search.signer || search.call_module || search.call_function || search.success,
+  );
+
   const filters = (
     <>
-      <span className="font-mono text-[11px] text-ink-muted">Newest first</span>
+      <SearchInput
+        value={search.signer}
+        onChange={(v) => setSearch({ signer: v, offset: 0 })}
+        placeholder="Signer ss58…"
+      />
+      <SearchInput
+        value={search.call_module}
+        onChange={(v) => setSearch({ call_module: v, offset: 0 })}
+        placeholder="Call module…"
+      />
+      <SearchInput
+        value={search.call_function}
+        onChange={(v) => setSearch({ call_function: v, offset: 0 })}
+        placeholder="Call function…"
+      />
+      <SelectFilter
+        label="Result"
+        value={search.success}
+        onChange={(v) => setSearch({ success: v, offset: 0 })}
+        options={[
+          { value: "true", label: "ok" },
+          { value: "false", label: "fail" },
+        ]}
+      />
       <PageSizeSelect
         value={search.limit}
         onChange={(n) => setSearch({ limit: n, offset: 0 })}
         options={[10, 25, 50, 100]}
+      />
+      <ResetFiltersButton
+        active={filtersActive}
+        onReset={() =>
+          setSearch({
+            signer: "",
+            call_module: "",
+            call_function: "",
+            success: "",
+            offset: 0,
+          })
+        }
       />
     </>
   );
