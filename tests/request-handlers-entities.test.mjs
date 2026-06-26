@@ -1528,7 +1528,10 @@ describe("handleBlockEvents", () => {
   });
 
   test("happy path returns block-scoped events", async () => {
-    const { env } = dbWith({ blockEvents: [accountEventRow()] });
+    const { env } = dbWith({
+      blockDetail: { block_number: BLOCK_NUM },
+      blockEvents: [accountEventRow()],
+    });
     const body = await json(
       await handleBlockEvents(
         req(`/api/v1/blocks/${BLOCK_NUM}/events`),
@@ -1556,6 +1559,21 @@ describe("handleBlockEvents", () => {
     );
     assert.equal(body.data.block_number, 9);
     assert.equal(body.data.event_count, 1);
+  });
+
+  test("unknown numeric ref yields block_number:null + empty events", async () => {
+    const { env } = dbWith({ blocksFeed: [], blockEvents: [] });
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
   });
 });
 
