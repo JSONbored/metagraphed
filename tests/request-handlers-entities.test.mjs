@@ -1412,6 +1412,18 @@ describe("handleBlock", () => {
     assert.equal(body.data.ref, HASH);
     assert.equal(body.data.block.block_hash, HASH);
   });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockDetail: blockRow() });
+    await handleBlock(req(`/api/v1/blocks/${upperHash}`), env, upperHash);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
+  });
 });
 
 describe("handleBlockExtrinsics", () => {
@@ -1502,6 +1514,23 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
   });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockNumberByHash: 9, extrinsics: [] });
+    await handleBlockExtrinsics(
+      req(`/api/v1/blocks/${upperHash}/extrinsics`),
+      env,
+      upperHash,
+      url(`/api/v1/blocks/${upperHash}/extrinsics`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
+  });
 });
 
 describe("handleBlockEvents", () => {
@@ -1574,6 +1603,23 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
+  });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockNumberByHash: 9, blockEvents: [] });
+    await handleBlockEvents(
+      req(`/api/v1/blocks/${upperHash}/events`),
+      env,
+      upperHash,
+      url(`/api/v1/blocks/${upperHash}/events`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
   });
 });
 
@@ -1775,6 +1821,22 @@ describe("handleExtrinsic", () => {
     );
     assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
     assert.equal(body.data.extrinsic.call_function, "add_stake");
+  });
+
+  test("normalizes an uppercase 0x extrinsic_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
+    await handleExtrinsic(
+      req(`/api/v1/extrinsics/${upperHash}`),
+      env,
+      upperHash,
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /WHERE extrinsic_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected an extrinsic_hash lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
   });
 
   test("happy path resolves by composite id block-index", async () => {
