@@ -263,4 +263,41 @@ describe("captured-fixture body scan", () => {
       `hard secrets must fire even inside doc fields; got:\n${output}`,
     );
   });
+
+  test("allows the hotkey/coldkey and coldkey-only API-prose forms", async () => {
+    // Regression for the generated MCP server-card prose: the slash form
+    // "hotkey/coldkey" and the "coldkey-only" behaviour descriptor are standard
+    // Bittensor API vocabulary explaining public read-only behaviour — the same
+    // safe class as the already-allowed "hotkey or coldkey" phrase, just written
+    // differently. Neither carries any secret.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "The hotkey/coldkey owning the account, base58, 47-48 chars.",
+        "A coldkey-only SS58 address won't appear in the hotkey-attributed rollup.",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `hotkey/coldkey and coldkey-only API prose should be exempt; got:\n${output}`,
+    );
+  });
+
+  test("still flags suspicious coldkey prose that a hyphen can't smuggle past", async () => {
+    // The coldkey-only exemption is the exact phrase, not a blanket `coldkey-`
+    // strip: a hyphenated secret attempt must still trip the terminology guard.
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      "Set coldkey-seedphrase to 5xyzABCDEFGHabcdefgh in your config.\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: Bittensor key terminology`),
+      `a hyphenated coldkey secret attempt must still be flagged; got:\n${output}`,
+    );
+  });
 });

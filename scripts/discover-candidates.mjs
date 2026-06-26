@@ -14,6 +14,7 @@ import {
   nativeDisplayName,
   OPENAPI_PROBE_PATHS,
   probeOpenApiSpec,
+  readCommittedManifestGeneratedAt,
   readJson,
   isLikelyProjectDomain,
   README_KIND_LIMITS,
@@ -155,57 +156,65 @@ const summary = {
 };
 
 if (!dryRun) {
-  await writeJson(
-    path.join(repoRoot, "registry/candidates/generated/public-sources.json"),
-    {
-      schema_version: 1,
-      generated_by: "metagraphed-discover-candidates",
-      generated_at: buildTimestamp(),
-      native_snapshot_captured_at: nativeSnapshot.captured_at,
-      notes:
-        "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
-      observed_at: observedAt,
-      sources: [
-        {
-          id: "native-subnet-identities-v3",
-          url: "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
-        },
-        {
-          id: "taomarketcap",
-          url: "https://api.taomarketcap.com/public/v1/subnets/",
-        },
-        {
-          id: "backprop-finance",
-          url: "https://backprop.finance/dtao/subnets/",
-        },
-        {
-          id: "taostats",
-          url: "https://taostats.io/subnets/",
-        },
-        {
-          id: "subnetradar",
-          url: "https://subnetradar.com/subnet/",
-        },
-        {
-          id: "tensorplex-subnet-docs",
-          url: "https://github.com/tensorplex-labs/subnet-docs",
-        },
-        {
-          id: "taopedia-articles",
-          url: "https://github.com/e35ventura/taopedia-articles",
-        },
-        {
-          id: "github-readme-links",
-          url: "https://github.com",
-        },
-        {
-          id: "project-website-links",
-          url: "https://metagraph.sh",
-        },
-      ],
-      candidates,
-    },
+  const publicSourcesPath = path.join(
+    repoRoot,
+    "registry/candidates/generated/public-sources.json",
   );
+  // Preserve the committed public-sources.json `generated_at` on a local build
+  // so `npm run discover:candidates` never clobbers it with the 1970 epoch
+  // placeholder; publish runs (METAGRAPH_BUILD_TIMESTAMP/RUN_ID set) get the
+  // real build timestamp via buildTimestamp(). Mirrors the r2-manifest path.
+  const generatedAt =
+    (await readCommittedManifestGeneratedAt(publicSourcesPath)) ??
+    buildTimestamp();
+  await writeJson(publicSourcesPath, {
+    schema_version: 1,
+    generated_by: "metagraphed-discover-candidates",
+    generated_at: generatedAt,
+    native_snapshot_captured_at: nativeSnapshot.captured_at,
+    notes:
+      "Generated candidate surfaces from public sources. These are not verified registry surfaces until maintainer review promotes them into registry/subnets.",
+    observed_at: observedAt,
+    sources: [
+      {
+        id: "native-subnet-identities-v3",
+        url: "https://docs.learnbittensor.org/python-api/html/_modules/bittensor/core/chain_data/subnet_identity.html",
+      },
+      {
+        id: "taomarketcap",
+        url: "https://api.taomarketcap.com/public/v1/subnets/",
+      },
+      {
+        id: "backprop-finance",
+        url: "https://backprop.finance/dtao/subnets/",
+      },
+      {
+        id: "taostats",
+        url: "https://taostats.io/subnets/",
+      },
+      {
+        id: "subnetradar",
+        url: "https://subnetradar.com/subnet/",
+      },
+      {
+        id: "tensorplex-subnet-docs",
+        url: "https://github.com/tensorplex-labs/subnet-docs",
+      },
+      {
+        id: "taopedia-articles",
+        url: "https://github.com/e35ventura/taopedia-articles",
+      },
+      {
+        id: "github-readme-links",
+        url: "https://github.com",
+      },
+      {
+        id: "project-website-links",
+        url: "https://metagraph.sh",
+      },
+    ],
+    candidates,
+  });
 }
 
 console.log(stableStringify(summary));
