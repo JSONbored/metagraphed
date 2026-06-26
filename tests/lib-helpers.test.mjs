@@ -31,6 +31,7 @@ import {
   DOMAIN_TAGS,
   deriveDescriptionFromNotes,
   clusterDomainFromUrl,
+  registrableHostDomain,
   buildSubnetLineageLinks,
   buildEconomicsArtifact,
   corroboratingSources,
@@ -1208,6 +1209,38 @@ describe("clusterDomainFromUrl", () => {
     assert.equal(clusterDomainFromUrl("not a url"), null);
     assert.equal(clusterDomainFromUrl(null), null);
     assert.equal(clusterDomainFromUrl(undefined), null);
+  });
+});
+
+describe("registrableHostDomain", () => {
+  test("keeps distinct tenants on multi-label public suffix hosts separate", () => {
+    assert.equal(
+      registrableHostDomain("project-a.pages.dev"),
+      "project-a.pages.dev",
+    );
+    assert.equal(
+      registrableHostDomain("project-b.pages.dev"),
+      "project-b.pages.dev",
+    );
+    assert.notEqual(
+      registrableHostDomain("project-a.pages.dev"),
+      registrableHostDomain("project-b.pages.dev"),
+    );
+    assert.equal(registrableHostDomain("team-a.co.uk"), "team-a.co.uk");
+    assert.equal(registrableHostDomain("team-b.co.uk"), "team-b.co.uk");
+  });
+
+  test("collapses same-site subdomains on ordinary TLDs", () => {
+    assert.equal(registrableHostDomain("docs.example.com"), "example.com");
+    assert.equal(registrableHostDomain("api.example.com"), "example.com");
+  });
+
+  test("normalizes www and tolerates empty input", () => {
+    assert.equal(
+      registrableHostDomain("www.project-a.pages.dev"),
+      "project-a.pages.dev",
+    );
+    assert.equal(registrableHostDomain(""), "");
   });
 });
 

@@ -156,6 +156,16 @@ def main():
             sys.stderr.write(f"block {bn}: skip ({repr(e)[:80]})\n")
             continue
         scanned += 1
+        # account_events rows — mirrors fetch-events.py main()'s row shape. Keep
+        # whole blocks together so backfills do not create staged objects above the
+        # Worker drain cap after high-volume Balances.Transfer bursts.
+        block_event_rows = _fe.event_rows_for_events(bn, events, observed_at)
+        if not _fe._can_append_event_block(rows, block_event_rows):
+            sys.stderr.write(
+                f"event row cap reached before block {bn}; "
+                "rerun from this block for the remaining range\n"
+            )
+            break
         extras = _fe.block_extras(s, bn, bh, len(events))
         if extras is not None:
             extras["observed_at"] = observed_at
@@ -163,29 +173,7 @@ def main():
         for xrow in _fe.extrinsics_for_block(s, bn, bh, events):
             xrow["observed_at"] = observed_at
             extrinsics.append(xrow)
-        # account_events rows — mirrors fetch-events.py main()'s row shape (the
-        # decode helper `extract` is reused; only this assembly is repeated).
-        for event_index, ev in enumerate(events):
-            v = ev.value if isinstance(ev.value, dict) else {}
-            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") not in ("SubtensorModule", "Balances"):
-                continue
-            ent = _fe.extract(e.get("event_id"), e.get("attributes"))
-            if ent is None:
-                continue
-            rows.append(
-                {
-                    "block_number": bn,
-                    "event_index": event_index,
-                    "event_kind": e.get("event_id"),
-                    "hotkey": ent["hotkey"],
-                    "coldkey": ent["coldkey"],
-                    "netuid": ent["netuid"],
-                    "uid": ent["uid"],
-                    "amount_tao": ent["amount_tao"],
-                    "observed_at": observed_at,
-                }
-            )
+        rows.extend(block_event_rows)
 
     for path, data in (
         (_fe.OUT, rows),
