@@ -1940,6 +1940,7 @@ export function buildProvenanceReviewQueue({
   nativeSubnets = [],
   verificationResults = [],
   subnets = [],
+  generatedAt = buildTimestamp(),
 }) {
   const levelByNetuid = new Map(
     subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
@@ -1970,7 +1971,7 @@ export function buildProvenanceReviewQueue({
   return {
     schema_version: 1,
     generated_by: "metagraphed-review-queue",
-    generated_at: buildTimestamp(),
+    generated_at: generatedAt,
     notes:
       "Suggested maintainer-review elevations: provenance-strong, live callable " +
       "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +
