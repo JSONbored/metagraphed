@@ -33,7 +33,44 @@
       "SubnetRadar published Discord-derived news about a TEE-enabled model routing marketplace, but that is not treated as an official operational interface."
     ]
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "id": "sn-28-gm-openapi",
+      "name": "gm Gateway API spec",
+      "kind": "openapi",
+      "url": "https://saygm.com/openapi.json",
+      "provider": "gm",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://saygm.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": { "state": "community-submitted", "submitted_by": "nickmopen" }
+    },
+    {
+      "id": "sn-28-gm-subnet-api",
+      "name": "gm model catalog",
+      "kind": "subnet-api",
+      "url": "https://api.saygm.com/v1/models",
+      "provider": "gm",
+      "authority": "community",
+      "auth_required": false,
+      "public_safe": true,
+      "source_urls": ["https://saygm.com/openapi.json"],
+      "probe": {
+        "enabled": true,
+        "method": "GET",
+        "expect": "json",
+        "timeout_ms": 10000
+      },
+      "review": { "state": "community-submitted", "submitted_by": "nickmopen" }
+    }
+  ],
   "social": {
     "x": "https://x.com/say_gm_"
   },

@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 74,
+  "surface_count": 75,
   "surfaces": [
     {
       "auth_required": false,
@@ -551,6 +551,24 @@
       "surface_id": "sn-24-website-link-silxinc-com-data-artifact-3",
       "surface_key": "srf-319b61d8ff50a870",
       "url": "https://silxinc.com/blog/silx-ai-partners-with-adaption-labs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "subnet-api",
+      "netuid": 28,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gm",
+      "public_safe": true,
+      "subnet_name": "gm",
+      "subnet_slug": "gm",
+      "surface_id": "sn-28-gm-subnet-api",
+      "surface_key": "srf-f7b80bdc1145be6d",
+      "url": "https://api.saygm.com/v1/models"
     },
     {
       "auth_required": false,
