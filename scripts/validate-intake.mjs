@@ -74,7 +74,7 @@ checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
   "id: kind",
   "label: surface kind",
   "id: url",
-  "id: source_url",
+  "id: source_urls",
   "id: provider",
   "label: provider slug",
   "id: auth_required",

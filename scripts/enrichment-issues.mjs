@@ -157,7 +157,7 @@ npm run surface:add -- --netuid ${netuid} --kind ${primary} \\
 
 Open a PR touching **exactly one** \`registry/subnets/<slug>.json\` file — the review gate validates + reviews it. (The per-candidate-file lane is retired: recreating \`registry/candidates/community/*.json\` is rejected by CI.)
 
-**Rules:** a real \`url\` that resolves · a \`source_url\` that proves it's official · one file · no generated artifacts · \`public_safe: true\` · \`auth_required: false\`. Full guide: [CONTRIBUTING → Community submissions](https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md#community-submissions).`;
+**Rules:** a real \`url\` that resolves · one or more \`source_urls\` that prove it's official · one file · no generated artifacts · \`public_safe: true\` · \`auth_required: false\`. Full guide: [CONTRIBUTING → Community submissions](https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md#community-submissions).`;
 }
 
 const queue =
