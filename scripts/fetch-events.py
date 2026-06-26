@@ -104,6 +104,10 @@ MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
 # mode advances through long gaps over multiple safe staged batches instead of
 # producing one pathological object.
 BATCH_BLOCKS = max(1, int(os.environ.get("EVENTS_BATCH_BLOCKS", str(WINDOW))))
+# Keep producer batches below the Worker staged-event row cap (10k) and,
+# indirectly, below its 4 MiB parse-safety byte cap even when high-volume
+# Balances.Transfer events are present. Reserve headroom for the HMAC envelope.
+MAX_EVENT_ROWS = max(1, int(os.environ.get("EVENTS_MAX_EVENT_ROWS", "9000")))
 
 
 def _parse_cursor(raw):
@@ -590,6 +594,52 @@ def extract(event_id, attrs):
     }
 
 
+def event_rows_for_events(bn, events, observed_at):
+    """Extract account_events rows for one block.
+
+    Kept as whole-block units so producer-side row chunking never advances the
+    staged cursor past a partially emitted block. Shape drift on individual events
+    is handled by extract() and skipped, matching the historical inline loop.
+    """
+    rows = []
+    for event_index, ev in enumerate(events):
+        v = ev.value if isinstance(ev.value, dict) else {}
+        e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+        if e.get("module_id") not in ("SubtensorModule", "Balances"):
+            continue
+        eid = e.get("event_id")
+        ent = extract(eid, e.get("attributes"))
+        if ent is None:
+            continue
+        # Link the event to the extrinsic that emitted it (#1849): the
+        # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
+        # _extrinsic_success_map correlate on). Initialization / Finalization
+        # phase events have no extrinsic — store null.
+        xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+        if not isinstance(xidx, int) or xidx < 0:
+            xidx = None
+        rows.append(
+            {
+                "block_number": bn,
+                "event_index": event_index,
+                "event_kind": eid,
+                "hotkey": ent["hotkey"],
+                "coldkey": ent["coldkey"],
+                "netuid": ent["netuid"],
+                "uid": ent["uid"],
+                "amount_tao": ent["amount_tao"],
+                "alpha_amount": ent["alpha_amount"],
+                "observed_at": observed_at,
+                "extrinsic_index": xidx,
+            }
+        )
+    return rows
+
+
+def _can_append_event_block(rows, block_rows, max_rows=MAX_EVENT_ROWS):
+    """Whether the next block's account_events fit in this staged batch."""
+    return len(rows) + len(block_rows) <= max_rows
+
 def _lag_alert_needed(head_bn, cursor, window=WINDOW, horizon=PRUNE_HORIZON):
     """True when the cursor is far enough behind the finalized head that un-fetched
     blocks risk being pruned before the next run.
@@ -673,6 +723,10 @@ def main():
             sys.stderr.write(f"block {bn}: skip ({repr(e)[:80]})\n")
             continue
         scanned += 1
+        block_event_rows = event_rows_for_events(bn, events, observed_at)
+        if not _can_append_event_block(rows, block_event_rows):
+            end = bn - 1
+            break
         # Block-explorer hot-window record (#1345): best-effort header extras +
         # the decoded event count, observed_at from the same height-derived clock
         # as the events. A None means the extras read failed — skip this block's
@@ -688,37 +742,7 @@ def main():
         for xrow in extrinsics_for_block(s, bn, bh, events):
             xrow["observed_at"] = observed_at
             extrinsics.append(xrow)
-        for event_index, ev in enumerate(events):
-            v = ev.value if isinstance(ev.value, dict) else {}
-            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") not in ("SubtensorModule", "Balances"):
-                continue
-            eid = e.get("event_id")
-            ent = extract(eid, e.get("attributes"))
-            if ent is None:
-                continue
-            # Link the event to the extrinsic that emitted it (#1849): the
-            # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
-            # _extrinsic_success_map correlate on). Initialization / Finalization
-            # phase events have no extrinsic — store null.
-            xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
-            if not isinstance(xidx, int) or xidx < 0:
-                xidx = None
-            rows.append(
-                {
-                    "block_number": bn,
-                    "event_index": event_index,
-                    "event_kind": eid,
-                    "hotkey": ent["hotkey"],
-                    "coldkey": ent["coldkey"],
-                    "netuid": ent["netuid"],
-                    "uid": ent["uid"],
-                    "amount_tao": ent["amount_tao"],
-                    "alpha_amount": ent["alpha_amount"],
-                    "observed_at": observed_at,
-                    "extrinsic_index": xidx,
-                }
-            )
+        rows.extend(block_event_rows)
 
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w") as fh:
