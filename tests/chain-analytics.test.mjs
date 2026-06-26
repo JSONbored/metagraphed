@@ -434,6 +434,63 @@ test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", asyn
   assert.equal(captured[0].params.at(-1), 10);
 });
 
+test("GET /api/v1/chain/signers scopes the leaderboard by call_module", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/signers?call_module=Balances",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(captured[0].sql, /AND call_module = \?/);
+  assert.ok(captured[0].params.includes("Balances"));
+});
+
+test("GET /api/v1/chain/fees scopes both the daily series and payers by call_module", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/fees?call_module=SubtensorModule",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(captured.length, 2); // daily series + payer list, both scoped
+  for (const q of captured) {
+    assert.match(q.sql, /AND call_module = \?/);
+    assert.ok(q.params.includes("SubtensorModule"));
+  }
+});
+
 test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
   const env = createLocalArtifactEnv();
   for (const path of [

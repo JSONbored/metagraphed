@@ -351,7 +351,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
         put?: never;
         post?: never;
@@ -368,7 +368,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
+        /** Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
         get: operations["chainSigners"];
         put?: never;
         post?: never;
@@ -7150,6 +7150,7 @@ export interface operations {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                call_module?: string;
             };
             header?: never;
             path?: never;
@@ -7273,6 +7274,7 @@ export interface operations {
             query?: {
                 window?: "7d" | "30d";
                 limit?: number;
+                call_module?: string;
             };
             header?: never;
             path?: never;

@@ -785,11 +785,14 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 // count over the window. The observed_at index bounds the scan to the hot window;
 // the aggregation is amortized behind the edge cache (runs only on a new snapshot).
 export async function handleChainSigners(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const limitError = validateIntegerParam(url, "limit", 1, 100);
   if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  // Optional pallet scope, backed by idx_extrinsics_call_module_order.
+  const callModule = url.searchParams.get("call_module");
+  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(request, ctx, env, "chain-signers", async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const rows = await d1All(
@@ -800,11 +803,11 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
               SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
               MAX(block_number) AS last_tx_block
        FROM extrinsics
-       WHERE observed_at >= ? AND signer IS NOT NULL
+       WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
        GROUP BY signer
        ORDER BY tx_count DESC
        LIMIT ?`,
-      [cutoff, limit],
+      callModule ? [cutoff, callModule, limit] : [cutoff, limit],
     );
     const meta = await readHealthMetaKv(env);
     const data = buildChainSigners({
@@ -834,11 +837,15 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
 // SUMs; exact median is a deliberate follow-up (no native percentile in D1).
 export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const limitError = validateIntegerParam(url, "limit", 1, 100);
   if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 25, 1, 100);
+  // Optional pallet scope (applies to both the daily series and the payer list),
+  // backed by idx_extrinsics_call_module_order.
+  const callModule = url.searchParams.get("call_module");
+  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(request, ctx, env, "chain-fees", async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const [dailyRows, payerRows] = await Promise.all([
@@ -849,9 +856,9 @@ export async function handleChainFees(request, env, url, ctx = {}) {
                 SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
          FROM extrinsics
-         WHERE observed_at >= ?
+         WHERE observed_at >= ?${moduleClause}
          GROUP BY day`,
-        [cutoff],
+        callModule ? [cutoff, callModule] : [cutoff],
       ),
       d1All(
         env,
@@ -860,11 +867,11 @@ export async function handleChainFees(request, env, url, ctx = {}) {
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
                 COUNT(*) AS extrinsic_count
          FROM extrinsics
-         WHERE observed_at >= ? AND signer IS NOT NULL
+         WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
          GROUP BY signer
          ORDER BY total_fee_tao DESC
          LIMIT ?`,
-        [cutoff, limit],
+        callModule ? [cutoff, callModule, limit] : [cutoff, limit],
       ),
     ]);
     const meta = await readHealthMetaKv(env);
