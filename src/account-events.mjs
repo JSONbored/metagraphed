@@ -149,7 +149,9 @@ export function validEventRows(rows) {
     ? rows.filter(
         (r) =>
           Number.isInteger(r?.block_number) &&
+          r.block_number >= 0 &&
           Number.isInteger(r?.event_index) &&
+          r.event_index >= 0 &&
           typeof r?.event_kind === "string" &&
           Number.isInteger(r?.observed_at),
       )
