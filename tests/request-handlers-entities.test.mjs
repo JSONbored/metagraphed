@@ -1285,6 +1285,57 @@ describe("handleBlocks", () => {
     assert.ok(!/OFFSET/.test(sql));
     assert.equal(body.data.next_cursor, encodeCursor([150]));
   });
+
+  test("applies the conjunctive filter set (#1991)", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url(
+        "/api/v1/blocks?author=5Author&spec_version=423&block_start=100&block_end=200&from=1000&to=2000&min_extrinsics=1&min_events=5",
+      ),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(/author = \?/.test(sql));
+    assert.ok(/spec_version = \?/.test(sql));
+    assert.ok(/block_number >= \?/.test(sql));
+    assert.ok(/block_number <= \?/.test(sql));
+    assert.ok(/observed_at >= \?/.test(sql));
+    assert.ok(/observed_at <= \?/.test(sql));
+    assert.ok(/extrinsic_count >= \?/.test(sql));
+    assert.ok(/event_count >= \?/.test(sql));
+    // every value bound (author string + the 7 clamped ints), never interpolated.
+    const params = captures.params.flat();
+    assert.ok(params.includes("5Author"));
+    assert.ok(params.includes(423));
+    // limit + offset are the last two bound params (no cursor → offset path).
+    assert.equal(params.at(-2), 50);
+    assert.equal(params.at(-1), 0);
+  });
+
+  test("a filter ANDs with the keyset cursor and drops OFFSET", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url(`/api/v1/blocks?author=5Author&cursor=${encodeCursor([300])}`),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(/author = \? AND block_number < \?/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+  });
+
+  test("the unfiltered feed keeps the plain OFFSET path (no WHERE)", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [] });
+    await handleBlocks(
+      req("/api/v1/blocks"),
+      env,
+      url("/api/v1/blocks?limit=10&offset=20"),
+    );
+    const sql = captures.sql.find((s) => /FROM blocks/.test(s));
+    assert.ok(!/WHERE/.test(sql));
+    assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
+  });
 });
 
 describe("handleBlock", () => {

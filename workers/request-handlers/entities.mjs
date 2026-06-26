@@ -683,28 +683,76 @@ export async function handleBlocks(request, env, url) {
     "limit",
     "offset",
     "cursor",
+    "author",
+    "spec_version",
+    "from",
+    "to",
+    "block_start",
+    "block_end",
+    "min_extrinsics",
+    "min_events",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  // Keyset cursor (#1851) takes precedence over offset when present: WHERE
-  // block_number < ? (PK-ordered, stable under head inserts). A malformed cursor
-  // decodes to null → ignored (falls back to offset), preserving never-throw.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
-  let rows;
-  if (cur) {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
-      [cur[0], limit],
-    );
-  } else {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-      [limit, offset],
-    );
+  const sp = url.searchParams;
+  const MAX = Number.MAX_SAFE_INTEGER;
+  // Conjunctive (AND-ed) filter set mirroring handleExtrinsics (#1846/#1991):
+  // every value is BOUND, never interpolated; an inverted range or an absent
+  // nullable column simply matches nothing — never a throw.
+  const conds = [];
+  const params = [];
+  if (sp.get("author")) {
+    conds.push("author = ?");
+    params.push(sp.get("author"));
   }
+  if (sp.get("spec_version") != null) {
+    conds.push("spec_version = ?");
+    params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
+  }
+  if (sp.get("block_start") != null) {
+    conds.push("block_number >= ?");
+    params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
+  }
+  if (sp.get("block_end") != null) {
+    conds.push("block_number <= ?");
+    params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
+  }
+  if (sp.get("from") != null) {
+    conds.push("observed_at >= ?");
+    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+  }
+  if (sp.get("to") != null) {
+    conds.push("observed_at <= ?");
+    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+  }
+  if (sp.get("min_extrinsics") != null) {
+    conds.push("extrinsic_count >= ?");
+    params.push(clampInt(sp.get("min_extrinsics"), 0, 0, MAX));
+  }
+  if (sp.get("min_events") != null) {
+    conds.push("event_count >= ?");
+    params.push(clampInt(sp.get("min_events"), 0, 0, MAX));
+  }
+  // Keyset cursor (#1851) takes precedence over offset: fold its block_number < ?
+  // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
+  // head inserts). A malformed cursor decodes to null → ignored (falls back to
+  // offset), preserving never-throw.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("block_number < ?");
+    params.push(cur[0]);
+  }
+  let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
+  const rows = await d1All(env, sql, params);
   // next_cursor only when the page was full (more rows likely); null at the end.
   const last = rows.length === limit ? rows[rows.length - 1] : null;
   const nextCursor = last ? encodeCursor([last.block_number]) : null;
