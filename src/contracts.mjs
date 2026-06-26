@@ -1734,11 +1734,12 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/events",
     "/metagraph/accounts/{ss58}/events.json",
-    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter and ?netuid= filter (scope to one subnet); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
     "short",
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },

@@ -810,6 +810,32 @@ describe("handleAccountEvents", () => {
     );
   });
 
+  test("netuid filter scopes events to one subnet", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ netuid: 7 })],
+    });
+    await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=7`),
+    );
+    assert.ok(
+      captures.sql.some((s) => /AND netuid = \?/.test(s)),
+      "expected netuid filter in SQL",
+    );
+  });
+
+  test("rejects a non-integer netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
+    );
+    await errorJson(res);
+  });
+
   test("cursor uses keyset seek instead of offset", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow({ block_number: 150, event_index: 2 })],

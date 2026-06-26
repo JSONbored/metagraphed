@@ -263,15 +263,25 @@ export async function handleAccount(request, env, ss58) {
 export async function handleAccountEvents(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "kind",
+    "netuid",
     "limit",
     "offset",
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  const netuid = url.searchParams.get("netuid");
+  if (netuid != null && !/^\d+$/.test(netuid)) {
+    return errorResponse(
+      "invalid_param",
+      "netuid must be a non-negative integer.",
+      400,
+    );
+  }
   const data = await loadAccountEvents(d1Runner(env), ss58, {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
     kind: url.searchParams.get("kind"),
+    netuid: netuid != null ? Number(netuid) : undefined,
     cursor: url.searchParams.get("cursor"),
   });
   return envelopeResponse(

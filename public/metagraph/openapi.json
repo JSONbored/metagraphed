@@ -13577,6 +13577,15 @@
           },
           {
             "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -13721,7 +13730,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter and ?netuid= filter (scope to one subnet); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
         "tags": [
           "accounts",
           "analytics"

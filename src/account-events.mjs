@@ -442,7 +442,7 @@ export async function loadAccountSummary(d1, ss58) {
 export async function loadAccountEvents(
   d1,
   ss58,
-  { limit, offset, kind, cursor } = {},
+  { limit, offset, kind, netuid, cursor } = {},
 ) {
   const lim = clampInt(limit, 100, 1, 1000);
   const off = clampInt(offset, 0, 0, 1_000_000);
@@ -451,6 +451,14 @@ export async function loadAccountEvents(
   if (kind) {
     sql += " AND event_kind = ?";
     params.push(kind);
+  }
+  // Scope to one subnet, mirroring /subnets/{netuid}/events and the dedicated
+  // idx_account_events_netuid covering index. Only subnet-scoped kinds carry a
+  // netuid (registrations, stake, axon, weights), so this answers "what did this
+  // account do on subnet N" in one call.
+  if (netuid != null) {
+    sql += " AND netuid = ?";
+    params.push(netuid);
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);

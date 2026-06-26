@@ -1131,7 +1131,8 @@ export const MCP_TOOLS = [
       "Fetch the paginated first-party chain-event history for one account by its " +
       "SS58 address (hotkey OR coldkey), newest first: each event's kind, block, " +
       "subnet, UID, amount, and timestamp. Optionally filter by event kind (e.g. " +
-      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet) and page " +
+      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet) or by " +
+      "netuid to scope to one subnet, and page " +
       "with limit (1-1000, default 100) / offset, or follow next_cursor for stable " +
       "keyset pagination. Use it to trace exactly what a wallet has done over time. " +
       "Events are decoded directly from the chain.",
@@ -1149,6 +1150,13 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
             "Omit for all kinds; an unknown kind simply matches nothing.",
+        },
+        netuid: {
+          type: "integer",
+          description:
+            "Optional subnet filter: only events on this netuid (registrations, " +
+            "stake, axon, weights). Omit for all subnets.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -1175,10 +1183,15 @@ export const MCP_TOOLS = [
       const ss58 = requireSs58(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
+      const netuid =
+        Number.isInteger(args?.netuid) && args.netuid >= 0
+          ? args.netuid
+          : undefined;
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
         limit: args?.limit,
         offset: args?.offset,
         kind,
+        netuid,
         cursor,
       });
     },

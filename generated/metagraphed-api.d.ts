@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). */
+        /** Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter and ?netuid= filter (scope to one subnet); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). */
         get: operations["accountEvents"];
         put?: never;
         post?: never;
@@ -5118,6 +5118,7 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: string;
+                netuid?: number;
                 limit?: number;
                 offset?: number;
                 cursor?: string;
