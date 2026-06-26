@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "gm",
+  "name": "gm",
+  "kind": "subnet-team",
+  "website_url": "https://saygm.com/",
+  "authority": "community",
+  "public_notes": "Community provider entry for the gm SN28 team (saygm.com). Official verification pending maintainer review."
+}
