@@ -419,6 +419,170 @@ describe("semanticSearch", () => {
   });
 });
 
+// Mixed-type pool for exercising the `type` scope.
+//   honorFilter:false  → Vectorize ignores the `filter` (returns mixed types);
+//                        proves the in-process post-filter still scopes results.
+//   rejectFilter:true  → Vectorize REJECTS any filtered query (the real behavior
+//                        when no metadata index exists on `type`); proves the
+//                        guarded retry falls back to an unfiltered fetch instead
+//                        of surfacing a 502.
+function stubVectorizeMixed({ honorFilter = true, rejectFilter = false } = {}) {
+  const pool = [
+    { type: "subnet", netuid: 1 },
+    { type: "surface", netuid: 1 },
+    { type: "provider", netuid: null },
+    { type: "subnet", netuid: 2 },
+    { type: "surface", netuid: 2 },
+    { type: "provider", netuid: null },
+  ].map((m, i) => ({
+    id: `${m.type}:${i}`,
+    score: 0.9 - i * 0.05,
+    metadata: {
+      type: m.type,
+      netuid: m.netuid,
+      slug: `${m.type}-${i}`,
+      title: `${m.type} ${i}`,
+      subtitle: `summary ${i}`,
+      url: `https://api.metagraph.sh/x/${i}`,
+      categories: [],
+      service_kinds: [],
+    },
+  }));
+  const calls = [];
+  return {
+    calls,
+    query(_vector, options) {
+      calls.push(options);
+      const want = options?.filter?.type;
+      if (rejectFilter && want != null) {
+        return Promise.reject(
+          new Error("no metadata index for the filter property 'type'"),
+        );
+      }
+      let matches = pool;
+      if (honorFilter && want != null) {
+        const allow = Array.isArray(want?.$in) ? want.$in : [want];
+        matches = pool.filter((m) => allow.includes(m.metadata.type));
+      }
+      return Promise.resolve({
+        matches: matches.slice(0, options?.topK ?? matches.length),
+      });
+    },
+  };
+}
+
+describe("semanticSearch type scope", () => {
+  for (const type of ["subnet", "surface", "provider"]) {
+    test(`scopes results to a single type='${type}'`, async () => {
+      const vectorize = stubVectorizeMixed();
+      const env = { AI: stubAi(), VECTORIZE: vectorize };
+      const out = await semanticSearch(env, "q", { type });
+      assert.ok(out.results.length > 0);
+      assert.ok(out.results.every((r) => r.type === type));
+      // A single type forwards an equality metadata filter to Vectorize.
+      assert.deepEqual(vectorize.calls.at(-1).filter, { type });
+    });
+  }
+
+  test("accepts a multi-type list ($in filter) and dedupes inputs", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", {
+      type: ["surface", "provider", "surface"],
+    });
+    assert.ok(out.results.length > 0);
+    assert.ok(
+      out.results.every((r) => r.type === "surface" || r.type === "provider"),
+    );
+    assert.deepEqual(vectorize.calls.at(-1).filter, {
+      type: { $in: ["surface", "provider"] },
+    });
+  });
+
+  test("post-filters when Vectorize ignores the metadata filter (no index)", async () => {
+    const vectorize = stubVectorizeMixed({ honorFilter: false });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "provider", limit: 5 });
+    assert.ok(out.results.length > 0);
+    assert.ok(out.results.every((r) => r.type === "provider"));
+    // A scoped query over-fetches to the topK cap so survivors remain to slice.
+    assert.equal(vectorize.calls.at(-1).topK, 20);
+  });
+
+  test("falls back to an unfiltered fetch when Vectorize rejects the filter (no metadata index)", async () => {
+    // Real prod shape: no metadata index on `type`, so a filtered query rejects.
+    // The guarded retry must recover via an unfiltered fetch + post-filter rather
+    // than 502, and the recovery call must carry no filter.
+    const vectorize = stubVectorizeMixed({ rejectFilter: true });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "surface", limit: 5 });
+    assert.ok(out.results.length > 0);
+    assert.ok(out.results.every((r) => r.type === "surface"));
+    // First attempt carried the filter (and rejected); the retry dropped it.
+    assert.deepEqual(vectorize.calls[0].filter, { type: "surface" });
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+    assert.equal(vectorize.calls.at(-1).topK, 20);
+  });
+
+  test("a non-filter Vectorize outage still propagates (no silent empty result)", async () => {
+    // The retry must not mask a genuine outage: if the unfiltered fetch also
+    // fails, the error surfaces (callers map it to 502) rather than returning [].
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.reject(new Error("vectorize down")) },
+    };
+    await assert.rejects(
+      () => semanticSearch(env, "q", { type: "subnet" }),
+      /vectorize down/,
+    );
+  });
+
+  test("honors `limit` AFTER filtering, not before", async () => {
+    const vectorize = stubVectorizeMixed({ honorFilter: false });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "subnet", limit: 1 });
+    assert.equal(out.results.length, 1);
+    assert.equal(out.results[0].type, "subnet");
+  });
+
+  for (const bad of ["", "subnets", "SUBNET", "node", 7, ["subnet", "bogus"]]) {
+    test(`rejects an unknown type ${JSON.stringify(bad)} with a clear error`, async () => {
+      const env = { AI: stubAi(), VECTORIZE: stubVectorizeMixed() };
+      await assert.rejects(
+        () => semanticSearch(env, "q", { type: bad }),
+        /Unknown type|Valid types/,
+      );
+    });
+  }
+
+  test("unfiltered default queries Vectorize without a filter (unchanged path)", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { limit: 4 });
+    assert.equal(out.results.length, 4);
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+    assert.equal(vectorize.calls.at(-1).topK, 4);
+  });
+
+  test("an empty type list is treated as 'all kinds'", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: [], limit: 6 });
+    assert.equal(out.results.length, 6);
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+  });
+
+  test("tolerates a Vectorize response with no matches field", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve(undefined) },
+    };
+    const out = await semanticSearch(env, "q");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
+  });
+});
+
 describe("askQuestion", () => {
   test("returns an answer with citations from the retrieved context", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
@@ -438,6 +602,22 @@ describe("askQuestion", () => {
   test("rejects an overly long question", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     await assert.rejects(() => askQuestion(env, "x".repeat(1001)), /at most/);
+  });
+  test("scopes retrieved context to the requested type", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await askQuestion(env, "which providers?", {
+      type: "provider",
+    });
+    assert.deepEqual(vectorize.calls.at(-1).filter, { type: "provider" });
+    assert.ok(out.citations.length > 0);
+  });
+  test("rejects an unknown type", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorizeMixed() };
+    await assert.rejects(
+      () => askQuestion(env, "q", { type: "bogus" }),
+      /Unknown type/,
+    );
   });
 });
 
@@ -468,6 +648,41 @@ describe("AI routes through the Worker dispatch", () => {
     assert.equal(body.ok, true);
     assert.equal(body.meta.source, "ai-live");
     assert.ok(body.data.results.length > 0);
+  });
+
+  test("enabled semantic threads a repeatable ?type= scope", async () => {
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=images&type=subnet&type=provider`),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.ok(body.data.results.every((r) => r.type === "subnet"));
+  });
+
+  test("semantic with an unknown ?type= is a 400", async () => {
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=x&type=bogus`),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_query");
+  });
+
+  test("ask with an unknown type is a 400", async () => {
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: "which?", type: "bogus" }),
+      }),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_request");
   });
 
   test("enabled ask returns a 200 envelope with citations", async () => {
