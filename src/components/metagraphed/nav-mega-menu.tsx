@@ -12,7 +12,6 @@ import {
 import { classNames } from "@/lib/metagraphed/format";
 import {
   freshnessQuery,
-  gapsQuery,
   healthQuery,
   providersQuery,
   subnetsQuery,
@@ -70,11 +69,9 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
             ? providersQuery()
             : key === "health" || key === "endpoints"
               ? healthQuery()
-              : key === "schemas" || key === "surfaces"
+              : key === "surfaces"
                 ? freshnessQuery()
-                : key === "gaps"
-                  ? gapsQuery()
-                  : null;
+                : null;
       if (opts) void qc.prefetchQuery(opts as Parameters<typeof qc.prefetchQuery>[0]);
     },
     [qc],
@@ -254,19 +251,6 @@ export function NavMegaMenu({ onNavigate }: NavMegaMenuProps) {
           </div>
         );
       })}
-      <Link
-        to="/about"
-        className={classNames(
-          "relative inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 h-9 text-sm transition-colors",
-          pathname === "/about"
-            ? "text-ink-strong font-medium"
-            : "text-ink-muted hover:text-ink-strong",
-        )}
-        preload="intent"
-      >
-        About
-      </Link>
-
       {activePanel ? (
         <>
           <div aria-hidden className="mg-mega-scrim" onClick={() => setOpenKey(null)} />

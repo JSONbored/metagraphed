@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   freshnessQuery,
-  gapsQuery,
   healthQuery,
   providersQuery,
   subnetsQuery,
@@ -53,13 +52,7 @@ function useSnapshot(key: string): SnapshotResult {
   const fresh = useQuery({
     ...freshnessQuery(),
     retry: 0,
-    enabled: key === "schemas" || key === "surfaces",
-    placeholderData: (p) => p,
-  });
-  const gaps = useQuery({
-    ...gapsQuery(),
-    retry: 0,
-    enabled: key === "gaps",
+    enabled: key === "surfaces",
     placeholderData: (p) => p,
   });
 
@@ -87,7 +80,7 @@ function useSnapshot(key: string): SnapshotResult {
       isError: health.isError,
     };
   }
-  if (key === "schemas" || key === "surfaces") {
+  if (key === "surfaces") {
     const f = fresh.data?.data;
     return {
       tiles: [
@@ -96,20 +89,6 @@ function useSnapshot(key: string): SnapshotResult {
       ],
       isPending: fresh.isPending,
       isError: fresh.isError,
-    };
-  }
-  if (key === "gaps") {
-    const list = gaps.data?.data ?? [];
-    return {
-      tiles: [
-        { label: "Open", value: list.length || "—" },
-        {
-          label: "High",
-          value: list.filter((g) => (g as { severity?: string }).severity === "high").length || "—",
-        },
-      ],
-      isPending: gaps.isPending,
-      isError: gaps.isError,
     };
   }
   return { tiles: [], isPending: false, isError: false };
@@ -751,17 +730,6 @@ export function MobileMegaMenuBody({ onNavigate }: { onNavigate?: () => void }) 
           );
         })}
       </Accordion>
-      <Link
-        to="/about"
-        onClick={onNavigate}
-        className={classNames(
-          "rounded-md px-3 py-2.5 text-sm",
-          pathname === "/about" ? "text-ink-strong font-medium" : "text-ink-muted",
-        )}
-        preload="intent"
-      >
-        About
-      </Link>
     </div>
   );
 }

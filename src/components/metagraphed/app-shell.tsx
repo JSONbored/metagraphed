@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Compass, Github, Menu, X } from "lucide-react";
-import { API_BASE, GITHUB_REPO } from "@/lib/metagraphed/config";
+import { API_BASE, DISCORD_URL, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { useApiBase } from "@/hooks/use-api-base";
 import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
@@ -11,6 +11,7 @@ import { SettingsPopover } from "./settings-popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { classNames } from "@/lib/metagraphed/format";
 import { safeExternalUrl } from "./external-link";
+import { DiscordIcon } from "./discord-icon";
 import { Wordmark } from "./wordmark";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
@@ -146,6 +147,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-[11px]">
                     Open source on GitHub
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <a
+                      href={DISCORD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Discord community"
+                      className="hidden md:inline-flex items-center justify-center rounded-md size-9 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+                    >
+                      <DiscordIcon className="size-4" />
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-[11px]">
+                    Join us on Discord
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -302,6 +319,14 @@ function SiteFooter() {
             className="hover:text-ink-strong transition-colors inline-flex items-center gap-1"
           >
             <Github className="size-3" /> GitHub
+          </a>
+          <a
+            href={DISCORD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-ink-strong transition-colors inline-flex items-center gap-1"
+          >
+            <DiscordIcon className="size-3" /> Discord
           </a>
         </FooterCol>
       </div>

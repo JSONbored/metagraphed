@@ -1,14 +1,4 @@
-import {
-  Activity,
-  AlertOctagon,
-  Boxes,
-  FileCode,
-  Layers,
-  Network,
-  Server,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
+import { Activity, Boxes, Layers, Network, Server, Workflow, type LucideIcon } from "lucide-react";
 
 export interface MegaLink {
   to: string;
@@ -152,41 +142,6 @@ export const MEGA_PANELS: MegaPanel[] = [
     filters: [
       { to: "/health", search: { status: "warn" }, label: "Degraded" },
       { to: "/health", search: { status: "down" }, label: "Down" },
-    ],
-  },
-  {
-    key: "schemas",
-    to: "/schemas",
-    label: "Schemas",
-    icon: FileCode,
-    blurb: "OpenAPI, contracts, and schema drift.",
-    apiPath: "/api/v1/schemas",
-    browse: [
-      { to: "/schemas", label: "All schemas" },
-      { to: "/schemas", search: { kind: "openapi" }, label: "OpenAPI" },
-      { to: "/schemas", search: { kind: "contract" }, label: "Contracts" },
-      { to: "/schemas", search: { drifted: "1" }, label: "Drifted" },
-      { to: "/schemas", search: { view: "snapshots" }, label: "Snapshots" },
-    ],
-    filters: [],
-  },
-  {
-    key: "gaps",
-    to: "/gaps",
-    label: "Gaps",
-    icon: AlertOctagon,
-    blurb: "Registry gaps, profile completeness, adapter candidates.",
-    apiPath: "/api/v1/gaps",
-    browse: [
-      { to: "/gaps", search: { status: "open" }, label: "Open" },
-      { to: "/gaps", search: { status: "in-review" }, label: "In review" },
-      { to: "/gaps", search: { status: "resolved" }, label: "Resolved" },
-      { to: "/gaps", search: { view: "adapters" }, label: "Adapter candidates" },
-      { to: "/gaps", search: { view: "completeness" }, label: "Profile completeness" },
-    ],
-    filters: [
-      { to: "/gaps", search: { priority: "high" }, label: "Priority high" },
-      { to: "/gaps", search: { missing: "evidence" }, label: "Missing evidence" },
     ],
   },
 ];

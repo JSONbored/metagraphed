@@ -15,6 +15,8 @@ import {
 
 describe("MEGA_PANELS catalogue", () => {
   it("exposes the expected primary panels in order", () => {
+    // Schemas + Gaps were demoted to footer-only navigation; they remain
+    // routes but no longer carry a top-level mega-panel.
     expect(MEGA_PANELS.map((p) => p.key)).toEqual([
       "subnets",
       "blocks",
@@ -22,8 +24,6 @@ describe("MEGA_PANELS catalogue", () => {
       "endpoints",
       "providers",
       "health",
-      "schemas",
-      "gaps",
     ]);
   });
 
