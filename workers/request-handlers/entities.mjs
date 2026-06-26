@@ -17,7 +17,8 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS, clampInt } from "../config.mjs";
+import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
+
 import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
@@ -61,11 +62,14 @@ import {
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
+  EXTRINSIC_RETENTION_MS,
   buildAccountExtrinsics,
   buildBlockExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
+
+const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
 // (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
@@ -319,9 +323,16 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const netuid = url.searchParams.get("netuid");
+  if (netuid != null && !/^\d+$/.test(netuid)) {
+    return errorResponse(
+      "invalid_param",
+      "netuid must be a non-negative integer.",
+      400,
+    );
+  }
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
-  if (netuid != null && /^\d+$/.test(netuid)) {
+  if (netuid != null) {
     sql += " AND netuid = ?";
     params.push(Number(netuid));
   }
@@ -394,9 +405,20 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "offset",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  const direction = url.searchParams.get("direction");
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "sent" &&
+    direction !== "received"
+  ) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
+    });
+  }
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const direction = url.searchParams.get("direction");
   // sent => this account is the sender (hotkey=from); received => recipient
   // (coldkey=to); default/all => either side.
   let sideClause = "(hotkey = ? OR coldkey = ?)";
@@ -481,12 +503,63 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   );
 }
 
-// Basic ss58 guard: Bittensor hotkeys start with '5', base58 chars, 47-48 chars.
-// The ACCOUNT_BALANCE_PATH_PATTERN captures any non-slash segment so this check
-// is the first-pass validity gate before the RPC call.
-const SS58_GUARD = /^5[a-zA-Z0-9]{46,47}$/;
+// Bittensor/finney account addresses are SS58-encoded values with network
+// prefix 42, a 32-byte account id, and a checksum suffix. The balance route is
+// a live RPC fan-out, so reject malformed path captures before any cache/limit
+// work. This decoder enforces the base58 alphabet and fixed finney payload
+// shape; the RPC limiter below remains the upstream abuse boundary.
+const SS58_BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const SS58_BASE58_INDEX = new Map(
+  [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
+);
+const FINNEY_SS58_PREFIX = 42;
+const FINNEY_SS58_MIN_LENGTH = 47;
+const FINNEY_SS58_MAX_LENGTH = 48;
+const FINNEY_SS58_DECODED_LENGTH = 35;
 const BALANCE_KV_TTL = 60; // seconds
+const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
+const BALANCE_RPC_TIMEOUT_MS = 5000;
+const BALANCE_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+
+function decodeBase58(value) {
+  const bytes = [0];
+  for (const char of value) {
+    const carryStart = SS58_BASE58_INDEX.get(char);
+    if (carryStart == null) return null;
+    let carry = carryStart;
+    for (let index = 0; index < bytes.length; index += 1) {
+      carry += bytes[index] * 58;
+      bytes[index] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  for (const char of value) {
+    if (char !== "1") break;
+    bytes.push(0);
+  }
+  return Uint8Array.from(bytes.reverse());
+}
+
+function isFinneySs58Address(value) {
+  if (
+    value.length < FINNEY_SS58_MIN_LENGTH ||
+    value.length > FINNEY_SS58_MAX_LENGTH
+  ) {
+    return false;
+  }
+
+  const decoded = decodeBase58(value);
+  return (
+    decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
+    decoded[0] === FINNEY_SS58_PREFIX
+  );
+}
 
 // GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
 // for one account, queried from the finney RPC at request time. 60s KV cache via
@@ -496,12 +569,32 @@ const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 // envelope, weak ETag, contract-version header, and 304/HEAD handling as every
 // other route — the body matches the AccountBalanceArtifact data schema.
 export async function handleAccountBalance(request, env, ss58) {
-  if (!SS58_GUARD.test(ss58)) {
+  if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
-      "ss58 address must start with '5' and be 47-48 alphanumeric characters.",
+      "ss58 address must be a valid finney SS58 account address.",
       400,
     );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `balance:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "balance_rate_limited",
+        "Too many live balance requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
   }
 
   const cacheKey = `balance:${ss58}`;
@@ -528,10 +621,13 @@ export async function handleAccountBalance(request, env, ss58) {
   let balanceTao = null;
   let rpcOk = false;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BALANCE_RPC_TIMEOUT_MS);
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -558,6 +654,8 @@ export async function handleAccountBalance(request, env, ss58) {
     }
   } catch {
     // RPC fetch failed — balance_tao stays null, return 200 below.
+  } finally {
+    clearTimeout(timeout);
   }
 
   const data = {
@@ -567,11 +665,10 @@ export async function handleAccountBalance(request, env, ss58) {
     queried_at: queriedAt,
   };
 
-  // Cache only on success so a transient RPC failure doesn't poison the cache.
-  if (rpcOk && kv?.put) {
+  if (kv?.put) {
     try {
       await kv.put(cacheKey, JSON.stringify(data), {
-        expirationTtl: BALANCE_KV_TTL,
+        expirationTtl: rpcOk ? BALANCE_KV_TTL : BALANCE_NEGATIVE_KV_TTL,
       });
     } catch {
       // KV write failure is non-fatal.
@@ -589,28 +686,107 @@ export async function handleBlocks(request, env, url) {
     "limit",
     "offset",
     "cursor",
+    "author",
+    "spec_version",
+    "from",
+    "to",
+    "block_start",
+    "block_end",
+    "min_extrinsics",
+    "min_events",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  // Keyset cursor (#1851) takes precedence over offset when present: WHERE
-  // block_number < ? (PK-ordered, stable under head inserts). A malformed cursor
-  // decodes to null → ignored (falls back to offset), preserving never-throw.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
-  let rows;
-  if (cur) {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
-      [cur[0], limit],
-    );
-  } else {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-      [limit, offset],
+  const sp = url.searchParams;
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const intParam = (name) => clampInt(sp.get(name), 0, 0, MAX);
+  const blockStart =
+    sp.get("block_start") != null ? intParam("block_start") : null;
+  const blockEnd = sp.get("block_end") != null ? intParam("block_end") : null;
+  const from = sp.get("from") != null ? intParam("from") : null;
+  const to = sp.get("to") != null ? intParam("to") : null;
+  const minExtrinsics =
+    sp.get("min_extrinsics") != null ? intParam("min_extrinsics") : null;
+  const minEvents =
+    sp.get("min_events") != null ? intParam("min_events") : null;
+
+  // Inverted indexed ranges and astronomically high per-block count floors are
+  // deterministic no-match cases. Short-circuit them before D1 so public callers
+  // cannot amplify cost by forcing scans to prove an impossible empty result.
+  if (
+    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
+    (from != null && to != null && from > to) ||
+    (minExtrinsics != null && minExtrinsics > MAX_BLOCK_COUNT_FILTER) ||
+    (minEvents != null && minEvents > MAX_BLOCK_COUNT_FILTER)
+  ) {
+    const data = buildBlockFeed([], { limit, offset, nextCursor: null });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(env, "/metagraph/blocks.json", null),
+      },
+      "short",
     );
   }
+
+  // Conjunctive (AND-ed) filter set mirroring handleExtrinsics (#1846/#1991):
+  // every value is BOUND, never interpolated; no-match filters return an empty
+  // feed rather than throwing.
+  const conds = [];
+  const params = [];
+  if (sp.get("author")) {
+    conds.push("author = ?");
+    params.push(sp.get("author"));
+  }
+  if (sp.get("spec_version") != null) {
+    conds.push("spec_version = ?");
+    params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
+  }
+  if (blockStart != null) {
+    conds.push("block_number >= ?");
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    conds.push("block_number <= ?");
+    params.push(blockEnd);
+  }
+  if (from != null) {
+    conds.push("observed_at >= ?");
+    params.push(from);
+  }
+  if (to != null) {
+    conds.push("observed_at <= ?");
+    params.push(to);
+  }
+  if (minExtrinsics != null) {
+    conds.push("extrinsic_count >= ?");
+    params.push(minExtrinsics);
+  }
+  if (minEvents != null) {
+    conds.push("event_count >= ?");
+    params.push(minEvents);
+  }
+  // Keyset cursor (#1851) takes precedence over offset: fold its block_number < ?
+  // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
+  // head inserts). A malformed cursor decodes to null → ignored (falls back to
+  // offset), preserving never-throw.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("block_number < ?");
+    params.push(cur[0]);
+  }
+  let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
+  const rows = await d1All(env, sql, params);
   // next_cursor only when the page was full (more rows likely); null at the end.
   const last = rows.length === limit ? rows[rows.length - 1] : null;
   const nextCursor = last ? encodeCursor([last.block_number]) : null;
@@ -640,17 +816,19 @@ export async function handleBlock(request, env, ref) {
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
   const param = isHash ? ref : Number(ref);
   const rows = await d1All(env, sql, [param]);
-  // prev/next chain-walk neighbors (#1853): one bounded query for the nearest
-  // STORED block numbers around the resolved height (skips pruned gaps; null at
-  // the window edges). Derived from the resolved row's number (works for the hash
-  // path too). Only when the block resolved — a cold/unknown ref has no anchor.
+  // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
+  // nearest STORED block numbers around the resolved height (skips pruned gaps;
+  // null at the window edges). Derived from the resolved row's number (works for
+  // the hash path too). Only when the block resolved — a cold/unknown ref has no
+  // anchor. Keep these as WHERE-bounded subqueries so public detail requests use
+  // the block_number primary key instead of scanning the retained blocks table.
   let prev = null;
   let next = null;
   const resolvedNumber = rows[0]?.block_number;
   if (Number.isInteger(resolvedNumber)) {
     const nbr = await d1All(
       env,
-      `SELECT MAX(CASE WHEN block_number < ? THEN block_number END) AS prev, MIN(CASE WHEN block_number > ? THEN block_number END) AS next FROM blocks`,
+      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
     );
     prev = nbr[0]?.prev ?? null;
@@ -683,15 +861,14 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  let blockNumber = isHash ? null : Number(ref);
-  if (isHash) {
-    const blockRows = await d1All(
-      env,
-      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
-      [ref],
-    );
-    blockNumber = blockRows[0]?.block_number ?? null;
-  }
+  const blockRows = await d1All(
+    env,
+    isHash
+      ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
+      : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
+    [isHash ? ref : Number(ref)],
+  );
+  const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
     blockNumber == null
       ? []
@@ -787,22 +964,51 @@ export async function handleExtrinsics(request, env, url) {
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
+  const fromRaw = sp.get("from");
+  const toRaw = sp.get("to");
+  const fromMs = fromRaw == null ? null : clampInt(fromRaw, 0, 0, MAX);
+  const toMs = toRaw == null ? null : clampInt(toRaw, 0, 0, MAX);
+  const nowMs = Date.now();
+  const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
+  // The extrinsics tier is a retained hot window of block timestamps. Reject
+  // impossible time ranges before D1 so unauthenticated future/expired probes
+  // cannot force a primary-key scan just to return an empty page.
+  if (
+    (fromMs != null && fromMs > nowMs + DAY_MS) ||
+    (toMs != null && toMs < observedFloorMs) ||
+    (fromMs != null && toMs != null && fromMs > toMs)
+  ) {
+    const data = buildExtrinsicFeed([], { limit, offset, nextCursor: null });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(env, "/metagraph/extrinsics.json", null),
+      },
+      "short",
+    );
+  }
   const conds = [];
   const params = [];
   const eq = (col, val) => {
     conds.push(`${col} = ?`);
     params.push(val);
   };
-  if (sp.get("block") != null)
-    eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  const hasBlockFilter = sp.get("block") != null;
+  const hasEqualityFilter =
+    sp.get("signer") || sp.get("call_module") || sp.get("call_function");
+  if (hasBlockFilter) eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
   if (sp.get("signer")) eq("signer", sp.get("signer"));
   if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
   if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
   // success is stored 1/0/NULL; bind the literal so success=false never leaks
   // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
+  const hasSuccessFilter = successRaw === "true" || successRaw === "false";
   if (successRaw === "true") eq("success", 1);
   else if (successRaw === "false") eq("success", 0);
+  const hasBlockRangeFilter =
+    sp.get("block_start") != null || sp.get("block_end") != null;
   if (sp.get("block_start") != null) {
     conds.push("block_number >= ?");
     params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
@@ -811,13 +1017,13 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("block_number <= ?");
     params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
   }
-  if (sp.get("from") != null) {
+  if (fromMs != null) {
     conds.push("observed_at >= ?");
-    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+    params.push(fromMs);
   }
-  if (sp.get("to") != null) {
+  if (toMs != null) {
     conds.push("observed_at <= ?");
-    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+    params.push(toMs);
   }
   // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
   // PK, ANDed with any active filters. Takes precedence over offset; a malformed
@@ -828,7 +1034,20 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
+  // Standalone observed_at ranges can be highly selective or empty while the
+  // feed order is block_number/extrinsic_index. Force the covering timestamp
+  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
+  // walking most of the retained primary-key order before finding no rows.
+  const forceObservedOrderIndex =
+    (fromMs != null || toMs != null) &&
+    !hasBlockFilter &&
+    !hasEqualityFilter &&
+    !hasSuccessFilter &&
+    !hasBlockRangeFilter &&
+    !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (forceObservedOrderIndex)
+    sql += " INDEXED BY idx_extrinsics_observed_order";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);
