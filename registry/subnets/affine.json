@@ -1,0 +1,50 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Affine",
+  "netuid": 120,
+  "schema_version": 1,
+  "slug": "sn-120",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-subnet-api",
+      "kind": "subnet-api",
+      "name": "Affine latest-scores API",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://api.affine.io/openapi.json"
+      ],
+      "url": "https://api.affine.io/api/v1/scores/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-120-affine-data-artifact",
+      "kind": "data-artifact",
+      "name": "Affine current-rank snapshot",
+      "provider": "affine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://www.affine.io/",
+        "https://api.affine.io/openapi.json"
+      ],
+      "url": "https://api.affine.io/api/v1/rank/current"
+    }
+  ]
+}
