@@ -87,6 +87,70 @@
         "timeout_ms": 10000
       },
       "notes": "Official Apex source repository."
+    },
+    {
+      "id": "sn-1-apex-deep-research",
+      "name": "Apex deep-research tool",
+      "kind": "source-repo",
+      "url": "https://github.com/macrocosm-os/apex_deep_research",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/apex_deep_research"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Deep-research tool for SN1 Apex (GitHub description: \"Deep researcher tool for SN1 Apex research\"), in the team's macrocosm-os org. Distinct from the main apex repo."
+    },
+    {
+      "id": "sn-1-apex-prompting-examples",
+      "name": "Apex prompting examples",
+      "kind": "example",
+      "url": "https://github.com/macrocosm-os/prompting-examples",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/prompting-examples"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "SN1 Apex examples and notebooks (GitHub description: \"SN1 Prompting examples and notebooks\"), in the team's macrocosm-os org."
+    },
+    {
+      "id": "sn-1-apex-benchmarking",
+      "name": "Apex benchmarking repository",
+      "kind": "source-repo",
+      "url": "https://github.com/macrocosm-os/apex-benchmarking",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/apex-benchmarking"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Public Apex benchmarking repository (GitHub description: \"Public Repo to share Apex-Benchmarking\"), in the team's macrocosm-os org."
+    },
+    {
+      "id": "sn-1-apex-pvp-arch",
+      "name": "Apex PvP arena runtime",
+      "kind": "source-repo",
+      "url": "https://github.com/macrocosm-os/apex-pvp-arch",
+      "provider": "macrocosmos",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/macrocosm-os/apex-pvp-arch"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Apex PvP arena runtime (multi-container PvP game runtime for adversarial agent competition), in the team's macrocosm-os org."
     }
   ],
   "social": { "x": "https://x.com/macrocosmosai" },
