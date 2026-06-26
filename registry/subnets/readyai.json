@@ -156,6 +156,31 @@
       "schema_url": "https://api.readyai.ai/openapi.json",
       "source_urls": ["https://readyai.ai/docs"],
       "url": "https://api.readyai.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-33-conversations-health",
+      "kind": "subnet-api",
+      "name": "ReadyAI Conversation Genome API",
+      "notes": "Public unauthenticated health endpoint of the SN33 protocol API host (api.conversations.xyz), the validator read host documented in the official README (CGP_API_READ_HOST). GET /health returns JSON {\"status\":\"healthy\"}; the machine-readable schema (schema_url) self-identifies as \"sn33api\". The /api/v1/* task endpoints require hotkey auth and are out of scope for proxying.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "readyai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorysr1209-png"
+      },
+      "schema_url": "https://api.conversations.xyz/openapi.json",
+      "source_urls": [
+        "https://github.com/afterpartyai/bittensor-conversation-genome-project/blob/main/README.md"
+      ],
+      "url": "https://api.conversations.xyz/health"
     }
   ],
   "website_url": "https://readyai.ai/"
