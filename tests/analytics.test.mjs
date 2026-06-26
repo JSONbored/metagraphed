@@ -168,6 +168,30 @@ describe("formatLeaderboards", () => {
       { netuid: 2, delta: -2 },
       { netuid: 3, delta: 0 },
     ],
+    reliabilityRows: [
+      {
+        netuid: 1,
+        samples: 100,
+        ok_count: 100,
+        avg_latency_ms: 50,
+        latency_samples: 100,
+      },
+      {
+        netuid: 2,
+        samples: 100,
+        ok_count: 80,
+        avg_latency_ms: 50,
+        latency_samples: 100,
+      },
+      // Zero samples → scoreFromStats returns null → dropped from the board.
+      {
+        netuid: 3,
+        samples: 0,
+        ok_count: 0,
+        avg_latency_ms: null,
+        latency_samples: 0,
+      },
+    ],
   };
 
   test("assembles all boards when no board filter", () => {
@@ -184,6 +208,54 @@ describe("formatLeaderboards", () => {
     assert.equal(out.boards["most-enriched"][0].surface_count, 12);
     assert.equal(out.boards["fastest-growing"][0].netuid, 1); // +5 only positive
     assert.equal(out.boards["fastest-growing"].length, 1);
+    assert.equal(out.boards["most-reliable"][0].netuid, 1); // 100% uptime ranks first
+  });
+  test("most-reliable ranks by windowed score and drops zero-sample subnets", () => {
+    const out = formatLeaderboards({ ...inputs, board: "most-reliable" });
+    const board = out.boards["most-reliable"];
+    // netuid 3 has no samples in the window → null score → excluded.
+    assert.equal(board.length, 2);
+    assert.equal(board[0].netuid, 1); // 100% uptime outranks 80%
+    assert.equal(board[1].netuid, 2);
+    assert.ok(board[0].score >= board[1].score);
+    assert.equal(typeof board[0].grade, "string");
+    assert.equal(board[0].name, "One"); // subnet meta merged in
+  });
+  test("most-reliable breaks score ties by latency then netuid", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      // All 100% uptime with latency <= the no-penalty threshold → identical
+      // score, so the tiebreakers decide: lower latency first, then lower netuid.
+      reliabilityRows: [
+        {
+          netuid: 7,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 300,
+          latency_samples: 100,
+        },
+        {
+          netuid: 4,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+          latency_samples: 100,
+        },
+        {
+          netuid: 9,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+          latency_samples: 100,
+        },
+      ],
+      board: "most-reliable",
+    });
+    // 4 and 9 (latency 100) outrank 7 (latency 300); 4 before 9 on netuid.
+    assert.deepEqual(
+      out.boards["most-reliable"].map((e) => e.netuid),
+      [4, 9, 7],
+    );
   });
   test("most-enriched excludes zero-surface subnets", () => {
     const out = formatLeaderboards({
