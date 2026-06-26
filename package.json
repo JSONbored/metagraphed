@@ -103,6 +103,8 @@
     "check": "npm run lint && npm run format:check && npm run pipeline:check && npm run validate:docs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --fileParallelism --testTimeout=30000 --exclude '**/artifacts.test.mjs' --exclude '**/discovery-artifacts.test.mjs'",
+    "test:ci:artifacts": "vitest run tests/artifacts.test.mjs tests/discovery-artifacts.test.mjs",
     "curation:brief": "node scripts/curation-brief.mjs",
     "endpoint:brief": "node scripts/endpoint-ops-brief.mjs"
   },

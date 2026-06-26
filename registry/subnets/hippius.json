@@ -148,6 +148,44 @@
       "schema_url": "https://api.hippius.com/swagger.json",
       "source_urls": ["https://api.hippius.com/swagger"],
       "url": "https://api.hippius.com/swagger.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-models-subnet-api",
+      "kind": "subnet-api",
+      "name": "Hippius model registry API",
+      "notes": "Public no-auth endpoint returning the paginated Hippius model registry (project/repo/digest/format for ~1300 hosted models); documented in the official Hippius OpenAPI spec. Verified publicly readable with no Authorization header, though the spec declares a global bearer scheme.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "source_urls": [
+        "https://api.hippius.com/swagger.json",
+        "https://hippius.com/"
+      ],
+      "url": "https://api.hippius.com/api/models/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-75-hippius-model-formats-data-artifact",
+      "kind": "data-artifact",
+      "name": "Hippius model formats metadata",
+      "notes": "Public no-auth static metadata document listing supported model formats and quantizations for the Hippius model registry; documented in the official Hippius OpenAPI spec. Verified publicly readable with no Authorization header.",
+      "provider": "hippius",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "source_urls": [
+        "https://api.hippius.com/swagger.json",
+        "https://hippius.com/"
+      ],
+      "url": "https://api.hippius.com/api/models/formats/"
     }
   ],
   "website_url": "https://hippius.com/"
