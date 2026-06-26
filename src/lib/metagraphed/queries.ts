@@ -3,7 +3,7 @@ import { apiFetch, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
-import { ss58PathSegment } from "./accounts";
+import { isValidSs58, ss58PathSegment } from "./accounts";
 import { isSchemaDrift, normalizeDriftStatus } from "./schema-drift";
 import type {
   AdapterSnapshot,
@@ -17,9 +17,14 @@ import type {
   AccountSummary,
   Block,
   ChainActivity,
+  ChainActivityDay,
   ChainCalls,
+  ChainCallEntry,
   ChainFees,
+  ChainFeeDay,
+  ChainFeePayer,
   ChainSigners,
+  ChainSignerEntry,
   Extrinsic,
   ExtrinsicCallArg,
   Transfer,
@@ -100,6 +105,11 @@ const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
+const MAX_CHAIN_ACTIVITY_DAYS = 31;
+const MAX_CHAIN_CALLS = 12;
+const MAX_CHAIN_SIGNERS = 20;
+const MAX_CHAIN_FEE_DAYS = 31;
+const MAX_CHAIN_FEE_PAYERS = 12;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1368,10 +1378,128 @@ export const accountTransfersQuery = (ss58: string, params?: QueryParams) =>
   });
 
 // ---- Chain analytics dashboard (#266, epic #1986) -------------------------
-// Display-only views over the live /api/v1/chain/* aggregates. Each guards only
-// the array containers + the window stamp; the row shapes are our own backend's.
+// Display-only views over the live /api/v1/chain/* aggregates. Treat rows as
+// untrusted display data so malformed canonical responses cannot crash SSR.
 
 type ChainWindow = "7d" | "30d";
+
+function normalizeChainActivityDay(raw: unknown): ChainActivityDay | null {
+  if (!isRecord(raw)) return null;
+  const day = firstString(raw.day);
+  const blockCount = coerceFiniteNumber(raw.block_count);
+  const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
+  const eventCount = coerceFiniteNumber(raw.event_count);
+  const successfulExtrinsics = coerceFiniteNumber(raw.successful_extrinsics);
+  const uniqueSigners = coerceFiniteNumber(raw.unique_signers);
+  if (
+    !day ||
+    blockCount == null ||
+    extrinsicCount == null ||
+    eventCount == null ||
+    successfulExtrinsics == null ||
+    uniqueSigners == null
+  ) {
+    return null;
+  }
+  return {
+    day,
+    block_count: blockCount,
+    extrinsic_count: extrinsicCount,
+    event_count: eventCount,
+    successful_extrinsics: successfulExtrinsics,
+    success_rate: coerceFiniteNumber(raw.success_rate) ?? null,
+    unique_signers: uniqueSigners,
+  };
+}
+
+function normalizeChainCallEntry(raw: unknown): ChainCallEntry | null {
+  if (!isRecord(raw)) return null;
+  const callModule = firstString(raw.call_module);
+  const count = coerceFiniteNumber(raw.count);
+  if (!callModule || count == null) return null;
+  return {
+    call_module: callModule,
+    call_function: firstString(raw.call_function) ?? null,
+    count,
+    share: coerceFiniteNumber(raw.share) ?? null,
+  };
+}
+
+function normalizeChainSignerEntry(raw: unknown): ChainSignerEntry | null {
+  if (!isRecord(raw)) return null;
+  const signer = firstString(raw.signer);
+  const txCount = coerceFiniteNumber(raw.tx_count);
+  const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
+  const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
+  if (
+    !signer ||
+    !isValidSs58(signer) ||
+    txCount == null ||
+    totalFeeTao == null ||
+    totalTipTao == null
+  ) {
+    return null;
+  }
+  return {
+    signer: signer.trim(),
+    tx_count: txCount,
+    total_fee_tao: totalFeeTao,
+    total_tip_tao: totalTipTao,
+    last_tx_block: coerceFiniteNumber(raw.last_tx_block) ?? null,
+  };
+}
+
+function normalizeChainFeeDay(raw: unknown): ChainFeeDay | null {
+  if (!isRecord(raw)) return null;
+  const day = firstString(raw.day);
+  const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
+  const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
+  const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
+  if (!day || extrinsicCount == null || totalFeeTao == null || totalTipTao == null) return null;
+  return {
+    day,
+    extrinsic_count: extrinsicCount,
+    total_fee_tao: totalFeeTao,
+    avg_fee_tao: coerceFiniteNumber(raw.avg_fee_tao) ?? null,
+    total_tip_tao: totalTipTao,
+    avg_tip_tao: coerceFiniteNumber(raw.avg_tip_tao) ?? null,
+  };
+}
+
+function normalizeChainFeePayer(raw: unknown): ChainFeePayer | null {
+  if (!isRecord(raw)) return null;
+  const signer = firstString(raw.signer);
+  const totalFeeTao = coerceFiniteNumber(raw.total_fee_tao);
+  const totalTipTao = coerceFiniteNumber(raw.total_tip_tao);
+  const extrinsicCount = coerceFiniteNumber(raw.extrinsic_count);
+  if (
+    !signer ||
+    !isValidSs58(signer) ||
+    totalFeeTao == null ||
+    totalTipTao == null ||
+    extrinsicCount == null
+  ) {
+    return null;
+  }
+  return {
+    signer: signer.trim(),
+    total_fee_tao: totalFeeTao,
+    total_tip_tao: totalTipTao,
+    extrinsic_count: extrinsicCount,
+  };
+}
+
+function normalizeChainRows<T>(
+  raw: unknown,
+  max: number,
+  normalize: (row: unknown) => T | null,
+): T[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, max).flatMap((row) => {
+    const normalized = normalize(row);
+    return normalized ? [normalized] : [];
+  });
+}
 
 export const chainActivityQuery = (window: ChainWindow = "7d") =>
   queryOptions({
@@ -1388,7 +1516,7 @@ export const chainActivityQuery = (window: ChainWindow = "7d") =>
           window,
           observed_at: firstString(d.observed_at) ?? null,
           day_count: firstFiniteNumber(d.day_count) ?? 0,
-          days: Array.isArray(d.days) ? (d.days as ChainActivity["days"]) : [],
+          days: normalizeChainRows(d.days, MAX_CHAIN_ACTIVITY_DAYS, normalizeChainActivityDay),
         } as ChainActivity,
         meta: res.meta,
         url: res.url,
@@ -1414,7 +1542,7 @@ export const chainCallsQuery = (window: ChainWindow = "7d") =>
           observed_at: firstString(d.observed_at) ?? null,
           total_extrinsics: firstFiniteNumber(d.total_extrinsics) ?? 0,
           call_count: firstFiniteNumber(d.call_count) ?? 0,
-          calls: Array.isArray(d.calls) ? (d.calls as ChainCalls["calls"]) : [],
+          calls: normalizeChainRows(d.calls, MAX_CHAIN_CALLS, normalizeChainCallEntry),
         } as ChainCalls,
         meta: res.meta,
         url: res.url,
@@ -1438,7 +1566,7 @@ export const chainSignersQuery = (window: ChainWindow = "7d") =>
           window,
           observed_at: firstString(d.observed_at) ?? null,
           signer_count: firstFiniteNumber(d.signer_count) ?? 0,
-          signers: Array.isArray(d.signers) ? (d.signers as ChainSigners["signers"]) : [],
+          signers: normalizeChainRows(d.signers, MAX_CHAIN_SIGNERS, normalizeChainSignerEntry),
         } as ChainSigners,
         meta: res.meta,
         url: res.url,
@@ -1462,10 +1590,12 @@ export const chainFeesQuery = (window: ChainWindow = "7d") =>
           window,
           observed_at: firstString(d.observed_at) ?? null,
           day_count: firstFiniteNumber(d.day_count) ?? 0,
-          daily: Array.isArray(d.daily) ? (d.daily as ChainFees["daily"]) : [],
-          top_fee_payers: Array.isArray(d.top_fee_payers)
-            ? (d.top_fee_payers as ChainFees["top_fee_payers"])
-            : [],
+          daily: normalizeChainRows(d.daily, MAX_CHAIN_FEE_DAYS, normalizeChainFeeDay),
+          top_fee_payers: normalizeChainRows(
+            d.top_fee_payers,
+            MAX_CHAIN_FEE_PAYERS,
+            normalizeChainFeePayer,
+          ),
         } as ChainFees,
         meta: res.meta,
         url: res.url,
