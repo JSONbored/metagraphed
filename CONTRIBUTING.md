@@ -99,6 +99,18 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 - No local paths, machine-specific setup, env dumps, or private notes.
 - Keep UI/frontend work out of this repo — it owns backend data contracts and generated JSON. The web app lives at [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
 
+## How reviews work
+
+**Timing is typical, not an SLA.** When the gittensory maintainer agent is operating, most PRs are reviewed and auto-merged or auto-closed within **~1 hour of CI finishing**; when it is paused or under maintenance, manual review **typically takes 24–48 hours, depending on volume**. These are observations, not commitments — reviews happen when they happen.
+
+**One-shot, merge-ready as-is.** We do not request changes on contributor PRs — a PR is merged exactly as it stands or it is closed; there is no "changes requested" back-and-forth. Before CI we rebase your branch onto `main` with a **merge commit**, then review **after** CI completes — so a rebase conflict, or any failing gate (schema, API, OpenAPI, `contract-drift`, or surface validation), closes the PR. Keep to the one-subnet-one-file rule, regenerate artifacts, and make it green before pushing; recover from a close by opening a **fresh, corrected PR**. PRs touching guarded paths (build scripts, the Worker API, CI config) are held for manual review.
+
+**If we close your PR by mistake, that's on us** — we may reopen or re-review at our discretion as time permits. There is no fixed window, and a fresh PR is usually fastest.
+
+**Don't ask for or chase reviews.** The queue is automated and best-effort, and the gate posts its own status on your PR. Do **not** DM, @-mention, or comment asking for a review or status — it will not speed anything up and **will deprioritize your PR (expect at least 5 days added to its place in the manual queue)**. Persistent pestering (here, Discord, or elsewhere) is a conduct violation and may get the PR closed and the account blocked.
+
+**Scoring and rewards are not ours to grant.** Contribution scoring and any Gittensor rewards are set by the subnet's on-chain hyperparameters and validators, not by this repo. Merging a PR is not a promise of score, ranking, or compensation, and all review decisions are at maintainer discretion and final.
+
 ## Deeper docs
 
 - [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
