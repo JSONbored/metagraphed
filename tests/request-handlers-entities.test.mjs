@@ -216,8 +216,12 @@ function dbWith({
               record(sql, params);
               return {
                 async all() {
-                  // Block prev/next neighbor aggregate (#1853).
-                  if (/MAX\(CASE WHEN block_number </.test(sql)) {
+                  // Block prev/next neighbor lookup (#1853).
+                  if (
+                    /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                      sql,
+                    )
+                  ) {
                     return {
                       results: [blockNeighbors || { prev: null, next: null }],
                     };
@@ -281,7 +285,7 @@ function dbWith({
                   if (/FROM account_events/.test(sql)) {
                     return { results: accountEvents || [] };
                   }
-                  // Hash → block_number resolution for block extrinsics/events.
+                  // Ref → block_number resolution for block extrinsics/events.
                   if (
                     /SELECT block_number FROM blocks WHERE block_hash = \?/.test(
                       sql,
@@ -290,6 +294,18 @@ function dbWith({
                     if (blockNumberByHash != null) {
                       return { results: [{ block_number: blockNumberByHash }] };
                     }
+                    if (blockDetail?.block_number != null) {
+                      return {
+                        results: [{ block_number: blockDetail.block_number }],
+                      };
+                    }
+                    return { results: [] };
+                  }
+                  if (
+                    /SELECT block_number FROM blocks WHERE block_number = \?/.test(
+                      sql,
+                    )
+                  ) {
                     if (blockDetail?.block_number != null) {
                       return {
                         results: [{ block_number: blockDetail.block_number }],
@@ -837,6 +853,19 @@ describe("handleAccountHistory", () => {
     assert.equal(body.error.code, "invalid_param");
   });
 
+  test("rejects malformed netuid filters with 400", async () => {
+    for (const netuid of ["abc", "-1", "7.5", ""]) {
+      const res = await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        emptyEnv(),
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history?netuid=${netuid}`),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_param");
+    }
+  });
+
   test("returns schema-stable empty days on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountHistory,
@@ -928,6 +957,18 @@ describe("handleAccountTransfers", () => {
       url(`/api/v1/accounts/${SS58}/transfers?bogus=1`),
     );
     await errorJson(res);
+  });
+
+  test("rejects an unsupported direction enum value with 400", async () => {
+    const res = await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
   });
 
   test("returns schema-stable empty transfers on cold D1", async () => {
@@ -1261,7 +1302,7 @@ describe("handleBlock", () => {
   });
 
   test("happy path resolves by numeric block_number", async () => {
-    const { env } = dbWith({
+    const { env, captures } = dbWith({
       blockDetail: blockRow(),
       blockNeighbors: { prev: 1230, next: 1240 },
     });
@@ -1272,6 +1313,13 @@ describe("handleBlock", () => {
         String(BLOCK_NUM),
       ),
     );
+    const neighborSql = captures.sql.find((sql) =>
+      /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+        sql,
+      ),
+    );
+    assert.ok(neighborSql);
+    assert.ok(!/MAX\(CASE WHEN block_number </.test(neighborSql));
     assert.equal(body.data.block.block_number, BLOCK_NUM);
     assert.equal(body.data.prev_block_number, 1230);
     assert.equal(body.data.next_block_number, 1240);
@@ -1306,13 +1354,16 @@ describe("handleBlockExtrinsics", () => {
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
     );
-    assert.equal(body.data.block_number, BLOCK_NUM);
+    assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
     assert.deepEqual(body.data.extrinsics, []);
   });
 
   test("happy path lists extrinsics in extrinsic_index ASC order", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const { env } = dbWith({
+      blockDetail: { block_number: BLOCK_NUM },
+      extrinsics: [extrinsicRow()],
+    });
     const body = await json(
       await handleBlockExtrinsics(
         req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
@@ -1343,6 +1394,21 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.ref, hash);
     assert.equal(body.data.block_number, 9);
     assert.equal(body.data.extrinsics[0].extrinsic_index, 1);
+  });
+
+  test("unknown numeric ref yields block_number:null + empty extrinsics", async () => {
+    const { env } = dbWith({ blocksFeed: [], extrinsics: [] });
+    const body = await json(
+      await handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
   });
 
   test("unknown hash ref yields block_number:null + empty extrinsics", async () => {
@@ -1464,6 +1530,97 @@ describe("handleExtrinsics", () => {
     assert.ok(/success = \?/.test(sql));
     assert.ok(/block_number >= \?/.test(sql));
     assert.ok(captures.params.flat().includes(0));
+  });
+
+  test("uses observed-at index hint for standalone time filters", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=1750000000000"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+  });
+
+  test("short-circuits impossible future time filters before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?from=9007199254740991"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("short-circuits an expired to< retention-floor window before D1", async () => {
+    // to=2000 (1970 epoch) is below the retained hot window floor; every
+    // candidate row would already be pruned, so never touch D1.
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?to=2000"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("short-circuits an inverted from>to window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const now = Date.now();
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?from=${now}&to=${now - 60_000}`),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("a valid recent window is NOT short-circuited and queries D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const now = Date.now();
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url(`/api/v1/extrinsics?from=${now - 60_000}&to=${now}`),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql, "a valid window must reach D1");
+    assert.ok(/observed_at >= \?/.test(sql));
+    assert.ok(/observed_at <= \?/.test(sql));
+  });
+
+  test("drops the observed-at index hint when an equality filter is present", async () => {
+    // With a (signer) equality the planner should use the order-aligned
+    // signer index, not be forced onto the observed-at one.
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=1750000000000&signer=5Signer"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/INDEXED BY/.test(sql), "equality filter must drop the hint");
+    assert.ok(/signer = \?/.test(sql));
   });
 
   test("cursor seeks on (block_number, extrinsic_index)", async () => {

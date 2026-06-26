@@ -602,7 +602,7 @@ export async function handleGlobalIncidents(request, env, url) {
     incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
