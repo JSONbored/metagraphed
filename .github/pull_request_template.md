@@ -3,17 +3,17 @@
 Use the matching PR template so the submission gate can classify your PR
 correctly:
 
-- [Direct subnet/interface candidate](?template=direct-candidate.md): one
-  `registry/candidates/community/*.json` file only.
+- [Subnet surface](?template=surface.md): one `registry/subnets/<slug>.json`
+  file — a community surface added with `npm run surface:add` (optionally plus
+  one `registry/providers/*.json` for a debut provider).
 - [Provider/operator profile](?template=provider-profile.md): one
-  `registry/providers/community/*.json` file only.
+  `registry/providers/*.json` file only.
 - [Backend/code change](?template=backend-code.md): scripts, schemas,
   contracts, workflows, or registry generator logic.
 - [Docs-only change](?template=docs-only.md): README or docs edits only.
 
-For direct UGC submissions, do not edit generated `public/metagraph/**`
-artifacts, native snapshots, scripts, workflows, package files, or multiple
-candidate/provider files.
+For data submissions, do not edit generated `public/metagraph/**` artifacts,
+native snapshots, scripts, workflows, or package files.
 
 ## Summary
 

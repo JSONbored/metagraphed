@@ -1,0 +1,13 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/General-Tao-Ventures/cartha-validator",
+  "id": "oxmarkets",
+  "kind": "subnet-team",
+  "name": "OxMarkets",
+  "public_notes": "Subnet 35 (OxMarkets) team profile — liquidity-as-a-service powering 0xMarkets. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+  "schema_version": 1,
+  "social": {
+    "x": "https://x.com/0x_Markets"
+  },
+  "website_url": "https://www.0xmarkets.io/"
+}

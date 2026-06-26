@@ -10,6 +10,7 @@
     "official-source-repo",
     "official-website"
   ],
+  "contact": "info@verathos.ai",
   "curation": {
     "gap_notes": [
       "No verified SSE/event stream yet.",
@@ -217,23 +218,60 @@
       "url": "https://taomarketcap.com/subnets/96"
     },
     {
-      "id": "sn-96-verathos-examples",
-      "name": "Verathos code examples",
-      "kind": "example",
-      "url": "https://github.com/verathos-ai/verathos/tree/main/examples",
-      "provider": "verathos",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/verathos-ai/verathos"],
+      "id": "sn-96-verathos-examples",
+      "kind": "example",
+      "name": "Verathos code examples",
+      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts.",
       "probe": {
         "enabled": false,
-        "method": "HEAD",
-        "expect": "any"
+        "expect": "any",
+        "method": "HEAD"
       },
-      "notes": "Official Verathos examples — OpenAI-compatible, streaming, and x402 client quickstarts."
+      "provider": "verathos",
+      "public_safe": true,
+      "source_urls": ["https://github.com/verathos-ai/verathos"],
+      "url": "https://github.com/verathos-ai/verathos/tree/main/examples"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-data-artifact",
+      "kind": "data-artifact",
+      "name": "Verathos on-chain model-registry snapshot",
+      "notes": "Public no-auth JSON snapshot of SN96's Bittensor chain identity and on-chain model/miner registry contract addresses; path is declared in the official OpenAPI spec.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://verathos.ai/",
+        "https://verathos.ai/openapi.json"
+      ],
+      "url": "https://verathos.ai/api/models/chain-info"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-96-verathos-data-artifact-verathos-ai",
+      "kind": "data-artifact",
+      "name": "Verathos model presets catalog",
+      "notes": "Public no-auth JSON catalog of SN96's supported model presets and quantization options; path is declared in the official OpenAPI spec.",
+      "provider": "verathos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://verathos.ai/",
+        "https://verathos.ai/openapi.json"
+      ],
+      "url": "https://verathos.ai/api/models/presets"
     }
   ],
-  "website_url": "https://verathos.ai/",
-  "contact": "info@verathos.ai"
+  "website_url": "https://verathos.ai/"
 }

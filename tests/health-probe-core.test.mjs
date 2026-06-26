@@ -16,9 +16,24 @@ import {
   probeSurface,
   probeUrl,
   rollupSubnetStatus,
+  normalizeProbeStatus,
   statusForClassification,
   summarizeRpcProbe,
 } from "../src/health-probe-core.mjs";
+
+describe("normalizeProbeStatus", () => {
+  test("passes through canonical values", () => {
+    for (const status of ["ok", "degraded", "failed", "unknown"]) {
+      assert.equal(normalizeProbeStatus(status), status);
+    }
+  });
+  test("maps unrecognized, null, and missing values to unknown", () => {
+    assert.equal(normalizeProbeStatus("weird"), "unknown");
+    assert.equal(normalizeProbeStatus(null), "unknown");
+    assert.equal(normalizeProbeStatus(undefined), "unknown");
+    assert.equal(normalizeProbeStatus(""), "unknown");
+  });
+});
 
 describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
   test("empty / all-unknown → unknown", () => {
@@ -90,6 +105,17 @@ describe("isUnsafePublicUrl", () => {
       "https://service.local/x",
       "ftp://example.com/x",
       "file:///etc/passwd",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
+  test("blocks fec0::/10 deprecated site-local IPv6 (issue #1538)", () => {
+    for (const url of [
+      "http://[fec0::1]/x",
+      "https://[fed0:1:2::3]/x",
+      "http://[feff::1]/x",
+      "http://[fe80::1]/x", // link-local still blocked
     ]) {
       assert.equal(isUnsafePublicUrl(url), true, url);
     }

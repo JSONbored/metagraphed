@@ -6,7 +6,7 @@ export const ARTIFACT_STORAGE_TIERS = {
 
 export const R2_STAGING_RELATIVE_ROOT = "dist/metagraph-r2/metagraph";
 
-const R2_ONLY_PATTERNS = [
+export const R2_ONLY_PATTERNS = [
   /^adapters\/[^/]+\.json$/,
   /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,
@@ -42,12 +42,48 @@ const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
+  // Per-subnet chain-event stream (#1345): account_events filtered by netuid at
+  // /api/v1/subnets/{netuid}/events — live D1, never written as a file.
+  /^subnets\/(?:\d+|\{netuid\})\/events\.json$/,
   // Account entity tiers (#1347): computed live from account_events + neurons at
   // /api/v1/accounts/{ss58}(/events|/subnets) — never written as files.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/events\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/history\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/extrinsics\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/transfers\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
+  // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,
+  // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
+  // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
+  // 0x block_hash) — never written as files.
+  /^blocks\.json$/,
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
+  // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
+  // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/extrinsics\.json$/,
+  // Per-block events sub-resource (#1852): computed live from the account_events
+  // D1 tier at /api/v1/blocks/{ref}/events — never written as a file.
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/events\.json$/,
+  // Block-explorer extrinsic tiers (#1345 second slice): computed live from the
+  // extrinsics D1 tier at /api/v1/extrinsics (recent feed) + /api/v1/extrinsics/{hash}
+  // (0x extrinsic_hash or composite block-index ref) — never written as files.
+  /^extrinsics\.json$/,
+  /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\d+-\d+|\{hash\})\.json$/,
+  // Chain analytics (#1987-#1990): network-activity / call-mix / signer-leaderboard
+  // / fee-market aggregates computed live from the extrinsics + blocks D1 tiers at
+  // /api/v1/chain/* — never files.
+  /^chain\/activity\.json$/,
+  /^chain\/calls\.json$/,
+  /^chain\/signers\.json$/,
+  /^chain\/fees\.json$/,
   /^registry\/leaderboards\.json$/,
+  // Cross-subnet comparison (#1664), composed live from registry projections +
+  // the economics tier + D1 at /api/v1/compare — never written as a file. R2-only
+  // like its sibling live routes so the contract maps a schema to the route
+  // without the build expecting a committed/staged artifact.
+  /^compare\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,
@@ -144,7 +180,7 @@ const R2_ONLY_PATTERNS = [
 // Committed to git (and mirrored to R2): the low-churn, consumer-facing API
 // contract plus the small coverage "shop window". These only change when the
 // API/schema changes — exactly what belongs in version control.
-const DUAL_PATTERNS = [
+export const DUAL_PATTERNS = [
   /^api-index\.json$/,
   // r2-manifest.json: the publish MANIFEST (what's in R2 + per-artifact hashes),
   // read by the upload/kv/verify pipeline — kept committed as publish

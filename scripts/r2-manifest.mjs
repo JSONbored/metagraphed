@@ -3,7 +3,6 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import {
-  artifactContentHash,
   buildTimestamp,
   readJson,
   repoRoot,
@@ -25,9 +24,17 @@ const fullManifestPath = path.join(
   "r2-manifest.json",
 );
 const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
-const manifest = write ? null : await readJson(manifestPath);
+// Always read the committed manifest. In write mode, when neither
+// METAGRAPH_RUN_ID nor METAGRAPH_BUILD_TIMESTAMP is set (local dev), reuse
+// the committed manifest's generated_at as the runId so the run_prefix stays
+// stable and never shows 1970 epoch timestamps.
+const manifest = await readJson(manifestPath).catch(() => null);
+const buildGeneratedAt =
+  process.env.METAGRAPH_RUN_ID || process.env.METAGRAPH_BUILD_TIMESTAMP
+    ? buildTimestamp()
+    : (manifest?.generated_at ?? new Date().toISOString());
 const fullManifest = write
-  ? await buildManifest()
+  ? await buildManifest(buildGeneratedAt)
   : existsSync(r2StagingRoot)
     ? await buildManifest(manifest.generated_at)
     : await readJson(fullManifestPath).catch(() => null);
@@ -110,8 +117,6 @@ async function buildManifest(generatedAt = buildTimestamp()) {
       latest_key: `latest/${relative}`,
       path: `/metagraph/${relative}`,
       sha256: sha256Hex(raw),
-      // Delta-skip hash (generated_at normalized out); integrity stays on sha256.
-      content_sha256: artifactContentHash(relative, raw),
       size_bytes: fileStat.size,
       storage_tier: artifactStorageTierForRelativePath(relative),
     });

@@ -152,6 +152,17 @@ describe("embedding helpers", () => {
     assert.equal(embeddingText({ title: "A" }), "A");
     assert.ok(embeddingText({ title: "x".repeat(5000) }).length <= 1500);
   });
+  test("embeddingText truncates by code point and stays well-formed UTF-16", () => {
+    // An astral char straddling the 1500-unit boundary must not be severed into
+    // a lone surrogate (#1650): a .slice() cap would leave isWellFormed() false.
+    const text = embeddingText({ title: "a".repeat(1499) + "😀" });
+    assert.ok(text.isWellFormed());
+    assert.ok(!text.endsWith("\uD83D")); // no dangling high surrogate
+    // A long astral run is capped to <= 1500 code points (not UTF-16 units).
+    const astral = embeddingText({ title: "😀".repeat(5000) });
+    assert.ok([...astral].length <= 1500);
+    assert.ok(astral.isWellFormed());
+  });
   test("embeddingText appends capability facets (categories + service_kinds)", () => {
     assert.equal(
       embeddingText({
@@ -826,6 +837,34 @@ describe("ai-search defensive branches", () => {
     const userMessage = askCall.input.messages.at(-1).content;
     // Live "degraded" status overrides the baked "unknown" stub in the context.
     assert.match(userMessage, /degraded/);
+  });
+
+  test("askQuestion sends an explicit no-results context when Vectorize returns no matches", async () => {
+    // Empty-result path: the user prompt must carry the
+    // "(no matching registry entries)" sentinel (not an empty context block), so
+    // the model is told there is nothing to ground on rather than hallucinating.
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await askQuestion(env, "anything at all?");
+    assert.equal(out.context_count, 0);
+    assert.deepEqual(out.citations, []);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.find(
+      (m) => m.role === "user",
+    ).content;
+    assert.match(userMessage, /\(no matching registry entries\)/);
+  });
+
+  test("semanticSearch returns an empty result set when Vectorize has no matches", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await semanticSearch(env, "no such thing");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
   });
 
   test("askQuestion degrades gracefully when the catalog read fails", async () => {

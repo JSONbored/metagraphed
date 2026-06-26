@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 15,
-  "name": "ORO",
-  "slug": "sn-15",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,80 +6,147 @@
     "official-source-repo",
     "official-website"
   ],
-  "docs_url": "https://docs.oroagents.com/docs/miners/quick-start",
-  "source_repo": "https://github.com/ORO-AI/oro",
-  "dashboard_url": "https://oroagents.com/",
-  "website_url": "https://oroagents.com/",
-  "notes": "Reviewed overlay for SN15 using the official ORO website, miner quick-start docs, and source repository. No safe public API or machine-readable schema is verified yet.",
+  "contact": "team@oroagents.com",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T09:50:00.000Z",
-    "verified_at": "2026-06-08T09:50:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:50:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T09:50:00.000Z"
   },
+  "dashboard_url": "https://oroagents.com/",
+  "docs_url": "https://docs.oroagents.com/docs/miners/quick-start",
+  "name": "ORO",
+  "netuid": 15,
+  "notes": "Reviewed overlay for SN15 using the official ORO website, miner quick-start docs, and source repository. No safe public API or machine-readable schema is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-15",
+  "social": {
+    "x": "https://x.com/oroagents"
+  },
+  "source_repo": "https://github.com/ORO-AI/oro",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-15-oro-website",
-      "name": "ORO website",
-      "kind": "website",
-      "url": "https://oroagents.com/",
-      "provider": "oro",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "id": "sn-15-oro-website",
+      "kind": "website",
+      "name": "ORO website",
+      "notes": "Official ORO website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ORO website."
+      "provider": "oro",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "url": "https://oroagents.com/"
     },
     {
-      "id": "sn-15-oro-docs",
-      "name": "ORO miner quick-start docs",
-      "kind": "docs",
-      "url": "https://docs.oroagents.com/docs/miners/quick-start",
-      "provider": "oro",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-15-oro-docs",
+      "kind": "docs",
+      "name": "ORO miner quick-start docs",
+      "notes": "Official ORO miner quick-start documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
       "public_safe": true,
       "source_urls": ["https://github.com/ORO-AI/oro/blob/main/README.md"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official ORO miner quick-start documentation."
+      "url": "https://docs.oroagents.com/docs/miners/quick-start"
     },
     {
-      "id": "sn-15-oro-source",
-      "name": "ORO source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/ORO-AI/oro",
-      "provider": "oro",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "id": "sn-15-oro-source",
+      "kind": "source-repo",
+      "name": "ORO source repository",
+      "notes": "Official ORO source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official ORO source repository."
+      "provider": "oro",
+      "public_safe": true,
+      "source_urls": ["https://github.com/ORO-AI/oro"],
+      "url": "https://github.com/ORO-AI/oro"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-openapi",
+      "kind": "openapi",
+      "name": "ORO community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.oroagents.com/openapi.json",
+      "source_urls": ["https://oroagents.com/"],
+      "url": "https://api.oroagents.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-subnet-api",
+      "kind": "subnet-api",
+      "name": "ORO public leaderboard API",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://oroagents.com/",
+        "https://api.oroagents.com/openapi.json"
+      ],
+      "url": "https://api.oroagents.com/v1/public/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-data-artifact",
+      "kind": "data-artifact",
+      "name": "ORO top-miner snapshot",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://oroagents.com/",
+        "https://api.oroagents.com/openapi.json"
+      ],
+      "url": "https://api.oroagents.com/v1/public/top"
     }
   ],
-  "social": { "x": "https://x.com/oroagents" },
-  "contact": "team@oroagents.com"
+  "website_url": "https://oroagents.com/"
 }

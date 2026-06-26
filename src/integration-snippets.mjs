@@ -12,20 +12,28 @@
 // only falls back to a scheme-type guess when no structured detail is present.
 
 // Resolve the structured per-surface auth (#746) into a snippet-ready credential:
-// { location: "header"|"query", name, value-placeholder }. Returns null for no
-// auth or an unsafe placeholder (a placeholder must never break snippet quoting,
-// and is never a real secret).
+// { location: "header"|"query"|"cookie", name, value-placeholder }. Returns null
+// for no auth or an unsafe placeholder (a placeholder must never break snippet
+// quoting, and is never a real secret). The surface schema's auth.location enum is
+// header|query|cookie — a cookie credential is rendered as a Cookie header below.
 function authFromDetail(auth) {
   if (!auth || typeof auth !== "object") return null;
   const scheme = String(auth.scheme || "").toLowerCase();
   if (scheme === "none") return null;
-  const location = auth.location === "query" ? "query" : "header";
+  const location =
+    auth.location === "query"
+      ? "query"
+      : auth.location === "cookie"
+        ? "cookie"
+        : "header";
   const name =
     typeof auth.name === "string" && auth.name
       ? auth.name
       : location === "query"
         ? "api_key"
-        : "Authorization";
+        : location === "cookie"
+          ? "session"
+          : "Authorization";
   const value =
     typeof auth.value_format === "string" && auth.value_format
       ? auth.value_format
@@ -75,6 +83,15 @@ function isCredentialSafeUrl(url) {
   }
 }
 
+function encodeQueryCredentialPart(value) {
+  try {
+    return encodeURIComponent(value);
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+}
+
 // Returns { curl, python, typescript } or null when there is no usable base_url.
 export function generateServiceSnippets(service) {
   const url = service?.base_url;
@@ -93,12 +110,28 @@ export function generateServiceSnippets(service) {
         : null;
 
   // Header credentials go in the request headers; query credentials go on the URL.
-  const requestUrl =
-    auth?.location === "query"
-      ? `${url}${url.includes("?") ? "&" : "?"}${auth.name}=${auth.value}`
-      : url;
+  // Percent-encode the credential name/value: authFromDetail intentionally allows
+  // spaces and URL-reserved chars (fine inside a header), but unencoded they'd
+  // either trip isSnippetSafeUrl's whitespace guard (→ no snippets at all) or
+  // corrupt the query string.
+  let requestUrl = url;
+  if (auth?.location === "query") {
+    const encodedName = encodeQueryCredentialPart(auth.name);
+    const encodedValue = encodeQueryCredentialPart(auth.value);
+    if (encodedName !== null && encodedValue !== null) {
+      requestUrl = `${url}${url.includes("?") ? "&" : "?"}${encodedName}=${encodedValue}`;
+    }
+  }
   if (!isSnippetSafeUrl(requestUrl)) return null;
-  const header = auth?.location === "header" ? auth : null;
+  // Header credentials pass through as-is; a cookie credential is sent via the
+  // Cookie request header as `name=value` (name/value already quote-safe from
+  // authFromDetail). Query credentials are already on requestUrl, not a header.
+  const header =
+    auth?.location === "header"
+      ? auth
+      : auth?.location === "cookie"
+        ? { name: "Cookie", value: `${auth.name}=${auth.value}` }
+        : null;
 
   const curl = header
     ? `curl -sS '${requestUrl}' \\\n  -H '${header.name}: ${header.value}'`

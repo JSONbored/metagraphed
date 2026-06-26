@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/one-covenant/basilica",
+  "id": "basilica",
+  "kind": "subnet-team",
+  "name": "Basilica",
+  "public_notes": "",
+  "schema_version": 1,
+  "website_url": "https://www.basilica.ai/"
+}

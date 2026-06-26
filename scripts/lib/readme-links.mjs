@@ -1,13 +1,13 @@
 // README link selection + classification helpers, extracted verbatim from
-// scripts/lib.mjs (#510 maintainability decomposition). Fully self-contained:
-// pure functions over plain strings/objects with no module state, no I/O, and no
-// dependency on any other lib.mjs symbol — so the output is byte-identical to the
-// in-lib.mjs originals. Re-exported from scripts/lib.mjs so existing importers
-// (scripts/discover-candidates.mjs, tests) keep their import paths unchanged.
+// scripts/lib.mjs (#510 maintainability decomposition). Pure functions over
+// plain strings/objects with no module state and no I/O. Re-exported from
+// scripts/lib.mjs so existing importers (scripts/discover-candidates.mjs, tests)
+// keep their import paths unchanged.
 //
-// `normalizeHost` / `registrableDomain` here are README-local helpers, distinct
-// from lib.mjs's `normalizeHostname` (used by the URL-safety code) — they were
-// always private to this cluster.
+// `registrableDomain` delegates to `registrableHostDomain` in lib.mjs for
+// multi-label public suffix handling (#1636) so README dedupe keys cannot drift.
+
+import { registrableHostDomain } from "../lib.mjs";
 
 export const README_LINK_LIMIT = 5;
 
@@ -218,6 +218,5 @@ function normalizeHost(hostname) {
 }
 
 function registrableDomain(hostname) {
-  const parts = normalizeHost(hostname).split(".").filter(Boolean);
-  return parts.slice(-2).join(".");
+  return registrableHostDomain(normalizeHost(hostname));
 }

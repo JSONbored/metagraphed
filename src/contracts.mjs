@@ -31,6 +31,7 @@ export const QUERY_ENUMS = {
   curationLevel: [
     "native",
     "candidate-discovered",
+    "community-seeded",
     "machine-verified",
     "maintainer-reviewed",
     "adapter-backed",
@@ -575,6 +576,7 @@ export const API_QUERY_COLLECTIONS = {
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
+    search: ["name", "slug"],
     sort: [
       "block",
       "candidate_count",
@@ -587,6 +589,16 @@ export const API_QUERY_COLLECTIONS = {
       "probed_surface_count",
       "status",
       "subnet_type",
+      "surface_count",
+      "tempo",
+    ],
+    // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    rangeFilters: [
+      "block",
+      "candidate_count",
+      "mechanism_count",
+      "participant_count",
+      "probed_surface_count",
       "surface_count",
       "tempo",
     ],
@@ -913,6 +925,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+    "SubnetEventsArtifact",
+  ),
+  artifact(
     "subnet-neuron-history",
     "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
     "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
@@ -937,10 +955,94 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+    "AccountHistoryArtifact",
+  ),
+  artifact(
+    "account-extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "AccountExtrinsicsArtifact",
+  ),
+  artifact(
+    "account-transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+    "AccountTransfersArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
     "AccountSubnetsArtifact",
+  ),
+  artifact(
+    "account-balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+    "AccountBalanceArtifact",
+  ),
+  artifact(
+    "blocks-feed",
+    "/metagraph/blocks.json",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "BlocksFeedArtifact",
+  ),
+  artifact(
+    "block-detail",
+    "/metagraph/blocks/{ref}.json",
+    "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+    "BlockDetailArtifact",
+  ),
+  artifact(
+    "block-extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+    "BlockExtrinsicsArtifact",
+  ),
+  artifact(
+    "block-events",
+    "/metagraph/blocks/{ref}/events.json",
+    "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
+    "BlockEventsArtifact",
+  ),
+  artifact(
+    "extrinsics-feed",
+    "/metagraph/extrinsics.json",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
+    "extrinsic-detail",
+    "/metagraph/extrinsics/{hash}.json",
+    "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "ExtrinsicDetailArtifact",
+  ),
+  artifact(
+    "chain-activity",
+    "/metagraph/chain/activity.json",
+    "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
+    "ChainActivityArtifact",
+  ),
+  artifact(
+    "chain-calls",
+    "/metagraph/chain/calls.json",
+    "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
+    "ChainCallsArtifact",
+  ),
+  artifact(
+    "chain-signers",
+    "/metagraph/chain/signers.json",
+    "Windowed most-active-account leaderboard (signers ranked by extrinsic count, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
+    "ChainSignersArtifact",
+  ),
+  artifact(
+    "chain-fees",
+    "/metagraph/chain/fees.json",
+    "Fee/tip market analytics (daily totals + averages and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+    "ChainFeesArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -959,6 +1061,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/registry/leaderboards.json",
     "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
+  ),
+  artifact(
+    "compare",
+    "/metagraph/compare.json",
+    "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
+    "CompareArtifact",
   ),
   artifact(
     "rpc-usage",
@@ -1561,6 +1669,21 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-events",
+    "GET",
+    "/api/v1/subnets/{netuid}/events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-neuron-history",
     "GET",
     "/api/v1/subnets/{netuid}/neurons/{uid}/history",
@@ -1611,11 +1734,61 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/events",
     "/metagraph/accounts/{ss58}/events.json",
-    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
     "short",
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "string", format: "date" } },
+      { name: "to", schema: { type: "string", format: "date" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-extrinsics",
+    "GET",
+    "/api/v1/accounts/{ss58}/extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-transfers",
+    "GET",
+    "/api/v1/accounts/{ss58}/transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "sent", "received"] },
+      },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
@@ -1631,6 +1804,171 @@ export const API_ROUTES = [
     ["accounts", "subnets"],
     [],
     [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-balance",
+    "GET",
+    "/api/v1/accounts/{ss58}/balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+    "short",
+    ["accounts"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "blocks-feed",
+    "GET",
+    "/api/v1/blocks",
+    "/metagraph/blocks.json",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+      { name: "author", schema: { type: "string" } },
+      { name: "spec_version", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "min_extrinsics", schema: { type: "integer", minimum: 0 } },
+      { name: "min_events", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "block-detail",
+    "GET",
+    "/api/v1/blocks/{ref}",
+    "/metagraph/blocks/{ref}.json",
+    "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-extrinsics",
+    "GET",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-events",
+    "GET",
+    "/api/v1/blocks/{ref}/events",
+    "/metagraph/blocks/{ref}/events.json",
+    "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "extrinsics-feed",
+    "GET",
+    "/api/v1/extrinsics",
+    "/metagraph/extrinsics.json",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+    "short",
+    ["extrinsics", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "signer", schema: { type: "string" } },
+      { name: "call_module", schema: { type: "string" } },
+      { name: "call_function", schema: { type: "string" } },
+      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "extrinsic-detail",
+    "GET",
+    "/api/v1/extrinsics/{hash}",
+    "/metagraph/extrinsics/{hash}.json",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
+    "short",
+    ["extrinsics", "analytics"],
+    [],
+    [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-activity",
+    "GET",
+    "/api/v1/chain/activity",
+    "/metagraph/chain/activity.json",
+    "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+    "short",
+    ["chain", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
+  ),
+  route(
+    "chain-calls",
+    "GET",
+    "/api/v1/chain/calls",
+    "/metagraph/chain/calls.json",
+    "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      {
+        name: "group_by",
+        schema: { type: "string", enum: ["module", "module_function"] },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-signers",
+    "GET",
+    "/api/v1/chain/signers",
+    "/metagraph/chain/signers.json",
+    "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-fees",
+    "GET",
+    "/api/v1/chain/fees",
+    "/metagraph/chain/fees.json",
+    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
   ),
   route(
     "subnet-uptime",
@@ -1670,6 +2008,27 @@ export const API_ROUTES = [
         },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "compare",
+    "GET",
+    "/api/v1/compare",
+    "/metagraph/compare.json",
+    "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+    "standard",
+    ["registry", "subnets", "analytics"],
+    [
+      {
+        name: "netuids",
+        schema: {
+          type: "string",
+          maxLength: 767,
+          pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+        },
+      },
+      { name: "dimensions", schema: { type: "string" } },
     ],
     [],
   ),
@@ -2030,13 +2389,16 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         "unauthenticated GET. Responses use a stable JSON envelope " +
         "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
         "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
-        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
-        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
+        "client. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
+        "(mainnet is the default — omit it) to read testnet data, e.g. " +
+        "`/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have " +
+        "data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production (mainnet; prefix /testnet/ for testnet data)",
+        description:
+          "Production (mainnet default; insert /testnet/ after /api/v1/ for testnet data)",
       },
     ],
     // The API is intentionally public + unauthenticated; an empty top-level
@@ -2073,9 +2435,13 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
+    .replace("{uid}", String(params.uid ?? ""))
+    .replace("{ss58}", String(params.ss58 ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace("{surface_id}", String(params.surface_id ?? ""))
+    .replace("{ref}", String(params.ref ?? ""))
+    .replace("{hash}", String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
@@ -2085,7 +2451,12 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
-    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
+    // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__")
+    // Block-explorer {hash} (#1345/#1848): a 0x extrinsic_hash OR
+    // composite <block_number>-<extrinsic_index> ref.
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -2093,7 +2464,9 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -2152,6 +2525,10 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: each field F here accepts `min_F` and `max_F` query
+    // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
+    // hand-rolled min_readiness the MCP list_subnets tool did.
+    range_filters: options.rangeFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2174,12 +2551,18 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
+  const rangeParameters = config.range_filters.flatMap((field) => [
+    { name: `min_${field}`, schema: { type: "number" } },
+    { name: `max_${field}`, schema: { type: "number" } },
+  ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      ...rangeParameters,
       {
         name: "fields",
         schema: fieldListSchema,

@@ -73,25 +73,30 @@ function snapshotStamp(rows) {
 
 export function buildSubnetMetagraph(rows, netuid) {
   const { captured_at, block_number } = snapshotStamp(rows);
+  // Drop any malformed row (formatNeuron → null) so the array only holds real
+  // Neuron objects, mirroring the blocks/extrinsics feed builders; the count
+  // tracks the array, so callers can rely on neuron_count === neurons.length.
+  const neurons = rows.map(formatNeuron).filter(Boolean);
   return {
     schema_version: 1,
     netuid,
-    neuron_count: rows.length,
+    neuron_count: neurons.length,
     captured_at,
     block_number,
-    neurons: rows.map(formatNeuron),
+    neurons,
   };
 }
 
 export function buildSubnetValidators(rows, netuid) {
   const { captured_at, block_number } = snapshotStamp(rows);
+  const validators = rows.map(formatNeuron).filter(Boolean);
   return {
     schema_version: 1,
     netuid,
-    validator_count: rows.length,
+    validator_count: validators.length,
     captured_at,
     block_number,
-    validators: rows.map(formatNeuron),
+    validators,
   };
 }
 
@@ -123,8 +128,11 @@ export async function loadSubnetMetagraph(
 }
 
 export async function loadSubnetValidators(d1, netuid) {
+  // Tie-break equal stake by the unique uid so the ranking is deterministic
+  // across snapshot-replaced captures (without it, SQLite returns tied rows in
+  // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
   const rows = await d1(
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC`,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC, uid ASC`,
     [netuid],
   );
   return buildSubnetValidators(rows, netuid);

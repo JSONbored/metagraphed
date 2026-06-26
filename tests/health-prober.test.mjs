@@ -94,6 +94,15 @@ describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
     assert.equal(await guard("https://v6.example.com/x"), true);
   });
 
+  test("blocks an fec0::/10 site-local AAAA answer (issue #1538)", async () => {
+    for (const aaaa of ["fec0::1", "fed0:1:2::3", "feff::1"]) {
+      const guard = workerResolvedUrlSafetyGuard({
+        fetchImpl: dohFetch({ "evil.example.com": { AAAA: [aaaa] } }),
+      });
+      assert.equal(await guard("https://evil.example.com/x"), true, aaaa);
+    }
+  });
+
   test("blocks an AAAA answer that tunnels a private v4 (mapped/6to4/NAT64)", async () => {
     // A rebinding answer can hide a loopback/link-local target inside an IPv6
     // literal; the guard must decode the embedded v4 and block it.
@@ -1743,6 +1752,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
     };
     assert.deepEqual(await rollupDailyUptime({ METAGRAPH_HEALTH_DB: db }), {
       rolled: false,
+      error: "d1 unavailable",
     });
   });
 
