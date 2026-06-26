@@ -1,5 +1,5 @@
 {
-  "packages/client": "0.6.1",
+  "packages/client": "0.7.0",
   "python": "0.4.1",
-  ".": "0.23.0"
+  ".": "0.24.0"
 }
