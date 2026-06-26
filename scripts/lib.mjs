@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Agent } from "undici";
 import {
   ARTIFACT_STORAGE_TIERS,
@@ -13,7 +14,11 @@ import {
 } from "../src/artifact-storage.mjs";
 import { sanitizeChainText } from "./lib/formatting.mjs";
 
-export const repoRoot = new URL("..", import.meta.url).pathname;
+// Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
+// root is a valid native path on every OS. On Windows the bare `.pathname` form
+// yields a leading-slash, drive-prefixed string (e.g. `/E:/work/...`) that
+// `path.join` mangles into `E:\E:\work\...`, breaking every artifact read.
+export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
@@ -1774,6 +1779,37 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// Hostname-only registrable unit for dedupe / same-site checks (#1636, #1910).
+// Mirrors clusterDomainFromUrl but accepts bare hostnames and always returns a
+// string (falls back to the last-two-label heuristic for bare suffix hosts).
+export function registrableHostDomain(hostname) {
+  const host = String(hostname || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!host) return "";
+  const labels = host.split(".").filter(Boolean);
+  return (
+    clusterDomainFromUrl(`https://${host}/`) ??
+    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
+  );
+}
+
+// Same-site check for candidate discovery (#1910): exact hostname match or the
+// same registrable host (honors multi-label public suffixes via registrableHostDomain).
+export function isLikelyProjectDomain(baseUrl, candidateUrl) {
+  try {
+    const base = new URL(baseUrl);
+    const candidate = new URL(candidateUrl);
+    return (
+      candidate.hostname === base.hostname ||
+      registrableHostDomain(candidate.hostname) ===
+        registrableHostDomain(base.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
 // project's registrable domain so the OpenAPI spec sweep reaches APIs that live
 // on api.<domain> (or docs.<domain>) rather than the marketing root — the
@@ -1909,6 +1945,7 @@ export function buildProvenanceReviewQueue({
   nativeSubnets = [],
   verificationResults = [],
   subnets = [],
+  generatedAt = buildTimestamp(),
 }) {
   const levelByNetuid = new Map(
     subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
@@ -1939,7 +1976,7 @@ export function buildProvenanceReviewQueue({
   return {
     schema_version: 1,
     generated_by: "metagraphed-review-queue",
-    generated_at: buildTimestamp(),
+    generated_at: generatedAt,
     notes:
       "Suggested maintainer-review elevations: provenance-strong, live callable " +
       "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +

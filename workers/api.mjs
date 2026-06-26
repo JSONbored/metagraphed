@@ -1,11 +1,14 @@
 import {
-  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.mjs";
-import { applyQueryFilters, paginationLinkHeader } from "./list-query.mjs";
+import {
+  applyQueryFilters,
+  canonicalListSearch,
+  paginationLinkHeader,
+} from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
@@ -40,6 +43,10 @@ import {
   configureAnalytics,
   d1All,
   handleBulkHealthTrends,
+  handleChainActivity,
+  handleChainCalls,
+  handleChainFees,
+  handleChainSigners,
   handleGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
@@ -285,39 +292,11 @@ const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 // params at all, so their canonical search is the empty string. Shared by both
 // the static edge cache and the live-overlay collection cache.
 function canonicalCacheSearch(url, matched) {
-  const config = API_QUERY_COLLECTIONS[matched.queryCollection];
-  if (!config) return "";
-  const filterNames =
-    matched.queryFilterNames?.length > 0
-      ? matched.queryFilterNames
-      : Object.keys(config.filters);
-  // Range filters expose `min_<field>`/`max_<field>` params; csv/array filters
-  // expose their own param names. All of these change the filtered body, so they
-  // must be part of the cache key (omitting them would collide distinct queries).
-  const rangeNames = (config.range_filters || []).flatMap((field) => [
-    `min_${field}`,
-    `max_${field}`,
-  ]);
-  const csvNames = Object.keys(config.csv_filters || {});
-  const arrayNames = Object.keys(config.array_filters || {});
-  const cacheableNames = [
-    "q",
-    "fields",
-    "limit",
-    "cursor",
-    "sort",
-    "order",
-    ...filterNames,
-    ...csvNames,
-    ...arrayNames,
-    ...rangeNames,
-  ];
-  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
-  for (const name of cacheableNames) {
-    const value = url.searchParams.get(name);
-    if (value !== null) canonicalUrl.searchParams.set(name, value);
-  }
-  return canonicalUrl.search;
+  return canonicalListSearch(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames || [],
+  );
 }
 
 export default {
@@ -1300,6 +1279,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         handleGlobalIncidents(request, env, resolved.url),
       );
     }
+    if (resolved.url.pathname === "/api/v1/chain/activity") {
+      return handleChainActivity(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/calls") {
+      return handleChainCalls(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/signers") {
+      return handleChainSigners(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/fees") {
+      return handleChainFees(request, env, resolved.url, ctx);
+    }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
 
@@ -2100,6 +2091,10 @@ async function handleApiRequest(
   const linkValue = paginationLinkHeader(
     networkPublicUrl(url, network),
     transformed.meta.pagination,
+    {
+      queryCollection: matched.queryCollection,
+      queryFilterNames: matched.queryFilterNames || [],
+    },
   );
   const response = await envelopeResponse(
     request,
@@ -2155,7 +2150,7 @@ async function handleTrajectory(request, env, netuid, url) {
     [netuid],
   );
   const data = formatTrajectory({ netuid, rows });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2226,7 +2221,7 @@ async function handleUptime(request, env, netuid, url) {
     rows,
     now: new Date().toISOString(),
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2329,8 +2324,13 @@ async function handleLeaderboards(request, env, url) {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples, economicsRows] = await Promise.all(
-    [
+  // 30d window for the durable reliability board (matches the reliability/badge
+  // default), distinct from the 7d completeness-growth window above.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, economicsRows, reliabilityRows] =
+    await Promise.all([
       d1All(
         env,
         `SELECT netuid,
@@ -2360,8 +2360,20 @@ async function handleLeaderboards(request, env, url) {
       ),
       // Economic boards: the economics tier alongside the operational D1 queries.
       resolveEconomicsRows(env),
-    ],
-  );
+      // Durable reliability board: per-subnet windowed uptime + latency from the
+      // surface_uptime_daily rollup (one GROUP BY netuid round-trip).
+      d1All(
+        env,
+        `SELECT netuid,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              ${dailyLatencyColumns({ roundedAvg: true })}
+       FROM surface_uptime_daily
+       WHERE day >= ?
+       GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
 
   // Per-subnet completeness delta over the window (latest - earliest sample).
   const growthByNetuid = new Map();
@@ -2393,10 +2405,11 @@ async function handleLeaderboards(request, env, url) {
     rpcRows,
     mostComplete,
     growthRows,
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2410,7 +2423,7 @@ async function handleLeaderboards(request, env, url) {
     },
     "standard",
   );
-  return hasD1FallbackRows(healthRows, rpcRows, growthSamples)
+  return hasD1FallbackRows(healthRows, rpcRows, growthSamples, reliabilityRows)
     ? markD1FallbackResponse(response)
     : response;
 }
@@ -2599,7 +2612,7 @@ async function handleCompare(request, env, url) {
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
