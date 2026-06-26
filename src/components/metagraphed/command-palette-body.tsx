@@ -296,12 +296,14 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       target: Target;
       kind: string;
       icon: typeof User;
+      searchValue?: string;
     }> = [];
     if (isValidSs58(q)) {
       targets.push({
         label: `Account ${shortHash(q, 8) ?? q}`,
         hint: q,
         target: { to: "/accounts/$ss58", params: { ss58: q } },
+        searchValue: q,
         kind: "account",
         icon: User,
       });
@@ -321,6 +323,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           label: `Block ${shortHash(q, 8) ?? q}`,
           hint: "by block hash",
           target: { to: "/blocks/$ref", params: { ref: q } },
+          searchValue: q,
           kind: "block",
           icon: Hash,
         },
@@ -328,6 +331,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
           label: `Extrinsic ${shortHash(q, 8) ?? q}`,
           hint: "by extrinsic hash",
           target: { to: "/extrinsics/$hash", params: { hash: q } },
+          searchValue: q,
           kind: "extrinsic",
           icon: ArrowRightLeft,
         },
@@ -520,7 +524,7 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
               return (
                 <CommandItem
                   key={`nav-${n.kind}-${n.label}`}
-                  value={`nav ${n.kind} ${n.label}`}
+                  value={`nav ${n.kind} ${n.label} ${n.hint} ${n.searchValue ?? ""}`}
                   onSelect={() => openTarget(n.target, n.kind, modifier)}
                   className="group/item flex items-center gap-3"
                 >
