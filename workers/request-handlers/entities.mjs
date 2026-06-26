@@ -912,16 +912,21 @@ export async function handleExtrinsics(request, env, url) {
     conds.push(`${col} = ?`);
     params.push(val);
   };
-  if (sp.get("block") != null)
-    eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  const hasBlockFilter = sp.get("block") != null;
+  const hasEqualityFilter =
+    sp.get("signer") || sp.get("call_module") || sp.get("call_function");
+  if (hasBlockFilter) eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
   if (sp.get("signer")) eq("signer", sp.get("signer"));
   if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
   if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
   // success is stored 1/0/NULL; bind the literal so success=false never leaks
   // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
+  const hasSuccessFilter = successRaw === "true" || successRaw === "false";
   if (successRaw === "true") eq("success", 1);
   else if (successRaw === "false") eq("success", 0);
+  const hasBlockRangeFilter =
+    sp.get("block_start") != null || sp.get("block_end") != null;
   if (sp.get("block_start") != null) {
     conds.push("block_number >= ?");
     params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
@@ -947,13 +952,20 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  // Do not force the observed_at-leading index here. Broad valid windows such
-  // as from=0 or to=now can cover the retained hot set; the feed order is still
-  // block_number/extrinsic_index, so SQLite/D1 must be free to choose the
-  // primary-key order and stop after LIMIT instead of scanning and sorting the
-  // observed_at index. The migration keeps idx_extrinsics_observed_order
-  // available for genuinely selective timestamp ranges when the planner wants it.
+  // Standalone observed_at ranges can be highly selective or empty while the
+  // feed order is block_number/extrinsic_index. Force the covering timestamp
+  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
+  // walking most of the retained primary-key order before finding no rows.
+  const forceObservedOrderIndex =
+    (fromMs != null || toMs != null) &&
+    !hasBlockFilter &&
+    !hasEqualityFilter &&
+    !hasSuccessFilter &&
+    !hasBlockRangeFilter &&
+    !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (forceObservedOrderIndex)
+    sql += " INDEXED BY idx_extrinsics_observed_order";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);
