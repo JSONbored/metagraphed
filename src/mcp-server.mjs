@@ -534,6 +534,43 @@ function sortSubnets(rows, field, order) {
   });
 }
 
+// Inclusive numeric range bounds list_subnets accepts, each mapping a `min_`/
+// `max_` arg to a numeric row field — the MCP mirror of the REST list endpoint's
+// `range_filters` (contracts.mjs), generalizing the original one-off `min_readiness`
+// into symmetric min/max bounds over every numeric field the tool exposes. The
+// `readiness` alias is kept for `integration_readiness` so existing `min_readiness`
+// callers are unaffected.
+const LIST_SUBNETS_RANGE_BOUNDS = [
+  { arg: "min_readiness", field: "integration_readiness", op: "min" },
+  { arg: "max_readiness", field: "integration_readiness", op: "max" },
+  { arg: "min_surface_count", field: "surface_count", op: "min" },
+  { arg: "max_surface_count", field: "surface_count", op: "max" },
+  { arg: "min_netuid", field: "netuid", op: "min" },
+  { arg: "max_netuid", field: "netuid", op: "max" },
+];
+
+// Drop rows outside any requested inclusive bound. A row whose field is absent or
+// non-numeric cannot satisfy a bound, so it is excluded once any bound on that
+// field is set — identical to rangeFilterRows in workers/list-query.mjs. Only
+// finite numeric args count (tools/call does not enforce inputSchema types).
+function rangeFilterSubnets(rows, args) {
+  const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
+    Number.isFinite(args?.[arg]),
+  ).map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
+  if (bounds.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    bounds.every(({ field, op, limit }) => {
+      const value = row[field];
+      if (typeof value !== "number") {
+        return false;
+      }
+      return op === "min" ? value >= limit : value <= limit;
+    }),
+  );
+}
+
 // A search.json document → keywordScore shape: title/slug are identity; subtitle
 // and tokens (which already fold in categories/service kinds) are recall-only.
 function scoreDocument(doc, terms) {
@@ -730,6 +767,34 @@ export const MCP_TOOLS = [
           minimum: 0,
           maximum: 100,
         },
+        max_readiness: {
+          type: "integer",
+          description:
+            "Only subnets whose integration_readiness is <= this (0-100).",
+          minimum: 0,
+          maximum: 100,
+        },
+        min_surface_count: {
+          type: "integer",
+          description:
+            "Only subnets with at least this many callable surfaces.",
+          minimum: 0,
+        },
+        max_surface_count: {
+          type: "integer",
+          description: "Only subnets with at most this many callable surfaces.",
+          minimum: 0,
+        },
+        min_netuid: {
+          type: "integer",
+          description: "Only subnets whose netuid is >= this.",
+          minimum: 0,
+        },
+        max_netuid: {
+          type: "integer",
+          description: "Only subnets whose netuid is <= this.",
+          minimum: 0,
+        },
         sort: {
           type: "string",
           enum: LIST_SUBNETS_SORT_FIELDS,
@@ -761,22 +826,13 @@ export const MCP_TOOLS = [
         typeof args?.domain === "string"
           ? args.domain.trim().toLowerCase()
           : null;
-      const minReadiness = Number.isFinite(args?.min_readiness)
-        ? args.min_readiness
-        : null;
-      const filtered = all.filter((subnet) => {
+      const categorical = all.filter((subnet) => {
         if (status && String(subnet.status || "").toLowerCase() !== status) {
           return false;
         }
         if (
           subnetType &&
           String(subnet.subnet_type || "").toLowerCase() !== subnetType
-        ) {
-          return false;
-        }
-        if (
-          minReadiness !== null &&
-          !(Number(subnet.integration_readiness) >= minReadiness)
         ) {
           return false;
         }
@@ -793,6 +849,9 @@ export const MCP_TOOLS = [
         }
         return true;
       });
+      // Apply the inclusive numeric range bounds (min_/max_) after the
+      // categorical filters, mirroring the REST list endpoint's filter order.
+      const filtered = rangeFilterSubnets(categorical, args);
       // Sort the filtered list before paging; unscored subnets sort last and
       // equal values tie-break by netuid for a stable page (sortSubnets).
       const sort = optionalEnum(args, "sort", LIST_SUBNETS_SORT_FIELDS);
