@@ -6,8 +6,9 @@ function req(path) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-// D1 mock routing by SQL shape: a 0x ref resolves block_hash → block_number via
-// `blocks`, then events are read from `account_events` by block_number (#1852).
+// D1 mock routing by SQL shape: a ref (0x hash OR numeric) resolves to a
+// block_number via `blocks`, then events are read from `account_events` by
+// block_number (#1852). `blockNumber` null/absent → the block does not exist.
 function dbWith({ events, blockNumber } = {}) {
   return {
     METAGRAPH_HEALTH_DB: {
@@ -16,7 +17,10 @@ function dbWith({ events, blockNumber } = {}) {
           bind() {
             return {
               async all() {
-                if (/FROM blocks WHERE block_hash/.test(sql))
+                if (
+                  /FROM blocks WHERE block_hash/.test(sql) ||
+                  /FROM blocks WHERE block_number/.test(sql)
+                )
                   return {
                     results:
                       blockNumber == null
@@ -48,7 +52,7 @@ const ROW = {
 };
 
 test("GET /blocks/{ref}/events returns the events in one block by number (#1852)", async () => {
-  const env = dbWith({ events: [ROW] });
+  const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
   const res = await handleRequest(
     req("/api/v1/blocks/1000000/events"),
     env,
@@ -81,7 +85,7 @@ test("GET /blocks/{ref}/events resolves a 0x block_hash ref to its number", asyn
 });
 
 test("GET /blocks/{ref}/events honors ?limit and rejects bad params", async () => {
-  const env = dbWith({ events: [ROW] });
+  const env = dbWith({ events: [ROW], blockNumber: 1_000_000 });
   const ok = await handleRequest(
     req("/api/v1/blocks/1000000/events?limit=10"),
     env,
@@ -109,6 +113,20 @@ test("GET /blocks/{ref}/events is schema-stable for an unknown ref (never 404)",
   );
   assert.equal(res.status, 200);
   const body = await res.json();
+  assert.equal(body.data.block_number, null);
+  assert.equal(body.data.event_count, 0);
+  assert.equal(Array.isArray(body.data.events), true);
+});
+
+test("GET /blocks/{number}/events resolves an unknown numeric ref to block_number null (not the ref)", async () => {
+  // An unknown numeric block must resolve against `blocks` like a hash ref does,
+  // so it reports block_number:null instead of echoing the requested number back
+  // (mirrors handleBlockExtrinsics; #1953 fixed the extrinsics sibling).
+  const env = dbWith({ blockNumber: null });
+  const res = await handleRequest(req("/api/v1/blocks/777/events"), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "777");
   assert.equal(body.data.block_number, null);
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);
