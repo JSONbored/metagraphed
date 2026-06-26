@@ -837,6 +837,19 @@ describe("handleAccountHistory", () => {
     assert.equal(body.error.code, "invalid_param");
   });
 
+  test("rejects malformed netuid filters with 400", async () => {
+    for (const netuid of ["abc", "-1", "7.5", ""]) {
+      const res = await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        emptyEnv(),
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history?netuid=${netuid}`),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_param");
+    }
+  });
+
   test("returns schema-stable empty days on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountHistory,

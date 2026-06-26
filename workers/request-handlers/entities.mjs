@@ -319,9 +319,16 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const netuid = url.searchParams.get("netuid");
+  if (netuid != null && !/^\d+$/.test(netuid)) {
+    return errorResponse(
+      "invalid_param",
+      "netuid must be a non-negative integer.",
+      400,
+    );
+  }
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
-  if (netuid != null && /^\d+$/.test(netuid)) {
+  if (netuid != null) {
     sql += " AND netuid = ?";
     params.push(Number(netuid));
   }
