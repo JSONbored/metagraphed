@@ -1325,6 +1325,34 @@ describe("handleBlocks", () => {
     assert.ok(!/OFFSET/.test(sql));
   });
 
+  test("short-circuits impossible count floors before querying D1", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    const body = await json(
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env,
+        url("/api/v1/blocks?min_events=9007199254740991"),
+      ),
+    );
+    assert.equal(body.data.block_count, 0);
+    assert.deepEqual(body.data.blocks, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
+  test("short-circuits inverted block and time ranges before querying D1", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    const body = await json(
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env,
+        url("/api/v1/blocks?block_start=20&block_end=10&from=200&to=100"),
+      ),
+    );
+    assert.equal(body.data.block_count, 0);
+    assert.deepEqual(body.data.blocks, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("the unfiltered feed keeps the plain OFFSET path (no WHERE)", async () => {
     const { env, captures } = dbWith({ blocksFeed: [] });
     await handleBlocks(
@@ -1583,7 +1611,7 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
-  test("does not force observed-at index hint for standalone time filters", async () => {
+  test("forces observed-at index hint for standalone time filters", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
       req("/api/v1/extrinsics"),
@@ -1592,7 +1620,10 @@ describe("handleExtrinsics", () => {
     );
     const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
     assert.ok(sql);
-    assert.ok(!/INDEXED BY/.test(sql), "planner must choose the best index");
+    assert.ok(
+      /FROM extrinsics INDEXED BY idx_extrinsics_observed_order/.test(sql),
+      "standalone observed_at filters must use the covering timestamp index",
+    );
     assert.ok(/observed_at >= \?/.test(sql));
   });
 
@@ -1657,6 +1688,7 @@ describe("handleExtrinsics", () => {
     );
     const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
     assert.ok(sql, "a valid window must reach D1");
+    assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
     assert.ok(/observed_at >= \?/.test(sql));
     assert.ok(/observed_at <= \?/.test(sql));
   });

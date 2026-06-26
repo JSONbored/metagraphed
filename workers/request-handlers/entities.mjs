@@ -18,6 +18,7 @@
 // handlers back and dispatches them from the router.
 
 import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
+
 import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
@@ -67,6 +68,8 @@ import {
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
+
+const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
 // (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
@@ -697,9 +700,40 @@ export async function handleBlocks(request, env, url) {
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
+  const intParam = (name) => clampInt(sp.get(name), 0, 0, MAX);
+  const blockStart =
+    sp.get("block_start") != null ? intParam("block_start") : null;
+  const blockEnd = sp.get("block_end") != null ? intParam("block_end") : null;
+  const from = sp.get("from") != null ? intParam("from") : null;
+  const to = sp.get("to") != null ? intParam("to") : null;
+  const minExtrinsics =
+    sp.get("min_extrinsics") != null ? intParam("min_extrinsics") : null;
+  const minEvents =
+    sp.get("min_events") != null ? intParam("min_events") : null;
+
+  // Inverted indexed ranges and astronomically high per-block count floors are
+  // deterministic no-match cases. Short-circuit them before D1 so public callers
+  // cannot amplify cost by forcing scans to prove an impossible empty result.
+  if (
+    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
+    (from != null && to != null && from > to) ||
+    (minExtrinsics != null && minExtrinsics > MAX_BLOCK_COUNT_FILTER) ||
+    (minEvents != null && minEvents > MAX_BLOCK_COUNT_FILTER)
+  ) {
+    const data = buildBlockFeed([], { limit, offset, nextCursor: null });
+    return envelopeResponse(
+      request,
+      {
+        data,
+        meta: await accountMeta(env, "/metagraph/blocks.json", null),
+      },
+      "short",
+    );
+  }
+
   // Conjunctive (AND-ed) filter set mirroring handleExtrinsics (#1846/#1991):
-  // every value is BOUND, never interpolated; an inverted range or an absent
-  // nullable column simply matches nothing — never a throw.
+  // every value is BOUND, never interpolated; no-match filters return an empty
+  // feed rather than throwing.
   const conds = [];
   const params = [];
   if (sp.get("author")) {
@@ -710,29 +744,29 @@ export async function handleBlocks(request, env, url) {
     conds.push("spec_version = ?");
     params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
   }
-  if (sp.get("block_start") != null) {
+  if (blockStart != null) {
     conds.push("block_number >= ?");
-    params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
+    params.push(blockStart);
   }
-  if (sp.get("block_end") != null) {
+  if (blockEnd != null) {
     conds.push("block_number <= ?");
-    params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
+    params.push(blockEnd);
   }
-  if (sp.get("from") != null) {
+  if (from != null) {
     conds.push("observed_at >= ?");
-    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+    params.push(from);
   }
-  if (sp.get("to") != null) {
+  if (to != null) {
     conds.push("observed_at <= ?");
-    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+    params.push(to);
   }
-  if (sp.get("min_extrinsics") != null) {
+  if (minExtrinsics != null) {
     conds.push("extrinsic_count >= ?");
-    params.push(clampInt(sp.get("min_extrinsics"), 0, 0, MAX));
+    params.push(minExtrinsics);
   }
-  if (sp.get("min_events") != null) {
+  if (minEvents != null) {
     conds.push("event_count >= ?");
-    params.push(clampInt(sp.get("min_events"), 0, 0, MAX));
+    params.push(minEvents);
   }
   // Keyset cursor (#1851) takes precedence over offset: fold its block_number < ?
   // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
@@ -960,16 +994,21 @@ export async function handleExtrinsics(request, env, url) {
     conds.push(`${col} = ?`);
     params.push(val);
   };
-  if (sp.get("block") != null)
-    eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  const hasBlockFilter = sp.get("block") != null;
+  const hasEqualityFilter =
+    sp.get("signer") || sp.get("call_module") || sp.get("call_function");
+  if (hasBlockFilter) eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
   if (sp.get("signer")) eq("signer", sp.get("signer"));
   if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
   if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
   // success is stored 1/0/NULL; bind the literal so success=false never leaks
   // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
+  const hasSuccessFilter = successRaw === "true" || successRaw === "false";
   if (successRaw === "true") eq("success", 1);
   else if (successRaw === "false") eq("success", 0);
+  const hasBlockRangeFilter =
+    sp.get("block_start") != null || sp.get("block_end") != null;
   if (sp.get("block_start") != null) {
     conds.push("block_number >= ?");
     params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
@@ -995,13 +1034,20 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  // Do not force the observed_at-leading index here. Broad valid windows such
-  // as from=0 or to=now can cover the retained hot set; the feed order is still
-  // block_number/extrinsic_index, so SQLite/D1 must be free to choose the
-  // primary-key order and stop after LIMIT instead of scanning and sorting the
-  // observed_at index. The migration keeps idx_extrinsics_observed_order
-  // available for genuinely selective timestamp ranges when the planner wants it.
+  // Standalone observed_at ranges can be highly selective or empty while the
+  // feed order is block_number/extrinsic_index. Force the covering timestamp
+  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
+  // walking most of the retained primary-key order before finding no rows.
+  const forceObservedOrderIndex =
+    (fromMs != null || toMs != null) &&
+    !hasBlockFilter &&
+    !hasEqualityFilter &&
+    !hasSuccessFilter &&
+    !hasBlockRangeFilter &&
+    !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (forceObservedOrderIndex)
+    sql += " INDEXED BY idx_extrinsics_observed_order";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);
