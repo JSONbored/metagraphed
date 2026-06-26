@@ -457,9 +457,15 @@ test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
       },
     },
   };
+  // from/to must land inside the retained hot window; an impossible/expired
+  // range (e.g. the 1970 epoch) is intentionally short-circuited before the
+  // WHERE clause is ever built (#1846 DoS hardening), so use a recent window
+  // here to exercise the full conjunctive filter path this test asserts.
+  const toMs = Date.now();
+  const fromMs = toMs - 60_000;
   const res = await handleRequest(
     req(
-      "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=1000&to=2000",
+      `/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=${fromMs}&to=${toMs}`,
     ),
     env,
     {},
