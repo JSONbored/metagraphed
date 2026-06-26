@@ -814,7 +814,11 @@ export async function handleBlock(request, env, ref) {
   const sql = isHash
     ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  const param = isHash ? ref : Number(ref);
+  // The poller stores hashes lowercase (substrateinterface emits `0x` lowercase)
+  // and D1 text columns are BINARY-collated, so a mixed/upper-case 0x ref would
+  // miss. Normalize the hash ref to lowercase before binding (same for the block-
+  // extrinsics, block-events, and extrinsic handlers below).
+  const param = isHash ? ref.toLowerCase() : Number(ref);
   const rows = await d1All(env, sql, [param]);
   // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
   // nearest STORED block numbers around the resolved height (skips pruned gaps;
@@ -866,7 +870,7 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
     isHash
       ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
       : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref : Number(ref)],
+    [isHash ? ref.toLowerCase() : Number(ref)],
   );
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
@@ -909,7 +913,7 @@ export async function handleBlockEvents(request, env, ref, url) {
     isHash
       ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
       : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref : Number(ref)],
+    [isHash ? ref.toLowerCase() : Number(ref)],
   );
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
@@ -1092,7 +1096,7 @@ export async function handleExtrinsic(request, env, ref) {
     rows = await d1All(
       env,
       `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-      [ref],
+      [ref.toLowerCase()],
     );
   } else {
     // Composite "<block>-<index>": coerce both halves; a non-finite half is a
