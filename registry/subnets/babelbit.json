@@ -1,0 +1,32 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Babelbit",
+  "netuid": 59,
+  "schema_version": 1,
+  "slug": "sn-59",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-subnet-api",
+      "kind": "subnet-api",
+      "name": "Babelbit public API discovery root",
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://babelbit.ai/",
+        "https://github.com/babelbit/babelbit_subnet"
+      ],
+      "url": "https://api.babelbit.ai/"
+    }
+  ]
+}
