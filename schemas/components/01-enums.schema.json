@@ -66,10 +66,11 @@
         "enum": ["native-only", "manifested", "probed"]
       },
       "CurationLevel": {
-        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
+        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
         "enum": [
           "native",
           "candidate-discovered",
+          "community-seeded",
           "machine-verified",
           "maintainer-reviewed",
           "adapter-backed"

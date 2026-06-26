@@ -485,6 +485,34 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "chain-activity",
+      "path": "/metagraph/chain/activity.json",
+      "schema_ref": "#/components/schemas/ChainActivityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-calls",
+      "path": "/metagraph/chain/calls.json",
+      "schema_ref": "#/components/schemas/ChainCallsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-signers",
+      "path": "/metagraph/chain/signers.json",
+      "schema_ref": "#/components/schemas/ChainSignersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-fees",
+      "path": "/metagraph/chain/fees.json",
+      "schema_ref": "#/components/schemas/ChainFeesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
@@ -754,6 +782,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -1000,6 +1029,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2475,6 +2505,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2556,6 +2587,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2638,6 +2670,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2880,6 +2913,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -3028,6 +3062,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -4381,7 +4416,7 @@
     {
       "artifact_path": "/metagraph/blocks.json",
       "cache": "short",
-      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345).",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
       "id": "blocks-feed",
       "method": "GET",
       "path": "/api/v1/blocks",
@@ -4408,6 +4443,61 @@
           "name": "cursor",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "author",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "spec_version",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_extrinsics",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_events",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]
@@ -4588,6 +4678,132 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/activity.json",
+      "cache": "short",
+      "description": "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+      "id": "chain-activity",
+      "method": "GET",
+      "path": "/api/v1/chain/activity",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/calls.json",
+      "cache": "short",
+      "description": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+      "id": "chain-calls",
+      "method": "GET",
+      "path": "/api/v1/chain/calls",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "group_by",
+          "schema": {
+            "enum": [
+              "module",
+              "module_function"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/signers.json",
+      "cache": "short",
+      "description": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+      "id": "chain-signers",
+      "method": "GET",
+      "path": "/api/v1/chain/signers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/fees.json",
+      "cache": "short",
+      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+      "id": "chain-fees",
+      "method": "GET",
+      "path": "/api/v1/chain/fees",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",

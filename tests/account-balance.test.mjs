@@ -72,6 +72,38 @@ test("GET /accounts/{ss58}/balance returns 400 for a too-short address", async (
   assert.equal(res.status, 400);
 });
 
+test("GET /accounts/{ss58}/balance rejects overlong base58 before rate limiting or RPC", async () => {
+  let limiterCalls = 0;
+  let fetchCalls = 0;
+  const env = {
+    RPC_RATE_LIMITER: {
+      limit: async () => {
+        limiterCalls += 1;
+        return { success: true };
+      },
+    },
+  };
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const overlong = "5" + "a".repeat(4096);
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${overlong}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal(limiterCalls, 0);
+      assert.equal(fetchCalls, 0);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+    },
+  );
+});
+
 test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC failure", async () => {
   // No fetch mock — the Worker's global fetch will fail or env has no fetch.
   // Simulate by providing an env whose fetch throws.
@@ -270,6 +302,117 @@ test("GET /accounts/{ss58}/balance tolerates KV write failure", async () => {
       assert.equal(res.status, 200);
       const body = await res.json();
       assert.ok(typeof body.data.balance_tao === "number");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance rejects non-base58 captures before RPC", async () => {
+  let fetchCalls = 0;
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const bad = "5" + "0".repeat(47);
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${bad}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal(fetchCalls, 0);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance applies per-client RPC rate limiting", async () => {
+  let limiterKey;
+  let fetchCalls = 0;
+  const env = {
+    RPC_RATE_LIMITER: {
+      limit: async ({ key }) => {
+        limiterKey = key;
+        return { success: false };
+      },
+    },
+  };
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const res = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/${SS58}/balance`,
+          {
+            headers: { "cf-connecting-ip": "203.0.113.9" },
+          },
+        ),
+        env,
+        {},
+      );
+      assert.equal(res.status, 429);
+      assert.equal(limiterKey, "balance:203.0.113.9");
+      assert.equal(fetchCalls, 0);
+      assert.equal(res.headers.get("x-ratelimit-limit"), "100");
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async () => {
+  let putKey, putValue, putOptions;
+  const env = {
+    METAGRAPH_CONTROL: {
+      get: async () => null,
+      put: async (key, value, options) => {
+        putKey = key;
+        putValue = JSON.parse(value);
+        putOptions = options;
+      },
+    },
+  };
+  await withFetchStub(
+    async () => ({ ok: false }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      assert.equal(putKey, `balance:${SS58}`);
+      assert.equal(putValue.balance_tao, null);
+      assert.equal(putOptions.expirationTtl, 10);
+    },
+  );
+});
+
+test("GET /accounts/{ss58}/balance rejects a base58 address with a non-finney network prefix (#1818)", async () => {
+  // 48 base58 chars starting with '5' — this PASSES the OLD `^5[a-zA-Z0-9]{46,47}$`
+  // guard — but decodes to SS58 network prefix 40, not finney's 42. The base58
+  // decoder must reject it with a 400 before any RPC fan-out, which the loose
+  // regex could not. Locks in the security value of the decoder over the regex.
+  const wrongPrefix = `5${"1".repeat(47)}`;
+  let fetched = false;
+  await withFetchStub(
+    async () => {
+      fetched = true;
+      throw new Error("must not reach the upstream RPC");
+    },
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${wrongPrefix}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 400);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+      assert.equal(fetched, false);
     },
   );
 });
