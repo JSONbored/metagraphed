@@ -4416,7 +4416,7 @@
     {
       "artifact_path": "/metagraph/blocks.json",
       "cache": "short",
-      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345).",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
       "id": "blocks-feed",
       "method": "GET",
       "path": "/api/v1/blocks",
@@ -4443,6 +4443,61 @@
           "name": "cursor",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "author",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "spec_version",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_extrinsics",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_events",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]

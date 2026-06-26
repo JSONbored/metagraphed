@@ -215,7 +215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345). */
+        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345). */
         get: operations["blocksFeed"];
         put?: never;
         post?: never;
@@ -6211,6 +6211,14 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 cursor?: string;
+                author?: string;
+                spec_version?: number;
+                from?: number;
+                to?: number;
+                block_start?: number;
+                block_end?: number;
+                min_extrinsics?: number;
+                min_events?: number;
             };
             header?: never;
             path?: never;
