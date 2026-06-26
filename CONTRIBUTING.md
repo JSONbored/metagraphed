@@ -43,6 +43,8 @@ Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its
 
 > Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR; provider identity still gets reviewed before it's trusted.
 
+> **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
 Add a surface locally — three steps:
 
 ```bash
