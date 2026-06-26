@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/unarbos/albedo",
+  "id": "albedo",
+  "kind": "subnet-team",
+  "name": "Albedo",
+  "public_notes": "Subnet 97 (Albedo) team profile — alchemical intelligence. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "https://us-east-1.hippius.com/albedo/index.html"
+}

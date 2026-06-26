@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { envelopeResponse } from "../workers/responses.mjs";
+import {
+  markD1FallbackResponse,
+  withEdgeCache,
+} from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
@@ -343,6 +348,38 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("NO-CACHE-ON-ERROR: a marked fallback Response is skipped even when the generation is unchanged", async () => {
+    // This isolates the WeakSet response marker from the independent D1 fallback
+    // generation guard: a handler must mark the awaited Response object, not the
+    // Promise that produces it, or withEdgeCache cannot recognize the fallback.
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const request = new Request("https://api.metagraph.sh/api/v1/test");
+
+    const res = await withEdgeCache(request, ctx, env, "unit", async () => {
+      const response = await envelopeResponse(
+        request,
+        {
+          data: { degraded: true },
+          meta: { generated_at: LAST_RUN_AT },
+        },
+        "short",
+      );
+      return markD1FallbackResponse(response);
+    });
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "the per-response fallback marker must block cache.put",
+    );
+    assert.equal(cache.store.size, 0);
+  });
+
   test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
@@ -363,6 +400,80 @@ describe("analytics edge cache", () => {
       cache.putKeys,
       [],
       "a D1 fallback response must not poison the edge cache",
+    );
+    assert.equal(cache.store.size, 0);
+  });
+
+  test("NO-CACHE-ON-ERROR: D1 fallback on the five additional edge-cached routes is not cached", async () => {
+    const routes = [
+      {
+        path: "/api/v1/registry/leaderboards",
+        search: "",
+      },
+      {
+        path: "/api/v1/incidents",
+        search: "?window=7d",
+      },
+      {
+        path: "/api/v1/subnets/7/trajectory",
+        search: "",
+      },
+      {
+        path: "/api/v1/subnets/7/uptime",
+        search: "?window=90d",
+      },
+      {
+        path: "/api/v1/compare",
+        search: "?netuids=7",
+      },
+    ];
+    originalCaches = globalThis.caches;
+    for (const r of routes) {
+      const cache = mockCaches();
+      cache.install();
+      const queries = [];
+      const env = analyticsEnv(queries, {
+        d1Error: new Error("D1 unavailable"),
+      });
+      const url = `https://api.metagraph.sh${r.path}${r.search}`;
+
+      const res = await handleRequest(new Request(url), env, ctx);
+      await Promise.resolve();
+      assert.equal(res.status, 200, `${r.path}: fallback is still 200`);
+      assert.deepEqual(
+        cache.putKeys,
+        [],
+        `${r.path}: D1 fallback must not poison the edge cache`,
+      );
+      assert.equal(cache.store.size, 0, `${r.path}: cache stays empty`);
+    }
+  });
+
+  test("NO-CACHE-ON-ERROR: an unbound D1 binding with a warm snapshot stamp is not cached", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {},
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
+        },
+      },
+    };
+
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/registry/leaderboards"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "an unbound D1 cold fallback must not seed the edge cache",
     );
     assert.equal(cache.store.size, 0);
   });

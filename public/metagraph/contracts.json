@@ -480,6 +480,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
@@ -516,10 +525,136 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
+      "id": "chain-activity",
+      "path": "/metagraph/chain/activity.json",
+      "schema_ref": "#/components/schemas/ChainActivityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
+      "id": "chain-calls",
+      "path": "/metagraph/chain/calls.json",
+      "schema_ref": "#/components/schemas/ChainCallsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Windowed most-active-account leaderboard (signers ranked by extrinsic count, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
+      "id": "chain-signers",
+      "path": "/metagraph/chain/signers.json",
+      "schema_ref": "#/components/schemas/ChainSignersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Fee/tip market analytics (daily totals + averages and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+      "id": "chain-fees",
+      "path": "/metagraph/chain/fees.json",
+      "schema_ref": "#/components/schemas/ChainFeesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -547,6 +682,15 @@
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
+      "id": "compare",
+      "path": "/metagraph/compare.json",
+      "schema_ref": "#/components/schemas/CompareArtifact",
       "storage_tier": "r2"
     },
     {

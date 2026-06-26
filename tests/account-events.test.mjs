@@ -10,6 +10,8 @@ import {
   buildAccountSummary,
   buildAccountEvents,
   buildAccountSubnets,
+  loadAccountSummary,
+  ACCOUNT_ACTIVITY_RECENT_LIMIT,
   eventInsertStatements,
   utcDayBounds,
   rollupAccountEventsDaily,
@@ -58,7 +60,7 @@ test("eventInsertStatements builds chunked parameterized INSERT OR IGNORE", () =
   assert.ok(prepared[0].includes("VALUES (?"));
 });
 
-test("EVENT_INSERT_COLUMNS is the stable load contract (#1346)", () => {
+test("EVENT_INSERT_COLUMNS is the stable load contract (#1346/#1849/#1856)", () => {
   assert.deepEqual(EVENT_INSERT_COLUMNS, [
     "block_number",
     "event_index",
@@ -68,8 +70,12 @@ test("EVENT_INSERT_COLUMNS is the stable load contract (#1346)", () => {
     "netuid",
     "uid",
     "amount_tao",
+    "alpha_amount",
     "observed_at",
+    "extrinsic_index",
   ]);
+  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
+  assert.equal(EVENT_INSERT_COLUMNS.length, 11);
 });
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
@@ -94,11 +100,15 @@ test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
     netuid: 1,
     uid: null,
     amount_tao: 12.5,
+    alpha_amount: 9.25,
     observed_at: 1750000000000,
+    extrinsic_index: 2,
   });
   assert.equal(out.event_kind, "StakeAdded");
   assert.equal(out.amount_tao, 12.5);
+  assert.equal(out.alpha_amount, 9.25);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+  assert.equal(out.extrinsic_index, 2);
 });
 
 test("formatAccountEvent is null-safe on junk + sparse rows", () => {
@@ -254,6 +264,65 @@ test("buildAccountSummary is schema-stable with no data", () => {
   assert.deepEqual(out.registrations, []);
   assert.deepEqual(out.event_kinds, []);
   assert.equal(out.first_seen_at, null);
+  // Activity sub-object (#1847) is always present + schema-stable.
+  assert.equal(out.activity.tx_count, 0);
+  assert.equal(out.activity.last_tx_block, null);
+  assert.equal(out.activity.last_tx_at, null);
+  assert.equal(out.activity.total_fee_tao, null);
+  assert.deepEqual(out.activity.modules_called, []);
+});
+
+test("buildAccountSummary threads the signing activity sub-object (#1847)", () => {
+  const out = buildAccountSummary("5Hk", {
+    activity: {
+      tx_count: 4,
+      last_tx_block: 200,
+      last_tx_at: 1750009000000,
+      total_fee_tao: 0.02,
+    },
+    modules: [
+      { call_module: "SubtensorModule", count: 3 },
+      { call_module: null, count: 1 },
+    ],
+  });
+  assert.equal(out.activity.tx_count, 4);
+  assert.equal(out.activity.last_tx_block, 200);
+  assert.equal(out.activity.last_tx_at, new Date(1750009000000).toISOString());
+  assert.equal(out.activity.total_fee_tao, 0.02);
+  // the {call_module:null} row is dropped
+  assert.equal(out.activity.modules_called.length, 1);
+  assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
+});
+
+test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
+  // A registration row with NONE of the optional fields must still produce a
+  // fully-shaped object (nulls + coerced false), never undefined — the
+  // cold/partial-neurons-row contract the account routes depend on.
+  const out = formatRegistration({});
+  assert.equal(out.netuid, null);
+  assert.equal(out.uid, null);
+  assert.equal(out.stake_tao, null);
+  assert.equal(out.validator_permit, false);
+  assert.equal(out.active, false);
+});
+
+test("buildAccountSummary defaults a missing event-kind count to 0", () => {
+  // A kinds row with a kind but no count must surface count:0, not undefined,
+  // so an agent always gets a numeric tally.
+  const out = buildAccountSummary("5Hk", {
+    kinds: [{ kind: "StakeAdded" }],
+  });
+  assert.deepEqual(out.event_kinds, [{ kind: "StakeAdded", count: 0 }]);
+});
+
+test("buildAccountEvents defaults rows/limit/offset when called bare", () => {
+  // No rows array + no options object → an empty, schema-stable feed with
+  // null pagination markers (exercises the rows||[] and ?? null defaults).
+  const out = buildAccountEvents(undefined, "5Hk");
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.limit, null);
+  assert.equal(out.offset, null);
 });
 
 test("buildAccountEvents + buildAccountSubnets shape their artifacts", () => {
@@ -290,4 +359,44 @@ test("pruneAccountEvents returns pruned:false when D1 throws", async () => {
     },
   };
   assert.equal((await pruneAccountEvents(env, { now: () => 0 })).pruned, false);
+});
+
+test("loadAccountSummary bounds signing activity before aggregating", async () => {
+  const calls = [];
+  const rows = [
+    [{ c: 0, sc: 0, fb: null, lb: null, fo: null, lo: null }],
+    [],
+    [],
+    [],
+    [
+      {
+        tx_count: 0,
+        last_tx_block: null,
+        last_tx_at: null,
+        total_fee_tao: null,
+      },
+    ],
+    [],
+  ];
+  await loadAccountSummary(async (sql, params) => {
+    calls.push({ sql, params });
+    return rows[calls.length - 1] || [];
+  }, "5Hk");
+
+  const activity = calls.find((c) => /AS tx_count/.test(c.sql));
+  const modules = calls.find((c) => /GROUP BY call_module/.test(c.sql));
+  assert.ok(
+    /FROM \(SELECT block_number, observed_at, fee_tao FROM extrinsics/.test(
+      activity.sql,
+    ),
+  );
+  assert.ok(
+    /ORDER BY block_number DESC, extrinsic_index DESC LIMIT \?\)/.test(
+      activity.sql,
+    ),
+  );
+  assert.deepEqual(activity.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
+  assert.ok(/FROM \(SELECT call_module FROM extrinsics/.test(modules.sql));
+  assert.ok(/LIMIT \?\) GROUP BY call_module/.test(modules.sql));
+  assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
 });

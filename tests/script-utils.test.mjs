@@ -16,6 +16,7 @@ import {
   buildEvidenceSubjectNetuidIndex,
   buildRpcEndpointArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   classifyNativeName,
   artifactFilePath,
   artifactOutputPath,
@@ -84,32 +85,7 @@ import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
 } from "../scripts/verification-quality.mjs";
-import {
-  buildIssueIntakeReport,
-  buildEndpointStatusReportIntakeReport,
-  buildProviderProfileIntakeReport,
-  classifyPrScope,
-  extractSingleCandidate,
-  issueLabels,
-  normalizeAuth,
-  normalizeChangedFiles,
-  normalizeGitHubLogin,
-  normalizeKind,
-  parseIssueFields,
-  unsafeTextReasons,
-  validateCandidateForSubmission,
-  validateSubmissionProvenance,
-} from "../scripts/submission-policy.mjs";
-import { submissionFormattingErrors } from "../scripts/submission-formatting.mjs";
 import { summarizeGithubMetadata } from "../scripts/snapshot-adapters.mjs";
-
-const native = {
-  subnets: [
-    { netuid: 7, name: "Allways" },
-    { netuid: 74, name: "Gittensor" },
-  ],
-};
-const providers = [{ id: "allways" }, { id: "gittensor" }];
 
 describe("script utility contracts", () => {
   test("uses public-safe fixture capture parse failure reasons", () => {
@@ -305,28 +281,6 @@ describe("script utility contracts", () => {
       /"source_urls": \["https:\/\/docs\.all-ways\.io\/how-it-works\.html"\]/,
     );
     assert.equal(formatted.endsWith("\n"), true);
-    assert.deepEqual(
-      await submissionFormattingErrors([
-        {
-          file: "registry/candidates/community/example.json",
-          raw: `${JSON.stringify(document, null, 2)}\n`,
-          document,
-        },
-      ]),
-      [
-        "registry/candidates/community/example.json is not formatted with the repository JSON style; run Prettier or regenerate it with npm run candidate:new/provider:new",
-      ],
-    );
-    assert.deepEqual(
-      await submissionFormattingErrors([
-        {
-          file: "registry/candidates/community/example.json",
-          raw: formatted,
-          document,
-        },
-      ]),
-      [],
-    );
 
     const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-json-"));
     try {
@@ -556,6 +510,72 @@ describe("script utility contracts", () => {
     );
   });
 
+  test("README dedupe keeps distinct tenants on multi-label public suffix hosts", () => {
+    const repo = { owner: "ExampleProject", repo: "subnet-42" };
+    const pagesDevLinks = [
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "Tenant A API",
+        url: "https://exampleproject-a.pages.dev/api",
+      },
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "Tenant B API",
+        url: "https://exampleproject-b.pages.dev/api",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(pagesDevLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      [
+        "https://exampleproject-a.pages.dev/api",
+        "https://exampleproject-b.pages.dev/api",
+      ],
+    );
+
+    const coUkLinks = [
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "ExampleProject foo API",
+        url: "https://foo.co.uk/api",
+      },
+      {
+        classification: { kind: "subnet-api", label: "subnet-api" },
+        label: "ExampleProject bar API",
+        url: "https://bar.co.uk/api",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(coUkLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      ["https://foo.co.uk/api", "https://bar.co.uk/api"],
+    );
+
+    const sameSiteLinks = [
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Install",
+        url: "https://docs.exampleproject.ai/install",
+      },
+      {
+        classification: { kind: "docs", label: "docs" },
+        label: "Advanced",
+        url: "https://docs.exampleproject.ai/advanced",
+      },
+    ];
+
+    assert.deepEqual(
+      selectReviewableReadmeLinks(sameSiteLinks, { netuid: 42, repo }).map(
+        (link) => link.url,
+      ),
+      ["https://docs.exampleproject.ai/install"],
+    );
+  });
+
   test("README link review rejects malformed and generic references", () => {
     assert.equal(isReviewableReadmeLink(null), false);
     assert.equal(
@@ -675,6 +695,10 @@ describe("script utility contracts", () => {
     );
     assert.equal(
       isR2OnlyArtifactPath("/metagraph/verification/latest.json"),
+      true,
+    );
+    assert.equal(
+      isR2OnlyArtifactPath("/metagraph/extrinsics/1234-3.json"),
       true,
     );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
@@ -1444,16 +1468,14 @@ describe("script utility contracts", () => {
     );
   });
 
-  test("loadProviders loads community-submitted providers as first-class (regression: was non-recursive)", async () => {
-    // The debut provider+candidate lane depends on community providers being
-    // loaded/registered the same way community candidates are. loadProviders was
-    // non-recursive and skipped registry/providers/community/, so a merged
-    // community provider was invisible and any candidate referencing it failed
-    // validate ("unknown provider"). Assert they are loaded, unwrapped, and
-    // conform to the flat provider shape.
+  test("loadProviders loads community-authority providers as first-class flat objects", async () => {
+    // Providers are flat objects in registry/providers/*.json — trust is the
+    // `authority` field, not the directory (#1678 flattened the old
+    // registry/providers/community/ wrapper lane). Assert a community-authority
+    // provider loads as a flat object alongside curated ones.
     const providers = await loadProviders();
     const ids = new Set(providers.map((provider) => provider.id));
-    assert.equal(ids.has("404-gen"), true); // a registry/providers/community/*.json id
+    assert.equal(ids.has("404-gen"), true); // a community-authority provider (ex-community lane)
     assert.equal(ids.size, providers.length); // no duplicate ids (curated wins)
     const community = providers.find((provider) => provider.id === "404-gen");
     // Unwrapped to a flat provider object (no { provider, submission } wrapper).
@@ -1517,6 +1539,7 @@ describe("script utility contracts", () => {
     assert.equal(isUnsafeUrl("http://172.16.0.1"), true);
     assert.equal(isUnsafeUrl("http://[fd00::1]"), true);
     assert.equal(isUnsafeUrl("http://[fe80::1]"), true);
+    assert.equal(isUnsafeUrl("http://[fec0::1]"), true); // site-local (issue #1538)
     assert.equal(isUnsafeUrl("http://[::ffff:127.0.0.1]"), true);
     assert.equal(isUnsafeUrl("not a url"), true);
     assert.equal(isUnsafeUrl("https://metagraph.sh"), false);
@@ -1557,6 +1580,45 @@ describe("script utility contracts", () => {
       "7|docs|https://docs.all-ways.io/",
     );
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");
+  });
+
+  test("readCommittedManifestGeneratedAt preserves timestamp on local builds", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "metagraphed-manifest-"));
+    const manifestPath = path.join(dir, "r2-manifest.json");
+    const timestamp = "2026-06-18T00:00:00.000Z";
+    await writeFile(manifestPath, JSON.stringify({ generated_at: timestamp }));
+
+    // No publish env vars set → reads and returns committed timestamp.
+    const saved = process.env.METAGRAPH_BUILD_TIMESTAMP;
+    const savedRun = process.env.METAGRAPH_RUN_ID;
+    delete process.env.METAGRAPH_BUILD_TIMESTAMP;
+    delete process.env.METAGRAPH_RUN_ID;
+    try {
+      assert.equal(
+        await readCommittedManifestGeneratedAt(manifestPath),
+        timestamp,
+      );
+
+      // Missing file → returns null (caller falls back to generatedAt).
+      assert.equal(
+        await readCommittedManifestGeneratedAt(path.join(dir, "missing.json")),
+        null,
+      );
+
+      // METAGRAPH_BUILD_TIMESTAMP set → skip read, return null.
+      process.env.METAGRAPH_BUILD_TIMESTAMP = "2026-06-25T00:00:00.000Z";
+      assert.equal(await readCommittedManifestGeneratedAt(manifestPath), null);
+      delete process.env.METAGRAPH_BUILD_TIMESTAMP;
+
+      // METAGRAPH_RUN_ID set → skip read, return null.
+      process.env.METAGRAPH_RUN_ID = "run-abc";
+      assert.equal(await readCommittedManifestGeneratedAt(manifestPath), null);
+    } finally {
+      if (saved !== undefined) process.env.METAGRAPH_BUILD_TIMESTAMP = saved;
+      if (savedRun !== undefined) process.env.METAGRAPH_RUN_ID = savedRun;
+      else delete process.env.METAGRAPH_RUN_ID;
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   test("surface freshness TTL + staleness flag (#1006)", () => {
@@ -2017,6 +2079,22 @@ describe("script utility contracts", () => {
     const degradedEndpoint = endpointResources.endpoints.find(
       (endpoint) => endpoint.surface_id === "root-degraded-rpc",
     );
+    // method-support weights each supported method by 5 (capped at 20), and must
+    // do so identically whether methods_supported is object- or array-shaped
+    // (regression: the array branch dropped the x5 multiplier, scoring 5x low).
+    assert.equal(
+      endpointResources.endpoints
+        .find((endpoint) => endpoint.surface_id === "root-rpc")
+        .score_reasons.find((reason) => reason.reason === "method-support")
+        .points,
+      10, // object shape: 2 methods x 5
+    );
+    assert.equal(
+      degradedEndpoint.score_reasons.find(
+        (reason) => reason.reason === "method-support",
+      ).points,
+      5, // array shape: 1 method x 5 (was 1 before the fix)
+    );
     assert.equal(incidents.incidents[0].endpoint_id, failedEndpoint.id);
     assert.equal(
       incidents.incidents[0].surface_key,
@@ -2135,404 +2213,6 @@ describe("script utility contracts", () => {
   });
 });
 
-describe("submission policy helpers", () => {
-  test("parses and normalizes contributor intake values", () => {
-    const fields = parseIssueFields(
-      [
-        "### Netuid",
-        "7",
-        "### Rate limits or access notes",
-        "_No response_",
-      ].join("\n\n"),
-    );
-    assert.equal(fields.netuid, "7");
-    assert.equal(fields["rate limits or access notes"], "");
-    assert.equal(normalizeKind("docs"), "docs");
-    assert.equal(normalizeKind("made-up"), null);
-    assert.deepEqual(normalizeAuth("no"), { value: false, manualReason: null });
-    assert.equal(
-      normalizeAuth("yes").manualReason,
-      "authenticated interfaces require review",
-    );
-    assert.equal(normalizeAuth("unknown").value, false);
-    assert.equal(normalizeAuth("maybe").value, null);
-    assert.deepEqual(issueLabels({ labels: ["b", { name: "a" }, {}] }), [
-      "a",
-      "b",
-    ]);
-    assert.equal(normalizeGitHubLogin("@JSONbored"), "jsonbored");
-    assert.equal(
-      normalizeGitHubLogin("https://github.com/JSONbored/"),
-      "jsonbored",
-    );
-    assert.deepEqual(normalizeChangedFiles("b\n./a\n"), ["a", "b"]);
-  });
-
-  test("builds provider and status-report intake reports", () => {
-    const providerReport = buildProviderProfileIntakeReport({
-      fields: {
-        "provider slug": "example-operator",
-        "provider name": "Example Operator",
-        "provider kind": "infrastructure-provider",
-        "website url": "https://example.com",
-        "docs url": "https://docs.example.com",
-      },
-      providers,
-    });
-    assert.equal(providerReport.state, "schema-valid");
-    assert.equal(providerReport.public_state, "manual_review");
-    assert.equal(providerReport.provider.id, "example-operator");
-    assert.equal(providerReport.provider.authority, "community");
-
-    const statusReport = buildEndpointStatusReportIntakeReport({
-      fields: {
-        netuid: "7",
-        "surface id or url": "allways-api-health",
-        "issue type": "degraded",
-        evidence: "Public endpoint returned HTTP 503 during a read-only check.",
-      },
-      native,
-    });
-    assert.equal(statusReport.state, "schema-valid");
-    assert.equal(statusReport.report.affects_observed_health, false);
-    assert.equal(statusReport.next_action, "manual-review");
-  });
-
-  test("flags invalid candidate documents and unsafe submission text", () => {
-    assert.equal(
-      classifyPrScope([
-        "registry/candidates/community/a.json",
-        "registry/candidates/community/b.json",
-      ]).errors[0].category,
-      "unsupported-shape",
-    );
-    assert.equal(
-      extractSingleCandidate(null).errors[0].category,
-      "unsupported-shape",
-    );
-    assert.equal(
-      extractSingleCandidate({ schema_version: 2, candidates: [] }).errors
-        .length,
-      2,
-    );
-    assert.equal(
-      unsafeTextReasons("github_pat_abcdefghijklmnopqrstuvwxyz123456 token")
-        .length,
-      1,
-    );
-    assert.equal(
-      validateSubmissionProvenance({
-        submitter: "jsonbored",
-        document: {
-          submission: {
-            submitted_by: "someone-else",
-            submitted_by_url: "https://github.com/someone-else",
-          },
-        },
-      }).some((error) => error.message.includes("must match")),
-      true,
-    );
-    assert.equal(
-      validateSubmissionProvenance({
-        submitter: null,
-        document: { submission: {} },
-      }).length,
-      2,
-    );
-    assert.equal(
-      validateSubmissionProvenance({
-        submitter: "jsonbored",
-        document: {
-          submission: {
-            submitted_by: "jsonbored",
-            submitted_by_url: "https://github.com/not-jsonbored",
-          },
-        },
-      })[0].message,
-      "submission.submitted_by_url must match submitted_by",
-    );
-  });
-
-  test("validates candidate submission edge cases", () => {
-    const baseCandidate = {
-      schema_version: 1,
-      id: "candidate-one",
-      netuid: 7,
-      state: "schema-valid",
-      name: "Candidate one",
-      kind: "docs",
-      url: "docs.all-ways.io/path/",
-      source_url: "https://docs.all-ways.io/source/",
-      source_type: "community-pr-intake",
-      source_tier: "community-docs",
-      confidence: "medium",
-      provider: "allways",
-      auth_required: false,
-      public_safe: true,
-    };
-
-    const missingCandidate = validateCandidateForSubmission({
-      candidate: null,
-      native,
-      providers,
-    });
-    assert.equal(missingCandidate.errors[0].category, "unsupported-shape");
-
-    const valid = validateCandidateForSubmission({
-      candidate: baseCandidate,
-      document: {
-        submission: {
-          submitted_by: "jsonbored",
-          submitted_by_url: "https://github.com/jsonbored",
-        },
-      },
-      submitter: "jsonbored",
-      native,
-      providers,
-      existingCandidates: [],
-      existingSubnets: [],
-    });
-    assert.equal(valid.errors.length, 0);
-    assert.equal(valid.warnings.length, 2);
-
-    const invalid = validateCandidateForSubmission({
-      candidate: {
-        schema_version: 2,
-        id: "Bad ID",
-        netuid: 999,
-        kind: "bad-kind",
-        url: "http://127.0.0.1",
-        source_url: "",
-        provider: "missing",
-        public_safe: false,
-        state: "maintainer-review",
-        auth_required: true,
-        source_tier: "native-chain",
-        source_type: "random",
-      },
-      document: { submission: {} },
-      submitter: null,
-      native,
-      providers,
-      existingCandidates: [],
-      existingSubnets: [],
-    });
-    assert.equal(invalid.errors.length >= 10, true);
-    assert.equal(invalid.manual_reasons.length >= 2, true);
-    assert.equal(invalid.warnings.length, 1);
-
-    const badProvenanceList = validateCandidateForSubmission({
-      candidate: {
-        ...baseCandidate,
-        source_urls: ["https://docs.all-ways.io/extra/", "http://127.0.0.1"],
-      },
-      document: {
-        submission: {
-          submitted_by: "jsonbored",
-          submitted_by_url: "https://github.com/jsonbored",
-        },
-      },
-      submitter: "jsonbored",
-      native,
-      providers,
-      existingCandidates: [],
-      existingSubnets: [],
-    });
-    assert.equal(
-      badProvenanceList.errors.some(
-        (error) =>
-          error.message === "candidate source_urls[1] is invalid or unsafe",
-      ),
-      true,
-    );
-    assert.equal(
-      badProvenanceList.warnings.some((warning) =>
-        warning.includes("source_urls[0] will be normalized"),
-      ),
-      true,
-    );
-
-    const nonArrayProvenanceList = validateCandidateForSubmission({
-      candidate: { ...baseCandidate, source_urls: "https://docs.all-ways.io" },
-      document: {
-        submission: {
-          submitted_by: "jsonbored",
-          submitted_by_url: "https://github.com/jsonbored",
-        },
-      },
-      submitter: "jsonbored",
-      native,
-      providers,
-      existingCandidates: [],
-      existingSubnets: [],
-    });
-    assert.equal(
-      nonArrayProvenanceList.errors.some(
-        (error) => error.message === "candidate source_urls must be an array",
-      ),
-      true,
-    );
-
-    const duplicate = validateCandidateForSubmission({
-      candidate: {
-        ...baseCandidate,
-        url: "https://docs.all-ways.io/path",
-      },
-      document: {
-        submission: {
-          submitted_by: "jsonbored",
-          submitted_by_url: "https://github.com/jsonbored",
-        },
-      },
-      submitter: "jsonbored",
-      native,
-      providers,
-      existingCandidates: [{ ...baseCandidate, id: "other-candidate" }],
-      existingSubnets: [
-        {
-          netuid: 7,
-          slug: "allways",
-          name: "Allways",
-          surfaces: [
-            {
-              id: "curated-docs",
-              netuid: 7,
-              kind: "docs",
-              url: "https://docs.all-ways.io/path",
-            },
-          ],
-        },
-      ],
-    });
-    assert.equal(
-      duplicate.errors.filter((error) => error.category === "duplicate").length,
-      2,
-    );
-
-    const duplicateId = validateCandidateForSubmission({
-      candidate: baseCandidate,
-      document: {
-        submission: {
-          submitted_by: "jsonbored",
-          submitted_by_url: "https://github.com/jsonbored",
-        },
-      },
-      submitter: "jsonbored",
-      native,
-      providers,
-      existingCandidates: [
-        { ...baseCandidate, url: "https://docs.all-ways.io/other" },
-      ],
-      existingSubnets: [],
-    });
-    assert.equal(
-      duplicateId.errors.some(
-        (error) =>
-          error.category === "duplicate" &&
-          error.message ===
-            `candidate id duplicates existing candidate ${baseCandidate.id}`,
-      ),
-      true,
-    );
-  });
-
-  test("builds issue intake states for valid, manual, and invalid submissions", () => {
-    const validBody = [
-      "### Netuid",
-      "7",
-      "### Interface kind",
-      "docs",
-      "### Public URL",
-      "https://docs.all-ways.io/community",
-      "### Source URL",
-      "https://docs.all-ways.io/how-it-works.html",
-      "### Provider or team",
-      "allways",
-      "### Does this interface require authentication?",
-      "no",
-    ].join("\n\n");
-    const valid = buildIssueIntakeReport({
-      issue: {
-        number: 7,
-        title: "interface: docs",
-        user: { login: "jsonbored" },
-        labels: [{ name: "interface-submission" }],
-        body: validBody,
-      },
-      native,
-      providers,
-      generatedAt: "1970-01-01T00:00:00.000Z",
-    });
-    assert.equal(valid.public_state, "submit_pr");
-    assert.equal(valid.import_allowed, false);
-
-    const endpointBody = validBody
-      .replace("### Interface kind", "### Endpoint kind")
-      .replace("### Provider or team", "### Provider or operator slug")
-      .replace(
-        "### Does this interface require authentication?",
-        "### Does this endpoint require authentication?",
-      );
-    const endpoint = buildIssueIntakeReport({
-      issue: {
-        number: 11,
-        title: "endpoint: docs",
-        user: { login: "jsonbored" },
-        labels: [{ name: "endpoint-submission" }],
-        body: endpointBody,
-      },
-      native,
-      providers,
-      generatedAt: "1970-01-01T00:00:00.000Z",
-    });
-    assert.equal(endpoint.public_state, "submit_pr");
-    assert.equal(endpoint.candidate.auth_required, false);
-
-    const manual = buildIssueIntakeReport({
-      issue: {
-        number: 8,
-        title: "interface: rpc",
-        user: { login: "jsonbored" },
-        labels: [],
-        body: validBody.replace("docs", "subtensor-rpc"),
-      },
-      native,
-      providers,
-      generatedAt: "1970-01-01T00:00:00.000Z",
-    });
-    assert.equal(manual.public_state, "manual_review");
-
-    const authManual = buildIssueIntakeReport({
-      issue: {
-        number: 10,
-        title: "interface: authenticated docs",
-        user: { login: "jsonbored" },
-        labels: [],
-        body: validBody.replace("no", "yes"),
-      },
-      native,
-      providers,
-      generatedAt: "1970-01-01T00:00:00.000Z",
-    });
-    assert.equal(authManual.public_state, "manual_review");
-
-    const invalid = buildIssueIntakeReport({
-      issue: {
-        number: 9,
-        title: "bad",
-        user: { login: "jsonbored" },
-        labels: [],
-        body: "### Netuid\n999",
-      },
-      native,
-      providers,
-      generatedAt: "1970-01-01T00:00:00.000Z",
-    });
-    assert.equal(invalid.public_state, "fix_required");
-    assert.equal(invalid.candidate, null);
-  });
-});
-
 describe("adapter github metadata carry-forward", () => {
   const previousSummary = {
     captured_at: "2026-06-08T12:00:00.000Z",
@@ -2606,4 +2286,32 @@ describe("adapter github metadata carry-forward", () => {
     assert.equal(summary.carried_forward_count, 0);
     assert.equal(summary.repositories.length, 0);
   });
+});
+
+test("validate:intake rejects nested retired community candidate files", async () => {
+  const retiredDir = path.join(
+    repoRoot,
+    "registry/candidates/community/__retired-intake-test__",
+  );
+  const retiredFile = path.join(retiredDir, "nested.json");
+  await mkdir(retiredDir, { recursive: true });
+  try {
+    await writeFile(retiredFile, "{}\n");
+    const result = spawnSync("node", ["scripts/validate-intake.mjs"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /registry\/candidates\/community\/ is retired/,
+    );
+    assert.match(
+      `${result.stdout}\n${result.stderr}`,
+      /__retired-intake-test__\/nested\.json/,
+    );
+  } finally {
+    await rm(retiredDir, { recursive: true, force: true });
+  }
 });

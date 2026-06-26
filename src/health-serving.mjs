@@ -8,7 +8,10 @@
 // objects + D1 rows in.
 
 import { computeReliability, scoreFromStats } from "./reliability.mjs";
-import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import {
+  rollupSubnetStatus,
+  normalizeProbeStatus,
+} from "./health-probe-core.mjs";
 import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
@@ -107,7 +110,7 @@ export function summarizeRows(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
@@ -219,7 +222,11 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
       archive_support: live.archive_support ?? endpoint.archive_support,
       health_source: "probe-derived",
       health_stale: false,
-      observed_at: live.last_ok || liveRpcPool.last_run_at,
+      // observed_at is when this status was observed, i.e. the sweep time. rpc-pool
+      // rows carry only last_ok (last SUCCESS), so a failing/degraded endpoint's
+      // last_ok is a stale prior-success time — using it would label a fresh
+      // failed observation with an hours-old timestamp. Prefer the run time.
+      observed_at: liveRpcPool.last_run_at || live.last_ok || null,
     };
   });
   return {
@@ -1047,11 +1054,10 @@ export function formatUptime({
   rows,
   now = null,
 }) {
-  const reliabilityRows = (rows || []).map((row) => ({
-    ...row,
-    surface_id: surfaceLookupKey(row),
-  }));
-  const reliability = computeReliability(reliabilityRows, {
+  // computeReliability keys per-surface aggregation on the stable surface_key
+  // itself (falling back to surface_id), so renamed rows already collapse into
+  // one bucket — no need to pre-rewrite surface_id here.
+  const reliability = computeReliability(rows || [], {
     window: window || null,
     now,
   });

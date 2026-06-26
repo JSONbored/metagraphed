@@ -1,0 +1,115 @@
+name: Publish to Smithery
+
+# Re-publishes metagraphed's hosted MCP server to Smithery
+# (https://smithery.ai/servers/metagraphed/metagraphed) so the listing re-scans
+# the live tool set at https://api.metagraph.sh/mcp. It is a remote server, so
+# there is no package artifact — this just re-registers the URL and cuts a new
+# release. Run after shipping MCP tool/metadata changes (mirrors the canonical
+# publish-mcp-registry.yml).
+#
+# Requires a SMITHERY_API_KEY repo secret:
+#   Smithery -> account -> API keys -> Create API key
+#   -> repo Settings -> Secrets and variables -> Actions -> New repository secret.
+# Manual trigger only — run "Publish to Smithery" from the Actions tab. Test once
+# after adding the secret to confirm the CLI's auth picks up SMITHERY_API_KEY.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smithery-release
+  cancel-in-progress: false
+
+env:
+  SMITHERY_NAMESPACE: metagraphed/metagraphed
+  SMITHERY_MCP_URL: https://api.metagraph.sh/mcp
+
+jobs:
+  publish:
+    # Only from the reviewed default branch.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Deployment environment for the release secret — enables protection rules
+    # (required reviewers, branch restrictions) and lets SMITHERY_API_KEY be
+    # scoped as an environment secret. Configure rules in repo Settings ->
+    # Environments -> smithery.
+    environment: smithery
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Preflight — endpoint answers MCP initialize
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/mcp-init.json -w '%{http_code}' \
+            -X POST "$SMITHERY_MCP_URL" \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smithery-publish-preflight","version":"1.0"}}}')
+          echo "initialize -> HTTP $code"
+          grep -q '"serverInfo"' /tmp/mcp-init.json \
+            || { echo "::error::$SMITHERY_MCP_URL did not return a valid MCP initialize — aborting publish"; exit 1; }
+
+      - name: Install Smithery CLI
+        # Keep the secret-bearing publish step from trusting a lockless, mutable
+        # npm resolution directly. Fetch the pinned package tarball, verify the
+        # bytes npm selected, install without lifecycle scripts, then require
+        # registry signatures for the installed package graph before any
+        # SMITHERY_API_KEY-bearing process runs.
+        run: |
+          set -euo pipefail
+          npm pack --json smithery@1.2.0 > /tmp/smithery-pack.json
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const crypto = require("node:crypto");
+          const [pack] = JSON.parse(fs.readFileSync("/tmp/smithery-pack.json", "utf8"));
+          if (!pack?.filename || !pack?.integrity) {
+            throw new Error(`missing npm pack integrity metadata: ${JSON.stringify(pack)}`);
+          }
+          const [algorithm, expected] = pack.integrity.split("-");
+          if (algorithm !== "sha512" || !expected) {
+            throw new Error(`unexpected npm pack integrity: ${pack.integrity}`);
+          }
+          const actual = crypto
+            .createHash(algorithm)
+            .update(fs.readFileSync(pack.filename))
+            .digest("base64");
+          if (actual !== expected) {
+            throw new Error(`integrity mismatch for ${pack.filename}`);
+          }
+          fs.writeFileSync("/tmp/smithery-tarball", pack.filename);
+          console.log(`verified ${pack.filename} with ${algorithm}`);
+          NODE
+          mkdir -p /tmp/smithery-cli
+          tarball="$(pwd)/$(cat /tmp/smithery-tarball)"
+          cd /tmp/smithery-cli
+          npm init -y >/dev/null
+          npm install --ignore-scripts "$tarball"
+          npm audit signatures
+          echo "/tmp/smithery-cli/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Publish to Smithery
+        env:
+          # Smithery's standard auth env var (Bearer token for api.smithery.ai).
+          # If `smithery mcp publish` does not pick this up, the run fails with an
+          # auth error — switch to the `smithery auth login` flow then.
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SMITHERY_API_KEY:-}" ]; then
+            echo "::error::SMITHERY_API_KEY secret is not set. Smithery -> API keys -> Create API key, then repo Settings -> Secrets -> Actions."
+            exit 1
+          fi
+          smithery --version || true
+          smithery mcp publish "$SMITHERY_MCP_URL" -n "$SMITHERY_NAMESPACE"

@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/bitcast-network/bitcast",
+  "id": "bitcast",
+  "kind": "subnet-team",
+  "name": "Bitcast",
+  "public_notes": "Subnet 93 (Bitcast) team profile — the decentralized creators economy. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "https://stats.bitcast.network/"
+}

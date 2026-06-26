@@ -141,6 +141,54 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
+
+  test("a failing endpoint's observed_at is the sweep time, not its stale last_ok", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [{ id: "a", status: "ok", health_source: "probe-derived" }],
+    };
+    const live = {
+      last_run_at: "2026-06-11T00:00:00Z",
+      endpoints: [
+        {
+          id: "a",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          // last successful probe was hours ago; the endpoint is failing now.
+          last_ok: "2026-06-10T08:00:00Z",
+        },
+      ],
+    };
+    const a = mergeRpcEndpoints(stat, live).endpoints.find((e) => e.id === "a");
+    // health_stale:false claims a fresh observation, so observed_at must be the
+    // run time — not the stale last-success timestamp.
+    assert.equal(a.health_stale, false);
+    assert.equal(a.observed_at, "2026-06-11T00:00:00Z");
+  });
+
+  test("observed_at falls back to last_ok, then null, when the run time is absent", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [
+        { id: "a", status: "ok" },
+        { id: "b", status: "ok" },
+      ],
+    };
+    // No last_run_at on the pool → fall back to the endpoint's last_ok, then null.
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", last_ok: "2026-06-10T08:00:00Z" },
+        { id: "b", status: "failed" },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live).endpoints;
+    assert.equal(
+      merged.find((e) => e.id === "a").observed_at,
+      "2026-06-10T08:00:00Z",
+    );
+    assert.equal(merged.find((e) => e.id === "b").observed_at, null);
+  });
 });
 
 describe("overlayRpcPoolEligibility", () => {
@@ -342,14 +390,17 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("unrecognized status values roll up as unknown, not ok", () => {
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
-    assert.equal(out.failed_count, 0);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.ok_count, 0);
+    assert.equal(out.failed_count, 0);
+  });
+  test("null or missing status is treated as unknown", () => {
+    const out = summarizeRows([row(null), { status: undefined }]);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([
@@ -982,18 +1033,25 @@ describe("worker live health serving", () => {
   });
 
   test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    // Date the rows relative to "now" so they always fall inside the live 7d
+    // window the handler derives from Date.now() (`day >= now − 7d`). A fixed
+    // calendar date ages out of the window and turns this into a time-bomb that
+    // fails repo-wide the day the clock passes it.
+    const recentDay = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
           netuid: 8,
-          date: "2026-06-17",
+          date: recentDay,
           total: 10,
           ok_count: 8,
           avg_latency_ms: 30,
         },
         {
           netuid: 7,
-          date: "2026-06-17",
+          date: recentDay,
           total: 5,
           ok_count: 5,
           avg_latency_ms: 20,
@@ -2154,6 +2212,40 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(out.surfaces.b.grade, "F");
   });
 
+  test("aggregates a renamed surface as ONE bucket via stable surface_key", () => {
+    // The same physical surface across a rename: one stable surface_key, two
+    // different surface_id values on either side of the rename boundary. It must
+    // NOT split into two surfaces (which would inflate surface_count and
+    // fragment the per-surface score).
+    const out = computeReliability(
+      [
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          avg_latency_ms: 100,
+        },
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+        },
+      ],
+      { window: "30d", now: "2026-06-13T00:00:00.000Z" },
+    );
+    assert.equal(out.subnet.surface_count, 1);
+    assert.equal(out.subnet.sample_count, 200);
+    // surfaces map is keyed by the stable surface_key, not either surface_id.
+    assert.deepEqual(Object.keys(out.surfaces), ["srf-stableapi0000"]);
+    assert.equal(out.surfaces["srf-stableapi0000"].uptime_ratio, 0.9);
+    assert.equal(out.surfaces["7:api:old"], undefined);
+  });
+
   test("weights latency by healthy readings and reports latency_sample_count", () => {
     const out = computeReliability(
       [
@@ -2220,6 +2312,29 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(
       scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
       null,
+    );
+  });
+
+  test("a sub-perfect ratio that rounds to 1 is not reported as a perfect 1", () => {
+    // 24999/25000 = 0.99996; (0.99996).toFixed(4) === "1.0000", which would
+    // otherwise overstate a 99.996%-uptime subnet as a perfect-uptime "100%"
+    // badge. Clamp the displayed ratio to the largest 4-decimal value below 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 24999, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9999,
+    );
+    // a genuine okCount === samples ratio still reports an exact 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .uptime_ratio,
+      1,
+    );
+    // an ordinary sub-1 ratio is unchanged (rounded to 4 decimals as before).
+    assert.equal(
+      scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9983,
     );
   });
 
@@ -2298,6 +2413,37 @@ describe("loadSubnetReliability (D1-backed)", () => {
     assert.equal(out.surface_count, 2);
     assert.equal(out.uptime_ratio, 0.75); // (720+360)/1440
     assert.equal(out.computed_at, "2026-06-13T00:00:00.000Z");
+  });
+
+  test("counts a renamed surface once across the rename boundary", async () => {
+    // The query GROUP BYs COALESCE(surface_key, surface_id) per day and emits
+    // MAX(surface_id) per group, so a surface renamed mid-window yields rows with
+    // ONE stable surface_key but a different surface_id on each side of the
+    // rename. surface_count must stay 1 (not inflate to 2).
+    const out = await loadSubnetReliability({
+      db: uptimeDb([
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-13",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 120,
+        },
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 540,
+          avg_latency_ms: 120,
+        },
+      ]),
+      netuid: 7,
+      now: "2026-06-14T00:00:00.000Z",
+    });
+    assert.equal(out.surface_count, 1);
+    assert.equal(out.uptime_ratio, 0.875); // (720+540)/1440
   });
 
   test("returns null (not throw) when the query fails", async () => {

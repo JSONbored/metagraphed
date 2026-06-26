@@ -24,6 +24,18 @@ function gradeFor(score) {
   return "F";
 }
 
+// Round the displayed uptime ratio to 4 decimals WITHOUT letting a sub-perfect
+// ratio round up to an exact 1: (0.99996).toFixed(4) === "1.0000", which would
+// make a 99.996%-uptime surface report `uptime_ratio: 1` and render a "100%"
+// badge (the formatUptimePercent `value < 1` guard can't recover it — the ratio
+// is already collapsed to 1 upstream). Only a genuine okCount === samples ratio
+// (exactly 1) keeps the perfect value; any sub-1 ratio clamps to the largest
+// 4-decimal value below 1.
+function displayUptimeRatio(ratio) {
+  const rounded = Number(ratio.toFixed(4));
+  return rounded >= 1 && ratio < 1 ? 0.9999 : rounded;
+}
+
 // Score a single rolled-up window of stats. Returns null when there are no
 // samples (no probe data → no score, by design). `latencySamples` is how many
 // healthy probes backed `avgLatencyMs`, distinct from `samples` (the uptime total).
@@ -52,7 +64,7 @@ export function scoreFromStats({
   return {
     score,
     grade: gradeFor(score),
-    uptime_ratio: Number(uptimeRatio.toFixed(4)),
+    uptime_ratio: displayUptimeRatio(uptimeRatio),
     avg_latency_ms: avgLatencyMs == null ? null : Math.round(avgLatencyMs),
     sample_count: samples,
     latency_sample_count: latencySamples,
@@ -60,10 +72,14 @@ export function scoreFromStats({
 }
 
 // Aggregate surface_uptime_daily rows into a subnet-level score + a per-surface
-// score map. `rows`: [{ surface_id, day, samples, ok_count, avg_latency_ms,
-// latency_samples }]. The window mean is weighted by latency_samples (healthy
-// readings per day), not total samples; legacy rows fall back to total samples.
-// `subnet` is null when there are no samples.
+// score map. `rows`: [{ surface_id, surface_key?, day, samples, ok_count,
+// avg_latency_ms, latency_samples }]. Per-surface aggregation keys on the stable
+// `surface_key` (the rename-proof identity from #1005), falling back to
+// `surface_id` for legacy rows that predate it — so a surface renamed within the
+// window stays ONE bucket instead of splitting (which would inflate
+// surface_count and fragment its score). The window mean is weighted by
+// latency_samples (healthy readings per day), not total samples; legacy rows
+// fall back to total samples. `subnet` is null when there are no samples.
 export function computeReliability(rows, { window = null, now = null } = {}) {
   const bySurface = new Map();
   let totalSamples = 0;
@@ -80,7 +96,10 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
     // Healthy readings behind this day's mean; legacy rows lack it → total samples.
     const latencyCount =
       row.latency_samples == null ? samples : Number(row.latency_samples) || 0;
-    const surface = bySurface.get(row.surface_id) || {
+    // Stable identity first: a surface keeps one `surface_key` across renames,
+    // while `surface_id` can change (and legacy rows only have surface_id).
+    const surfaceKey = row.surface_key || row.surface_id;
+    const surface = bySurface.get(surfaceKey) || {
       samples: 0,
       okCount: 0,
       latencyWeighted: 0,
@@ -94,7 +113,7 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
       latencyWeighted += latency * latencyCount;
       latencySamples += latencyCount;
     }
-    bySurface.set(row.surface_id, surface);
+    bySurface.set(surfaceKey, surface);
     totalSamples += samples;
     totalOk += okCount;
     if (row.day) {
@@ -103,8 +122,8 @@ export function computeReliability(rows, { window = null, now = null } = {}) {
   }
 
   const surfaces = {};
-  for (const [surfaceId, surface] of bySurface) {
-    surfaces[surfaceId] = scoreFromStats({
+  for (const [surfaceKey, surface] of bySurface) {
+    surfaces[surfaceKey] = scoreFromStats({
       samples: surface.samples,
       okCount: surface.okCount,
       avgLatencyMs: surface.latencySamples

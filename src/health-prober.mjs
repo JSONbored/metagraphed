@@ -17,6 +17,7 @@
 import {
   isUnsafePublicUrl,
   mapLimit,
+  normalizeProbeStatus,
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
@@ -60,7 +61,13 @@ const DNS_RECORD_TYPES = ["A", "AAAA"];
 const DNS_TIMEOUT_MS = 4000;
 const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 
-const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+// #1757: epoch-zero is a "never" sentinel, not a real probe time — `iso(0)`
+// would otherwise emit the "1970-01-01T00:00:00.000Z" placeholder onto a served
+// last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
+// null at the source so consumers don't each need a pre-2000 sentinel guard. A
+// real timestamp (run time, last OK) is always a large positive ms.
+const iso = (ms) =>
+  Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
 
 function safeRpcBlockNumber(value) {
   if (value == null) return null;
@@ -150,7 +157,9 @@ function isUnsafeIpAddress(value) {
     host.startsWith("64:ff9b:1:") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879): the whole
+    // fe80::–feff: reserved range, matching the webhook guard (issue #1538).
+    /^fe[89a-f][0-9a-f]:/i.test(host) ||
     host.startsWith("ff")
   );
 }
@@ -341,7 +350,7 @@ function summarizeGroup(rows) {
   let lastOk = 0;
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
     if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
@@ -735,8 +744,12 @@ export async function rollupDailyUptime(env, overrides = {}) {
       days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
     return { rolled: true, days: days.map((d) => d.date) };
-  } catch {
-    return { rolled: false };
+  } catch (error) {
+    // Don't swallow silently: a failing INSERT here (e.g. a missing column from
+    // un-applied schema migration) freezes the daily uptime rollup invisibly.
+    // Surface the reason so the hourly cron's result is diagnosable.
+    console.error("[rollupDailyUptime]", String(error?.message ?? error));
+    return { rolled: false, error: String(error?.message ?? error) };
   }
 }
 

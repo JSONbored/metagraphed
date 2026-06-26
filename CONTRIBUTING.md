@@ -7,7 +7,7 @@ Live: [metagraph.sh](https://metagraph.sh) · API [api.metagraph.sh](https://api
 Two kinds of contribution, two paths:
 
 - **Code / schema changes** → normal feature PR, run the gates below.
-- **Community data** → one candidate JSON file, see [Community submissions](#community-submissions).
+- **Community data** → add a surface to one subnet file, see [Community submissions](#community-submissions).
 
 ## Setup & gates
 
@@ -34,60 +34,63 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 ## Where to start
 
-- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and submit one candidate file ([Community submissions](#community-submissions) below). Each issue links the exact `candidate:new` command.
+- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and add it as a surface on the subnet's file ([Community submissions](#community-submissions) below). Each issue links the exact `surface:add` command.
 - **Data gaps** — generate the current curation queue: `npm run curation:brief` (add `-- --limit 20` for more, `-- --json` for machine-readable). Start with profile-light subnets: directory-only entries, missing websites or source repos, public APIs with no OpenAPI metadata yet. See [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
 ## Community submissions
 
-Community data becomes a reviewed **candidate**, not direct registry truth. PR-first is the simplest path:
+Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Add **exactly one** file — `registry/candidates/community/*.json` (a candidate) **or** `registry/providers/community/*.json` (a provider profile) — and **nothing else**. No generated artifacts. First-time team? Add **both** in one PR (an atomic provider+candidate pair): the inline provider counts as registered for candidate validation, but provider/profile identity still requires maintainer review before it can land.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR; provider identity still gets reviewed before it's trusted.
 
-Generate a candidate locally — three steps:
+> **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+> Filing your own issue and then opening a PR that resolves it is welcome, and a PR with no linked issue is fine — neither is farming. What is against policy is **using more than one account you control (alt / sock-puppet accounts) — e.g. one account opening issues for another to "resolve" — to inflate contribution credit**, along with manufacturing low-value/slop issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+Add a surface locally — three steps:
 
 ```bash
 # 1. Find the provider slug for the team/operator behind this surface.
-#    (No match? Register one in the same PR with `npm run provider:new`.)
 npm run providers:list
 
-# 2. Generate the candidate with a REAL --provider slug (a placeholder like
-#    "community" is not a registered provider and will fail validation).
-npm run candidate:new -- \
+# 2. Append the surface to the subnet's file with a REAL --provider slug.
+#    Debut provider? Add --provider-name + --provider-url and surface:add also
+#    scaffolds registry/providers/<slug>.json so the PR validates in one shot.
+npm run surface:add -- \
   --netuid 7 --kind docs \
   --url https://docs.example.com \
   --source-url https://github.com/example/project \
   --provider <provider-slug> --submitted-by <github-login> --write
+  # debut provider: --provider-name "Example Team" --provider-url https://example.com
 
-# 3. Check it before pushing — a fast local pre-check that catches schema +
-#    provider-slug mistakes without the full build (CI runs the full validate).
-npm run validate:candidate -- registry/candidates/community/<your-file>.json
+# 3. Check it before pushing — a fast local pre-check (schema + provider slug +
+#    review-state + real subnet name) without the full build (CI runs full validate).
+npm run validate:surface -- registry/subnets/<slug>.json
 ```
 
-A good candidate PR is small: one public URL, one source URL proving the claim, one active netuid, no generated files. Best kinds (these can be auto-reviewed): `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
+> New subnet with no file yet? `npm run subnet:new -- --netuid <n> --name "<Real Name>" --write` first — a real `--name` is required (placeholder on-chain identities like "Team TBC" are rejected) — then add your surface to it.
 
-**Higher-trust kinds** (provider/operator profiles, base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, adapter requests, status reports, identity disputes) are also welcome and no longer need a maintainer: they go to the same autonomous reviewer, which scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership) and they can merge like any other surface.
+A good surface PR is small: one public `url`, one `source_url` proving the claim, the right `kind`, all on the subnet's single file. Auto-review kinds: `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
+
+**Higher-trust kinds** (base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership).
 
 **Hard boundaries:**
 
-- Health, uptime, latency, incidents, and pool eligibility are **probe-derived only**. Reports can trigger a re-probe; they can never set observed state.
+- Health, uptime, latency, incidents, and pool eligibility are **probe-derived only** — never hand-set them (or a surface's `verification`). The build's prober owns them.
 - No secrets, PATs, wallet paths, private URLs, or validator-local data.
 - Don't invent API/status surfaces a subnet doesn't publish.
-- Schema-valid ≠ accepted. A private review gate makes the final call.
+- Schema-valid ≠ accepted. The review gate makes the final call.
 
 **Accepted vs rejected at a glance** — the visible checklist (the final merge decision is the review gate's):
 
-| ✅ Tends to get accepted                                                                                             | ❌ Gets closed / routed to manual                                                                              |
-| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Exactly one `registry/candidates/community/*.json` (or `providers/community/*.json`)                                 | Touches generated artifacts, scripts, or workflows ([#296](https://github.com/JSONbored/metagraphed/pull/296)) |
-| A public `url` **plus** a `source_url` that proves the claim                                                         | `source_url` 404s or doesn't back the claim ([#328](https://github.com/JSONbored/metagraphed/pull/328))        |
-| An auto-review `kind` (docs, website, source-repo, openapi, subnet-api, dashboard, sse, data-artifact, sdk, example) | A surface the subnet already exposes — duplicate ([#90](https://github.com/JSONbored/metagraphed/pull/90))     |
-| `auth_required: false`, `public_safe: true`, an active netuid, a registered provider (or one added in the same PR)   | Secrets/PATs/wallet paths, private/localhost URLs, or unproven ownership claims                                |
+| ✅ Tends to get accepted                                                                                          | ❌ Gets closed / routed to manual                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/*.json` for a debut)                 | Touches generated artifacts, scripts, or workflows                                                   |
+| A surface with a public `url` **plus** a `source_url` that proves the claim                                       | `source_url` 404s or doesn't back the claim                                                          |
+| `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider | A surface the subnet already exposes — duplicate                                                     |
+| `auth_required: false`, `public_safe: true`                                                                       | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |
 
-A clean accepted example to copy: [#87](https://github.com/JSONbored/metagraphed/pull/87).
-
-Prefer issues? Use the `interface-submission`, `profile-correction`, `endpoint-submission`, `provider-submission`, or `status-report` template — an approved issue opens the candidate PR for you. Full contract in [`docs/submission-gate.md`](docs/submission-gate.md).
-
-Callable surface with documented limits? Add an optional structured `rate_limit` — `{ requests, window, burst?, scope?, cost_notes? }` (`requests` + `window` required) — so agents and SDKs can pace calls. It's integration-only: metagraphed never enforces it and it doesn't feed completeness. See the example in [`docs/submission-gate.md`](docs/submission-gate.md).
+Callable surface with documented limits? Add an optional structured `rate_limit` — `{ requests, window, burst?, scope?, cost_notes? }` (`requests` + `window` required) — so agents and SDKs can pace calls. It's integration-only: metagraphed never enforces it and it doesn't feed completeness.
 
 ## Pull requests
 
@@ -96,10 +99,22 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 - No local paths, machine-specific setup, env dumps, or private notes.
 - Keep UI/frontend work out of this repo — it owns backend data contracts and generated JSON. The web app lives at [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
 
+## How reviews work
+
+**Timing is typical, not an SLA.** When the gittensory maintainer agent is operating, most PRs are reviewed and auto-merged or auto-closed within **~1 hour of CI finishing**; when it is paused or under maintenance, manual review **typically takes 24–48 hours, depending on volume**. These are observations, not commitments — reviews happen when they happen.
+
+**One-shot, merge-ready as-is.** We do not request changes on contributor PRs — a PR is merged exactly as it stands or it is closed; there is no "changes requested" back-and-forth. Before CI we rebase your branch onto `main` with a **merge commit**, then review **after** CI completes — so a rebase conflict, or any failing gate (schema, API, OpenAPI, `contract-drift`, or surface validation), closes the PR. Keep to the one-subnet-one-file rule, regenerate artifacts, and make it green before pushing; recover from a close by opening a **fresh, corrected PR**. PRs touching guarded paths (build scripts, the Worker API, CI config) are held for manual review.
+
+**If we close your PR by mistake, that's on us** — we may reopen or re-review at our discretion as time permits. There is no fixed window, and a fresh PR is usually fastest.
+
+**Don't ask for or chase reviews.** The queue is automated and best-effort, and the gate posts its own status on your PR. Do **not** DM, @-mention, or comment asking for a review or status — it will not speed anything up and **will deprioritize your PR (expect at least 5 days added to its place in the manual queue)**. Persistent pestering (here, Discord, or elsewhere) is a conduct violation and may get the PR closed and the account blocked.
+
+**Scoring and rewards are not ours to grant.** Contribution scoring and any Gittensor rewards are set by the subnet's on-chain hyperparameters and validators, not by this repo. Merging a PR is not a promise of score, ranking, or compensation, and all review decisions are at maintainer discretion and final.
+
 ## Deeper docs
 
-- [`docs/submission-gate.md`](docs/submission-gate.md) — full community submission contract.
 - [`docs/curation-playbook.md`](docs/curation-playbook.md) — what to curate and in what order.
 - [`docs/api-stability.md`](docs/api-stability.md) — API/contract stability guarantees.
+- [`docs/adr/`](docs/adr/) — architecture decision records (why the system is built this way); [`RELEASING.md`](RELEASING.md) — the release runbook.
 
 By contributing you agree your work is released under the repository's [AGPL-3.0 License](LICENSE) — or Apache-2.0 for contributions to the client SDKs under `packages/client/` and `python/`.

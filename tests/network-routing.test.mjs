@@ -159,6 +159,23 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(detail.body.data.subnet.netuid, 11);
   });
 
+  test("pagination Link header keeps the /testnet/ prefix (#1686)", async () => {
+    const env = createLocalArtifactEnv();
+    // The /{network}/ segment is stripped before dispatch, so the Link header
+    // must re-insert it — otherwise a client walking testnet via the next link
+    // would silently cross over to the mainnet collection.
+    const { res } = await get(
+      env,
+      "/api/v1/testnet/subnets?sort=netuid&limit=1&cursor=0",
+    );
+    assert.equal(res.status, 200);
+    const link = res.headers.get("link");
+    assert.ok(link, "a paginated testnet response must carry a Link header");
+    const next = link.match(/<([^>]+)>;\s*rel="next"/);
+    assert.ok(next, "the Link header must advertise rel=next");
+    assert.equal(new URL(next[1]).pathname, "/api/v1/testnet/subnets");
+  });
+
   test("testnet subnet details do not receive mainnet live economics", async () => {
     const economicsBlob = {
       schema_version: 1,
@@ -281,6 +298,12 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const trends = await get(env, "/api/v1/testnet/subnets/7/health/trends");
     assert.equal(trends.res.status, 404);
     assert.equal(trends.body.meta.network, "testnet");
+
+    // Cross-subnet compare composes the mainnet registry + economics + health,
+    // so it is mainnet-only too.
+    const compare = await get(env, "/api/v1/testnet/compare?netuids=1");
+    assert.equal(compare.res.status, 404);
+    assert.equal(compare.body.meta.network, "testnet");
   });
 
   test("raw artifact: mainnet alias and testnet both serve their partitioned data", async () => {

@@ -13,6 +13,7 @@ import {
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -666,6 +667,11 @@ describe("MCP transport handling", () => {
     );
     assert.equal(response.status, 429);
     assert.equal(response.headers.get("retry-after"), "60");
+    // The rate-limit hints must be readable by a cross-origin browser client.
+    assert.equal(
+      response.headers.get("access-control-expose-headers"),
+      EXPOSED_RESPONSE_HEADERS_VALUE,
+    );
     assert.equal(rateLimitKey, "203.0.113.7");
     const body = await response.json();
     assert.match(body.error.message, /Too many MCP requests/);
@@ -916,6 +922,12 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(out.results[0].netuid, 7);
     assert.ok(out.results[0].url.includes("/api/v1/subnets/7/overview"));
     assert.ok(out.results.every((r) => r.netuid !== null));
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.count, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 5);
+    assert.equal(out.next_offset, null);
   });
 
   test("search_subnets clamps the limit and reports zero matches", async () => {
@@ -924,7 +936,12 @@ describe("MCP tools (injected deps)", () => {
       { query: "nonexistentxyz", limit: 999 },
       { deps },
     );
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
+    // An out-of-range limit clamps to the 50 max, not the raw 999.
+    assert.equal(out.limit, 50);
   });
 
   test("search_subnets limit:0 falls back to the default, not a single result", async () => {
@@ -981,6 +998,11 @@ describe("MCP tools (injected deps)", () => {
       "number",
       "find_subnets_by_capability results must carry integration_readiness",
     );
+    // Pagination envelope mirrors list_subnets: total/offset/limit/next_offset.
+    assert.equal(out.total, 1);
+    assert.equal(out.offset, 0);
+    assert.equal(out.limit, 10);
+    assert.equal(out.next_offset, null);
   });
 
   test("find_subnets_by_capability with no match returns empty", async () => {
@@ -990,7 +1012,10 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     // netuid 12 has gpu but callable_count 0 -> excluded
-    assert.equal(res.body.result.structuredContent.count, 0);
+    const out = res.body.result.structuredContent;
+    assert.equal(out.count, 0);
+    assert.equal(out.total, 0);
+    assert.equal(out.next_offset, null);
   });
 
   test("get_subnet returns the overview artifact", async () => {
@@ -2532,6 +2557,274 @@ describe("list_subnets", () => {
     assert.equal(byDomain.total, 1);
     assert.equal(byDomain.subnets[0].netuid, 8);
   });
+
+  test("sort by integration_readiness desc returns the most ready first + echoes order", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 0, 8],
+    );
+    assert.equal(out.sort, "integration_readiness");
+    assert.equal(out.order, "desc");
+  });
+
+  test("sort defaults to ascending when order is omitted", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [8, 0, 7],
+    );
+    assert.equal(out.order, "asc");
+  });
+
+  test("sort by name uses string comparison", async () => {
+    const out = (await callTool("list_subnets", { sort: "name" }, { deps }))
+      .body.result.structuredContent;
+    // Allways (7), Parked (8), root (0)
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [7, 8, 0],
+    );
+  });
+
+  test("no sort preserves source order and reports sort/order null", async () => {
+    const out = (await callTool("list_subnets", {}, { deps })).body.result
+      .structuredContent;
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [0, 7, 8],
+    );
+    assert.equal(out.sort, null);
+    assert.equal(out.order, null);
+  });
+
+  test("rejects an unknown sort field or order value", async () => {
+    const badSort = await callTool("list_subnets", { sort: "bogus" }, { deps });
+    assert.equal(badSort.body.result.isError, true);
+    assert.ok(badSort.body.result.content[0].text.includes("sort"));
+    const badOrder = await callTool(
+      "list_subnets",
+      { sort: "netuid", order: "sideways" },
+      { deps },
+    );
+    assert.equal(badOrder.body.result.isError, true);
+    assert.ok(badOrder.body.result.content[0].text.includes("order"));
+  });
+
+  test("unscored subnets sort last and equal values tie-break by netuid", async () => {
+    const tieDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 5, name: "E", integration_readiness: 50 },
+          { netuid: 3, name: "C", integration_readiness: 50 },
+          { netuid: 2, name: "B", integration_readiness: 80 },
+          { netuid: 9, name: "I" }, // no integration_readiness → null
+          { netuid: 1, name: "A" }, // no integration_readiness → null
+        ],
+      },
+    });
+    const out = (
+      await callTool(
+        "list_subnets",
+        { sort: "integration_readiness", order: "desc" },
+        { deps: tieDeps },
+      )
+    ).body.result.structuredContent;
+    // 80 first; the two 50s tie → netuid asc (3,5); the nulls sort last → netuid
+    // asc (1,9), even under desc.
+    assert.deepEqual(
+      out.subnets.map((s) => s.netuid),
+      [2, 3, 5, 1, 9],
+    );
+  });
+
+  test("a scored subnet sorts before an unscored one for either input order", async () => {
+    // Reversing the input flips which side of the comparator the null lands on,
+    // so both nulls-last branches are exercised; the result is the same.
+    for (const subnets of [
+      [
+        { netuid: 1, name: "A", integration_readiness: 10 },
+        { netuid: 2, name: "B" },
+      ],
+      [
+        { netuid: 2, name: "B" },
+        { netuid: 1, name: "A", integration_readiness: 10 },
+      ],
+    ]) {
+      const out = (
+        await callTool(
+          "list_subnets",
+          { sort: "integration_readiness" },
+          { deps: makeDeps({ "/metagraph/subnets.json": { subnets } }) },
+        )
+      ).body.result.structuredContent;
+      assert.deepEqual(
+        out.subnets.map((s) => s.netuid),
+        [1, 2],
+      );
+    }
+  });
+});
+
+// The keyword search tools share the list_subnets pagination contract: page
+// through a match set larger than one page and confirm every ranked item is
+// reachable and next_offset clears at the end.
+describe("search tools pagination", () => {
+  const MATCH_COUNT = 60; // > the 50-per-page cap, so paging is mandatory
+  const searchDocs = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    type: "subnet",
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    title: `Pageable ${i + 1}`,
+    subtitle: "pageable subnet",
+    tokens: ["pageable"],
+  }));
+  const catalogSubnets = Array.from({ length: MATCH_COUNT }, (_, i) => ({
+    netuid: i + 1,
+    slug: `pageable-${i + 1}`,
+    name: `Pageable ${i + 1}`,
+    categories: ["pageable"],
+    service_kinds: ["subnet-api"],
+    callable_count: 1,
+    // Distinct readiness => a total order with no ties to depend on.
+    integration_readiness: MATCH_COUNT - i,
+  }));
+  const deps = makeDeps({
+    "/metagraph/search.json": { documents: searchDocs },
+    "/metagraph/agent-catalog.json": { subnets: catalogSubnets },
+  });
+
+  // Walk every page by following next_offset; returns the concatenated results
+  // and the (offset, next_offset) cursor sequence seen.
+  async function walkAll(tool, baseArgs, limit) {
+    const all = [];
+    const cursors = [];
+    let offset = 0;
+    let total = null;
+    // Guard well above the real page count so a cursor bug fails fast instead
+    // of looping forever.
+    for (let guard = 0; guard < 100; guard += 1) {
+      const out = (
+        await callTool(tool, { ...baseArgs, offset, limit }, { deps })
+      ).body.result.structuredContent;
+      total = out.total;
+      assert.equal(out.offset, offset, `${tool}: echoes the requested offset`);
+      assert.equal(out.limit, limit, `${tool}: echoes the requested limit`);
+      assert.equal(
+        out.count,
+        out.results.length,
+        `${tool}: count equals the page length`,
+      );
+      all.push(...out.results);
+      cursors.push({ offset: out.offset, next_offset: out.next_offset });
+      if (out.next_offset === null) break;
+      assert.equal(
+        out.next_offset,
+        offset + out.results.length,
+        `${tool}: next_offset is the cursor for the following page`,
+      );
+      offset = out.next_offset;
+    }
+    return { all, cursors, total };
+  }
+
+  for (const { tool, args } of [
+    { tool: "search_subnets", args: { query: "pageable" } },
+    { tool: "find_subnets_by_capability", args: { capability: "pageable" } },
+  ]) {
+    test(`${tool} pages the whole match set; next_offset clears at the end`, async () => {
+      const { all, cursors, total } = await walkAll(tool, args, 50);
+      // total is the full match count, independent of the per-page cap.
+      assert.equal(total, MATCH_COUNT);
+      // Two pages (60 matches, 50 cap) prove items past page one are reachable.
+      assert.deepEqual(cursors, [
+        { offset: 0, next_offset: 50 },
+        { offset: 50, next_offset: null },
+      ]);
+      // Every match reached exactly once: no drops, no duplicates across pages.
+      assert.equal(all.length, MATCH_COUNT);
+      assert.equal(new Set(all.map((r) => r.netuid)).size, MATCH_COUNT);
+    });
+
+    test(`${tool} offset past the end returns an empty terminal page`, async () => {
+      const out = (
+        await callTool(
+          tool,
+          { ...args, offset: MATCH_COUNT, limit: 10 },
+          { deps },
+        )
+      ).body.result.structuredContent;
+      assert.equal(out.total, MATCH_COUNT);
+      assert.equal(out.offset, MATCH_COUNT);
+      assert.equal(out.count, 0);
+      assert.equal(out.results.length, 0);
+      assert.equal(out.next_offset, null);
+    });
+  }
+});
+
+// Optional fields are absent on some real subnets, so the result mappers fall
+// back: search subtitle -> null, and capability categories/service_kinds -> [],
+// integration_readiness -> null. Exercise those fallback branches directly.
+describe("search tools — absent optional fields fall back", () => {
+  const deps = makeDeps({
+    // A matching search doc with no subtitle.
+    "/metagraph/search.json": {
+      documents: [
+        {
+          type: "subnet",
+          netuid: 5,
+          slug: "sparse",
+          title: "Sparse",
+          tokens: ["sparse"],
+        },
+      ],
+    },
+    // A matching catalog subnet (matched via name/slug) with no categories,
+    // service_kinds, or integration_readiness.
+    "/metagraph/agent-catalog.json": {
+      subnets: [
+        { netuid: 9, slug: "sparsecap", name: "Sparsecap", callable_count: 3 },
+      ],
+    },
+  });
+
+  test("search_subnets maps a missing subtitle to description: null", async () => {
+    const out = (
+      await callTool("search_subnets", { query: "sparse" }, { deps })
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    assert.equal(out.results[0].netuid, 5);
+    assert.equal(out.results[0].description, null);
+  });
+
+  test("find_subnets_by_capability defaults absent categories/service_kinds/readiness", async () => {
+    const out = (
+      await callTool(
+        "find_subnets_by_capability",
+        { capability: "sparsecap" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.equal(out.results.length, 1);
+    const [match] = out.results;
+    assert.equal(match.netuid, 9);
+    assert.deepEqual(match.categories, []);
+    assert.deepEqual(match.service_kinds, []);
+    assert.equal(match.integration_readiness, null);
+  });
 });
 
 describe("MCP economics + metagraph data tools", () => {
@@ -2891,5 +3184,360 @@ describe("MCP economics + metagraph data tools", () => {
         `${name} must reject netuid -1`,
       );
     }
+  });
+});
+
+describe("MCP account tools (get_account + events + subnets)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // A D1 binding that routes by SQL shape so the account loaders get realistic
+  // rows. Order matters: GROUP BY (kinds) before COUNT (agg), as in the REST
+  // account-routes test. `capture` records each bound (sql, params) so a test can
+  // assert the clamped LIMIT/OFFSET actually reached the query.
+  function accountD1({ agg, kinds, registrations, events } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/GROUP BY event_kind/.test(sql))
+                    return Promise.resolve({ results: kinds || [] });
+                  if (/COUNT\(\*\) AS c/.test(sql))
+                    return Promise.resolve({ results: agg ? [agg] : [] });
+                  if (/FROM neurons/.test(sql))
+                    return Promise.resolve({ results: registrations || [] });
+                  if (/FROM account_events/.test(sql))
+                    return Promise.resolve({ results: events || [] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account returns a cross-subnet summary with booleans coerced", async () => {
+    const env = accountD1({
+      agg: {
+        c: 12,
+        sc: 3,
+        fb: 100,
+        lb: 200,
+        fo: 1750000000000,
+        lo: 1750009000000,
+      },
+      kinds: [
+        { kind: "StakeAdded", count: 7 },
+        { kind: "WeightsSet", count: 5 },
+      ],
+      registrations: [
+        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 1, active: 1 },
+      ],
+      events: [
+        {
+          block_number: 200,
+          event_index: 1,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          observed_at: 1750009000000,
+        },
+      ],
+    });
+    const res = await callTool("get_account", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.event_count, 12);
+    assert.equal(out.subnet_count, 3);
+    assert.equal(out.event_kinds[0].kind, "StakeAdded");
+    assert.equal(out.registrations[0].validator_permit, true);
+    assert.equal(out.recent_events[0].event_kind, "StakeAdded");
+  });
+
+  test("get_account_events filters by kind and echoes the limit", async () => {
+    const capture = [];
+    const env = accountD1(
+      {
+        events: [
+          {
+            block_number: 200,
+            event_index: 1,
+            event_kind: "StakeRemoved",
+            hotkey: SS58,
+            coldkey: null,
+            netuid: 7,
+            uid: 3,
+            amount_tao: 2.0,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: "StakeRemoved", limit: 50 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].event_kind, "StakeRemoved");
+    assert.equal(out.limit, 50);
+    assert.equal(out.offset, 0);
+    // The kind filter must reach the SQL as a bound param (never interpolated).
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.ok(/AND event_kind = \?/.test(eventsQuery.sql));
+    assert.ok(eventsQuery.params.includes("StakeRemoved"));
+  });
+
+  test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: 5000 },
+      { env },
+    );
+    // clampInt(5000, 100, 1, 1000) → 1000, in both the payload and the bound LIMIT.
+    assert.equal(res.body.result.structuredContent.limit, 1000);
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.ok(eventsQuery.params.includes(1000));
+  });
+
+  test("get_account_events falls back to the default limit for a non-numeric limit", async () => {
+    const env = accountD1({ events: [] });
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: "abc" },
+      { env },
+    );
+    // clampInt(NaN) → default 100.
+    assert.equal(res.body.result.structuredContent.limit, 100);
+  });
+
+  test("get_account_subnets returns the cross-subnet footprint", async () => {
+    const env = accountD1({
+      registrations: [
+        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 0, active: 1 },
+        { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
+      ],
+    });
+    const res = await callTool("get_account_subnets", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[1].netuid, 64);
+    assert.equal(out.subnets[1].validator_permit, true);
+  });
+
+  test("get_account_events rejects a non-string kind", async () => {
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: 7 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /kind/);
+  });
+
+  test("the account tools reject a malformed ss58", async () => {
+    for (const name of [
+      "get_account",
+      "get_account_events",
+      "get_account_subnets",
+    ]) {
+      const res = await callTool(name, { ss58: "not-an-address" }, { env: {} });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `${name} must reject bad ss58`,
+      );
+      assert.match(res.body.result.content[0].text, /ss58/);
+    }
+  });
+
+  test("the account tools degrade to schema-stable empty payloads when D1 is cold", async () => {
+    const summary = await callTool("get_account", { ss58: SS58 });
+    assert.equal(summary.body.result.isError, false);
+    assert.equal(summary.body.result.structuredContent.event_count, 0);
+    assert.deepEqual(summary.body.result.structuredContent.registrations, []);
+
+    const events = await callTool("get_account_events", { ss58: SS58 });
+    assert.equal(events.body.result.structuredContent.event_count, 0);
+    assert.deepEqual(events.body.result.structuredContent.events, []);
+
+    const subnets = await callTool("get_account_subnets", { ss58: SS58 });
+    assert.equal(subnets.body.result.structuredContent.subnet_count, 0);
+  });
+
+  test("populated account payloads validate against their declared outputSchemas", async () => {
+    // validate-mcp only exercises the cold (empty-array) path, so assert the
+    // POPULATED shapes here — the only check that the item schemas match the rows.
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const reg = {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 100.5,
+      validator_permit: 1,
+      active: 1,
+    };
+    const event = {
+      block_number: 9,
+      event_index: 0,
+      event_kind: "StakeAdded",
+      hotkey: SS58,
+      coldkey: null,
+      netuid: 7,
+      uid: 3,
+      amount_tao: 1.5,
+      observed_at: 1750009000000,
+    };
+    const cases = [
+      [
+        "get_account",
+        accountD1({
+          agg: {
+            c: 5,
+            sc: 2,
+            fb: 1,
+            lb: 9,
+            fo: 1750000000000,
+            lo: 1750009000000,
+          },
+          kinds: [{ kind: "StakeAdded", count: 5 }],
+          registrations: [reg],
+          events: [event],
+        }),
+      ],
+      ["get_account_events", accountD1({ events: [event] })],
+      ["get_account_subnets", accountD1({ registrations: [reg] })],
+    ];
+    for (const [name, env] of cases) {
+      const res = await callTool(name, { ss58: SS58 }, { env });
+      const validate = validatorFor(name);
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        `${name}: ${JSON.stringify(validate.errors)}`,
+      );
+    }
+  });
+
+  test("get_account_events seeks by keyset cursor instead of offset", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    await callTool(
+      "get_account_events",
+      { ss58: SS58, cursor: "200.1", limit: 50 },
+      { env },
+    );
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    // A valid cursor switches the page to a row-value seek and drops OFFSET.
+    assert.ok(/AND \(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.ok(q.params.includes(200) && q.params.includes(1));
+  });
+
+  test("get_account_events emits next_cursor for a full page", async () => {
+    const env = accountD1({
+      events: [
+        {
+          block_number: 200,
+          event_index: 1,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          observed_at: 1750009000000,
+        },
+      ],
+    });
+    // limit:1 with exactly one row is a full page → a keyset token for the next.
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: 1 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.next_cursor, "200.1");
+  });
+});
+
+describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
+  // INVARIANT: a malformed argument must surface as a tools/call RESULT with
+  // isError:true + a stable `invalid_params` code (so an agent branches on the
+  // code), NOT as a thrown transport error or a 500. These exercise the
+  // optionalEnum / requireString / clampLimit validators across several tools.
+
+  test("optionalEnum rejects an out-of-set value with an invalid_params result", async () => {
+    const res = await callTool("list_enrichment_targets", {
+      tier: "not-a-real-tier",
+    });
+    assert.equal(res.status, 200, "transport stays 200; the error is in-band");
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /must be one of/);
+  });
+
+  test("optionalEnum rejects a non-string value the same way", async () => {
+    const res = await callTool("find_subnet_opportunities", { board: 7 });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("requireString rejects a blank/whitespace-only required arg", async () => {
+    for (const args of [{ query: "   " }, { query: "" }, { query: 42 }]) {
+      const res = await callTool("search_subnets", args);
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+      assert.match(res.body.result.content[0].text, /non-empty string/);
+    }
+  });
+
+  test("an unknown tool name is a typed isError result, not a transport error", async () => {
+    // Regression: callTool must return an isError result for an unknown tool
+    // (the dispatcher never throws a -32603 for it).
+    const res = await callTool("definitely_not_a_tool", {});
+    assert.equal(res.status, 200);
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown tool/);
+    // A non-string name is handled the same way (no crash on `.get`).
+    const res2 = await rpc({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/call",
+      params: { name: 123, arguments: {} },
+    });
+    assert.equal(res2.body.result.isError, true);
+  });
+
+  test("an unknown JSON-RPC method is a typed method-not-found, not a throw", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/teleport",
+      params: {},
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.error.code, -32601);
   });
 });

@@ -143,6 +143,60 @@ describe("generateServiceSnippets structured auth (#746)", () => {
     assert.match(out.curl, /\?v=2&key=YOUR_API_KEY/);
   });
 
+  test("query auth with a spaced placeholder is encoded, not suppressed", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api key",
+        value_format: "<your api key>",
+      },
+    });
+    // Before the fix the raw space tripped isSnippetSafeUrl → null (no snippets).
+    assert.ok(out);
+    assert.match(out.curl, /\?api%20key=%3Cyour%20api%20key%3E/);
+    assert.match(out.python, /\?api%20key=%3Cyour%20api%20key%3E/);
+  });
+
+  test("query bearer default value (has a space) still yields snippets", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: { scheme: "bearer", location: "query" },
+    });
+    assert.ok(out);
+    assert.match(out.curl, /\?api_key=Bearer%20YOUR_API_KEY/);
+  });
+
+  test("malformed UTF-16 in query auth is dropped without throwing", () => {
+    let out;
+    assert.doesNotThrow(() => {
+      out = generateServiceSnippets({
+        ...base,
+        auth: {
+          scheme: "api-key",
+          location: "query",
+          name: "\uD800",
+          value_format: "<api-key>",
+        },
+      });
+    });
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+
+    out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "query",
+        name: "api_key",
+        value_format: "\uD800",
+      },
+    });
+    assert.ok(out);
+    assert.equal(out.curl, "curl -sS 'https://api.example.com/v1'");
+    assert.doesNotMatch(out.python, /api_key/);
+  });
+
   test("structured auth wins over the scheme-type guess", () => {
     const out = generateServiceSnippets({
       ...base,
@@ -197,5 +251,25 @@ describe("generateServiceSnippets structured auth (#746)", () => {
       auth: { scheme: "api-key", location: "query" },
     });
     assert.match(key.curl, /\?api_key=YOUR_API_KEY/);
+  });
+
+  test("structured cookie auth is sent via the Cookie header, not a same-named header", () => {
+    const out = generateServiceSnippets({
+      ...base,
+      auth: {
+        scheme: "api-key",
+        location: "cookie",
+        name: "session_id",
+        value_format: "<token>",
+      },
+    });
+    // Correct: the credential travels in the Cookie request header as name=value.
+    assert.match(out.curl, /-H 'Cookie: session_id=<token>'/);
+    assert.match(out.python, /"Cookie": "session_id=<token>"/);
+    assert.match(out.typescript, /"Cookie": "session_id=<token>"/);
+    // Regression: must NOT emit an arbitrary header literally named after the cookie,
+    // and must NOT smuggle the credential onto the URL as a query param.
+    assert.doesNotMatch(out.curl, /-H 'session_id:/);
+    assert.ok(!out.curl.includes("?session_id="));
   });
 });

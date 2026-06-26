@@ -3,7 +3,23 @@ import { test } from "vitest";
 import {
   canonicalArtifactJson,
   canonicalJson,
+  isSubmittedPublicArtifactPath,
 } from "../scripts/ci-verify-submitted-artifacts.mjs";
+
+test("submitted artifact verifier includes force-added public datasets", () => {
+  assert.equal(
+    isSubmittedPublicArtifactPath("public/datasets/providers.csv"),
+    true,
+  );
+  assert.equal(
+    isSubmittedPublicArtifactPath("public/metagraph/types.d.ts"),
+    true,
+  );
+  assert.equal(
+    isSubmittedPublicArtifactPath("registry/providers/x.json"),
+    false,
+  );
+});
 
 test("artifact canonical JSON ignores object key order", () => {
   assert.equal(

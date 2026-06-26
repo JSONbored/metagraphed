@@ -152,6 +152,54 @@ describe("computeProvenanceElevations", () => {
     assert.equal(out.length, 0);
   });
 
+  test("sorts multiple elevated netuids ascending and back-fills a missing slug from a later candidate", () => {
+    // Two subnets so the sort comparator (a.netuid - b.netuid) actually runs,
+    // emitted out-of-order to prove the ascending sort. For netuid 1 the first
+    // candidate carries no slug and a later same-netuid candidate supplies it,
+    // exercising the slug back-fill.
+    const candidates = [
+      {
+        id: "b",
+        netuid: 2,
+        kind: "subnet-api",
+        url: "https://api.other.io/",
+        source_type: "github-readme-link",
+        slug: "other",
+      },
+      {
+        id: "a1",
+        netuid: 1,
+        kind: "subnet-api",
+        url: "https://api.acme.ai/",
+        source_type: "github-readme-link",
+        // no slug on the first candidate for netuid 1
+      },
+      {
+        id: "a2",
+        netuid: 1,
+        kind: "openapi",
+        url: "https://api.acme.ai/openapi.json",
+        source_type: "openapi-probe",
+        slug: "acme", // later candidate supplies the slug
+      },
+    ];
+    const out = computeProvenanceElevations({
+      candidates,
+      nativeSubnets,
+      verificationResults: [live("b"), live("a1"), live("a2")],
+    });
+    assert.equal(out.length, 2);
+    // ascending netuid order (input was 2, then 1)
+    assert.deepEqual(
+      out.map((e) => e.netuid),
+      [1, 2],
+    );
+    // slug back-filled onto netuid 1 from the second candidate
+    assert.equal(out[0].slug, "acme");
+    assert.deepEqual(out[0].kinds, ["openapi", "subnet-api"]);
+    assert.equal(out[1].slug, "other");
+  });
+
   test("non-API kinds (docs, website, dashboard) are never elevated", () => {
     const out = computeProvenanceElevations({
       candidates: [

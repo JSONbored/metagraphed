@@ -4,6 +4,7 @@
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
 // `applyQueryFilters` is the single public entry; the rest are internal helpers.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
+import { linkHeader } from "./http.mjs";
 
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -30,6 +31,88 @@ export function applyQueryFilters(
       ).map((name) => [name, config.filters[name]]),
     ),
   });
+}
+
+// RFC 8288 Link header for a cursor-paginated response (window from
+// `paginateRows`): `first`/`prev` when an earlier page exists, `next`/`last`
+// when a later one does. Each link is an absolute URL that keeps the active
+// query and pins the resolved cursor + limit, so a client can walk pages without
+// rebuilding the request. Null when no relation applies (unpaged, single page,
+// or empty) so the caller omits the header.
+function listQueryParamNames(queryCollection, queryFilterNames = []) {
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) return [];
+  const filterNames =
+    queryFilterNames.length > 0
+      ? queryFilterNames
+      : Object.keys(config.filters);
+  const rangeNames = (config.range_filters || []).flatMap((field) => [
+    `min_${field}`,
+    `max_${field}`,
+  ]);
+  const csvNames = Object.keys(config.csv_filters || {});
+  const arrayNames = Object.keys(config.array_filters || {});
+  return [
+    "q",
+    "fields",
+    "limit",
+    "cursor",
+    "sort",
+    "order",
+    ...filterNames,
+    ...csvNames,
+    ...arrayNames,
+    ...rangeNames,
+  ];
+}
+
+export function canonicalListSearch(
+  url,
+  queryCollection,
+  queryFilterNames = [],
+) {
+  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
+  for (const name of listQueryParamNames(queryCollection, queryFilterNames)) {
+    const value = url.searchParams.get(name);
+    if (value !== null) canonicalUrl.searchParams.set(name, value);
+  }
+  return canonicalUrl.search;
+}
+
+export function paginationLinkHeader(url, pagination, options = {}) {
+  if (!pagination || typeof pagination.limit !== "number") {
+    return null;
+  }
+  const { cursor, limit, next_cursor: nextCursor, total } = pagination;
+  const canonicalSearch = options.queryCollection
+    ? canonicalListSearch(
+        url,
+        options.queryCollection,
+        options.queryFilterNames,
+      )
+    : url.search;
+  const pageUri = (offset) => {
+    const target = new URL(url.href);
+    target.search = canonicalSearch;
+    target.searchParams.set("cursor", String(offset));
+    target.searchParams.set("limit", String(limit));
+    return target.href;
+  };
+  const links = [];
+  if (cursor > 0) {
+    links.push({ uri: pageUri(0), rel: "first" });
+    links.push({ uri: pageUri(Math.max(0, cursor - limit)), rel: "prev" });
+  }
+  if (typeof nextCursor === "number") {
+    links.push({ uri: pageUri(nextCursor), rel: "next" });
+    // Final-page start: last whole-limit stride below `total`. The "- 1" keeps
+    // an exact multiple on the prior stride, not an empty page past the end.
+    links.push({
+      uri: pageUri(Math.floor((total - 1) / limit) * limit),
+      rel: "last",
+    });
+  }
+  return links.length > 0 ? linkHeader(links) : null;
 }
 
 function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
@@ -69,6 +152,33 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
   );
 }
 
+// Inclusive numeric range filter: for each configured field F, `?min_F=` keeps
+// rows where row[F] >= n and `?max_F=` keeps rows where row[F] <= n. A row whose
+// F is absent / non-numeric can't satisfy a bound, so it is excluded once any
+// bound on F is set. Validation (validateListQuery) has already confirmed every
+// present min_/max_ param is a finite number, so Number() here is safe.
+function rangeFilterRows(rows, params, rangeFields) {
+  const bounds = [];
+  for (const field of rangeFields) {
+    const min = params.get(`min_${field}`);
+    if (min !== null) bounds.push({ field, limit: Number(min), kind: "min" });
+    const max = params.get(`max_${field}`);
+    if (max !== null) bounds.push({ field, limit: Number(max), kind: "max" });
+  }
+  if (bounds.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    bounds.every(({ field, limit, kind }) => {
+      const value = row[field];
+      if (typeof value !== "number") {
+        return false;
+      }
+      return kind === "min" ? value >= limit : value <= limit;
+    }),
+  );
+}
+
 function applyListTransform(data, params, config) {
   const queryError = validateListQuery(params, config);
   if (queryError) {
@@ -80,12 +190,16 @@ function applyListTransform(data, params, config) {
     return { error: projection.error };
   }
   const filterKeys = Object.keys(config.filters);
-  const filtered = filterRows(
-    searchRows(data[key], params, config.search_keys),
+  const filtered = rangeFilterRows(
+    filterRows(
+      searchRows(data[key], params, config.search_keys),
+      params,
+      filterKeys,
+      config.csv_filters,
+      config.array_filters,
+    ),
     params,
-    filterKeys,
-    config.csv_filters,
-    config.array_filters,
+    config.range_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);
@@ -117,18 +231,25 @@ function searchRows(rows, params, keys) {
   if (!q || keys.length === 0) {
     return rows;
   }
-  const needle = q.toLowerCase();
-  return rows.filter((row) =>
-    keys
+  const terms = q
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((term) => term.toLowerCase());
+  if (terms.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) => {
+    const haystack = keys
       .flatMap((key) => {
         const value = row[key];
         return Array.isArray(value) ? value : [value];
       })
       .filter(Boolean)
       .join(" ")
-      .toLowerCase()
-      .includes(needle),
-  );
+      .toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
 }
 
 function sortRows(rows, params) {
@@ -137,7 +258,24 @@ function sortRows(rows, params) {
     return rows;
   }
   const direction = params.get("order") === "desc" ? -1 : 1;
-  return [...rows].sort((a, b) => compareValues(a[key], b[key]) * direction);
+  // Keep rows that are missing the sort field (null / undefined) out of the
+  // ordered comparison and append them after the sorted rows, so incomplete
+  // rows always sink to the end regardless of direction. Otherwise an absent
+  // value coerces to "" and sorts *first* in ascending order, putting the least
+  // complete rows at the top of the list — and flips to the end on desc, so the
+  // same gap shuffles position just by toggling order.
+  const present = [];
+  const missing = [];
+  for (const row of rows) {
+    const value = row == null ? undefined : row[key];
+    if (value === null || value === undefined) {
+      missing.push(row);
+    } else {
+      present.push(row);
+    }
+  }
+  present.sort((a, b) => compareValues(a[key], b[key]) * direction);
+  return [...present, ...missing];
 }
 
 function compareValues(a, b) {
@@ -239,6 +377,31 @@ function validateListQuery(params, config) {
     }
   }
 
+  for (const field of config.range_filters) {
+    for (const bound of ["min", "max"]) {
+      const key = `${bound}_${field}`;
+      if (params.has(key) && numberParam(params.get(key)) === null) {
+        return {
+          parameter: key,
+          message: `${key} must be a number.`,
+        };
+      }
+    }
+    const minKey = `min_${field}`;
+    const maxKey = `max_${field}`;
+    if (!params.has(minKey) || !params.has(maxKey)) {
+      continue;
+    }
+    const minValue = numberParam(params.get(minKey));
+    const maxValue = numberParam(params.get(maxKey));
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      return {
+        parameter: minKey,
+        message: `${minKey} must not be greater than ${maxKey}.`,
+      };
+    }
+  }
+
   return null;
 }
 
@@ -314,4 +477,15 @@ function integerParam(value) {
   }
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+// A finite decimal (optional sign, optional fraction) for range-filter bounds —
+// e.g. "5", "-3", "360.5". Rejects blanks, exponents, hex, and Infinity/NaN so a
+// bound is always a plain, predictable number. Returns the number or null.
+function numberParam(value) {
+  if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

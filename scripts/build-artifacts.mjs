@@ -18,6 +18,7 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   cleanDescription,
   deriveDescriptionFromNotes,
   deriveDomainTags,
@@ -100,6 +101,41 @@ const execFileAsync = promisify(execFile);
 const FRESHNESS_STALE_AFTER_DAYS =
   Number(process.env.METAGRAPH_FRESHNESS_STALE_AFTER_DAYS) || 7;
 const FRESHNESS_DEMOTION_FACTOR = 0.5;
+
+// #1757: the high-value interface/identity surface kinds the backend already
+// ranks gaps by (reviewPriorityScore weights these 12 pts each). Shared by the
+// gap-priority score and the per-gap-row `gap_severity` so the API exposes the
+// SAME weighting the review queue uses, instead of consumers inventing a
+// divergent `core>=1 && missing>=3` threshold. "Core" callable/integration kinds
+// (the ones that make a subnet agent-usable) drive the critical/warning split.
+const HIGH_VALUE_GAP_KINDS = [
+  "source-repo",
+  "docs",
+  "website",
+  "openapi",
+  "subnet-api",
+];
+const CORE_INTERFACE_GAP_KINDS = ["openapi", "subnet-api"];
+
+// Resolve a per-gap-row severity (critical/warning/info — the EndpointIncidentSeverity
+// vocabulary already in the contract) from the subnet's missing surface kinds,
+// using the existing high-value/core classification rather than a new scale.
+function gapRowSeverity(missingKinds) {
+  const missing = new Set(missingKinds || []);
+  const missingHighValue = HIGH_VALUE_GAP_KINDS.filter((kind) =>
+    missing.has(kind),
+  );
+  const missingCore = CORE_INTERFACE_GAP_KINDS.some((kind) =>
+    missing.has(kind),
+  );
+  if (missingCore && missingHighValue.length >= 3) {
+    return "critical";
+  }
+  if (missingHighValue.length >= 2) {
+    return "warning";
+  }
+  return "info";
+}
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -846,14 +882,29 @@ const curationIndex = mergedSubnets.map((subnet) => ({
   surface_count: subnet.surface_count,
 }));
 
-const gapsIndex = mergedSubnets.map((subnet) => ({
-  coverage_level: subnet.coverage_level,
-  curation_level: subnet.curation.level,
-  gaps: subnet.gaps,
-  name: subnet.name,
-  netuid: subnet.netuid,
-  slug: subnet.slug,
-}));
+const gapsIndex = mergedSubnets.map((subnet) => {
+  const missingKinds = subnet.gaps.missing_kinds || [];
+  return {
+    coverage_level: subnet.coverage_level,
+    curation_level: subnet.curation.level,
+    gaps: subnet.gaps,
+    // #1757: per-gap-row severity + priority derived from the EXISTING backend
+    // weighted model (the high-value identity/interface kinds reviewPriorityScore
+    // ranks + reviewPriorityScore itself), so consumers stop inventing a divergent
+    // `core>=1 && missing>=3` scale. severity uses the EndpointIncidentSeverity
+    // vocabulary (critical/warning/info) already in the contract; gap_priority is
+    // the same 0-100 priority_score the review/gap-priorities artifact exposes.
+    gap_severity: gapRowSeverity(missingKinds),
+    gap_priority: reviewPriorityScore(
+      subnet,
+      surfacesByNetuidForCounts.get(subnet.netuid) || [],
+      activeCandidatesByNetuid.get(subnet.netuid) || [],
+    ),
+    name: subnet.name,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+  };
+});
 
 // Generic hosting/social domains that must NOT form a shared-team cluster — a
 // github.com repo URL is not a shared team. Providers on these fall back to
@@ -2359,6 +2410,7 @@ const llmsHeader = [
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
+  `- [GraphQL](${llmsApiBase}/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
@@ -2657,6 +2709,12 @@ const agentResourcesContent = {
       title: "Ask (grounded Q&A)",
       kind: "api",
       url: `${llmsApiBase}/api/v1/ask`,
+    },
+    {
+      id: "graphql",
+      title: "GraphQL (shaped registry queries)",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/graphql`,
     },
     {
       id: "fixtures",
@@ -3166,11 +3224,14 @@ const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+const manifestGeneratedAt =
+  (await readCommittedManifestGeneratedAt(artifactFile("r2-manifest.json"))) ??
+  generatedAt;
 await writeJson(
   artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
-    generatedAt,
+    generatedAt: manifestGeneratedAt,
   }),
 );
 
@@ -3955,7 +4016,7 @@ function enrichmentTargetId(entry, targetType, kind) {
 }
 
 function candidateCommandTemplate(netuid, kind) {
-  return `npm run candidate:new -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
+  return `npm run surface:add -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
 }
 
 function surfaceTargetAction(evidenceAction) {
@@ -4469,7 +4530,7 @@ function enrichmentReasonCodes({
 function enrichmentContributionHint(lane, directSubmissionKinds) {
   if (lane === "direct-submission") {
     const kinds = directSubmissionKinds.join(", ");
-    return `Submit one official public ${kinds || "interface"} candidate with npm run candidate:new.`;
+    return `Submit one official public ${kinds || "interface"} candidate with npm run surface:add.`;
   }
   if (lane === "maintainer-review") {
     return "Maintainer should review current machine-verified surfaces and promote only source-backed entries.";
@@ -5568,35 +5629,91 @@ function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   ) {
     return null;
   }
-  const previousSchemas = previous.schemas || [];
+  // A captured entry must point at a real schema-detail artifact path; a
+  // not-captured entry legitimately has none, so only captured claims are gated.
   if (
-    previousSchemas.some(
-      (schema) => !schemaDetailArtifactRelativePath(schema.path || ""),
+    previous.schemas.some(
+      (schema) =>
+        schema.status === "captured" &&
+        !schemaDetailArtifactRelativePath(schema.path || ""),
     )
   ) {
     return null;
   }
   const currentSurfaces = openApiSurfacesById(surfaces);
-  if (
-    !sameStringSet(
-      [...currentSurfaces.keys()].sort(),
-      previousSurfaceIds(previousSchemas),
-    )
-  ) {
-    return null;
+  // Forgery/staleness guard: a committed entry whose surface still exists but no
+  // longer matches it (tampered or drifted metadata) means the index can't be
+  // trusted — discard it wholesale and fall back to the build placeholder.
+  for (const entry of previous.schemas) {
+    const surface = currentSurfaces.get(entry.surface_id);
+    if (
+      surface &&
+      !schemaIndexEntryMatchesSurface(entry, surface, capturedDetails)
+    ) {
+      return null;
+    }
   }
-  if (
-    !previousSchemas.every((entry) =>
-      schemaIndexEntryMatchesSurface(
-        entry,
-        currentSurfaces.get(entry.surface_id),
-        capturedDetails,
-      ),
-    )
-  ) {
-    return null;
+  // Reconcile incrementally with the current surface set instead of nuking the
+  // whole index when it changes: keep every committed entry whose surface still
+  // exists (captured snapshots survive), drop entries for removed surfaces, and
+  // add a not-captured placeholder for each new openapi surface. Adding an
+  // openapi surface is now a routine single-file contribution, so it must never
+  // wipe the captured schema index; a later `schemas:snapshot` upgrades the
+  // placeholders to captured.
+  const previousIds = new Set(
+    previous.schemas.map((entry) => entry.surface_id),
+  );
+  const reconciled = previous.schemas.filter((entry) =>
+    currentSurfaces.has(entry.surface_id),
+  );
+  for (const [surfaceId, surface] of currentSurfaces) {
+    if (!previousIds.has(surfaceId)) {
+      reconciled.push(notCapturedSchemaIndexEntry(surface));
+    }
   }
-  return previous;
+  if (stableStringify(reconciled) === stableStringify(previous.schemas)) {
+    return previous;
+  }
+  reconciled.sort(
+    (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+  );
+  return {
+    ...previous,
+    summary: {
+      surface_count: currentSurfaces.size,
+      schema_count: reconciled.filter((entry) => entry.status === "captured")
+        .length,
+      by_status: schemaEntryCounts(reconciled, "status"),
+      by_drift_status: schemaEntryCounts(reconciled, "drift_status"),
+    },
+    schemas: reconciled,
+  };
+}
+
+function notCapturedSchemaIndexEntry(surface) {
+  return {
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug,
+    surface_id: surface.id,
+    url: surface.url,
+    schema_url: surface.schema_url || null,
+    status: "not-captured",
+    drift_status: "not-captured",
+    hash: null,
+    previous_hash: null,
+    path: null,
+    error: null,
+  };
+}
+
+function schemaEntryCounts(entries, key) {
+  const counts = {};
+  for (const entry of entries) {
+    counts[entry[key]] = (counts[entry[key]] || 0) + 1;
+  }
+  return Object.fromEntries(
+    Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 function buildSchemaIndexPlaceholder() {
@@ -6719,7 +6836,7 @@ async function walkIfExists(dirPath, onFile) {
 function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
   const missingKinds = subnet.gaps.missing_kinds || [];
   const highValueMissing = missingKinds.filter((kind) =>
-    ["source-repo", "docs", "website", "openapi", "subnet-api"].includes(kind),
+    HIGH_VALUE_GAP_KINDS.includes(kind),
   );
   const adapterBonus =
     surfacesForSubnet.filter((surface) =>

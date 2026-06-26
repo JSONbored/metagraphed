@@ -9,6 +9,15 @@
 //   /api/v1/feeds/incidents[.rss|.atom|.json]
 //   /api/v1/feeds/subnets/{netuid}[.rss|.atom|.json]
 // Format precedence: explicit .rss/.atom/.json suffix > Accept header > JSON Feed.
+//
+// Optional `?tag=<tag>` narrows a feed to items carrying that tag, so a single
+// feed URL can serve a focused subscription (e.g. ?tag=incident, ?tag=coverage,
+// ?tag=artifact). Item tags: registry items carry "registry" + one of
+// "subnet"/"artifact"/"coverage" + the change verb (added/removed/renamed/
+// modified); incident items carry "incident", "sn<netuid>", and
+// "ongoing"/"resolved". An unknown tag yields an empty (but valid) feed.
+
+import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.mjs";
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
@@ -199,6 +208,14 @@ function sortAndCap(items) {
   return [...items]
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
     .slice(0, FEED_MAX_ITEMS);
+}
+
+// Optional `?tag=` filter: keep only items whose tags array includes the value.
+// A falsy/absent tag is a no-op (the whole feed). The tag is only ever compared,
+// never rendered into the feed body, so it needs no escaping.
+function filterByTag(items, tag) {
+  if (!tag) return items;
+  return items.filter((item) => (item.tags || []).includes(tag));
 }
 
 function jsonFeed(meta, items) {
@@ -394,6 +411,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     updatedSource = changelog?.generated_at;
   }
 
+  items = filterByTag(items, url.searchParams.get("tag"));
   items = sortAndCap(items);
   const meta = {
     title,
@@ -405,14 +423,22 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   };
 
   const body = SERIALIZERS[format](meta, items);
+  // The body is deterministic for its inputs, so its hash is a stable validator.
+  const etag = await weakEtag(body);
+  const headers = {
+    "content-type": FEED_CONTENT_TYPES[format],
+    "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
+    vary: "Accept",
+    "x-content-type-options": "nosniff",
+    etag,
+  };
+  // Unchanged poll → cheap 304, same validators, no body.
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   return new Response(request.method === "HEAD" ? null : body, {
     status: 200,
-    headers: {
-      "content-type": FEED_CONTENT_TYPES[format],
-      "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
-      vary: "Accept",
-      "x-content-type-options": "nosniff",
-    },
+    headers,
   });
 }
 
@@ -438,4 +464,5 @@ export const __test = {
   rssFeed,
   atomFeed,
   escapeXml,
+  filterByTag,
 };

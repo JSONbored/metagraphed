@@ -373,6 +373,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
@@ -401,9 +408,107 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-activity",
+      "path": "/metagraph/chain/activity.json",
+      "schema_ref": "#/components/schemas/ChainActivityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-calls",
+      "path": "/metagraph/chain/calls.json",
+      "schema_ref": "#/components/schemas/ChainCallsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-signers",
+      "path": "/metagraph/chain/signers.json",
+      "schema_ref": "#/components/schemas/ChainSignersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-fees",
+      "path": "/metagraph/chain/fees.json",
+      "schema_ref": "#/components/schemas/ChainFeesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -425,6 +530,13 @@
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "compare",
+      "path": "/metagraph/compare.json",
+      "schema_ref": "#/components/schemas/CompareArtifact",
       "storage_tier": "r2"
     },
     {
@@ -670,6 +782,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -717,6 +830,96 @@
               "application"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_tempo",
+          "schema": {
+            "type": "number"
           }
         },
         {
@@ -826,6 +1029,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2301,6 +2505,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2382,6 +2587,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2464,6 +2670,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2706,6 +2913,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2854,6 +3062,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -3927,6 +4136,40 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/events.json",
+      "cache": "short",
+      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "id": "subnet-events",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "cache": "short",
       "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
@@ -3993,7 +4236,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/events.json",
       "cache": "short",
-      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
       "id": "account-events",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/events",
@@ -4004,6 +4247,128 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/history.json",
+      "cache": "short",
+      "description": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+      "id": "account-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+      "id": "account-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/transfers.json",
+      "cache": "short",
+      "description": "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+      "id": "account-transfers",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/transfers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "all",
+              "sent",
+              "received"
+            ],
             "type": "string"
           }
         },
@@ -4035,6 +4400,410 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/balance.json",
+      "cache": "short",
+      "description": "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+      "id": "account-balance",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/balance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/blocks.json",
+      "cache": "short",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+      "id": "blocks-feed",
+      "method": "GET",
+      "path": "/api/v1/blocks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "author",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "spec_version",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_extrinsics",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_events",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}.json",
+      "cache": "short",
+      "description": "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+      "id": "block-detail",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+      "id": "block-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/events.json",
+      "cache": "short",
+      "description": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+      "id": "block-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+      "id": "extrinsics-feed",
+      "method": "GET",
+      "path": "/api/v1/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "signer",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_function",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "success",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics/{hash}.json",
+      "cache": "short",
+      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
+      "id": "extrinsic-detail",
+      "method": "GET",
+      "path": "/api/v1/extrinsics/{hash}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/activity.json",
+      "cache": "short",
+      "description": "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+      "id": "chain-activity",
+      "method": "GET",
+      "path": "/api/v1/chain/activity",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/calls.json",
+      "cache": "short",
+      "description": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+      "id": "chain-calls",
+      "method": "GET",
+      "path": "/api/v1/chain/calls",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "group_by",
+          "schema": {
+            "enum": [
+              "module",
+              "module_function"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/signers.json",
+      "cache": "short",
+      "description": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+      "id": "chain-signers",
+      "method": "GET",
+      "path": "/api/v1/chain/signers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/fees.json",
+      "cache": "short",
+      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+      "id": "chain-fees",
+      "method": "GET",
+      "path": "/api/v1/chain/fees",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",
@@ -4093,6 +4862,33 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/compare.json",
+      "cache": "standard",
+      "description": "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+      "id": "compare",
+      "method": "GET",
+      "path": "/api/v1/compare",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuids",
+          "schema": {
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "dimensions",
+          "schema": {
+            "type": "string"
           }
         }
       ]
