@@ -285,6 +285,25 @@ describe("formatTrends", () => {
     assert.equal(out.windows["30d"].uptime_ratio, 0.95);
     assert.equal(out.netuid, 7);
   });
+  test("clamps a sub-perfect uptime_ratio that would round up to 1", () => {
+    const out = formatTrends({
+      netuid: 7,
+      observedAt: "r",
+      windows: {
+        "7d": [{ surface_id: "a", total: 25000, ok_count: 24999 }],
+      },
+    });
+    assert.equal(out.windows["7d"].uptime_ratio, 0.9999);
+    assert.equal(out.windows["7d"].surfaces[0].uptime_ratio, 0.9999);
+    const perfect = formatTrends({
+      netuid: 7,
+      observedAt: "r",
+      windows: {
+        "7d": [{ surface_id: "a", total: 25000, ok_count: 25000 }],
+      },
+    });
+    assert.equal(perfect.windows["7d"].uptime_ratio, 1);
+  });
   test("empty windows yield null ratios (D1 cold)", () => {
     const out = formatTrends({
       netuid: 7,
