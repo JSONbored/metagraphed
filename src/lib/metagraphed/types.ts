@@ -837,6 +837,18 @@ export interface Extrinsic {
   [key: string]: unknown;
 }
 
+/** One native-TAO Balances.Transfer for an account (directional, newest-first). */
+export interface Transfer {
+  block_number: number | null;
+  event_index: number | null;
+  from: string | null;
+  to: string | null;
+  amount_tao: number | null;
+  direction: "sent" | "received" | null;
+  observed_at?: string | null; // iso
+  [key: string]: unknown;
+}
+
 /** A hotkey's current registration on one subnet. */
 export interface AccountRegistration {
   netuid: number | null;

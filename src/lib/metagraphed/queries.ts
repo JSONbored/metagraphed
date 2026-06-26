@@ -18,6 +18,7 @@ import type {
   Block,
   Extrinsic,
   ExtrinsicCallArg,
+  Transfer,
   Candidate,
   Compare,
   CompareSubnet,
@@ -1300,6 +1301,64 @@ export const accountBalanceQuery = (ss58: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<AccountBalance>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** Extrinsics this account signed (by signer), newest-first (#264). */
+export const accountExtrinsicsQuery = (ss58: string, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("account-extrinsics", ss58, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/extrinsics`,
+        "extrinsics",
+        params,
+        signal,
+      );
+      const data = res.data.flatMap((row) => {
+        const x = normalizeExtrinsic(row);
+        return x ? [x] : [];
+      });
+      return { ...res, data } as ApiResult<Extrinsic[]>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** One native-TAO Balances.Transfer row → a clean directional Transfer. */
+function normalizeTransfer(raw: unknown): Transfer | null {
+  if (!isRecord(raw)) return null;
+  const blockNumber = firstFiniteNumber(raw.block_number);
+  const eventIndex = firstFiniteNumber(raw.event_index);
+  if (blockNumber == null && eventIndex == null) return null;
+  const direction = firstString(raw.direction);
+  return {
+    block_number: blockNumber ?? null,
+    event_index: eventIndex ?? null,
+    from: firstString(raw.from) ?? null,
+    to: firstString(raw.to) ?? null,
+    amount_tao: firstFiniteNumber(raw.amount_tao) ?? null,
+    direction: direction === "sent" || direction === "received" ? direction : null,
+    observed_at: firstString(raw.observed_at) ?? null,
+  };
+}
+
+/** Native-TAO transfer feed for one account (directional), newest-first (#264). */
+export const accountTransfersQuery = (ss58: string, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("account-transfers", ss58, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await fetchList<unknown>(
+        `/api/v1/accounts/${ss58PathSegment(ss58)}/transfers`,
+        "transfers",
+        params,
+        signal,
+      );
+      const data = res.data.flatMap((row) => {
+        const t = normalizeTransfer(row);
+        return t ? [t] : [];
+      });
+      return { ...res, data } as ApiResult<Transfer[]>;
     },
     staleTime: STALE_SHORT,
   });

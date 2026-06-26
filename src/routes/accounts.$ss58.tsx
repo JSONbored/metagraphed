@@ -13,11 +13,17 @@ import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
 import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
-import { accountBalanceQuery, accountQuery } from "@/lib/metagraphed/queries";
+import {
+  accountBalanceQuery,
+  accountExtrinsicsQuery,
+  accountQuery,
+  accountTransfersQuery,
+} from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
+import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
-import type { AccountSummary } from "@/lib/metagraphed/types";
+import type { AccountSummary, Extrinsic, Transfer } from "@/lib/metagraphed/types";
 
 export const Route = createFileRoute("/accounts/$ss58")({
   head: ({ params }) => {
@@ -84,6 +90,10 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
   // RPC never stalls or errors the rest of the entity page.
   const balanceResult = useQuery(accountBalanceQuery(ss58));
   const balance = balanceResult.data?.data;
+  // Signed extrinsics + native-TAO transfers are separate sub-resources (#264),
+  // fetched non-blocking so a cold/slow tier never stalls the summary above.
+  const signedExtrinsics = useQuery(accountExtrinsicsQuery(ss58, { limit: 25 })).data?.data ?? [];
+  const transfers = useQuery(accountTransfersQuery(ss58, { limit: 25 })).data?.data ?? [];
 
   const balanceValue = balanceResult.isPending ? (
     <span className="text-ink-muted">…</span>
@@ -368,6 +378,9 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         </SectionAnchor>
       ) : null}
 
+      <AccountExtrinsicsSection rows={signedExtrinsics} />
+      <AccountTransfersSection ss58={ss58} rows={transfers} />
+
       <div className="mt-6">
         <Link
           to="/accounts"
@@ -433,6 +446,164 @@ function SectionBadge({
     >
       {children}
     </span>
+  );
+}
+
+const TH = "px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted";
+
+function AccountExtrinsicsSection({ rows }: { rows: Extrinsic[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <SectionAnchor
+      id="extrinsics"
+      title="Signed extrinsics"
+      subtitle="The newest transactions this account signed, from the chain-direct extrinsics tier."
+      tone="accent"
+      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+    >
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Block</th>
+              <th className={TH}>Call</th>
+              <th className={TH}>Result</th>
+              <th className={`${TH} text-right`}>Observed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((x, i) => (
+              <tr
+                key={x.extrinsic_hash ?? `${x.block_number}-${x.extrinsic_index}-${i}`}
+                className="hover:bg-surface/30"
+              >
+                <td className="px-5 py-4 font-mono text-[12px]">
+                  {x.block_number != null ? (
+                    <Link
+                      to="/blocks/$ref"
+                      params={{ ref: String(x.block_number) }}
+                      className="text-ink hover:text-accent hover:underline"
+                    >
+                      #{formatNumber(x.block_number)}
+                      {x.extrinsic_index != null ? (
+                        <span className="text-ink-muted">·{x.extrinsic_index}</span>
+                      ) : null}
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-5 py-4 font-mono text-[11px] text-ink">
+                  {x.extrinsic_hash ? (
+                    <Link
+                      to="/extrinsics/$hash"
+                      params={{ hash: x.extrinsic_hash }}
+                      className="hover:text-accent hover:underline"
+                    >
+                      {extrinsicCall(x.call_module, x.call_function)}
+                    </Link>
+                  ) : (
+                    extrinsicCall(x.call_module, x.call_function)
+                  )}
+                </td>
+                <td className="px-5 py-4 font-mono text-[11px]">
+                  {x.success == null ? (
+                    <span className="text-ink-muted">—</span>
+                  ) : x.success ? (
+                    <span className="text-emerald-500">ok</span>
+                  ) : (
+                    <span className="text-rose-500">fail</span>
+                  )}
+                </td>
+                <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                  <TimeAgo at={x.observed_at} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DataPanel>
+    </SectionAnchor>
+  );
+}
+
+function AccountTransfersSection({ ss58, rows }: { ss58: string; rows: Transfer[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <SectionAnchor
+      id="transfers"
+      title="Transfers"
+      subtitle="Native-TAO Balances.Transfer activity for this account, directional (sent / received)."
+      tone="accent"
+      right={<SectionBadge>{formatNumber(rows.length)} rows</SectionBadge>}
+    >
+      <DataPanel>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/50">
+            <tr>
+              <th className={TH}>Block</th>
+              <th className={TH}>Direction</th>
+              <th className={TH}>Counterparty</th>
+              <th className={`${TH} text-right`}>Amount</th>
+              <th className={`${TH} text-right`}>Observed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((t, i) => {
+              const counterparty = t.direction === "sent" ? t.to : t.from;
+              return (
+                <tr key={`${t.block_number}-${t.event_index}-${i}`} className="hover:bg-surface/30">
+                  <td className="px-5 py-4 font-mono text-[12px]">
+                    {t.block_number != null ? (
+                      <Link
+                        to="/blocks/$ref"
+                        params={{ ref: String(t.block_number) }}
+                        className="text-ink hover:text-accent hover:underline"
+                      >
+                        #{formatNumber(t.block_number)}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-5 py-4 font-mono text-[11px]">
+                    {t.direction === "received" ? (
+                      <span className="text-emerald-500">received</span>
+                    ) : t.direction === "sent" ? (
+                      <span className="text-amber-500">sent</span>
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
+                  <td
+                    className="px-5 py-4 font-mono text-[11px] text-ink-muted"
+                    title={counterparty ?? undefined}
+                  >
+                    {counterparty && counterparty !== ss58 ? (
+                      <Link
+                        to="/accounts/$ss58"
+                        params={{ ss58: counterparty }}
+                        className="hover:text-accent hover:underline"
+                      >
+                        {shortHash(counterparty)}
+                      </Link>
+                    ) : (
+                      (shortHash(counterparty) ?? "—")
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
+                    {t.amount_tao != null ? `${formatNumber(t.amount_tao)} τ` : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
+                    <TimeAgo at={t.observed_at} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </DataPanel>
+    </SectionAnchor>
   );
 }
 
