@@ -241,6 +241,44 @@
       "schema_url": "https://api.desearch.ai/openapi.json",
       "source_urls": ["https://www.desearch.ai/docs"],
       "url": "https://api.desearch.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-data-artifact",
+      "kind": "data-artifact",
+      "name": "Desearch miner manifest template",
+      "notes": "Official static JSON manifest template for SN22 miner capacity declarations (web_search, x_search, ai_search concurrency). Referenced in the subnet-22 README and copied to manifest.json during miner setup.",
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://github.com/Desearch-ai/subnet-22",
+        "https://www.desearch.ai/docs"
+      ],
+      "url": "https://raw.githubusercontent.com/Desearch-ai/subnet-22/main/neurons/miners/manifest.template.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-22-desearch-data-artifact-api-desearch-ai",
+      "kind": "data-artifact",
+      "name": "Desearch API health status",
+      "notes": "Public, unauthenticated JSON health probe for the Desearch hosted API (api.desearch.ai). Returns {\"status\":\"health\"} without authentication; used for miner/validator runtime health checks.",
+      "provider": "desearch",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://github.com/Desearch-ai/subnet-22",
+        "https://api.desearch.ai/openapi.json"
+      ],
+      "url": "https://api.desearch.ai/health"
     }
   ],
   "website_url": "https://www.desearch.ai/"
