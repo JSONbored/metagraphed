@@ -81,6 +81,7 @@ const MAX_UPTIME_SURFACES = 500;
 const MAX_UPTIME_DAYS = 366;
 const MAX_HEALTH_TREND_SURFACES = 500;
 const MAX_ACCOUNT_EVENTS = 100;
+const MAX_ACCOUNT_REGISTRATIONS = 100;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -891,6 +892,18 @@ export const extrinsicQuery = (hash: string) =>
 // /api/v1/accounts/{ss58} summary bundles the aggregate, registrations, and a
 // recent-events sample (schema-stable zero for a cold/unknown account, never an
 // error), so one query drives the whole detail page.
+function normalizeAccountRegistration(raw: unknown): AccountRegistration | null {
+  if (!isRecord(raw)) return null;
+  const registration: AccountRegistration = {
+    ...(raw as object),
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    uid: firstFiniteNumber(raw.uid) ?? null,
+    stake_tao: firstFiniteNumber(raw.stake_tao) ?? null,
+    validator_permit: booleanValue(raw.validator_permit),
+    active: booleanValue(raw.active),
+  };
+  return registration.netuid != null || registration.uid != null ? registration : null;
+}
 
 function accountEventString(value: unknown): string | undefined {
   if (typeof value === "string") return value.trim() ? value : undefined;
@@ -931,7 +944,7 @@ function normalizeAccountEvents(raw: unknown, limit = MAX_ACCOUNT_EVENTS): Accou
     .slice(0, limit);
 }
 
-function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
+export function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
   const d = isRecord(raw) ? raw : {};
   const eventKinds = Array.isArray(d.event_kinds)
     ? d.event_kinds
@@ -953,7 +966,10 @@ function normalizeAccountSummary(raw: unknown, ss58: string): AccountSummary {
     last_seen_at: firstString(d.last_seen_at) ?? null,
     event_kinds: eventKinds,
     registrations: Array.isArray(d.registrations)
-      ? (d.registrations.filter(isRecord) as AccountRegistration[])
+      ? d.registrations.slice(0, MAX_ACCOUNT_REGISTRATIONS).flatMap((registration) => {
+          const normalized = normalizeAccountRegistration(registration);
+          return normalized ? [normalized] : [];
+        })
       : [],
     recent_events: normalizeAccountEvents(d.recent_events),
   } as AccountSummary;
