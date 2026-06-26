@@ -1763,6 +1763,185 @@
           }
         }
       },
+      "ChainActivityDay": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics.",
+        "required": [
+          "day",
+          "block_count",
+          "extrinsic_count",
+          "event_count",
+          "successful_extrinsics",
+          "success_rate",
+          "unique_signers"
+        ],
+        "properties": {
+          "day": { "type": "string" },
+          "block_count": { "type": "integer", "minimum": 0 },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "successful_extrinsics": { "type": "integer", "minimum": 0 },
+          "success_rate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "unique_signers": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ChainActivityArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold.",
+        "required": ["schema_version", "window", "day_count", "days"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "day_count": { "type": "integer", "minimum": 0 },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainActivityDay" }
+          }
+        }
+      },
+      "ChainCallEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One call-mix bucket. call_function is null unless group_by=module_function. share is count / total_extrinsics (full-window), null when the window is empty.",
+        "required": ["call_module", "call_function", "count", "share"],
+        "properties": {
+          "call_module": { "type": "string" },
+          "call_function": { "type": ["string", "null"] },
+          "count": { "type": "integer", "minimum": 0 },
+          "share": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+        }
+      },
+      "ChainCallsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "group_by",
+          "total_extrinsics",
+          "call_count",
+          "calls"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "group_by": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_extrinsics": { "type": "integer", "minimum": 0 },
+          "call_count": { "type": "integer", "minimum": 0 },
+          "calls": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainCallEntry" }
+          }
+        }
+      },
+      "ChainSignerEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One leaderboard row: an account (extrinsic signer) with its windowed activity.",
+        "required": [
+          "signer",
+          "tx_count",
+          "total_fee_tao",
+          "total_tip_tao",
+          "last_tx_block"
+        ],
+        "properties": {
+          "signer": { "type": "string" },
+          "tx_count": { "type": "integer", "minimum": 0 },
+          "total_fee_tao": { "type": "number", "minimum": 0 },
+          "total_tip_tao": { "type": "number", "minimum": 0 },
+          "last_tx_block": { "type": ["integer", "null"] }
+        }
+      },
+      "ChainSignersArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
+        "required": ["schema_version", "window", "signer_count", "signers"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "signer_count": { "type": "integer", "minimum": 0 },
+          "signers": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainSignerEntry" }
+          }
+        }
+      },
+      "ChainFeeDay": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One UTC day of fee/tip totals + averages. avg_*_tao is null when the day recorded zero extrinsics.",
+        "required": [
+          "day",
+          "extrinsic_count",
+          "total_fee_tao",
+          "avg_fee_tao",
+          "total_tip_tao",
+          "avg_tip_tao"
+        ],
+        "properties": {
+          "day": { "type": "string" },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "total_fee_tao": { "type": "number", "minimum": 0 },
+          "avg_fee_tao": { "type": ["number", "null"], "minimum": 0 },
+          "total_tip_tao": { "type": "number", "minimum": 0 },
+          "avg_tip_tao": { "type": ["number", "null"], "minimum": 0 }
+        }
+      },
+      "ChainFeePayer": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One top-fee-payer: an account with its total windowed fees/tips and extrinsic count.",
+        "required": [
+          "signer",
+          "total_fee_tao",
+          "total_tip_tao",
+          "extrinsic_count"
+        ],
+        "properties": {
+          "signer": { "type": "string" },
+          "total_fee_tao": { "type": "number", "minimum": 0 },
+          "total_tip_tao": { "type": "number", "minimum": 0 },
+          "extrinsic_count": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ChainFeesArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals + averages; exact median is a follow-up) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "daily",
+          "top_fee_payers"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "day_count": { "type": "integer", "minimum": 0 },
+          "daily": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainFeeDay" }
+          },
+          "top_fee_payers": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainFeePayer" }
+          }
+        }
+      },
       "BlockDetailArtifact": {
         "type": "object",
         "additionalProperties": true,

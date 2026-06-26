@@ -511,6 +511,8 @@ const SS58_BASE58_INDEX = new Map(
   [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
 );
 const FINNEY_SS58_PREFIX = 42;
+const FINNEY_SS58_MIN_LENGTH = 47;
+const FINNEY_SS58_MAX_LENGTH = 48;
 const FINNEY_SS58_DECODED_LENGTH = 35;
 const BALANCE_KV_TTL = 60; // seconds
 const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
@@ -542,6 +544,13 @@ function decodeBase58(value) {
 }
 
 function isFinneySs58Address(value) {
+  if (
+    value.length < FINNEY_SS58_MIN_LENGTH ||
+    value.length > FINNEY_SS58_MAX_LENGTH
+  ) {
+    return false;
+  }
+
   const decoded = decodeBase58(value);
   return (
     decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
@@ -674,28 +683,76 @@ export async function handleBlocks(request, env, url) {
     "limit",
     "offset",
     "cursor",
+    "author",
+    "spec_version",
+    "from",
+    "to",
+    "block_start",
+    "block_end",
+    "min_extrinsics",
+    "min_events",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  // Keyset cursor (#1851) takes precedence over offset when present: WHERE
-  // block_number < ? (PK-ordered, stable under head inserts). A malformed cursor
-  // decodes to null → ignored (falls back to offset), preserving never-throw.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
-  let rows;
-  if (cur) {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
-      [cur[0], limit],
-    );
-  } else {
-    rows = await d1All(
-      env,
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-      [limit, offset],
-    );
+  const sp = url.searchParams;
+  const MAX = Number.MAX_SAFE_INTEGER;
+  // Conjunctive (AND-ed) filter set mirroring handleExtrinsics (#1846/#1991):
+  // every value is BOUND, never interpolated; an inverted range or an absent
+  // nullable column simply matches nothing — never a throw.
+  const conds = [];
+  const params = [];
+  if (sp.get("author")) {
+    conds.push("author = ?");
+    params.push(sp.get("author"));
   }
+  if (sp.get("spec_version") != null) {
+    conds.push("spec_version = ?");
+    params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
+  }
+  if (sp.get("block_start") != null) {
+    conds.push("block_number >= ?");
+    params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
+  }
+  if (sp.get("block_end") != null) {
+    conds.push("block_number <= ?");
+    params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
+  }
+  if (sp.get("from") != null) {
+    conds.push("observed_at >= ?");
+    params.push(clampInt(sp.get("from"), 0, 0, MAX));
+  }
+  if (sp.get("to") != null) {
+    conds.push("observed_at <= ?");
+    params.push(clampInt(sp.get("to"), 0, 0, MAX));
+  }
+  if (sp.get("min_extrinsics") != null) {
+    conds.push("extrinsic_count >= ?");
+    params.push(clampInt(sp.get("min_extrinsics"), 0, 0, MAX));
+  }
+  if (sp.get("min_events") != null) {
+    conds.push("event_count >= ?");
+    params.push(clampInt(sp.get("min_events"), 0, 0, MAX));
+  }
+  // Keyset cursor (#1851) takes precedence over offset: fold its block_number < ?
+  // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
+  // head inserts). A malformed cursor decodes to null → ignored (falls back to
+  // offset), preserving never-throw.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("block_number < ?");
+    params.push(cur[0]);
+  }
+  let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
+  const rows = await d1All(env, sql, params);
   // next_cursor only when the page was full (more rows likely); null at the end.
   const last = rows.length === limit ? rows[rows.length - 1] : null;
   const nextCursor = last ? encodeCursor([last.block_number]) : null;
@@ -903,16 +960,21 @@ export async function handleExtrinsics(request, env, url) {
     conds.push(`${col} = ?`);
     params.push(val);
   };
-  if (sp.get("block") != null)
-    eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  const hasBlockFilter = sp.get("block") != null;
+  const hasEqualityFilter =
+    sp.get("signer") || sp.get("call_module") || sp.get("call_function");
+  if (hasBlockFilter) eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
   if (sp.get("signer")) eq("signer", sp.get("signer"));
   if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
   if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
   // success is stored 1/0/NULL; bind the literal so success=false never leaks
   // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
+  const hasSuccessFilter = successRaw === "true" || successRaw === "false";
   if (successRaw === "true") eq("success", 1);
   else if (successRaw === "false") eq("success", 0);
+  const hasBlockRangeFilter =
+    sp.get("block_start") != null || sp.get("block_end") != null;
   if (sp.get("block_start") != null) {
     conds.push("block_number >= ?");
     params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
@@ -938,19 +1000,20 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  const hasObservedRange = fromMs != null || toMs != null;
-  const hasOrderAlignedEquality =
-    sp.get("block") != null ||
-    Boolean(sp.get("signer")) ||
-    Boolean(sp.get("call_module")) ||
-    Boolean(sp.get("call_function")) ||
-    successRaw === "true" ||
-    successRaw === "false";
-  const observedIndexHint =
-    hasObservedRange && !hasOrderAlignedEquality
-      ? " INDEXED BY idx_extrinsics_observed_order"
-      : "";
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics${observedIndexHint}`;
+  // Standalone observed_at ranges can be highly selective or empty while the
+  // feed order is block_number/extrinsic_index. Force the covering timestamp
+  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
+  // walking most of the retained primary-key order before finding no rows.
+  const forceObservedOrderIndex =
+    (fromMs != null || toMs != null) &&
+    !hasBlockFilter &&
+    !hasEqualityFilter &&
+    !hasSuccessFilter &&
+    !hasBlockRangeFilter &&
+    !useCursor;
+  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (forceObservedOrderIndex)
+    sql += " INDEXED BY idx_extrinsics_observed_order";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);

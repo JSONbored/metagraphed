@@ -215,7 +215,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). Computed live from the first-party blocks D1 tier (#1345). */
+        /** Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345). */
         get: operations["blocksFeed"];
         put?: never;
         post?: never;
@@ -302,6 +302,74 @@ export interface paths {
         };
         /** List unpromoted candidate surfaces. */
         get: operations["candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold. */
+        get: operations["chainActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold. */
+        get: operations["chainCalls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        get: operations["chainFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/signers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
+        get: operations["chainSigners"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1974,6 +2042,94 @@ export interface components {
             /** Format: uri */
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
+        };
+        /** @description Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold. */
+        ChainActivityArtifact: {
+            day_count: number;
+            days: components["schemas"]["ChainActivityDay"][];
+            /** Format: date-time */
+            observed_at?: string | null;
+            schema_version: number;
+            window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics. */
+        ChainActivityDay: {
+            block_count: number;
+            day: string;
+            event_count: number;
+            extrinsic_count: number;
+            success_rate: number | null;
+            successful_extrinsics: number;
+            unique_signers: number;
+        };
+        /** @description One call-mix bucket. call_function is null unless group_by=module_function. share is count / total_extrinsics (full-window), null when the window is empty. */
+        ChainCallEntry: {
+            call_function: string | null;
+            call_module: string;
+            count: number;
+            share: number | null;
+        };
+        /** @description Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold. */
+        ChainCallsArtifact: {
+            call_count: number;
+            calls: components["schemas"]["ChainCallEntry"][];
+            group_by: string;
+            /** Format: date-time */
+            observed_at?: string | null;
+            schema_version: number;
+            total_extrinsics: number;
+            window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One UTC day of fee/tip totals + averages. avg_*_tao is null when the day recorded zero extrinsics. */
+        ChainFeeDay: {
+            avg_fee_tao: number | null;
+            avg_tip_tao: number | null;
+            day: string;
+            extrinsic_count: number;
+            total_fee_tao: number;
+            total_tip_tao: number;
+        };
+        /** @description One top-fee-payer: an account with its total windowed fees/tips and extrinsic count. */
+        ChainFeePayer: {
+            extrinsic_count: number;
+            signer: string;
+            total_fee_tao: number;
+            total_tip_tao: number;
+        };
+        /** @description Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals + averages; exact median is a follow-up) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold. */
+        ChainFeesArtifact: {
+            daily: components["schemas"]["ChainFeeDay"][];
+            day_count: number;
+            /** Format: date-time */
+            observed_at?: string | null;
+            schema_version: number;
+            top_fee_payers: components["schemas"]["ChainFeePayer"][];
+            window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One leaderboard row: an account (extrinsic signer) with its windowed activity. */
+        ChainSignerEntry: {
+            last_tx_block: number | null;
+            signer: string;
+            total_fee_tao: number;
+            total_tip_tao: number;
+            tx_count: number;
+        };
+        /** @description Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold. */
+        ChainSignersArtifact: {
+            /** Format: date-time */
+            observed_at?: string | null;
+            schema_version: number;
+            signer_count: number;
+            signers: components["schemas"]["ChainSignerEntry"][];
+            window: string;
+        } & {
+            [key: string]: unknown;
         };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
@@ -6055,6 +6211,14 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 cursor?: string;
+                author?: string;
+                spec_version?: number;
+                from?: number;
+                to?: number;
+                block_start?: number;
+                block_end?: number;
+                min_extrinsics?: number;
+                min_events?: number;
             };
             header?: never;
             path?: never;
@@ -6702,6 +6866,474 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["CandidatesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainActivity: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "day_count": 1,
+                     *         "days": [
+                     *           {
+                     *             "block_count": 5000000,
+                     *             "day": "2026-06-01",
+                     *             "event_count": 1,
+                     *             "extrinsic_count": 1,
+                     *             "success_rate": 0.5,
+                     *             "successful_extrinsics": 1,
+                     *             "unique_signers": 1
+                     *           }
+                     *         ],
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainActivityArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainCalls: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                group_by?: "module" | "module_function";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "call_count": 1,
+                     *         "calls": [
+                     *           {
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "count": 1,
+                     *             "share": 0.5
+                     *           }
+                     *         ],
+                     *         "group_by": "example",
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "total_extrinsics": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainCallsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainFees: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "daily": [
+                     *           {
+                     *             "avg_fee_tao": 0.5,
+                     *             "avg_tip_tao": 0.5,
+                     *             "day": "2026-06-01",
+                     *             "extrinsic_count": 1,
+                     *             "total_fee_tao": 0.5,
+                     *             "total_tip_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "day_count": 1,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "top_fee_payers": [
+                     *           {
+                     *             "extrinsic_count": 1,
+                     *             "signer": "example",
+                     *             "total_fee_tao": 0.5,
+                     *             "total_tip_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainFeesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainSigners: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "signer_count": 1,
+                     *         "signers": [
+                     *           {
+                     *             "last_tx_block": 5000000,
+                     *             "signer": "example",
+                     *             "total_fee_tao": 0.5,
+                     *             "total_tip_tao": 0.5,
+                     *             "tx_count": 1
+                     *           }
+                     *         ],
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainSignersArtifact"];
                     };
                 };
             };
