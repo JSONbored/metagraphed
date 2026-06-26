@@ -4,10 +4,10 @@
 // scripts/lib.mjs so existing importers (scripts/discover-candidates.mjs, tests)
 // keep their import paths unchanged.
 //
-// `registrableDomain` delegates to `clusterDomainFromUrl` for multi-label public
-// suffix handling (#1636) so README dedupe keys cannot drift from clustering.
+// `registrableDomain` delegates to `registrableHostDomain` in lib.mjs for
+// multi-label public suffix handling (#1636) so README dedupe keys cannot drift.
 
-import { clusterDomainFromUrl } from "../lib.mjs";
+import { registrableHostDomain } from "../lib.mjs";
 
 export const README_LINK_LIMIT = 5;
 
@@ -218,11 +218,5 @@ function normalizeHost(hostname) {
 }
 
 function registrableDomain(hostname) {
-  const host = normalizeHost(hostname);
-  if (!host) return "";
-  const labels = host.split(".").filter(Boolean);
-  return (
-    clusterDomainFromUrl(`https://${host}/`) ??
-    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
-  );
+  return registrableHostDomain(normalizeHost(hostname));
 }
