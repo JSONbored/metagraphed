@@ -39,13 +39,61 @@ export function applyQueryFilters(
 // query and pins the resolved cursor + limit, so a client can walk pages without
 // rebuilding the request. Null when no relation applies (unpaged, single page,
 // or empty) so the caller omits the header.
-export function paginationLinkHeader(url, pagination) {
+function listQueryParamNames(queryCollection, queryFilterNames = []) {
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) return [];
+  const filterNames =
+    queryFilterNames.length > 0
+      ? queryFilterNames
+      : Object.keys(config.filters);
+  const rangeNames = (config.range_filters || []).flatMap((field) => [
+    `min_${field}`,
+    `max_${field}`,
+  ]);
+  const csvNames = Object.keys(config.csv_filters || {});
+  const arrayNames = Object.keys(config.array_filters || {});
+  return [
+    "q",
+    "fields",
+    "limit",
+    "cursor",
+    "sort",
+    "order",
+    ...filterNames,
+    ...csvNames,
+    ...arrayNames,
+    ...rangeNames,
+  ];
+}
+
+export function canonicalListSearch(
+  url,
+  queryCollection,
+  queryFilterNames = [],
+) {
+  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
+  for (const name of listQueryParamNames(queryCollection, queryFilterNames)) {
+    const value = url.searchParams.get(name);
+    if (value !== null) canonicalUrl.searchParams.set(name, value);
+  }
+  return canonicalUrl.search;
+}
+
+export function paginationLinkHeader(url, pagination, options = {}) {
   if (!pagination || typeof pagination.limit !== "number") {
     return null;
   }
   const { cursor, limit, next_cursor: nextCursor, total } = pagination;
+  const canonicalSearch = options.queryCollection
+    ? canonicalListSearch(
+        url,
+        options.queryCollection,
+        options.queryFilterNames,
+      )
+    : url.search;
   const pageUri = (offset) => {
     const target = new URL(url.href);
+    target.search = canonicalSearch;
     target.searchParams.set("cursor", String(offset));
     target.searchParams.set("limit", String(limit));
     return target.href;
