@@ -28,10 +28,10 @@
     "gap_notes": [
       "Native chain name currently reports as a placeholder.",
       "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
+      "OpenAPI confirmed absent: checked developers.gopher-ai.com/openapi.json (404), api.gopher-ai.com (connection refused), and all /docs/index-API/* paths (404). No machine-readable schema surface exists as of 2026-06-26. Close issue #1284.",
+      "Public subnet API confirmed absent: api.gopher-ai.com is connection refused, data.gopher-ai.com is 403 (auth required). No auth-free public API endpoint found as of 2026-06-26. Close issue #1284.",
       "No verified SSE/event stream yet.",
-      "No verified standalone static data artifact yet."
+      "Candidate data artifact found: developers.gopher-ai.com/llms.txt is a public, machine-readable documentation index published by the official Gopher developer portal. Eligible for a data-artifact candidate submission."
     ]
   },
   "surfaces": [
