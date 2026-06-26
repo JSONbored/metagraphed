@@ -1,0 +1,29 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Synth",
+  "netuid": 50,
+  "schema_version": 1,
+  "slug": "sn-50",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-50-synth-subnet-api",
+      "kind": "subnet-api",
+      "name": "Synth public miner leaderboard API",
+      "provider": "synth",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": ["https://synthdata.co/", "https://synthdata.co/docs"],
+      "url": "https://synthdata.co/api/leaderboard"
+    }
+  ]
+}
