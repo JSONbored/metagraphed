@@ -333,7 +333,7 @@ function buildGeneratedOverlay({
 
   const gaps = calculateGaps(promotedSurfaces);
   const sourceUrls = new Set(
-        promotedSurfaces.flatMap((surface) => evidenceSourceUrls(surface)),
+    promotedSurfaces.flatMap((surface) => evidenceSourceUrls(surface)),
   );
 
   const slug = nativeSubnet.netuid === 0 ? "root" : `sn-${nativeSubnet.netuid}`;

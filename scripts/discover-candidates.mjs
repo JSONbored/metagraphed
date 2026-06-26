@@ -1106,10 +1106,7 @@ function addCandidate(candidate) {
   const existing = candidatesByKey.get(key);
   if (existing) {
     existing.source_urls = [
-      ...new Set([
-        ...(existing.source_urls || []),
-        ...sourceUrls,
-      ]),
+      ...new Set([...(existing.source_urls || []), ...sourceUrls]),
     ].sort();
     return;
   }

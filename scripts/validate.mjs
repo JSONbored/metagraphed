@@ -285,10 +285,7 @@ function validateSubnet(
       validateVerification(`${surfaceKey}:verification`, surface.verification);
     }
     if (surface.authority === "registry-observed") {
-      assert(
-        sourceUrls.length > 0,
-        `${surfaceKey}: source_urls required`,
-      );
+      assert(sourceUrls.length > 0, `${surfaceKey}: source_urls required`);
       const verificationEvidence =
         registryVerificationEvidence.byCandidateId.get(surface.id) ||
         registryVerificationEvidence.byLocator.get(
@@ -599,7 +596,10 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
       `${key}: source_url must be a URL`,
     );
   }
-  assert(sourceUrls.length > 0, `${key}: one of source_url or source_urls is required`);
+  assert(
+    sourceUrls.length > 0,
+    `${key}: one of source_url or source_urls is required`,
+  );
   if (candidate.source_urls !== undefined) {
     assert(
       Array.isArray(candidate.source_urls),

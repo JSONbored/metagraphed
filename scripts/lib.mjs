@@ -1248,9 +1248,7 @@ export function evidenceSourceUrls(record = null) {
       ? [record.source_url]
       : [];
   const urls = [...(rawSourceUrls || rawFallback)]
-    .map((value) =>
-      typeof value === "string" ? value.trim() : ""
-    )
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
     .filter(Boolean);
   return [...new Set(urls)];
 }
