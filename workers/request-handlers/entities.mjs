@@ -964,10 +964,14 @@ export async function handleExtrinsics(request, env, url) {
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
-  const fromRaw = sp.get("from");
-  const toRaw = sp.get("to");
-  const fromMs = fromRaw == null ? null : clampInt(fromRaw, 0, 0, MAX);
-  const toMs = toRaw == null ? null : clampInt(toRaw, 0, 0, MAX);
+  const parseTimeBound = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(MAX, Math.trunc(n)));
+  };
+  const fromMs = parseTimeBound(sp.get("from"));
+  const toMs = parseTimeBound(sp.get("to"));
   const nowMs = Date.now();
   const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
   // The extrinsics tier is a retained hot window of block timestamps. Reject
@@ -1034,12 +1038,14 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  // Standalone observed_at ranges can be highly selective or empty while the
-  // feed order is block_number/extrinsic_index. Force the covering timestamp
-  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
-  // walking most of the retained primary-key order before finding no rows.
+  // Standalone observed_at windows can be highly selective while the feed order
+  // is block_number/extrinsic_index. Only force the timestamp index for bounded
+  // narrow windows; broad or malformed public filters must stay planner-selected
+  // so SQLite/D1 can use the order-aligned primary-key path and stop at LIMIT.
+  const hasNarrowObservedWindow =
+    fromMs != null && toMs != null && toMs - fromMs <= DAY_MS;
   const forceObservedOrderIndex =
-    (fromMs != null || toMs != null) &&
+    hasNarrowObservedWindow &&
     !hasBlockFilter &&
     !hasEqualityFilter &&
     !hasSuccessFilter &&
