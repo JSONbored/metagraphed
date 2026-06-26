@@ -62,6 +62,7 @@
      for small "warn" *text* on paper/card, which needs 4.5:1 (light theme only —
      dark-theme --health-warn already passes). */
   --color-health-warn-text: var(--health-warn-text);
+  --color-health-bad: var(--health-bad);
   --color-health-down: var(--health-down);
   --color-health-unknown: var(--health-unknown);
 
@@ -144,6 +145,7 @@
   /* AA text variant of --health-warn (same hue/chroma, darker L). 4.58:1 on
      paper, 4.92:1 on card. Used only where --health-warn styles small text. */
   --health-warn-text: oklch(0.55 0.12 80);
+  --health-bad: oklch(0.66 0.18 50); /* orange — between warn (75) and down (28) */
   --health-down: oklch(0.58 0.22 28);
   --health-unknown: oklch(0.66 0.01 200);
 
@@ -215,6 +217,7 @@
   /* Dark --health-warn already clears AA as text (≈10.6:1), so the text variant
      is the shared token itself — no visual change in dark mode. */
   --health-warn-text: var(--health-warn);
+  --health-bad: oklch(0.75 0.18 52); /* orange — between warn (75) and down (28) */
   --health-down: oklch(0.72 0.2 28);
   --health-unknown: oklch(0.52 0.005 250);
 
@@ -536,9 +539,30 @@ html[data-density="compact"] .bg-card > table td {
   animation: mg-pulse 1.8s ease-in-out infinite;
 }
 
+/* Health dot — like mg-live-dot, but colour follows currentColor so it can
+   reflect endpoint health (text-health-ok / -warn / -bad / -down). */
+.mg-health-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.mg-health-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.3;
+  animation: mg-pulse 1.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mg-fade-in,
-  .mg-live-dot::after {
+  .mg-live-dot::after,
+  .mg-health-dot::after {
     animation: none;
   }
 }

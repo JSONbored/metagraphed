@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Compass, Github, Menu, X } from "lucide-react";
 import { API_BASE, DISCORD_URL, GITHUB_REPO } from "@/lib/metagraphed/config";
 import { useApiBase } from "@/hooks/use-api-base";
+import { useEndpointHealth, type EndpointHealth } from "@/hooks/use-endpoint-health";
 import { NetworkSwitcher } from "./network-switcher";
 import { CopyableCode } from "./copyable-code";
 import { SettingsPopover } from "./settings-popover";
@@ -267,7 +268,7 @@ function SiteFooter() {
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent"
       />
       <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-14 grid gap-10 md:grid-cols-4 text-[12px] text-ink-muted">
-        <div className="md:col-span-1">
+        <div className="md:col-span-2">
           <div className="font-display text-base font-semibold text-ink-strong inline-flex items-baseline gap-1">
             Metagraphed
             <span
@@ -279,6 +280,28 @@ function SiteFooter() {
             Unofficial public-interface registry and developer block explorer for Bittensor. All
             data is public, chain-direct, and verifiable.
           </p>
+          <div className="mt-4 flex items-center gap-1">
+            <a
+              href={GITHUB_REPO}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub repository"
+              title="Open source on GitHub"
+              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+            >
+              <Github className="size-4" />
+            </a>
+            <a
+              href={DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Discord community"
+              title="Join us on Discord"
+              className="inline-flex items-center justify-center rounded-md size-8 text-ink-muted hover:text-ink-strong hover:bg-surface transition-colors"
+            >
+              <DiscordIcon className="size-4" />
+            </a>
+          </div>
         </div>
         <FooterCol title="Registry">
           <FooterLink to="/subnets">Subnets</FooterLink>
@@ -294,40 +317,6 @@ function SiteFooter() {
           <FooterLink to="/gaps">Gaps</FooterLink>
           <FooterLink to="/agents">For agents</FooterLink>
           <FooterLink to="/about">About</FooterLink>
-        </FooterCol>
-        <FooterCol title="Data">
-          <a
-            href={safeExternalUrl(`${API_BASE}/api/v1`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-ink-strong transition-colors font-mono break-all"
-          >
-            {API_BASE.replace(/^https?:\/\//, "")}/api/v1
-          </a>
-          <a
-            href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-ink-strong transition-colors"
-          >
-            OpenAPI spec
-          </a>
-          <a
-            href={GITHUB_REPO}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-ink-strong transition-colors inline-flex items-center gap-1"
-          >
-            <Github className="size-3" /> GitHub
-          </a>
-          <a
-            href={DISCORD_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-ink-strong transition-colors inline-flex items-center gap-1"
-          >
-            <DiscordIcon className="size-3" /> Discord
-          </a>
         </FooterCol>
       </div>
       <div className="border-t border-border/70">
@@ -356,44 +345,91 @@ function RegistryPulseStrip() {
   const stale = f?.stale_count ?? 0;
   const sources = f?.sources?.length ?? 0;
   return (
-    <div className="mg-ticker">
-      <span className="inline-flex items-center gap-1.5">
-        <span className="mg-live-dot" aria-hidden />
-        <span className="uppercase tracking-[0.22em] text-[10px]">registry pulse</span>
-      </span>
-      <span>·</span>
-      <span>
-        <span className="text-ink-muted">sources</span>{" "}
-        <span className="text-ink-strong">{sources}</span>
-      </span>
-      <span>·</span>
-      <span>
-        <span className="text-ink-muted">stale</span>{" "}
-        <span
-          className={classNames("tabular-nums", stale ? "text-health-warn" : "text-ink-strong")}
-        >
-          {stale}
+    <div className="flex items-center justify-between gap-4">
+      <div className="mg-ticker min-w-0">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="mg-live-dot" aria-hidden />
+          <span className="uppercase tracking-[0.22em] text-[10px]">registry pulse</span>
         </span>
-      </span>
-      {b?.version ? (
-        <>
-          <span>·</span>
-          <span>
-            <span className="text-ink-muted">build</span>{" "}
-            <span className="text-ink-strong">{b.version}</span>
+        <span>·</span>
+        <span>
+          <span className="text-ink-muted">sources</span>{" "}
+          <span className="text-ink-strong">{sources}</span>
+        </span>
+        <span>·</span>
+        <span>
+          <span className="text-ink-muted">stale</span>{" "}
+          <span
+            className={classNames("tabular-nums", stale ? "text-health-warn" : "text-ink-strong")}
+          >
+            {stale}
           </span>
-        </>
-      ) : null}
-      <span>·</span>
-      <a
-        href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hover:text-ink-strong transition-colors"
-      >
-        openapi
-      </a>
+        </span>
+        {b?.version ? (
+          <>
+            <span>·</span>
+            <span>
+              <span className="text-ink-muted">build</span>{" "}
+              <span className="text-ink-strong">{b.version}</span>
+            </span>
+          </>
+        ) : null}
+        <span>·</span>
+        <a
+          href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-ink-strong transition-colors"
+        >
+          openapi
+        </a>
+      </div>
+      <EndpointHealthPill />
     </div>
+  );
+}
+
+// Map the live endpoint-health tier to a design-system health token. Only the
+// dot is coloured (via currentColor); the text stays neutral for AA contrast.
+const ENDPOINT_TONE: Record<EndpointHealth, string> = {
+  checking: "text-ink-muted",
+  ok: "text-health-ok",
+  slow: "text-health-warn",
+  bad: "text-health-bad",
+  down: "text-health-down",
+};
+
+const ENDPOINT_LABEL: Record<EndpointHealth, string> = {
+  checking: "checking…",
+  ok: "healthy",
+  slow: "slow",
+  bad: "degraded",
+  down: "down",
+};
+
+// Right side of the pulse strip: the live API endpoint with a glowing dot that
+// reflects round-trip health (green ok · yellow slow · orange bad · red down).
+function EndpointHealthPill() {
+  const { base } = useApiBase();
+  const { status, ms } = useEndpointHealth();
+  const tone = ENDPOINT_TONE[status];
+  const endpoint = `${base.replace(/^https?:\/\//, "")}/api/v1`;
+  const detail = ms != null ? `${ENDPOINT_LABEL[status]} · ${ms} ms` : ENDPOINT_LABEL[status];
+  return (
+    <a
+      href={safeExternalUrl(`${base}/api/v1`)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`API endpoint · ${detail}`}
+      className="shrink-0 inline-flex items-center gap-2 font-mono text-[11px] text-ink-muted hover:text-ink-strong transition-colors"
+    >
+      <span className={classNames("mg-health-dot", tone)} aria-hidden />
+      <span className="hidden sm:inline">{endpoint}</span>
+      <span className="text-ink-subtle" aria-hidden>
+        ·
+      </span>
+      <span>{detail}</span>
+    </a>
   );
 }
 
