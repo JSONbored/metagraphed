@@ -394,9 +394,20 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "offset",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  const direction = url.searchParams.get("direction");
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "sent" &&
+    direction !== "received"
+  ) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
+    });
+  }
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const direction = url.searchParams.get("direction");
   // sent => this account is the sender (hotkey=from); received => recipient
   // (coldkey=to); default/all => either side.
   let sideClause = "(hotkey = ? OR coldkey = ?)";

@@ -930,6 +930,18 @@ describe("handleAccountTransfers", () => {
     await errorJson(res);
   });
 
+  test("rejects an unsupported direction enum value with 400", async () => {
+    const res = await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
+  });
+
   test("returns schema-stable empty transfers on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountTransfers,
