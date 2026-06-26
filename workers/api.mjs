@@ -2155,7 +2155,7 @@ async function handleTrajectory(request, env, netuid, url) {
     [netuid],
   );
   const data = formatTrajectory({ netuid, rows });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2226,7 +2226,7 @@ async function handleUptime(request, env, netuid, url) {
     rows,
     now: new Date().toISOString(),
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2414,7 +2414,7 @@ async function handleLeaderboards(request, env, url) {
     economicsRows,
     subnetMeta,
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2617,7 +2617,7 @@ async function handleCompare(request, env, url) {
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
-  const response = envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,

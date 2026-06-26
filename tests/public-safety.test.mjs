@@ -80,7 +80,15 @@ describe("public URL safety checks", () => {
   });
 
   test("blocks hostnames that resolve to private addresses", async () => {
-    assert.equal(await isUnsafeResolvedUrl("http://localhost/"), true);
+    // Inject the resolver (the script-utils pattern) so the SSRF-resolution
+    // classification is tested deterministically, with no dependency on the CI
+    // runner's outbound DNS. A public-looking host that resolves to a private
+    // address must still be blocked.
+    const privateResolver = async () => [{ address: "10.0.0.5", family: 4 }];
+    assert.equal(
+      await isUnsafeResolvedUrl("https://internal.example/", privateResolver),
+      true,
+    );
   });
 
   test("blocks credentialed public URLs before DNS resolution", () => {
@@ -106,9 +114,21 @@ describe("public URL safety checks", () => {
   });
 
   test("resolves public hosts and blocks failed DNS lookups", async () => {
-    assert.equal(await isUnsafeResolvedUrl("https://example.com/"), false);
+    // Injected resolvers keep this deterministic and network-free: a host that
+    // resolves to a public address is allowed; a host whose lookup fails (the
+    // resolver throws, as Node's dns does on NXDOMAIN) is blocked.
+    const publicResolver = async () => [
+      { address: "93.184.216.34", family: 4 },
+    ];
+    const failingResolver = async () => {
+      throw new Error("ENOTFOUND");
+    };
     assert.equal(
-      await isUnsafeResolvedUrl("https://metagraphed.invalid/"),
+      await isUnsafeResolvedUrl("https://metagraph.example/", publicResolver),
+      false,
+    );
+    assert.equal(
+      await isUnsafeResolvedUrl("https://metagraph.invalid/", failingResolver),
       true,
     );
   });

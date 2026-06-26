@@ -319,9 +319,16 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const netuid = url.searchParams.get("netuid");
+  if (netuid != null && !/^\d+$/.test(netuid)) {
+    return errorResponse(
+      "invalid_param",
+      "netuid must be a non-negative integer.",
+      400,
+    );
+  }
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
-  if (netuid != null && /^\d+$/.test(netuid)) {
+  if (netuid != null) {
     sql += " AND netuid = ?";
     params.push(Number(netuid));
   }
@@ -394,9 +401,20 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "offset",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  const direction = url.searchParams.get("direction");
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "sent" &&
+    direction !== "received"
+  ) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
+    });
+  }
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
-  const direction = url.searchParams.get("direction");
   // sent => this account is the sender (hotkey=from); received => recipient
   // (coldkey=to); default/all => either side.
   let sideClause = "(hotkey = ? OR coldkey = ?)";
@@ -640,17 +658,19 @@ export async function handleBlock(request, env, ref) {
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
   const param = isHash ? ref : Number(ref);
   const rows = await d1All(env, sql, [param]);
-  // prev/next chain-walk neighbors (#1853): one bounded query for the nearest
-  // STORED block numbers around the resolved height (skips pruned gaps; null at
-  // the window edges). Derived from the resolved row's number (works for the hash
-  // path too). Only when the block resolved — a cold/unknown ref has no anchor.
+  // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
+  // nearest STORED block numbers around the resolved height (skips pruned gaps;
+  // null at the window edges). Derived from the resolved row's number (works for
+  // the hash path too). Only when the block resolved — a cold/unknown ref has no
+  // anchor. Keep these as WHERE-bounded subqueries so public detail requests use
+  // the block_number primary key instead of scanning the retained blocks table.
   let prev = null;
   let next = null;
   const resolvedNumber = rows[0]?.block_number;
   if (Number.isInteger(resolvedNumber)) {
     const nbr = await d1All(
       env,
-      `SELECT MAX(CASE WHEN block_number < ? THEN block_number END) AS prev, MIN(CASE WHEN block_number > ? THEN block_number END) AS next FROM blocks`,
+      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
     );
     prev = nbr[0]?.prev ?? null;
@@ -683,15 +703,14 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  let blockNumber = isHash ? null : Number(ref);
-  if (isHash) {
-    const blockRows = await d1All(
-      env,
-      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
-      [ref],
-    );
-    blockNumber = blockRows[0]?.block_number ?? null;
-  }
+  const blockRows = await d1All(
+    env,
+    isHash
+      ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
+      : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
+    [isHash ? ref : Number(ref)],
+  );
+  const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
     blockNumber == null
       ? []
