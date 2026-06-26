@@ -10,7 +10,9 @@ import type {
   AgentResource,
   AgentResources,
   AccountBalance,
+  AccountDay,
   AccountEvent,
+  AccountHistory,
   AccountRegistration,
   AccountSummary,
   Block,
@@ -975,6 +977,39 @@ export function normalizeAccountSummary(raw: unknown, ss58: string): AccountSumm
   } as AccountSummary;
 }
 
+function normalizeAccountDay(raw: unknown): AccountDay | undefined {
+  if (!isRecord(raw)) return undefined;
+  const day = firstString(raw.day);
+  if (!day) return undefined;
+  return {
+    ...(raw as object),
+    day,
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    event_count: firstFiniteNumber(raw.event_count) ?? 0,
+    event_kinds: stringArrayFromUnknown(raw.event_kinds),
+    first_block: firstFiniteNumber(raw.first_block) ?? null,
+    last_block: firstFiniteNumber(raw.last_block) ?? null,
+  } as AccountDay;
+}
+
+export function normalizeAccountHistory(raw: unknown, ss58: string): AccountHistory {
+  const d = isRecord(raw) ? raw : {};
+  const days = Array.isArray(d.days)
+    ? d.days.flatMap((day) => {
+        const normalized = normalizeAccountDay(day);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(d as object),
+    ss58: firstString(d.ss58) ?? ss58,
+    day_count: firstFiniteNumber(d.day_count) ?? days.length,
+    limit: firstFiniteNumber(d.limit) ?? null,
+    offset: firstFiniteNumber(d.offset) ?? null,
+    days,
+  } as AccountHistory;
+}
+
 /** Cross-subnet activity summary for one account by ss58. */
 export const accountQuery = (ss58: string) =>
   queryOptions({
@@ -990,6 +1025,40 @@ export const accountQuery = (ss58: string) =>
       } as ApiResult<AccountSummary>;
     },
     staleTime: STALE_SHORT,
+  });
+
+export interface AccountHistoryParams extends QueryParams {
+  netuid?: number;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Per-day hotkey activity for one account from /api/v1/accounts/{ss58}/history. */
+export const accountHistoryQuery = (ss58: string, params: AccountHistoryParams = {}) =>
+  queryOptions({
+    queryKey: k(
+      "account-history",
+      ss58,
+      params.netuid ?? null,
+      params.from ?? null,
+      params.to ?? null,
+      params.limit ?? null,
+      params.offset ?? null,
+    ),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/accounts/${ss58PathSegment(ss58)}/history`, {
+        params,
+        signal,
+      });
+      return {
+        data: normalizeAccountHistory(res.data, ss58),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<AccountHistory>;
+    },
+    staleTime: STALE_MED,
   });
 
 /**

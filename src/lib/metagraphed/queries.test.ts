@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  normalizeAccountHistory,
   normalizeSubnet,
   normalizeSubnetProfile,
   normalizeGap,
@@ -138,6 +139,100 @@ describe("normalizeSubnet", () => {
 
   it("passes non-object input straight through", () => {
     expect(normalizeSubnet(null as unknown)).toBeNull();
+  });
+});
+
+describe("normalizeAccountHistory", () => {
+  it("reads the nested data.days payload from /accounts/{ss58}/history", () => {
+    const out = normalizeAccountHistory(
+      {
+        ss58: "5Example",
+        day_count: 2,
+        limit: 180,
+        offset: 0,
+        days: [
+          {
+            day: "2026-06-25",
+            netuid: 1,
+            event_count: 7,
+            event_kinds: ["StakeAdded", "StakeRemoved"],
+            first_block: 100,
+            last_block: 120,
+          },
+          {
+            day: "2026-06-24",
+            netuid: 7,
+            event_count: 1,
+            event_kinds: ["NeuronRegistered"],
+            first_block: 90,
+            last_block: 90,
+          },
+        ],
+      },
+      "5Fallback",
+    );
+
+    expect(out.ss58).toBe("5Example");
+    expect(out.day_count).toBe(2);
+    expect(out.limit).toBe(180);
+    expect(out.offset).toBe(0);
+    expect(out.days).toEqual([
+      {
+        day: "2026-06-25",
+        netuid: 1,
+        event_count: 7,
+        event_kinds: ["StakeAdded", "StakeRemoved"],
+        first_block: 100,
+        last_block: 120,
+      },
+      {
+        day: "2026-06-24",
+        netuid: 7,
+        event_count: 1,
+        event_kinds: ["NeuronRegistered"],
+        first_block: 90,
+        last_block: 90,
+      },
+    ]);
+  });
+
+  it("returns a schema-stable zero for an empty history payload", () => {
+    const out = normalizeAccountHistory({ days: [] }, "5Empty");
+    expect(out.ss58).toBe("5Empty");
+    expect(out.day_count).toBe(0);
+    expect(out.limit).toBeNull();
+    expect(out.offset).toBeNull();
+    expect(out.days).toEqual([]);
+  });
+
+  it("filters malformed rows but keeps valid event_kinds arrays", () => {
+    const out = normalizeAccountHistory(
+      {
+        days: [
+          null,
+          { event_count: 3 },
+          {
+            day: "2026-06-25",
+            netuid: null,
+            event_count: 2,
+            event_kinds: ["StakeAdded", 7, false, null],
+          },
+        ],
+      },
+      "5Kinds",
+    );
+
+    expect(out.day_count).toBe(1);
+    expect(out.days).toEqual([
+      {
+        day: "2026-06-25",
+        netuid: null,
+        event_count: 2,
+        event_kinds: ["StakeAdded", "7", "false"],
+        first_block: null,
+        last_block: null,
+      },
+    ]);
   });
 });
 

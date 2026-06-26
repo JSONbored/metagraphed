@@ -827,6 +827,27 @@ export interface AccountSummary {
   [key: string]: unknown;
 }
 
+/** One hotkey-keyed daily activity row from /api/v1/accounts/{ss58}/history. */
+export interface AccountDay {
+  day: string;
+  netuid: number | null;
+  event_count: number;
+  event_kinds: string[];
+  first_block?: number | null;
+  last_block?: number | null;
+  [key: string]: unknown;
+}
+
+/** Per-day activity history for one account from /api/v1/accounts/{ss58}/history. */
+export interface AccountHistory {
+  ss58: string;
+  day_count: number;
+  limit?: number | null;
+  offset?: number | null;
+  days: AccountDay[];
+  [key: string]: unknown;
+}
+
 /** Live TAO balance for an account from /api/v1/accounts/{ss58}/balance. */
 export interface AccountBalance {
   ss58: string;

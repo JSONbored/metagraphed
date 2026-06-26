@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
-import { Activity, Boxes, Clock, Coins } from "lucide-react";
+import { Suspense, type ReactNode } from "react";
+import { Activity, Boxes, Clock, Coins, Fingerprint, Radar, Rows3 } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
@@ -12,8 +12,9 @@ import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
+import { AccountHistoryChart } from "@/components/metagraphed/account-history-chart";
 import { accountBalanceQuery, accountQuery } from "@/lib/metagraphed/queries";
-import { formatNumber } from "@/lib/metagraphed/format";
+import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { isValidSs58, ss58PathSegment } from "@/lib/metagraphed/accounts";
 import type { AccountSummary } from "@/lib/metagraphed/types";
@@ -101,26 +102,85 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
         eyebrow="Explorer · account"
         live
         title={shortHash(ss58, 8) ?? "Account"}
-        description={<CopyableCode value={ss58} truncate={false} />}
+        description={
+          <div className="space-y-4">
+            <p className="max-w-2xl">
+              Cross-subnet registrations, first-party chain events, and daily activity rollups for
+              one Bittensor account.
+            </p>
+            <div className="max-w-fit rounded-2xl border border-border/80 bg-card/80 px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.55)]">
+              <CopyableCode value={ss58} truncate={false} />
+            </div>
+          </div>
+        }
+        actions={
+          <>
+            <a
+              href="#history"
+              className="inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:bg-accent/15"
+            >
+              View activity
+            </a>
+            <a
+              href="#call"
+              className="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-muted transition-colors hover:border-ink/20 hover:text-ink-strong"
+            >
+              API endpoints
+            </a>
+          </>
+        }
+        aside={
+          <AccountHeroAside
+            registrations={account.registrations.length}
+            eventKinds={account.event_kinds.length}
+            firstSeenAt={account.first_seen_at ?? null}
+          />
+        }
         caption="explorer / v1"
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+      <div className="mb-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           icon={Coins}
           eyebrow="Balance"
           value={balanceValue}
           hint={balance?.balance_tao != null ? "free + reserved · live RPC" : "live RPC"}
           tone="accent"
+          className="rounded-2xl border-accent/25 bg-card/95 p-5 shadow-[0_24px_80px_-52px_rgba(45,212,191,0.45)]"
         />
-        <StatTile icon={Activity} eyebrow="Events" value={formatNumber(account.event_count)} />
-        <StatTile icon={Boxes} eyebrow="Subnets" value={formatNumber(account.subnet_count)} />
+        <StatTile
+          icon={Activity}
+          eyebrow="Events"
+          value={formatNumber(account.event_count)}
+          hint="indexed first-party"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
+        <StatTile
+          icon={Boxes}
+          eyebrow="Subnets"
+          value={formatNumber(account.subnet_count)}
+          hint="active footprint"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
+        />
         <StatTile
           icon={Clock}
           eyebrow="Last seen"
           value={<TimeAgo at={account.last_seen_at ?? undefined} />}
+          hint="chain-direct index"
+          className="rounded-2xl border-border/80 bg-card/95 p-5 shadow-[0_24px_80px_-58px_rgba(15,23,42,0.45)]"
         />
       </div>
+
+      <SectionAnchor
+        id="history"
+        title="Daily activity"
+        subtitle="Per-day first-party account events, newest rollups from the chain-direct explorer."
+        tone="accent"
+        info="History is keyed by hotkey activity only. Coldkey-only addresses legitimately return an empty series."
+        right={<SectionBadge tone="accent">hotkey rollup</SectionBadge>}
+      >
+        <AccountHistoryChart ss58={ss58} />
+      </SectionAnchor>
 
       {!hasActivity ? (
         <EmptyState
@@ -131,27 +191,43 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
       ) : null}
 
       {account.registrations.length > 0 ? (
-        <SectionAnchor id="registrations" title="Registered subnets" tone="accent">
-          <div className="overflow-x-auto rounded border border-border bg-card">
+        <SectionAnchor
+          id="registrations"
+          title="Registered subnets"
+          subtitle="Current hotkey registrations across the indexed network footprint."
+          tone="accent"
+          right={<SectionBadge>{formatNumber(account.registrations.length)} rows</SectionBadge>}
+        >
+          <DataPanel>
             <table className="w-full text-left text-sm">
-              <thead className="bg-surface/40">
+              <thead className="bg-surface/50">
                 <tr>
-                  <th className="px-4 py-2.5">Subnet</th>
-                  <th className="px-4 py-2.5 text-right">UID</th>
-                  <th className="px-4 py-2.5 text-right">Stake</th>
-                  <th className="px-4 py-2.5">Permit</th>
-                  <th className="px-4 py-2.5">Active</th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Subnet
+                  </th>
+                  <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    UID
+                  </th>
+                  <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Stake
+                  </th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Permit
+                  </th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Active
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {account.registrations.map((r) => (
-                  <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/40">
-                    <td className="px-4 py-2.5 font-mono text-[12px]">
+                  <tr key={`${r.netuid}-${r.uid}`} className="hover:bg-surface/30">
+                    <td className="px-5 py-4 font-mono text-[12px]">
                       {r.netuid != null ? (
                         <Link
                           to="/subnets/$netuid"
                           params={{ netuid: r.netuid }}
-                          className="font-medium text-ink-strong hover:underline"
+                          className="inline-flex items-center rounded-full border border-border bg-paper px-2.5 py-1 font-medium text-ink-strong transition-colors hover:border-accent/30 hover:text-accent"
                         >
                           SN{r.netuid}
                         </Link>
@@ -159,75 +235,112 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                    <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                       {r.uid != null ? formatNumber(r.uid) : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                    <td className="px-5 py-4 text-right font-mono text-[12px] tabular-nums text-ink">
                       {r.stake_tao != null ? `${formatNumber(r.stake_tao)} τ` : "—"}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px]">
+                    <td className="px-5 py-4 font-mono text-[11px]">
                       {r.validator_permit ? (
-                        <span className="text-emerald-500">validator</span>
+                        <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
+                          validator
+                        </span>
                       ) : (
                         <span className="text-ink-muted">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px]">
+                    <td className="px-5 py-4 font-mono text-[11px]">
                       {r.active ? (
-                        <span className="text-emerald-500">active</span>
+                        <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500">
+                          active
+                        </span>
                       ) : (
-                        <span className="text-ink-muted">idle</span>
+                        <span className="inline-flex rounded-full bg-surface px-2 py-0.5 text-ink-muted">
+                          idle
+                        </span>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </DataPanel>
         </SectionAnchor>
       ) : null}
 
       {account.event_kinds.length > 0 ? (
-        <SectionAnchor id="kinds" title="Activity by kind" tone="accent">
-          <div className="flex flex-wrap gap-2">
+        <SectionAnchor
+          id="kinds"
+          title="Activity by kind"
+          subtitle="Relative event mix across the indexed sample for this account."
+          tone="accent"
+          right={<SectionBadge>{formatNumber(account.event_kinds.length)} kinds</SectionBadge>}
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {account.event_kinds.map((entry) => (
-              <span
+              <div
                 key={entry.kind}
-                className="inline-flex items-center gap-1.5 rounded border border-border bg-card px-2.5 py-1 font-mono text-[11px]"
+                className="rounded-2xl border border-border/80 bg-card/95 px-4 py-3 shadow-[0_18px_50px_-44px_rgba(15,23,42,0.55)]"
               >
-                <span className="text-ink-strong">{entry.kind}</span>
-                <span className="text-ink-muted tabular-nums">{formatNumber(entry.count)}</span>
-              </span>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                  event kind
+                </div>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <span className="min-w-0 truncate font-mono text-[12px] text-ink-strong">
+                    {entry.kind}
+                  </span>
+                  <span className="font-display text-xl font-semibold tabular-nums text-ink-strong">
+                    {formatNumber(entry.count)}
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
         </SectionAnchor>
       ) : null}
 
       {account.recent_events.length > 0 ? (
-        <SectionAnchor id="events" title="Recent events" tone="accent">
-          <div className="overflow-x-auto rounded border border-border bg-card">
+        <SectionAnchor
+          id="events"
+          title="Recent events"
+          subtitle="Newest decoded chain events touching this account."
+          tone="accent"
+          right={<SectionBadge>{formatNumber(account.recent_events.length)} events</SectionBadge>}
+        >
+          <DataPanel>
             <table className="w-full text-left text-sm">
-              <thead className="bg-surface/40">
+              <thead className="bg-surface/50">
                 <tr>
-                  <th className="px-4 py-2.5">Block</th>
-                  <th className="px-4 py-2.5">Kind</th>
-                  <th className="px-4 py-2.5">Subnet</th>
-                  <th className="px-4 py-2.5 text-right">Amount</th>
-                  <th className="px-4 py-2.5 text-right">Observed</th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Block
+                  </th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Kind
+                  </th>
+                  <th className="px-5 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Subnet
+                  </th>
+                  <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Amount
+                  </th>
+                  <th className="px-5 py-3 text-right font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                    Observed
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {account.recent_events.map((ev, i) => (
                   <tr
                     key={`${ev.block_number}-${ev.event_index}-${i}`}
-                    className="hover:bg-surface/40"
+                    className="hover:bg-surface/30"
                   >
-                    <td className="px-4 py-2.5 font-mono text-[12px]">
+                    <td className="px-5 py-4 font-mono text-[12px]">
                       {ev.block_number != null ? (
                         <Link
                           to="/blocks/$ref"
                           params={{ ref: String(ev.block_number) }}
-                          className="text-ink hover:underline"
+                          className="text-ink hover:text-accent hover:underline"
                         >
                           #{formatNumber(ev.block_number)}
                         </Link>
@@ -235,23 +348,23 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
                         "—"
                       )}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                    <td className="px-5 py-4 font-mono text-[11px] text-ink-strong">
                       {ev.event_kind ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                    <td className="px-5 py-4 font-mono text-[11px] text-ink-muted">
                       {ev.netuid != null ? `SN${ev.netuid}` : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                    <td className="px-5 py-4 text-right font-mono text-[11px] tabular-nums text-ink">
                       {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                    <td className="px-5 py-4 text-right font-mono text-[11px] text-ink-muted">
                       <TimeAgo at={ev.observed_at} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </DataPanel>
         </SectionAnchor>
       ) : null}
 
@@ -273,13 +386,16 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           rows={[
             { label: "summary", path: `/api/v1/accounts/${sourceRef}` },
             { label: "balance", path: `/api/v1/accounts/${sourceRef}/balance` },
+            { label: "history", path: `/api/v1/accounts/${sourceRef}/history` },
             { label: "events", path: `/api/v1/accounts/${sourceRef}/events` },
             { label: "subnets", path: `/api/v1/accounts/${sourceRef}/subnets` },
           ]}
         />
       </SectionAnchor>
 
-      <ApiSourceFooter paths={[`/api/v1/accounts/${sourceRef}`]} />
+      <ApiSourceFooter
+        paths={[`/api/v1/accounts/${sourceRef}`, `/api/v1/accounts/${sourceRef}/history`]}
+      />
     </>
   );
 }
@@ -296,5 +412,119 @@ function DetailSkeleton() {
       </div>
       <Skeleton className="h-72 w-full" />
     </>
+  );
+}
+
+function SectionBadge({
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  tone?: "default" | "accent";
+}) {
+  return (
+    <span
+      className={classNames(
+        "inline-flex items-center rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em]",
+        tone === "accent"
+          ? "border-accent/30 bg-accent/10 text-accent"
+          : "border-border bg-card text-ink-muted",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DataPanel({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={classNames(
+        "overflow-x-auto rounded-[1.5rem] border border-border/80 bg-card/95 shadow-[0_28px_90px_-60px_rgba(15,23,42,0.45)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AccountHeroAside({
+  registrations,
+  eventKinds,
+  firstSeenAt,
+}: {
+  registrations: number;
+  eventKinds: number;
+  firstSeenAt: string | null;
+}) {
+  return (
+    <div className="w-[20rem] rounded-[1.75rem] border border-border/80 bg-card/95 p-5 shadow-[0_32px_100px_-72px_rgba(15,23,42,0.65)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-muted">
+            account signal
+          </div>
+          <div className="mt-2 font-display text-xl font-semibold text-ink-strong">
+            Indexed footprint
+          </div>
+        </div>
+        <div className="rounded-2xl bg-accent/10 p-3 text-accent">
+          <Fingerprint className="size-5" />
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        <HeroAsideRow
+          icon={Rows3}
+          label="Registered subnets"
+          value={formatNumber(registrations)}
+          accent="live"
+        />
+        <HeroAsideRow
+          icon={Radar}
+          label="Activity kinds"
+          value={formatNumber(eventKinds)}
+          accent="decoded"
+        />
+        <HeroAsideRow
+          icon={Clock}
+          label="First indexed"
+          value={firstSeenAt ? <TimeAgo at={firstSeenAt} /> : "—"}
+          accent="chain-direct"
+        />
+      </div>
+    </div>
+  );
+}
+
+function HeroAsideRow({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: typeof Clock;
+  label: string;
+  value: ReactNode;
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-surface/35 px-3.5 py-3">
+      <div className="rounded-xl bg-paper p-2 text-ink-muted">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+          {label}
+        </div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="truncate font-display text-lg font-semibold tabular-nums text-ink-strong">
+            {value}
+          </span>
+          <span className="font-mono text-[10px] text-ink-muted">{accent}</span>
+        </div>
+      </div>
+    </div>
   );
 }
