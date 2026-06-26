@@ -628,7 +628,7 @@
       "id": "chain-activity",
       "path": "/metagraph/chain/activity.json",
       "schema_ref": "#/components/schemas/ChainActivityArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
