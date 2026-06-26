@@ -511,6 +511,8 @@ const SS58_BASE58_INDEX = new Map(
   [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
 );
 const FINNEY_SS58_PREFIX = 42;
+const FINNEY_SS58_MIN_LENGTH = 47;
+const FINNEY_SS58_MAX_LENGTH = 48;
 const FINNEY_SS58_DECODED_LENGTH = 35;
 const BALANCE_KV_TTL = 60; // seconds
 const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
@@ -542,6 +544,13 @@ function decodeBase58(value) {
 }
 
 function isFinneySs58Address(value) {
+  if (
+    value.length < FINNEY_SS58_MIN_LENGTH ||
+    value.length > FINNEY_SS58_MAX_LENGTH
+  ) {
+    return false;
+  }
+
   const decoded = decodeBase58(value);
   return (
     decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
