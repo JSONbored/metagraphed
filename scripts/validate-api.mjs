@@ -228,6 +228,37 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/activity",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+      assert.equal(typeof body.data.window, "string");
+    },
+  ],
+  [
+    "/api/v1/chain/calls",
+    (body) => {
+      assert.equal(Array.isArray(body.data.calls), true);
+      assert.equal(typeof body.data.total_extrinsics, "number");
+      assert.equal(typeof body.data.group_by, "string");
+    },
+  ],
+  [
+    "/api/v1/chain/signers",
+    (body) => {
+      assert.equal(Array.isArray(body.data.signers), true);
+      assert.equal(typeof body.data.signer_count, "number");
+    },
+  ],
+  [
+    "/api/v1/chain/fees",
+    (body) => {
+      assert.equal(Array.isArray(body.data.daily), true);
+      assert.equal(Array.isArray(body.data.top_fee_payers), true);
+      assert.equal(typeof body.data.day_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);
