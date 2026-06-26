@@ -29,6 +29,7 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DAY_MS,
+  clampInt,
   HEALTH_TREND_WINDOWS,
   MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
@@ -55,7 +56,12 @@ import {
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
-import { buildChainActivity } from "../../src/chain-analytics.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+  buildChainSigners,
+} from "../../src/chain-analytics.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -91,8 +97,11 @@ function validateQueryParams(url, allowedParams) {
   return null;
 }
 
-function analyticsWindow(url) {
-  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+function analyticsWindow(url, extraParams = []) {
+  const validationError = validateQueryParams(url, [
+    ANALYTICS_WINDOW_PARAM,
+    ...extraParams,
+  ]);
   if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
@@ -676,6 +685,177 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
       "short",
     );
     return hasD1FallbackRows(extrinsicRows, blockRows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
+}
+
+// Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
+// call_module/call_function). The share denominator is the full-window extrinsic
+// count read separately, so the truncated LIMIT tail never skews shares.
+export async function handleChainCalls(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["group_by", "limit"]);
+  if (error) return analyticsQueryError(error);
+  const groupBy =
+    url.searchParams.get("group_by") === "module_function"
+      ? "module_function"
+      : "module";
+  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  return withEdgeCache(request, ctx, env, "chain-calls", async () => {
+    const cutoff = Date.now() - days * DAY_MS;
+    const groupCols =
+      groupBy === "module_function"
+        ? "call_module, call_function"
+        : "call_module";
+    const selectCols =
+      groupBy === "module_function"
+        ? "call_module, call_function"
+        : "call_module";
+    const [rows, totalRows] = await Promise.all([
+      d1All(
+        env,
+        `SELECT ${selectCols}, COUNT(*) AS count
+         FROM extrinsics
+         WHERE observed_at >= ? AND call_module IS NOT NULL
+         GROUP BY ${groupCols}
+         ORDER BY count DESC
+         LIMIT ?`,
+        [cutoff, limit],
+      ),
+      d1All(
+        env,
+        `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`,
+        [cutoff],
+      ),
+    ]);
+    const meta = await readHealthMetaKv(env);
+    const data = buildChainCalls({
+      window: label,
+      groupBy,
+      observedAt: meta?.last_run_at || null,
+      total: totalRows?.[0]?.total ?? 0,
+      rows,
+    });
+    const response = await envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          "/metagraph/chain/calls.json",
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(rows, totalRows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
+}
+
+// Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
+// count over the window. The observed_at index bounds the scan to the hot window;
+// the aggregation is amortized behind the edge cache (runs only on a new snapshot).
+export async function handleChainSigners(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  return withEdgeCache(request, ctx, env, "chain-signers", async () => {
+    const cutoff = Date.now() - days * DAY_MS;
+    const rows = await d1All(
+      env,
+      `SELECT signer,
+              COUNT(*) AS tx_count,
+              SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+              SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
+              MAX(block_number) AS last_tx_block
+       FROM extrinsics
+       WHERE observed_at >= ? AND signer IS NOT NULL
+       GROUP BY signer
+       ORDER BY tx_count DESC
+       LIMIT ?`,
+      [cutoff, limit],
+    );
+    const meta = await readHealthMetaKv(env);
+    const data = buildChainSigners({
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      rows,
+    });
+    const response = await envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          "/metagraph/chain/signers.json",
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(rows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
+}
+
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + averages)
+// plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
+// SUMs; exact median is a deliberate follow-up (no native percentile in D1).
+export async function handleChainFees(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const limit = clampInt(url.searchParams.get("limit"), 25, 1, 100);
+  return withEdgeCache(request, ctx, env, "chain-fees", async () => {
+    const cutoff = Date.now() - days * DAY_MS;
+    const [dailyRows, payerRows] = await Promise.all([
+      d1All(
+        env,
+        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COUNT(*) AS extrinsic_count,
+                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ?
+         GROUP BY day`,
+        [cutoff],
+      ),
+      d1All(
+        env,
+        `SELECT signer,
+                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
+                COUNT(*) AS extrinsic_count
+         FROM extrinsics
+         WHERE observed_at >= ? AND signer IS NOT NULL
+         GROUP BY signer
+         ORDER BY total_fee_tao DESC
+         LIMIT ?`,
+        [cutoff, limit],
+      ),
+    ]);
+    const meta = await readHealthMetaKv(env);
+    const data = buildChainFees({
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      dailyRows,
+      payerRows,
+    });
+    const response = await envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          "/metagraph/chain/fees.json",
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(dailyRows, payerRows)
       ? markD1FallbackResponse(response)
       : response;
   });

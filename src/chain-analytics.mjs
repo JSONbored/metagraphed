@@ -16,6 +16,15 @@ function round4(value) {
   return Math.round(value * 1e4) / 1e4;
 }
 
+// Coerce a D1 fee/tip cell (TAO float, numeric string, or null) to a finite
+// non-negative number rounded to 9 dp (rao precision), so SUM float noise and
+// NULL fees never leak into the payload.
+function toTao(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 1e9) / 1e9;
+}
+
 // Merge the two per-UTC-day aggregations (extrinsics tier + blocks tier) into one
 // newest-first daily series. `extrinsicRows` carries extrinsic_count /
 // successful_extrinsics / unique_signers; `blockRows` carries block_count /
@@ -82,5 +91,112 @@ export function buildChainActivity({
     observed_at: observedAt,
     day_count: days.length,
     days,
+  };
+}
+
+// Extrinsic call-mix breakdown (#1989): counts + share of each call_module (or
+// call_module/call_function pair) over the window. `total` is the FULL-window
+// extrinsic count (computed separately, pre-LIMIT) so shares stay honest even
+// when the long tail is clipped by the row limit.
+export function buildChainCalls({
+  window,
+  groupBy = "module",
+  observedAt = null,
+  total = 0,
+  rows = [],
+}) {
+  const totalExtrinsics = toCount(total);
+  const calls = (Array.isArray(rows) ? rows : [])
+    .filter((r) => r && typeof r.call_module === "string")
+    .map((r) => {
+      const count = toCount(r.count);
+      return {
+        call_module: r.call_module,
+        call_function:
+          groupBy === "module_function" && typeof r.call_function === "string"
+            ? r.call_function
+            : null,
+        count,
+        share: totalExtrinsics > 0 ? round4(count / totalExtrinsics) : null,
+      };
+    });
+  return {
+    schema_version: 1,
+    window,
+    group_by: groupBy,
+    observed_at: observedAt,
+    total_extrinsics: totalExtrinsics,
+    call_count: calls.length,
+    calls,
+  };
+}
+
+// Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
+// count over the window, with their total fees/tips and newest signed block.
+export function buildChainSigners({ window, observedAt = null, rows = [] }) {
+  const signers = (Array.isArray(rows) ? rows : [])
+    .filter((r) => r && typeof r.signer === "string" && r.signer.length > 0)
+    .map((r) => ({
+      signer: r.signer,
+      tx_count: toCount(r.tx_count),
+      total_fee_tao: toTao(r.total_fee_tao),
+      total_tip_tao: toTao(r.total_tip_tao),
+      last_tx_block: Number.isFinite(Number(r.last_tx_block))
+        ? Math.trunc(Number(r.last_tx_block))
+        : null,
+    }));
+  return {
+    schema_version: 1,
+    window,
+    observed_at: observedAt,
+    signer_count: signers.length,
+    signers,
+  };
+}
+
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + exact
+// builder-computed averages; median is a follow-up) plus a windowed top-fee-payer
+// list. avg_*_tao guard the zero-denominator (a day with no extrinsics → null).
+export function buildChainFees({
+  window,
+  observedAt = null,
+  dailyRows = [],
+  payerRows = [],
+}) {
+  const daily = (Array.isArray(dailyRows) ? dailyRows : [])
+    .filter((r) => r && typeof r.day === "string")
+    .map((r) => {
+      const extrinsicCount = toCount(r.extrinsic_count);
+      const totalFee = toTao(r.total_fee_tao);
+      const totalTip = toTao(r.total_tip_tao);
+      return {
+        day: r.day,
+        extrinsic_count: extrinsicCount,
+        total_fee_tao: totalFee,
+        avg_fee_tao:
+          extrinsicCount > 0 ? toTao(totalFee / extrinsicCount) : null,
+        total_tip_tao: totalTip,
+        avg_tip_tao:
+          extrinsicCount > 0 ? toTao(totalTip / extrinsicCount) : null,
+      };
+    })
+    .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+
+  const topFeePayers = (Array.isArray(payerRows) ? payerRows : [])
+    .filter((r) => r && typeof r.signer === "string" && r.signer.length > 0)
+    .map((r) => ({
+      signer: r.signer,
+      total_fee_tao: toTao(r.total_fee_tao),
+      total_tip_tao: toTao(r.total_tip_tao),
+      extrinsic_count: toCount(r.extrinsic_count),
+    }));
+
+  return {
+    schema_version: 1,
+    window,
+    observed_at: observedAt,
+    day_count: daily.length,
+    daily,
+    top_fee_payers: topFeePayers,
   };
 }

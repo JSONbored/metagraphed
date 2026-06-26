@@ -44,6 +44,9 @@ import {
   d1All,
   handleBulkHealthTrends,
   handleChainActivity,
+  handleChainCalls,
+  handleChainFees,
+  handleChainSigners,
   handleGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
@@ -1278,6 +1281,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     if (resolved.url.pathname === "/api/v1/chain/activity") {
       return handleChainActivity(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/calls") {
+      return handleChainCalls(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/signers") {
+      return handleChainSigners(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/fees") {
+      return handleChainFees(request, env, resolved.url, ctx);
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }

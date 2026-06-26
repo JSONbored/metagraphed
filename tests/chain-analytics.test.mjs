@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { buildChainActivity } from "../src/chain-analytics.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+  buildChainSigners,
+} from "../src/chain-analytics.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
@@ -229,4 +234,276 @@ test("GET /api/v1/chain/activity is schema-stable empty when D1 is cold", async 
   const body = await res.json();
   assert.equal(body.data.day_count, 0);
   assert.deepEqual(body.data.days, []);
+});
+
+// ---- calls (#1989) builder + handler --------------------------------------
+
+test("buildChainCalls computes share against the full-window total, not the LIMIT", () => {
+  const out = buildChainCalls({
+    window: "7d",
+    total: 1000, // full-window count, larger than the summed rows (tail clipped)
+    rows: [
+      { call_module: "SubtensorModule", count: 600 },
+      { call_module: "Balances", count: 150 },
+    ],
+  });
+  assert.equal(out.total_extrinsics, 1000);
+  assert.equal(out.call_count, 2);
+  assert.equal(out.calls[0].share, 0.6); // 600/1000, not 600/750
+  assert.equal(out.calls[1].share, 0.15);
+  assert.equal(out.calls[0].call_function, null); // module grouping
+});
+
+test("buildChainCalls populates call_function only under module_function grouping", () => {
+  const mf = buildChainCalls({
+    window: "7d",
+    groupBy: "module_function",
+    total: 10,
+    rows: [
+      { call_module: "SubtensorModule", call_function: "add_stake", count: 5 },
+    ],
+  });
+  assert.equal(mf.group_by, "module_function");
+  assert.equal(mf.calls[0].call_function, "add_stake");
+});
+
+test("buildChainCalls is cold-stable (share null on empty window, junk dropped)", () => {
+  const out = buildChainCalls({
+    window: "7d",
+    total: 0,
+    rows: [null, { count: 9 }, { call_module: "X", count: 3 }],
+  });
+  assert.equal(out.call_count, 1); // junk (null, no-module) dropped
+  assert.equal(out.calls[0].share, null); // zero-total denominator
+});
+
+test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on junk param", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            const rows = /GROUP BY call_module/.test(sql)
+              ? [
+                  { call_module: "SubtensorModule", count: 60 },
+                  { call_module: "Balances", count: 30 },
+                ]
+              : /COUNT\(\*\) AS total/.test(sql)
+                ? [{ total: 120 }]
+                : [];
+            return { all: () => Promise.resolve({ results: rows }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/calls?window=30d&limit=2",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_extrinsics, 120);
+  assert.equal(body.data.calls[0].share, 0.5); // 60/120 (full window), not 60/90
+  const grp = captured.find((q) => /GROUP BY call_module/.test(q.sql));
+  assert.match(grp.sql, /ORDER BY count DESC/);
+  assert.equal(grp.params.at(-1), 2); // limit bound
+
+  const bad = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/calls?bogus=1"),
+    env,
+    {},
+  );
+  assert.equal(bad.status, 400);
+});
+
+// ---- signers (#1990) builder + handler ------------------------------------
+
+test("buildChainSigners maps rows + is cold-stable", () => {
+  const out = buildChainSigners({
+    window: "7d",
+    observedAt: "2026-06-26T00:00:00.000Z",
+    rows: [
+      {
+        signer: "5Sig",
+        tx_count: 100,
+        total_fee_tao: 1.5,
+        total_tip_tao: 0.1,
+        last_tx_block: 8490000,
+      },
+      { signer: "", tx_count: 1 }, // empty signer dropped
+    ],
+  });
+  assert.equal(out.signer_count, 1);
+  assert.deepEqual(out.signers[0], {
+    signer: "5Sig",
+    tx_count: 100,
+    total_fee_tao: 1.5,
+    total_tip_tao: 0.1,
+    last_tx_block: 8490000,
+  });
+  assert.deepEqual(buildChainSigners({ window: "7d" }), {
+    schema_version: 1,
+    window: "7d",
+    observed_at: null,
+    signer_count: 0,
+    signers: [],
+  });
+});
+
+test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return {
+              all: () =>
+                Promise.resolve({
+                  results: [
+                    {
+                      signer: "5Top",
+                      tx_count: 900,
+                      total_fee_tao: 3.2,
+                      total_tip_tao: 0,
+                      last_tx_block: 8490697,
+                    },
+                  ],
+                }),
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/signers?window=7d&limit=10",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.signers[0].signer, "5Top");
+  assert.equal(body.data.signers[0].tx_count, 900);
+  const sql = captured[0].sql;
+  assert.match(sql, /GROUP BY signer/);
+  assert.match(sql, /ORDER BY tx_count DESC/);
+  assert.equal(captured[0].params.at(-1), 10);
+});
+
+// ---- fees (#1988) builder + handler ---------------------------------------
+
+test("buildChainFees computes per-day averages + null avg on a zero-extrinsic day", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 100,
+        total_fee_tao: 1.0,
+        total_tip_tao: 0.5,
+      },
+      {
+        day: "2026-06-26",
+        extrinsic_count: 0,
+        total_fee_tao: 0,
+        total_tip_tao: 0,
+      },
+    ],
+    payerRows: [
+      {
+        signer: "5Pay",
+        total_fee_tao: 0.8,
+        total_tip_tao: 0.1,
+        extrinsic_count: 40,
+      },
+    ],
+  });
+  // newest-first ordering
+  assert.deepEqual(
+    out.daily.map((d) => d.day),
+    ["2026-06-26", "2026-06-25"],
+  );
+  const d25 = out.daily.find((d) => d.day === "2026-06-25");
+  assert.equal(d25.avg_fee_tao, 0.01); // 1.0/100
+  assert.equal(d25.avg_tip_tao, 0.005);
+  const d26 = out.daily.find((d) => d.day === "2026-06-26");
+  assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
+  assert.equal(out.top_fee_payers[0].signer, "5Pay");
+});
+
+test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            const rows = /GROUP BY day/.test(sql)
+              ? [
+                  {
+                    day: "2026-06-25",
+                    extrinsic_count: 50,
+                    total_fee_tao: 0.5,
+                    total_tip_tao: 0,
+                  },
+                ]
+              : /GROUP BY signer/.test(sql)
+                ? [
+                    {
+                      signer: "5Pay",
+                      total_fee_tao: 0.5,
+                      total_tip_tao: 0,
+                      extrinsic_count: 50,
+                    },
+                  ]
+                : [];
+            return { all: () => Promise.resolve({ results: rows }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
+  assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
+  const daily = captured.find((q) => /GROUP BY day/.test(q.sql));
+  assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+});
+
+test("the new chain routes are schema-stable empty when D1 is cold", async () => {
+  for (const path of [
+    "/api/v1/chain/calls",
+    "/api/v1/chain/signers",
+    "/api/v1/chain/fees",
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200, `${path} cold → 200`);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.schema_version, 1);
+  }
 });
