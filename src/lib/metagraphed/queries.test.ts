@@ -10,6 +10,7 @@ import {
   flattenSurfaceIncidents,
   normalizeProvider,
   normalizeAccountEvent,
+  normalizeExtrinsic,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -54,6 +55,45 @@ describe("normalizeAccountEvent", () => {
         hotkey: { not: "a string" },
       }),
     ).toBeNull();
+  });
+});
+
+describe("normalizeExtrinsic", () => {
+  it("caps events and call args from detail payloads", () => {
+    const out = normalizeExtrinsic({
+      block_number: 1,
+      extrinsic_index: 2,
+      extrinsic_hash: "0xabc",
+      call_args: Array.from({ length: 80 }, (_, i) => ({ name: `arg_${i}`, value: i })),
+      events: Array.from({ length: 120 }, (_, i) => ({
+        block_number: i,
+        event_index: i,
+        event_kind: "Event",
+      })),
+    });
+
+    expect(out?.call_args).toHaveLength(64);
+    expect(out?.events).toHaveLength(100);
+  });
+
+  it("sanitizes deeply nested and circular call arg values before rendering", () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const deep = { a: { b: { c: { d: { e: { f: { g: { h: { i: "too deep" } } } } } } } } };
+
+    const out = normalizeExtrinsic({
+      block_number: 1,
+      extrinsic_index: 2,
+      extrinsic_hash: "0xabc",
+      call_args: [
+        { name: "deep", value: deep },
+        { name: "circular", value: circular },
+      ],
+    });
+
+    expect(() => JSON.stringify(out?.call_args)).not.toThrow();
+    expect(JSON.stringify(out?.call_args)).toContain("[Max depth exceeded]");
+    expect(JSON.stringify(out?.call_args)).toContain("[Circular]");
   });
 });
 

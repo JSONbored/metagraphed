@@ -87,6 +87,11 @@ const MAX_UPTIME_SURFACES = 500;
 const MAX_UPTIME_DAYS = 366;
 const MAX_HEALTH_TREND_SURFACES = 500;
 const MAX_ACCOUNT_EVENTS = 100;
+const MAX_EXTRINSIC_CALL_ARGS = 64;
+const MAX_EXTRINSIC_EVENTS = 100;
+const MAX_EXTRINSIC_VALUE_DEPTH = 8;
+const MAX_EXTRINSIC_COLLECTION_ENTRIES = 64;
+const MAX_EXTRINSIC_STRING_LENGTH = 2_000;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
 const MAX_ACCOUNT_HISTORY_DAYS = 180;
 const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
@@ -937,9 +942,76 @@ export const blockEventsQuery = (ref: string, params?: QueryParams) =>
     staleTime: STALE_SHORT,
   });
 
+function normalizeExtrinsicCallArgs(raw: unknown): Extrinsic["call_args"] {
+  if (Array.isArray(raw)) {
+    return raw
+      .slice(0, MAX_EXTRINSIC_CALL_ARGS)
+      .filter(isRecord)
+      .map(
+        (arg) =>
+          ({
+            name: truncateString(firstString(arg.name)),
+            value: sanitizeExtrinsicValue(arg.value),
+          }) as ExtrinsicCallArg,
+      );
+  }
+
+  if (isRecord(raw)) {
+    return Object.fromEntries(
+      Object.entries(raw)
+        .slice(0, MAX_EXTRINSIC_CALL_ARGS)
+        .map(([key, value]) => [truncateString(key) ?? key, sanitizeExtrinsicValue(value)]),
+    );
+  }
+
+  return null;
+}
+
+function sanitizeExtrinsicValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
+  if (value === null || value === undefined) return value;
+
+  if (typeof value === "string") return truncateString(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "bigint") return value.toString();
+  if (typeof value !== "object") return String(value);
+
+  if (seen.has(value)) return "[Circular]";
+  if (depth >= MAX_EXTRINSIC_VALUE_DEPTH) return "[Max depth exceeded]";
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    const out = value
+      .slice(0, MAX_EXTRINSIC_COLLECTION_ENTRIES)
+      .map((entry) => sanitizeExtrinsicValue(entry, depth + 1, seen));
+    if (value.length > MAX_EXTRINSIC_COLLECTION_ENTRIES) out.push("[Truncated]");
+    seen.delete(value);
+    return out;
+  }
+
+  const out = Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, MAX_EXTRINSIC_COLLECTION_ENTRIES)
+      .map(([key, entry]) => [
+        truncateString(key) ?? key,
+        sanitizeExtrinsicValue(entry, depth + 1, seen),
+      ]),
+  );
+  if (Object.keys(value as Record<string, unknown>).length > MAX_EXTRINSIC_COLLECTION_ENTRIES) {
+    out.__truncated = true;
+  }
+  seen.delete(value);
+  return out;
+}
+
+function truncateString(value: string | null | undefined, limit = MAX_EXTRINSIC_STRING_LENGTH) {
+  if (value == null) return value;
+  return value.length > limit ? `${value.slice(0, limit)}…` : value;
+}
+
 // Extrinsic (transaction) explorer — the block explorer's sibling feed. The list
 // is offset-paginated and newest-first; the detail is keyed by 0x extrinsic_hash.
-function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null {
+export function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null {
   if (!isRecord(raw)) return null;
   const blockNumber = firstFiniteNumber(raw.block_number);
   const extrinsicHash = firstString(raw.extrinsic_hash);
@@ -949,14 +1021,7 @@ function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null
     return null;
   }
 
-  const callArgsSource = raw.call_args;
-  const callArgs: Extrinsic["call_args"] = Array.isArray(callArgsSource)
-    ? callArgsSource
-        .filter(isRecord)
-        .map((arg) => ({ ...arg, name: firstString(arg.name) }) as ExtrinsicCallArg)
-    : isRecord(callArgsSource)
-      ? (callArgsSource as Record<string, unknown>)
-      : null;
+  const callArgs = normalizeExtrinsicCallArgs(raw.call_args);
 
   const eventsSource = Array.isArray(rawEvents)
     ? rawEvents
@@ -965,20 +1030,22 @@ function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null
       : [];
 
   const events = Array.isArray(eventsSource)
-    ? eventsSource.filter(isRecord).map((event) => {
-        return {
-          ...(event as Record<string, unknown>),
-          block_number: firstFiniteNumber(event.block_number) ?? null,
-          event_index: firstFiniteNumber(event.event_index) ?? null,
-          event_kind: firstString(event.event_kind),
-          hotkey: firstString(event.hotkey),
-          coldkey: firstString(event.coldkey),
-          netuid: firstFiniteNumber(event.netuid),
-          uid: firstFiniteNumber(event.uid),
-          amount_tao: firstFiniteNumber(event.amount_tao),
-          observed_at: firstString(event.observed_at),
-        } as AccountEvent;
-      })
+    ? eventsSource
+        .slice(0, MAX_EXTRINSIC_EVENTS)
+        .filter(isRecord)
+        .map((event) => {
+          return {
+            block_number: firstFiniteNumber(event.block_number) ?? null,
+            event_index: firstFiniteNumber(event.event_index) ?? null,
+            event_kind: truncateString(firstString(event.event_kind)),
+            hotkey: truncateString(firstString(event.hotkey)),
+            coldkey: truncateString(firstString(event.coldkey)),
+            netuid: firstFiniteNumber(event.netuid),
+            uid: firstFiniteNumber(event.uid),
+            amount_tao: firstFiniteNumber(event.amount_tao),
+            observed_at: truncateString(firstString(event.observed_at)),
+          } as AccountEvent;
+        })
     : [];
 
   return {

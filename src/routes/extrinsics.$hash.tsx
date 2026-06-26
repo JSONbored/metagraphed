@@ -92,7 +92,7 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const sourceRef = extrinsicHashPathSegment(hash);
   const extrinsic = useSuspenseQuery(extrinsicQuery(hash)).data.data;
   const callArgs = extrinsic?.call_args;
-  const events = extrinsic?.events ?? [];
+  const events = (extrinsic?.events ?? []).slice(0, 100);
 
   if (!extrinsic) {
     return (
@@ -322,7 +322,7 @@ function fmtTao(v: number): string {
 
 function renderCallArgs(callArgs: unknown) {
   if (Array.isArray(callArgs)) {
-    const args = callArgs as Array<{ name?: string | null; value?: unknown }>;
+    const args = (callArgs as Array<{ name?: string | null; value?: unknown }>).slice(0, 64);
     if (args.length === 0) {
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
@@ -353,7 +353,7 @@ function renderCallArgs(callArgs: unknown) {
   }
 
   if (callArgs && typeof callArgs === "object") {
-    const entries = Object.entries(callArgs as Record<string, unknown>);
+    const entries = Object.entries(callArgs as Record<string, unknown>).slice(0, 64);
     if (entries.length === 0) {
       return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
     }
@@ -388,7 +388,11 @@ function formatCallArgValue(value: unknown): string {
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
     return String(value);
   if (value === null || value === undefined) return "—";
-  return JSON.stringify(value) ?? String(value);
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return "[Unserializable value]";
+  }
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
