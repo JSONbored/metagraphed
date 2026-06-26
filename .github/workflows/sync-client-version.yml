@@ -1,0 +1,86 @@
+name: Sync client SDK version
+
+# Auto-opens a chore/sync-client-version PR whenever a contract file lands on
+# main without a matching client version bump. This decouples the version bump
+# from the contributor PR, eliminating the packages/client/package.json merge
+# conflicts that occurred when multiple contract PRs were open simultaneously.
+#
+# After this PR merges, dispatch publish-client.yml manually to publish to npm.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/metagraph/openapi.json"
+      - "generated/metagraphed-api.d.ts"
+      - "generated/metagraphed-client.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-client-version
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Open client version bump PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.0
+
+      - name: Compute next patch version
+        id: version
+        run: |
+          current=$(node -p "require('./packages/client/package.json').version")
+          IFS='.' read -r maj min pat <<< "$current"
+          next="${maj}.${min}.$((pat + 1))"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+
+      - name: Bump packages/client/package.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const p = JSON.parse(fs.readFileSync('packages/client/package.json', 'utf8'));
+          p.version = '${{ steps.version.outputs.next }}';
+          fs.writeFileSync('packages/client/package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+
+      - name: Bump packages/client/package-lock.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const l = JSON.parse(fs.readFileSync('packages/client/package-lock.json', 'utf8'));
+          l.version = '${{ steps.version.outputs.next }}';
+          if (l.packages && l.packages['']) l.packages[''].version = '${{ steps.version.outputs.next }}';
+          fs.writeFileSync('packages/client/package-lock.json', JSON.stringify(l, null, 2) + '\n');
+          "
+
+      - name: Open sync PR (no-op if unchanged)
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/sync-client-version
+          delete-branch: true
+          add-paths: |
+            packages/client/package.json
+            packages/client/package-lock.json
+          title: "chore(client): bump SDK to ${{ steps.version.outputs.next }}"
+          commit-message: "chore(client): bump SDK to ${{ steps.version.outputs.next }}"
+          body: |
+            Auto-bumps `@jsonbored/metagraphed` from `${{ steps.version.outputs.current }}` to `${{ steps.version.outputs.next }}` because a contract file changed on main.
+
+            After this merges, dispatch [`publish-client.yml`](../../actions/workflows/publish-client.yml) to publish the updated SDK to npm.
+          labels: |
+            automation

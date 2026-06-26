@@ -181,46 +181,13 @@ describe("discovery conditional requests", () => {
     assert.ok(body.linkset[0]["service-desc"]);
   });
 
-  test("MCP server card returns 404 when the static asset is unavailable", async () => {
-    // ASSETS missing the card -> the handler degrades to a 404 not_found.
-    const url = "https://api.metagraph.sh/.well-known/mcp/server-card.json";
-    const envMiss = {
-      ASSETS: {
-        fetch: async () => new Response("not found", { status: 404 }),
-      },
-    };
-    const res = await mcpServerCardResponse(
-      new Request(url, { method: "GET" }),
-      envMiss,
-    );
-    assert.equal(res.status, 404);
-    const body = await res.json();
-    assert.equal(body.error.code, "not_found");
-
-    // No ASSETS binding at all -> same 404 path (asset === null).
-    const resNoBinding = await mcpServerCardResponse(
-      new Request(url, { method: "GET" }),
-      {},
-    );
-    assert.equal(resNoBinding.status, 404);
-  });
-
   test("MCP server card HEAD returns headers + etag with no body", async () => {
-    const card = { serverInfo: { name: "metagraphed", version: "1" } };
-    const env = {
-      ASSETS: {
-        fetch: async () =>
-          new Response(JSON.stringify(card), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
-      },
-    };
+    // Card is now worker-computed; ASSETS binding is not required.
     const res = await mcpServerCardResponse(
       new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json", {
         method: "HEAD",
       }),
-      env,
+      {},
     );
     assert.equal(res.status, 200);
     assert.ok(res.headers.get("etag"));
@@ -241,26 +208,14 @@ describe("discovery conditional requests", () => {
   });
 
   test("MCP server card honors If-None-Match lists and the * wildcard", async () => {
-    const card = {
-      serverInfo: { name: "metagraphed", version: "1" },
-      endpoint: "https://api.metagraph.sh/mcp",
-    };
-    const env = {
-      ASSETS: {
-        fetch: async () =>
-          new Response(JSON.stringify(card), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
-      },
-    };
+    // Card is now worker-computed; ASSETS binding is not required.
     await assertConditional((headers) =>
       mcpServerCardResponse(
         new Request(
           "https://api.metagraph.sh/.well-known/mcp/server-card.json",
           { headers },
         ),
-        env,
+        {},
       ),
     );
   });

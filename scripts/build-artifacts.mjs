@@ -74,13 +74,8 @@ import {
 } from "../src/contracts.mjs";
 import {
   MCP_SERVER_INFO,
-  MCP_INSTRUCTIONS,
-  MCP_PROTOCOL_VERSIONS,
   MCP_REGISTRY_META,
-  MCP_CAPABILITIES,
-  MCP_RESOURCE_TEMPLATES,
   listToolDefinitions,
-  listPromptDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
 import { buildChangelog } from "./changelog.mjs";
@@ -1828,49 +1823,14 @@ await fs.writeFile(
   "utf8",
 );
 
-// MCP server card + SEP-1960 discovery doc — lets MCP-aware crawlers/registries
-// (Smithery, PulseMCP, mcp.so, the official registry) autodiscover the server.
-// Served as static ASSETS at api.metagraph.sh; reuses the exact MCP
-// server-info/instructions/tool definitions so the card can never drift from
-// what POST /mcp tools/list advertises.
+// SEP-1960 discovery document — lets MCP-aware crawlers/registries (Smithery,
+// PulseMCP, mcp.so, the official registry) autodiscover the server via
+// /.well-known/mcp.json. The server card (SEP-1649) is worker-computed from the
+// live tool registry; only this pointer document is a committed artifact.
 const mcpEndpoint = `${llmsApiBase}/mcp`;
 await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
   recursive: true,
 });
-const serverCardContent = {
-  schema_version: 1,
-  // SEP-1649 server card shape: a nested serverInfo { name, version } is the
-  // standardized identity block. Top-level name/title/version are kept for
-  // backward compatibility with the registries already reading this card.
-  serverInfo: { name: MCP_SERVER_INFO.name, version: MCP_SERVER_INFO.version },
-  name: MCP_SERVER_INFO.name,
-  title: MCP_SERVER_INFO.title,
-  description: MCP_INSTRUCTIONS,
-  version: MCP_SERVER_INFO.version,
-  repository: "https://github.com/JSONbored/metagraphed",
-  documentation: `${llmsApiBase}/llms.txt`,
-  endpoint: mcpEndpoint,
-  transport: "streamable-http",
-  protocol_versions: MCP_PROTOCOL_VERSIONS,
-  authentication: "none",
-  capabilities: MCP_CAPABILITIES,
-  // Backlink to this server's MCP Registry identity (mirrors server.json).
-  _meta: MCP_REGISTRY_META,
-  tools: listToolDefinitions(),
-  resource_templates: MCP_RESOURCE_TEMPLATES,
-  prompts: listPromptDefinitions(),
-};
-await writeJson(
-  path.join(repoRoot, "public/.well-known/mcp/server-card.json"),
-  {
-    ...serverCardContent,
-    // Real publish time + deterministic content fingerprint (issue #349) so
-    // agents don't read the deterministic 1970 generated_at as "stale".
-    generated_at: generatedAt,
-    published_at: publishedAt(),
-    content_hash: hashJson(serverCardContent),
-  },
-);
 await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
   schema_version: 1,
   servers: [

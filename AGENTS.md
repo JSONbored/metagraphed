@@ -30,8 +30,10 @@ process evolves — edits to those files improve both Claude Code and Codex.
    (`Closes #<n>`) and the gate verifies the PR against it; a PR with no linked issue is judged on its
    own merit, never closed for the missing link.
 4. **Schema is the contract; regenerate + commit.** Code/schema changes: edit `schemas/`, run
-   `npm run build`, commit the regenerated `openapi.json` + types/clients in the same PR, or
-   `validate:contract-drift` fails CI. Never hand-edit generated artifacts under `public/`.
+   `npm run build`, commit the regenerated `openapi.json` + generated types in the same PR, or
+   `validate:contract-drift` fails CI. Never hand-edit generated artifacts under `public/`. Do **not**
+   bump `packages/client/package.json` in your PR — the `sync-client-version` workflow handles that
+   post-merge. MCP tool additions do **not** require a server-card regen (it's worker-computed).
 5. **House rules:** Conventional Commits, **no AI/Claude/agent attribution** in commits or PR text; no
    secrets / PATs / wallet paths / private URLs anywhere; health/uptime/latency is **probe-derived
    only** (never hand-set); one focused change per PR; UI/frontend work goes in
