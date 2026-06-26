@@ -2204,6 +2204,89 @@
         ],
         "type": "object"
       },
+      "ChainActivityArtifact": {
+        "additionalProperties": true,
+        "description": "Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold.",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ChainActivityDay"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "days"
+        ],
+        "type": "object"
+      },
+      "ChainActivityDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics.",
+        "properties": {
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "day": {
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "success_rate": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "successful_extrinsics": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unique_signers": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "block_count",
+          "extrinsic_count",
+          "event_count",
+          "successful_extrinsics",
+          "success_rate",
+          "unique_signers"
+        ],
+        "type": "object"
+      },
       "ChangelogArtifact": {
         "allOf": [
           {

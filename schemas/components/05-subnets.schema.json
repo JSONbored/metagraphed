@@ -1763,6 +1763,49 @@
           }
         }
       },
+      "ChainActivityDay": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics.",
+        "required": [
+          "day",
+          "block_count",
+          "extrinsic_count",
+          "event_count",
+          "successful_extrinsics",
+          "success_rate",
+          "unique_signers"
+        ],
+        "properties": {
+          "day": { "type": "string" },
+          "block_count": { "type": "integer", "minimum": 0 },
+          "extrinsic_count": { "type": "integer", "minimum": 0 },
+          "event_count": { "type": "integer", "minimum": 0 },
+          "successful_extrinsics": { "type": "integer", "minimum": 0 },
+          "success_rate": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "unique_signers": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ChainActivityArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold.",
+        "required": ["schema_version", "window", "day_count", "days"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": "string" },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "day_count": { "type": "integer", "minimum": 0 },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainActivityDay" }
+          }
+        }
+      },
       "BlockDetailArtifact": {
         "type": "object",
         "additionalProperties": true,

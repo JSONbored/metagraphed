@@ -55,6 +55,7 @@ import {
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
+import { buildChainActivity } from "../../src/chain-analytics.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -617,6 +618,67 @@ export async function handleGlobalIncidents(request, env, url) {
   return hasD1FallbackRows(incidentRows)
     ? markD1FallbackResponse(response)
     : response;
+}
+
+// Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
+// per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
+// the foundation time-series for the block-explorer "network at a glance" view
+// (epic #1986). Two independent GROUP-BY-day aggregations (extrinsics + blocks)
+// run in parallel and merge in the pure builder, so the route is schema-stable
+// (day_count:0, days:[]) on a cold store and never re-aggregates on an edge hit.
+export async function handleChainActivity(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) return analyticsQueryError(error);
+  return withEdgeCache(request, ctx, env, "chain-activity", async () => {
+    const cutoff = Date.now() - days * DAY_MS;
+    // observed_at is epoch-ms; `/ 1000` (SQLite integer division) → unix seconds
+    // for strftime's 'unixepoch' UTC bucketer. Values are always bound.
+    const [extrinsicRows, blockRows] = await Promise.all([
+      d1All(
+        env,
+        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COUNT(*) AS extrinsic_count,
+                SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successful_extrinsics,
+                COUNT(DISTINCT signer) AS unique_signers
+         FROM extrinsics
+         WHERE observed_at >= ?
+         GROUP BY day`,
+        [cutoff],
+      ),
+      d1All(
+        env,
+        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COUNT(*) AS block_count,
+                SUM(event_count) AS event_count
+         FROM blocks
+         WHERE observed_at >= ?
+         GROUP BY day`,
+        [cutoff],
+      ),
+    ]);
+    const meta = await readHealthMetaKv(env);
+    const data = buildChainActivity({
+      window: label,
+      observedAt: meta?.last_run_at || null,
+      extrinsicRows,
+      blockRows,
+    });
+    const response = await envelopeResponse(
+      request,
+      {
+        data,
+        meta: await analyticsMeta(
+          env,
+          "/metagraph/chain/activity.json",
+          data.observed_at,
+        ),
+      },
+      "short",
+    );
+    return hasD1FallbackRows(extrinsicRows, blockRows)
+      ? markD1FallbackResponse(response)
+      : response;
+  });
 }
 
 // Shared analytics helpers also used by the deferred handler clusters (trajectory,

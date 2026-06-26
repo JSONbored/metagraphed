@@ -43,6 +43,7 @@ import {
   configureAnalytics,
   d1All,
   handleBulkHealthTrends,
+  handleChainActivity,
   handleGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
@@ -1274,6 +1275,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return withEdgeCache(request, ctx, env, "global-incidents", () =>
         handleGlobalIncidents(request, env, resolved.url),
       );
+    }
+    if (resolved.url.pathname === "/api/v1/chain/activity") {
+      return handleChainActivity(request, env, resolved.url, ctx);
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
