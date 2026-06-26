@@ -61,7 +61,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 2258,
-  "full_artifact_size_bytes": 39316840,
+  "full_artifact_size_bytes": 39349766,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -84,6 +84,6 @@
   },
   "storage_tier_size_bytes": {
     "dual": 1907012,
-    "r2": 37409828
+    "r2": 37442754
   }
 }
