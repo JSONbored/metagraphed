@@ -26,8 +26,8 @@
       "Official website currently returns 500/server-error responses to simple probes and should appear degraded until it recovers.",
       "Previously discovered GitHub source repository currently returns 404.",
       "No verified live source repository yet.",
-      "No verified machine-readable OpenAPI/Swagger schema yet.",
-      "No verified safe public subnet API endpoint yet.",
+      "OpenAPI confirmed absent: checked taolend.io/openapi.json (500), taolend.io/api/docs (502), api.taolend.io (502). No machine-readable schema surface exists as of 2026-06-26. Close issue #915.",
+      "Public subnet API confirmed absent: taolend.io origin is degraded (500), api.taolend.io returns 502, github.com/xpenlab/taolend is 404, and the only known source repo (github.com/oxylok/116-taolend) is CLI/smart-contract tooling with no REST API. Close issue #915.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
     ]
