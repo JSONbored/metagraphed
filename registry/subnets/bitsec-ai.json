@@ -1,0 +1,50 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "Bitsec.ai",
+  "netuid": 60,
+  "schema_version": 1,
+  "slug": "sn-60",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-ai-subnet-api",
+      "kind": "subnet-api",
+      "name": "Bitsec public analytics API",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://bitsec.ai/",
+        "https://bitsec.ai/api/openapi.json"
+      ],
+      "url": "https://bitsec.ai/api/analytics"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-60-bitsec-ai-data-artifact",
+      "kind": "data-artifact",
+      "name": "Bitsec jobs leaderboard snapshot",
+      "provider": "bitsec-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://bitsec.ai/",
+        "https://bitsec.ai/api/openapi.json"
+      ],
+      "url": "https://bitsec.ai/api/jobs/leaderboard"
+    }
+  ]
+}
