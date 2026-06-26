@@ -70,9 +70,9 @@ npm run validate:surface -- registry/subnets/<slug>.json
 
 > New subnet with no file yet? `npm run subnet:new -- --netuid <n> --name "<Real Name>" --write` first — a real `--name` is required (placeholder on-chain identities like "Team TBC" are rejected) — then add your surface to it.
 
-A good surface PR is small: one public `url`, one or more `source_urls` proving the claim, and the right `kind`, all in the subnet's single file. Auto-review kinds: `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
+A good surface PR is small: one public `url`, one `source_url` proving the claim, the right `kind`, all on the subnet's single file. Auto-review kinds: `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 
-**Higher-trust kinds** (base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (independent `source_urls` proving ownership).
+**Higher-trust kinds** (base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership).
 
 **Hard boundaries:**
 
@@ -86,7 +86,7 @@ A good surface PR is small: one public `url`, one or more `source_urls` proving 
 | ✅ Tends to get accepted                                                                                          | ❌ Gets closed / routed to manual                                                                    |
 | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/*.json` for a debut)                 | Touches generated artifacts, scripts, or workflows                                                   |
-| A surface with a public `url` **plus** one or more `source_urls` that prove the claim                                 | `source_urls` 404s or don't back the claim                                                            |
+| A surface with a public `url` **plus** a `source_url` that proves the claim                                       | `source_url` 404s or doesn't back the claim                                                          |
 | `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider | A surface the subnet already exposes — duplicate                                                     |
 | `auth_required: false`, `public_safe: true`                                                                       | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |
 

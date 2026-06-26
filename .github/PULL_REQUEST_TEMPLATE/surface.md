@@ -8,7 +8,7 @@ This PR appends or updates surface(s) on exactly one subnet's file —
 - Netuid:
 - Kind:
 - Public URL:
-- Source URLs (one or more, each must prove the claim):
+- Source URL (proves the claim):
 - Provider slug:
 
 ## Checklist
@@ -17,8 +17,8 @@ This PR appends or updates surface(s) on exactly one subnet's file —
       `registry/providers/*.json` for a debut provider).
 - [ ] Generated with `npm run surface:add` — lands `authority: community` and
       `review.state: community-submitted`.
-- [ ] The `url` is public and safe for read-only probes; the `source_urls`
-      independently prove the subnet publishes it.
+- [ ] The `url` is public and safe for read-only probes; the `source_url`
+      independently proves the subnet publishes it.
 - [ ] Public-safe: no auth-only/credentialed flows, secrets, wallet/PAT data,
       private URLs, private dashboards, validator internals, or generated
       `public/metagraph/**` artifacts.
