@@ -281,7 +281,7 @@ function dbWith({
                   if (/FROM account_events/.test(sql)) {
                     return { results: accountEvents || [] };
                   }
-                  // Hash → block_number resolution for block extrinsics/events.
+                  // Ref → block_number resolution for block extrinsics/events.
                   if (
                     /SELECT block_number FROM blocks WHERE block_hash = \?/.test(
                       sql,
@@ -290,6 +290,18 @@ function dbWith({
                     if (blockNumberByHash != null) {
                       return { results: [{ block_number: blockNumberByHash }] };
                     }
+                    if (blockDetail?.block_number != null) {
+                      return {
+                        results: [{ block_number: blockDetail.block_number }],
+                      };
+                    }
+                    return { results: [] };
+                  }
+                  if (
+                    /SELECT block_number FROM blocks WHERE block_number = \?/.test(
+                      sql,
+                    )
+                  ) {
                     if (blockDetail?.block_number != null) {
                       return {
                         results: [{ block_number: blockDetail.block_number }],
@@ -1306,13 +1318,16 @@ describe("handleBlockExtrinsics", () => {
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
     );
-    assert.equal(body.data.block_number, BLOCK_NUM);
+    assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
     assert.deepEqual(body.data.extrinsics, []);
   });
 
   test("happy path lists extrinsics in extrinsic_index ASC order", async () => {
-    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const { env } = dbWith({
+      blockDetail: { block_number: BLOCK_NUM },
+      extrinsics: [extrinsicRow()],
+    });
     const body = await json(
       await handleBlockExtrinsics(
         req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
@@ -1343,6 +1358,21 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.ref, hash);
     assert.equal(body.data.block_number, 9);
     assert.equal(body.data.extrinsics[0].extrinsic_index, 1);
+  });
+
+  test("unknown numeric ref yields block_number:null + empty extrinsics", async () => {
+    const { env } = dbWith({ blocksFeed: [], extrinsics: [] });
+    const body = await json(
+      await handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
+      ),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
   });
 
   test("unknown hash ref yields block_number:null + empty extrinsics", async () => {

@@ -683,15 +683,14 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  let blockNumber = isHash ? null : Number(ref);
-  if (isHash) {
-    const blockRows = await d1All(
-      env,
-      `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`,
-      [ref],
-    );
-    blockNumber = blockRows[0]?.block_number ?? null;
-  }
+  const blockRows = await d1All(
+    env,
+    isHash
+      ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
+      : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
+    [isHash ? ref : Number(ref)],
+  );
+  const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
     blockNumber == null
       ? []
