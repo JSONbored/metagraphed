@@ -291,6 +291,31 @@ test("buildChainCalls is cold-stable (share null on empty window, junk dropped)"
   assert.equal(out.calls[0].share, null); // zero-total denominator
 });
 
+test("buildChainCalls drops empty call_module and call_function buckets", () => {
+  const moduleOnly = buildChainCalls({
+    window: "7d",
+    total: 10,
+    rows: [
+      { call_module: "", count: 5 },
+      { call_module: "Balances", count: 3 },
+    ],
+  });
+  assert.equal(moduleOnly.call_count, 1);
+  assert.equal(moduleOnly.calls[0].call_module, "Balances");
+
+  const moduleFunction = buildChainCalls({
+    window: "7d",
+    groupBy: "module_function",
+    total: 10,
+    rows: [
+      { call_module: "Balances", call_function: "", count: 5 },
+      { call_module: "Balances", call_function: "transfer", count: 2 },
+    ],
+  });
+  assert.equal(moduleFunction.call_count, 1);
+  assert.equal(moduleFunction.calls[0].call_function, "transfer");
+});
+
 test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on junk param", async () => {
   const captured = [];
   const env = {
