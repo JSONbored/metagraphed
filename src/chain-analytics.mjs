@@ -12,8 +12,11 @@ function toCount(value) {
 }
 
 // Round a ratio to 4 dp without trailing float noise (0.99186… → 0.9919).
+// Sub-perfect ratios that would round up to 1.0 are clamped to 0.9999 so a
+// near-perfect day is never reported as a perfect success rate.
 function round4(value) {
-  return Math.round(value * 1e4) / 1e4;
+  const rounded = Math.round(value * 1e4) / 1e4;
+  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 
 // Coerce a D1 fee/tip cell (TAO float, numeric string, or null) to a finite
