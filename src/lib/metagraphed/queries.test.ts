@@ -234,6 +234,25 @@ describe("normalizeAccountHistory", () => {
       },
     ]);
   });
+
+  it("caps oversized account history payloads before normalizing", () => {
+    const out = normalizeAccountHistory(
+      {
+        days: Array.from({ length: 250 }, (_, index) => ({
+          day: `2026-06-${String((index % 28) + 1).padStart(2, "0")}`,
+          netuid: index,
+          event_count: 1,
+          event_kinds: Array.from({ length: 40 }, (__, kindIndex) => `Kind${kindIndex}`),
+        })),
+      },
+      "5Capped",
+    );
+
+    expect(out.day_count).toBe(180);
+    expect(out.days).toHaveLength(180);
+    expect(out.days[0]?.event_kinds).toHaveLength(32);
+    expect(out.days.at(-1)?.netuid).toBe(179);
+  });
 });
 
 describe("normalizeSubnetProfile", () => {

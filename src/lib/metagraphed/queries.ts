@@ -88,6 +88,8 @@ const MAX_UPTIME_DAYS = 366;
 const MAX_HEALTH_TREND_SURFACES = 500;
 const MAX_ACCOUNT_EVENTS = 100;
 const MAX_ACCOUNT_REGISTRATIONS = 100;
+const MAX_ACCOUNT_HISTORY_DAYS = 180;
+const MAX_ACCOUNT_DAY_EVENT_KINDS = 32;
 
 function coerceFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1133,7 +1135,7 @@ function normalizeAccountDay(raw: unknown): AccountDay | undefined {
     day,
     netuid: firstFiniteNumber(raw.netuid) ?? null,
     event_count: firstFiniteNumber(raw.event_count) ?? 0,
-    event_kinds: stringArrayFromUnknown(raw.event_kinds),
+    event_kinds: stringArrayFromUnknown(raw.event_kinds, MAX_ACCOUNT_DAY_EVENT_KINDS),
     first_block: firstFiniteNumber(raw.first_block) ?? null,
     last_block: firstFiniteNumber(raw.last_block) ?? null,
   } as AccountDay;
@@ -1142,7 +1144,7 @@ function normalizeAccountDay(raw: unknown): AccountDay | undefined {
 export function normalizeAccountHistory(raw: unknown, ss58: string): AccountHistory {
   const d = isRecord(raw) ? raw : {};
   const days = Array.isArray(d.days)
-    ? d.days.flatMap((day) => {
+    ? d.days.slice(0, MAX_ACCOUNT_HISTORY_DAYS).flatMap((day) => {
         const normalized = normalizeAccountDay(day);
         return normalized ? [normalized] : [];
       })
@@ -2549,9 +2551,10 @@ export const providerEndpointsQuery = (slug: string) =>
 // ({ netuid, name, slug, coverage_level, curation_level, gaps: { missing_kinds,
 // gap_notes, supported_kinds } }), not flat gap records. Reshape each subnet that
 // has missing surface kinds into a single displayable gap card.
-function stringArrayFromUnknown(value: unknown): string[] {
+function stringArrayFromUnknown(value: unknown, limit?: number): string[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
+  const items = limit == null ? value : value.slice(0, limit);
+  return items.flatMap((item) => {
     if (typeof item === "string") return item;
     if (typeof item === "number" || typeof item === "boolean") return String(item);
     return [];
