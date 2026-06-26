@@ -7,7 +7,7 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability, scoreFromStats } from "./reliability.mjs";
+import { computeReliability, scoreFromStats, displayUptimeRatio } from "./reliability.mjs";
 import {
   rollupSubnetStatus,
   normalizeProbeStatus,
@@ -321,7 +321,7 @@ export function formatTrends({ netuid, observedAt, windows }) {
       perSurface.push({
         surface_id: row.surface_id,
         samples: rowTotal,
-        uptime_ratio: rowTotal ? Number((rowOk / rowTotal).toFixed(4)) : null,
+        uptime_ratio: rowTotal ? displayUptimeRatio(rowOk / rowTotal) : null,
         avg_latency_ms: roundInt(row.avg_latency_ms),
         latency_sample_count: latencySamples,
         latency_ms: {
@@ -334,7 +334,7 @@ export function formatTrends({ netuid, observedAt, windows }) {
     perSurface.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
     return {
       samples: total,
-      uptime_ratio: total ? Number((okCount / total).toFixed(4)) : null,
+      uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
       latency_sample_count: latencySampleTotal,
       surfaces: perSurface,
     };
@@ -405,7 +405,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
       entry.points.push({
         date,
         samples,
-        uptime_ratio: samples ? round4(okCount / samples) : null,
+        uptime_ratio: samples ? displayUptimeRatio(okCount / samples) : null,
         avg_latency_ms: avgLatency,
         latency_sample_count: latencyCount,
       });
@@ -416,7 +416,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
         netuid: entry.netuid,
         samples: entry.samples,
         uptime_ratio: entry.samples
-          ? round4(entry.okCount / entry.samples)
+          ? displayUptimeRatio(entry.okCount / entry.samples)
           : null,
         avg_latency_ms: entry.latencySamples
           ? Math.round(entry.latencyTotal / entry.latencySamples)
@@ -628,7 +628,7 @@ export function formatIncidents({
       return {
         surface_id: row.surface_id,
         samples: total,
-        uptime_ratio: total ? round4(okCount / total) : null,
+        uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
         incident_count: incidents.length,
         downtime_ms: downtimeMs,
         incidents,
@@ -868,7 +868,7 @@ export function formatLeaderboards({
       return {
         netuid: row.netuid,
         ...metaFor(row.netuid),
-        uptime_ratio: total ? round4(ok / total) : null,
+        uptime_ratio: total ? displayUptimeRatio(ok / total) : null,
         surfaces_ok: ok,
         surfaces_total: total,
         avg_latency_ms: roundInt(row.avg_latency_ms),
@@ -1124,7 +1124,7 @@ export function formatUptime({
         surface_id: entry.surface_id || surfaceKey,
         day_count: days.length,
         samples,
-        uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
+        uptime_ratio: samples ? displayUptimeRatio(okCount / samples) : null,
         reliability: reliability.surfaces[surfaceKey] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
