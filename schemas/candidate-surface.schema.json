@@ -13,6 +13,7 @@
     "kind",
     "url",
     "source_url",
+    "source_urls",
     "provider",
     "auth_required",
     "public_safe"
@@ -67,10 +68,12 @@
     },
     "source_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Compatibility field retained for legacy candidates while clients migrate to source_urls. New records should prefer source_urls."
     },
     "source_urls": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "string",
         "format": "uri"

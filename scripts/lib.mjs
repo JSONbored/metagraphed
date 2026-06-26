@@ -1239,6 +1239,22 @@ export function normalizePublicHttpUrl(value) {
   return ["http:", "https:"].includes(protocol) ? normalized : null;
 }
 
+export function evidenceSourceUrls(record = null) {
+  const rawSourceUrls = Array.isArray(record?.source_urls)
+    ? record.source_urls
+    : null;
+  const rawFallback =
+    rawSourceUrls === null && typeof record?.source_url === "string"
+      ? [record.source_url]
+      : [];
+  const urls = [...(rawSourceUrls || rawFallback)]
+    .map((value) =>
+      typeof value === "string" ? value.trim() : ""
+    )
+    .filter(Boolean);
+  return [...new Set(urls)];
+}
+
 // Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
 // deprecated subnets' "https://deprecated.png" + "github.com/username/repo",
 // or "example.com" stubs). These must never surface as real links.

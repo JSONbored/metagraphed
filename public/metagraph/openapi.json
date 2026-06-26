@@ -2212,6 +2212,7 @@
           "kind",
           "url",
           "source_url",
+          "source_urls",
           "provider",
           "auth_required",
           "public_safe"
@@ -13053,6 +13054,7 @@
             "type": "string"
           },
           "source_url": {
+            "description": "Compatibility field retained for legacy contributors while clients migrate to source_urls. New records should prefer source_urls.",
             "format": "uri",
             "type": "string"
           },
@@ -13061,7 +13063,9 @@
               "format": "uri",
               "type": "string"
             },
-            "type": "array"
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"
@@ -15931,6 +15935,9 @@
                         "public_safe": true,
                         "schema_version": 1,
                         "source_url": "https://api.metagraph.sh/example",
+                        "source_urls": [
+                          "https://api.metagraph.sh/example"
+                        ],
                         "state": "schema-invalid",
                         "url": "https://api.metagraph.sh/example"
                       }
@@ -26402,6 +26409,9 @@
                         "public_safe": true,
                         "schema_version": 1,
                         "source_url": "https://api.metagraph.sh/example",
+                        "source_urls": [
+                          "https://api.metagraph.sh/example"
+                        ],
                         "state": "schema-invalid",
                         "url": "https://api.metagraph.sh/example"
                       }
@@ -26417,6 +26427,9 @@
                         "public_safe": true,
                         "schema_version": 1,
                         "source_url": "https://api.metagraph.sh/example",
+                        "source_urls": [
+                          "https://api.metagraph.sh/example"
+                        ],
                         "state": "schema-invalid",
                         "url": "https://api.metagraph.sh/example"
                       }
@@ -26811,6 +26824,9 @@
                         "public_safe": true,
                         "schema_version": 1,
                         "source_url": "https://api.metagraph.sh/example",
+                        "source_urls": [
+                          "https://api.metagraph.sh/example"
+                        ],
                         "state": "schema-invalid",
                         "url": "https://api.metagraph.sh/example"
                       }
@@ -29643,6 +29659,9 @@
                         "public_safe": true,
                         "schema_version": 1,
                         "source_url": "https://api.metagraph.sh/example",
+                        "source_urls": [
+                          "https://api.metagraph.sh/example"
+                        ],
                         "state": "schema-invalid",
                         "url": "https://api.metagraph.sh/example"
                       }

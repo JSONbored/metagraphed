@@ -2198,6 +2198,7 @@
           "kind",
           "url",
           "source_url",
+          "source_urls",
           "provider",
           "auth_required",
           "public_safe"
@@ -13031,6 +13032,7 @@
             "type": "string"
           },
           "source_url": {
+            "description": "Compatibility field retained for legacy contributors while clients migrate to source_urls. New records should prefer source_urls.",
             "format": "uri",
             "type": "string"
           },
@@ -13039,7 +13041,9 @@
               "format": "uri",
               "type": "string"
             },
-            "type": "array"
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"

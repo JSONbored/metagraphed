@@ -14,6 +14,7 @@ import {
   nativeDisplayName,
   OPENAPI_PROBE_PATHS,
   probeOpenApiSpec,
+  evidenceSourceUrls,
   readCommittedManifestGeneratedAt,
   readJson,
   isLikelyProjectDomain,
@@ -1094,17 +1095,19 @@ function addCandidate(candidate) {
   if (reservedCandidateLocators.has(key)) {
     return;
   }
-  const sourceUrl = normalizePublicUrl(candidate.source_url);
-  if (!sourceUrl) {
+  const sourceUrls = evidenceSourceUrls(candidate)
+    .map(normalizePublicUrl)
+    .filter(Boolean);
+  if (sourceUrls.length === 0) {
     return;
   }
 
-  const sourceUrls = [sourceUrl];
+  const stableSourceUrls = [...new Set(sourceUrls)].sort();
   const existing = candidatesByKey.get(key);
   if (existing) {
     existing.source_urls = [
       ...new Set([
-        ...(existing.source_urls || [existing.source_url]),
+        ...(existing.source_urls || []),
         ...sourceUrls,
       ]),
     ].sort();
@@ -1123,8 +1126,8 @@ function addCandidate(candidate) {
     ...candidate,
     id: stableId,
     url: normalizedUrl,
-    source_url: sourceUrl,
-    source_urls: sourceUrls,
+    source_url: stableSourceUrls[0],
+    source_urls: stableSourceUrls,
   });
 }
 

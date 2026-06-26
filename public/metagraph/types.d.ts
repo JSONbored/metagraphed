@@ -2034,7 +2034,7 @@ export interface components {
             source_type?: string;
             /** Format: uri */
             source_url: string;
-            source_urls?: string[];
+            source_urls: string[];
             state: components["schemas"]["CandidateState"];
             subnet_name?: string | null;
             /** @description When set, the id of a curated registry surface that shares this candidate's (netuid, kind, normalized-url) identity. The candidate is a duplicate of an already-verified surface and is excluded from the review/enrichment queue. Null when the candidate is not yet covered by any surface. */
@@ -4709,7 +4709,10 @@ export interface components {
             redirect_target?: string | null;
             source_tier?: components["schemas"]["SourceTier"];
             source_type?: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Compatibility field retained for legacy contributors while clients migrate to source_urls. New records should prefer source_urls.
+             */
             source_url?: string;
             source_urls?: string[];
             status: components["schemas"]["HealthStatus"];
@@ -6829,6 +6832,9 @@ export interface operations {
                      *             "public_safe": true,
                      *             "schema_version": 1,
                      *             "source_url": "https://api.metagraph.sh/example",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
                      *             "state": "schema-invalid",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
@@ -13385,6 +13391,9 @@ export interface operations {
                      *             "public_safe": true,
                      *             "schema_version": 1,
                      *             "source_url": "https://api.metagraph.sh/example",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
                      *             "state": "schema-invalid",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
@@ -13400,6 +13409,9 @@ export interface operations {
                      *             "public_safe": true,
                      *             "schema_version": 1,
                      *             "source_url": "https://api.metagraph.sh/example",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
                      *             "state": "schema-invalid",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
@@ -13673,6 +13685,9 @@ export interface operations {
                      *             "public_safe": true,
                      *             "schema_version": 1,
                      *             "source_url": "https://api.metagraph.sh/example",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
                      *             "state": "schema-invalid",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
@@ -15650,6 +15665,9 @@ export interface operations {
                      *             "public_safe": true,
                      *             "schema_version": 1,
                      *             "source_url": "https://api.metagraph.sh/example",
+                     *             "source_urls": [
+                     *               "https://api.metagraph.sh/example"
+                     *             ],
                      *             "state": "schema-invalid",
                      *             "url": "https://api.metagraph.sh/example"
                      *           }

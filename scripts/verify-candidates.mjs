@@ -7,6 +7,7 @@ import {
   isJsonContentType,
   isUnsafeResolvedUrl,
   redactCredentialedUrl,
+  evidenceSourceUrls,
   loadCandidates,
   readCommittedManifestGeneratedAt,
   readJson,
@@ -70,6 +71,7 @@ console.log(
 );
 
 async function verifyCandidate(candidate) {
+  const sourceUrls = evidenceSourceUrls(candidate);
   const base = {
     candidate_id: candidate.id,
     kind: candidate.kind,
@@ -78,8 +80,8 @@ async function verifyCandidate(candidate) {
     provider: candidate.provider,
     source_tier: candidate.source_tier || null,
     source_type: candidate.source_type || null,
-    source_url: candidate.source_url,
-    source_urls: candidate.source_urls || [candidate.source_url],
+    source_urls: sourceUrls,
+    source_url: candidate.source_url || sourceUrls[0],
     url: candidate.url,
     verified_at: new Date().toISOString(),
   };

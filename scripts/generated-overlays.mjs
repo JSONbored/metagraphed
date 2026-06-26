@@ -6,6 +6,7 @@ import {
   isUnsafeUrl,
   listJsonFiles,
   loadCandidates,
+  evidenceSourceUrls,
   loadNativeSnapshot,
   loadProviders,
   loadVerification,
@@ -188,7 +189,7 @@ export function augmentManualOverlaysWithBaseline(
           surfaceRank(a.kind) - surfaceRank(b.kind) || a.id.localeCompare(b.id),
       );
       const sourceUrls = new Set(
-        surfaces.flatMap((surface) => surface.source_urls || [surface.url]),
+        surfaces.flatMap((surface) => evidenceSourceUrls(surface)),
       );
       const categories = new Set(manualOverlay.categories || []);
       categories.add("baseline-augmented");
@@ -332,7 +333,7 @@ function buildGeneratedOverlay({
 
   const gaps = calculateGaps(promotedSurfaces);
   const sourceUrls = new Set(
-    promotedSurfaces.flatMap((surface) => surface.source_urls || []),
+        promotedSurfaces.flatMap((surface) => evidenceSourceUrls(surface)),
   );
 
   const slug = nativeSubnet.netuid === 0 ? "root" : `sn-${nativeSubnet.netuid}`;
@@ -380,12 +381,12 @@ function hasMaintainerReviewedEvidence(surfaces, decisions) {
 
   const promotedUrls = new Set(
     surfaces
-      .flatMap((surface) => [surface.url, ...(surface.source_urls || [])])
+      .flatMap((surface) => [surface.url, ...evidenceSourceUrls(surface)])
       .map((url) => normalizePublicUrl(url))
       .filter(Boolean),
   );
   return decisions.some((decision) =>
-    (decision.source_urls || [])
+    evidenceSourceUrls(decision)
       .map((url) => normalizePublicUrl(url))
       .filter(Boolean)
       .some((url) => promotedUrls.has(url)),
@@ -536,7 +537,7 @@ function promoteCandidate(candidate, verification) {
     auth_required: false,
     authority: "registry-observed",
     public_safe: true,
-    source_urls: candidate.source_urls || [candidate.source_url],
+    source_urls: evidenceSourceUrls(candidate),
     quality_signals: verification.quality_signals,
     rate_limit: candidate.rate_limit,
     rate_limit_notes: candidate.rate_limit_notes,

@@ -20,6 +20,7 @@ import {
   buildTimestamp,
   readCommittedManifestGeneratedAt,
   cleanDescription,
+  evidenceSourceUrls,
   deriveDescriptionFromNotes,
   deriveDomainTags,
   sanitizeChainText,
@@ -5032,7 +5033,7 @@ function firstSurfaceUrl(surfaces, kind) {
 function profileSourceUrls({ primaryLinks, surfaces }) {
   const urls = new Set(Object.values(primaryLinks).filter(Boolean).sort());
   for (const surface of surfaces) {
-    for (const url of surface.source_urls || []) {
+    for (const url of evidenceSourceUrls(surface)) {
       urls.add(url);
     }
   }
@@ -6365,6 +6366,7 @@ function buildEvidenceLedger({
   }));
 
   const surfaceClaims = surfaceRows.map((surface) => ({
+    source_url: evidenceSourceUrls(surface)[0] || surface.url,
     claim: `${surface.name} is a public ${surface.kind} surface for SN${surface.netuid}.`,
     confidence:
       surface.authority === "official"
@@ -6378,7 +6380,6 @@ function buildEvidenceLedger({
     source_tier:
       surface.authority === "official" ? "provider-claimed" : "community-docs",
     source_type: surface.authority,
-    source_url: surface.source_urls?.[0] || surface.url,
     subject: `surface:${surface.id}`,
     support_summary: `Listed in curated overlay for ${surface.subnet_slug}.`,
     // Real verification time when the surface was actually verified; null when it
@@ -6393,7 +6394,7 @@ function buildEvidenceLedger({
       "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
     source_tier: candidate.source_tier || "community-docs",
     source_type: candidate.source_type || "candidate-discovery",
-    source_url: candidate.source_url,
+    source_url: evidenceSourceUrls(candidate)[0],
     subject: `candidate:${candidate.id}`,
     support_summary:
       candidate.review_notes || "Discovered from public source metadata.",

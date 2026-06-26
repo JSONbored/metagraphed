@@ -10,7 +10,7 @@
 // export of scripts/lib.mjs). lib.mjs re-exports this module, so the two form an
 // ES-module cycle — safe here because the import is consumed only at call time
 // (inside buildEndpointResourceArtifact), never during module evaluation.
-import { surfaceStableKey } from "../lib.mjs";
+import { evidenceSourceUrls, surfaceStableKey } from "../lib.mjs";
 
 export function buildRpcEndpointArtifact({
   surfaces,
@@ -60,7 +60,7 @@ export function buildRpcEndpointArtifact({
         last_checked: healthMeta.last_checked,
         error: health.error || null,
         rate_limit_notes: surface.rate_limit_notes || null,
-        source_urls: surface.source_urls || [],
+        source_urls: evidenceSourceUrls(surface),
       };
     })
     .sort(
@@ -161,7 +161,7 @@ export function buildEndpointResourceArtifact({
       last_checked: healthMeta.last_checked,
       error: monitored ? health.error || null : null,
       rate_limit_notes: surface.rate_limit_notes || null,
-      source_urls: surface.source_urls || [],
+      source_urls: evidenceSourceUrls(surface),
     };
   });
 

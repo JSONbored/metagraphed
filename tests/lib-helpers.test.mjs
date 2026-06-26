@@ -35,6 +35,7 @@ import {
   buildSubnetLineageLinks,
   buildEconomicsArtifact,
   corroboratingSources,
+  evidenceSourceUrls,
   surfaceStableKey,
   sanitizeFixtureBody,
   surfaceFixtureReference,
@@ -220,6 +221,35 @@ describe("corroboratingSources", () => {
     assert.deepEqual(corroboratingSources({}), []);
     assert.deepEqual(corroboratingSources({ source_urls: null }), []);
     assert.deepEqual(corroboratingSources(null), []);
+  });
+});
+
+describe("evidenceSourceUrls", () => {
+  test("uses source_urls when present and deduplicates", () => {
+    assert.deepEqual(
+      evidenceSourceUrls({
+        source_urls: ["https://a.example/", "https://a.example/"],
+        source_url: "https://fallback.example/",
+      }),
+      ["https://a.example/"],
+    );
+  });
+
+  test("falls back to source_url when source_urls is absent", () => {
+    assert.deepEqual(
+      evidenceSourceUrls({ source_url: "https://legacy.example/" }),
+      ["https://legacy.example/"],
+    );
+  });
+
+  test("keeps empty arrays explicit when source_urls is empty", () => {
+    assert.deepEqual(
+      evidenceSourceUrls({
+        source_urls: [],
+        source_url: "https://legacy.example/",
+      }),
+      [],
+    );
   });
 });
 

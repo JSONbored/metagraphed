@@ -22,6 +22,7 @@ import {
   deriveDomainTags,
   subnetLifecycle,
   publicMetagraphRoot,
+  evidenceSourceUrls,
   readJson,
   registrySurfaceKey,
   repoRoot,
@@ -261,24 +262,31 @@ function validateSubnet(
         `${surfaceKey}: schema_url must be a URL`,
       );
     }
+    const sourceUrls = evidenceSourceUrls(surface);
     if (surface.source_urls !== undefined) {
       assert(
         Array.isArray(surface.source_urls),
         `${surfaceKey}: source_urls must be an array`,
       );
-      for (const sourceUrl of surface.source_urls || []) {
+      for (const sourceUrl of surface.source_urls) {
         assert(
           isValidUrl(sourceUrl),
           `${surfaceKey}: source_urls must contain URLs`,
         );
       }
     }
+    if (surface.source_url !== undefined) {
+      assert(
+        isValidUrl(surface.source_url),
+        `${surfaceKey}: source_url must be a URL`,
+      );
+    }
     if (surface.verification !== undefined) {
       validateVerification(`${surfaceKey}:verification`, surface.verification);
     }
     if (surface.authority === "registry-observed") {
       assert(
-        Array.isArray(surface.source_urls) && surface.source_urls.length > 0,
+        sourceUrls.length > 0,
         `${surfaceKey}: source_urls required`,
       );
       const verificationEvidence =
@@ -584,13 +592,20 @@ function validateCandidate(candidate, nativeNetuids, providerIds) {
     normalizePublicHttpUrl(candidate.url) && !isCredentialedUrl(candidate.url),
     `${key}: url must be a public HTTP(S) URL without credentials`,
   );
-  assert(isValidUrl(candidate.source_url), `${key}: source_url must be a URL`);
+  const sourceUrls = evidenceSourceUrls(candidate);
+  if (candidate.source_url !== undefined) {
+    assert(
+      isValidUrl(candidate.source_url),
+      `${key}: source_url must be a URL`,
+    );
+  }
+  assert(sourceUrls.length > 0, `${key}: one of source_url or source_urls is required`);
   if (candidate.source_urls !== undefined) {
     assert(
       Array.isArray(candidate.source_urls),
       `${key}: source_urls must be an array`,
     );
-    for (const sourceUrl of candidate.source_urls || []) {
+    for (const sourceUrl of sourceUrls) {
       assert(isValidUrl(sourceUrl), `${key}: source_urls must contain URLs`);
     }
   }
