@@ -4,6 +4,8 @@
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
 // shaping, and the retention prune. Pure + exported for tests; the Worker runs
 // the D1 I/O.
+import { clampInt } from "../workers/config.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneExtrinsics runs in the HEALTH_PRUNE_CRON.
@@ -195,4 +197,81 @@ export function buildBlockExtrinsics(
     offset: offset ?? null,
     extrinsics,
   };
+}
+
+// ---- Extrinsic D1 read paths -----------------------------------------------
+// One source of truth for the extrinsics SQL + pagination, shared by the REST
+// handlers and the MCP extrinsic tools. `d1` is a
+// (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
+
+// Filtered extrinsic feed (newest first) with keyset cursor support (#1851).
+// Supported filters: signer, callModule, callFunction. A cursor takes precedence
+// over offset when present — uses a (block_number, extrinsic_index) row-value seek.
+export async function loadExtrinsics(
+  d1,
+  { signer, callModule, callFunction, limit, offset, cursor } = {},
+) {
+  const lim = clampInt(limit, 50, 1, 100);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  const conds = [];
+  const params = [];
+  if (signer) {
+    conds.push("signer = ?");
+    params.push(signer);
+  }
+  if (callModule) {
+    conds.push("call_module = ?");
+    params.push(callModule);
+  }
+  if (callFunction) {
+    conds.push("call_function = ?");
+    params.push(callFunction);
+  }
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("(block_number, extrinsic_index) < (?, ?)");
+    params.push(cur[0], cur[1]);
+  }
+  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.extrinsic_index])
+    : null;
+  return buildExtrinsicFeed(rows, { limit: lim, offset: off, nextCursor });
+}
+
+// Per-extrinsic detail by 0x hash or composite "block_number-extrinsic_index"
+// ref. Returns extrinsic:null when the ref is unknown or the store is cold —
+// never throws (schema-stable zero, mirrors the REST route). Events emitted by
+// the extrinsic are NOT embedded here; use get_account_events filtered by block.
+export async function loadExtrinsic(d1, ref) {
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
+  let rows;
+  if (isHash) {
+    rows = await d1(
+      `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
+      [String(ref)],
+    );
+  } else {
+    const [b, i] = String(ref).split("-");
+    const blockNumber = Number(b);
+    const extrinsicIndex = Number(i);
+    rows =
+      Number.isInteger(blockNumber) && Number.isInteger(extrinsicIndex)
+        ? await d1(
+            `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
+            [blockNumber, extrinsicIndex],
+          )
+        : [];
+  }
+  return buildExtrinsic(rows[0], ref);
 }
