@@ -175,8 +175,16 @@ function averageReadiness(netuids, subnetsIndex) {
 }
 
 // uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%".
-function formatUptimePercent(ratio) {
-  const pct = Math.round((Number(ratio) || 0) * 10000) / 100;
+export function formatUptimePercent(ratio) {
+  const value = Number(ratio) || 0;
+  let pct = Math.round(value * 10000) / 100;
+  // Only an exact full ratio reads as "100%". A sub-1 ratio in [0.99995, 1)
+  // rounds up to 100, which would render a perfect-uptime badge for a service
+  // that is not actually at 100%; clamp it down to the largest 2-decimal value
+  // below 100 so the badge never overstates reliability.
+  if (pct >= 100 && value < 1) {
+    pct = 99.99;
+  }
   return `${pct}%`;
 }
 
