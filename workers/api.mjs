@@ -2328,8 +2328,13 @@ async function handleLeaderboards(request, env, url) {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples, economicsRows] = await Promise.all(
-    [
+  // 30d window for the durable reliability board (matches the reliability/badge
+  // default), distinct from the 7d completeness-growth window above.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, economicsRows, reliabilityRows] =
+    await Promise.all([
       d1All(
         env,
         `SELECT netuid,
@@ -2359,8 +2364,20 @@ async function handleLeaderboards(request, env, url) {
       ),
       // Economic boards: the economics tier alongside the operational D1 queries.
       resolveEconomicsRows(env),
-    ],
-  );
+      // Durable reliability board: per-subnet windowed uptime + latency from the
+      // surface_uptime_daily rollup (one GROUP BY netuid round-trip).
+      d1All(
+        env,
+        `SELECT netuid,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              ${dailyLatencyColumns({ roundedAvg: true })}
+       FROM surface_uptime_daily
+       WHERE day >= ?
+       GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
 
   // Per-subnet completeness delta over the window (latest - earliest sample).
   const growthByNetuid = new Map();
@@ -2392,6 +2409,7 @@ async function handleLeaderboards(request, env, url) {
     rpcRows,
     mostComplete,
     growthRows,
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
@@ -2409,7 +2427,7 @@ async function handleLeaderboards(request, env, url) {
     },
     "standard",
   );
-  return hasD1FallbackRows(healthRows, rpcRows, growthSamples)
+  return hasD1FallbackRows(healthRows, rpcRows, growthSamples, reliabilityRows)
     ? markD1FallbackResponse(response)
     : response;
 }
