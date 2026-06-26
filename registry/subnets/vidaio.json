@@ -100,6 +100,44 @@
       "schema_url": "https://api.vidaio.io/openapi.json",
       "source_urls": ["https://vidaio.io/"],
       "url": "https://api.vidaio.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-subnet-api",
+      "kind": "subnet-api",
+      "name": "Vidaio API health",
+      "notes": "Public, unauthenticated JSON health endpoint for the Vidaio hosted API (api.vidaio.io). Documented in the live OpenAPI spec at GET /health; returns {\"status\":\"ok\"}.",
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://api.vidaio.io/openapi.json",
+        "https://vidaio.io/"
+      ],
+      "url": "https://api.vidaio.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-data-artifact",
+      "kind": "data-artifact",
+      "name": "Vidaio API readiness status",
+      "notes": "Public JSON readiness probe for the Vidaio hosted API. Documented in the live OpenAPI spec at GET /ready; returns {\"status\":\"ok\"} without authentication.",
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "rascalchow"
+      },
+      "source_urls": [
+        "https://api.vidaio.io/openapi.json",
+        "https://vidaio.io/"
+      ],
+      "url": "https://api.vidaio.io/ready"
     }
   ],
   "website_url": "https://vidaio.io/"
