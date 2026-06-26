@@ -1,11 +1,14 @@
 import {
-  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
 } from "../src/contracts.mjs";
-import { applyQueryFilters } from "./list-query.mjs";
+import {
+  applyQueryFilters,
+  canonicalListSearch,
+  paginationLinkHeader,
+} from "./list-query.mjs";
 import {
   apiHeaders,
   errorResponse,
@@ -39,12 +42,13 @@ import {
   analyticsQueryError,
   configureAnalytics,
   d1All,
-  d1Runner,
   handleBulkHealthTrends,
   handleGlobalIncidents,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
+  hasD1FallbackRows,
+  markD1FallbackResponse,
   validateQueryParams,
   withEdgeCache,
 } from "./request-handlers/analytics.mjs";
@@ -123,6 +127,7 @@ import { dailyLatencyColumns } from "../src/health-sql.mjs";
 import {
   buildGlobalHealth,
   formatLeaderboards,
+  formatTrajectory,
   formatUptime,
   LEADERBOARD_BOARDS,
   mergeFreshness,
@@ -133,7 +138,6 @@ import {
   overlayOverviewHealth,
   overlaySubnetEconomics,
   overlaySubnetHealth,
-  loadSubnetTrajectory,
   resolveLiveEconomics,
   resolveLiveHealth,
 } from "../src/health-serving.mjs";
@@ -284,39 +288,11 @@ const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 // params at all, so their canonical search is the empty string. Shared by both
 // the static edge cache and the live-overlay collection cache.
 function canonicalCacheSearch(url, matched) {
-  const config = API_QUERY_COLLECTIONS[matched.queryCollection];
-  if (!config) return "";
-  const filterNames =
-    matched.queryFilterNames?.length > 0
-      ? matched.queryFilterNames
-      : Object.keys(config.filters);
-  // Range filters expose `min_<field>`/`max_<field>` params; csv/array filters
-  // expose their own param names. All of these change the filtered body, so they
-  // must be part of the cache key (omitting them would collide distinct queries).
-  const rangeNames = (config.range_filters || []).flatMap((field) => [
-    `min_${field}`,
-    `max_${field}`,
-  ]);
-  const csvNames = Object.keys(config.csv_filters || {});
-  const arrayNames = Object.keys(config.array_filters || {});
-  const cacheableNames = [
-    "q",
-    "fields",
-    "limit",
-    "cursor",
-    "sort",
-    "order",
-    ...filterNames,
-    ...csvNames,
-    ...arrayNames,
-    ...rangeNames,
-  ];
-  const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");
-  for (const name of cacheableNames) {
-    const value = url.searchParams.get(name);
-    if (value !== null) canonicalUrl.searchParams.set(name, value);
-  }
-  return canonicalUrl.search;
+  return canonicalListSearch(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames || [],
+  );
 }
 
 export default {
@@ -1667,6 +1643,21 @@ function artifactPathForNetwork(artifactPath, network = DEFAULT_NETWORK) {
   );
 }
 
+// Re-inserts the /{network}/ segment that resolveNetworkPrefix strips before
+// dispatch, so a self-referential link (e.g. the pagination Link header) stays
+// on the network the client asked for. Mainnet (prefix "") is a no-op.
+function networkPublicUrl(url, network) {
+  if (!network.prefix) {
+    return url;
+  }
+  const publicUrl = new URL(url);
+  publicUrl.pathname = publicUrl.pathname.replace(
+    /^\/(api\/v1|metagraph)(\/|$)/,
+    `/$1/${network.prefix}$2`,
+  );
+  return publicUrl;
+}
+
 // Friendly per-subnet routes: /api/v1/subnets/<slug>/... resolves to the netuid
 // (e.g. /api/v1/subnets/allways → /api/v1/subnets/7). Worker-only — the slug→
 // netuid map is read from the served subnets.json and cached per isolate; no new
@@ -2078,6 +2069,17 @@ async function handleApiRequest(
       responseData = { ...responseData, ...patch };
     }
   }
+  // Advertise the page chain via an RFC 8288 Link header on paginated list
+  // responses. networkPublicUrl restores the prefix stripped before dispatch;
+  // paginationLinkHeader returns null (no header) for non-list/single-page data.
+  const linkValue = paginationLinkHeader(
+    networkPublicUrl(url, network),
+    transformed.meta.pagination,
+    {
+      queryCollection: matched.queryCollection,
+      queryFilterNames: matched.queryFilterNames || [],
+    },
+  );
   const response = await envelopeResponse(
     request,
     {
@@ -2097,6 +2099,7 @@ async function handleApiRequest(
       },
     },
     matched.cache,
+    linkValue ? { link: linkValue } : {},
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
   // are skipped even when their live store is cold and the response falls back
@@ -2119,8 +2122,19 @@ async function handleApiRequest(
 async function handleTrajectory(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
-  const data = await loadSubnetTrajectory(d1Runner(env), netuid);
-  return envelopeResponse(
+  const rows = await d1All(
+    env,
+    `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
+            validator_count, miner_count, total_stake_tao, alpha_price_tao,
+            emission_share
+     FROM subnet_snapshots
+     WHERE netuid = ?
+     ORDER BY snapshot_date DESC
+     LIMIT 400`,
+    [netuid],
+  );
+  const data = formatTrajectory({ netuid, rows });
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2132,6 +2146,7 @@ async function handleTrajectory(request, env, netuid, url) {
     },
     "short",
   );
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // Long-term daily uptime history for one subnet's operational surfaces, served
@@ -2190,7 +2205,7 @@ async function handleUptime(request, env, netuid, url) {
     rows,
     now: new Date().toISOString(),
   });
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2202,6 +2217,7 @@ async function handleUptime(request, env, netuid, url) {
     },
     "short",
   );
+  return hasD1FallbackRows(rows) ? markD1FallbackResponse(response) : response;
 }
 
 // Small {meta, completeness} projection over profiles.json, cached in-isolate.
@@ -2359,7 +2375,7 @@ async function handleLeaderboards(request, env, url) {
     economicsRows,
     subnetMeta,
   });
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2373,6 +2389,9 @@ async function handleLeaderboards(request, env, url) {
     },
     "standard",
   );
+  return hasD1FallbackRows(healthRows, rpcRows, growthSamples)
+    ? markD1FallbackResponse(response)
+    : response;
 }
 
 // The data domains /api/v1/compare can place side by side: registry structure
@@ -2559,7 +2578,7 @@ async function handleCompare(request, env, url) {
     healthRows,
     observedAt: meta?.last_run_at ?? null,
   });
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -2573,6 +2592,9 @@ async function handleCompare(request, env, url) {
     },
     "standard",
   );
+  return hasD1FallbackRows(healthRows)
+    ? markD1FallbackResponse(response)
+    : response;
 }
 
 function matchRawArtifact(pathname) {

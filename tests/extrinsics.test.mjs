@@ -16,7 +16,7 @@ import { encodeCursor } from "../src/cursor.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
-test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
+test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345/#1855)", () => {
   assert.deepEqual(EXTRINSIC_INSERT_COLUMNS, [
     "block_number",
     "extrinsic_index",
@@ -27,8 +27,11 @@ test("EXTRINSIC_INSERT_COLUMNS is the stable load contract (#1345)", () => {
     "call_args",
     "success",
     "fee_tao",
+    "tip_tao",
     "observed_at",
   ]);
+  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
+  assert.equal(EXTRINSIC_INSERT_COLUMNS.length, 11);
 });
 
 test("validExtrinsicRows enforces the strict row shape (#1345)", () => {
@@ -73,13 +76,13 @@ test("extrinsicInsertStatements builds chunked parameterized INSERT OR IGNORE", 
     observed_at: 1,
   }));
   const stmts = extrinsicInsertStatements(db, rows);
-  // 30 rows / 10 per statement = 3 statements (10, 10, 10)
-  assert.equal(stmts.length, 3);
+  // 30 rows / 9 per statement = 4 statements (9, 9, 9, 3)
+  assert.equal(stmts.length, 4);
   assert.ok(prepared[0].startsWith("INSERT OR IGNORE INTO extrinsics ("));
   assert.ok(prepared[0].includes("VALUES (?"));
-  // Every value is BOUND (10 cols x 10 rows = 100 params on a full chunk, <=100).
-  assert.equal(stmts[0].v.length, 10 * 10);
-  // All ten columns appear in the column list.
+  // Every value is BOUND (11 cols x 9 rows = 99 params on a full chunk, <=100).
+  assert.equal(stmts[0].v.length, 11 * 9);
+  // All eleven columns appear in the column list.
   for (const col of EXTRINSIC_INSERT_COLUMNS) {
     assert.ok(prepared[0].includes(col), `missing ${col}`);
   }
@@ -94,8 +97,20 @@ test("extrinsicInsertStatements binds missing fields as null (never interpolates
   const [stmt] = extrinsicInsertStatements(db, [
     { block_number: 7, extrinsic_index: 2, observed_at: 9 },
   ]);
-  // extrinsic_hash, signer, call_module, call_function, call_args, success, fee_tao default to null.
-  assert.deepEqual(stmt.v, [7, 2, null, null, null, null, null, null, null, 9]);
+  // hash, signer, call_module, call_function, call_args, success, fee_tao, tip_tao default to null.
+  assert.deepEqual(stmt.v, [
+    7,
+    2,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    9,
+  ]);
 });
 
 test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)", () => {
@@ -108,6 +123,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
     call_function: "add_stake",
     call_args: '[{"name":"hotkey","value":"5H..."}]',
     fee_tao: 0.0125,
+    tip_tao: 0.5,
     success: 1,
     observed_at: 1750000000000,
   });
@@ -119,6 +135,7 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.call_function, "add_stake");
   assert.deepEqual(out.call_args, [{ name: "hotkey", value: "5H..." }]);
   assert.equal(out.fee_tao, 0.0125);
+  assert.equal(out.tip_tao, 0.5);
   assert.equal(out.success, true);
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
@@ -440,9 +457,15 @@ test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
       },
     },
   };
+  // from/to must land inside the retained hot window; an impossible/expired
+  // range (e.g. the 1970 epoch) is intentionally short-circuited before the
+  // WHERE clause is ever built (#1846 DoS hardening), so use a recent window
+  // here to exercise the full conjunctive filter path this test asserts.
+  const toMs = Date.now();
+  const fromMs = toMs - 60_000;
   const res = await handleRequest(
     req(
-      "/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=1000&to=2000",
+      `/api/v1/extrinsics?signer=5Signer&call_module=SubtensorModule&call_function=add_stake&success=false&block_start=100&block_end=200&from=${fromMs}&to=${toMs}`,
     ),
     env,
     {},

@@ -3,6 +3,8 @@
 // (substrate System.Events), NOT Taostats. This module holds the load contract,
 // the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
 // for tests; the Worker runs the D1 I/O.
+import { clampInt } from "../workers/config.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneAccountEvents runs in HEALTH_PRUNE_CRON.
@@ -20,10 +22,13 @@ export const EVENT_INSERT_COLUMNS = [
   "netuid",
   "uid",
   "amount_tao",
+  // The alpha leg of a stake swap (#1856): subnet alpha bought/sold, in TAO units.
+  // Only StakeAdded/StakeRemoved carry it; null for every other kind. Display-only.
+  "alpha_amount",
   "observed_at",
   // The 0-based index of the extrinsic that emitted this event (#1849), read from
   // the event's phase=ApplyExtrinsic; null for Initialization/Finalization events.
-  // 10 cols x ROWS_PER_STMT(10) = 100 bound params — exactly D1's ceiling.
+  // 11 cols x ROWS_PER_STMT(9) = 99 bound params — under D1's 100 ceiling.
   "extrinsic_index",
 ];
 
@@ -56,6 +61,7 @@ export function formatAccountEvent(row) {
     netuid: row.netuid ?? null,
     uid: row.uid ?? null,
     amount_tao: row.amount_tao ?? null,
+    alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
     extrinsic_index: row.extrinsic_index ?? null,
   };
@@ -151,14 +157,14 @@ export function validEventRows(rows) {
 }
 
 // Build parameterized INSERT OR IGNORE statements for account_events rows, chunked
-// under D1's 100-bound-param limit (9 cols x 10 = 90). Idempotent on (block_number,
+// under D1's 100-bound-param limit (11 cols x 9 = 99). Idempotent on (block_number,
 // event_index). Values are ALWAYS bound, never interpolated — a tampered payload
 // can only fail, never inject. Shared by loadStagedEvents (#1346) + the ingest
 // endpoint (#1360).
 export function eventInsertStatements(db, rows) {
   const cols = EVENT_INSERT_COLUMNS;
   const colList = cols.join(",");
-  const ROWS_PER_STMT = 10;
+  const ROWS_PER_STMT = 9;
   const statements = [];
   for (let i = 0; i < rows.length; i += ROWS_PER_STMT) {
     const chunk = rows.slice(i, i + ROWS_PER_STMT);
@@ -180,7 +186,7 @@ export function eventInsertStatements(db, rows) {
 // ---- Entity API builders (#1347) -------------------------------------------
 // The columns the account handlers SELECT for an event row.
 export const ACCOUNT_EVENT_COLUMNS =
-  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, observed_at, extrinsic_index";
+  "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index";
 
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
@@ -371,4 +377,111 @@ export function buildAccountTransfers(rows, ss58, { limit, offset } = {}) {
     offset: offset ?? null,
     transfers,
   };
+}
+
+// ---- Account D1 read paths -------------------------------------------------
+// One source of truth for the account SQL + pagination, shared by the REST
+// handlers and the MCP account tools. `d1` is a (sql, params) => Promise<rows[]>
+// runner; a cold/unbound DB yields [] → a schema-stable zero payload.
+
+// Events match either key (a coldkey controls hotkeys); a registration is hotkey-only.
+const ACCOUNT_EVENT_MATCH = "hotkey = ? OR coldkey = ?";
+const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
+// Bound public account-summary signing activity to the newest signer rows. This
+// keeps /api/v1/accounts/{ss58} from doing full retained-history aggregates for
+// high-volume signers on every unauthenticated request.
+export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
+
+// Cross-subnet summary: event aggregates, per-kind counts, the 10 newest events,
+// current registrations, and bounded signing-activity aggregates from the extrinsics tier.
+export async function loadAccountSummary(d1, ss58) {
+  const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
+    await Promise.all([
+      d1(
+        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${ACCOUNT_EVENT_MATCH}`,
+        [ss58, ss58],
+      ),
+      d1(
+        `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${ACCOUNT_EVENT_MATCH} GROUP BY event_kind ORDER BY count DESC`,
+        [ss58, ss58],
+      ),
+      d1(
+        `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+        [ss58],
+      ),
+      d1(
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${ACCOUNT_EVENT_MATCH} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+        [ss58, ss58],
+      ),
+      // Signing activity from the extrinsics tier, matched by signer and
+      // explicitly bounded to the newest rows before aggregation. The inner
+      // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_order
+      // (migration 0021_extrinsics_filter_indexes), so the bound is an indexed
+      // LIMIT, not a sort-then-truncate over the signer's full retained history.
+      d1(
+        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
+        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
+      ),
+      d1(
+        `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC LIMIT 10`,
+        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
+      ),
+    ]);
+  return buildAccountSummary(ss58, {
+    agg: aggRows[0],
+    kinds: kindRows,
+    registrations: regRows,
+    recent: recentRows,
+    activity: activityRows[0],
+    modules: moduleRows,
+  });
+}
+
+// Paginated event history (newest first), optional kind filter, offset or keyset
+// cursor. Clamps internally so REST and MCP agree; a cursor overrides offset.
+export async function loadAccountEvents(
+  d1,
+  ss58,
+  { limit, offset, kind, cursor } = {},
+) {
+  const lim = clampInt(limit, 100, 1, 1000);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  const params = [ss58, ss58];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (${ACCOUNT_EVENT_MATCH})`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  return buildAccountEvents(rows, ss58, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
+}
+
+// The subnets where this account's hotkey is currently registered — the
+// cross-subnet footprint, ordered by netuid.
+export async function loadAccountSubnets(d1, ss58) {
+  const rows = await d1(
+    `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY netuid`,
+    [ss58],
+  );
+  return buildAccountSubnets(rows, ss58);
 }

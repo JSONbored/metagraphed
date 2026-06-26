@@ -23,6 +23,21 @@ export default defineConfig({
     // to a temp dir without a full input+output tree copy — serializing files
     // is the clean, low-risk fix. Per-file fork isolation is preserved; only
     // filesystem-race concurrency is removed.
+    //
+    // This serial default keeps a plain `npm test` / `npm run test:coverage`
+    // (which runs the FULL suite, including the two filesystem-mutating writers)
+    // race-free. CI instead runs the suite in two non-overlapping passes that
+    // recover the parallelism: `test:ci` runs everything EXCEPT the two writers
+    // with `--fileParallelism` (the 27 createLocalArtifactEnv readers only READ,
+    // so they parallelize safely once no writer runs alongside them) and a raised
+    // `--testTimeout` (the subprocess-spawning tests — public-safety's full-repo
+    // scan, script-utils, r2-upload — are CPU-starved under parallel load and
+    // would otherwise hit the 5s default); `test:ci:artifacts` then runs the two
+    // writers serially. The passes are sequential, so writers never overlap
+    // readers. Coverage is collected only in `test:ci` (the writers drive their
+    // work via execFileSync child processes, contributing zero in-process
+    // coverage — verified Δ=0.00 across all metrics), keeping CI to a single
+    // Codecov upload.
     fileParallelism: false,
     reporters: junitPath ? ["default", "junit"] : ["default"],
     ...(junitPath ? { outputFile: { junit: junitPath } } : {}),

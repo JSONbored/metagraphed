@@ -135,7 +135,7 @@ function markD1FallbackResponse(response) {
 
 async function d1All(env, sql, params) {
   const db = env.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return [];
+  if (!db?.prepare) return markD1FallbackRows([]);
   try {
     const result = await withTimeout(
       db
@@ -331,7 +331,7 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
     const windowRows = await Promise.all(
       Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
         if (!db?.prepare) {
-          return [label, []];
+          return [label, markD1FallbackRows([])];
         }
         try {
           const result = await withTimeout(
@@ -602,7 +602,7 @@ export async function handleGlobalIncidents(request, env, url) {
     incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
   });
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data,
@@ -614,6 +614,9 @@ export async function handleGlobalIncidents(request, env, url) {
     },
     "short",
   );
+  return hasD1FallbackRows(incidentRows)
+    ? markD1FallbackResponse(response)
+    : response;
 }
 
 // Shared analytics helpers also used by the deferred handler clusters (trajectory,
@@ -626,5 +629,7 @@ export {
   analyticsWindow,
   d1All,
   d1Runner,
+  hasD1FallbackRows,
+  markD1FallbackResponse,
   validateQueryParams,
 };

@@ -58,10 +58,18 @@ jobs:
       - name: Prepare test reports dir
         run: mkdir -p reports/junit
 
-      - name: Test (with coverage gate)
+      # The suite runs in two non-overlapping passes (see vitest.config.mjs's
+      # fileParallelism note). `test:ci` runs the parallelizable bulk — every
+      # file EXCEPT the two filesystem-mutating artifact writers — concurrently
+      # WITH coverage; `test:ci:artifacts` (the last step below) then runs those
+      # two writers serially, after coverage is already captured + uploaded. The
+      # writers drive their work via execFileSync child processes and add zero
+      # in-process coverage, so coverage comes only from `test:ci` and CI still
+      # makes a single Codecov upload.
+      - name: Test (parallel, with coverage gate)
         env:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
-        run: npm run test:coverage
+        run: npm run test:ci
 
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
@@ -82,6 +90,14 @@ jobs:
           files: ./reports/junit/vitest.xml
           report_type: test_results
           fail_ci_if_error: false
+
+      # The two filesystem-mutating artifact writers, run serially LAST so they
+      # never overlap the parallel readers above and coverage is already
+      # uploaded. They mutate the same on-disk artifact tree, so they cannot run
+      # concurrently with each other either — the serial default applies. This is
+      # a pure correctness gate (no coverage); a failure here still fails the job.
+      - name: Test (artifact writers, serial)
+        run: npm run test:ci:artifacts
 
   checks:
     name: checks
@@ -175,18 +191,26 @@ jobs:
       - name: Verify committed derived artifacts are fresh
         run: |
           # Only CONTRACT artifacts are gated here — openapi.json / types.d.ts /
-          # contracts.json / api-index.json / operational-surfaces.json — because they
-          # change only with reviewed schema/source PRs and MUST be regenerated +
-          # committed. DATA-derived artifacts are NOT gated: they re-drift on every
-          # registry/data edit and would red-line build-less community surface PRs (the
-          # single-file model makes adding a surface a one-file data PR). Those are
-          # handled out-of-band: public/datasets/ + the llms.txt catalogs are gitignored
-          # (rebuilt + served via ASSETS on deploy); r2-manifest.json is the publish
-          # lockfile; schemas/index.json is a network-capture cache the build reconciles
-          # in place (a new openapi surface legitimately adds a not-captured placeholder).
+          # contracts.json / api-index.json — because they change only with reviewed
+          # schema/source PRs and MUST be regenerated + committed. DATA/CONTENT-derived
+          # artifacts are NOT gated: they re-drift on every registry/data edit and would
+          # red-line build-less community surface PRs (the single-file model makes adding
+          # a surface a one-file data PR). Those are handled out-of-band: public/datasets/
+          # + the llms.txt catalogs are gitignored (rebuilt + served via ASSETS on
+          # deploy); r2-manifest.json is the publish lockfile; schemas/index.json is a
+          # network-capture cache the build reconciles in place (a new openapi surface
+          # legitimately adds a not-captured placeholder); and operational-surfaces.json
+          # is CONTENT-derived — the prober's input list regenerates whenever a
+          # probe-enabled, public-safe operational-kind surface (subnet-api / sse /
+          # data-artifact / wss / rpc) is added or changed, which a one-file community
+          # surface PR does NOT regenerate (there is no authority/review gate on that
+          # list). It stays committed so the prober's ASSETS read succeeds on a cold
+          # start, but the served copy is rebuilt fresh on every deploy — so a
+          # momentarily-stale git copy is a tolerated cache, not a runtime fault.
           excludes=(
             ':(exclude)public/metagraph/r2-manifest.json'
             ':(exclude)public/metagraph/schemas/index.json'
+            ':(exclude)public/metagraph/operational-surfaces.json'
             ':(exclude)public/datasets'
           )
           status=$(git status --porcelain --untracked-files=all -- public/ "${excludes[@]}")

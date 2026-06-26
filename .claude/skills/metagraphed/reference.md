@@ -72,15 +72,21 @@ Subnet-level fields you must **not** touch in a community PR: `curation` (`level
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
 one-file surface PR runs the same gates as a code PR. Two parallel jobs both build:
 
-- **`test`** — builds, then `npm run test:coverage` (Codecov is the coverage gate).
+- **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
+  except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
+  Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
+  `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe).
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
 `validate:committed-seed` · `npm run build` · committed-derived-artifact freshness (working tree clean
-under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA artifacts like
-`public/datasets/` + the llms.txt catalogs are gitignored, and the README catalog is refreshed
-out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas` · `validate:api` ·
+under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/CONTENT-derived artifacts
+are NOT: `public/datasets/` + the llms.txt catalogs are gitignored, the README catalog is refreshed
+out-of-band by `readme-catalog-refresh.yml`, and `operational-surfaces.json` is committed-but-excluded —
+adding a probe-enabled operational-kind surface (subnet-api/sse/data-artifact) regenerates the prober's
+input list, which a one-file surface PR does not commit; it is served fresh on deploy) · `validate` ·
+`validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
 `validate:migrations` (unique, gap-free D1 migration prefixes) ·
@@ -88,8 +94,9 @@ out-of-band by `readme-catalog-refresh.yml`) · `validate` · `validate:schemas`
 (gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
 fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
 
-Codecov is configured in `codecov.yml`; run `npm run test:coverage` unsharded locally (CI shards +
-merges, so a single shard under-reports).
+Codecov is configured in `codecov.yml`; run `npm run test:coverage` locally for the full-suite number.
+CI uploads coverage once, from the `test:ci` pass — the two artifact writers run via child processes
+and contribute no in-process coverage, so splitting them out is coverage-neutral.
 
 ---
 

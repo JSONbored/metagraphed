@@ -3231,6 +3231,292 @@ describe("MCP economics + metagraph data tools", () => {
   });
 });
 
+describe("MCP account tools (get_account + events + subnets)", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  // A D1 binding that routes by SQL shape so the account loaders get realistic
+  // rows. Order matters: GROUP BY (kinds) before COUNT (agg), as in the REST
+  // account-routes test. `capture` records each bound (sql, params) so a test can
+  // assert the clamped LIMIT/OFFSET actually reached the query.
+  function accountD1({ agg, kinds, registrations, events } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/GROUP BY event_kind/.test(sql))
+                    return Promise.resolve({ results: kinds || [] });
+                  if (/COUNT\(\*\) AS c/.test(sql))
+                    return Promise.resolve({ results: agg ? [agg] : [] });
+                  if (/FROM neurons/.test(sql))
+                    return Promise.resolve({ results: registrations || [] });
+                  if (/FROM account_events/.test(sql))
+                    return Promise.resolve({ results: events || [] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account returns a cross-subnet summary with booleans coerced", async () => {
+    const env = accountD1({
+      agg: {
+        c: 12,
+        sc: 3,
+        fb: 100,
+        lb: 200,
+        fo: 1750000000000,
+        lo: 1750009000000,
+      },
+      kinds: [
+        { kind: "StakeAdded", count: 7 },
+        { kind: "WeightsSet", count: 5 },
+      ],
+      registrations: [
+        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 1, active: 1 },
+      ],
+      events: [
+        {
+          block_number: 200,
+          event_index: 1,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          observed_at: 1750009000000,
+        },
+      ],
+    });
+    const res = await callTool("get_account", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.event_count, 12);
+    assert.equal(out.subnet_count, 3);
+    assert.equal(out.event_kinds[0].kind, "StakeAdded");
+    assert.equal(out.registrations[0].validator_permit, true);
+    assert.equal(out.recent_events[0].event_kind, "StakeAdded");
+  });
+
+  test("get_account_events filters by kind and echoes the limit", async () => {
+    const capture = [];
+    const env = accountD1(
+      {
+        events: [
+          {
+            block_number: 200,
+            event_index: 1,
+            event_kind: "StakeRemoved",
+            hotkey: SS58,
+            coldkey: null,
+            netuid: 7,
+            uid: 3,
+            amount_tao: 2.0,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: "StakeRemoved", limit: 50 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events[0].event_kind, "StakeRemoved");
+    assert.equal(out.limit, 50);
+    assert.equal(out.offset, 0);
+    // The kind filter must reach the SQL as a bound param (never interpolated).
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.ok(/AND event_kind = \?/.test(eventsQuery.sql));
+    assert.ok(eventsQuery.params.includes("StakeRemoved"));
+  });
+
+  test("get_account_events clamps an over-range limit the same way the REST route does", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: 5000 },
+      { env },
+    );
+    // clampInt(5000, 100, 1, 1000) → 1000, in both the payload and the bound LIMIT.
+    assert.equal(res.body.result.structuredContent.limit, 1000);
+    const eventsQuery = capture.find((q) => /FROM account_events/.test(q.sql));
+    assert.ok(eventsQuery.params.includes(1000));
+  });
+
+  test("get_account_events falls back to the default limit for a non-numeric limit", async () => {
+    const env = accountD1({ events: [] });
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: "abc" },
+      { env },
+    );
+    // clampInt(NaN) → default 100.
+    assert.equal(res.body.result.structuredContent.limit, 100);
+  });
+
+  test("get_account_subnets returns the cross-subnet footprint", async () => {
+    const env = accountD1({
+      registrations: [
+        { netuid: 7, uid: 3, stake_tao: 100, validator_permit: 0, active: 1 },
+        { netuid: 64, uid: 12, stake_tao: 5, validator_permit: 1, active: 1 },
+      ],
+    });
+    const res = await callTool("get_account_subnets", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets[1].netuid, 64);
+    assert.equal(out.subnets[1].validator_permit, true);
+  });
+
+  test("get_account_events rejects a non-string kind", async () => {
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: 7 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /kind/);
+  });
+
+  test("the account tools reject a malformed ss58", async () => {
+    for (const name of [
+      "get_account",
+      "get_account_events",
+      "get_account_subnets",
+    ]) {
+      const res = await callTool(name, { ss58: "not-an-address" }, { env: {} });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `${name} must reject bad ss58`,
+      );
+      assert.match(res.body.result.content[0].text, /ss58/);
+    }
+  });
+
+  test("the account tools degrade to schema-stable empty payloads when D1 is cold", async () => {
+    const summary = await callTool("get_account", { ss58: SS58 });
+    assert.equal(summary.body.result.isError, false);
+    assert.equal(summary.body.result.structuredContent.event_count, 0);
+    assert.deepEqual(summary.body.result.structuredContent.registrations, []);
+
+    const events = await callTool("get_account_events", { ss58: SS58 });
+    assert.equal(events.body.result.structuredContent.event_count, 0);
+    assert.deepEqual(events.body.result.structuredContent.events, []);
+
+    const subnets = await callTool("get_account_subnets", { ss58: SS58 });
+    assert.equal(subnets.body.result.structuredContent.subnet_count, 0);
+  });
+
+  test("populated account payloads validate against their declared outputSchemas", async () => {
+    // validate-mcp only exercises the cold (empty-array) path, so assert the
+    // POPULATED shapes here — the only check that the item schemas match the rows.
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const reg = {
+      netuid: 7,
+      uid: 3,
+      stake_tao: 100.5,
+      validator_permit: 1,
+      active: 1,
+    };
+    const event = {
+      block_number: 9,
+      event_index: 0,
+      event_kind: "StakeAdded",
+      hotkey: SS58,
+      coldkey: null,
+      netuid: 7,
+      uid: 3,
+      amount_tao: 1.5,
+      observed_at: 1750009000000,
+    };
+    const cases = [
+      [
+        "get_account",
+        accountD1({
+          agg: {
+            c: 5,
+            sc: 2,
+            fb: 1,
+            lb: 9,
+            fo: 1750000000000,
+            lo: 1750009000000,
+          },
+          kinds: [{ kind: "StakeAdded", count: 5 }],
+          registrations: [reg],
+          events: [event],
+        }),
+      ],
+      ["get_account_events", accountD1({ events: [event] })],
+      ["get_account_subnets", accountD1({ registrations: [reg] })],
+    ];
+    for (const [name, env] of cases) {
+      const res = await callTool(name, { ss58: SS58 }, { env });
+      const validate = validatorFor(name);
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        `${name}: ${JSON.stringify(validate.errors)}`,
+      );
+    }
+  });
+
+  test("get_account_events seeks by keyset cursor instead of offset", async () => {
+    const capture = [];
+    const env = accountD1({ events: [] }, capture);
+    await callTool(
+      "get_account_events",
+      { ss58: SS58, cursor: "200.1", limit: 50 },
+      { env },
+    );
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    // A valid cursor switches the page to a row-value seek and drops OFFSET.
+    assert.ok(/AND \(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.ok(q.params.includes(200) && q.params.includes(1));
+  });
+
+  test("get_account_events emits next_cursor for a full page", async () => {
+    const env = accountD1({
+      events: [
+        {
+          block_number: 200,
+          event_index: 1,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          observed_at: 1750009000000,
+        },
+      ],
+    });
+    // limit:1 with exactly one row is a full page → a keyset token for the next.
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, limit: 1 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.next_cursor, "200.1");
+  });
+});
+
 describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
   // INVARIANT: a malformed argument must surface as a tools/call RESULT with
   // isError:true + a stable `invalid_params` code (so an agent branches on the
