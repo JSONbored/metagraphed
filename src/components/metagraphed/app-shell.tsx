@@ -3,7 +3,13 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Compass, Github, Menu, X } from "lucide-react";
-import { API_BASE, DISCORD_URL, GITHUB_REPO } from "@/lib/metagraphed/config";
+import {
+  API_BASE,
+  DEFAULT_DISCORD_URL,
+  DEFAULT_GITHUB_REPO,
+  DISCORD_URL,
+  GITHUB_REPO,
+} from "@/lib/metagraphed/config";
 import { useApiBase } from "@/hooks/use-api-base";
 import { useEndpointHealth, type EndpointHealth } from "@/hooks/use-endpoint-health";
 import { NetworkSwitcher } from "./network-switcher";
@@ -13,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { classNames } from "@/lib/metagraphed/format";
 import { safeExternalUrl } from "./external-link";
 import { DiscordIcon } from "./discord-icon";
+import { TimeAgo } from "./time-ago";
 import { Wordmark } from "./wordmark";
 import { freshnessQuery, buildQuery } from "@/lib/metagraphed/queries";
 import { NavMegaMenu, MobileMegaMenu } from "./nav-mega-menu";
@@ -25,6 +32,12 @@ import { ApiSourceProvider } from "@/lib/metagraphed/api-source-context";
 import { IncidentStrip } from "./incident-strip";
 import { pushRecentVisit, visitFromPath } from "@/lib/metagraphed/recent-visits";
 import { BackToTop } from "./back-to-top";
+
+// Brand links resolve from build-time env constants, but still run them through
+// the external-URL guard (with a known-good fallback) so a misconfigured
+// override can't inject an unsafe href — the same treatment the API links get.
+const GITHUB_HREF = safeExternalUrl(GITHUB_REPO) ?? DEFAULT_GITHUB_REPO;
+const DISCORD_HREF = safeExternalUrl(DISCORD_URL) ?? DEFAULT_DISCORD_URL;
 
 function buildCrumbs(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
@@ -137,7 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <a
-                      href={GITHUB_REPO}
+                      href={GITHUB_HREF}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="GitHub repository"
@@ -153,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <a
-                      href={DISCORD_URL}
+                      href={DISCORD_HREF}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="Discord community"
@@ -282,7 +295,7 @@ function SiteFooter() {
           </p>
           <div className="mt-4 flex items-center gap-1">
             <a
-              href={GITHUB_REPO}
+              href={GITHUB_HREF}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub repository"
@@ -292,7 +305,7 @@ function SiteFooter() {
               <Github className="size-4" />
             </a>
             <a
-              href={DISCORD_URL}
+              href={DISCORD_HREF}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Discord community"
@@ -326,11 +339,10 @@ function SiteFooter() {
       </div>
       <div className="border-t border-border/70">
         <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-ink-muted">
-          <span>© {new Date().getFullYear()} Metagraphed — unofficial</span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-health-ok mg-pulse" aria-hidden />
-            live registry
+          <span>
+            © {new Date().getFullYear()} Metagraphed · Not an OpenTensor/Bittensor product
           </span>
+          <EndpointHealthPill />
         </div>
       </div>
     </footer>
@@ -344,47 +356,53 @@ function RegistryPulseStrip() {
   const b = build.data?.data as { version?: string; built_at?: string } | undefined;
   const stale = f?.stale_count ?? 0;
   const sources = f?.sources?.length ?? 0;
+  // Freshness carries an `[key: string]: unknown` index signature, so guard the
+  // timestamp to a real string before handing it to TimeAgo.
+  const updatedAt = typeof f?.generated_at === "string" ? f.generated_at : null;
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="mg-ticker min-w-0">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="mg-live-dot" aria-hidden />
-          <span className="uppercase tracking-[0.22em] text-[10px]">registry pulse</span>
-        </span>
-        <span>·</span>
-        <span>
-          <span className="text-ink-muted">sources</span>{" "}
-          <span className="text-ink-strong">{sources}</span>
-        </span>
-        <span>·</span>
-        <span>
-          <span className="text-ink-muted">stale</span>{" "}
-          <span
-            className={classNames("tabular-nums", stale ? "text-health-warn" : "text-ink-strong")}
-          >
-            {stale}
-          </span>
-        </span>
-        {b?.version ? (
-          <>
-            <span>·</span>
-            <span>
-              <span className="text-ink-muted">build</span>{" "}
-              <span className="text-ink-strong">{b.version}</span>
+    <div className="mg-ticker">
+      {updatedAt ? (
+        <>
+          <span>
+            <span className="text-ink-muted">updated</span>{" "}
+            <span className="text-ink-strong">
+              <TimeAgo at={updatedAt} />
             </span>
-          </>
-        ) : null}
-        <span>·</span>
-        <a
-          href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-ink-strong transition-colors"
+          </span>
+          <span>·</span>
+        </>
+      ) : null}
+      <span>
+        <span className="text-ink-muted">sources</span>{" "}
+        <span className="text-ink-strong">{sources}</span>
+      </span>
+      <span>·</span>
+      <span>
+        <span className="text-ink-muted">stale</span>{" "}
+        <span
+          className={classNames("tabular-nums", stale ? "text-health-warn" : "text-ink-strong")}
         >
-          openapi
-        </a>
-      </div>
-      <EndpointHealthPill />
+          {stale}
+        </span>
+      </span>
+      {b?.version ? (
+        <>
+          <span>·</span>
+          <span>
+            <span className="text-ink-muted">build</span>{" "}
+            <span className="text-ink-strong">{b.version}</span>
+          </span>
+        </>
+      ) : null}
+      <span>·</span>
+      <a
+        href={safeExternalUrl(`${API_BASE}/api/v1/openapi.json`)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:text-ink-strong transition-colors"
+      >
+        openapi
+      </a>
     </div>
   );
 }
@@ -407,21 +425,25 @@ const ENDPOINT_LABEL: Record<EndpointHealth, string> = {
   down: "down",
 };
 
-// Right side of the pulse strip: the live API endpoint with a glowing dot that
-// reflects round-trip health (green ok · yellow slow · orange bad · red down).
+// The live API endpoint with a glowing dot that reflects round-trip health
+// (green ok · yellow slow · orange bad · red down). The dot carries the status,
+// so the visible text is just the latency; the word form lives in the tooltip
+// (and aria) for colour-blind / screen-reader users.
 function EndpointHealthPill() {
   const { base } = useApiBase();
   const { status, ms } = useEndpointHealth();
   const tone = ENDPOINT_TONE[status];
   const endpoint = `${base.replace(/^https?:\/\//, "")}/api/v1`;
-  const detail = ms != null ? `${ENDPOINT_LABEL[status]} · ${ms} ms` : ENDPOINT_LABEL[status];
+  const detail =
+    status === "down" ? "unreachable" : status === "checking" ? "checking…" : `${ms} ms`;
+  const title = `API endpoint · ${ENDPOINT_LABEL[status]}${ms != null ? ` · ${ms} ms` : ""}`;
   return (
     <a
       href={safeExternalUrl(`${base}/api/v1`)}
       target="_blank"
       rel="noopener noreferrer"
-      title={`API endpoint · ${detail}`}
-      className="shrink-0 inline-flex items-center gap-2 font-mono text-[11px] text-ink-muted hover:text-ink-strong transition-colors"
+      title={title}
+      className="shrink-0 inline-flex items-center gap-2 text-ink-muted hover:text-ink-strong transition-colors"
     >
       <span className={classNames("mg-health-dot", tone)} aria-hidden />
       <span className="hidden sm:inline">{endpoint}</span>
