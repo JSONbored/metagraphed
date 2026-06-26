@@ -17,7 +17,7 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS, clampInt } from "../config.mjs";
+import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
 import { errorResponse } from "../http.mjs";
 import {
   contractVersion,
@@ -500,12 +500,54 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   );
 }
 
-// Basic ss58 guard: Bittensor hotkeys start with '5', base58 chars, 47-48 chars.
-// The ACCOUNT_BALANCE_PATH_PATTERN captures any non-slash segment so this check
-// is the first-pass validity gate before the RPC call.
-const SS58_GUARD = /^5[a-zA-Z0-9]{46,47}$/;
+// Bittensor/finney account addresses are SS58-encoded values with network
+// prefix 42, a 32-byte account id, and a checksum suffix. The balance route is
+// a live RPC fan-out, so reject malformed path captures before any cache/limit
+// work. This decoder enforces the base58 alphabet and fixed finney payload
+// shape; the RPC limiter below remains the upstream abuse boundary.
+const SS58_BASE58_ALPHABET =
+  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const SS58_BASE58_INDEX = new Map(
+  [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
+);
+const FINNEY_SS58_PREFIX = 42;
+const FINNEY_SS58_DECODED_LENGTH = 35;
 const BALANCE_KV_TTL = 60; // seconds
+const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
+const BALANCE_RPC_TIMEOUT_MS = 5000;
+const BALANCE_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+
+function decodeBase58(value) {
+  const bytes = [0];
+  for (const char of value) {
+    const carryStart = SS58_BASE58_INDEX.get(char);
+    if (carryStart == null) return null;
+    let carry = carryStart;
+    for (let index = 0; index < bytes.length; index += 1) {
+      carry += bytes[index] * 58;
+      bytes[index] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  for (const char of value) {
+    if (char !== "1") break;
+    bytes.push(0);
+  }
+  return Uint8Array.from(bytes.reverse());
+}
+
+function isFinneySs58Address(value) {
+  const decoded = decodeBase58(value);
+  return (
+    decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
+    decoded[0] === FINNEY_SS58_PREFIX
+  );
+}
 
 // GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
 // for one account, queried from the finney RPC at request time. 60s KV cache via
@@ -515,12 +557,32 @@ const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 // envelope, weak ETag, contract-version header, and 304/HEAD handling as every
 // other route — the body matches the AccountBalanceArtifact data schema.
 export async function handleAccountBalance(request, env, ss58) {
-  if (!SS58_GUARD.test(ss58)) {
+  if (!isFinneySs58Address(ss58)) {
     return errorResponse(
       "invalid_ss58",
-      "ss58 address must start with '5' and be 47-48 alphanumeric characters.",
+      "ss58 address must be a valid finney SS58 account address.",
       400,
     );
+  }
+
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: `balance:${resolveClientIp(request)}`,
+    });
+    if (!success) {
+      return errorResponse(
+        "balance_rate_limited",
+        "Too many live balance requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
   }
 
   const cacheKey = `balance:${ss58}`;
@@ -547,10 +609,13 @@ export async function handleAccountBalance(request, env, ss58) {
   let balanceTao = null;
   let rpcOk = false;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BALANCE_RPC_TIMEOUT_MS);
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -577,6 +642,8 @@ export async function handleAccountBalance(request, env, ss58) {
     }
   } catch {
     // RPC fetch failed — balance_tao stays null, return 200 below.
+  } finally {
+    clearTimeout(timeout);
   }
 
   const data = {
@@ -586,11 +653,10 @@ export async function handleAccountBalance(request, env, ss58) {
     queried_at: queriedAt,
   };
 
-  // Cache only on success so a transient RPC failure doesn't poison the cache.
-  if (rpcOk && kv?.put) {
+  if (kv?.put) {
     try {
       await kv.put(cacheKey, JSON.stringify(data), {
-        expirationTtl: BALANCE_KV_TTL,
+        expirationTtl: rpcOk ? BALANCE_KV_TTL : BALANCE_NEGATIVE_KV_TTL,
       });
     } catch {
       // KV write failure is non-fatal.

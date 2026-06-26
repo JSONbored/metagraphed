@@ -1,14 +1,14 @@
 {
   "artifact_count": 6,
-  "artifact_size_bytes": 1839396,
+  "artifact_size_bytes": 1840268,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/2026-06-18T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "0cc3611f2f64dd01e72d832b484d563b2979e0547bb03b27b89ce26e82f15a8f",
-      "size_bytes": 140566,
+      "sha256": "2e2a098c42aff74a5da40b06e44c953aed2803129b80a7aeae07051e4128b6c2",
+      "size_bytes": 140804,
       "storage_tier": "dual"
     },
     {
@@ -25,8 +25,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "d71b0bfa89d442fb2e4f9541a5902f3496b4562713c2a3bea99efe7b3ad4e5c6",
-      "size_bytes": 902773,
+      "sha256": "0e900e17975d4c4675c30230515bbd6a5e8fdb4f9357f94ac7aa7e203ef1de39",
+      "size_bytes": 903147,
       "storage_tier": "dual"
     },
     {
@@ -52,8 +52,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "a465f8dbe19a0e0e228c29873e7f7394c7f4eb3155bfe8a9f6e61e45c2ffa2ba",
-      "size_bytes": 681697,
+      "sha256": "3dba258d482fd83827e76c814e91870f2af80056dc32bde9436c166d58ac6f2d",
+      "size_bytes": 681957,
       "storage_tier": "dual"
     }
   ],
@@ -61,7 +61,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 2258,
-  "full_artifact_size_bytes": 39249628,
+  "full_artifact_size_bytes": 39250366,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -83,7 +83,7 @@
     "r2": 2252
   },
   "storage_tier_size_bytes": {
-    "dual": 1839396,
-    "r2": 37410232
+    "dual": 1840268,
+    "r2": 37410098
   }
 }

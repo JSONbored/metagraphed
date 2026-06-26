@@ -31,6 +31,7 @@ export const QUERY_ENUMS = {
   curationLevel: [
     "native",
     "candidate-discovered",
+    "community-seeded",
     "machine-verified",
     "maintainer-reviewed",
     "adapter-backed",

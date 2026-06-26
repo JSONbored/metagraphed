@@ -10,6 +10,8 @@ import {
   buildAccountSummary,
   buildAccountEvents,
   buildAccountSubnets,
+  loadAccountSummary,
+  ACCOUNT_ACTIVITY_RECENT_LIMIT,
   eventInsertStatements,
   utcDayBounds,
   rollupAccountEventsDaily,
@@ -357,4 +359,44 @@ test("pruneAccountEvents returns pruned:false when D1 throws", async () => {
     },
   };
   assert.equal((await pruneAccountEvents(env, { now: () => 0 })).pruned, false);
+});
+
+test("loadAccountSummary bounds signing activity before aggregating", async () => {
+  const calls = [];
+  const rows = [
+    [{ c: 0, sc: 0, fb: null, lb: null, fo: null, lo: null }],
+    [],
+    [],
+    [],
+    [
+      {
+        tx_count: 0,
+        last_tx_block: null,
+        last_tx_at: null,
+        total_fee_tao: null,
+      },
+    ],
+    [],
+  ];
+  await loadAccountSummary(async (sql, params) => {
+    calls.push({ sql, params });
+    return rows[calls.length - 1] || [];
+  }, "5Hk");
+
+  const activity = calls.find((c) => /AS tx_count/.test(c.sql));
+  const modules = calls.find((c) => /GROUP BY call_module/.test(c.sql));
+  assert.ok(
+    /FROM \(SELECT block_number, observed_at, fee_tao FROM extrinsics/.test(
+      activity.sql,
+    ),
+  );
+  assert.ok(
+    /ORDER BY block_number DESC, extrinsic_index DESC LIMIT \?\)/.test(
+      activity.sql,
+    ),
+  );
+  assert.deepEqual(activity.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
+  assert.ok(/FROM \(SELECT call_module FROM extrinsics/.test(modules.sql));
+  assert.ok(/LIMIT \?\) GROUP BY call_module/.test(modules.sql));
+  assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
 });

@@ -68,7 +68,7 @@ const patterns = [
     // the isMirroredExternalSpec exemption, scoped to the safe forms so the guard
     // stays active everywhere else.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only\b|\bcoldkey\s*=/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*=/gi,
     soft: true,
   },
   {

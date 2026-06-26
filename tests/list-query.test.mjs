@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   applyQueryFilters,
+  canonicalListSearch,
   paginationLinkHeader,
 } from "../workers/list-query.mjs";
 
@@ -31,7 +32,9 @@ function pageLink(path) {
     subnets: Array.from({ length: 5 }, (_, i) => ({ netuid: i })),
   };
   const { meta } = applyQueryFilters(data, url, "subnets");
-  return paginationLinkHeader(url, meta.pagination);
+  return paginationLinkHeader(url, meta.pagination, {
+    queryCollection: "subnets",
+  });
 }
 
 describe("list-query field projection", () => {
@@ -394,6 +397,19 @@ describe("list-query pagination Link header", () => {
     }
   });
 
+  test("drops ignored query parameters from cacheable page links", () => {
+    const links = parseLink(
+      pageLink(
+        "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+      ),
+    );
+
+    assert.equal(links.next.searchParams.get("sort"), "netuid");
+    assert.equal(links.next.searchParams.get("limit"), "2");
+    assert.equal(links.next.searchParams.has("utm_campaign"), false);
+    assert.equal(links.next.searchParams.has("token"), false);
+  });
+
   test("a non-list (no pagination meta) collection yields no header", () => {
     assert.equal(
       paginationLinkHeader(query("/api/v1/subnets"), undefined),
@@ -464,5 +480,93 @@ describe("list-query free-text search", () => {
   test("an absent q is a no-op", () => {
     const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
     assert.deepEqual(netuids(result), [1, 2, 3]);
+  });
+});
+
+// canonicalListSearch is the cache-key safety primitive behind the pagination
+// Link header (#1932): it rebuilds the query string from ONLY the body-affecting
+// params the edge cache keys on, so attacker- or tracker-supplied extras can
+// never ride along in a cached Link header.
+describe("list-query canonicalListSearch (cache-key safety)", () => {
+  function params(search) {
+    return new URL(`https://edge.test/${search}`).searchParams;
+  }
+
+  test("keeps every body-affecting param family and drops the rest", () => {
+    const url = query(
+      "/api/v1/subnets?q=chutes&fields=netuid&sort=netuid&order=desc" +
+        "&limit=5&cursor=10&curation_level=native" + // a plain filter
+        "&netuids=1,2" + // a csv filter
+        "&domain=ai" + // an array filter
+        "&min_block=100&max_block=200" + // a range filter pair
+        "&utm_campaign=evil&token=SECRET123&__proto__=x", // ignored extras
+    );
+    const p = params(canonicalListSearch(url, "subnets"));
+    // Preserved: the static page controls + each filter family.
+    assert.equal(p.get("q"), "chutes");
+    assert.equal(p.get("fields"), "netuid");
+    assert.equal(p.get("sort"), "netuid");
+    assert.equal(p.get("order"), "desc");
+    assert.equal(p.get("limit"), "5");
+    assert.equal(p.get("cursor"), "10");
+    assert.equal(p.get("curation_level"), "native");
+    assert.equal(p.get("netuids"), "1,2");
+    assert.equal(p.get("domain"), "ai");
+    assert.equal(p.get("min_block"), "100");
+    assert.equal(p.get("max_block"), "200");
+    // Dropped: anything the edge cache key ignores.
+    assert.equal(p.has("utm_campaign"), false);
+    assert.equal(p.has("token"), false);
+    assert.equal(p.has("__proto__"), false);
+  });
+
+  test("an unknown collection canonicalizes to an empty search", () => {
+    assert.equal(canonicalListSearch(query("/api/v1/x?a=1"), "nope"), "");
+  });
+
+  test("an explicit queryFilterNames allowlist overrides the collection filters", () => {
+    const url = query("/api/v1/subnets?netuid=3&curation_level=native&q=z");
+    const p = params(canonicalListSearch(url, "subnets", ["netuid"]));
+    // Only the allowlisted filter (plus the static controls) survives.
+    assert.equal(p.get("netuid"), "3");
+    assert.equal(p.get("q"), "z");
+    assert.equal(p.has("curation_level"), false);
+  });
+
+  test("a present-but-empty param value is preserved (distinct from absent)", () => {
+    const p = params(
+      canonicalListSearch(query("/api/v1/subnets?q="), "subnets"),
+    );
+    assert.equal(p.get("q"), "");
+  });
+});
+
+describe("list-query paginationLinkHeader canonicalization", () => {
+  function pagedUrl(path) {
+    return query(path);
+  }
+  const meta = { cursor: 0, limit: 2, next_cursor: 2, total: 5 };
+
+  test("without a queryCollection, the raw search (incl. extras) is preserved", () => {
+    // The legacy/non-canonical path: callers that pass no collection get the
+    // request search verbatim — this guards that the canonical branch is opt-in.
+    const header = paginationLinkHeader(
+      pagedUrl("/api/v1/subnets?sort=netuid&utm=evil"),
+      meta,
+    );
+    const next = new URL(header.match(/<([^>]+)>;\s*rel="next"/)[1]);
+    assert.equal(next.searchParams.get("utm"), "evil");
+    assert.equal(next.searchParams.get("sort"), "netuid");
+  });
+
+  test("with a queryCollection, ignored params are stripped from page links", () => {
+    const header = paginationLinkHeader(
+      pagedUrl("/api/v1/subnets?sort=netuid&utm=evil"),
+      meta,
+      { queryCollection: "subnets" },
+    );
+    const next = new URL(header.match(/<([^>]+)>;\s*rel="next"/)[1]);
+    assert.equal(next.searchParams.has("utm"), false);
+    assert.equal(next.searchParams.get("sort"), "netuid");
   });
 });
