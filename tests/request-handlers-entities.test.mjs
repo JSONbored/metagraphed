@@ -1325,6 +1325,34 @@ describe("handleBlocks", () => {
     assert.ok(!/OFFSET/.test(sql));
   });
 
+  test("short-circuits impossible count floors before querying D1", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    const body = await json(
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env,
+        url("/api/v1/blocks?min_events=9007199254740991"),
+      ),
+    );
+    assert.equal(body.data.block_count, 0);
+    assert.deepEqual(body.data.blocks, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
+  test("short-circuits inverted block and time ranges before querying D1", async () => {
+    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+    const body = await json(
+      await handleBlocks(
+        req("/api/v1/blocks"),
+        env,
+        url("/api/v1/blocks?block_start=20&block_end=10&from=200&to=100"),
+      ),
+    );
+    assert.equal(body.data.block_count, 0);
+    assert.deepEqual(body.data.blocks, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("the unfiltered feed keeps the plain OFFSET path (no WHERE)", async () => {
     const { env, captures } = dbWith({ blocksFeed: [] });
     await handleBlocks(
