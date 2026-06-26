@@ -803,6 +803,7 @@ export const LEADERBOARD_BOARDS = [
   "most-complete",
   "most-enriched",
   "fastest-growing",
+  "most-reliable",
   ...ECONOMIC_LEADERBOARD_BOARDS,
 ];
 
@@ -853,6 +854,7 @@ export function formatLeaderboards({
   rpcRows,
   mostComplete,
   growthRows,
+  reliabilityRows,
   economicsRows,
   subnetMeta,
 }) {
@@ -933,6 +935,31 @@ export function formatLeaderboards({
     .sort((a, b) => b.completeness_delta - a.completeness_delta)
     .slice(0, cap);
 
+  // Durable reliability ranking: the windowed score (uptime ratio minus a
+  // latency penalty, A–F graded) computed from surface_uptime_daily, ranked
+  // across subnets. Distinct from `healthiest`, which ranks the instantaneous
+  // snapshot uptime rather than the window-based grade. Null-safe: a subnet with
+  // no samples in the window scores null and is dropped.
+  const mostReliable = (reliabilityRows || [])
+    .map((row) => {
+      const score = scoreFromStats({
+        samples: Number(row.samples) || 0,
+        okCount: Number(row.ok_count) || 0,
+        avgLatencyMs:
+          row.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+        latencySamples: Number(row.latency_samples) || 0,
+      });
+      return score && { netuid: row.netuid, ...metaFor(row.netuid), ...score };
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity) ||
+        a.netuid - b.netuid,
+    )
+    .slice(0, cap);
+
   const economicBoards = {};
   for (const spec of ECONOMIC_BOARD_SPECS) {
     economicBoards[spec.key] = economicBoard(economicsRows, metaFor, cap, spec);
@@ -944,6 +971,7 @@ export function formatLeaderboards({
     "most-complete": completeBoard,
     "most-enriched": enrichedBoard,
     "fastest-growing": fastestGrowing,
+    "most-reliable": mostReliable,
     ...economicBoards,
   };
   const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
@@ -1250,7 +1278,7 @@ function liveFromD1Rows(rows) {
   const lastRun = latestIso(surfaces.map((s) => s.last_checked));
   const statusCounts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of surfaces) {
-    statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+    statusCounts[normalizeProbeStatus(row.status)] += 1;
   }
   return {
     schema_version: 1,
