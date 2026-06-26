@@ -851,6 +851,45 @@ describe("pagination Link header", () => {
   });
 });
 
+// --- slim search index route --------------------------------------------------
+describe("/api/v1/search-index slim route", () => {
+  test("serves the slim index without per-document token blobs", async () => {
+    const res = await handleRequest(
+      req("/api/v1/search-index?limit=5"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.ok(body.data.documents.length > 0);
+    assert.equal(
+      body.data.documents.every((document) => !("tokens" in document)),
+      true,
+      "slim route documents must omit the heavy tokens field",
+    );
+  });
+
+  test("supports field projection and keyword search", async () => {
+    const res = await handleRequest(
+      req("/api/v1/search-index?fields=id,title,type&limit=3"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.meta.projection.fields, ["id", "title", "type"]);
+    assert.equal(
+      body.data.documents.every((document) =>
+        Object.keys(document).every((key) =>
+          ["id", "title", "type"].includes(key),
+        ),
+      ),
+      true,
+    );
+  });
+});
+
 // --- 304 on api envelope ------------------------------------------------------
 describe("api envelope 304", () => {
   test("304 when if-none-match matches the api etag", async () => {

@@ -36,6 +36,9 @@
     "search": {
       "$ref": "#/$defs/genericArtifact"
     },
+    "search_index": {
+      "$ref": "#/$defs/genericArtifact"
+    },
     "coverage": {
       "$ref": "#/$defs/coverageArtifact"
     },

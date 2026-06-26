@@ -1772,6 +1772,36 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(changelog.source, "generated-artifact-diff");
   assert.equal(search.document_count, search.documents.length);
+  // Slim search index (roadmap Finding 8): the same documents as search.json
+  // minus the per-document `tokens` keyword blobs, for a much lighter browser
+  // payload. It must stay in lock-step with the full index (same count + ids,
+  // same display fields) and carry no token blobs.
+  const searchIndex = readArtifact("search-index.json");
+  assert.equal(searchIndex.document_count, search.document_count);
+  assert.equal(searchIndex.documents.length, search.documents.length);
+  assert.equal(
+    searchIndex.documents.every(
+      (document) => !Object.hasOwn(document, "tokens"),
+    ),
+    true,
+    "slim search index documents must not carry token blobs",
+  );
+  assert.deepEqual(
+    searchIndex.documents.map((document) => document.id),
+    search.documents.map((document) => document.id),
+    "slim search index must preserve the full index's documents and order",
+  );
+  for (const slimDocument of searchIndex.documents) {
+    const fullDocument = search.documents.find(
+      (document) => document.id === slimDocument.id,
+    );
+    const { tokens: _tokens, ...expected } = fullDocument;
+    assert.deepEqual(
+      slimDocument,
+      expected,
+      `slim search document ${slimDocument.id} must equal the full document minus tokens`,
+    );
+  }
   const nodexoSearchDocument = search.documents.find(
     (document) => document.id === "subnet:27",
   );

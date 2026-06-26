@@ -2858,15 +2858,17 @@ await writeJson(
   buildApiIndexArtifact(generatedAt, contracts),
 );
 await writeJson(artifactFile("openapi.json"), openApi);
+const searchIndexArtifact = buildSearchIndex(
+  mergedSubnets,
+  surfaces,
+  providers,
+  profileArtifacts.byNetuid,
+  serviceKindsByNetuid,
+);
+await writeJson(artifactFile("search.json"), searchIndexArtifact);
 await writeJson(
-  artifactFile("search.json"),
-  buildSearchIndex(
-    mergedSubnets,
-    surfaces,
-    providers,
-    profileArtifacts.byNetuid,
-    serviceKindsByNetuid,
-  ),
+  artifactFile("search-index.json"),
+  buildSlimSearchIndex(searchIndexArtifact),
 );
 await writeJson(
   artifactFile("freshness.json"),
@@ -5910,6 +5912,24 @@ function buildSearchIndex(
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
+    document_count: documents.length,
+    documents,
+  };
+}
+
+// The slim companion to search.json: identical documents minus the per-document
+// `tokens` keyword blobs, which exist only to widen server-side `q` recall and
+// dominate the full index's byte size. Browsers loading the whole index for
+// typeahead/listing never need them, so dropping the field yields a much smaller
+// payload (roadmap Finding 8) while keeping every display + filter field.
+function buildSlimSearchIndex(searchIndex) {
+  const documents = searchIndex.documents.map(
+    ({ tokens: _tokens, ...rest }) => rest,
+  );
+  return {
+    schema_version: searchIndex.schema_version,
+    contract_version: searchIndex.contract_version,
+    generated_at: searchIndex.generated_at,
     document_count: documents.length,
     documents,
   };

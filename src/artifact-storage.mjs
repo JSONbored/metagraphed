@@ -166,6 +166,10 @@ export const R2_ONLY_PATTERNS = [
   /^review\/profile-completeness\.json$/,
   /^schema-drift\.json$/,
   /^search\.json$/,
+  // Slim companion to search.json: the same documents without the per-document
+  // `tokens` keyword blobs, for fast browser typeahead/listing. Derived from the
+  // same live-enriched registry data as search.json, so it is R2-only too.
+  /^search-index\.json$/,
   /^surface-aliases\.json$/,
   /^surfaces\.json$/,
 ];
