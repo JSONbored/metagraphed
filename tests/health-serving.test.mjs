@@ -1449,6 +1449,45 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.summary.pool_eligible_count, 0);
   });
 
+  test("overlayArtifactEndpoints folds unrecognized live status into unknown in by_status", () => {
+    const live = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      health_source: "live-cron-prober",
+      surfaces: [
+        {
+          surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
+          netuid: 7,
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          last_checked: "2026-06-13T00:00:00.000Z",
+          last_ok: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const artifact = {
+      summary: { by_status: { ok: 1 }, pool_eligible_count: 1 },
+      endpoints: [
+        {
+          surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
+          url: "https://x",
+          status: "ok",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "BUILD",
+          pool_eligible: true,
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(artifact, live);
+    assert.equal(out.endpoints[0].status, "unknown");
+    assert.deepEqual(out.summary.by_status, { unknown: 1 });
+    assert.equal(out.summary.by_status.throttled, undefined);
+    assert.equal(out.summary.pool_eligible_count, 0);
+  });
+
   test("overlayArtifactEndpoints joins renamed endpoints by stable surface_key", () => {
     const out = overlayArtifactEndpoints(
       {

@@ -1524,7 +1524,7 @@ function overlayEndpointHealth(endpoint, liveRow) {
   }
   return withPoolEligibility({
     ...endpoint,
-    status: liveRow.status,
+    status: normalizeProbeStatus(liveRow.status),
     classification:
       liveRow.classification ?? endpoint.classification ?? "unknown",
     latency_ms: Number.isFinite(liveRow.latency_ms) ? liveRow.latency_ms : null,
@@ -1540,7 +1540,8 @@ function overlayEndpointHealth(endpoint, liveRow) {
 function countEndpointStatuses(endpoints) {
   const counts = {};
   for (const endpoint of endpoints) {
-    counts[endpoint.status] = (counts[endpoint.status] || 0) + 1;
+    const bucket = normalizeProbeStatus(endpoint.status);
+    counts[bucket] = (counts[bucket] || 0) + 1;
   }
   return counts;
 }
