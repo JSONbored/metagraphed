@@ -2196,6 +2196,28 @@
         ],
         "type": "object"
       },
+      "CandidatesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "candidates": {
+                "items": {
+                  "$ref": "#/components/schemas/CandidateSurface"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "candidates"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "ChainActivityArtifact": {
         "additionalProperties": true,
         "description": "Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold.",

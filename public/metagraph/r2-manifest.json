@@ -1,14 +1,14 @@
 {
   "artifact_count": 6,
-  "artifact_size_bytes": 1860553,
+  "artifact_size_bytes": 1928169,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/2026-06-18T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "91cd8b67f8dade3cbe7a35e7b69896676514b8ea14417b307c503b57594f0f3f",
-      "size_bytes": 141902,
+      "sha256": "b07042c525b9621b993a9de9f1b187a3d180aad6b228a410e9c5e21ab9bc164b",
+      "size_bytes": 148186,
       "storage_tier": "dual"
     },
     {
@@ -16,8 +16,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "d8926edc036fd1b22b5cad47f3e0f2a80306feb3d68317049478c7c8b726e0b0",
-      "size_bytes": 39605,
+      "sha256": "7ddd044e581ff304023c87219cc1ea7448fb8e37fab3c1f317f4e6fd7c652345",
+      "size_bytes": 41709,
       "storage_tier": "dual"
     },
     {
@@ -25,8 +25,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "b2119ebd179340e6d17af8de9ee5b32816305eacccee98fc58d2bd4a38a3de05",
-      "size_bytes": 913337,
+      "sha256": "58fc3b527f2a616d1c4343c61cda921dabb4c9b5df3400de287a479d32d0d1a2",
+      "size_bytes": 945774,
       "storage_tier": "dual"
     },
     {
@@ -52,8 +52,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "ec8f5a5ae37e1c58b6ab3299df134e16946535f92be8855c1b6e6a2f471440bc",
-      "size_bytes": 690363,
+      "sha256": "f2604bdd87c2780e52cfbb99c134e787524cda6dc35d60d381ca0d4d93012dc4",
+      "size_bytes": 717154,
       "storage_tier": "dual"
     }
   ],
@@ -61,7 +61,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-06.1",
   "full_artifact_count": 2258,
-  "full_artifact_size_bytes": 39270517,
+  "full_artifact_size_bytes": 39371059,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -83,7 +83,7 @@
     "r2": 2252
   },
   "storage_tier_size_bytes": {
-    "dual": 1860553,
-    "r2": 37409964
+    "dual": 1928169,
+    "r2": 37442890
   }
 }
