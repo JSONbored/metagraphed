@@ -45,6 +45,8 @@ Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its
 
 > **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
+> Filing your own issue and then opening a PR that resolves it is welcome, and a PR with no linked issue is fine — neither is farming. What is against policy is **using more than one account you control (alt / sock-puppet accounts) — e.g. one account opening issues for another to "resolve" — to inflate contribution credit**, along with manufacturing low-value/slop issues and bulk point-chasing surface PRs. Farmed work earns no linked-issue bonus, and repeat or any confirmed multi-account farming is closed on sight and blocked. Enforcement is proportional; the full ladder is in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
 Add a surface locally — three steps:
 
 ```bash
