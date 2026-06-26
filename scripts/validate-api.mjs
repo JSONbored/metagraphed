@@ -283,6 +283,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/registry/coverage-matrix",
+    (body) => {
+      assert.equal(Array.isArray(body.data.kinds), true);
+      assert.ok(body.data.kinds.length > 0);
+      assert.equal(Array.isArray(body.data.matrix), true);
+      assert.equal(typeof body.data.totals, "object");
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");
