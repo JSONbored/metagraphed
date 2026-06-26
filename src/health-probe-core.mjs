@@ -341,6 +341,19 @@ export function rollupSubnetStatus({
   return "failed";
 }
 
+// Increment the matching bucket of a `{ ok, degraded, failed, unknown }` tally,
+// folding any status outside those four into `unknown`. rollupSubnetStatus only
+// reads the four known buckets, so an unrecognized status that landed in a stray
+// `counts[status]` key would be invisible to it — and a subnet whose surfaces are
+// ALL unrecognized would have failed===0 && degraded===0 and wrongly roll up to
+// "ok" instead of "unknown". Every status tally funnels through here so that the
+// fold can never drift between the prober and the live serve overlay. (#1739)
+export function tallyStatus(counts, status) {
+  const bucket = Object.hasOwn(counts, status) ? status : "unknown";
+  counts[bucket] += 1;
+  return counts;
+}
+
 // Latency is a success-only signal: keep a probe's latency only when it resolved
 // `ok`. Every failure (timeout, 5xx, unsafe, thrown) collapses to null, so it
 // counts toward uptime but never toward the latency mean or percentiles.

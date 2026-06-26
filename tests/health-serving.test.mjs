@@ -390,14 +390,24 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("all-unrecognized status folds into unknown → unknown (#1739)", () => {
+    // A status outside the four known buckets is folded into `unknown` by
+    // tallyStatus. Without that fold it landed in a stray `counts.weird` key that
+    // rollupStatus ignored, leaving failed===0 && degraded===0 → a false "ok"
+    // for a subnet whose surfaces are entirely unrecognized.
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.failed_count, 0);
     assert.equal(out.ok_count, 0);
+  });
+  test("unrecognized status mixed with failed still surfaces failed (#1739)", () => {
+    // The fold must not mask real failures: a "weird" + "failed" subnet is not
+    // all-unknown, so it rolls up to failed rather than being diluted to unknown.
+    const out = summarizeRows([row("weird"), row("failed")]);
+    assert.equal(out.status, "failed");
+    assert.equal(out.unknown_count, 1);
+    assert.equal(out.failed_count, 1);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([

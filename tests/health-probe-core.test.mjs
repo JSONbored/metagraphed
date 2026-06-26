@@ -18,6 +18,7 @@ import {
   rollupSubnetStatus,
   statusForClassification,
   summarizeRpcProbe,
+  tallyStatus,
 } from "../src/health-probe-core.mjs";
 
 describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
@@ -45,6 +46,28 @@ describe("rollupSubnetStatus (shared subnet-status precedence)", () => {
       rollupSubnetStatus({ failed: 1, unknown: 1, total: 2 }),
       "failed",
     );
+  });
+});
+
+describe("tallyStatus (fold unrecognized status into unknown, #1739)", () => {
+  test("a known status increments its own bucket", () => {
+    const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+    tallyStatus(counts, "ok");
+    tallyStatus(counts, "degraded");
+    assert.deepEqual(counts, { ok: 1, degraded: 1, failed: 0, unknown: 0 });
+  });
+  test("an unrecognized status folds into unknown, never a stray key", () => {
+    const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+    tallyStatus(counts, "weird");
+    tallyStatus(counts, undefined);
+    assert.deepEqual(counts, { ok: 0, degraded: 0, failed: 0, unknown: 2 });
+  });
+  test("an inherited Object.prototype key is treated as unrecognized", () => {
+    // `"constructor" in counts` is true via the prototype chain; Object.hasOwn
+    // keeps the guard to the four real buckets so it still folds to unknown.
+    const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+    tallyStatus(counts, "constructor");
+    assert.deepEqual(counts, { ok: 0, degraded: 0, failed: 0, unknown: 1 });
   });
 });
 

@@ -1429,6 +1429,40 @@ describe("summarizeGroup / rollupStatus via per-subnet rollup", () => {
     assert.equal(subnet.last_checked, new Date(5000).toISOString());
   });
 
+  test("all-unrecognized subnet folds into unknown, not a false ok (#1739)", async () => {
+    const kv = makeKv();
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 5000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [
+          buildSurface("w1", 17),
+          buildSurface("w2", 17),
+        ],
+        // A status outside ok/degraded/failed/unknown. Without tallyStatus
+        // folding it into `unknown`, the stray count was invisible to
+        // rollupSubnetStatus (failed===0 && degraded===0) and the subnet wrongly
+        // rolled up to "ok" in the cron `health:current` snapshot.
+        probeSurface: async () => ({
+          status: "weird",
+          classification: null,
+          latency_ms: null,
+        }),
+        probeOptions: {},
+      },
+    );
+    const current = kv.json(KV_HEALTH_CURRENT);
+    const subnet = current.subnets.find((s) => s.netuid === 17);
+    assert.equal(subnet.status, "unknown");
+    assert.equal(subnet.unknown_count, 2);
+    // The run-level diagnostic tally folds the same way — no stray bucket leaks.
+    assert.equal(current.summary.status_counts.unknown, 2);
+    assert.equal(current.summary.status_counts.weird, undefined);
+  });
+
   test("a zero checked-at timestamp reports last_checked null, not the epoch", async () => {
     // Same 0-sentinel guard as last_ok, on the last_checked field: with the
     // clock at the Unix epoch every row's checked_at_ms is 0, so lastChecked

@@ -20,6 +20,7 @@ import {
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
+  tallyStatus,
 } from "./health-probe-core.mjs";
 import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
@@ -349,7 +350,7 @@ function summarizeGroup(rows) {
   let lastOk = 0;
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    tallyStatus(counts, row.status);
     if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
     if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
@@ -493,7 +494,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   await persistToKv(kv, probed, runAt);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  for (const row of probed) tallyStatus(counts, row.status);
   const durationMs = now() - runAt;
   // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
   // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
@@ -591,7 +592,7 @@ async function persistToD1(db, probed, runAt) {
 async function persistToKv(kv, probed, runAt) {
   if (!kv?.put) return;
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  for (const row of probed) tallyStatus(counts, row.status);
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
