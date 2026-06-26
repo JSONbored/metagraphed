@@ -72,7 +72,10 @@ Subnet-level fields you must **not** touch in a community PR: `curation` (`level
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
 one-file surface PR runs the same gates as a code PR. Two parallel jobs both build:
 
-- **`test`** — builds, then `npm run test:coverage` (Codecov is the coverage gate).
+- **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
+  except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
+  Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
+  `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe).
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
@@ -91,8 +94,9 @@ input list, which a one-file surface PR does not commit; it is served fresh on d
 (gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
 fails at PR time, not at the Cloudflare deploy) · `scan:public-safety` · `validate:private-boundary`.
 
-Codecov is configured in `codecov.yml`; run `npm run test:coverage` unsharded locally (CI shards +
-merges, so a single shard under-reports).
+Codecov is configured in `codecov.yml`; run `npm run test:coverage` locally for the full-suite number.
+CI uploads coverage once, from the `test:ci` pass — the two artifact writers run via child processes
+and contribute no in-process coverage, so splitting them out is coverage-neutral.
 
 ---
 

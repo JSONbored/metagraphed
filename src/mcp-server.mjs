@@ -1296,7 +1296,7 @@ export const MCP_TOOLS = [
       "Fetch a cross-subnet activity summary for one account by its SS58 address " +
       "(a hotkey OR coldkey): total chain-event count, the subnets it has touched, " +
       "first/last block and timestamp seen, a per-kind event breakdown, where its " +
-      "hotkey is currently registered (with stake and validator permit), its signing " +
+      "hotkey is currently registered (with stake and validator permit), its bounded recent signing " +
       "activity, and its 10 most recent events. The natural starting point for 'what " +
       "is this wallet doing across the network'. Computed live from the " +
       "account_events + neurons + extrinsics tiers; a never-seen address returns a " +

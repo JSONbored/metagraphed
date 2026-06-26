@@ -250,8 +250,12 @@ function dbWith({ feed, detail, neighbors } = {}) {
           bind() {
             return {
               async all() {
-                // prev/next neighbor query (#1853): the MAX/MIN CASE aggregate.
-                if (/MAX\(CASE WHEN block_number </.test(sql))
+                // prev/next neighbor query (#1853): indexed scalar subqueries.
+                if (
+                  /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                    sql,
+                  )
+                )
                   return { results: [neighbors || { prev: null, next: null }] };
                 if (/LIMIT \? OFFSET \?/.test(sql))
                   return { results: feed || [] };
@@ -428,6 +432,7 @@ test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
 
 test("GET /blocks/{number}/extrinsics returns the block's extrinsics (#1845)", async () => {
   const env = dbWith({
+    detail: { block_number: 1234 },
     feed: [
       {
         block_number: 1234,
@@ -452,6 +457,20 @@ test("GET /blocks/{number}/extrinsics returns the block's extrinsics (#1845)", a
   assert.equal(body.data.block_number, 1234);
   assert.equal(body.data.extrinsic_count, 1);
   assert.equal(body.data.extrinsics[0].call_function, "set");
+});
+
+test("GET /blocks/{number}/extrinsics is schema-stable when the number is unknown (#1845)", async () => {
+  const res = await handleRequest(
+    req("/api/v1/blocks/777/extrinsics"),
+    dbWith({ feed: [] }),
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.ref, "777");
+  assert.equal(body.data.block_number, null);
+  assert.equal(body.data.extrinsic_count, 0);
+  assert.equal(Array.isArray(body.data.extrinsics), true);
 });
 
 test("GET /blocks/{hash}/extrinsics resolves the hash then lists extrinsics (#1845)", async () => {

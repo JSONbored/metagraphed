@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { envelopeResponse } from "../workers/responses.mjs";
+import {
+  markD1FallbackResponse,
+  withEdgeCache,
+} from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 
@@ -341,6 +346,38 @@ describe("analytics edge cache", () => {
       0,
       "a cold snapshot skips the cache lookup entirely",
     );
+  });
+
+  test("NO-CACHE-ON-ERROR: a marked fallback Response is skipped even when the generation is unchanged", async () => {
+    // This isolates the WeakSet response marker from the independent D1 fallback
+    // generation guard: a handler must mark the awaited Response object, not the
+    // Promise that produces it, or withEdgeCache cannot recognize the fallback.
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv([]);
+    const request = new Request("https://api.metagraph.sh/api/v1/test");
+
+    const res = await withEdgeCache(request, ctx, env, "unit", async () => {
+      const response = await envelopeResponse(
+        request,
+        {
+          data: { degraded: true },
+          meta: { generated_at: LAST_RUN_AT },
+        },
+        "short",
+      );
+      return markD1FallbackResponse(response);
+    });
+    await Promise.resolve();
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cache.putKeys,
+      [],
+      "the per-response fallback marker must block cache.put",
+    );
+    assert.equal(cache.store.size, 0);
   });
 
   test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
