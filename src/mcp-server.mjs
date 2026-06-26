@@ -13,6 +13,16 @@
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import {
+  loadCompareSubnets,
+  loadGlobalIncidents,
+  loadRegistryLeaderboards,
+  loadSubnetUptime,
+  parseAnalyticsWindow,
+  parseCompareDimensionList,
+  parseCompareNetuidList,
+  parseUptimeWindow,
+} from "./analytics-live.mjs";
 import { generateServiceSnippets } from "./integration-snippets.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -29,6 +39,7 @@ import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
   formatLeaderboards,
+  LEADERBOARD_BOARDS,
   loadSubnetReliability,
   loadSubnetTrajectory,
   overlayCatalogDetail,
@@ -57,11 +68,11 @@ import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
 import {
   aiEnabled,
   askQuestion,
-  SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.mjs";
 import { keywordScore, queryTerms } from "./keyword-search.mjs";
+import { KV_HEALTH_META } from "./kv-keys.mjs";
 
 // Protocol versions we understand, newest first. We echo the client's requested
 // version when it is one of these, otherwise we answer with our latest. We meet
@@ -139,7 +150,11 @@ export const MCP_INSTRUCTIONS =
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
-  "get_subnet_trajectory its week-over-week trend, get_subnet_metagraph the " +
+  "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
+  "long-term surface uptime history, get_registry_leaderboards the live " +
+  "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
+  "across structure/economics/health, get_global_incidents recent cross-subnet " +
+  "probe failures, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
   "list_subnet_validators its validators ranked by stake, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
@@ -260,6 +275,23 @@ async function loadSubnetEconomics(ctx, netuid) {
     summary: blob?.summary ?? null,
     economics: blob?.subnets?.find((row) => row?.netuid === netuid) ?? null,
   };
+}
+
+async function mcpObservedAt(ctx) {
+  if (!ctx.readHealthKv) return null;
+  const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
+  return meta?.last_run_at || null;
+}
+
+async function loadEconomicsSubnetRows(ctx) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: ctx.readHealthKv,
+    env: ctx.env,
+    contractVersion: mcpContractVersion(ctx),
+  });
+  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
+  const blob = await loadArtifactData(ctx, "/metagraph/economics.json");
+  return Array.isArray(blob?.subnets) ? blob.subnets : [];
 }
 
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and
@@ -453,18 +485,6 @@ function clampLimit(value, fallback, max) {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
-}
-
-// Input-schema fragment for the optional `type` scope: one record kind or a list.
-// Built from SEMANTIC_TYPES so the schema and the server-side validator never drift.
-function semanticTypeSchema() {
-  const kind = { type: "string", enum: [...SEMANTIC_TYPES] };
-  return {
-    description:
-      `Restrict results to one or more record kinds (${SEMANTIC_TYPES.join(", ")}). ` +
-      "Accepts a single kind or a list; omit for all kinds.",
-    oneOf: [kind, { type: "array", items: kind }],
-  };
 }
 
 // Shared pagination for every list/search tool: slice one page and return the
@@ -1034,6 +1054,168 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_uptime",
+    title: "Get subnet uptime history",
+    description:
+      "Fetch one subnet's long-term daily uptime history for its operational " +
+      "surfaces from the live surface_uptime_daily rollup. Returns per-surface " +
+      "day series, window-wide uptime ratios, and reliability scores for the " +
+      "requested window (90d or 1y). Mirrors GET /api/v1/subnets/{netuid}/uptime.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["90d", "1y"],
+          description: "History window (default 90d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window = parseUptimeWindow(args?.window);
+      if (args?.window !== undefined && window === null) {
+        throw toolError("invalid_params", "window must be one of: 90d, 1y.");
+      }
+      return loadSubnetUptime(mcpD1Runner(ctx), netuid, {
+        window: window || "90d",
+        observedAt: await mcpObservedAt(ctx),
+      });
+    },
+  },
+  {
+    name: "get_registry_leaderboards",
+    title: "Get registry leaderboards",
+    description:
+      "Fetch the live registry leaderboards that combine D1 probe health with " +
+      "registry completeness and the economics tier: healthiest, fastest-rpc, " +
+      "most-complete, most-enriched, fastest-growing, plus the economic " +
+      "opportunity boards (open-slots, cheapest-registration, highest-emission, " +
+      "validator-headroom). Omit board for all boards. Mirrors " +
+      "GET /api/v1/registry/leaderboards.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        board: {
+          type: "string",
+          enum: [...LEADERBOARD_BOARDS],
+          description: "Optional single board. Omit to return all boards.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max subnets per board (1-100, default 20).",
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const board = optionalEnum(args, "board", LEADERBOARD_BOARDS);
+      const limit = clampLimit(args?.limit, 20, 100);
+      const profiles =
+        (await loadArtifactData(ctx, "/metagraph/profiles.json")).profiles ||
+        [];
+      return loadRegistryLeaderboards(mcpD1Runner(ctx), {
+        profiles,
+        economicsRows: await loadEconomicsSubnetRows(ctx),
+        board,
+        limit,
+        observedAt: await mcpObservedAt(ctx),
+      });
+    },
+  },
+  {
+    name: "compare_subnets",
+    title: "Compare subnets side by side",
+    description:
+      "Place several subnets side by side across registry structure, economics, " +
+      "and live probe health in one call. Choose dimensions to limit the payload " +
+      "(structure, economics, health — default all). Mirrors GET /api/v1/compare.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuids: {
+          type: "array",
+          items: { type: "integer", minimum: 0 },
+          minItems: 1,
+          maxItems: 128,
+          description: "Subnet netuids to compare, in display order.",
+        },
+        dimensions: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: ["structure", "economics", "health"],
+          },
+          description: "Optional subset of compare dimensions (default all).",
+        },
+      },
+      required: ["netuids"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuids = parseCompareNetuidList(args?.netuids);
+      if (!netuids) {
+        throw toolError(
+          "invalid_params",
+          "netuids must be a non-empty array of 1-128 distinct subnet ids.",
+        );
+      }
+      const dimensions = parseCompareDimensionList(args?.dimensions);
+      if (args?.dimensions !== undefined && dimensions === null) {
+        throw toolError(
+          "invalid_params",
+          "dimensions must be a non-empty subset of structure, economics, health.",
+        );
+      }
+      const profiles =
+        (await loadArtifactData(ctx, "/metagraph/profiles.json")).profiles ||
+        [];
+      return loadCompareSubnets(mcpD1Runner(ctx), {
+        profiles,
+        economicsRows: await loadEconomicsSubnetRows(ctx),
+        netuids,
+        dimensions: dimensions || undefined,
+        observedAt: await mcpObservedAt(ctx),
+      });
+    },
+  },
+  {
+    name: "get_global_incidents",
+    title: "Get global probe incidents",
+    description:
+      "Fetch the cross-subnet incident ledger: surfaces that had consecutive " +
+      "probe failures grouped into downtime incidents over the requested window " +
+      "(7d or 30d). Mirrors GET /api/v1/incidents.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Incident lookback window (default 7d).",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (args?.window !== undefined && parsed === null) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label, days } = parsed || parseAnalyticsWindow("7d");
+      return loadGlobalIncidents(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: await mcpObservedAt(ctx),
+      });
     },
   },
   {
@@ -1940,8 +2122,7 @@ export const MCP_TOOLS = [
       "providers. Unlike search_subnets' keyword match, this understands intent " +
       "— 'generate images from a prompt', 'stream live price data' — and ranks " +
       "by semantic similarity. Returns netuid/slug/title/description/url per " +
-      "hit, optionally scoped to subnets, surfaces, and/or providers via `type`. " +
-      "Requires the AI layer; fall back to search_subnets when it is not " +
+      "hit. Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
     inputSchema: {
       type: "object",
@@ -1957,7 +2138,6 @@ export const MCP_TOOLS = [
           minimum: 1,
           maximum: 20,
         },
-        type: semanticTypeSchema(),
       },
       required: ["query"],
       additionalProperties: false,
@@ -1967,10 +2147,7 @@ export const MCP_TOOLS = [
       const query = requireString(args, "query");
       await requireAiRateLimit(ctx, "semantic");
       return runAi(() =>
-        semanticSearch(ctx.env, query, {
-          limit: args?.limit,
-          type: args?.type,
-        }),
+        semanticSearch(ctx.env, query, { limit: args?.limit }),
       );
     },
   },
@@ -1981,8 +2158,7 @@ export const MCP_TOOLS = [
       "Natural-language Q&A grounded in the registry (RAG). Retrieves the most " +
       "relevant subnets/surfaces and answers from them with bracketed [n] " +
       "citations — e.g. 'Which subnets expose an inference API I can call " +
-      "today?'. Returns the answer plus its citations. Scope the retrieved " +
-      "context with `type`. Requires the AI layer.",
+      "today?'. Returns the answer plus its citations. Requires the AI layer.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1991,7 +2167,6 @@ export const MCP_TOOLS = [
           description:
             "A question about Bittensor subnets or the registry as a whole.",
         },
-        type: semanticTypeSchema(),
       },
       required: ["question"],
       additionalProperties: false,
@@ -2001,12 +2176,7 @@ export const MCP_TOOLS = [
       const question = requireString(args, "question");
       await requireAiRateLimit(ctx, "ask");
       return runAi(() =>
-        askQuestion(
-          ctx.env,
-          question,
-          { type: args?.type },
-          { readArtifact: ctx.readArtifact },
-        ),
+        askQuestion(ctx.env, question, {}, { readArtifact: ctx.readArtifact }),
       );
     },
   },
@@ -2482,6 +2652,54 @@ const TOOL_OUTPUT_SCHEMAS = {
       point_count: { type: "integer" },
       points: { type: "array", items: { type: "object" } },
       deltas: { type: "object" },
+    },
+  },
+  get_subnet_uptime: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "window", "surfaces"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      surfaces: { type: "array", items: { type: "object" } },
+      reliability: { type: ["object", "null"] },
+    },
+  },
+  get_registry_leaderboards: {
+    type: "object",
+    additionalProperties: true,
+    required: ["boards"],
+    properties: {
+      schema_version: { type: "integer" },
+      board: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      boards: { type: "object" },
+    },
+  },
+  compare_subnets: {
+    type: "object",
+    additionalProperties: true,
+    required: ["requested_netuids", "subnets", "dimensions"],
+    properties: {
+      schema_version: { type: "integer" },
+      requested_netuids: { type: "array", items: { type: "integer" } },
+      dimensions: { type: "array", items: { type: "string" } },
+      subnets: { type: "array", items: { type: "object" } },
+      observed_at: NULLABLE_STRING,
+    },
+  },
+  get_global_incidents: {
+    type: "object",
+    additionalProperties: true,
+    required: ["summary", "surfaces"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      summary: { type: "object" },
+      surfaces: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_metagraph: {

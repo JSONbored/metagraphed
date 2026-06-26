@@ -1661,50 +1661,6 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.equal(out.results[0].netuid, 1);
   });
 
-  test("semantic_search forwards the type scope to Vectorize", async () => {
-    const env = aiEnv();
-    let lastOptions;
-    env.VECTORIZE.query = (_vector, options) => {
-      lastOptions = options;
-      return Promise.resolve({ matches: [] });
-    };
-    const res = await callTool(
-      "semantic_search",
-      { query: "images", type: ["subnet", "provider"] },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.deepEqual(lastOptions.filter, {
-      type: { $in: ["subnet", "provider"] },
-    });
-  });
-
-  test("semantic_search rejects an unknown type with invalid_params", async () => {
-    const res = await callTool(
-      "semantic_search",
-      { query: "images", type: "widget" },
-      { env: aiEnv() },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /Unknown type|Valid types/);
-  });
-
-  test("ask forwards the type scope to Vectorize", async () => {
-    const env = aiEnv();
-    let lastOptions;
-    env.VECTORIZE.query = (_vector, options) => {
-      lastOptions = options;
-      return Promise.resolve({ matches: [] });
-    };
-    const res = await callTool(
-      "ask",
-      { question: "which providers?", type: "provider" },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.deepEqual(lastOptions.filter, { type: "provider" });
-  });
-
   test("ask returns a grounded answer with citations when AI is enabled", async () => {
     const res = await callTool(
       "ask",
@@ -3046,7 +3002,15 @@ describe("MCP economics + metagraph data tools", () => {
   ];
 
   // D1 binding honoring the loaders' WHERE clauses (neurons + subnet_snapshots).
-  function metagraphD1({ neurons = [], snapshots = [] } = {}) {
+  function metagraphD1({
+    neurons = [],
+    snapshots = [],
+    surfaceStatus = [],
+    uptimeRows = [],
+    incidentRows = [],
+    growthSamples = [],
+    rpcRows = [],
+  } = {}) {
     return {
       prepare(sql) {
         return {
@@ -3064,7 +3028,30 @@ describe("MCP economics + metagraph data tools", () => {
                   return Promise.resolve({ results: r });
                 }
                 if (sql.includes("FROM subnet_snapshots")) {
+                  if (sql.includes("snapshot_date >=")) {
+                    return Promise.resolve({ results: growthSamples });
+                  }
                   return Promise.resolve({ results: snapshots });
+                }
+                if (sql.includes("FROM surface_uptime_daily")) {
+                  return Promise.resolve({ results: uptimeRows });
+                }
+                if (sql.includes("FROM surface_checks")) {
+                  return Promise.resolve({ results: incidentRows });
+                }
+                if (sql.includes("min_latency_ms")) {
+                  return Promise.resolve({ results: rpcRows });
+                }
+                if (sql.includes("FROM surface_status")) {
+                  if (sql.includes("WHERE netuid IN")) {
+                    const netuids = params.map(Number);
+                    return Promise.resolve({
+                      results: surfaceStatus.filter((row) =>
+                        netuids.includes(row.netuid),
+                      ),
+                    });
+                  }
+                  return Promise.resolve({ results: surfaceStatus });
                 }
                 return Promise.resolve({ results: [] });
               },
@@ -3078,8 +3065,41 @@ describe("MCP economics + metagraph data tools", () => {
     METAGRAPH_HEALTH_DB: metagraphD1({
       neurons: [ROW, MINER],
       snapshots: SNAPSHOTS,
+      surfaceStatus: [
+        { netuid: 1, surface_count: 5, ok_count: 4, avg_latency_ms: 100 },
+        { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
+      ],
     }),
   };
+  const liveAnalyticsDeps = makeDeps({
+    "/metagraph/profiles.json": {
+      profiles: [
+        {
+          netuid: 1,
+          slug: "alpha",
+          name: "Alpha",
+          completeness_score: 80,
+          surface_count: 5,
+          operational_interface_count: 2,
+        },
+        {
+          netuid: 7,
+          slug: "gamma",
+          name: "Gamma",
+          completeness_score: 70,
+          surface_count: 4,
+          operational_interface_count: 1,
+        },
+      ],
+    },
+    "/metagraph/economics.json": {
+      generated_at: "2026-06-20T00:00:00Z",
+      subnets: [
+        { netuid: 1, open_slots: 2, emission_share: 0.1 },
+        { netuid: 7, open_slots: 1, emission_share: 0.05 },
+      ],
+    },
+  });
 
   test("get_subnet_metagraph returns every neuron with booleans coerced", async () => {
     const res = await callTool(
@@ -3177,6 +3197,178 @@ describe("MCP economics + metagraph data tools", () => {
 
     const traj = await callTool("get_subnet_trajectory", { netuid: 7 });
     assert.equal(traj.body.result.structuredContent.point_count, 0);
+  });
+
+  test("get_subnet_uptime returns schema-stable empty surfaces on cold D1", async () => {
+    const res = await callTool("get_subnet_uptime", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "90d");
+    assert.deepEqual(out.surfaces, []);
+  });
+
+  test("get_registry_leaderboards returns boards from committed profiles", async () => {
+    const res = await callTool(
+      "get_registry_leaderboards",
+      { limit: 5 },
+      { deps: liveAnalyticsDeps, env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(typeof out.boards === "object");
+    assert.ok(Object.keys(out.boards).length > 0);
+  });
+
+  test("compare_subnets composes health-only dimensions", async () => {
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [1, 7], dimensions: ["health"] },
+      { deps: liveAnalyticsDeps, env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.requested_netuids, [1, 7]);
+    assert.deepEqual(out.dimensions, ["health"]);
+    assert.equal(out.subnets.length, 2);
+    for (const subnet of out.subnets) {
+      assert.equal("health" in subnet, true);
+      assert.equal("structure" in subnet, false);
+    }
+  });
+
+  test("get_global_incidents returns empty summary on cold D1", async () => {
+    const res = await callTool("get_global_incidents", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.summary.incident_count, 0);
+    assert.deepEqual(out.surfaces, []);
+  });
+
+  test("live analytics tools reject invalid window/board params", async () => {
+    const uptime = await callTool("get_subnet_uptime", {
+      netuid: 7,
+      window: "30d",
+    });
+    assert.equal(uptime.body.result.isError, true);
+
+    const incidents = await callTool("get_global_incidents", { window: "90d" });
+    assert.equal(incidents.body.result.isError, true);
+
+    const compare = await callTool("compare_subnets", {
+      netuids: [],
+    });
+    assert.equal(compare.body.result.isError, true);
+
+    const dimensions = await callTool("compare_subnets", {
+      netuids: [1],
+      dimensions: ["bogus"],
+    });
+    assert.equal(dimensions.body.result.isError, true);
+
+    const board = await callTool("get_registry_leaderboards", {
+      board: "not-a-board",
+    });
+    assert.equal(board.body.result.isError, true);
+  });
+
+  test("get_subnet_uptime returns per-surface history for the 1y window", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        uptimeRows: [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            day: "2026-06-01",
+            samples: 100,
+            ok_count: 95,
+            uptime_ratio: 0.95,
+            avg_latency_ms: 80,
+            p50: 70,
+            p95: 120,
+            p99: 150,
+            status: "ok",
+          },
+        ],
+      }),
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_subnet_uptime",
+      { netuid: 7, window: "1y" },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "1y");
+    assert.equal(out.observed_at, FRESH_RUN);
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].samples, 100);
+  });
+
+  test("get_registry_leaderboards can filter to one board", async () => {
+    const res = await callTool(
+      "get_registry_leaderboards",
+      { board: "healthiest", limit: 2 },
+      { deps: liveAnalyticsDeps, env: d1Env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.ok(out.boards.healthiest);
+    assert.equal("fastest-rpc" in out.boards, false);
+  });
+
+  test("compare_subnets defaults to all dimensions and uses live economics KV", async () => {
+    const deps = {
+      ...liveAnalyticsDeps,
+      readHealthKv: makeDeps(
+        {},
+        {
+          "health:meta": { last_run_at: FRESH_RUN },
+          "economics:current": ECON_BLOB,
+        },
+      ).readHealthKv,
+    };
+    const res = await callTool(
+      "compare_subnets",
+      { netuids: [1, 7] },
+      {
+        deps,
+        env: { ...d1Env, METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.dimensions, ["structure", "economics", "health"]);
+    assert.equal(out.subnets[1].structure.completeness_score, 70);
+    assert.equal(out.subnets[1].economics.open_slots, 3);
+    assert.equal(out.subnets[1].health.ok_count, 2);
+    assert.equal(out.observed_at, FRESH_RUN);
+  });
+
+  test("get_global_incidents returns incident rows for the 30d window", async () => {
+    const now = Date.now();
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        incidentRows: [
+          {
+            netuid: 7,
+            surface_id: "api-root",
+            surface_key: "api-root",
+            started_at: now - 3_600_000,
+            ended_at: now - 1_800_000,
+            failed_samples: 3,
+          },
+        ],
+      }),
+    };
+    const res = await callTool(
+      "get_global_incidents",
+      { window: "30d" },
+      {
+        deps: makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } }),
+        env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.observed_at, FRESH_RUN);
+    assert.equal(out.summary.incident_count, 1);
+    assert.equal(out.surfaces[0].incidents[0].failed_samples, 3);
   });
 
   test("the D1 runner swallows a query error and a missing result set", async () => {
