@@ -114,7 +114,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 
 <!-- BEGIN:REGISTRY-CATALOG -->
 
-**99 curated subnets** — 87 with a site, 44 with docs, 86 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
+**101 curated subnets** — 87 with a site, 44 with docs, 86 with a public repo. Live health, search, and the full list (every active subnet, not just the curated ones) at **[metagraph.sh](https://metagraph.sh)**; per-subnet JSON at `https://api.metagraph.sh/api/v1/subnets/{netuid}`.
 
 **Focus areas:** `data` 7 · `compute` 6 · `inference` 5 · `defi` 4 · `data-artifact` 2 · `decentralized-training` 2 · `depin` 2 · `finance` 2 · `language-models` 2 · `mcp` 2 · `prediction-market` 2 · `quantum` 2
 
@@ -194,6 +194,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Bitstarter #1](https://metagraph.sh/subnets/91)** `SN91` · [site](https://bitstarter.ai/) · [repo](https://github.com/AlphaCoreBittensor/alphacore)
 - **[Tensorclaw](https://metagraph.sh/subnets/92)** `SN92` — `inference` `stale-source-restored` · [site](https://www.tensorclaw.ai/) · [repo](https://github.com/tensorclaw/tensorclaw)
 - **[Bitcast](https://metagraph.sh/subnets/93)** `SN93` · [site](https://stats.bitcast.network/) · [repo](https://github.com/bitcast-network/bitcast)
+- **[Bitsota](https://metagraph.sh/subnets/94)** `SN94`
 - **[Actual](https://metagraph.sh/subnets/95)** `SN95` — `inference` `model-registry` · [site](https://actual.inc/) · [repo](https://github.com/actual-computer/actual-subnet-95)
 - **[Verathos](https://metagraph.sh/subnets/96)** `SN96` — `inference` `language-models` · [site](https://verathos.ai/) · [docs](https://verathos.ai/docs) · [repo](https://github.com/verathos-ai/verathos)
 - **[ForeverMoney](https://metagraph.sh/subnets/98)** `SN98` — `finance` · [site](https://forevermoney.ai/) · [repo](https://github.com/SN98-ForeverMoney/forever-money)
@@ -203,6 +204,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[Djinn](https://metagraph.sh/subnets/103)** `SN103` · [site](https://www.djinn.gg/) · [repo](https://github.com/Djinn-Inc/djinn)
 - **[for sale (burn to uid1)](https://metagraph.sh/subnets/104)** `SN104` — `no-public-project-surface`
 - **[Nodexo](https://metagraph.sh/subnets/106)** `SN106` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/)
+- **[Minos](https://metagraph.sh/subnets/107)** `SN107`
 - **[Academia](https://metagraph.sh/subnets/109)** `SN109` — `data-artifact` · [repo](https://github.com/fx-integral/academia)
 - **[Green Compute](https://metagraph.sh/subnets/110)** `SN110` — `model-directory` · [site](https://www.green-compute.com/) · [docs](https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_110/index.mdx) · [repo](https://github.com/Rich-Kids-of-TAO/rkt-subnet)
 - **[oneoneone](https://metagraph.sh/subnets/111)** `SN111` — `data` `ugc` · [site](https://oneoneone.io/) · [repo](https://github.com/oneoneone-io/subnet-111)
