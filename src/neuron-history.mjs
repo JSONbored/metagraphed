@@ -260,17 +260,19 @@ export function neuronDailyUpsertStatements(
 
 const SNAPSHOT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Keep only well-formed backfill rows: integer netuid+uid, a YYYY-MM-DD
-// snapshot_date, and a non-empty hotkey (mirrors the forward path, which drops
-// null-hotkey UIDs). Anything else is silently dropped so a partial/garbage batch
-// can never poison the table.
+// Keep only well-formed backfill rows: non-negative integer netuid+uid, a
+// YYYY-MM-DD snapshot_date, and a non-empty hotkey (mirrors the forward path,
+// which drops null-hotkey UIDs). Anything else is silently dropped so a
+// partial/garbage batch can never poison the table.
 export function validNeuronDailyRows(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.filter(
     (row) =>
       row &&
       Number.isInteger(row.netuid) &&
+      row.netuid >= 0 &&
       Number.isInteger(row.uid) &&
+      row.uid >= 0 &&
       typeof row.snapshot_date === "string" &&
       SNAPSHOT_DATE_RE.test(row.snapshot_date) &&
       typeof row.hotkey === "string" &&

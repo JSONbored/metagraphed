@@ -860,6 +860,8 @@ describe("backfill ingest helpers (#1345 Phase 1)", () => {
       { netuid: 7, uid: "x", snapshot_date: "2025-12-01", hotkey: "5Hk" }, // uid not int
       { uid: 4, snapshot_date: "2025-12-01", hotkey: "5Hk" }, // no netuid
       { netuid: 7, uid: 5, snapshot_date: "2025-12-01", hotkey: "" }, // empty hotkey
+      { netuid: -1, uid: 1, snapshot_date: "2025-12-01", hotkey: "5Hk" }, // negative netuid
+      { netuid: 7, uid: -1, snapshot_date: "2025-12-01", hotkey: "5Hk" }, // negative uid
     ]);
     assert.deepEqual(rows, [good]);
     assert.deepEqual(validNeuronDailyRows("nope"), []);
