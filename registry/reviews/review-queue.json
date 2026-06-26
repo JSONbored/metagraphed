@@ -1,7 +1,26 @@
 {
-  "generated_at": "1970-01-01T00:00:00.000Z",
+  "generated_at": "2026-06-14T09:03:05.163Z",
   "generated_by": "metagraphed-review-queue",
   "notes": "Suggested maintainer-review elevations: provenance-strong, live callable APIs on each subnet's own on-chain-asserted domain that are not yet at the top trust tier. Machine-proposed; promote by moving an entry into maintainer-reviewed.json. Regenerate with `npm run review:queue`.",
-  "queue": [],
+  "queue": [
+    {
+      "current_level": "machine-verified",
+      "domain": "babelbit.ai",
+      "kinds": ["subnet-api"],
+      "netuid": 59,
+      "rationale": "Live subnet-api on the subnet's on-chain-asserted domain (babelbit.ai). Strong provenance — elevate by adding a decision to maintainer-reviewed.json after a quick confirm.",
+      "slug": "sn-59",
+      "source_urls": ["https://api.babelbit.ai/"]
+    },
+    {
+      "current_level": "machine-verified",
+      "domain": "theminos.ai",
+      "kinds": ["subnet-api"],
+      "netuid": 107,
+      "rationale": "Live subnet-api on the subnet's on-chain-asserted domain (theminos.ai). Strong provenance — elevate by adding a decision to maintainer-reviewed.json after a quick confirm.",
+      "slug": "sn-107",
+      "source_urls": ["https://api.theminos.ai/"]
+    }
+  ],
   "schema_version": 1
 }
