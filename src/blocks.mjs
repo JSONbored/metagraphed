@@ -184,7 +184,7 @@ export async function loadBlock(d1, ref) {
   const resolvedNumber = rows[0]?.block_number;
   if (Number.isInteger(resolvedNumber)) {
     const nbr = await d1(
-      `SELECT MAX(CASE WHEN block_number < ? THEN block_number END) AS prev, MIN(CASE WHEN block_number > ? THEN block_number END) AS next FROM blocks`,
+      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
     );
     prev = nbr[0]?.prev ?? null;
