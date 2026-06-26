@@ -64,6 +64,54 @@
         "timeout_ms": 10000
       },
       "notes": "Official ItsAI source repository."
+    },
+    {
+      "id": "sn-32-itsai-sdk",
+      "name": "ItsAI Python SDK (PyPI)",
+      "kind": "sdk",
+      "url": "https://pypi.org/project/its-ai/",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://its-ai.org/en"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Published PyPI package `its-ai` (\"Typed Python SDK client for ITS-AI API\", author ITS AI <support@its-ai.org>), linked as the \"Python SDK\" from the official homepage."
+    },
+    {
+      "id": "sn-32-itsai-docs",
+      "name": "ItsAI API documentation",
+      "kind": "docs",
+      "url": "https://docs.its-ai.org/",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://its-ai.org/en"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official ItsAI documentation (page title \"AI content detection API\") on the team's docs.its-ai.org subdomain, linked from the homepage. Fills the file's noted missing-docs gap."
+    },
+    {
+      "id": "sn-32-itsai-api-repo",
+      "name": "ItsAI API repository",
+      "kind": "source-repo",
+      "url": "https://github.com/It-s-AI/api",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/api"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo."
     }
   ],
   "social": { "x": "https://x.com/ai_detection" },
