@@ -19,6 +19,35 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.26.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.25.0...platform-v0.26.0) (2026-06-26)
+
+
+### Features
+
+* **api:** add a most-reliable leaderboard board ranked by windowed reliability ([#1927](https://github.com/JSONbored/metagraphed/issues/1927)) ([193d81f](https://github.com/JSONbored/metagraphed/commit/193d81ff6a5fd97b0542bdcbb2ee2d1a09b5af3a))
+* **mcp:** let semantic_search and ask filter results by type ([#1996](https://github.com/JSONbored/metagraphed/issues/1996)) ([2bcd5c1](https://github.com/JSONbored/metagraphed/commit/2bcd5c199908744e6175a8ea639071da6a1114cf))
+* **registry:** add SN1 Apex deep-research, examples, benchmarking, and PvP repos ([#1952](https://github.com/JSONbored/metagraphed/issues/1952)) ([f9c974e](https://github.com/JSONbored/metagraphed/commit/f9c974e81e9f51eaf7ac96820af981cc2fd51336))
+* **registry:** add SN107 Minos public Platform API subnet-api surface ([#1973](https://github.com/JSONbored/metagraphed/issues/1973)) ([#1974](https://github.com/JSONbored/metagraphed/issues/1974)) ([bb58879](https://github.com/JSONbored/metagraphed/commit/bb5887993b699848b94d88cd198e611681f5aebe))
+* **registry:** add SN32 ItsAI Python SDK, docs, and API repo surfaces ([#1945](https://github.com/JSONbored/metagraphed/issues/1945)) ([d36df3f](https://github.com/JSONbored/metagraphed/commit/d36df3f4017166360e24a07f6a1dce2b276b7f58))
+* **registry:** add SN62 Ridges public subnet-api and OpenAPI surface ([#722](https://github.com/JSONbored/metagraphed/issues/722)) ([#2002](https://github.com/JSONbored/metagraphed/issues/2002)) ([075c793](https://github.com/JSONbored/metagraphed/commit/075c79340008ef8c77583e6721630adea956aa6b))
+* **registry:** add SN64 Chutes public LLM inference API surface ([#2016](https://github.com/JSONbored/metagraphed/issues/2016)) ([e0dbfad](https://github.com/JSONbored/metagraphed/commit/e0dbfadf6700432186efe1961591d3834007d50b))
+* **registry:** add SN88 Investing public asset-ratio JSON data-artifact ([#2003](https://github.com/JSONbored/metagraphed/issues/2003)) ([#2004](https://github.com/JSONbored/metagraphed/issues/2004)) ([6191005](https://github.com/JSONbored/metagraphed/commit/61910053b12e78e73aac789e59f683dce1cc4123))
+* **registry:** add SN94 Bitsota subnet-api surface ([#591](https://github.com/JSONbored/metagraphed/issues/591)) ([#2005](https://github.com/JSONbored/metagraphed/issues/2005)) ([db9f9ed](https://github.com/JSONbored/metagraphed/commit/db9f9ed83f2c0ea25eea64ad09b23eccd6af7027))
+* **templates:** allow multiple source_urls in surface issue form ([#2006](https://github.com/JSONbored/metagraphed/issues/2006)) ([#2007](https://github.com/JSONbored/metagraphed/issues/2007)) ([9cae290](https://github.com/JSONbored/metagraphed/commit/9cae290ba0a77f4a0acc6243c87f68afb854a636))
+
+
+### Bug Fixes
+
+* **api:** clamp sub-perfect chain activity success_rate below 1 ([#2020](https://github.com/JSONbored/metagraphed/issues/2020)) ([443dd5f](https://github.com/JSONbored/metagraphed/commit/443dd5f39fc8faad0c1fd6a009a4153eeee3f46c))
+* **api:** guard block count filters ([#2000](https://github.com/JSONbored/metagraphed/issues/2000)) ([0f1482a](https://github.com/JSONbored/metagraphed/commit/0f1482a8a16c037703567bccd417105a7da6fdfe))
+* **api:** resolve numeric block events refs ([#1981](https://github.com/JSONbored/metagraphed/issues/1981)) ([9931b22](https://github.com/JSONbored/metagraphed/commit/9931b2289ff6f60a4f8ec27bf24178ed963bb8c8)), closes [#1980](https://github.com/JSONbored/metagraphed/issues/1980)
+* **chain:** lowercase 0x block/extrinsic hashes before D1 lookup ([#2031](https://github.com/JSONbored/metagraphed/issues/2031)) ([0b3f9c8](https://github.com/JSONbored/metagraphed/commit/0b3f9c8092326f016bca2d1b21991366a7b3ca19))
+* **events:** index the real ColdkeySwapped event, not the nonexistent ColdkeySwapScheduled ([#1913](https://github.com/JSONbored/metagraphed/issues/1913)) ([25887ac](https://github.com/JSONbored/metagraphed/commit/25887ac9874297973db2394ad2ec7ce0d3136880)), closes [#1912](https://github.com/JSONbored/metagraphed/issues/1912)
+* **health:** normalize D1 fallback global status_counts ([#2023](https://github.com/JSONbored/metagraphed/issues/2023)) ([8e77820](https://github.com/JSONbored/metagraphed/commit/8e77820d689b8e3a54477cc474f7da99d3e7aef7))
+* **health:** normalize endpoint by_status histogram ([#2024](https://github.com/JSONbored/metagraphed/issues/2024)) ([c177bc5](https://github.com/JSONbored/metagraphed/commit/c177bc59e020579f80718e89b7947621a0f85a63))
+* **scripts:** make surface:add reject duplicate surfaces ([#2029](https://github.com/JSONbored/metagraphed/issues/2029)) ([38bb859](https://github.com/JSONbored/metagraphed/commit/38bb859bf0871c9c03b146ae7d5e481043fe276f))
+* **scripts:** use fileURLToPath for repoRoot to fix Windows path mangling ([#1914](https://github.com/JSONbored/metagraphed/issues/1914)) ([3559ac7](https://github.com/JSONbored/metagraphed/commit/3559ac7337f4f1594d3a46d7e05418b4d3512395))
+
 ## [0.25.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.24.0...platform-v0.25.0) (2026-06-26)
 
 
