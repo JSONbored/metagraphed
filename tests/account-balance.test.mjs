@@ -72,6 +72,38 @@ test("GET /accounts/{ss58}/balance returns 400 for a too-short address", async (
   assert.equal(res.status, 400);
 });
 
+test("GET /accounts/{ss58}/balance rejects overlong base58 before rate limiting or RPC", async () => {
+  let limiterCalls = 0;
+  let fetchCalls = 0;
+  const env = {
+    RPC_RATE_LIMITER: {
+      limit: async () => {
+        limiterCalls += 1;
+        return { success: true };
+      },
+    },
+  };
+  await withFetchStub(
+    async () => {
+      fetchCalls += 1;
+      throw new Error("should not fetch");
+    },
+    async () => {
+      const overlong = "5" + "a".repeat(4096);
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${overlong}/balance`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 400);
+      assert.equal(limiterCalls, 0);
+      assert.equal(fetchCalls, 0);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+    },
+  );
+});
+
 test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC failure", async () => {
   // No fetch mock — the Worker's global fetch will fail or env has no fetch.
   // Simulate by providing an env whose fetch throws.

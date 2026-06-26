@@ -511,6 +511,8 @@ const SS58_BASE58_INDEX = new Map(
   [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
 );
 const FINNEY_SS58_PREFIX = 42;
+const FINNEY_SS58_MIN_LENGTH = 47;
+const FINNEY_SS58_MAX_LENGTH = 48;
 const FINNEY_SS58_DECODED_LENGTH = 35;
 const BALANCE_KV_TTL = 60; // seconds
 const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
@@ -542,6 +544,13 @@ function decodeBase58(value) {
 }
 
 function isFinneySs58Address(value) {
+  if (
+    value.length < FINNEY_SS58_MIN_LENGTH ||
+    value.length > FINNEY_SS58_MAX_LENGTH
+  ) {
+    return false;
+  }
+
   const decoded = decodeBase58(value);
   return (
     decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
@@ -938,19 +947,13 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  const hasObservedRange = fromMs != null || toMs != null;
-  const hasOrderAlignedEquality =
-    sp.get("block") != null ||
-    Boolean(sp.get("signer")) ||
-    Boolean(sp.get("call_module")) ||
-    Boolean(sp.get("call_function")) ||
-    successRaw === "true" ||
-    successRaw === "false";
-  const observedIndexHint =
-    hasObservedRange && !hasOrderAlignedEquality
-      ? " INDEXED BY idx_extrinsics_observed_order"
-      : "";
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics${observedIndexHint}`;
+  // Do not force the observed_at-leading index here. Broad valid windows such
+  // as from=0 or to=now can cover the retained hot set; the feed order is still
+  // block_number/extrinsic_index, so SQLite/D1 must be free to choose the
+  // primary-key order and stop after LIMIT instead of scanning and sorting the
+  // observed_at index. The migration keeps idx_extrinsics_observed_order
+  // available for genuinely selective timestamp ranges when the planner wants it.
+  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);

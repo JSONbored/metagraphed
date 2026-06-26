@@ -228,6 +228,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/activity",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+      assert.equal(typeof body.data.window, "string");
+    },
+  ],
+  [
     "/api/v1/subnets/7/uptime",
     (body) => {
       assert.equal(body.data.netuid, 7);

@@ -71,6 +71,9 @@ export const R2_ONLY_PATTERNS = [
   // (0x extrinsic_hash or composite block-index ref) — never written as files.
   /^extrinsics\.json$/,
   /^extrinsics\/(?:0x[0-9a-fA-F]{64}|\d+-\d+|\{hash\})\.json$/,
+  // Chain analytics (#1987): daily network-activity aggregates computed live from
+  // the extrinsics + blocks D1 tiers at /api/v1/chain/activity — never a file.
+  /^chain\/activity\.json$/,
   /^registry\/leaderboards\.json$/,
   // Cross-subnet comparison (#1664), composed live from registry projections +
   // the economics tier + D1 at /api/v1/compare — never written as a file. R2-only

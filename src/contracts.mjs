@@ -1021,6 +1021,12 @@ export const PUBLIC_ARTIFACTS = [
     "ExtrinsicDetailArtifact",
   ),
   artifact(
+    "chain-activity",
+    "/metagraph/chain/activity.json",
+    "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
+    "ChainActivityArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -1880,6 +1886,17 @@ export const API_ROUTES = [
     ["extrinsics", "analytics"],
     [],
     [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-activity",
+    "GET",
+    "/api/v1/chain/activity",
+    "/metagraph/chain/activity.json",
+    "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+    "short",
+    ["chain", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
   ),
   route(
     "subnet-uptime",
