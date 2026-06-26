@@ -112,6 +112,14 @@ import {
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.mjs";
 import {
+  composeCompareData,
+  COMPARE_DIMENSIONS,
+  growthRowsFromSamples,
+  parseCompareDimensions,
+  parseCompareNetuids,
+  profilesProjectionFromRows,
+} from "../src/analytics-live.mjs";
+import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
   pruneHealthHistory,
@@ -358,7 +366,9 @@ export {
   weightedPickEndpoint,
 };
 
-// Byte length of a UTF-8 string. Shared by the realtime ingest handlers below to
+export { composeCompareData } from "../src/analytics-live.mjs";
+
+// Byte length of a UTF-8 string.
 // bound request bodies before parsing. (The staging loaders carry their own copy;
 // it is a pure stdlib one-liner, so a tiny duplicate beats a cross-module import
 // for a leaf used on both sides of the extraction.)
@@ -2251,24 +2261,7 @@ async function leaderboardProfilesProjection(env, now = Date.now()) {
   }
   const artifact = await readArtifact(env, "/metagraph/profiles.json");
   const profiles = artifact.ok ? artifact.data?.profiles || [] : [];
-  const subnetMeta = new Map();
-  const mostComplete = [];
-  for (const profile of profiles) {
-    if (!Number.isInteger(profile.netuid)) continue;
-    subnetMeta.set(profile.netuid, {
-      slug: profile.slug ?? null,
-      name: profile.name ?? null,
-    });
-    mostComplete.push({
-      netuid: profile.netuid,
-      slug: profile.slug ?? null,
-      name: profile.name ?? null,
-      completeness_score: profile.completeness_score ?? null,
-      // Enrichment-depth signals for the most-enriched board (#753).
-      surface_count: profile.surface_count ?? 0,
-      operational_interface_count: profile.operational_interface_count ?? 0,
-    });
-  }
+  const { subnetMeta, mostComplete } = profilesProjectionFromRows(profiles);
   const projection = { subnetMeta, mostComplete, builtAt: now };
   // Don't cache an empty projection (failed/cold read) — retry next request.
   if (mostComplete.length > 0) {
@@ -2364,25 +2357,7 @@ async function handleLeaderboards(request, env, url) {
   );
 
   // Per-subnet completeness delta over the window (latest - earliest sample).
-  const growthByNetuid = new Map();
-  for (const row of growthSamples) {
-    const entry = growthByNetuid.get(row.netuid) || {
-      first: undefined,
-      last: undefined,
-    };
-    // `undefined` = no row yet; a real null completeness_score must latch as the
-    // baseline so the delta guard below can drop unscored window endpoints.
-    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
-    entry.last = row.completeness_score ?? null;
-    growthByNetuid.set(row.netuid, entry);
-  }
-  const growthRows = [...growthByNetuid.entries()].map(([netuid, entry]) => ({
-    netuid,
-    delta:
-      entry.first != null && entry.last != null
-        ? Number(entry.last) - Number(entry.first)
-        : null,
-  }));
+  const growthRows = growthRowsFromSamples(growthSamples);
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
@@ -2415,126 +2390,18 @@ async function handleLeaderboards(request, env, url) {
     : response;
 }
 
-// The data domains /api/v1/compare can place side by side: registry structure
-// (completeness + surface counts from profiles), the live economics tier, and
-// the live per-subnet probe-health rollup. Composed in one call so a caller can
-// choose between subnets without N×(detail + economics + health) round-trips.
-const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
-// Same shape + hard cap as the subnets collection's `netuids` CSV filter: 1-128
-// ids, each ≤ 5 digits. Bounds the compare fan-out at the parameter layer.
-const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
-
-function compareNetuids(netuidsRaw) {
-  if (!netuidsRaw || !COMPARE_NETUIDS_PATTERN.test(netuidsRaw)) return null;
-  const requestedNetuids = [];
-  const seenNetuids = new Set();
-  for (const part of netuidsRaw.split(",")) {
-    const netuid = Number(part);
-    if (seenNetuids.has(netuid)) continue;
-    seenNetuids.add(netuid);
-    requestedNetuids.push(netuid);
-  }
-  return requestedNetuids;
-}
-
-function compareDimensions(dimensionsRaw) {
-  if (dimensionsRaw === null) return COMPARE_DIMENSIONS;
-  const requested = dimensionsRaw.split(",");
-  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-  if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
-}
-
+// Cross-subnet compare cache key helper (canonical query string for edge cache).
 function canonicalCompareCachePath(url) {
   if (validateQueryParams(url, ["netuids", "dimensions"])) return null;
-  const requestedNetuids = compareNetuids(url.searchParams.get("netuids"));
+  const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
   if (!requestedNetuids) return null;
-  const dimensions = compareDimensions(url.searchParams.get("dimensions"));
+  const dimensions = parseCompareDimensions(url.searchParams.get("dimensions"));
   if (!dimensions) return null;
   const params = [`netuids=${encodeURIComponent(requestedNetuids.join(","))}`];
   if (dimensions.length !== COMPARE_DIMENSIONS.length) {
     params.push(`dimensions=${encodeURIComponent(dimensions.join(","))}`);
   }
   return `${url.pathname}?${params.join("&")}`;
-}
-
-// Pure projection: fold the requested netuids + the resolved source rows into
-// the side-by-side compare shape, in REQUESTED order. A netuid absent from the
-// registry profiles is returned `found: false` with every requested dimension
-// null (so a caller can still align columns); a found subnet missing from a
-// given source tier gets that one dimension as null. Exported for unit coverage.
-export function composeCompareData({
-  requestedNetuids,
-  dimensions,
-  subnetMeta,
-  structureRows,
-  economicsRows,
-  healthRows,
-  observedAt,
-}) {
-  const includeStructure = dimensions.includes("structure");
-  const includeEconomics = dimensions.includes("economics");
-  const includeHealth = dimensions.includes("health");
-
-  const structureByNetuid = new Map();
-  for (const row of structureRows || []) {
-    structureByNetuid.set(row.netuid, {
-      completeness_score: row.completeness_score,
-      surface_count: row.surface_count,
-      operational_interface_count: row.operational_interface_count,
-    });
-  }
-  const economicsByNetuid = new Map();
-  for (const row of economicsRows || []) {
-    economicsByNetuid.set(row.netuid, {
-      registration_cost_tao: row.registration_cost_tao,
-      registration_allowed: row.registration_allowed,
-      open_slots: row.open_slots,
-      emission_share: row.emission_share,
-      alpha_price_tao: row.alpha_price_tao,
-      validator_count: row.validator_count,
-      miner_count: row.miner_count,
-      total_stake_tao: row.total_stake_tao,
-      miner_readiness: row.miner_readiness,
-    });
-  }
-  const healthByNetuid = new Map();
-  for (const row of healthRows || []) {
-    healthByNetuid.set(row.netuid, {
-      surface_count: row.surface_count,
-      ok_count: row.ok_count,
-      avg_latency_ms: row.avg_latency_ms,
-    });
-  }
-
-  const subnets = requestedNetuids.map((netuid) => {
-    const meta = subnetMeta.get(netuid) || null;
-    const entry = {
-      netuid,
-      name: meta?.name ?? null,
-      slug: meta?.slug ?? null,
-      found: meta !== null,
-    };
-    if (includeStructure) {
-      entry.structure = meta ? (structureByNetuid.get(netuid) ?? null) : null;
-    }
-    if (includeEconomics) {
-      entry.economics = meta ? (economicsByNetuid.get(netuid) ?? null) : null;
-    }
-    if (includeHealth) {
-      entry.health = meta ? (healthByNetuid.get(netuid) ?? null) : null;
-    }
-    return entry;
-  });
-
-  return {
-    schema_version: 1,
-    source: "registry+economics+live-cron-prober",
-    observed_at: observedAt ?? null,
-    dimensions,
-    requested_netuids: requestedNetuids,
-    subnets,
-  };
 }
 
 // Cross-subnet compare: place several subnets side by side across the registry
@@ -2545,7 +2412,7 @@ async function handleCompare(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
 
   const netuidsRaw = url.searchParams.get("netuids");
-  const requestedNetuids = compareNetuids(netuidsRaw);
+  const requestedNetuids = parseCompareNetuids(netuidsRaw);
   if (!requestedNetuids) {
     return errorResponse(
       "invalid_query",
@@ -2556,7 +2423,7 @@ async function handleCompare(request, env, url) {
   }
 
   const dimensionsRaw = url.searchParams.get("dimensions");
-  const dimensions = compareDimensions(dimensionsRaw);
+  const dimensions = parseCompareDimensions(dimensionsRaw);
   if (!dimensions) {
     const unknown = dimensionsRaw
       .split(",")
