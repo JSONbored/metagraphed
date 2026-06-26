@@ -647,6 +647,15 @@ const checks = [
     (body) => assert.equal(body.data.documents.length > 0, true),
   ],
   [
+    "/api/v1/search-index?q=allways",
+    (body) =>
+      assert.equal(
+        body.data.documents.length > 0 &&
+          body.data.documents.every((document) => !("tokens" in document)),
+        true,
+      ),
+  ],
+  [
     "/api/v1/contracts",
     (body) => assert.equal(body.data.primary_domain, "api.metagraph.sh"),
   ],

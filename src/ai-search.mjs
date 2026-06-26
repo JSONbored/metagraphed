@@ -28,6 +28,12 @@ export const EMBED_MANIFEST_KEY = [
 
 export const SEMANTIC_DEFAULT_LIMIT = 10;
 export const SEMANTIC_MAX_LIMIT = 20;
+// Record kinds the registry embeds; the semantic + ask paths can scope to a
+// subset. Single source of truth for the tool schemas and the validator.
+export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
+// `returnMetadata: "all"` caps Vectorize at topK 20. A scoped query over-fetches
+// to this cap, then post-filters and slices, so `limit` holds after filtering.
+const FILTERED_RETRIEVE_TOPK = SEMANTIC_MAX_LIMIT;
 export const ASK_CONTEXT_COUNT = 6;
 export const ASK_MAX_QUESTION_LENGTH = 1000;
 export const ASK_MAX_TOKENS = 512;
@@ -261,8 +267,64 @@ function mapMatch(match) {
   };
 }
 
-// Semantic search: embed the query, query Vectorize, project metadata. Throws
-// aiInputError for a blank query.
+// Normalize the optional type scope to a deduped allow-list, or null for "all"
+// (also when the list is empty). Throws aiInputError on any unknown type.
+export function normalizeSemanticTypes(type) {
+  if (type == null) return null;
+  const list = Array.isArray(type) ? type : [type];
+  const allow = [];
+  for (const raw of list) {
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (!SEMANTIC_TYPES.includes(value)) {
+      throw aiInputError(
+        `Unknown type \`${String(raw)}\`. Valid types: ${SEMANTIC_TYPES.join(", ")}.`,
+      );
+    }
+    if (!allow.includes(value)) allow.push(value);
+  }
+  return allow.length ? allow : null;
+}
+
+// Vectorize metadata filter for a non-empty type allow-list: equality for one,
+// `$in` for many. Honored server-side only when a metadata index exists on `type`.
+function typeMetadataFilter(types) {
+  return { type: types.length === 1 ? types[0] : { $in: types } };
+}
+
+async function queryVectorize(env, vector, topK, filter) {
+  const result = await env.VECTORIZE.query(vector, {
+    topK,
+    returnMetadata: "all",
+    returnValues: false,
+    ...(filter ? { filter } : {}),
+  });
+  return result?.matches || [];
+}
+
+// Shared retrieval for semanticSearch + askQuestion. Unscoped: a plain top-`limit`
+// query. Scoped: try the server-side filter, but since Vectorize rejects a filter
+// on a non-indexed field, fall back to an unfiltered fetch; the post-filter scopes
+// either way. Over-fetches to the cap so `limit` survives the filter.
+async function retrieveMatches(env, vector, limit, types) {
+  if (!types) return queryVectorize(env, vector, limit);
+  const filter = typeMetadataFilter(types);
+  let matches;
+  try {
+    matches = await queryVectorize(env, vector, FILTERED_RETRIEVE_TOPK, filter);
+  } catch {
+    // Filter rejected (no metadata index): refetch unscoped and lean on the
+    // post-filter. A genuine outage re-throws here and propagates.
+    matches = await queryVectorize(env, vector, FILTERED_RETRIEVE_TOPK);
+  }
+  const allow = new Set(types);
+  return matches
+    .filter((match) => allow.has(match?.metadata?.type))
+    .slice(0, limit);
+}
+
+// Semantic search: embed the query, query Vectorize, project metadata. Optionally
+// scopes results to one or more record kinds (`options.type`). Throws aiInputError
+// for a blank query or an unknown type.
 export async function semanticSearch(env, query, options = {}) {
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) throw aiInputError("Query parameter `q` is required.");
@@ -271,13 +333,10 @@ export async function semanticSearch(env, query, options = {}) {
     SEMANTIC_DEFAULT_LIMIT,
     SEMANTIC_MAX_LIMIT,
   );
+  const types = normalizeSemanticTypes(options.type);
   const vector = await embedQuery(env, q);
-  const result = await env.VECTORIZE.query(vector, {
-    topK: limit,
-    returnMetadata: "all",
-    returnValues: false,
-  });
-  const results = (result?.matches || []).map(mapMatch);
+  const matches = await retrieveMatches(env, vector, limit, types);
+  const results = matches.map(mapMatch);
   return { query: q, count: results.length, results, model: EMBED_MODEL };
 }
 
@@ -359,13 +418,9 @@ export async function askQuestion(env, question, options = {}, deps = {}) {
     );
   }
   const topK = clampLimit(options.topK, ASK_CONTEXT_COUNT, ASK_CONTEXT_COUNT);
+  const types = normalizeSemanticTypes(options.type);
   const vector = await embedQuery(env, q);
-  const result = await env.VECTORIZE.query(vector, {
-    topK,
-    returnMetadata: "all",
-    returnValues: false,
-  });
-  const matches = result?.matches || [];
+  const matches = await retrieveMatches(env, vector, topK, types);
   const citations = matches.map((match, i) => {
     const metadata = match?.metadata || {};
     return {
