@@ -358,3 +358,29 @@ test("GET /accounts/{ss58}/balance briefly negative-caches RPC failures", async 
     },
   );
 });
+
+test("GET /accounts/{ss58}/balance rejects a base58 address with a non-finney network prefix (#1818)", async () => {
+  // 48 base58 chars starting with '5' — this PASSES the OLD `^5[a-zA-Z0-9]{46,47}$`
+  // guard — but decodes to SS58 network prefix 40, not finney's 42. The base58
+  // decoder must reject it with a 400 before any RPC fan-out, which the loose
+  // regex could not. Locks in the security value of the decoder over the regex.
+  const wrongPrefix = `5${"1".repeat(47)}`;
+  let fetched = false;
+  await withFetchStub(
+    async () => {
+      fetched = true;
+      throw new Error("must not reach the upstream RPC");
+    },
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${wrongPrefix}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 400);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_ss58");
+      assert.equal(fetched, false);
+    },
+  );
+});
