@@ -20,7 +20,10 @@ import type {
   Candidate,
   Compare,
   CompareSubnet,
+  BlockEvent,
+  BlockEvents,
   Coverage,
+  BlockExtrinsics,
   CurationLevel,
   Endpoint,
   EndpointIncident,
@@ -785,20 +788,93 @@ export const subnetQuery = (netuid: number) =>
 // returns newest-first; the detail accepts a numeric block_number OR a 0x hash.
 function normalizeBlock(raw: unknown): Block | null {
   if (!isRecord(raw)) return null;
-  const blockNumber = firstFiniteNumber(raw.block_number);
-  const blockHash = firstString(raw.block_hash);
+  if (raw.block === null) return null;
+  const wrapped = isRecord(raw.block) ? (raw.block as Record<string, unknown>) : null;
+  const blockData = wrapped ?? raw;
+
+  const blockNumber = firstFiniteNumber(blockData.block_number);
+  const blockHash = firstString(blockData.block_hash);
   // A row is only meaningful with at least a number or a hash to key/link on.
   if (blockNumber == null && !blockHash) return null;
+
+  const prevBlock = firstFiniteNumber(raw.prev_block_number);
+  const nextBlock = firstFiniteNumber(raw.next_block_number);
   return {
-    ...(raw as object),
+    ...(blockData as object),
     block_number: blockNumber ?? (raw.block_number as number),
     block_hash: blockHash ?? "",
-    parent_hash: firstString(raw.parent_hash),
-    author: typeof raw.author === "string" ? raw.author : null,
-    extrinsic_count: firstFiniteNumber(raw.extrinsic_count),
-    event_count: firstFiniteNumber(raw.event_count),
-    observed_at: firstString(raw.observed_at),
+    parent_hash: firstString(blockData.parent_hash),
+    author: typeof blockData.author === "string" ? blockData.author : null,
+    extrinsic_count: firstFiniteNumber(blockData.extrinsic_count),
+    event_count: firstFiniteNumber(blockData.event_count),
+    observed_at: firstString(blockData.observed_at),
+    prev_block_number: typeof prevBlock === "number" ? prevBlock : null,
+    next_block_number: typeof nextBlock === "number" ? nextBlock : null,
   } as Block;
+}
+
+function normalizeBlockExtrinsic(raw: unknown): Extrinsic | null {
+  return normalizeExtrinsic(raw);
+}
+
+function normalizeBlockExtrinsics(raw: unknown): BlockExtrinsics {
+  const d = isRecord(raw) ? raw : {};
+  const rows = Array.isArray(d.extrinsics)
+    ? d.extrinsics.flatMap((x) => {
+        const normalized = normalizeBlockExtrinsic(x);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(d as object),
+    ref: firstString(d.ref),
+    block_number: firstFiniteNumber(d.block_number) ?? null,
+    extrinsic_count: firstFiniteNumber(d.extrinsic_count) ?? rows.length,
+    limit: firstFiniteNumber(d.limit) ?? null,
+    offset: firstFiniteNumber(d.offset) ?? null,
+    extrinsics: rows,
+  } satisfies BlockExtrinsics;
+}
+
+function normalizeBlockEvent(raw: unknown): BlockEvent | null {
+  if (!isRecord(raw)) return null;
+  const amount =
+    firstFiniteNumber(raw.amount_tao) ??
+    firstFiniteNumber(raw.amount) ??
+    firstFiniteNumber(raw.alpha_amount);
+  return {
+    ...(raw as object),
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    event_index: firstFiniteNumber(raw.event_index) ?? null,
+    event_kind: firstString(raw.event_kind) ?? null,
+    hotkey: firstString(raw.hotkey),
+    coldkey: firstString(raw.coldkey),
+    netuid: firstFiniteNumber(raw.netuid),
+    uid: firstFiniteNumber(raw.uid),
+    amount_tao: amount,
+    observed_at: firstString(raw.observed_at),
+    extrinsic_index: firstFiniteNumber(raw.extrinsic_index),
+    alpha_amount: amount,
+  };
+}
+
+function normalizeBlockEvents(raw: unknown): BlockEvents {
+  const d = isRecord(raw) ? raw : {};
+  const rows = Array.isArray(d.events)
+    ? d.events.flatMap((x) => {
+        const normalized = normalizeBlockEvent(x);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+  return {
+    ...(d as object),
+    ref: firstString(d.ref),
+    block_number: firstFiniteNumber(d.block_number) ?? null,
+    event_count: firstFiniteNumber(d.event_count) ?? rows.length,
+    limit: firstFiniteNumber(d.limit) ?? null,
+    offset: firstFiniteNumber(d.offset) ?? null,
+    events: rows,
+  } satisfies BlockEvents;
 }
 
 /** Recent blocks feed — newest first, offset-paginated (limit ≤ 100). */
@@ -822,12 +898,38 @@ export const blockQuery = (ref: string) =>
   queryOptions({
     queryKey: k("block", ref),
     queryFn: async ({ signal }) => {
-      const res = await fetchDetail<unknown>(
-        `/api/v1/blocks/${blockRefPathSegment(ref)}`,
-        "block",
+      const res = await apiFetch<unknown>(`/api/v1/blocks/${blockRefPathSegment(ref)}`, {
         signal,
-      );
+      });
       return { ...res, data: normalizeBlock(res.data) } as ApiResult<Block | null>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** Single block by numeric block_number or 0x block_hash, with per-block extrinsics. */
+export const blockExtrinsicsQuery = (ref: string, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("block-extrinsics", ref, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/blocks/${blockRefPathSegment(ref)}/extrinsics`, {
+        params,
+        signal,
+      });
+      return { ...res, data: normalizeBlockExtrinsics(res.data) } as ApiResult<BlockExtrinsics>;
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/** Single block by numeric block_number or 0x block_hash, with decoded chain events. */
+export const blockEventsQuery = (ref: string, params?: QueryParams) =>
+  queryOptions({
+    queryKey: k("block-events", ref, params ?? {}),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/blocks/${blockRefPathSegment(ref)}/events`, {
+        params,
+        signal,
+      });
+      return { ...res, data: normalizeBlockEvents(res.data) } as ApiResult<BlockEvents>;
     },
     staleTime: STALE_SHORT,
   });

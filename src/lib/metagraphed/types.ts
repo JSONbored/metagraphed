@@ -772,6 +772,45 @@ export interface Block {
   extrinsic_count?: number;
   event_count?: number;
   observed_at?: string; // iso
+  prev_block_number?: number | null;
+  next_block_number?: number | null;
+  [key: string]: unknown;
+}
+
+/** Block-local extrinsics payload from /api/v1/blocks/{ref}/extrinsics. */
+export interface BlockExtrinsics {
+  ref?: string | null;
+  block_number?: number | null;
+  extrinsic_count?: number;
+  limit?: number | null;
+  offset?: number | null;
+  extrinsics: Extrinsic[];
+  [key: string]: unknown;
+}
+
+/** Decoded chain event payload from /api/v1/blocks/{ref}/events. */
+export interface BlockEvent {
+  block_number: number | null;
+  event_index: number | null;
+  event_kind: string | null;
+  hotkey?: string | null;
+  coldkey?: string | null;
+  netuid?: number | null;
+  uid?: number | null;
+  amount_tao?: number | null;
+  observed_at?: string | null;
+  extrinsic_index?: number | null;
+  alpha_amount?: number | null;
+  [key: string]: unknown;
+}
+
+export interface BlockEvents {
+  ref?: string | null;
+  block_number?: number | null;
+  event_count?: number;
+  limit?: number | null;
+  offset?: number | null;
+  events: BlockEvent[];
   [key: string]: unknown;
 }
 

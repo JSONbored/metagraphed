@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Suspense, type ReactNode } from "react";
-import { Boxes, FileText, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Boxes, FileText, Zap } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { TimeAgo } from "@/components/metagraphed/time-ago";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
-import { EmptyState, PageHeading, Skeleton } from "@/components/metagraphed/states";
+import { EmptyState, ErrorState, PageHeading, Skeleton } from "@/components/metagraphed/states";
 import { PageHero } from "@/components/metagraphed/page-hero";
 import { SectionAnchor } from "@/components/metagraphed/section-anchor";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { StatTile } from "@/components/metagraphed/charts/stat-tile";
 import { QueryErrorBoundary } from "@/components/metagraphed/error-boundary";
-import { blockQuery } from "@/lib/metagraphed/queries";
+import { blockEventsQuery, blockExtrinsicsQuery, blockQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { blockRefPathSegment, isValidBlockRef, shortHash } from "@/lib/metagraphed/blocks";
+import { extrinsicCall } from "@/lib/metagraphed/extrinsics";
 
 export const Route = createFileRoute("/blocks/$ref")({
   // Prime the shared cache so head() can title the page with the real block
@@ -85,6 +86,11 @@ function BlockDetail({ refValue }: { refValue: string }) {
 function ValidBlockDetail({ refValue }: { refValue: string }) {
   const sourceRef = blockRefPathSegment(refValue);
   const block = useSuspenseQuery(blockQuery(refValue)).data.data;
+  const extrinsicsQuery = useQuery(blockExtrinsicsQuery(refValue, { limit: 100 }));
+  const eventsQuery = useQuery(blockEventsQuery(refValue, { limit: 100 }));
+
+  const extrinsics = extrinsicsQuery.data?.data.extrinsics ?? [];
+  const events = eventsQuery.data?.data.events ?? [];
 
   if (!block) {
     return (
@@ -131,6 +137,40 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           tone="accent"
         />
       </div>
+
+      <SectionAnchor id="chain" title="Chain walk" tone="accent">
+        <div className="flex flex-wrap gap-2 px-4 py-3">
+          {block.prev_block_number == null ? (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-dashed border-ink-subtle bg-surface/30 px-2.5 py-1 text-[11px] text-ink-muted">
+              <ChevronLeft className="size-3" /> Previous block
+            </span>
+          ) : (
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(block.prev_block_number) }}
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[11px] hover:text-ink-strong"
+            >
+              <ChevronLeft className="size-3" />
+              Previous block #{formatNumber(block.prev_block_number)}
+            </Link>
+          )}
+
+          {block.next_block_number == null ? (
+            <span className="inline-flex cursor-not-allowed items-center gap-1 rounded border border-dashed border-ink-subtle bg-surface/30 px-2.5 py-1 text-[11px] text-ink-muted">
+              Next block <ChevronRight className="size-3" />
+            </span>
+          ) : (
+            <Link
+              to="/blocks/$ref"
+              params={{ ref: String(block.next_block_number) }}
+              className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[11px] hover:text-ink-strong"
+            >
+              Next block #{formatNumber(block.next_block_number)}
+              <ChevronRight className="size-3" />
+            </Link>
+          )}
+        </div>
+      </SectionAnchor>
 
       <SectionAnchor id="details" title="Block details" tone="accent">
         <dl className="rounded border border-border bg-card divide-y divide-border">
@@ -188,6 +228,153 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         </dl>
       </SectionAnchor>
 
+      <SectionAnchor id="extrinsics" title="Extrinsics" tone="accent">
+        {extrinsicsQuery.isPending ? (
+          <Skeleton className="h-44" />
+        ) : extrinsicsQuery.error ? (
+          <div className="p-4">
+            <ErrorState
+              error={extrinsicsQuery.error}
+              context="block extrinsics"
+              onRetry={() => {
+                void extrinsicsQuery.refetch();
+              }}
+            />
+          </div>
+        ) : extrinsics.length === 0 ? (
+          <EmptyState
+            title="No block extrinsics"
+            description="This block has no indexed extrinsics (or the poller window for this shard is still catching up)."
+          />
+        ) : (
+          <div className="overflow-x-auto rounded border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/40">
+                <tr>
+                  <th className="px-4 py-2.5 text-right">Index</th>
+                  <th className="px-4 py-2.5">Extrinsic</th>
+                  <th className="px-4 py-2.5">Call</th>
+                  <th className="px-4 py-2.5">Result</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {extrinsics.map((extrinsic) => {
+                  const result =
+                    extrinsic.success == null ? "—" : extrinsic.success ? "Success" : "Failed";
+                  const resultClass =
+                    extrinsic.success == null
+                      ? "text-ink-muted"
+                      : extrinsic.success
+                        ? "text-emerald-500"
+                        : "text-health-down";
+
+                  return (
+                    <tr
+                      key={
+                        extrinsic.extrinsic_hash ||
+                        `${extrinsic.block_number}-${extrinsic.extrinsic_index}`
+                      }
+                      className="hover:bg-surface/40"
+                    >
+                      <td className="px-4 py-2.5 text-right font-mono text-[12px] tabular-nums text-ink">
+                        {extrinsic.extrinsic_index != null
+                          ? formatNumber(extrinsic.extrinsic_index)
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted break-all">
+                        {extrinsic.extrinsic_hash ? (
+                          <Link
+                            to="/extrinsics/$hash"
+                            params={{ hash: extrinsic.extrinsic_hash }}
+                            className="font-medium text-ink-strong hover:underline"
+                          >
+                            {shortHash(extrinsic.extrinsic_hash, 10)}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                        {extrinsicCall(extrinsic.call_module, extrinsic.call_function)}
+                      </td>
+                      <td className={`px-4 py-2.5 font-mono text-[11px] ${resultClass}`}>
+                        {result}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionAnchor>
+
+      <SectionAnchor id="events" title="Events" tone="accent">
+        {eventsQuery.isPending ? (
+          <Skeleton className="h-44" />
+        ) : eventsQuery.error ? (
+          <div className="p-4">
+            <ErrorState
+              error={eventsQuery.error}
+              context="block events"
+              onRetry={() => {
+                void eventsQuery.refetch();
+              }}
+            />
+          </div>
+        ) : events.length === 0 ? (
+          <EmptyState
+            title="No block events"
+            description="This block has no decoded on-chain events indexed yet."
+          />
+        ) : (
+          <div className="overflow-x-auto rounded border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/40">
+                <tr>
+                  <th className="px-4 py-2.5">Kind</th>
+                  <th className="px-4 py-2.5">Hotkey</th>
+                  <th className="px-4 py-2.5 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {events.map((event) => {
+                  const amount =
+                    event.amount_tao != null ? `${formatNumber(event.amount_tao)} τ` : "—";
+                  return (
+                    <tr
+                      key={`${event.block_number}-${event.event_index}-${event.event_kind ?? "unknown"}`}
+                      className="hover:bg-surface/40"
+                    >
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                        {event.event_kind ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-ink">
+                        {event.hotkey ? (
+                          <Link
+                            to="/accounts/$ss58"
+                            params={{ ss58: event.hotkey }}
+                            className="hover:underline"
+                            title={event.hotkey}
+                          >
+                            {shortHash(event.hotkey, 10)}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                        {amount}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionAnchor>
+
       <div className="mt-6">
         <Link
           to="/blocks"
@@ -205,13 +392,19 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
         <EndpointSnippet
           rows={[
             { label: "block", path: `/api/v1/blocks/${sourceRef}` },
+            { label: "extrinsics", path: `/api/v1/blocks/${sourceRef}/extrinsics` },
+            { label: "events", path: `/api/v1/blocks/${sourceRef}/events` },
             { label: "artifact", path: `/metagraph/blocks/${sourceRef}.json` },
           ]}
         />
       </SectionAnchor>
 
       <ApiSourceFooter
-        paths={[`/api/v1/blocks/${sourceRef}`]}
+        paths={[
+          `/api/v1/blocks/${sourceRef}`,
+          `/api/v1/blocks/${sourceRef}/extrinsics`,
+          `/api/v1/blocks/${sourceRef}/events`,
+        ]}
         artifacts={[`/metagraph/blocks/${sourceRef}.json`]}
       />
     </>
