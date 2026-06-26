@@ -323,6 +323,24 @@ test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on j
   assert.equal(bad.status, 400);
 });
 
+test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", async () => {
+  const env = createLocalArtifactEnv();
+  for (const [path, parameter] of [
+    ["/api/v1/chain/calls?group_by=x1", "group_by"],
+    ["/api/v1/chain/calls?limit=abc1", "limit"],
+    ["/api/v1/chain/calls?limit=001", "limit"],
+    ["/api/v1/chain/calls?limit=999999", "limit"],
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, path);
+    assert.equal((await res.json()).meta.parameter, parameter);
+  }
+});
+
 // ---- signers (#1990) builder + handler ------------------------------------
 
 test("buildChainSigners maps rows + is cold-stable", () => {
@@ -400,6 +418,23 @@ test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", asyn
   assert.match(sql, /GROUP BY signer/);
   assert.match(sql, /ORDER BY tx_count DESC/);
   assert.equal(captured[0].params.at(-1), 10);
+});
+
+test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
+  const env = createLocalArtifactEnv();
+  for (const path of [
+    "/api/v1/chain/signers?limit=abc1",
+    "/api/v1/chain/signers?limit=001",
+    "/api/v1/chain/signers?limit=999999",
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, path);
+    assert.equal((await res.json()).meta.parameter, "limit");
+  }
 });
 
 // ---- fees (#1988) builder + handler ---------------------------------------
@@ -488,6 +523,23 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
   assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
   const daily = captured.find((q) => /GROUP BY day/.test(q.sql));
   assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+});
+
+test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {
+  const env = createLocalArtifactEnv();
+  for (const path of [
+    "/api/v1/chain/fees?limit=abc1",
+    "/api/v1/chain/fees?limit=001",
+    "/api/v1/chain/fees?limit=999999",
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, path);
+    assert.equal((await res.json()).meta.parameter, "limit");
+  }
 });
 
 test("the new chain routes are schema-stable empty when D1 is cold", async () => {

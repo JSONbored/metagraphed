@@ -124,6 +124,29 @@ function analyticsQueryError(error) {
   });
 }
 
+function validateEnumParam(url, parameter, allowedValues) {
+  const raw = url.searchParams.get(parameter);
+  if (raw === null) return null;
+  if (allowedValues.includes(raw)) return null;
+  return {
+    parameter,
+    message: `${parameter} must be one of: ${allowedValues.join(", ")}.`,
+  };
+}
+
+function validateIntegerParam(url, parameter, min, max) {
+  const raw = url.searchParams.get(parameter);
+  if (raw === null) return null;
+  const value = Number(raw);
+  if (!/^[1-9]\d*$/.test(raw) || value < min || value > max) {
+    return {
+      parameter,
+      message: `${parameter} must be an integer between ${min} and ${max}.`,
+    };
+  }
+  return null;
+}
+
 let d1FallbackGeneration = 0;
 const D1_FALLBACK_ROWS = new WeakSet();
 const D1_FALLBACK_RESPONSES = new WeakSet();
@@ -696,10 +719,14 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
 export async function handleChainCalls(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["group_by", "limit"]);
   if (error) return analyticsQueryError(error);
-  const groupBy =
-    url.searchParams.get("group_by") === "module_function"
-      ? "module_function"
-      : "module";
+  const groupByError = validateEnumParam(url, "group_by", [
+    "module",
+    "module_function",
+  ]);
+  if (groupByError) return analyticsQueryError(groupByError);
+  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  if (limitError) return analyticsQueryError(limitError);
+  const groupBy = url.searchParams.get("group_by") || "module";
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   return withEdgeCache(request, ctx, env, "chain-calls", async () => {
     const cutoff = Date.now() - days * DAY_MS;
@@ -760,6 +787,8 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 export async function handleChainSigners(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["limit"]);
   if (error) return analyticsQueryError(error);
+  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   return withEdgeCache(request, ctx, env, "chain-signers", async () => {
     const cutoff = Date.now() - days * DAY_MS;
@@ -807,6 +836,8 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 export async function handleChainFees(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["limit"]);
   if (error) return analyticsQueryError(error);
+  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 25, 1, 100);
   return withEdgeCache(request, ctx, env, "chain-fees", async () => {
     const cutoff = Date.now() - days * DAY_MS;
