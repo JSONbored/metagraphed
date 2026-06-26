@@ -425,5 +425,27 @@ class TakeDelegateExtractorTest(unittest.TestCase):
         self.assertEqual(take["hotkey"], delegate["hotkey"])
 
 
+class ColdkeySwapExtractorTest(unittest.TestCase):
+    # Subtensor emits the completed swap as ColdkeySwapped(old_coldkey,
+    # new_coldkey) -- the event the poller must index. ColdkeySwapScheduled is
+    # not a real event, so it must not be the mapped key.
+    def test_coldkey_swapped_positional(self):
+        result = _extract("ColdkeySwapped", [_SS58_A, _SS58_B])
+        self.assertEqual(result["coldkey"], _SS58_A)  # old_coldkey
+        self.assertEqual(result["hotkey"], _SS58_B)  # new_coldkey
+
+    def test_coldkey_swapped_named_dict(self):
+        result = _extract(
+            "ColdkeySwapped",
+            {"old_coldkey": _SS58_A, "new_coldkey": _SS58_B},
+        )
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_nonexistent_scheduled_event_is_not_mapped(self):
+        # The phantom name must no longer resolve to an extractor.
+        self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
