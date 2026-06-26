@@ -104,6 +104,10 @@ MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", str(PRUNE_HORIZON)))
 # mode advances through long gaps over multiple safe staged batches instead of
 # producing one pathological object.
 BATCH_BLOCKS = max(1, int(os.environ.get("EVENTS_BATCH_BLOCKS", str(WINDOW))))
+# Keep producer batches below the Worker staged-event row cap (10k) and,
+# indirectly, below its 4 MiB parse-safety byte cap even when high-volume
+# Balances.Transfer events are present. Reserve headroom for the HMAC envelope.
+MAX_EVENT_ROWS = max(1, int(os.environ.get("EVENTS_MAX_EVENT_ROWS", "9000")))
 
 
 def _parse_cursor(raw):
@@ -187,6 +191,9 @@ def _stake(a):  # [coldkey, hotkey, tao_rao, alpha_rao, netuid, ...]
         "coldkey": _ss58(a[0]),
         "hotkey": _ss58(a[1]),
         "amount_tao": _tao(a[2]),
+        # The alpha leg of the swap (#1856): how much subnet alpha the TAO bought
+        # (StakeAdded) or sold (StakeRemoved). Null on shape drift / other kinds.
+        "alpha_amount": _tao(a[3]) if len(a) > 3 else None,
         "netuid": _idx(a[4]) if len(a) > 4 else None,
     }
 
@@ -241,12 +248,15 @@ def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, h
     return {"coldkey": _ss58(ck), "hotkey": _ss58(hk)}
 
 
-def _take_changed(a):  # TakeDecreased/TakeIncreased: {hotkey, coldkey, ...} or [hotkey, coldkey, ...]
+def _take_changed(a):  # TakeDecreased/TakeIncreased: {coldkey, hotkey, take} or [coldkey, hotkey, take]
+    # Subtensor emits these coldkey-first: Event::TakeIncreased(coldkey, hotkey, take)
+    # / TakeDecreased(coldkey, hotkey, take). The variants are positional tuples, so
+    # the list branch must read a[0]=coldkey, a[1]=hotkey (same order as DelegateAdded).
     if isinstance(a, dict):
-        hk, ck = a.get("hotkey"), a.get("coldkey")
+        ck, hk = a.get("coldkey"), a.get("hotkey")
     else:
-        hk = a[0] if len(a) > 0 else None
-        ck = a[1] if len(a) > 1 else None
+        ck = a[0] if len(a) > 0 else None
+        hk = a[1] if len(a) > 1 else None
     return {"hotkey": _ss58(hk), "coldkey": _ss58(ck)}
 
 
@@ -452,6 +462,41 @@ def _fee_map(events):
     return out
 
 
+def _tip_map(events):
+    """Map extrinsic_index -> tip_tao from TransactionPayment.TransactionFeePaid events (#1855).
+
+    tip is the priority tip the signer added on top of the inclusion fee (the 3rd
+    field of TransactionFeePaid: [who, actual_fee, tip]). Separate from fee_tao —
+    most extrinsics tip 0. Correlated by extrinsic_idx, same as _fee_map. NEVER raises.
+    """
+    out = {}
+    try:
+        for ev in events:
+            v = ev.value if isinstance(ev.value, dict) else {}
+            if v.get("phase") != "ApplyExtrinsic":
+                continue
+            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+            if e.get("module_id") != "TransactionPayment":
+                continue
+            if e.get("event_id") != "TransactionFeePaid":
+                continue
+            idx = v.get("extrinsic_idx")
+            if not isinstance(idx, int) or idx < 0:
+                continue
+            attrs = e.get("attributes")
+            if isinstance(attrs, dict):
+                tip_rao = attrs.get("tip")
+            elif isinstance(attrs, list) and len(attrs) > 2:
+                tip_rao = attrs[2]  # [who, actual_fee, tip]
+            else:
+                tip_rao = None
+            if tip_rao is not None:
+                out[idx] = _tao(tip_rao)
+    except Exception:
+        return out
+    return out
+
+
 def _extrinsic_success_map(events):
     """Map extrinsic_index -> success(1/0) from the block's already-decoded events.
 
@@ -504,6 +549,7 @@ def extrinsics_for_block(s, bn, bh, events):
         return rows
     success_map = _extrinsic_success_map(events)
     fee_map = _fee_map(events)
+    tip_map = _tip_map(events)
     for extrinsic_index, ext in enumerate(extrinsics):
         try:
             value = ext.value if ext is not None else None
@@ -522,6 +568,7 @@ def extrinsics_for_block(s, bn, bh, events):
                     "call_args": call_args,
                     "success": success_map.get(extrinsic_index),
                     "fee_tao": fee_map.get(extrinsic_index),
+                    "tip_tao": tip_map.get(extrinsic_index),
                 }
             )
         except Exception:
@@ -543,8 +590,55 @@ def extract(event_id, attrs):
         "netuid": f.get("netuid"),
         "uid": f.get("uid"),
         "amount_tao": f.get("amount_tao"),
+        "alpha_amount": f.get("alpha_amount"),
     }
 
+
+def event_rows_for_events(bn, events, observed_at):
+    """Extract account_events rows for one block.
+
+    Kept as whole-block units so producer-side row chunking never advances the
+    staged cursor past a partially emitted block. Shape drift on individual events
+    is handled by extract() and skipped, matching the historical inline loop.
+    """
+    rows = []
+    for event_index, ev in enumerate(events):
+        v = ev.value if isinstance(ev.value, dict) else {}
+        e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
+        if e.get("module_id") not in ("SubtensorModule", "Balances"):
+            continue
+        eid = e.get("event_id")
+        ent = extract(eid, e.get("attributes"))
+        if ent is None:
+            continue
+        # Link the event to the extrinsic that emitted it (#1849): the
+        # ApplyExtrinsic-phase extrinsic_idx (the same field _fee_map /
+        # _extrinsic_success_map correlate on). Initialization / Finalization
+        # phase events have no extrinsic — store null.
+        xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
+        if not isinstance(xidx, int) or xidx < 0:
+            xidx = None
+        rows.append(
+            {
+                "block_number": bn,
+                "event_index": event_index,
+                "event_kind": eid,
+                "hotkey": ent["hotkey"],
+                "coldkey": ent["coldkey"],
+                "netuid": ent["netuid"],
+                "uid": ent["uid"],
+                "amount_tao": ent["amount_tao"],
+                "alpha_amount": ent["alpha_amount"],
+                "observed_at": observed_at,
+                "extrinsic_index": xidx,
+            }
+        )
+    return rows
+
+
+def _can_append_event_block(rows, block_rows, max_rows=MAX_EVENT_ROWS):
+    """Whether the next block's account_events fit in this staged batch."""
+    return len(rows) + len(block_rows) <= max_rows
 
 def _lag_alert_needed(head_bn, cursor, window=WINDOW, horizon=PRUNE_HORIZON):
     """True when the cursor is far enough behind the finalized head that un-fetched
@@ -629,6 +723,10 @@ def main():
             sys.stderr.write(f"block {bn}: skip ({repr(e)[:80]})\n")
             continue
         scanned += 1
+        block_event_rows = event_rows_for_events(bn, events, observed_at)
+        if not _can_append_event_block(rows, block_event_rows):
+            end = bn - 1
+            break
         # Block-explorer hot-window record (#1345): best-effort header extras +
         # the decoded event count, observed_at from the same height-derived clock
         # as the events. A None means the extras read failed — skip this block's
@@ -644,28 +742,7 @@ def main():
         for xrow in extrinsics_for_block(s, bn, bh, events):
             xrow["observed_at"] = observed_at
             extrinsics.append(xrow)
-        for event_index, ev in enumerate(events):
-            v = ev.value if isinstance(ev.value, dict) else {}
-            e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-            if e.get("module_id") not in ("SubtensorModule", "Balances"):
-                continue
-            eid = e.get("event_id")
-            ent = extract(eid, e.get("attributes"))
-            if ent is None:
-                continue
-            rows.append(
-                {
-                    "block_number": bn,
-                    "event_index": event_index,
-                    "event_kind": eid,
-                    "hotkey": ent["hotkey"],
-                    "coldkey": ent["coldkey"],
-                    "netuid": ent["netuid"],
-                    "uid": ent["uid"],
-                    "amount_tao": ent["amount_tao"],
-                    "observed_at": observed_at,
-                }
-            )
+        rows.extend(block_event_rows)
 
     os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w") as fh:

@@ -8,6 +8,7 @@ import {
   weightedPickEndpoint,
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const req = (path, init) =>
   new Request(`https://api.metagraph.sh${path}`, init);
@@ -744,6 +745,112 @@ describe("invalid query handling", () => {
   });
 });
 
+// --- RFC 8288 pagination Link header (#1686) ----------------------------------
+// /api/v1/subnets is the only end-to-end list fixture; the header is built once
+// for every cursor-paginated collection in workers/list-query.mjs, so proving it
+// here proves the wiring for all of them. The fixture sorts to a stable netuid
+// run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
+describe("pagination Link header", () => {
+  const parseLink = (value) => {
+    const links = {};
+    for (const part of String(value || "").split(",")) {
+      const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
+      if (match) {
+        links[match[2]] = new URL(match[1]);
+      }
+    }
+    return links;
+  };
+  const page = async (querySuffix, init) => {
+    const res = await handleRequest(
+      req(`/api/v1/subnets?sort=netuid&${querySuffix}`, init),
+      createLocalArtifactEnv(),
+      {},
+    );
+    return { res, links: parseLink(res.headers.get("link")) };
+  };
+
+  test("first page advertises next + last, never prev/first", async () => {
+    const { res, links } = await page("limit=50&cursor=0");
+    assert.equal(res.status, 200);
+    assert.deepEqual(Object.keys(links).sort(), ["last", "next"]);
+    assert.equal(links.next.origin, "https://api.metagraph.sh");
+    assert.equal(links.next.searchParams.get("cursor"), "50");
+    assert.equal(links.next.searchParams.get("limit"), "50");
+    assert.equal(links.next.searchParams.get("sort"), "netuid");
+    assert.equal(links.last.searchParams.get("cursor"), "100");
+    // The Link header must be readable cross-origin (exposed via CORS), or a
+    // browser link-follower could not walk the pages.
+    assert.match(res.headers.get("access-control-expose-headers"), /\blink\b/);
+  });
+
+  test("middle page advertises all four relations", async () => {
+    const { links } = await page("limit=50&cursor=50");
+    assert.deepEqual(Object.keys(links).sort(), [
+      "first",
+      "last",
+      "next",
+      "prev",
+    ]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "0");
+    assert.equal(links.next.searchParams.get("cursor"), "100");
+    assert.equal(links.last.searchParams.get("cursor"), "100");
+  });
+
+  test("last page advertises first + prev, never next/last", async () => {
+    const { links } = await page("limit=50&cursor=100");
+    assert.deepEqual(Object.keys(links).sort(), ["first", "prev"]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "50");
+  });
+
+  test("last targets the final page, not past it, when total divides evenly", async () => {
+    // 129 subnets / limit 43 = exactly 3 pages, so `last` must be 86 (page 3
+    // start), not 129 — guarding the `(total - 1)` correction in the offset.
+    const { links } = await page("limit=43&cursor=0");
+    assert.equal(links.last.searchParams.get("cursor"), "86");
+  });
+
+  test("empty result set carries no Link header", async () => {
+    const { res } = await page("netuid=999999&limit=50");
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).meta.pagination.total, 0);
+    assert.equal(res.headers.get("link"), null);
+  });
+
+  test("an unpaged request (no limit/cursor) carries no Link header", async () => {
+    const { res } = await page("order=asc");
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("link"), null);
+  });
+
+  test("a HEAD request still carries the walkable Link header", async () => {
+    const { res, links } = await page("limit=50&cursor=0", { method: "HEAD" });
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "");
+    assert.equal(links.next.searchParams.get("cursor"), "50");
+  });
+
+  test("a 304 conditional response preserves the Link header", async () => {
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/api/v1/subnets?sort=netuid&limit=50&cursor=0"),
+      env,
+      {},
+    );
+    const res = await handleRequest(
+      req("/api/v1/subnets?sort=netuid&limit=50&cursor=0", {
+        headers: { "if-none-match": first.headers.get("etag") },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 304);
+    assert.match(res.headers.get("link"), /rel="next"/);
+  });
+});
+
 // --- 304 on api envelope ------------------------------------------------------
 describe("api envelope 304", () => {
   test("304 when if-none-match matches the api etag", async () => {
@@ -1406,5 +1513,44 @@ describe("semantic-search HEAD probe", () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(await res.text(), "");
+  });
+});
+
+// --- Access-Control-Expose-Headers --------------------------------------------
+// Cross-origin scripts can only read the Fetch safelist unless the server names
+// the rest in Access-Control-Expose-Headers. Assert the canonical list rides on
+// each CORS-open surface: the standard builder (list), the error path (ask), and
+// the hand-rolled SSE headers. RPC and MCP are covered in their own suites.
+describe("Access-Control-Expose-Headers", () => {
+  const expose = (res) => res.headers.get("access-control-expose-headers");
+
+  test("list endpoint exposes the canonical custom-header list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the ask error path exposes the list", async () => {
+    // AI is disabled locally, so this is the 503 path through the shared builder.
+    const res = await handleRequest(
+      req("/api/v1/ask", { method: "POST", body: "{}" }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the SSE event surface exposes the list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/events"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
   });
 });

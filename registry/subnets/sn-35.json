@@ -9,7 +9,74 @@
     "level": "candidate-discovered",
     "review_state": "unreviewed"
   },
-  "surfaces": [],
+  "surfaces": [
+    {
+      "id": "sn-35-oxmarkets-docs",
+      "name": "0xMarkets / Cartha documentation",
+      "kind": "docs",
+      "url": "https://docs.0xmarkets.io/",
+      "provider": "oxmarkets",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://www.0xmarkets.io/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official 0xMarkets / Cartha documentation, linked from the project website (www.0xmarkets.io)."
+    },
+    {
+      "id": "sn-35-oxmarkets-cartha-cli",
+      "name": "Cartha CLI (PyPI)",
+      "kind": "sdk",
+      "url": "https://pypi.org/project/cartha-cli/",
+      "provider": "oxmarkets",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/General-Tao-Ventures/cartha-cli"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Published PyPI package `cartha-cli` — the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo."
+    },
+    {
+      "id": "sn-35-oxmarkets-miner-template",
+      "name": "Cartha principal miner template",
+      "kind": "example",
+      "url": "https://github.com/General-Tao-Ventures/cartha-principal-miner-template",
+      "provider": "oxmarkets",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/General-Tao-Ventures/cartha-principal-miner-template"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official backend template for running a Cartha (SN35) principal miner; in the team's General-Tao-Ventures org."
+    },
+    {
+      "id": "sn-35-oxmarkets-docs-repo",
+      "name": "0xMarkets docs source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/General-Tao-Ventures/0xmarkets-docs",
+      "provider": "oxmarkets",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/General-Tao-Ventures/0xmarkets-docs"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Source repository for the 0xMarkets documentation; README states the project is \"built on the Cartha Subnet (SN35)\". Distinct from the cartha-validator repo at the top level."
+    }
+  ],
   "contact": "contact@0xmarkets.io",
   "source_repo": "https://github.com/General-Tao-Ventures/cartha-validator",
   "website_url": "https://www.0xmarkets.io/",

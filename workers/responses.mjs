@@ -64,7 +64,12 @@ export function dataResponse(env, data, status = 200, extraMeta = {}) {
 
 // Cacheable success envelope with a weak ETag + 304 short-circuit; HEAD returns
 // headers only. cacheProfile selects the cache-control max-age via apiHeaders.
-export async function envelopeResponse(request, payload, cacheProfile) {
+export async function envelopeResponse(
+  request,
+  payload,
+  cacheProfile,
+  extraHeaders = {},
+) {
   const body = JSON.stringify({
     ok: true,
     schema_version: 1,
@@ -85,6 +90,13 @@ export async function envelopeResponse(request, payload, cacheProfile) {
       "x-metagraph-stale-contract",
       payload.meta.stale_contract.built_under,
     );
+  }
+  // Caller-supplied headers (e.g. the pagination Link header), set before the
+  // 304/HEAD short-circuit so every response carries them; null values skip.
+  for (const [key, value] of Object.entries(extraHeaders)) {
+    if (value != null) {
+      headers.set(key, value);
+    }
   }
   if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, {
