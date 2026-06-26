@@ -7,6 +7,7 @@ import {
   gradeColor,
   parseBadgePath,
   parseBadgeOptions,
+  formatUptimePercent,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -328,5 +329,28 @@ describe("badge — Worker dispatch integration", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
     assert.match(await res.text(), /<svg /);
+  });
+});
+
+describe("badge — formatUptimePercent", () => {
+  test("documented contract: trims to two decimals", () => {
+    assert.equal(formatUptimePercent(0.9983), "99.83%");
+    assert.equal(formatUptimePercent(0.5), "50%");
+    assert.equal(formatUptimePercent(0), "0%");
+  });
+
+  test("only an exact full ratio renders 100%", () => {
+    assert.equal(formatUptimePercent(1), "100%");
+  });
+
+  test("a sub-1 ratio never rounds up to a perfect 100% (#1721)", () => {
+    assert.equal(formatUptimePercent(0.99996), "99.99%");
+    assert.equal(formatUptimePercent(0.99995), "99.99%");
+    assert.equal(formatUptimePercent(0.999999), "99.99%");
+  });
+
+  test("a non-numeric ratio degrades to 0%", () => {
+    assert.equal(formatUptimePercent(undefined), "0%");
+    assert.equal(formatUptimePercent(NaN), "0%");
   });
 });
