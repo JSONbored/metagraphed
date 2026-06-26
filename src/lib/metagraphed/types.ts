@@ -814,6 +814,12 @@ export interface BlockEvents {
   [key: string]: unknown;
 }
 
+export interface ExtrinsicCallArg {
+  name?: string | null;
+  value?: unknown;
+  [key: string]: unknown;
+}
+
 /** One extrinsic (transaction) from /api/v1/extrinsics, newest-first. */
 export interface Extrinsic {
   block_number: number | null;
@@ -822,6 +828,10 @@ export interface Extrinsic {
   signer?: string | null;
   call_module?: string | null;
   call_function?: string | null;
+  fee_tao?: number | null;
+  tip_tao?: number | null;
+  call_args?: ExtrinsicCallArg[] | Record<string, unknown> | null;
+  events?: AccountEvent[];
   success?: boolean | null;
   observed_at?: string; // iso
   [key: string]: unknown;

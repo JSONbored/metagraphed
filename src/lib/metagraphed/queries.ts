@@ -17,6 +17,7 @@ import type {
   AccountSummary,
   Block,
   Extrinsic,
+  ExtrinsicCallArg,
   Candidate,
   Compare,
   CompareSubnet,
@@ -936,7 +937,7 @@ export const blockEventsQuery = (ref: string, params?: QueryParams) =>
 
 // Extrinsic (transaction) explorer — the block explorer's sibling feed. The list
 // is offset-paginated and newest-first; the detail is keyed by 0x extrinsic_hash.
-function normalizeExtrinsic(raw: unknown): Extrinsic | null {
+function normalizeExtrinsic(raw: unknown, rawEvents?: unknown): Extrinsic | null {
   if (!isRecord(raw)) return null;
   const blockNumber = firstFiniteNumber(raw.block_number);
   const extrinsicHash = firstString(raw.extrinsic_hash);
@@ -945,6 +946,39 @@ function normalizeExtrinsic(raw: unknown): Extrinsic | null {
   if (!extrinsicHash && (blockNumber == null || extrinsicIndex == null)) {
     return null;
   }
+
+  const callArgsSource = raw.call_args;
+  const callArgs: Extrinsic["call_args"] = Array.isArray(callArgsSource)
+    ? callArgsSource
+        .filter(isRecord)
+        .map((arg) => ({ ...arg, name: firstString(arg.name) }) as ExtrinsicCallArg)
+    : isRecord(callArgsSource)
+      ? (callArgsSource as Record<string, unknown>)
+      : null;
+
+  const eventsSource = Array.isArray(rawEvents)
+    ? rawEvents
+    : Array.isArray(raw.events)
+      ? raw.events
+      : [];
+
+  const events = Array.isArray(eventsSource)
+    ? eventsSource.filter(isRecord).map((event) => {
+        return {
+          ...(event as Record<string, unknown>),
+          block_number: firstFiniteNumber(event.block_number) ?? null,
+          event_index: firstFiniteNumber(event.event_index) ?? null,
+          event_kind: firstString(event.event_kind),
+          hotkey: firstString(event.hotkey),
+          coldkey: firstString(event.coldkey),
+          netuid: firstFiniteNumber(event.netuid),
+          uid: firstFiniteNumber(event.uid),
+          amount_tao: firstFiniteNumber(event.amount_tao),
+          observed_at: firstString(event.observed_at),
+        } as AccountEvent;
+      })
+    : [];
+
   return {
     ...(raw as object),
     block_number: blockNumber ?? null,
@@ -953,6 +987,10 @@ function normalizeExtrinsic(raw: unknown): Extrinsic | null {
     signer: firstString(raw.signer) ?? null,
     call_module: firstString(raw.call_module) ?? null,
     call_function: firstString(raw.call_function) ?? null,
+    fee_tao: firstFiniteNumber(raw.fee_tao),
+    tip_tao: firstFiniteNumber(raw.tip_tao),
+    call_args: callArgs,
+    events,
     success: typeof raw.success === "boolean" ? raw.success : null,
     observed_at: firstString(raw.observed_at),
   } as Extrinsic;
@@ -979,14 +1017,21 @@ export const extrinsicQuery = (hash: string) =>
   queryOptions({
     queryKey: k("extrinsic", hash),
     queryFn: async ({ signal }) => {
-      const res = await fetchDetail<unknown>(
-        `/api/v1/extrinsics/${extrinsicHashPathSegment(hash)}`,
-        "extrinsic",
+      const res = await apiFetch<unknown>(`/api/v1/extrinsics/${extrinsicHashPathSegment(hash)}`, {
         signal,
-      );
+      });
+      const payload = res.data as unknown;
+      const payloadRecord = isRecord(payload) ? payload : {};
+      const rawExtrinsic =
+        payloadRecord.extrinsic === null
+          ? null
+          : isRecord(payloadRecord.extrinsic)
+            ? (payloadRecord.extrinsic as Record<string, unknown>)
+            : payloadRecord;
+      const events = Array.isArray(payloadRecord.events) ? payloadRecord.events : undefined;
       return {
         ...res,
-        data: normalizeExtrinsic(res.data),
+        data: normalizeExtrinsic(rawExtrinsic, events),
       } as ApiResult<Extrinsic | null>;
     },
     staleTime: STALE_SHORT,

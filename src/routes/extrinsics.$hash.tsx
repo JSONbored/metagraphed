@@ -91,6 +91,8 @@ function ExtrinsicDetail({ hash }: { hash: string }) {
 function ValidExtrinsicDetail({ hash }: { hash: string }) {
   const sourceRef = extrinsicHashPathSegment(hash);
   const extrinsic = useSuspenseQuery(extrinsicQuery(hash)).data.data;
+  const callArgs = extrinsic?.call_args;
+  const events = extrinsic?.events ?? [];
 
   if (!extrinsic) {
     return (
@@ -186,6 +188,16 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
           <FieldRow label="Result">
             <span className="font-mono text-sm text-ink">{result}</span>
           </FieldRow>
+          <FieldRow label="Inclusion fee">
+            <span className="font-mono text-sm text-ink-strong">
+              {extrinsic.fee_tao != null ? fmtTao(extrinsic.fee_tao) : "—"}
+            </span>
+          </FieldRow>
+          <FieldRow label="Tip">
+            <span className="font-mono text-sm text-ink-strong">
+              {extrinsic.tip_tao != null ? fmtTao(extrinsic.tip_tao) : "—"}
+            </span>
+          </FieldRow>
           <FieldRow label="Observed at">
             <span className="font-mono text-[12px] text-ink-muted">
               <TimeAgo at={extrinsic.observed_at} />
@@ -195,6 +207,80 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
             </span>
           </FieldRow>
         </dl>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="call-args"
+        title="Call arguments"
+        subtitle="The decoded parameters passed to this extrinsic."
+      >
+        {renderCallArgs(callArgs)}
+      </SectionAnchor>
+
+      <SectionAnchor id="events" title="Emitted events" tone="accent">
+        {events.length > 0 ? (
+          <div className="overflow-x-auto rounded border border-border bg-card">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface/40">
+                <tr>
+                  <th className="px-4 py-2.5">Block</th>
+                  <th className="px-4 py-2.5">Kind</th>
+                  <th className="px-4 py-2.5">Hotkey</th>
+                  <th className="px-4 py-2.5 text-right">Amount</th>
+                  <th className="px-4 py-2.5 text-right">Observed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {events.map((ev, i) => (
+                  <tr
+                    key={`${ev.block_number}-${ev.event_index}-${i}`}
+                    className="hover:bg-surface/40"
+                  >
+                    <td className="px-4 py-2.5 font-mono text-[12px]">
+                      {ev.block_number != null ? (
+                        <Link
+                          to="/blocks/$ref"
+                          params={{ ref: String(ev.block_number) }}
+                          className="text-ink hover:underline"
+                        >
+                          #{formatNumber(ev.block_number)}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                      {ev.event_kind ?? "—"}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[11px]">
+                      {ev.hotkey ? (
+                        <Link
+                          to="/accounts/$ss58"
+                          params={{ ss58: ev.hotkey }}
+                          className="text-ink-muted hover:text-ink hover:underline"
+                        >
+                          {shortHash(ev.hotkey) ?? ev.hotkey}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-[11px] tabular-nums text-ink">
+                      {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-[11px] text-ink-muted">
+                      <TimeAgo at={ev.observed_at} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="rounded border border-border bg-card/40 px-4 py-6 text-sm text-ink-muted">
+            No emitted events were indexed for this extrinsic.
+          </p>
+        )}
       </SectionAnchor>
 
       <div className="mt-6">
@@ -225,6 +311,84 @@ function ValidExtrinsicDetail({ hash }: { hash: string }) {
       />
     </>
   );
+}
+
+function fmtTao(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M τ`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k τ`;
+  if (v >= 1) return `${v.toFixed(2)} τ`;
+  return `${v.toFixed(4)} τ`;
+}
+
+function renderCallArgs(callArgs: unknown) {
+  if (Array.isArray(callArgs)) {
+    const args = callArgs as Array<{ name?: string | null; value?: unknown }>;
+    if (args.length === 0) {
+      return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+    }
+    return (
+      <div className="overflow-x-auto rounded border border-border bg-card">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/40">
+            <tr>
+              <th className="px-4 py-2.5">Name</th>
+              <th className="px-4 py-2.5">Value</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {args.map((arg, i) => (
+              <tr key={`${arg.name ?? i}`} className="hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">
+                  {arg.name ?? `arg_${i + 1}`}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {formatCallArgValue(arg.value)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (callArgs && typeof callArgs === "object") {
+    const entries = Object.entries(callArgs as Record<string, unknown>);
+    if (entries.length === 0) {
+      return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+    }
+    return (
+      <div className="overflow-x-auto rounded border border-border bg-card">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-surface/40">
+            <tr>
+              <th className="px-4 py-2.5">Key</th>
+              <th className="px-4 py-2.5">Value</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {entries.map(([key, value]) => (
+              <tr key={key} className="hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-strong">{key}</td>
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-muted">
+                  {formatCallArgValue(value)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return <p className="text-sm text-ink-muted">No call args were indexed.</p>;
+}
+
+function formatCallArgValue(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+    return String(value);
+  if (value === null || value === undefined) return "—";
+  return JSON.stringify(value) ?? String(value);
 }
 
 function FieldRow({ label, children }: { label: string; children: ReactNode }) {
