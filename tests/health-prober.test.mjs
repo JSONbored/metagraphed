@@ -383,6 +383,48 @@ describe("runHealthProber", () => {
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
   });
 
+  test("folds unrecognized probe status into unknown in global status_counts", async () => {
+    const kv = makeKv();
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 60000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [SURFACES[0]],
+        probeSurface: async () => ({
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          status_code: 429,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.deepEqual(result.counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    const current = kv.json(KV_HEALTH_CURRENT);
+    assert.deepEqual(current.summary.status_counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    const meta = kv.json(KV_HEALTH_META);
+    assert.deepEqual(meta.status_counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    assert.equal(current.summary.status_counts.throttled, undefined);
+  });
+
   test("rejects unsafe or implausibly high live RPC block heights", async () => {
     const kv = makeKv();
     const rpcSurfaces = [
