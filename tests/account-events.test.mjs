@@ -41,6 +41,10 @@ test("validEventRows enforces the strict row shape (#1371)", () => {
   // negative PK components — aligned with validBlockRows / validExtrinsicRows
   assert.equal(validEventRows([{ ...good, block_number: -1 }]).length, 0);
   assert.equal(validEventRows([{ ...good, event_index: -1 }]).length, 0);
+  assert.equal(
+    validEventRows([{ ...good, event_kind: "" }]).length,
+    0, // event_kind must be non-empty (mirrors block_hash guard)
+  );
 });
 
 test("eventInsertStatements builds chunked parameterized INSERT OR IGNORE", () => {
