@@ -7,7 +7,11 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability, scoreFromStats, displayUptimeRatio } from "./reliability.mjs";
+import {
+  computeReliability,
+  scoreFromStats,
+  displayUptimeRatio,
+} from "./reliability.mjs";
 import {
   rollupSubnetStatus,
   normalizeProbeStatus,
