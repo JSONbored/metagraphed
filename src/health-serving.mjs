@@ -1278,7 +1278,7 @@ function liveFromD1Rows(rows) {
   const lastRun = latestIso(surfaces.map((s) => s.last_checked));
   const statusCounts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of surfaces) {
-    statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+    statusCounts[normalizeProbeStatus(row.status)] += 1;
   }
   return {
     schema_version: 1,
