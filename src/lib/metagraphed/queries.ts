@@ -2326,11 +2326,18 @@ function stringArrayFromUnknown(value: unknown): string[] {
   });
 }
 
-const GAP_SEVERITY_MAP: Record<string, Gap["severity"]> = {
+const GAP_SEVERITY_MAP = {
   critical: "high",
   warning: "medium",
   info: "low",
-};
+} satisfies Record<string, Gap["severity"]>;
+
+function gapSeverityFromUnknown(value: unknown, fallback: Gap["severity"]): Gap["severity"] {
+  if (typeof value !== "string") return fallback;
+  return Object.hasOwn(GAP_SEVERITY_MAP, value)
+    ? GAP_SEVERITY_MAP[value as keyof typeof GAP_SEVERITY_MAP]
+    : fallback;
+}
 
 export function normalizeGap(raw: unknown): Gap {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -2342,7 +2349,7 @@ export function normalizeGap(raw: unknown): Gap {
   const core = missing.filter((kind) => kind === "openapi" || kind === "subnet-api").length;
   const severityFallback: Gap["severity"] =
     core >= 1 && missing.length >= 3 ? "high" : missing.length >= 2 ? "medium" : "low";
-  const severity = GAP_SEVERITY_MAP[r.gap_severity as string] ?? severityFallback;
+  const severity = gapSeverityFromUnknown(r.gap_severity, severityFallback);
   return {
     id: (r.slug as string) ?? `gap-${netuid}`,
     netuid,

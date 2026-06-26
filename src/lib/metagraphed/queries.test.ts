@@ -336,6 +336,18 @@ describe("normalizeGap", () => {
     expect(out.severity).toBe("high");
   });
 
+  it("falls back for unrecognized or prototype gap_severity values", () => {
+    const fallbackPayload = {
+      netuid: 8,
+      gaps: { missing_kinds: ["openapi", "docs", "dashboard"] },
+    };
+
+    expect(normalizeGap({ ...fallbackPayload, gap_severity: "unknown" }).severity).toBe("high");
+    expect(normalizeGap({ ...fallbackPayload, gap_severity: "__proto__" }).severity).toBe("high");
+    expect(normalizeGap({ ...fallbackPayload, gap_severity: "constructor" }).severity).toBe("high");
+    expect(normalizeGap({ ...fallbackPayload, gap_severity: 123 }).severity).toBe("high");
+  });
+
   it("threads gap_priority through to the returned Gap", () => {
     const out = normalizeGap({ netuid: 4, gap_priority: 42, gaps: { missing_kinds: ["docs"] } });
     expect(out.gap_priority).toBe(42);
