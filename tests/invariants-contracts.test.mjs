@@ -217,6 +217,17 @@ describe("contracts — compileRoutePattern per token type", () => {
         `/api/v1/extrinsics/0x${"a".repeat(65)}`, // 65 hex digits
       ],
     },
+    {
+      token: "{hash} (composite extrinsic id)",
+      group: "hash",
+      template: "/metagraph/extrinsics/{hash}.json",
+      validPath: "/metagraph/extrinsics/1234-3.json",
+      captured: "1234-3",
+      invalid: [
+        "/metagraph/extrinsics/1234.json", // missing extrinsic_index half
+        "/metagraph/extrinsics/1234-3-1.json", // too many halves
+      ],
+    },
   ];
 
   for (const c of cases) {

@@ -2365,7 +2365,8 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
     // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
     .replace(/\{ref\}/g, "__METAGRAPH_REF__")
-    // Block-explorer {hash} (#1345 second slice): a 0x extrinsic_hash.
+    // Block-explorer {hash} (#1345/#1848): a 0x extrinsic_hash OR
+    // composite <block_number>-<extrinsic_index> ref.
     .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -2376,7 +2377,7 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
     .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
     .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
-    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64})");
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
