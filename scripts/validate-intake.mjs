@@ -74,7 +74,6 @@ checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
   "id: kind",
   "label: surface kind",
   "id: url",
-  "id: source_urls",
   "id: provider",
   "label: provider slug",
   "id: auth_required",
@@ -83,6 +82,16 @@ checkIncludes(surfaceTemplate.toLowerCase(), "surface template", [
   "npm run surface:add",
   "read-only probes",
 ]);
+
+const normalizedTemplate = surfaceTemplate.toLowerCase();
+if (
+  !normalizedTemplate.includes("id: source_url") &&
+  !normalizedTemplate.includes("id: source_urls")
+) {
+  errors.push(
+    "surface template: missing proof field (id: source_url or id: source_urls)",
+  );
+}
 
 for (const kind of [
   "website",

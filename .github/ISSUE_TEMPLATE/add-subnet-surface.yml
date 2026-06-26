@@ -53,18 +53,12 @@ body:
       placeholder: https://example.com/api
     validations:
       required: true
-  - type: textarea
-    id: source_urls
+  - type: input
+    id: source_url
     attributes:
-      label: Source URLs
-      description: |
-        One or more public URLs that independently prove the subnet publishes this surface (docs, repo, or announcement).
-        Enter one URL per line, for example:
-        https://docs.example.com/api
-        https://github.com/example/repo/blob/main/README.md
-      placeholder: |
-        https://docs.example.com/api
-        https://github.com/example/repo/blob/main/README.md
+      label: Source URL
+      description: A public URL that independently proves the subnet publishes this surface (docs, repo, or announcement).
+      placeholder: https://docs.example.com/api
     validations:
       required: true
   - type: input
