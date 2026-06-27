@@ -8,7 +8,23 @@
   "main": "workers/data-api.mjs",
   "compatibility_date": "2026-06-06",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
+  // Smart placement: run the Worker close to the Hyperdrive origin (Railway Postgres)
+  // to minimize the per-request DB round-trip, not at the nearest edge to the client.
+  "placement": { "mode": "smart" },
+  // Full observability — logs AND traces (matches the main Worker).
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
