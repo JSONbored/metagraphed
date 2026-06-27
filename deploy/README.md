@@ -138,9 +138,14 @@ Redis so the Worker can surface "realtime stale".
 
 ## Cloudflare side
 
+The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunnel +
+Workers VPC, tier-by-tier with D1 fallback) is its own runbook:
+[`hyperdrive-cutover.md`](hyperdrive-cutover.md). In short:
+
 ```bash
-# Hyperdrive over a Cloudflared tunnel / Workers VPC to the Railway Postgres.
-npx wrangler hyperdrive create metagraphed-core --connection-string "$POSTGRES_PRIVATE_URL"
+# Workers VPC over a Cloudflare Tunnel to the private Postgres (box or Railway):
+npx wrangler hyperdrive create metagraphed-core --service-id <VPC_SERVICE_ID> \
+  --database metagraphed --user metagraphed --password <PW> --scheme postgresql
 # then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
 ```
 
