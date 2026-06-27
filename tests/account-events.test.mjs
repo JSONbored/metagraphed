@@ -6,6 +6,7 @@ import {
   INDEXED_EVENT_KINDS,
   EVENT_RETENTION_MS,
   formatAccountEvent,
+  formatAccountDay,
   formatRegistration,
   buildAccountSummary,
   buildAccountEvents,
@@ -299,6 +300,33 @@ test("buildAccountSummary threads the signing activity sub-object (#1847)", () =
   // the {call_module:null} row is dropped
   assert.equal(out.activity.modules_called.length, 1);
   assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
+});
+
+test("account builders null invalid block heights and indices", () => {
+  const event = formatAccountEvent({
+    block_number: -1,
+    event_index: -2,
+    event_kind: "StakeAdded",
+    observed_at: 1,
+  });
+  assert.equal(event.block_number, null);
+  assert.equal(event.event_index, null);
+
+  const summary = buildAccountSummary("5Hk", {
+    agg: { fb: -5, lb: "nope" },
+    activity: { last_tx_block: -99 },
+  });
+  assert.equal(summary.first_block, null);
+  assert.equal(summary.last_block, null);
+  assert.equal(summary.activity.last_tx_block, null);
+
+  const day = formatAccountDay({
+    day: "2026-01-01",
+    first_block: -1,
+    last_block: 100,
+  });
+  assert.equal(day.first_block, null);
+  assert.equal(day.last_block, 100);
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
