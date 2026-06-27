@@ -6,7 +6,12 @@
 #
 # Build (from the repo root):
 #   docker build -f deploy/indexer.Dockerfile -t metagraphed-indexer .
-FROM python:3.14-slim
+#
+# Pinned to 3.13 (not 3.14): psycopg2-binary 2.9.10 ships cp38..cp313 wheels only
+# (no cp314, no abi3, sdist-only), and python:*-slim has no C toolchain — so 3.14
+# can't install it. 3.13 has wheels for every pinned dep and matches the Python
+# the verified decode (fetch-events.py) was validated on.
+FROM python:3.13-slim
 
 RUN useradd --create-home --uid 10001 indexer
 WORKDIR /app

@@ -43,8 +43,9 @@ services:
       timeout: 5s
       retries: 10
 
-  # The Bittensor node. Pruned by default (128 GB) — it follows the head + serves
-  # the indexer + is the first-party RPC origin. For the one-time historical
+  # The Bittensor node. Pruned by default (--pruning=2000 → small on-disk, not a
+  # full archive) — it follows the head + serves the indexer + is the first-party
+  # RPC origin. For the one-time historical
   # backfill, point the indexer at a transient archive source instead (ADR 0013).
   # If you run subtensor directly on the host, drop this service and set the
   # indexer's EVENTS_RPC_URL to the host endpoint.
