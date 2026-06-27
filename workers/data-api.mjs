@@ -68,7 +68,8 @@ export default {
 
       // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&before=&limit=
       // recent all-events feed. block= scopes to one block; block=+extrinsic= scopes to
-      // a single extrinsic's emitted events (explorer extrinsic-detail view).
+      // a single extrinsic's emitted events (explorer extrinsic-detail view). Ignore
+      // extrinsic without block to avoid an unindexed global extrinsic_index scan.
       if (url.pathname === "/api/v1/chain-events") {
         const limit = clampLimit(url.searchParams.get("limit"));
         const pallet = url.searchParams.get("pallet");
@@ -80,7 +81,7 @@ export default {
           return Number.isFinite(n) ? n : null;
         };
         const blockN = numParam("block");
-        const extrN = numParam("extrinsic");
+        const extrN = blockN != null ? numParam("extrinsic") : null;
         const beforeBn = numParam("before"); // block_number cursor (exclusive)
         const rows = await sql`
           SELECT block_number, event_index, pallet, method, args, phase, extrinsic_index, observed_at
