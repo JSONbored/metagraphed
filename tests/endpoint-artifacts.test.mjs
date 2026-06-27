@@ -426,7 +426,9 @@ describe("buildEndpointPoolArtifact", () => {
 
     // Provider scores: alpha is fully operational, beta/gamma score 0.
     assert.equal(artifact.provider_scores[0].provider, "alpha");
+    // operational: round(ok/1*70 + eligible/1*20 - failed/1*30 - degraded/1*10) = 90.
     assert.equal(artifact.provider_scores[0].operational_score, 90);
+    // average: round(score_total / endpoint_count) = round(104 / 1) = 104.
     assert.equal(artifact.provider_scores[0].average_score, 104);
     const beta = artifact.provider_scores.find(
       (row) => row.provider === "beta",

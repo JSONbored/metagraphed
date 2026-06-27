@@ -89,6 +89,20 @@ describe("computeMinerReadiness", () => {
       ),
       10,
     );
+    // A non-finite cost in an otherwise-strong subnet still scores through the
+    // unknown-cost path: 40 + 30 + 10 + 10 = 90, never a free zero-cost bonus.
+    assert.equal(
+      computeMinerReadiness(
+        {
+          registration_allowed: true,
+          registration_cost_tao: Number.NaN,
+          total_stake_tao: 100,
+        },
+        50,
+        0.01,
+      ),
+      90,
+    );
   });
 
   test("activity is satisfied by positive emission share alone", () => {
