@@ -331,12 +331,17 @@ export async function handleAccountHistory(request, env, ss58, url) {
       400,
     );
   }
-  // Keyset (cursor) pagination over (day, netuid). day is ordered as TEXT
-  // (YYYY-MM-DD sorts chronologically); the cursor encodes it as its natural
-  // sortable integer (2026-06-25 -> 20260625) so it fits the integer-only cursor
-  // codec, with netuid as the within-day tiebreaker. offset stays as a deprecated
-  // fallback; cursor wins. A cursor that does not decode to a valid YYYYMMDD day
-  // is ignored (falls back to the first page), preserving the never-throw contract.
+  // Keyset (cursor) pagination over (day, netuid). day sorts as TEXT (YYYY-MM-DD
+  // is chronological); the cursor encodes it as its natural sortable integer
+  // (2026-06-25 -> 20260625) to fit the integer-only cursor codec, with netuid as
+  // the within-day tiebreaker. netuid is NOT NULL (a primary-key column of
+  // account_events_daily), so the cursor's netuid leg is always a real integer and
+  // the seek never degrades to a NULL comparison. ORDER BY adds `netuid DESC` to
+  // make same-day ordering deterministic — it was `day DESC` only before, where
+  // same-day order was unspecified, so existing offset callers get a stable (not a
+  // changed) page order. offset stays as a deprecated fallback; cursor wins. A
+  // cursor that does not decode to a valid YYYYMMDD day is ignored (falls back to
+  // the first page), preserving the never-throw contract.
   const cur = decodeCursor(url.searchParams.get("cursor"), 2);
   const cursorDay = cur
     ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
