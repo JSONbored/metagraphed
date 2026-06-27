@@ -9,17 +9,19 @@ JSON-RPC is not available through this HTTP proxy"_).
 ```
 client ──wss──▶  wss-lb  ──wss──▶  healthiest registered subtensor-wss node
                    │
-                   └─ refreshes the pool from GET /api/v1/rpc-endpoints
-                      (kind=subtensor-wss, pool_eligible, status=ok, fresh tip)
+                   └─ refreshes the pool from GET /api/v1/rpc/pools
+                      (the `<network>-wss` pool, pool_eligible, fresh tip)
 ```
 
 ## How it routes
 
-- Refreshes the endpoint pool from the live `/api/v1/rpc-endpoints` every
-  `REFRESH_MS` (reuses your prober's health — no second health system).
-- `selectWssUpstreams` (pure, unit-tested) keeps only healthy, eligible,
-  on-network wss endpoints within `MAX_BLOCK_LAG` of the freshest tip, ordered by
-  score (cosmos.directory's "route to the most up-to-date node").
+- Refreshes from the live `/api/v1/rpc/pools` every `REFRESH_MS` (reuses your
+  prober's health — no second health system) and picks the `<network>-wss` pool.
+- `selectWssUpstreams` (pure, unit-tested) keeps the pool's `pool_eligible`
+  endpoints within `MAX_BLOCK_LAG` of the freshest tip, ordered by score
+  (cosmos.directory's "route to the most up-to-date node"). `pool_eligible` is the
+  gate — not `status==='ok'` — so the static, unmonitored **testnet** wss pool
+  (which the HTTP proxy can't serve at all) is included.
 - **Connect-time** selection with handshake failover to the next upstream. A
   mid-session upstream drop closes the client (it reconnects → a fresh upstream);
   JSON-RPC subscription state can't be transparently migrated.

@@ -4,7 +4,7 @@
 // (rpc-proxy.mjs: "WebSocket JSON-RPC is not available through this HTTP proxy").
 //
 // Model (cosmos.directory-style): refresh the healthy-endpoint pool from the
-// live /api/v1/rpc-endpoints, and at CONNECT time route each client to the
+// live /api/v1/rpc/pools, and at CONNECT time route each client to the
 // freshest/highest-scored upstream, failing over to the next on a failed
 // handshake. Mid-session upstream loss closes the client (it reconnects → a new
 // upstream) — JSON-RPC subscription state can't be transparently moved.
@@ -31,24 +31,24 @@ const NETWORKS = (process.env.NETWORKS || "finney,test")
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
-let endpoints = [];
+let poolsArtifact = null;
 let lastRefresh = 0;
 
 async function refresh() {
   try {
-    const res = await fetch(`${API}/api/v1/rpc-endpoints`, {
+    const res = await fetch(`${API}/api/v1/rpc/pools`, {
       signal: AbortSignal.timeout(10000),
       headers: { "user-agent": "metagraphed-wss-lb/1.0" },
     });
     if (!res.ok) throw new Error(`status ${res.status}`);
     const body = await res.json();
-    const list = Array.isArray(body?.endpoints)
-      ? body.endpoints
-      : Array.isArray(body?.data?.endpoints)
-        ? body.data.endpoints
-        : [];
-    if (list.length) {
-      endpoints = list;
+    const artifact = Array.isArray(body?.pools)
+      ? body
+      : Array.isArray(body?.data?.pools)
+        ? body.data
+        : null;
+    if (artifact) {
+      poolsArtifact = artifact;
       lastRefresh = Date.now();
     }
   } catch (e) {
@@ -57,83 +57,100 @@ async function refresh() {
 }
 
 function poolFor(network) {
-  return selectWssUpstreams(endpoints, network, { maxBlockLag: MAX_BLOCK_LAG });
+  return selectWssUpstreams(poolsArtifact, network, {
+    maxBlockLag: MAX_BLOCK_LAG,
+  });
 }
 
 // Connect-time failover: try upstreams in order until one completes its
 // handshake, then pipe bidirectionally. Client messages sent before the upstream
 // opens are buffered (the client sees its leg as open immediately).
-function proxy(client, upstreams, attempt = 0) {
-  if (attempt >= upstreams.length) {
-    try {
-      client.close(1013, "no upstream available");
-    } catch {
-      /* already closed */
-    }
-    return;
-  }
-  const up = new WebSocket(upstreams[attempt], {
-    handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
-  });
+//
+// The client listeners are attached ONCE — `up` is reassigned per attempt via
+// closure. Re-attaching them per retry would stack handlers on failover (double
+// send + MaxListenersExceeded). `clientClosed` stops retrying once the client is
+// gone, so a vanished client can't keep dialing fresh upstreams.
+function proxy(client, upstreams) {
+  let up = null;
   let opened = false;
+  let clientClosed = false;
   const pending = [];
 
   client.on("message", (data, isBinary) => {
-    if (opened && up.readyState === WebSocket.OPEN)
+    if (opened && up && up.readyState === WebSocket.OPEN)
       up.send(data, { binary: isBinary });
     else pending.push([data, isBinary]);
   });
   client.on("close", () => {
+    clientClosed = true;
     try {
-      up.close();
+      up?.close();
     } catch {
       /* noop */
     }
   });
   client.on("error", () => {
+    clientClosed = true;
     try {
-      up.terminate();
+      up?.terminate();
     } catch {
       /* noop */
     }
   });
 
-  up.on("open", () => {
-    opened = true;
-    for (const [data, isBinary] of pending) up.send(data, { binary: isBinary });
-    pending.length = 0;
-    up.on("message", (data, isBinary) => {
-      if (client.readyState === WebSocket.OPEN)
-        client.send(data, { binary: isBinary });
+  const tryUpstream = (attempt) => {
+    if (clientClosed) return;
+    if (attempt >= upstreams.length) {
+      try {
+        client.close(1013, "no upstream available");
+      } catch {
+        /* already closed */
+      }
+      return;
+    }
+    up = new WebSocket(upstreams[attempt], {
+      handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
     });
-  });
-  up.on("close", () => {
-    if (opened) {
-      try {
-        client.close();
-      } catch {
-        /* noop */
+    up.on("open", () => {
+      opened = true;
+      for (const [data, isBinary] of pending)
+        up.send(data, { binary: isBinary });
+      pending.length = 0;
+      up.on("message", (data, isBinary) => {
+        if (client.readyState === WebSocket.OPEN)
+          client.send(data, { binary: isBinary });
+      });
+    });
+    up.on("close", () => {
+      if (opened) {
+        try {
+          client.close();
+        } catch {
+          /* noop */
+        }
+      } else {
+        tryUpstream(attempt + 1); // handshake never completed → next
       }
-    } else {
-      proxy(client, upstreams, attempt + 1); // handshake never completed → next
-    }
-  });
-  up.on("error", () => {
-    if (opened) {
-      try {
-        client.close();
-      } catch {
-        /* noop */
+    });
+    up.on("error", () => {
+      if (opened) {
+        try {
+          client.close();
+        } catch {
+          /* noop */
+        }
+      } else {
+        try {
+          up.terminate();
+        } catch {
+          /* noop */
+        }
+        tryUpstream(attempt + 1);
       }
-    } else {
-      try {
-        up.terminate();
-      } catch {
-        /* noop */
-      }
-      proxy(client, upstreams, attempt + 1);
-    }
-  });
+    });
+  };
+
+  tryUpstream(0);
 }
 
 const server = http.createServer((req, res) => {
