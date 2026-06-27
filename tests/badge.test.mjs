@@ -402,6 +402,53 @@ describe("badge — apis metric", () => {
     assert.match(text, /n\/a/);
     assert.match(text, /#9f9f9f/);
   });
+
+  test("unknown provider apis degrades to n/a", async () => {
+    const { res, text } = await badgeWithSurfaces(
+      "/api/v1/providers/nobody/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with empty netuids is n/a", async () => {
+    const { text } = await badgeWithSurfaces(
+      "/api/v1/providers/empty/badge.svg?metric=apis",
+      {
+        "/metagraph/providers.json": {
+          providers: [{ slug: "empty", netuids: [] }],
+        },
+      },
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with no surfaces artifacts is n/a", async () => {
+    const { text } = await badgeWithSurfaces(
+      "/api/v1/providers/byid/badge.svg?metric=apis",
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("countCallableApiSurfaces skips null surface rows", () => {
+    assert.equal(
+      countCallableApiSurfaces([null, { kind: "openapi", public_safe: true }]),
+      1,
+    );
+  });
+
+  test("apis metric survives a readArtifact throw (readData catch)", async () => {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/subnets/7/badge.svg?metric=apis",
+    );
+    const res = await handleBadgeRequest(new Request(url), {}, url, {
+      readArtifact: () => {
+        throw new Error("artifact read failed");
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /n\/a/);
+  });
 });
 
 describe("badge — Worker dispatch integration", () => {
