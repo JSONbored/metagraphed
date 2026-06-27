@@ -424,6 +424,28 @@ describe("feeds — handleFeedRequest", () => {
     assert.equal(parsed.items.length, 2);
   });
 
+  test("incidents feed returns empty when loadLiveIncidents throws", async () => {
+    const { res, text } = await feed("/api/v1/feeds/incidents", {
+      deps: {
+        readArtifact: makeReadArtifact({}),
+        loadLiveIncidents: async () => {
+          throw new Error("D1 unavailable");
+        },
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(text).items.length, 0);
+  });
+
+  test("incidents feed falls back to static artifact when loadLiveIncidents is absent", async () => {
+    const url = new URL("https://api.metagraph.sh/api/v1/feeds/incidents");
+    const res = await handleFeedRequest(new Request(url), {}, url, {
+      readArtifact: makeReadArtifact({ "/metagraph/incidents.json": INCIDENTS }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(await res.text()).items.length, 2);
+  });
+
   test("?tag= narrows the registry feed to matching items", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry?tag=coverage");
     assert.equal(res.status, 200);
@@ -574,6 +596,54 @@ describe("feeds — Worker dispatch integration", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /application\/rss\+xml/);
     assert.match(await res.text(), /<rss version="2\.0"/);
+  });
+
+  test("handleRequest wires incidents feed to loadGlobalIncidentsLedger", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () =>
+                  sql.includes("recent_checks")
+                    ? Promise.resolve({
+                        results: [
+                          {
+                            netuid: 7,
+                            surface_id: "allways-api",
+                            surface_key: "allways-api",
+                            started_at: 1781266255266,
+                            ended_at: 1781499480737,
+                            failed_samples: 1945,
+                          },
+                        ],
+                      })
+                    : Promise.resolve({ results: [] }),
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const parsed = await res.json();
+    assert.ok(parsed.items.length >= 1);
+    assert.ok(parsed.items[0].id.startsWith("incident:"));
   });
 
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {
