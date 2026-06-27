@@ -122,15 +122,15 @@ class RowsFromDecoded(unittest.TestCase):
         self.assertEqual(rows["extrinsics"], [])
         self.assertEqual(rows["account_events"], [])
 
-    def test_event_row_remaps_amount_alpha_and_keeps_uid(self):
+    def test_event_row_preserves_serving_amount_columns_and_keeps_uid(self):
         e = ic.rows_from_decoded(_decoded())["account_events"][0]
         self.assertEqual(set(e.keys()), set(ic.EVENT_COLS))
-        # decode_head emits amount_tao/alpha_amount; the schema columns are amount/alpha.
-        self.assertEqual(e["amount"], 1.5)
-        self.assertEqual(e["alpha"], 2.5)
+        # Keep the D1-era serving names so Worker readers need only a binding swap.
+        self.assertEqual(e["amount_tao"], 1.5)
+        self.assertEqual(e["alpha_amount"], 2.5)
         self.assertEqual(e["uid"], 12)
         self.assertEqual(e["extrinsic_index"], 2)
-        self.assertNotIn("amount_tao", e)
+        self.assertNotIn("amount", e)
 
     def test_no_block_yields_empty_blocks(self):
         d = _decoded()
@@ -174,6 +174,44 @@ class DecodeHeadImport(unittest.TestCase):
         finally:
             signal.signal(signal.SIGTERM, previous_term)
             signal.signal(signal.SIGINT, previous_int)
+
+
+class PostgresSchemaContract(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        root = os.path.dirname(_HERE)
+        with open(
+            os.path.join(root, "deploy", "postgres", "schema.sql"), encoding="utf-8"
+        ) as schema_file:
+            cls.schema = schema_file.read()
+
+    def test_account_events_schema_uses_serving_columns(self):
+        for column in ("uid", "amount_tao", "alpha_amount", "extrinsic_index"):
+            self.assertIn(column, self.schema)
+        self.assertNotIn("  amount           NUMERIC", self.schema)
+        self.assertNotIn("  alpha            NUMERIC", self.schema)
+
+    def test_metagraph_schema_uses_serving_columns(self):
+        for column in (
+            "validator_trust",
+            "emission_tao",
+            "registered_at_block",
+            "is_immunity_period",
+            "block_number",
+            "captured_at",
+        ):
+            self.assertIn(column, self.schema)
+        self.assertNotIn("  emission         NUMERIC", self.schema)
+
+    def test_account_events_daily_schema_uses_history_columns(self):
+        for column in (
+            "netuid",
+            "event_kinds",
+            "first_block",
+            "last_block",
+            "updated_at",
+        ):
+            self.assertIn(column, self.schema)
 
 
 class BackfillStart(unittest.TestCase):

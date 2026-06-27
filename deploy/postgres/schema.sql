@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS account_events (
   coldkey          TEXT,
   netuid           INTEGER,
   uid              INTEGER,                 -- neuron uid when the event carries one
-  amount           NUMERIC,
-  alpha            NUMERIC,
+  amount_tao       NUMERIC,                 -- tao field / 1e9 where applicable
+  alpha_amount     NUMERIC,                 -- subnet alpha leg for stake swaps
   observed_at      BIGINT NOT NULL,
   PRIMARY KEY (block_number, event_index)
 );
@@ -105,17 +105,21 @@ CREATE TABLE IF NOT EXISTS neurons (
   uid              INTEGER NOT NULL,
   hotkey           TEXT,
   coldkey          TEXT,
-  stake_tao        NUMERIC,
+  active           BOOLEAN,
+  validator_permit BOOLEAN,
   rank             NUMERIC,
   trust            NUMERIC,
+  validator_trust  NUMERIC,
   consensus        NUMERIC,
   incentive        NUMERIC,
   dividends        NUMERIC,
-  emission         NUMERIC,
-  validator_permit BOOLEAN,
-  active           BOOLEAN,
+  emission_tao     NUMERIC,
+  stake_tao        NUMERIC,
+  registered_at_block BIGINT,
+  is_immunity_period  BOOLEAN,
   axon             TEXT,
-  captured_at      BIGINT,
+  block_number     BIGINT,
+  captured_at      BIGINT NOT NULL,
   PRIMARY KEY (netuid, uid)
 );
 CREATE INDEX IF NOT EXISTS idx_neurons_netuid_permit ON neurons (netuid, validator_permit, stake_tao DESC);
@@ -127,16 +131,28 @@ CREATE TABLE IF NOT EXISTS neuron_daily (
   uid              INTEGER NOT NULL,
   snapshot_date    DATE NOT NULL,
   hotkey           TEXT,
-  stake_tao        NUMERIC,
+  coldkey          TEXT,
+  active           BOOLEAN,
+  validator_permit BOOLEAN,
+  rank             NUMERIC,
+  trust            NUMERIC,
+  validator_trust  NUMERIC,
+  consensus        NUMERIC,
   incentive        NUMERIC,
   dividends        NUMERIC,
-  emission         NUMERIC,
-  validator_permit BOOLEAN,
+  emission_tao     NUMERIC,
+  stake_tao        NUMERIC,
+  registered_at_block BIGINT,
+  is_immunity_period  BOOLEAN,
+  axon             TEXT,
+  block_number     BIGINT,
+  captured_at      BIGINT NOT NULL,
+  updated_at       BIGINT NOT NULL,
   PRIMARY KEY (netuid, uid, snapshot_date)
 );
 -- #2083: covering index for per-subnet history aggregation (avoid per-row heap fetch).
 CREATE INDEX IF NOT EXISTS idx_nd_netuid_date ON neuron_daily (netuid, snapshot_date, uid)
-  INCLUDE (stake_tao, incentive, dividends, emission);
+  INCLUDE (stake_tao, incentive, dividends, emission_tao);
 CREATE INDEX IF NOT EXISTS idx_nd_uid_date    ON neuron_daily (netuid, uid, snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_nd_hotkey_date ON neuron_daily (hotkey, snapshot_date);
 
@@ -158,11 +174,17 @@ CREATE INDEX IF NOT EXISTS idx_econ_netuid_date ON economics_history (netuid, sn
 -- Account daily rollup (#2079 / audit: removes the temp-sort on default account history).
 CREATE TABLE IF NOT EXISTS account_events_daily (
   hotkey           TEXT NOT NULL,
+  netuid           INTEGER NOT NULL,
   day              DATE NOT NULL,
-  event_count      INTEGER,
-  netuid_count     INTEGER,
-  PRIMARY KEY (hotkey, day)
+  event_count      INTEGER NOT NULL,
+  event_kinds      TEXT,
+  first_block      BIGINT,
+  last_block       BIGINT,
+  updated_at       BIGINT NOT NULL,
+  PRIMARY KEY (hotkey, netuid, day)
 );
+CREATE INDEX IF NOT EXISTS idx_account_events_daily_netuid_day
+  ON account_events_daily (netuid, day);
 
 -- ---------------------------------------------------------------------------
 -- Indexer coordination
