@@ -230,6 +230,30 @@ describe("handleLeaderboards", () => {
     assert.equal(body.data.board, "most-complete");
     assert.ok(Array.isArray(body.data.boards["most-complete"]));
   });
+
+  test("uses surface uptime rollups for most-reliable board", async () => {
+    const env = d1Env({
+      "FROM surface_uptime_daily": [
+        {
+          netuid: 7,
+          samples: 10,
+          ok_count: 9,
+          avg_latency_ms: 100,
+          latency_samples: 10,
+        },
+      ],
+    });
+    const body = await json(
+      await handleLeaderboards(
+        req("/"),
+        env,
+        url("/?board=most-reliable&limit=5"),
+      ),
+    );
+    assert.equal(body.data.board, "most-reliable");
+    assert.equal(body.data.boards["most-reliable"].length, 1);
+    assert.equal(body.data.boards["most-reliable"][0].netuid, 7);
+  });
 });
 
 describe("handleCompare", () => {

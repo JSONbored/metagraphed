@@ -19,6 +19,7 @@ change.
 | [0010](0010-chain-direct-block-explorer.md) | Chain-direct block explorer + first-party event indexer                                                                 | Accepted (partial) · ingestion/serving shipped, deep history pending infra                                       |
 | [0011](0011-retire-submission-preflight.md) | Retire the metagraphed-side submission preflight (the gate is external; `validate-surface`/`validate-intake` own shape) | Accepted · implemented                                                                                           |
 | [0012](0012-chain-data-ingestion.md)        | Chain-data ingestion — bootstrap poller → self-hosted archive indexer (gap-free, prune-proof)                           | Accepted · poller made archive-ready (cursor recovery); continuous indexer is the end state                      |
+| [0013](0013-hybrid-deployment-topology.md)  | Hybrid deployment topology — Cloudflare edge · Railway core · D1→Postgres (Hyperdrive); single project, pruned node     | Accepted · foundation shipped (ADR + schema + runbook); provisioning + serving cutover gated/phased              |
 
 ## Keeping these current
 
