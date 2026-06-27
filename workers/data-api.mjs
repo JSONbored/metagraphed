@@ -122,6 +122,28 @@ export default {
         return json({ count: rows.length, next_before: next, events: rows });
       }
 
+      // GET /api/v1/chain-events/stats?blocks=N — chain-activity aggregate: the
+      // pallet.method event distribution over the most recent N blocks (default
+      // 1000, capped 5000). Bounded window + capped output keep it index-cheap.
+      if (url.pathname === "/api/v1/chain-events/stats") {
+        const blocks = Math.min(
+          Math.max(Number(url.searchParams.get("blocks")) || 1000, 1),
+          5000,
+        );
+        const rows = await sql`
+          SELECT pallet, method, count(*)::int AS count
+          FROM chain_events
+          WHERE block_number > (SELECT max(block_number) FROM chain_events) - ${blocks}
+          GROUP BY pallet, method
+          ORDER BY count DESC
+          LIMIT 100`;
+        return json({
+          window_blocks: blocks,
+          groups: rows.length,
+          activity: rows,
+        });
+      }
+
       return json({ error: "not found" }, 404);
     } catch (err) {
       // Log internally (Wrangler observability) but NEVER leak DB error details

@@ -849,6 +849,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // (e.g. a preview deploy without the data Worker).
   if (
     url.pathname === "/api/v1/chain-events" ||
+    url.pathname === "/api/v1/chain-events/stats" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname)
   ) {
     if (env.DATA_RATE_LIMITER?.limit) {

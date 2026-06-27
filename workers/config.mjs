@@ -177,6 +177,25 @@ export const SAFE_RPC_METHODS = new Set([
   "system_properties",
   "system_version",
 ]);
+// Read-only WebSocket subscriptions — WSS-ONLY. The HTTP proxy uses SAFE_RPC_METHODS
+// alone (subscriptions need a persistent connection, so they make no sense over HTTP);
+// the wss-lb additionally allows these. Their notifications stream upstream→client.
+// All read-only — author_submitAndWatchExtrinsic stays blocked by the author_ prefix.
+export const SAFE_RPC_SUBSCRIPTIONS = new Set([
+  "chain_subscribeNewHeads",
+  "chain_subscribeNewHead",
+  "chain_unsubscribeNewHeads",
+  "chain_subscribeFinalizedHeads",
+  "chain_subscribeFinalisedHeads",
+  "chain_unsubscribeFinalizedHeads",
+  "chain_unsubscribeFinalisedHeads",
+  "chain_subscribeAllHeads",
+  "chain_unsubscribeAllHeads",
+  "state_subscribeStorage",
+  "state_unsubscribeStorage",
+  "state_subscribeRuntimeVersion",
+  "state_unsubscribeRuntimeVersion",
+]);
 export const DENIED_RPC_PREFIXES = [
   "author_",
   "state_call",
