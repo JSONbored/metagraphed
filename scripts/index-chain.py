@@ -265,6 +265,15 @@ def run():
     while not _stop:
         try:
             s = SubstrateInterface(url=RPC)
+            # Warm the runtime metadata BEFORE the cold backfill. decode_head's
+            # per-block `s.query(...)` needs `s.metadata`, which is lazy-loaded;
+            # the streamer gets it implicitly because it only decodes from inside
+            # subscribe_block_headers (which inits the runtime first). The indexer
+            # decodes in the backfill loop first, so without this the very first
+            # query raises AttributeError: 'NoneType' has no attribute
+            # 'get_metadata_pallet'. init_runtime() loads metadata at the head;
+            # recent blocks share that runtime version, so it is reused.
+            s.init_runtime()
             backoff = 5  # reset after a clean connect
             cursor = read_cursor(conn)
             head = s.get_block_number(s.get_chain_finalised_head())
