@@ -212,3 +212,7 @@ vite.config.ts.timestamp-*
 /changed-files.txt
 /submitted-artifact-files.txt
 /validate-route.json
+
+# Python bytecode (scripts/ + python/ tests)
+__pycache__/
+*.py[cod]
