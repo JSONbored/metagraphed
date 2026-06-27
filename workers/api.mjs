@@ -1404,6 +1404,24 @@ async function handleNetworkScopedRequest(
   network,
   ctx = {},
 ) {
+  const isApiPath =
+    url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/");
+
+  // Mainnet-only live/D1 routes 404 under a network prefix regardless of HTTP
+  // method — before the read-only gate so POST does not masquerade as 405.
+  if (
+    isApiPath &&
+    network.id !== "local" &&
+    isMainnetOnlyApiPath(url.pathname)
+  ) {
+    return errorResponse(
+      "not_found",
+      `${url.pathname} is only available on mainnet, not the ${network.id} network.`,
+      404,
+      { network: network.id },
+    );
+  }
+
   if (!["GET", "HEAD"].includes(request.method)) {
     return errorResponse(
       "method_not_allowed",
@@ -1440,7 +1458,7 @@ async function handleNetworkScopedRequest(
     );
   }
 
-  if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
+  if (isApiPath) {
     if (isMainnetOnlyApiPath(url.pathname)) {
       return errorResponse(
         "not_found",

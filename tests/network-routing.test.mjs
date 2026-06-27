@@ -332,6 +332,34 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(subnets.res.status, 200);
   });
 
+  test("mainnet-only routes 404 under testnet for POST as well as GET", async () => {
+    const env = createLocalArtifactEnv();
+    for (const [method, path] of [
+      ["GET", "/api/v1/testnet/graphql"],
+      ["POST", "/api/v1/testnet/graphql"],
+      ["POST", "/api/v1/testnet/ask"],
+      ["GET", "/api/v1/testnet/blocks"],
+    ]) {
+      const { res, body } = await get(env, path, { method });
+      assert.equal(res.status, 404, `${method} ${path}`);
+      assert.equal(body.meta.network, "testnet", `${method} ${path}`);
+      assert.match(
+        body.error.message,
+        /only available on mainnet/i,
+        `${method} ${path}`,
+      );
+    }
+  });
+
+  test("non-mainnet-only POST under a network prefix still returns 405", async () => {
+    const env = createLocalArtifactEnv();
+    const { res, body } = await get(env, "/api/v1/testnet/subnets", {
+      method: "POST",
+    });
+    assert.equal(res.status, 405);
+    assert.equal(body.error.code, "method_not_allowed");
+  });
+
   test("raw artifact: mainnet alias and testnet both serve their partitioned data", async () => {
     const env = createLocalArtifactEnv();
     const mainnet = await get(env, "/metagraph/mainnet/subnets.json");
