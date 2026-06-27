@@ -11,22 +11,21 @@
 export const TURNOVER_READ_COLUMNS =
   "snapshot_date, uid, hotkey, validator_permit";
 
-// Round a ratio to a stable precision; null/non-finite → null so the schema stays
-// `number|null`.
+// Round a retention ratio (always a finite 0..1 jaccard result) to a stable
+// precision.
 function round(value, dp = 4) {
-  if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
 }
 
 // Jaccard similarity |A∩B| / |A∪B| — the retained fraction across two sets. Two
-// empty sets are defined as 1 (nothing to lose ⇒ perfectly retained).
+// empty sets are defined as 1 (nothing to lose ⇒ perfectly retained); past that
+// guard at least one set is non-empty, so the union is always > 0.
 function jaccard(setA, setB) {
   if (setA.size === 0 && setB.size === 0) return 1;
   let intersection = 0;
   for (const item of setA) if (setB.has(item)) intersection += 1;
-  const union = setA.size + setB.size - intersection;
-  return union === 0 ? 1 : intersection / union;
+  return intersection / (setA.size + setB.size - intersection);
 }
 
 // The set of hotkeys holding a validator permit in one snapshot (a validator is

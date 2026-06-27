@@ -3,13 +3,24 @@ import { describe, test } from "vitest";
 import { buildTurnover } from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
-  test("cold / empty / no-boundary rows yield a schema-stable empty block", () => {
-    for (const opts of [
-      { window: "30d" },
-      { window: "30d", startDate: null, endDate: null },
-      { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" }, // dates but no rows
-    ]) {
-      const data = buildTurnover([], 7, opts);
+  test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
+    const cases = [
+      { rows: [], opts: { window: "30d" } },
+      { rows: [], opts: { window: "30d", startDate: null, endDate: null } },
+      // dates present but no rows:
+      {
+        rows: [],
+        opts: { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
+      },
+      // non-array rows → coerced to []:
+      {
+        rows: null,
+        opts: { window: "7d", startDate: "2026-06-01", endDate: "2026-06-30" },
+      },
+      { rows: undefined, opts: {} }, // also exercises the window ?? null default
+    ];
+    for (const { rows, opts } of cases) {
+      const data = buildTurnover(rows, 7, opts);
       assert.equal(data.netuid, 7);
       assert.equal(data.comparable, false);
       assert.equal(data.validators_entered, 0);
@@ -17,6 +28,8 @@ describe("buildTurnover", () => {
       assert.equal(data.neuron_retention, null);
       assert.equal(data.stability_score, null);
     }
+    // An omitted window resolves to null in the envelope.
+    assert.equal(buildTurnover([], 7, {}).window, null);
   });
 
   test("computes validator churn, deregistrations, and retention between two snapshots", () => {
@@ -179,5 +192,107 @@ describe("buildTurnover", () => {
     assert.equal(data.validators_end, 1); // V1
     assert.equal(data.neurons_start, 0);
     assert.equal(data.neurons_end, 1);
+  });
+});
+
+describe("buildTurnover — invariants", () => {
+  test("retentions are in [0,1], stability in [0,100], and entered/exited stay consistent with the set sizes", () => {
+    const rows = [
+      {
+        snapshot_date: "2026-05-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-05-01",
+        uid: 1,
+        hotkey: "V2",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 1,
+        hotkey: "V3",
+        validator_permit: 1,
+      },
+    ];
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-06-01",
+    });
+    assert.ok(data.validator_retention >= 0 && data.validator_retention <= 1);
+    assert.ok(data.neuron_retention >= 0 && data.neuron_retention <= 1);
+    assert.ok(data.stability_score >= 0 && data.stability_score <= 100);
+    // retained validators == start − exited == end − entered (set-diff identity).
+    assert.equal(
+      data.validators_start - data.validators_exited,
+      data.validators_end - data.validators_entered,
+    );
+  });
+});
+
+describe("buildTurnover — regressions", () => {
+  test("a validator that moves UID slot but keeps its hotkey is retained (keyed by hotkey)", () => {
+    const rows = [
+      {
+        snapshot_date: "2026-05-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 7,
+        hotkey: "V1",
+        validator_permit: 1,
+      }, // same key, new UID
+    ];
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-06-01",
+    });
+    assert.equal(data.validators_entered, 0); // V1 still validates
+    assert.equal(data.validators_exited, 0);
+    assert.equal(data.validator_retention, 1);
+    // The UID→hotkey identity changed (uid 0 → uid 7), so the neuron set churned.
+    assert.equal(data.uids_deregistered, 0); // no UID present at both with a new key
+    assert.equal(data.neuron_retention, 0);
+  });
+
+  test("a validator that loses its permit counts as exited; its neuron stays retained", () => {
+    const rows = [
+      {
+        snapshot_date: "2026-05-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 0,
+      }, // demoted
+    ];
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-06-01",
+    });
+    assert.equal(data.validators_start, 1);
+    assert.equal(data.validators_end, 0);
+    assert.equal(data.validators_exited, 1); // dropped from the validator set
+    assert.equal(data.validator_retention, 0);
+    assert.equal(data.uids_deregistered, 0); // uid 0 kept its hotkey
+    assert.equal(data.neuron_retention, 1); // {0:V1} retained
   });
 });
