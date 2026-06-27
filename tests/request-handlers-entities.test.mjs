@@ -1025,6 +1025,39 @@ describe("handleAccountTransfers", () => {
     const sql = captures.sql.find((s) => /Transfer/.test(s));
     assert.ok(/coldkey = \?/.test(sql));
   });
+
+  test("cursor uses keyset seek instead of offset", async () => {
+    const { env, captures } = dbWith({
+      transfers: [transferEventRow({ block_number: 150, event_index: 2 })],
+    });
+    const body = await json(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/transfers?limit=1&cursor=${encodeCursor([200, 1])}`,
+        ),
+      ),
+    );
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
+  });
+
+  test("a malformed cursor is ignored and falls back to the first page", async () => {
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
+    await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?cursor=not-a-cursor`),
+    );
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/OFFSET/.test(sql));
+    assert.ok(!/block_number, event_index\) </.test(sql));
+  });
 });
 
 describe("handleAccountSubnets", () => {
@@ -1116,6 +1149,41 @@ describe("handleSubnetEvents", () => {
       url(`/api/v1/subnets/${NETUID}/events?kind=WeightsSet`),
     );
     assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
+  });
+
+  test("cursor uses keyset seek instead of offset", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
+    });
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(
+          `/api/v1/subnets/${NETUID}/events?limit=1&cursor=${encodeCursor([200, 1])}`,
+        ),
+      ),
+    );
+    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
+  });
+
+  test("a malformed cursor is ignored and falls back to the first page", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow()],
+    });
+    await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?cursor=not-a-cursor`),
+    );
+    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/OFFSET/.test(sql));
+    assert.ok(!/block_number, event_index\) </.test(sql));
   });
 });
 

@@ -309,6 +309,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
     "to",
     "limit",
     "offset",
+    "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const from = url.searchParams.get("from");
@@ -330,6 +331,17 @@ export async function handleAccountHistory(request, env, ss58, url) {
       400,
     );
   }
+  // Keyset (cursor) pagination over (day, netuid). day is ordered as TEXT
+  // (YYYY-MM-DD sorts chronologically); the cursor encodes it as its natural
+  // sortable integer (2026-06-25 -> 20260625) so it fits the integer-only cursor
+  // codec, with netuid as the within-day tiebreaker. offset stays as a deprecated
+  // fallback; cursor wins. A cursor that does not decode to a valid YYYYMMDD day
+  // is ignored (falls back to the first page), preserving the never-throw contract.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const cursorDay = cur
+    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+    : null;
+  const useCursor = Boolean(cursorDay && DAY_RE.test(cursorDay));
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
   if (netuid != null) {
@@ -344,10 +356,23 @@ export async function handleAccountHistory(request, env, ss58, url) {
     sql += " AND day <= ?";
     params.push(to);
   }
-  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  if (useCursor) {
+    sql += " AND (day, netuid) < (?, ?)";
+    params.push(cursorDay, cur[1]);
+  }
+  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildAccountHistory(rows, ss58, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor =
+    last && typeof last.day === "string" && DAY_RE.test(last.day)
+      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
+      : null;
+  const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -403,6 +428,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "direction",
     "limit",
     "offset",
+    "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const direction = url.searchParams.get("direction");
@@ -430,12 +456,29 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     sideClause = "coldkey = ?";
     sideParams = [ss58];
   }
-  const rows = await d1All(
-    env,
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
-    [...sideParams, limit, offset],
-  );
-  const data = buildAccountTransfers(rows, ss58, { limit, offset });
+  // Keyset (cursor) pagination mirrors loadAccountEvents/handleExtrinsicsFeed: a
+  // (block_number, event_index) row-value seek, stable + O(limit) at depth on the
+  // large account_events tier. offset stays as a deprecated fallback; cursor wins.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  const params = [...sideParams];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause}`;
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
+  const rows = await d1All(env, sql, params);
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildAccountTransfers(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -474,21 +517,42 @@ export async function handleAccountSubnets(request, env, ss58) {
 // ?kind= filter; ?limit (<=1000)/?offset. Cold/absent store → schema-stable zero
 // (never 404), mirroring handleAccountEvents.
 export async function handleSubnetEvents(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "kind",
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const kind = url.searchParams.get("kind");
+  // Keyset (cursor) pagination on (block_number, event_index), mirroring
+  // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
   const params = [netuid];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
   if (kind) {
     sql += " AND event_kind = ?";
     params.push(kind);
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildSubnetEvents(rows, netuid, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildSubnetEvents(rows, netuid, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {

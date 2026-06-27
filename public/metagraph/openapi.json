@@ -341,6 +341,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -500,6 +506,12 @@
         "properties": {
           "limit": {
             "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "offset": {
             "type": "integer"
@@ -10698,6 +10710,12 @@
           "netuid": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -14035,6 +14053,7 @@
                       }
                     ],
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1,
                     "ss58": "example"
@@ -14331,6 +14350,7 @@
                 "example": {
                   "data": {
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1,
                     "ss58": "example",
@@ -27574,6 +27594,7 @@
                     ],
                     "limit": 1,
                     "netuid": 7,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1
                   },

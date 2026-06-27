@@ -327,6 +327,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -486,6 +492,12 @@
         "properties": {
           "limit": {
             "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "offset": {
             "type": "integer"
@@ -10675,6 +10687,12 @@
           },
           "netuid": {
             "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "offset": {
             "type": "integer"
