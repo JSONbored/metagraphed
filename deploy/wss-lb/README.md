@@ -39,9 +39,28 @@ cd deploy/wss-lb && npm install && npm start        # local
 npm test                                            # selection + proxy-failover tests
 ```
 
-Railway: add a service with **Root Directory = `deploy/wss-lb`** (the bundled
-`railway.json` and `Dockerfile` do the rest). Put it behind Cloudflare DNS for
-TLS + DDoS.
+Railway — one **service** in the shared **metagraphed-core** project (see
+[`../README.md`](../README.md#railway-one-project-many-services) for the full
+topology):
+
+- Source repo `JSONbored/metagraphed`, branch `main`, **auto-deploy on push**
+  (same as metagraphed-streamer). Leave **Root Directory unset**.
+- Set the service's **Config-as-code → Railway Config File** to
+  `/deploy/wss-lb/railway.json` (absolute path — it does **not** follow Root
+  Directory). That config builds `deploy/wss-lb/Dockerfile` from the repo root and
+  only redeploys on `deploy/wss-lb/**` changes (`watchPatterns`).
+- `railway domain` to mint the public WSS endpoint, then point Cloudflare DNS at it
+  for TLS + DDoS.
+
+```bash
+# from a clone linked to the metagraphed-core project (railway link)
+railway add --service wss-lb --repo JSONbored/metagraphed --branch main
+# set Config File = /deploy/wss-lb/railway.json (dashboard), then:
+railway domain
+```
+
+It needs **no siblings** (it reads only the public API), but lives in the same
+project so it shares one dashboard/bill and can later use private DNS.
 
 Env: `METAGRAPHED_API` (default `https://api.metagraph.sh`), `PORT` (8080),
 `REFRESH_MS` (30000), `MAX_BLOCK_LAG` (50), `NETWORKS` (`finney,test`),
