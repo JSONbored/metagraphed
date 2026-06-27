@@ -170,6 +170,24 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
    `metagraphed-streamer` project, and the `*/3` R2-staging drain; demote D1 to a
    hot cache.
 
+## Backup job (Postgres → R2)
+
+`deploy/backup/` is the scheduled durability job — `pg_dump | gzip | aws s3 cp` to
+R2 (zero egress). Restoring a dump is minutes; re-backfilling history is weeks.
+
+One-time setup:
+
+1. Create an R2 bucket (e.g. `metagraphed-backups`) + an **R2 API token** (S3
+   access key + secret) in the Cloudflare dashboard.
+2. Add a Railway service from the repo, **Config File = `/deploy/backup.railway.json`**,
+   env: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `R2_BUCKET`, `R2_ENDPOINT`
+   (`https://<accountid>.r2.cloudflarestorage.com`), `AWS_ACCESS_KEY_ID`,
+   `AWS_SECRET_ACCESS_KEY`.
+3. Set the service's **Cron Schedule** in Settings (e.g. `17 4 * * *` — daily) so it
+   runs and terminates (`restartPolicyType: NEVER` is already in the config).
+4. Set an **R2 lifecycle rule** on the bucket for retention (e.g. expire after 30
+   days) — the robust way, not a script-side prune.
+
 ## Backups + PITR (mandatory)
 
 Postgres holds derived state. It is **re-derivable** (re-index from the chain via
