@@ -86,6 +86,10 @@ export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
 // account, from account_events (event_kind='Transfer'); ?direction=all|sent|received.
 export const ACCOUNT_TRANSFERS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/transfers$/;
+// Per-account counterparty / fund-flow rollup: aggregates the account's
+// account_events Transfers into per-counterparty sent/received/net.
+export const ACCOUNT_COUNTERPARTIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/counterparties$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =

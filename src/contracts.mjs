@@ -991,6 +991,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountTransfersArtifact",
   ),
   artifact(
+    "account-counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "AccountCounterpartiesArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -1837,6 +1843,17 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-counterparties",
+    "GET",
+    "/api/v1/accounts/{ss58}/counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+    "short",
+    ["accounts", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(

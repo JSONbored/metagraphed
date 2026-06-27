@@ -19,6 +19,7 @@ import {
   handleAccountHistory,
   handleAccountExtrinsics,
   handleAccountTransfers,
+  handleAccountCounterparties,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -1212,6 +1213,59 @@ describe("handleAccountTransfers", () => {
     const sql = captures.sql.find((s) => /Transfer/.test(s));
     assert.ok(/OFFSET/.test(sql));
     assert.ok(!/block_number, event_index\) </.test(sql));
+  });
+});
+
+describe("handleAccountCounterparties", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty rollup on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountCounterparties,
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties`),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 0);
+    assert.deepEqual(body.data.counterparties, []);
+  });
+
+  test("aggregates the account's transfers by counterparty", async () => {
+    const { env, captures } = dbWith({
+      transfers: [
+        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
+        { hotkey: "A", coldkey: SS58, amount_tao: 30, block_number: 8 },
+        { hotkey: "B", coldkey: SS58, amount_tao: 200, block_number: 7 },
+      ],
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=10`),
+      ),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 2); // A, B
+    assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
+    // Read is a Transfer scan bound to the account on both sides.
+    const idx = captures.sql.findIndex((s) =>
+      /event_kind = 'Transfer' AND \(hotkey = \? OR coldkey = \?\)/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], SS58);
   });
 });
 

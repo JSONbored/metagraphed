@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/counterparties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100). */
+        get: operations["accountCounterparties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/events": {
         parameters: {
             query?: never;
@@ -1523,6 +1540,28 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file). */
+        AccountCounterpartiesArtifact: {
+            counterparties: ({
+                address: string;
+                last_block?: number | null;
+                net_tao?: number;
+                received_tao?: number;
+                sent_tao?: number;
+                transfer_count?: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+            counterparty_count: number;
+            scan_capped?: boolean;
+            schema_version: number;
+            ss58: string;
+            total_received_tao?: number;
+            total_sent_tao?: number;
+            transfers_scanned?: number;
         } & {
             [key: string]: unknown;
         };
@@ -5251,6 +5290,120 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountBalanceArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountCounterparties: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "counterparties": [
+                     *           {
+                     *             "address": "example"
+                     *           }
+                     *         ],
+                     *         "counterparty_count": 1,
+                     *         "scan_capped": false,
+                     *         "schema_version": 1,
+                     *         "ss58": "example",
+                     *         "total_received_tao": 0.5,
+                     *         "total_sent_tao": 0.5,
+                     *         "transfers_scanned": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountCounterpartiesArtifact"];
                     };
                 };
             };

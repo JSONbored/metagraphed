@@ -74,6 +74,7 @@ import {
   handleAccountEvents,
   handleAccountExtrinsics,
   handleAccountTransfers,
+  handleAccountCounterparties,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
@@ -194,6 +195,7 @@ import {
   ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_TRANSFERS_PATH_PATTERN,
+  ACCOUNT_COUNTERPARTIES_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
@@ -1300,6 +1302,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountCounterpartiesMatch = ACCOUNT_COUNTERPARTIES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountCounterpartiesMatch) {
+      return handleAccountCounterparties(
+        request,
+        env,
+        accountCounterpartiesMatch[1],
+        resolved.url,
+      );
+    }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1430,6 +1443,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||

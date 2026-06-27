@@ -1706,6 +1706,42 @@
           }
         }
       },
+      "AccountCounterpartiesArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file).",
+        "required": [
+          "schema_version",
+          "ss58",
+          "counterparty_count",
+          "counterparties"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "ss58": { "type": "string" },
+          "counterparty_count": { "type": "integer", "minimum": 0 },
+          "transfers_scanned": { "type": "integer", "minimum": 0 },
+          "scan_capped": { "type": "boolean" },
+          "total_sent_tao": { "type": "number" },
+          "total_received_tao": { "type": "number" },
+          "counterparties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["address"],
+              "properties": {
+                "address": { "type": "string" },
+                "sent_tao": { "type": "number" },
+                "received_tao": { "type": "number" },
+                "net_tao": { "type": "number" },
+                "transfer_count": { "type": "integer", "minimum": 0 },
+                "last_block": { "type": ["integer", "null"] }
+              }
+            }
+          }
+        }
+      },
       "AccountSubnetsArtifact": {
         "type": "object",
         "additionalProperties": true,

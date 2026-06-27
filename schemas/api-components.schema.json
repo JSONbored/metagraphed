@@ -91,6 +91,76 @@
         ],
         "type": "object"
       },
+      "AccountCounterpartiesArtifact": {
+        "additionalProperties": true,
+        "description": "Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file).",
+        "properties": {
+          "counterparties": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "last_block": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "net_tao": {
+                  "type": "number"
+                },
+                "received_tao": {
+                  "type": "number"
+                },
+                "sent_tao": {
+                  "type": "number"
+                },
+                "transfer_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "address"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "counterparty_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scan_capped": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_received_tao": {
+            "type": "number"
+          },
+          "total_sent_tao": {
+            "type": "number"
+          },
+          "transfers_scanned": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "counterparty_count",
+          "counterparties"
+        ],
+        "type": "object"
+      },
       "AccountDay": {
         "additionalProperties": true,
         "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",

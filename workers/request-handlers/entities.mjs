@@ -75,6 +75,11 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import {
+  COUNTERPARTIES_READ_COLUMNS,
+  COUNTERPARTIES_SCAN_CAP,
+  buildCounterparties,
+} from "../../src/counterparties.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -583,6 +588,36 @@ export async function handleAccountTransfers(request, env, ss58, url) {
         env,
         `/metagraph/accounts/${ss58}/transfers.json`,
         data.transfers[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/counterparties?limit=N: who this account transacts
+// with — the account's recent account_events Transfers aggregated per counterparty
+// into sent / received / net flow + count, ranked by total volume (the address
+// "relationship" view). The transfer scan is bounded (newest-first); the summary
+// flags truncation. Cold/absent store → 200 with counterparties:[] (schema-stable,
+// never 404), mirroring the sibling account routes.
+export async function handleAccountCounterparties(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 20, 1, 100);
+  const rows = await d1All(
+    env,
+    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
+    [ss58, ss58, COUNTERPARTIES_SCAN_CAP],
+  );
+  const data = buildCounterparties(rows, ss58, { limit });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/counterparties.json`,
+        null,
       ),
     },
     "short",
