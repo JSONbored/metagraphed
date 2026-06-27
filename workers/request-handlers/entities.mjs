@@ -45,6 +45,7 @@ import {
 } from "../../src/neuron-history.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
+  INGESTED_EVENT_KINDS,
   buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
@@ -613,6 +614,16 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const kind = url.searchParams.get("kind");
+  // Reject an unknown ?kind= up front, validated against the FULL ingested set
+  // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
+  // etc.). A typo/nonexistent kind otherwise matches nothing and forces a full
+  // index walk on this public, ~60s-cached route (#2081).
+  if (kind != null && !INGESTED_EVENT_KINDS.includes(kind)) {
+    return analyticsQueryError({
+      parameter: "kind",
+      message: `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
+    });
+  }
   // Keyset (cursor) pagination on (block_number, event_index), mirroring
   // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
   const cur = decodeCursor(url.searchParams.get("cursor"), 2);
