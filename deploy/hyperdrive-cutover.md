@@ -44,14 +44,17 @@ Hyperdrive configs and bindable to Workers directly.)
 
 ## 2. Create the Hyperdrive config (Workers VPC-backed)
 
-```bash
-npx wrangler hyperdrive create metagraphed-core \
-  --service-id <VPC_SERVICE_ID> \
-  --database metagraphed --user metagraphed --password <PW> --scheme postgresql
-```
+Use the Cloudflare dashboard to create the Hyperdrive config: _Workers & Pages →
+Hyperdrive → Create configuration → Connect to private database → Workers VPC_,
+select `<VPC_SERVICE_ID>`, then enter the database name (`metagraphed`), user
+(`metagraphed`), password, and PostgreSQL scheme in the dashboard form. Do **not**
+put the database password in a `wrangler hyperdrive create --password ...` command
+or any other shell-expanded argument; command lines can be recorded in shell
+history, process listings, terminal logs, and CI logs.
 
-Returns a Hyperdrive **id**. (Hyperdrive pools connections + caches reads at the
-edge, so the Worker isn't opening a fresh cross-network connection per request.)
+The dashboard returns a Hyperdrive **id**. (Hyperdrive pools connections + caches
+reads at the edge, so the Worker isn't opening a fresh cross-network connection
+per request.)
 
 ## 3. Bind it in the Worker
 

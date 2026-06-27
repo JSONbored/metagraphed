@@ -144,11 +144,11 @@ The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunne
 Workers VPC, tier-by-tier with D1 fallback) is its own runbook:
 [`hyperdrive-cutover.md`](hyperdrive-cutover.md). In short:
 
-```bash
+```text
 # Workers VPC over a Cloudflare Tunnel to the private Postgres (box or Railway):
-npx wrangler hyperdrive create metagraphed-core --service-id <VPC_SERVICE_ID> \
-  --database metagraphed --user metagraphed --password <PW> --scheme postgresql
-# then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
+# Create the Hyperdrive config from the Cloudflare dashboard so the database
+# password is entered into Cloudflare's credential form, not passed in shell argv.
+# Then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
 ```
 
 The Durable Object firehose hub is a new binding in the Worker; the `indexer`
