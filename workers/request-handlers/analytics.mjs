@@ -230,13 +230,15 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 // keying, same conditional-GET 304 short-circuit, same ctx.waitUntil put.
 //
 // The key varies on everything that changes the body: contract_version (a deploy
-// can never serve a cross-version payload) + the cron snapshot stamp
-// (`last_run_at`) + the request path (carries netuid) + the canonical search
-// (carries `window`). `keyParts` is the extra namespace segment per route. When
-// the snapshot stamp is cold (null), caching is skipped entirely so a cold-KV
-// empty payload can never seed a stale entry — identical to the overlay cache's
-// `if (lastRunAt)` guard. The cache is transparent: body/shape/headers are
-// whatever buildResponse() produced; only 200s are cached, never errors.
+// can never serve a cross-version payload) + a freshness stamp + the request
+// path (carries netuid) + the canonical search (carries `window`). By default
+// the stamp is the health cron snapshot (`last_run_at`); neurons-tier routes
+// pass `resolveCacheStamp` to bust on neuron `captured_at` instead (#1346).
+// `keyParts` is the extra namespace segment per route. When the stamp is cold
+// (null), caching is skipped entirely so a cold-KV/empty payload can never seed
+// a stale entry — identical to the overlay cache's `if (lastRunAt)` guard. The
+// cache is transparent: body/shape/headers are whatever buildResponse() produced;
+// only 200s are cached, never errors.
 export async function withEdgeCache(
   request,
   ctx,
@@ -244,19 +246,27 @@ export async function withEdgeCache(
   keyParts,
   buildResponse,
   cachePathAndSearch = null,
+  resolveCacheStamp = null,
 ) {
   const cache = request.method === "GET" ? globalThis.caches?.default : null;
-  // Cheap, per-isolate-memoized read of just the snapshot time. On a hit this +
-  // the cache match is the whole request (no D1 aggregation at all).
-  const lastRunAt = cache ? (await readHealthMetaKv(env))?.last_run_at : null;
+  // Cheap freshness read. On a hit this + the cache match is the whole request
+  // (no D1 aggregation at all for the handler body).
+  let stamp = null;
+  if (cache) {
+    if (typeof resolveCacheStamp === "function") {
+      stamp = await resolveCacheStamp(env);
+    } else {
+      stamp = (await readHealthMetaKv(env))?.last_run_at ?? null;
+    }
+  }
   let cacheKey = null;
-  if (cache && lastRunAt) {
+  if (cache && stamp) {
     const url = new URL(request.url);
     const cacheRoute = cachePathAndSearch ?? `${url.pathname}${url.search}`;
     cacheKey = new Request(
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         contractVersion(env),
-      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${cacheRoute}`,
+      )}/${encodeURIComponent(stamp)}/${keyParts}${cacheRoute}`,
     );
     const hit = await cache.match(cacheKey);
     if (hit) {
@@ -281,6 +291,41 @@ export async function withEdgeCache(
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
   return response;
+}
+
+// Neurons-tier routes refresh on the ~3-minute events/metagraph cron, not the
+// 15-minute health prober — bust their edge cache on per-subnet snapshot time.
+export async function readSubnetNeuronsCacheStamp(env, netuid) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neurons WHERE netuid = ?",
+    [netuid],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
+export function withNeuronsEdgeCache(
+  request,
+  ctx,
+  env,
+  netuid,
+  keyParts,
+  buildResponse,
+  cachePathAndSearch = null,
+) {
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    keyParts,
+    buildResponse,
+    cachePathAndSearch,
+    (edgeEnv) => readSubnetNeuronsCacheStamp(edgeEnv, netuid),
+  );
 }
 
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
