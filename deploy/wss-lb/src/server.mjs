@@ -15,15 +15,24 @@
 // MAX_BLOCK_LAG, NETWORKS, HANDSHAKE_TIMEOUT_MS.
 import http from "node:http";
 
-import { WebSocket, WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 
+import { proxy } from "./proxy.mjs";
 import { selectWssUpstreams } from "./select.mjs";
 
+// Numeric env with a NaN/positivity guard: Number(process.env.X || d) returns NaN
+// for a non-numeric string (the `|| d` only catches empty/unset), which would
+// poison the refresh timer, the /healthz staleness gate, and the block-lag filter.
+const envInt = (key, fallback) => {
+  const n = Number(process.env[key]);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
 const API = process.env.METAGRAPHED_API || "https://api.metagraph.sh";
-const PORT = Number(process.env.PORT || 8080);
-const REFRESH_MS = Number(process.env.REFRESH_MS || 30000);
-const MAX_BLOCK_LAG = Number(process.env.MAX_BLOCK_LAG || 50);
-const HANDSHAKE_TIMEOUT_MS = Number(process.env.HANDSHAKE_TIMEOUT_MS || 10000);
+const PORT = envInt("PORT", 8080);
+const REFRESH_MS = envInt("REFRESH_MS", 30000);
+const MAX_BLOCK_LAG = envInt("MAX_BLOCK_LAG", 50);
+const HANDSHAKE_TIMEOUT_MS = envInt("HANDSHAKE_TIMEOUT_MS", 10000);
 const NETWORKS = (process.env.NETWORKS || "finney,test")
   .split(",")
   .map((s) => s.trim())
@@ -62,97 +71,6 @@ function poolFor(network) {
   });
 }
 
-// Connect-time failover: try upstreams in order until one completes its
-// handshake, then pipe bidirectionally. Client messages sent before the upstream
-// opens are buffered (the client sees its leg as open immediately).
-//
-// The client listeners are attached ONCE — `up` is reassigned per attempt via
-// closure. Re-attaching them per retry would stack handlers on failover (double
-// send + MaxListenersExceeded). `clientClosed` stops retrying once the client is
-// gone, so a vanished client can't keep dialing fresh upstreams.
-function proxy(client, upstreams) {
-  let up = null;
-  let opened = false;
-  let clientClosed = false;
-  const pending = [];
-
-  client.on("message", (data, isBinary) => {
-    if (opened && up && up.readyState === WebSocket.OPEN)
-      up.send(data, { binary: isBinary });
-    else pending.push([data, isBinary]);
-  });
-  client.on("close", () => {
-    clientClosed = true;
-    try {
-      up?.close();
-    } catch {
-      /* noop */
-    }
-  });
-  client.on("error", () => {
-    clientClosed = true;
-    try {
-      up?.terminate();
-    } catch {
-      /* noop */
-    }
-  });
-
-  const tryUpstream = (attempt) => {
-    if (clientClosed) return;
-    if (attempt >= upstreams.length) {
-      try {
-        client.close(1013, "no upstream available");
-      } catch {
-        /* already closed */
-      }
-      return;
-    }
-    up = new WebSocket(upstreams[attempt], {
-      handshakeTimeout: HANDSHAKE_TIMEOUT_MS,
-    });
-    up.on("open", () => {
-      opened = true;
-      for (const [data, isBinary] of pending)
-        up.send(data, { binary: isBinary });
-      pending.length = 0;
-      up.on("message", (data, isBinary) => {
-        if (client.readyState === WebSocket.OPEN)
-          client.send(data, { binary: isBinary });
-      });
-    });
-    up.on("close", () => {
-      if (opened) {
-        try {
-          client.close();
-        } catch {
-          /* noop */
-        }
-      } else {
-        tryUpstream(attempt + 1); // handshake never completed → next
-      }
-    });
-    up.on("error", () => {
-      if (opened) {
-        try {
-          client.close();
-        } catch {
-          /* noop */
-        }
-      } else {
-        try {
-          up.terminate();
-        } catch {
-          /* noop */
-        }
-        tryUpstream(attempt + 1);
-      }
-    });
-  };
-
-  tryUpstream(0);
-}
-
 const server = http.createServer((req, res) => {
   if (req.url === "/healthz" || req.url === "/") {
     const pools = Object.fromEntries(
@@ -186,7 +104,9 @@ server.on("upgrade", (req, socket, head) => {
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(req, socket, head, (client) => proxy(client, upstreams));
+  wss.handleUpgrade(req, socket, head, (client) =>
+    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS }),
+  );
 });
 
 await refresh();

@@ -36,7 +36,7 @@ client ──wss──▶  wss-lb  ──wss──▶  healthiest registered sub
 
 ```bash
 cd deploy/wss-lb && npm install && npm start        # local
-npm test                                            # pure-selection tests
+npm test                                            # selection + proxy-failover tests
 ```
 
 Railway: add a service with **Root Directory = `deploy/wss-lb`** (the bundled
