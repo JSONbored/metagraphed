@@ -359,6 +359,20 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-concentration",
+      "path": "/metagraph/subnets/{netuid}/concentration.json",
+      "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-concentration-history",
+      "path": "/metagraph/subnets/{netuid}/concentration/history.json",
+      "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -4097,6 +4111,42 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/concentration.json",
+      "cache": "short",
+      "description": "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+      "id": "subnet-concentration",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/concentration",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/concentration/history.json",
+      "cache": "short",
+      "description": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+      "id": "subnet-concentration-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/concentration/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
       "cache": "short",
       "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
@@ -4753,7 +4803,7 @@
     {
       "artifact_path": "/metagraph/chain/signers.json",
       "cache": "short",
-      "description": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+      "description": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
       "id": "chain-signers",
       "method": "GET",
       "path": "/api/v1/chain/signers",
@@ -4778,13 +4828,20 @@
             "minimum": 1,
             "type": "integer"
           }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "maxLength": 100,
+            "type": "string"
+          }
         }
       ]
     },
     {
       "artifact_path": "/metagraph/chain/fees.json",
       "cache": "short",
-      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
       "id": "chain-fees",
       "method": "GET",
       "path": "/api/v1/chain/fees",
@@ -4808,6 +4865,13 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "maxLength": 100,
+            "type": "string"
           }
         }
       ]

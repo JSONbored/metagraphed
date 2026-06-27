@@ -8,6 +8,7 @@ import {
   agentToolsResponse,
   apiCatalogResponse,
   handleBadgeSvgRequest,
+  homepageResponse,
   mcpServerCardResponse,
 } from "../workers/request-handlers/discovery.mjs";
 
@@ -164,7 +165,7 @@ describe("discovery conditional requests", () => {
 
   test("api catalog HEAD returns the discovery headers with no body", async () => {
     const url = "https://api.metagraph.sh/.well-known/api-catalog";
-    const res = apiCatalogResponse(new Request(url, { method: "HEAD" }));
+    const res = await apiCatalogResponse(new Request(url, { method: "HEAD" }));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "application/linkset+json");
     // HEAD never carries a body, but the discovery Link header is still present.
@@ -174,7 +175,7 @@ describe("discovery conditional requests", () => {
 
   test("api catalog GET returns the RFC 9264 linkset body", async () => {
     const url = "https://api.metagraph.sh/.well-known/api-catalog";
-    const res = apiCatalogResponse(new Request(url, { method: "GET" }));
+    const res = await apiCatalogResponse(new Request(url, { method: "GET" }));
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.ok(Array.isArray(body.linkset));
@@ -218,5 +219,30 @@ describe("discovery conditional requests", () => {
         {},
       ),
     );
+  });
+
+  test("api catalog honors If-None-Match lists and the * wildcard", async () => {
+    await assertConditional((headers) =>
+      apiCatalogResponse(
+        new Request("https://api.metagraph.sh/.well-known/api-catalog", {
+          headers,
+        }),
+      ),
+    );
+  });
+
+  test("homepage honors If-None-Match lists and the * wildcard", async () => {
+    await assertConditional((headers) =>
+      homepageResponse(new Request("https://api.metagraph.sh/", { headers })),
+    );
+  });
+
+  test("homepage HEAD returns the discovery headers with no body", async () => {
+    const res = await homepageResponse(
+      new Request("https://api.metagraph.sh/", { method: "HEAD" }),
+    );
+    assert.equal(res.status, 200);
+    assert.ok(res.headers.get("etag"));
+    assert.equal(await res.text(), "");
   });
 });

@@ -1627,6 +1627,7 @@
           "day_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer" },
           "offset": { "type": "integer" },
+          "next_cursor": { "type": ["string", "null"] },
           "days": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountDay" }
@@ -1644,6 +1645,7 @@
           "event_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer" },
           "offset": { "type": "integer" },
+          "next_cursor": { "type": ["string", "null"] },
           "events": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AccountEvent" }
@@ -1678,6 +1680,7 @@
           "transfer_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer" },
           "offset": { "type": "integer" },
+          "next_cursor": { "type": ["string", "null"] },
           "transfers": {
             "type": "array",
             "items": {

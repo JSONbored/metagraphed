@@ -37,6 +37,14 @@ export const INCIDENTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
 export const TRAJECTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
+// Stake/emission concentration metrics (#2106): computed live from the neurons
+// D1 tier, no static file.
+export const SUBNET_CONCENTRATION_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/concentration$/;
+// Per-day concentration history (decentralization trend) from the neuron_daily
+// rollup, no static file.
+export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =

@@ -20,6 +20,7 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-ratelimit-policy",
   // x-metagraph-* diagnostics
   "x-metagraph-contract-version",
+  "x-metagraph-stale-contract",
   "x-metagraph-published-at",
   "x-metagraph-events",
   "x-metagraph-health",

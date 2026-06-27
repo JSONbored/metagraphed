@@ -153,8 +153,11 @@ export function validEventRows(rows) {
     ? rows.filter(
         (r) =>
           Number.isInteger(r?.block_number) &&
+          r.block_number >= 0 &&
           Number.isInteger(r?.event_index) &&
+          r.event_index >= 0 &&
           typeof r?.event_kind === "string" &&
+          r.event_kind.length > 0 &&
           Number.isInteger(r?.observed_at),
       )
     : [];
@@ -274,7 +277,11 @@ export function buildAccountEvents(
 // The first-party chain-event stream for one subnet (#1345 block explorer):
 // the same account_events rows, filtered by netuid instead of account. Mirrors
 // buildAccountEvents — newest-first, schema-stable zero for a cold/unknown subnet.
-export function buildSubnetEvents(rows, netuid, { limit, offset } = {}) {
+export function buildSubnetEvents(
+  rows,
+  netuid,
+  { limit, offset, nextCursor } = {},
+) {
   const events = (rows || []).map(formatAccountEvent).filter(Boolean);
   return {
     schema_version: 1,
@@ -282,6 +289,7 @@ export function buildSubnetEvents(rows, netuid, { limit, offset } = {}) {
     event_count: events.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     events,
   };
 }
@@ -329,7 +337,11 @@ export function formatAccountDay(row) {
 // account_events_daily rollup (hotkey-keyed). NOTE the rollup writes only
 // hotkey-attributed rows, so a coldkey-only ss58 returns zero days even when
 // /events shows activity — surfaced in the route comment + contract description.
-export function buildAccountHistory(rows, ss58, { limit, offset } = {}) {
+export function buildAccountHistory(
+  rows,
+  ss58,
+  { limit, offset, nextCursor } = {},
+) {
   const days = (rows || []).map(formatAccountDay).filter(Boolean);
   return {
     schema_version: 1,
@@ -337,6 +349,7 @@ export function buildAccountHistory(rows, ss58, { limit, offset } = {}) {
     day_count: days.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     days,
   };
 }
@@ -360,7 +373,11 @@ export function buildAccountSubnets(rows, ss58) {
 // ss58: it sent (== from) or received (== to). This is the native-TAO
 // Balances.Transfer feed only, NOT a full balance ledger (stake flows are separate
 // event kinds). Null-safe on a cold store.
-export function buildAccountTransfers(rows, ss58, { limit, offset } = {}) {
+export function buildAccountTransfers(
+  rows,
+  ss58,
+  { limit, offset, nextCursor } = {},
+) {
   const transfers = (rows || [])
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
@@ -379,6 +396,7 @@ export function buildAccountTransfers(rows, ss58, { limit, offset } = {}) {
     transfer_count: transfers.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     transfers,
   };
 }

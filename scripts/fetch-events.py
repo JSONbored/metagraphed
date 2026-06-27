@@ -302,6 +302,32 @@ EXTRACTORS = {
 }
 
 
+def _aura_slot(data):
+    """The u64 LE Aura slot from a PreRuntime digest payload, across the shapes
+    substrate-interface returns it in — else None.
+
+    The 8-byte slot arrives as raw ``bytes``, a ``0x…`` hex string, OR a raw ``str``
+    that is substrate-interface's UTF-8 decode of those bytes (NOT hex). The original
+    code assumed hex and ran ``bytes.fromhex`` on the raw str, which raised and — via
+    the caller's broad ``except`` — silently produced ``author = NULL``. Verified on
+    finney #4000000 (spec 202): slot bytes ``4eca9508…`` arrive as the str ``'Nʕ\\x08…'``
+    (the ``ʕ`` is U+0295, so latin-1 can't encode it — only UTF-8 round-trips it back
+    to the original bytes). Takes the first 8 bytes; returns None on any drift.
+    """
+    try:
+        if isinstance(data, (bytes, bytearray)):
+            raw = bytes(data)
+        elif isinstance(data, str):
+            raw = bytes.fromhex(data[2:]) if data.startswith("0x") else data.encode("utf-8")
+        else:
+            return None
+    except (ValueError, UnicodeError):
+        return None
+    if len(raw) != 8:
+        return None
+    return int.from_bytes(raw, "little")
+
+
 def _block_author(s, block_hash, header):
     """Block author (ss58) decoded from the Aura PreRuntime digest, else None.
 
@@ -323,11 +349,9 @@ def _block_author(s, block_hash, header):
                 continue
             engine, data = pre[0], pre[1]
             if engine == AURA_ENGINE_ID:
-                hex_data = data[2:] if str(data).startswith("0x") else str(data)
-                slot_data = bytes.fromhex(hex_data)
-                if len(slot_data) != 8:
+                slot = _aura_slot(data)
+                if slot is None:
                     return None
-                slot = int.from_bytes(slot_data, "little")
                 break
         if slot is None:
             return None

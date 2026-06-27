@@ -36,6 +36,7 @@ export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
 const FILTERED_RETRIEVE_TOPK = SEMANTIC_MAX_LIMIT;
 export const ASK_CONTEXT_COUNT = 6;
 export const ASK_MAX_QUESTION_LENGTH = 1000;
+export const SEMANTIC_MAX_QUERY_LENGTH = 1000;
 export const ASK_MAX_TOKENS = 512;
 const EMBED_BATCH_SIZE = 100;
 const VECTOR_ID_MAX_BYTES = 64;
@@ -371,6 +372,10 @@ async function retrieveMatches(env, vector, limit, types) {
 export async function semanticSearch(env, query, options = {}) {
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) throw aiInputError("Query parameter `q` is required.");
+  if (q.length > SEMANTIC_MAX_QUERY_LENGTH)
+    throw aiInputError(
+      `Field \`q\` must be at most ${SEMANTIC_MAX_QUERY_LENGTH} characters.`,
+    );
   const limit = clampLimit(
     options.limit,
     SEMANTIC_DEFAULT_LIMIT,

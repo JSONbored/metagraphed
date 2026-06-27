@@ -291,6 +291,31 @@ test("buildChainCalls is cold-stable (share null on empty window, junk dropped)"
   assert.equal(out.calls[0].share, null); // zero-total denominator
 });
 
+test("buildChainCalls drops empty call_module and call_function buckets", () => {
+  const moduleOnly = buildChainCalls({
+    window: "7d",
+    total: 10,
+    rows: [
+      { call_module: "", count: 5 },
+      { call_module: "Balances", count: 3 },
+    ],
+  });
+  assert.equal(moduleOnly.call_count, 1);
+  assert.equal(moduleOnly.calls[0].call_module, "Balances");
+
+  const moduleFunction = buildChainCalls({
+    window: "7d",
+    groupBy: "module_function",
+    total: 10,
+    rows: [
+      { call_module: "Balances", call_function: "", count: 5 },
+      { call_module: "Balances", call_function: "transfer", count: 2 },
+    ],
+  });
+  assert.equal(moduleFunction.call_count, 1);
+  assert.equal(moduleFunction.calls[0].call_function, "transfer");
+});
+
 test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on junk param", async () => {
   const captured = [];
   const env = {
@@ -432,6 +457,89 @@ test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", asyn
   assert.match(sql, /GROUP BY signer/);
   assert.match(sql, /ORDER BY tx_count DESC/);
   assert.equal(captured[0].params.at(-1), 10);
+});
+
+test("GET /api/v1/chain/signers scopes the leaderboard by call_module", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/signers?call_module=Balances",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  // Target the extrinsics query explicitly (not captured[0]) so the assertion
+  // holds even if a meta/KV read issues a prepare first.
+  const q = captured.find((c) => /FROM extrinsics/.test(c.sql));
+  assert.match(q.sql, /AND call_module = \?/);
+  assert.ok(q.params.includes("Balances"));
+});
+
+test("GET /api/v1/chain/fees scopes both the daily series and payers by call_module", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/fees?call_module=SubtensorModule",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  // Both extrinsics queries (daily series + payer list) are scoped; filter to
+  // them explicitly rather than assuming the captured order/count.
+  const extrinsicsQueries = captured.filter((q) =>
+    /FROM extrinsics/.test(q.sql),
+  );
+  assert.equal(extrinsicsQueries.length, 2);
+  for (const q of extrinsicsQueries) {
+    assert.match(q.sql, /AND call_module = \?/);
+    assert.ok(q.params.includes("SubtensorModule"));
+  }
+});
+
+test("chain signers/fees reject an over-long call_module with 400", async () => {
+  const env = createLocalArtifactEnv();
+  const long = "x".repeat(101);
+  for (const path of [
+    `/api/v1/chain/signers?call_module=${long}`,
+    `/api/v1/chain/fees?call_module=${long}`,
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.meta.parameter, "call_module");
+  }
 });
 
 test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {

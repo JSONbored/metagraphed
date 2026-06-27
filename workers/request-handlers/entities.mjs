@@ -68,6 +68,13 @@ import {
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
+import {
+  CONCENTRATION_HISTORY_ROW_CAP,
+  CONCENTRATION_READ_COLUMNS,
+  buildConcentration,
+  buildConcentrationHistory,
+  parseConcentrationHistoryWindow,
+} from "../../src/concentration.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -225,6 +232,80 @@ export async function handleSubnetHistory(request, env, netuid, url) {
   );
 }
 
+// GET /api/v1/subnets/{netuid}/concentration: stake & emission decentralization
+// metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over
+// the subnet's live distribution (#2106), across three lenses — per-UID, per-entity
+// (coldkeys collapsed, the true control distribution) and validator-only consensus
+// power. Computed from the neurons D1 tier; a cold/absent store or empty
+// subnet → 200 with null blocks (schema-stable, never 404), mirroring the sibling
+// metagraph/history routes.
+export async function handleSubnetConcentration(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  const data = buildConcentration(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
+// stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share)
+// from the dated neuron_daily rollup — "is this subnet centralizing over time?".
+// Each day needs its full per-UID distribution, so the read is the raw rows (not a
+// GROUP BY) bounded by a row cap; a cold/absent store → 200 with points:[]
+// (schema-stable, never 404).
+export async function handleSubnetConcentrationHistory(
+  request,
+  env,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const cutoff = new Date(Date.now() - days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+    [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
+  );
+  const data = buildConcentrationHistory(rows, netuid, {
+    window: label,
+    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/concentration/history.json`,
+        data.points[0]?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // ---- Account entity handlers (#1347) ---------------------------------------
 // SQL + pagination live in src/account-events.mjs (loadAccount*), shared with the
 // MCP account tools; these handlers add only the REST envelope + meta.
@@ -309,6 +390,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
     "to",
     "limit",
     "offset",
+    "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const from = url.searchParams.get("from");
@@ -330,6 +412,22 @@ export async function handleAccountHistory(request, env, ss58, url) {
       400,
     );
   }
+  // Keyset (cursor) pagination over (day, netuid). day sorts as TEXT (YYYY-MM-DD
+  // is chronological); the cursor encodes it as its natural sortable integer
+  // (2026-06-25 -> 20260625) to fit the integer-only cursor codec, with netuid as
+  // the within-day tiebreaker. netuid is NOT NULL (a primary-key column of
+  // account_events_daily), so the cursor's netuid leg is always a real integer and
+  // the seek never degrades to a NULL comparison. ORDER BY adds `netuid DESC` to
+  // make same-day ordering deterministic — it was `day DESC` only before, where
+  // same-day order was unspecified, so existing offset callers get a stable (not a
+  // changed) page order. offset stays as a deprecated fallback; cursor wins. A
+  // cursor that does not decode to a valid YYYYMMDD day is ignored (falls back to
+  // the first page), preserving the never-throw contract.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const cursorDay = cur
+    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+    : null;
+  const useCursor = Boolean(cursorDay && DAY_RE.test(cursorDay));
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
   if (netuid != null) {
@@ -344,10 +442,23 @@ export async function handleAccountHistory(request, env, ss58, url) {
     sql += " AND day <= ?";
     params.push(to);
   }
-  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  if (useCursor) {
+    sql += " AND (day, netuid) < (?, ?)";
+    params.push(cursorDay, cur[1]);
+  }
+  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildAccountHistory(rows, ss58, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor =
+    last && typeof last.day === "string" && DAY_RE.test(last.day)
+      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
+      : null;
+  const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -403,6 +514,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "direction",
     "limit",
     "offset",
+    "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const direction = url.searchParams.get("direction");
@@ -430,12 +542,29 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     sideClause = "coldkey = ?";
     sideParams = [ss58];
   }
-  const rows = await d1All(
-    env,
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
-    [...sideParams, limit, offset],
-  );
-  const data = buildAccountTransfers(rows, ss58, { limit, offset });
+  // Keyset (cursor) pagination mirrors loadAccountEvents/handleExtrinsicsFeed: a
+  // (block_number, event_index) row-value seek, stable + O(limit) at depth on the
+  // large account_events tier. offset stays as a deprecated fallback; cursor wins.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
+  const params = [...sideParams];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause}`;
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
+  const rows = await d1All(env, sql, params);
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildAccountTransfers(rows, ss58, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -474,21 +603,42 @@ export async function handleAccountSubnets(request, env, ss58) {
 // ?kind= filter; ?limit (<=1000)/?offset. Cold/absent store → schema-stable zero
 // (never 404), mirroring handleAccountEvents.
 export async function handleSubnetEvents(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["kind", "limit", "offset"]);
+  const validationError = validateQueryParams(url, [
+    "kind",
+    "limit",
+    "offset",
+    "cursor",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const kind = url.searchParams.get("kind");
+  // Keyset (cursor) pagination on (block_number, event_index), mirroring
+  // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
+  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const useCursor = Boolean(cur);
   const params = [netuid];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
   if (kind) {
     sql += " AND event_kind = ?";
     params.push(kind);
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(limit, offset);
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(limit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(offset);
+  }
   const rows = await d1All(env, sql, params);
-  const data = buildSubnetEvents(rows, netuid, { limit, offset });
+  const last = rows.length === limit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  const data = buildSubnetEvents(rows, netuid, { limit, offset, nextCursor });
   return envelopeResponse(
     request,
     {
@@ -640,15 +790,20 @@ export async function handleAccountBalance(request, env, ss58) {
       const data = rpcBody?.result?.data;
       if (data && typeof data.free !== "undefined") {
         // free + reserved are hex-encoded u128 rao values (1 TAO = 1e9 rao).
-        const freeRao =
-          typeof data.free === "string"
-            ? Number(BigInt(data.free))
-            : Number(data.free);
-        const reservedRao =
-          typeof data.reserved === "string"
-            ? Number(BigInt(data.reserved))
-            : Number(data.reserved ?? 0);
-        balanceTao = (freeRao + reservedRao) / 1e9;
+        // Sum in BigInt space and split the whole / fractional TAO only at the
+        // end, so a balance above Number.MAX_SAFE_INTEGER rao (~9.007M TAO) keeps
+        // its low-order rao digits — a direct Number(BigInt(...)) cast would
+        // collapse them to the nearest double *before* the 1e9 scale. A malformed
+        // hex `free` still throws here (BigInt parse) and is caught below →
+        // balance_tao:null, 200 (unchanged error path).
+        const toRao = (v) =>
+          typeof v === "string"
+            ? BigInt(v)
+            : BigInt(Math.trunc(Number(v ?? 0)));
+        const totalRao = toRao(data.free) + toRao(data.reserved);
+        balanceTao =
+          Number(totalRao / 1_000_000_000n) +
+          Number(totalRao % 1_000_000_000n) / 1e9;
         rpcOk = true;
       }
     }

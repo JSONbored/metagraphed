@@ -12,6 +12,8 @@ import {
   handleSubnetValidators,
   handleNeuronHistory,
   handleSubnetHistory,
+  handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
@@ -183,6 +185,7 @@ function dbWith({
   neurons,
   neuronDailyUid,
   neuronDailySubnet,
+  neuronDailyHistory,
   agg,
   kinds,
   registrations,
@@ -235,6 +238,14 @@ function dbWith({
                     /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
                   ) {
                     return { results: neuronDailyUid || [] };
+                  }
+                  // Raw per-day neuron_daily rows (concentration history).
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: neuronDailyHistory || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (/GROUP BY event_kind/.test(sql)) {
@@ -695,6 +706,150 @@ describe("handleSubnetHistory", () => {
   });
 });
 
+describe("handleSubnetConcentration", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetConcentration(
+      req(`/api/v1/subnets/${NETUID}/concentration`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration?window=7d`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable null blocks on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetConcentration,
+      req(`/api/v1/subnets/${NETUID}/concentration`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.stake, null);
+    assert.equal(body.data.emission, null);
+  });
+
+  test("computes per-UID, per-entity, and validator concentration over the neurons tier", async () => {
+    const { env, captures } = dbWith({
+      neurons: [
+        neuronRow({
+          stake_tao: 100,
+          emission_tao: 2,
+          coldkey: "ck-a",
+          validator_permit: 1,
+        }),
+        neuronRow({
+          uid: 1,
+          stake_tao: 50,
+          emission_tao: 1,
+          coldkey: "ck-a",
+          validator_permit: 0,
+        }),
+        neuronRow({
+          uid: 2,
+          stake_tao: 30,
+          emission_tao: 1,
+          coldkey: "ck-b",
+          validator_permit: 1,
+        }),
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentration(
+        req(`/api/v1/subnets/${NETUID}/concentration`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 3);
+    assert.equal(body.data.entity_count, 2); // ck-a (2 UIDs) + ck-b
+    assert.equal(body.data.uids_per_entity, 1.5);
+    assert.equal(body.data.stake.holders, 3); // per-UID
+    assert.equal(body.data.entity_stake.holders, 2); // ck-a's UIDs collapsed
+    assert.equal(body.data.entity_stake.total, 180);
+    assert.equal(body.data.validator_stake.holders, 2); // the two permitted UIDs
+    assert.equal(body.data.validator_stake.total, 130); // 100 + 30
+    // Bound to the netuid; the read selects coldkey + validator_permit.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neurons WHERE netuid = \?/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.ok(/coldkey/.test(captures.sql[idx]));
+    assert.ok(/validator_permit/.test(captures.sql[idx]));
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
+describe("handleSubnetConcentrationHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-range window with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable empty series on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetConcentrationHistory,
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("happy path computes a per-day concentration trend", async () => {
+    const { env, captures } = dbWith({
+      neuronDailyHistory: [
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentrationHistory(
+        req(`/api/v1/subnets/${NETUID}/concentration/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.point_count, 2);
+    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.ok(body.data.points[0].stake_gini > body.data.points[1].stake_gini);
+    // Windowed neuron_daily read bound to the netuid.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
 describe("handleAccount", () => {
   test("returns schema-stable zero summary on cold/unbound D1", async () => {
     const body = await assertColdSchema(
@@ -1025,6 +1180,39 @@ describe("handleAccountTransfers", () => {
     const sql = captures.sql.find((s) => /Transfer/.test(s));
     assert.ok(/coldkey = \?/.test(sql));
   });
+
+  test("cursor uses keyset seek instead of offset", async () => {
+    const { env, captures } = dbWith({
+      transfers: [transferEventRow({ block_number: 150, event_index: 2 })],
+    });
+    const body = await json(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/transfers?limit=1&cursor=${encodeCursor([200, 1])}`,
+        ),
+      ),
+    );
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
+  });
+
+  test("a malformed cursor is ignored and falls back to the first page", async () => {
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
+    await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?cursor=not-a-cursor`),
+    );
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/OFFSET/.test(sql));
+    assert.ok(!/block_number, event_index\) </.test(sql));
+  });
 });
 
 describe("handleAccountSubnets", () => {
@@ -1116,6 +1304,41 @@ describe("handleSubnetEvents", () => {
       url(`/api/v1/subnets/${NETUID}/events?kind=WeightsSet`),
     );
     assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
+  });
+
+  test("cursor uses keyset seek instead of offset", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
+    });
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(
+          `/api/v1/subnets/${NETUID}/events?limit=1&cursor=${encodeCursor([200, 1])}`,
+        ),
+      ),
+    );
+    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+    assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
+  });
+
+  test("a malformed cursor is ignored and falls back to the first page", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow()],
+    });
+    await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?cursor=not-a-cursor`),
+    );
+    const sql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/OFFSET/.test(sql));
+    assert.ok(!/block_number, event_index\) </.test(sql));
   });
 });
 

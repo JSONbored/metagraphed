@@ -341,6 +341,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -500,6 +506,12 @@
         "properties": {
           "limit": {
             "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "offset": {
             "type": "integer"
@@ -10214,6 +10226,528 @@
       "SubnetCandidatesArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"
       },
+      "SubnetConcentrationArtifact": {
+        "additionalProperties": true,
+        "description": "Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake).",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entity_emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "uids_per_entity": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "entity_count",
+          "stake",
+          "emission"
+        ],
+        "type": "object"
+      },
+      "SubnetConcentrationHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "emission_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "emission_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "emission_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "stake_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stake_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "stake_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "SubnetDetail": {
         "additionalProperties": false,
         "properties": {
@@ -10697,6 +11231,12 @@
           },
           "netuid": {
             "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "offset": {
             "type": "integer"
@@ -14035,6 +14575,7 @@
                       }
                     ],
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1,
                     "ss58": "example"
@@ -14331,6 +14872,7 @@
                 "example": {
                   "data": {
                     "limit": 1,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1,
                     "ss58": "example",
@@ -16460,6 +17002,15 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "call_module",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -16590,7 +17141,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+        "summary": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -16621,6 +17172,15 @@
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "call_module",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
             }
           }
         ],
@@ -16743,7 +17303,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+        "summary": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -27197,6 +27757,358 @@
         ]
       }
     },
+    "/api/v1/subnets/{netuid}/concentration": {
+      "get": {
+        "operationId": "subnetConcentration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "emission": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "entity_count": 1,
+                    "entity_emission": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "entity_stake": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "netuid": 7,
+                    "neuron_count": 1,
+                    "schema_version": 1,
+                    "stake": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "uids_per_entity": 0.5,
+                    "validator_stake": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetConcentrationArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/concentration/history": {
+      "get": {
+        "operationId": "subnetConcentrationHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "netuid": 7,
+                    "point_count": 1,
+                    "points": [
+                      {
+                        "snapshot_date": "example"
+                      }
+                    ],
+                    "schema_version": 1,
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetConcentrationHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/subnets/{netuid}/endpoints": {
       "get": {
         "operationId": "subnetEndpoints",
@@ -27574,6 +28486,7 @@
                     ],
                     "limit": 1,
                     "netuid": 7,
+                    "next_cursor": "example",
                     "offset": 1,
                     "schema_version": 1
                   },
