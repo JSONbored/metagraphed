@@ -1452,10 +1452,11 @@ async function handleRawArtifactRequest(
   }
 
   const networkPath = artifactPathForNetwork(url.pathname, network);
-  if (
-    network.isDefault &&
-    RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN.test(networkPath)
-  ) {
+  // Current-state health artifacts are retired on every network prefix — the
+  // live-only policy (#490/#498) is not mainnet-specific. Match the canonical
+  // path (prefix already stripped by resolveNetworkPrefix); networkPath is only
+  // the partitioned R2 key used in the error payload.
+  if (RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN.test(url.pathname)) {
     return errorResponse(
       "retired_artifact",
       "Current-state health artifacts are retired; use the live API health endpoints instead.",
