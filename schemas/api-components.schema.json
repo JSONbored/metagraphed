@@ -10206,7 +10206,7 @@
       },
       "SubnetConcentrationArtifact": {
         "additionalProperties": true,
-        "description": "Stake & emission concentration / decentralization metrics over one subnet's per-UID distribution, computed live from the neurons D1 tier.",
+        "description": "Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake).",
         "properties": {
           "captured_at": {
             "type": [
@@ -10215,6 +10215,168 @@
             ]
           },
           "emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entity_emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_stake": {
             "additionalProperties": true,
             "properties": {
               "entropy": {
@@ -10382,12 +10544,98 @@
               "object",
               "null"
             ]
+          },
+          "uids_per_entity": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "required": [
           "schema_version",
           "netuid",
           "neuron_count",
+          "entity_count",
           "stake",
           "emission"
         ],

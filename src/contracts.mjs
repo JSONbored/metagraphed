@@ -915,7 +915,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
-    "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over one subnet's per-UID distribution, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
+    "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
     "SubnetConcentrationArtifact",
   ),
   artifact(
@@ -1649,7 +1649,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
-    "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet's per-UID distribution (computed live from the neurons D1 tier).",
+    "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
     "short",
     ["subnets", "analytics"],
     [],

@@ -98,10 +98,59 @@ describe("buildConcentration", () => {
       const data = buildConcentration(rows, 3);
       assert.equal(data.netuid, 3);
       assert.equal(data.neuron_count, 0);
+      assert.equal(data.entity_count, 0);
+      assert.equal(data.uids_per_entity, null);
       assert.equal(data.captured_at, null);
       assert.equal(data.stake, null);
       assert.equal(data.emission, null);
+      assert.equal(data.entity_stake, null);
+      assert.equal(data.entity_emission, null);
+      assert.equal(data.validator_stake, null);
     }
+  });
+
+  test("collapses a coldkey's UIDs into one entity (true control view)", () => {
+    // 3 UIDs, 2 coldkeys: A runs 2 hotkeys (10+30), B runs 1 (20).
+    const rows = [
+      { coldkey: "A", stake_tao: 10, emission_tao: 1, validator_permit: 1 },
+      { coldkey: "A", stake_tao: 30, emission_tao: 3, validator_permit: 0 },
+      { coldkey: "B", stake_tao: 20, emission_tao: 2, validator_permit: 1 },
+    ];
+    const data = buildConcentration(rows, 9);
+    assert.equal(data.neuron_count, 3);
+    assert.equal(data.entity_count, 2);
+    assert.equal(data.uids_per_entity, 1.5); // 3 UIDs / 2 entities
+    assert.equal(data.stake.holders, 3); // per-UID
+    assert.equal(data.entity_stake.holders, 2); // A's two UIDs collapsed
+    assert.equal(data.entity_stake.total, 60); // A=40, B=20
+    // Validator-only: A's permitted UID (10) + B (20) — A's second UID has no permit.
+    assert.equal(data.validator_stake.holders, 2);
+    assert.equal(data.validator_stake.total, 30);
+  });
+
+  test("the entity lens exposes concentration the per-UID lens hides", () => {
+    // One operator W runs 5 hotkeys of 20 (100 total); two solo holders of 1.
+    const rows = [
+      ...Array.from({ length: 5 }, () => ({ coldkey: "W", stake_tao: 20 })),
+      { coldkey: "X", stake_tao: 1 },
+      { coldkey: "Y", stake_tao: 1 },
+    ];
+    const data = buildConcentration(rows, 1);
+    assert.equal(data.neuron_count, 7);
+    assert.equal(data.entity_count, 3);
+    // Per-UID, W looks like 5 medium holders; per-entity, W is one ~98% whale.
+    assert.ok(data.entity_stake.gini > data.stake.gini);
+    assert.equal(data.entity_stake.nakamoto_coefficient, 1); // W alone > 50%
+    assert.ok(data.stake.nakamoto_coefficient > 1); // needs several UIDs
+  });
+
+  test("rows without a coldkey each count as their own entity", () => {
+    const data = buildConcentration(
+      [{ stake_tao: 10 }, { stake_tao: 20 }, { coldkey: "", stake_tao: 5 }],
+      1,
+    );
+    assert.equal(data.entity_count, 3); // none merged (missing/empty coldkey)
+    assert.equal(data.entity_stake.holders, 3);
   });
 
   test("tolerates rows missing captured_at / value columns", () => {

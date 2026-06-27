@@ -697,11 +697,12 @@
       },
       "SubnetConcentrationArtifact": {
         "type": "object",
-        "description": "Stake & emission concentration / decentralization metrics over one subnet's per-UID distribution, computed live from the neurons D1 tier.",
+        "description": "Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake).",
         "required": [
           "schema_version",
           "netuid",
           "neuron_count",
+          "entity_count",
           "stake",
           "emission"
         ],
@@ -709,6 +710,8 @@
           "schema_version": { "type": "integer" },
           "netuid": { "type": "integer", "minimum": 0 },
           "neuron_count": { "type": "integer", "minimum": 0 },
+          "entity_count": { "type": "integer", "minimum": 0 },
+          "uids_per_entity": { "type": ["number", "null"] },
           "captured_at": { "type": ["string", "null"] },
           "stake": {
             "type": ["object", "null"],
@@ -729,6 +732,60 @@
             "additionalProperties": true
           },
           "emission": {
+            "type": ["object", "null"],
+            "properties": {
+              "holders": { "type": "integer", "minimum": 0 },
+              "total": { "type": ["number", "null"] },
+              "gini": { "type": ["number", "null"] },
+              "hhi": { "type": ["number", "null"] },
+              "hhi_normalized": { "type": ["number", "null"] },
+              "nakamoto_coefficient": { "type": ["integer", "null"] },
+              "top_1pct_share": { "type": ["number", "null"] },
+              "top_5pct_share": { "type": ["number", "null"] },
+              "top_10pct_share": { "type": ["number", "null"] },
+              "top_20pct_share": { "type": ["number", "null"] },
+              "entropy": { "type": ["number", "null"] },
+              "entropy_normalized": { "type": ["number", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "entity_stake": {
+            "type": ["object", "null"],
+            "properties": {
+              "holders": { "type": "integer", "minimum": 0 },
+              "total": { "type": ["number", "null"] },
+              "gini": { "type": ["number", "null"] },
+              "hhi": { "type": ["number", "null"] },
+              "hhi_normalized": { "type": ["number", "null"] },
+              "nakamoto_coefficient": { "type": ["integer", "null"] },
+              "top_1pct_share": { "type": ["number", "null"] },
+              "top_5pct_share": { "type": ["number", "null"] },
+              "top_10pct_share": { "type": ["number", "null"] },
+              "top_20pct_share": { "type": ["number", "null"] },
+              "entropy": { "type": ["number", "null"] },
+              "entropy_normalized": { "type": ["number", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "entity_emission": {
+            "type": ["object", "null"],
+            "properties": {
+              "holders": { "type": "integer", "minimum": 0 },
+              "total": { "type": ["number", "null"] },
+              "gini": { "type": ["number", "null"] },
+              "hhi": { "type": ["number", "null"] },
+              "hhi_normalized": { "type": ["number", "null"] },
+              "nakamoto_coefficient": { "type": ["integer", "null"] },
+              "top_1pct_share": { "type": ["number", "null"] },
+              "top_5pct_share": { "type": ["number", "null"] },
+              "top_10pct_share": { "type": ["number", "null"] },
+              "top_20pct_share": { "type": ["number", "null"] },
+              "entropy": { "type": ["number", "null"] },
+              "entropy_normalized": { "type": ["number", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "validator_stake": {
             "type": ["object", "null"],
             "properties": {
               "holders": { "type": "integer", "minimum": 0 },

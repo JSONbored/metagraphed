@@ -206,13 +206,19 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.neurons[0].uid, 0);
   });
 
-  test("GET /subnets/{n}/concentration computes stake + emission metrics", async () => {
+  test("GET /subnets/{n}/concentration computes per-UID, entity, and validator metrics", async () => {
     const { res, body } = await getJson("/api/v1/subnets/7/concentration", env);
     assert.equal(res.status, 200);
     assert.equal(body.data.netuid, 7);
     assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.stake.holders, 2);
+    assert.equal(body.data.stake.holders, 2); // 2 UIDs
     assert.equal(body.data.emission.holders, 2);
+    // ROW + MINER share coldkey "5Co1" → one controlling entity.
+    assert.equal(body.data.entity_count, 1);
+    assert.equal(body.data.uids_per_entity, 2);
+    assert.equal(body.data.entity_stake.holders, 1);
+    // Only ROW carries a validator permit.
+    assert.equal(body.data.validator_stake.holders, 1);
     assert.equal(typeof body.data.stake.gini, "number");
     assert.equal(typeof body.data.stake.nakamoto_coefficient, "number");
   });

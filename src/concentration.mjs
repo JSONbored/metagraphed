@@ -5,6 +5,12 @@
 // distribution yields a schema-stable `null` block (never throws), matching the
 // live metagraph tiers the entity handlers already own.
 
+// The neurons-tier columns the concentration handler reads — the D1 read contract
+// for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
+// here next to its consumer so the Worker handler stays a thin SELECT.
+export const CONCENTRATION_READ_COLUMNS =
+  "stake_tao, emission_tao, coldkey, validator_permit, captured_at";
+
 // Top-K%-of-holders cutoffs reported as cumulative shares of the total.
 const TOP_PERCENTILES = [1, 5, 10, 20];
 
@@ -128,9 +134,44 @@ export function computeConcentration(values) {
   };
 }
 
-// Shape the neurons-tier rows for one subnet into the concentration artifact:
-// stake + emission scorecards plus the snapshot stamp. Null-safe on junk/sparse
-// rows — an empty array yields a schema-stable zero (stake/emission: null).
+// Coerce one raw cell to a finite number (or 0) for summation — when totaling a
+// coldkey's UIDs a non-finite cell must contribute 0, not poison the sum.
+function numeric(value) {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Collapse a subnet's UID rows into one holder per controlling entity (coldkey),
+// summing stake + emission across all of an entity's hotkeys. A row with no
+// coldkey becomes its own singleton entity (a fresh object key), so the entity
+// count never under-counts unknown owners. Returns per-entity value arrays + the
+// distinct-entity count, all consistent.
+function groupByEntity(rows) {
+  const stake = new Map();
+  const emission = new Map();
+  for (const row of rows) {
+    const hasColdkey =
+      typeof row?.coldkey === "string" && row.coldkey.length > 0;
+    const key = hasColdkey ? row.coldkey : {};
+    stake.set(key, (stake.get(key) ?? 0) + numeric(row?.stake_tao));
+    emission.set(key, (emission.get(key) ?? 0) + numeric(row?.emission_tao));
+  }
+  return {
+    stake: [...stake.values()],
+    emission: [...emission.values()],
+    count: stake.size,
+  };
+}
+
+// Shape the neurons-tier rows for one subnet into the concentration artifact —
+// three lenses over the same snapshot:
+//   • per-UID         → `stake`, `emission`
+//   • per-ENTITY      → `entity_stake`, `entity_emission` (coldkeys collapsed, the
+//                       TRUE control distribution once an operator's many hotkeys
+//                       count as one holder) + `entity_count` / `uids_per_entity`
+//   • consensus power → `validator_stake` (only validator-permit UIDs)
+// Null-safe on junk/sparse rows — an empty array yields a schema-stable zero
+// (every metric block null).
 export function buildConcentration(rows, netuid) {
   const list = Array.isArray(rows) ? rows : [];
   // The rows share one cron capture, but don't assume an order — take the newest.
@@ -141,12 +182,24 @@ export function buildConcentration(rows, netuid) {
       capturedAt = captured;
     }
   }
+  const entities = groupByEntity(list);
+  const validatorStake = list
+    .filter((row) => Number(row?.validator_permit) === 1)
+    .map((row) => row?.stake_tao);
   return {
     schema_version: 1,
     netuid,
     neuron_count: list.length,
+    entity_count: entities.count,
+    // UIDs per controlling entity — a Sybil/consolidation signal (1.0 = every UID
+    // a distinct owner; higher = fewer operators each running many hotkeys).
+    uids_per_entity:
+      entities.count > 0 ? round(list.length / entities.count, 4) : null,
     captured_at: capturedAt,
     stake: computeConcentration(list.map((row) => row?.stake_tao)),
     emission: computeConcentration(list.map((row) => row?.emission_tao)),
+    entity_stake: computeConcentration(entities.stake),
+    entity_emission: computeConcentration(entities.emission),
+    validator_stake: computeConcentration(validatorStake),
   };
 }

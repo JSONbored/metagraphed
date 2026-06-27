@@ -721,11 +721,29 @@ describe("handleSubnetConcentration", () => {
     assert.equal(body.data.emission, null);
   });
 
-  test("happy path computes stake + emission concentration over the neurons tier", async () => {
+  test("computes per-UID, per-entity, and validator concentration over the neurons tier", async () => {
     const { env, captures } = dbWith({
       neurons: [
-        neuronRow({ stake_tao: 100, emission_tao: 2 }),
-        neuronRow({ uid: 1, stake_tao: 50, emission_tao: 1 }),
+        neuronRow({
+          stake_tao: 100,
+          emission_tao: 2,
+          coldkey: "ck-a",
+          validator_permit: 1,
+        }),
+        neuronRow({
+          uid: 1,
+          stake_tao: 50,
+          emission_tao: 1,
+          coldkey: "ck-a",
+          validator_permit: 0,
+        }),
+        neuronRow({
+          uid: 2,
+          stake_tao: 30,
+          emission_tao: 1,
+          coldkey: "ck-b",
+          validator_permit: 1,
+        }),
       ],
     });
     const body = await json(
@@ -737,22 +755,22 @@ describe("handleSubnetConcentration", () => {
       ),
     );
     assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.stake.holders, 2);
-    assert.equal(body.data.stake.total, 150);
-    assert.equal(body.data.emission.holders, 2);
-    assert.ok(body.data.stake.gini > 0);
-    assert.equal(body.data.stake.nakamoto_coefficient, 1); // top holder > 50%
-    // Bound to the netuid via the neurons-tier read.
-    assert.ok(
-      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
+    assert.equal(body.data.neuron_count, 3);
+    assert.equal(body.data.entity_count, 2); // ck-a (2 UIDs) + ck-b
+    assert.equal(body.data.uids_per_entity, 1.5);
+    assert.equal(body.data.stake.holders, 3); // per-UID
+    assert.equal(body.data.entity_stake.holders, 2); // ck-a's UIDs collapsed
+    assert.equal(body.data.entity_stake.total, 180);
+    assert.equal(body.data.validator_stake.holders, 2); // the two permitted UIDs
+    assert.equal(body.data.validator_stake.total, 130); // 100 + 30
+    // Bound to the netuid; the read selects coldkey + validator_permit.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neurons WHERE netuid = \?/.test(s),
     );
-    assert.equal(
-      captures.params[
-        captures.sql.findIndex((s) => /FROM neurons WHERE netuid = \?/.test(s))
-      ][0],
-      NETUID,
-    );
+    assert.ok(idx !== -1);
+    assert.ok(/coldkey/.test(captures.sql[idx]));
+    assert.ok(/validator_permit/.test(captures.sql[idx]));
+    assert.equal(captures.params[idx][0], NETUID);
   });
 });
 

@@ -1150,7 +1150,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet's per-UID distribution (computed live from the neurons D1 tier). */
+        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier). */
         get: operations["subnetConcentration"];
         put?: never;
         post?: never;
@@ -4015,10 +4015,43 @@ export interface components {
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         SubnetCandidatesArtifact: components["schemas"]["CandidatesArtifact"];
-        /** @description Stake & emission concentration / decentralization metrics over one subnet's per-UID distribution, computed live from the neurons D1 tier. */
+        /** @description Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake). */
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
             emission: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_count: number;
+            entity_emission?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_stake?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
                 gini?: number | null;
@@ -4038,6 +4071,23 @@ export interface components {
             neuron_count: number;
             schema_version: number;
             stake: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            uids_per_entity?: number | null;
+            validator_stake?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
                 gini?: number | null;
@@ -14015,10 +14065,54 @@ export interface operations {
                      *           "top_5pct_share": 0.5,
                      *           "total": 1
                      *         },
+                     *         "entity_count": 1,
+                     *         "entity_emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
                      *         "netuid": 7,
                      *         "neuron_count": 1,
                      *         "schema_version": 1,
                      *         "stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "uids_per_entity": 0.5,
+                     *         "validator_stake": {
                      *           "entropy": 0.5,
                      *           "entropy_normalized": 0.5,
                      *           "gini": 0.5,

@@ -4106,7 +4106,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/concentration.json",
       "cache": "short",
-      "description": "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet's per-UID distribution (computed live from the neurons D1 tier).",
+      "description": "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
       "id": "subnet-concentration",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/concentration",

@@ -462,7 +462,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
-      "description": "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over one subnet's per-UID distribution, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
+      "description": "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
