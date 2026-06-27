@@ -227,8 +227,13 @@ export async function handleLeaderboards(request, env, url) {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples, economicsRows] = await Promise.all(
-    [
+  // `fastest-growing` uses a short completeness window; `most-reliable` is
+  // intentionally more durable and ranks the last 30d of uptime history.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, economicsRows, reliabilityRows] =
+    await Promise.all([
       d1All(
         env,
         `SELECT netuid,
@@ -257,8 +262,18 @@ export async function handleLeaderboards(request, env, url) {
         [sevenDaysAgo],
       ),
       resolveEconomicsRows(env),
-    ],
-  );
+      d1All(
+        env,
+        `SELECT netuid,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              ${dailyLatencyColumns({ roundedAvg: true })}
+       FROM surface_uptime_daily
+       WHERE day >= ?
+       GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
 
   const growthByNetuid = new Map();
   for (const row of growthSamples) {
@@ -287,6 +302,7 @@ export async function handleLeaderboards(request, env, url) {
     rpcRows,
     mostComplete,
     growthRows,
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
@@ -303,7 +319,7 @@ export async function handleLeaderboards(request, env, url) {
       },
     },
     "standard",
-    [healthRows, rpcRows, growthSamples],
+    [healthRows, rpcRows, growthSamples, reliabilityRows],
   );
 }
 
