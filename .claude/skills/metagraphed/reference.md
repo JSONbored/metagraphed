@@ -70,13 +70,18 @@ Subnet-level fields you must **not** touch in a community PR: `curation` (`level
 
 **Every contributor PR runs the FULL validation — there is no reduced "ugc" fast-lane.** (It was
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
-one-file surface PR runs the same gates as a code PR. Two parallel jobs both build:
+one-file surface PR runs the same gates as a code PR. Three parallel jobs (the two Node jobs both
+build):
 
 - **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
   except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
   Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
   `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe).
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
+- **`python`** — runs the Python SDK's unittest suite via `uv run --extra test python -m unittest
+discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
+  it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
+  `build` job before the artifact is built, so a red suite blocks a PyPI publish.
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
@@ -211,6 +216,14 @@ local paths, env dumps, or private notes.
 
 - **Schema-first:** edit `schemas/`/`schemas/components/` → `npm run build` → commit `openapi.json` +
   types/clients. `validate:contract-drift` + `validate:schema-enums` + `validate:committed-seed` guard it.
+- **Client SDK version: do NOT bump in your PR.** `packages/client/package.json` is versioned by the
+  post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
+  a contract file lands on main. `validate:client-sdk-sync` now emits a notice (not a failure) when the
+  version isn't bumped in a contributor PR.
+- **MCP server card is worker-computed — no committed artifact.** Adding or changing tools in
+  `src/mcp-server.mjs` does NOT require regenerating `public/.well-known/mcp/server-card.json` (that
+  file no longer exists in git). The card is served dynamically by `mcpServerCardResponse` in
+  `workers/request-handlers/discovery.mjs`.
 - **New `/api/v1` route or artifact** trips hidden gates depending on whether it's committed
   (DUAL_PATTERNS), live-only D1 (R2_ONLY_PATTERNS + COMPUTED_ARTIFACTS), or `/.well-known`
   worker-computed. Mirror an existing route end-to-end; the build's derived-artifact freshness gate

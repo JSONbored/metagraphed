@@ -34,8 +34,9 @@ export const CONTRACT_PATHS = [
 export const CLIENT_MANIFEST_PATH = "packages/client/package.json";
 
 export const SYNC_FAILURE_HINT =
-  "contract changed — bump packages/client + manifest + dispatch Publish client " +
-  "SDK, see packages/client/PUBLISHING.md";
+  "contract changed — the sync-client-version workflow will auto-open a " +
+  "chore/sync-client-version PR after merge; dispatch publish-client.yml once " +
+  "that lands. To bump manually: packages/client/PUBLISHING.md";
 
 // Pure decision function (unit-tested): given the PR's changed-file list and
 // whether the client version actually changed, decide whether the gate fails.
@@ -133,16 +134,20 @@ async function main() {
   const result = evaluateClientSdkSync({ changedFiles, versionChanged });
 
   if (!result.ok) {
-    console.error(
-      `✖ Client-SDK drift: the published contract changed but ` +
+    // Version bump is now handled by the post-merge sync-client-version workflow
+    // rather than being required in the contributor PR. Emit a notice so the CI
+    // log is clear about what will happen, but do not fail the build.
+    console.log(
+      `ℹ Client-SDK notice: the published contract changed but ` +
         `${CLIENT_MANIFEST_PATH} "version" was not bumped (${baseVersion} → ${headVersion}).`,
     );
-    console.error("  Changed contract file(s):");
+    console.log("  Changed contract file(s):");
     for (const file of result.contractFiles) {
-      console.error(`    - ${file}`);
+      console.log(`    - ${file}`);
     }
-    console.error(`\n  ${SYNC_FAILURE_HINT}`);
-    process.exit(1);
+    console.log(`\n  ${SYNC_FAILURE_HINT}`);
+    process.exitCode = 0;
+    return;
   }
 
   if (result.contractChanged) {

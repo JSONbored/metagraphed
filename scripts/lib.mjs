@@ -1389,6 +1389,13 @@ export function registrySurfaceKey(entry) {
     .toLowerCase();
 }
 
+// Locator key for a surface stored under a subnet. Stored surfaces have no
+// netuid (it lives on the parent), so inject it before keying — otherwise
+// registrySurfaceKey degrades to "unknown|kind|url" and never matches.
+export function subnetSurfaceKey(surface, netuid) {
+  return registrySurfaceKey({ ...surface, netuid });
+}
+
 export function sha256Hex(value) {
   return createHash("sha256").update(value).digest("hex");
 }

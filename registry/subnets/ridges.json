@@ -47,6 +47,29 @@
         "timeout_ms": 10000
       },
       "notes": "Official Ridges source repository."
+    },
+    {
+      "id": "sn-62-ridges-subnet-api",
+      "name": "Ridges API — top agents leaderboard (retrieval)",
+      "kind": "subnet-api",
+      "url": "https://agent-upload.ridges.ai/retrieval/top-agents",
+      "provider": "ridges",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/main/miners/cli/commands/upload.py",
+        "https://raw.githubusercontent.com/ridgesai/ridges/main/miners/cli/commands/upload.py",
+        "https://github.com/ridgesai/ridges/blob/main/api/endpoints/retrieval.py",
+        "https://raw.githubusercontent.com/ridgesai/ridges/main/api/endpoints/retrieval.py"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dexterity104"
+      },
+      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
     }
   ],
   "contact": "hello@ridges.ai"

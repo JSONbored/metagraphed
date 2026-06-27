@@ -22,11 +22,11 @@ import {
   loadProviders,
   normalizePublicUrl,
   readJson,
-  registrySurfaceKey,
   repoRoot,
   safeFetch,
   slugify,
   stableStringify,
+  subnetSurfaceKey,
   writeRepositoryJson,
 } from "./lib.mjs";
 import { normalizeGitHubLogin } from "./registry-identity.mjs";
@@ -114,8 +114,9 @@ if (!providerIds.has(provider)) {
 }
 
 const surfaces = Array.isArray(document.surfaces) ? document.surfaces : [];
-const newKey = registrySurfaceKey({ netuid, kind, url });
-if (surfaces.some((surface) => registrySurfaceKey(surface) === newKey)) {
+// Key both sides under this netuid so a true duplicate is actually caught.
+const newKey = subnetSurfaceKey({ kind, url }, netuid);
+if (surfaces.some((surface) => subnetSurfaceKey(surface, netuid) === newKey)) {
   fail(
     `That surface already exists on ${document.slug || subnet.name} ` +
       `(${kind} ${url}). One subnet = one file; don't re-add a duplicate.`,

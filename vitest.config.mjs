@@ -7,7 +7,9 @@ export default defineConfig({
     environment: "node",
     // `.claude/**` keeps gitignored agent worktrees (.claude/worktrees/*, each a
     // full repo copy with its own tests) from doubling the run + skewing coverage.
-    exclude: ["node_modules/**", "private/**", ".claude/**"],
+    // `deploy/**` is standalone infra (the wss-lb service is tested via
+    // `node --test`, not vitest) — keep it out of the Worker test run.
+    exclude: ["node_modules/**", "private/**", ".claude/**", "deploy/**"],
     // Run test FILES sequentially (each still in its own isolated fork). The
     // artifact-build tests (tests/artifacts.test.mjs) execFileSync the real
     // scripts/build-artifacts.mjs, which mutates the shared on-disk artifact

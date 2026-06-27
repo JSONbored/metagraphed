@@ -365,6 +365,29 @@
       },
       "source_urls": ["https://api.chutes.ai/openapi.json"],
       "url": "https://api.chutes.ai/chutes/utilization"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-64-chutes-subnet-api",
+      "kind": "subnet-api",
+      "name": "Chutes LLM inference API (OpenAI-compatible)",
+      "notes": "Model list is public; inference requires an API key.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dexterity104"
+      },
+      "schema_status": "not-captured",
+      "source_urls": ["https://chutes.ai/llms.txt"],
+      "url": "https://llm.chutes.ai/v1/models"
     }
   ],
   "website_url": "https://chutes.ai/"

@@ -814,7 +814,11 @@ export async function handleBlock(request, env, ref) {
   const sql = isHash
     ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  const param = isHash ? ref : Number(ref);
+  // The poller stores hashes lowercase (substrateinterface emits `0x` lowercase)
+  // and D1 text columns are BINARY-collated, so a mixed/upper-case 0x ref would
+  // miss. Normalize the hash ref to lowercase before binding (same for the block-
+  // extrinsics, block-events, and extrinsic handlers below).
+  const param = isHash ? ref.toLowerCase() : Number(ref);
   const rows = await d1All(env, sql, [param]);
   // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
   // nearest STORED block numbers around the resolved height (skips pruned gaps;
@@ -866,7 +870,7 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
     isHash
       ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
       : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref : Number(ref)],
+    [isHash ? ref.toLowerCase() : Number(ref)],
   );
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
@@ -909,7 +913,7 @@ export async function handleBlockEvents(request, env, ref, url) {
     isHash
       ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
       : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref : Number(ref)],
+    [isHash ? ref.toLowerCase() : Number(ref)],
   );
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
@@ -963,10 +967,14 @@ export async function handleExtrinsics(request, env, url) {
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
-  const fromRaw = sp.get("from");
-  const toRaw = sp.get("to");
-  const fromMs = fromRaw == null ? null : clampInt(fromRaw, 0, 0, MAX);
-  const toMs = toRaw == null ? null : clampInt(toRaw, 0, 0, MAX);
+  const parseTimeBound = (raw) => {
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(MAX, Math.trunc(n)));
+  };
+  const fromMs = parseTimeBound(sp.get("from"));
+  const toMs = parseTimeBound(sp.get("to"));
   const nowMs = Date.now();
   const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
   // The extrinsics tier is a retained hot window of block timestamps. Reject
@@ -1033,12 +1041,18 @@ export async function handleExtrinsics(request, env, url) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
-  // Standalone observed_at ranges can be highly selective or empty while the
-  // feed order is block_number/extrinsic_index. Force the covering timestamp
-  // index for that public unauthenticated case so D1 cannot satisfy ORDER BY by
-  // walking most of the retained primary-key order before finding no rows.
-  const forceObservedOrderIndex =
+  // Standalone observed_at windows can be highly selective while the feed order
+  // is block_number/extrinsic_index. Force the timestamp index for bounded
+  // narrow windows and one-sided ranges whose effective retained window is
+  // narrow; broad public filters stay planner-selected so SQLite/D1 can use the
+  // order-aligned primary-key path and stop at LIMIT.
+  const effectiveFromMs = fromMs ?? observedFloorMs;
+  const effectiveToMs = toMs ?? nowMs + DAY_MS;
+  const hasNarrowObservedWindow =
     (fromMs != null || toMs != null) &&
+    effectiveToMs - effectiveFromMs <= DAY_MS;
+  const forceObservedOrderIndex =
+    hasNarrowObservedWindow &&
     !hasBlockFilter &&
     !hasEqualityFilter &&
     !hasSuccessFilter &&
@@ -1092,7 +1106,7 @@ export async function handleExtrinsic(request, env, ref) {
     rows = await d1All(
       env,
       `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-      [ref],
+      [ref.toLowerCase()],
     );
   } else {
     // Composite "<block>-<index>": coerce both halves; a non-finite half is a

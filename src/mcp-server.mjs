@@ -48,10 +48,16 @@ import {
   loadAccountSummary,
   loadAccountEvents,
   loadAccountSubnets,
+  loadAccountHistory,
+  loadAccountExtrinsics,
+  loadAccountTransfers,
 } from "./account-events.mjs";
+import { loadBlocks, loadBlock } from "./blocks.mjs";
+import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
 import {
   aiEnabled,
   askQuestion,
+  SEMANTIC_TYPES,
   semanticSearch,
   withinRateLimit,
 } from "./ai-search.mjs";
@@ -78,7 +84,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.3.0";
+export const MCP_SERVER_VERSION = "1.4.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -447,6 +453,18 @@ function clampLimit(value, fallback, max) {
   if (typeof value !== "number") return fallback;
   if (!Number.isFinite(value) || value < 1) return fallback;
   return Math.min(max, Math.floor(value));
+}
+
+// Input-schema fragment for the optional `type` scope: one record kind or a list.
+// Built from SEMANTIC_TYPES so the schema and the server-side validator never drift.
+function semanticTypeSchema() {
+  const kind = { type: "string", enum: [...SEMANTIC_TYPES] };
+  return {
+    description:
+      `Restrict results to one or more record kinds (${SEMANTIC_TYPES.join(", ")}). ` +
+      "Accepts a single kind or a list; omit for all kinds.",
+    oneOf: [kind, { type: "array", items: kind }],
+  };
 }
 
 // Shared pagination for every list/search tool: slice one page and return the
@@ -1211,6 +1229,321 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_account_history",
+    title: "Get an account's daily activity history",
+    description:
+      "Fetch the per-day activity series for one account by its SS58 hotkey address, " +
+      "from the account_events_daily rollup: event count, kinds seen, and first/last " +
+      "block per day. Optionally filter to one subnet (netuid), a date range (from/to " +
+      "as YYYY-MM-DD), and page with limit (1-1000, default 100) / offset. Newest day " +
+      "first. Useful for understanding how active a wallet has been over time. Note: " +
+      "the rollup is hotkey-attributed only — a delegate-only SS58 address returns " +
+      "zero days even if it has events in get_account_events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        netuid: {
+          type: "integer",
+          description: "Optional subnet filter. Omit for all subnets.",
+          minimum: 0,
+        },
+        from: {
+          type: "string",
+          description:
+            "Optional start date inclusive, YYYY-MM-DD. Omit for no lower bound.",
+        },
+        to: {
+          type: "string",
+          description:
+            "Optional end date inclusive, YYYY-MM-DD. Omit for no upper bound.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max days to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const netuid =
+        typeof args?.netuid === "number" ? Math.floor(args.netuid) : undefined;
+      const from = optionalString(args, "from");
+      const to = optionalString(args, "to");
+      return loadAccountHistory(mcpD1Runner(ctx), ss58, {
+        netuid,
+        from: from ?? undefined,
+        to: to ?? undefined,
+        limit: args?.limit,
+        offset: args?.offset,
+      });
+    },
+  },
+  {
+    name: "get_account_extrinsics",
+    title: "Get an account's signed extrinsics",
+    description:
+      "Fetch the extrinsics (transactions) signed by one account by its SS58 address, " +
+      "newest first: block, extrinsic index, hash, call module and function, success " +
+      "flag, and fee. Matched by the extrinsic signer only (not the hotkey or coldkey " +
+      "union used by get_account_events). Page with limit (1-1000, default 100) / " +
+      "offset. Useful for seeing exactly which extrinsics a wallet submitted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (the extrinsic signer), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        limit: {
+          type: "integer",
+          description: "Max extrinsics to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      return loadAccountExtrinsics(mcpD1Runner(ctx), ss58, {
+        limit: args?.limit,
+        offset: args?.offset,
+      });
+    },
+  },
+  {
+    name: "get_account_transfers",
+    title: "Get an account's native-TAO transfer feed",
+    description:
+      "Fetch the native-TAO Balances.Transfer feed for one account by its SS58 address, " +
+      "newest first: from address, to address, amount in TAO, and direction (sent/ " +
+      "received). Filter by direction with direction='sent' or 'received'; omit for " +
+      "both sides. Page with limit (1-1000, default 100) / offset. This is the native " +
+      "chain-level TAO transfer feed only, NOT a full balance ledger — stake flows are " +
+      "separate events visible in get_account_events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (sender or recipient), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        direction: {
+          type: "string",
+          description:
+            "Filter by side: 'sent' (this account is sender), 'received' (recipient), " +
+            "or omit for both. Any other value is treated as both-sides.",
+          enum: ["sent", "received"],
+        },
+        limit: {
+          type: "integer",
+          description: "Max transfers to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const direction = optionalString(args, "direction");
+      return loadAccountTransfers(mcpD1Runner(ctx), ss58, {
+        direction: direction ?? undefined,
+        limit: args?.limit,
+        offset: args?.offset,
+      });
+    },
+  },
+  {
+    name: "list_blocks",
+    title: "List recent blocks",
+    description:
+      "Fetch the recent-block feed (newest first) from the chain block-explorer tier: " +
+      "block number, hash, parent hash, author, extrinsic count, event count, and " +
+      "timestamp. Page with limit (1-100, default 50) / offset, or follow next_cursor " +
+      "for stable keyset pagination. Useful for scanning recent chain activity or " +
+      "finding a block to inspect with get_block.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: "Max blocks to return (1-100, default 50).",
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const cursor = optionalString(args, "cursor");
+      return loadBlocks(mcpD1Runner(ctx), {
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: cursor ?? undefined,
+      });
+    },
+  },
+  {
+    name: "get_block",
+    title: "Get a block by number or hash",
+    description:
+      "Fetch the detail for one block by its block number (integer) or 0x block hash " +
+      "(64-char hex). Returns the block header plus the nearest stored prev/next block " +
+      "numbers for chain-walk navigation. Returns block:null when the ref is unknown or " +
+      "the store is cold — never errors. Use list_blocks to find block refs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Block reference: a numeric block number as a string (e.g. '4200000') " +
+            "or a 0x block hash (e.g. '0xabc...64hex').",
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      return loadBlock(mcpD1Runner(ctx), ref);
+    },
+  },
+  {
+    name: "list_extrinsics",
+    title: "List extrinsics with optional filters",
+    description:
+      "Fetch the extrinsic feed (newest first) from the chain extrinsic tier, with " +
+      "optional filters: signer (SS58 address), call_module (e.g. 'SubtensorModule'), " +
+      "call_function (e.g. 'set_weights'). Page with limit (1-100, default 50) / " +
+      "offset, or follow next_cursor for stable keyset pagination. Useful for finding " +
+      "specific on-chain calls or all extrinsics from one wallet.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        signer: {
+          type: "string",
+          description:
+            "Optional signer SS58 address to filter by. Omit for all signers.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        call_module: {
+          type: "string",
+          description:
+            "Optional call module filter, e.g. 'SubtensorModule'. Omit for all.",
+        },
+        call_function: {
+          type: "string",
+          description:
+            "Optional call function filter, e.g. 'set_weights'. Omit for all.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max extrinsics to return (1-100, default 50).",
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const signer = optionalString(args, "signer");
+      const callModule = optionalString(args, "call_module");
+      const callFunction = optionalString(args, "call_function");
+      const cursor = optionalString(args, "cursor");
+      return loadExtrinsics(mcpD1Runner(ctx), {
+        signer: signer ?? undefined,
+        callModule: callModule ?? undefined,
+        callFunction: callFunction ?? undefined,
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: cursor ?? undefined,
+      });
+    },
+  },
+  {
+    name: "get_extrinsic",
+    title: "Get an extrinsic by hash or composite ref",
+    description:
+      "Fetch the detail for one extrinsic by its 0x extrinsic hash (e.g. '0xabc...') " +
+      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). Returns " +
+      "extrinsic:null when the ref is unknown or the store is cold — never errors. " +
+      "Use list_extrinsics to find extrinsic refs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Extrinsic reference: a 0x hash (e.g. '0xabc...64hex') or the composite " +
+            "id 'block_number-extrinsic_index' (e.g. '4200000-3').",
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      return loadExtrinsic(mcpD1Runner(ctx), ref);
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -1607,7 +1940,8 @@ export const MCP_TOOLS = [
       "providers. Unlike search_subnets' keyword match, this understands intent " +
       "— 'generate images from a prompt', 'stream live price data' — and ranks " +
       "by semantic similarity. Returns netuid/slug/title/description/url per " +
-      "hit. Requires the AI layer; fall back to search_subnets when it is not " +
+      "hit, optionally scoped to subnets, surfaces, and/or providers via `type`. " +
+      "Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
     inputSchema: {
       type: "object",
@@ -1623,6 +1957,7 @@ export const MCP_TOOLS = [
           minimum: 1,
           maximum: 20,
         },
+        type: semanticTypeSchema(),
       },
       required: ["query"],
       additionalProperties: false,
@@ -1632,7 +1967,10 @@ export const MCP_TOOLS = [
       const query = requireString(args, "query");
       await requireAiRateLimit(ctx, "semantic");
       return runAi(() =>
-        semanticSearch(ctx.env, query, { limit: args?.limit }),
+        semanticSearch(ctx.env, query, {
+          limit: args?.limit,
+          type: args?.type,
+        }),
       );
     },
   },
@@ -1643,7 +1981,8 @@ export const MCP_TOOLS = [
       "Natural-language Q&A grounded in the registry (RAG). Retrieves the most " +
       "relevant subnets/surfaces and answers from them with bracketed [n] " +
       "citations — e.g. 'Which subnets expose an inference API I can call " +
-      "today?'. Returns the answer plus its citations. Requires the AI layer.",
+      "today?'. Returns the answer plus its citations. Scope the retrieved " +
+      "context with `type`. Requires the AI layer.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1652,6 +1991,7 @@ export const MCP_TOOLS = [
           description:
             "A question about Bittensor subnets or the registry as a whole.",
         },
+        type: semanticTypeSchema(),
       },
       required: ["question"],
       additionalProperties: false,
@@ -1661,7 +2001,12 @@ export const MCP_TOOLS = [
       const question = requireString(args, "question");
       await requireAiRateLimit(ctx, "ask");
       return runAi(() =>
-        askQuestion(ctx.env, question, {}, { readArtifact: ctx.readArtifact }),
+        askQuestion(
+          ctx.env,
+          question,
+          { type: args?.type },
+          { readArtifact: ctx.readArtifact },
+        ),
       );
     },
   },
@@ -1962,6 +2307,31 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+// Shared block item shape for list_blocks (each block in the feed).
+const BLOCK_ITEM = {
+  block_number: NULLABLE_INT,
+  block_hash: NULLABLE_STRING,
+  parent_hash: NULLABLE_STRING,
+  author: NULLABLE_STRING,
+  extrinsic_count: NULLABLE_INT,
+  event_count: NULLABLE_INT,
+  spec_version: NULLABLE_INT,
+  observed_at: NULLABLE_STRING,
+};
+// Shared extrinsic item shape for list_extrinsics + get_account_extrinsics.
+const EXTRINSIC_ITEM = {
+  block_number: NULLABLE_INT,
+  extrinsic_index: NULLABLE_INT,
+  extrinsic_hash: NULLABLE_STRING,
+  signer: NULLABLE_STRING,
+  call_module: NULLABLE_STRING,
+  call_function: NULLABLE_STRING,
+  call_args: ANY,
+  success: { type: ["boolean", "null"] },
+  fee_tao: ANY,
+  tip_tao: ANY,
+  observed_at: NULLABLE_STRING,
+};
 const TOOL_OUTPUT_SCHEMAS = {
   search_subnets: {
     type: "object",
@@ -2204,6 +2574,108 @@ const TOOL_OUTPUT_SCHEMAS = {
       ss58: { type: "string" },
       subnet_count: { type: "integer" },
       subnets: objectItems(ACCOUNT_REGISTRATION_ITEM),
+    },
+  },
+  get_account_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "day_count", "days"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      day_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      days: objectItems({
+        day: NULLABLE_STRING,
+        netuid: NULLABLE_INT,
+        event_count: NULLABLE_INT,
+        event_kinds: { type: "array", items: { type: "string" } },
+        first_block: NULLABLE_INT,
+        last_block: NULLABLE_INT,
+      }),
+    },
+  },
+  get_account_extrinsics: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_account_transfers: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "transfer_count", "transfers"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      transfer_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      transfers: objectItems({
+        block_number: NULLABLE_INT,
+        event_index: NULLABLE_INT,
+        from: NULLABLE_STRING,
+        to: NULLABLE_STRING,
+        amount_tao: ANY,
+        direction: NULLABLE_STRING,
+        observed_at: NULLABLE_STRING,
+      }),
+    },
+  },
+  list_blocks: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_count", "blocks"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      blocks: objectItems(BLOCK_ITEM),
+    },
+  },
+  get_block: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ref"],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block: { type: ["object", "null"], additionalProperties: true },
+      prev_block_number: NULLABLE_INT,
+      next_block_number: NULLABLE_INT,
+    },
+  },
+  list_extrinsics: {
+    type: "object",
+    additionalProperties: true,
+    required: ["extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_extrinsic: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ref"],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      extrinsic: { type: ["object", "null"], additionalProperties: true },
     },
   },
   list_subnet_apis: {

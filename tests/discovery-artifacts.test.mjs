@@ -1,7 +1,7 @@
 // Guards the agent/AI discovery artifacts emitted by build-artifacts.mjs:
-// the MCP server card (SEP-1649 shape), the Agent Skills discovery index
-// (digest must match the shipped SKILL.md), and the honest auth.md. These are
-// static ASSETS at api.metagraph.sh, so a drift here ships silently otherwise.
+// the Agent Skills discovery index (digest must match the shipped SKILL.md)
+// and the honest auth.md. The MCP server card (SEP-1649) is now worker-computed
+// and tested via mcpServerCardResponse rather than read from a committed file.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -11,6 +11,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { repoRoot } from "../scripts/lib.mjs";
 import { MCP_REGISTRY_NAME, MCP_SERVER_INFO } from "../src/mcp-server.mjs";
+import { mcpServerCardResponse } from "../workers/request-handlers/discovery.mjs";
 
 const publicDir = path.join(repoRoot, "public");
 const readJson = async (rel) =>
@@ -18,7 +19,13 @@ const readJson = async (rel) =>
 
 describe("Discovery artifacts", () => {
   test("MCP server card exposes the SEP-1649 serverInfo block", async () => {
-    const card = await readJson(".well-known/mcp/server-card.json");
+    // Card is now worker-computed; test via the handler (no committed file).
+    const res = await mcpServerCardResponse(
+      new Request("https://api.metagraph.sh/.well-known/mcp/server-card.json"),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const card = await res.json();
     assert.deepEqual(card.serverInfo, {
       name: MCP_SERVER_INFO.name,
       version: MCP_SERVER_INFO.version,

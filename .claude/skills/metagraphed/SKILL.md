@@ -236,13 +236,19 @@ test for every bug fix**. **Codecov is the coverage gate** — run it unsharded 
 
 ### Phase B3 — Regenerate what you invalidated (then commit it)
 
-| You changed…                                 | Run             | Commit                                                                |
-| -------------------------------------------- | --------------- | --------------------------------------------------------------------- |
-| `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index          |
-| A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                          |
-| A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts) |
+| You changed…                                 | Run             | Commit                                                                     |
+| -------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
+| `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index               |
+| A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                               |
+| A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts)      |
+| MCP tools in `src/mcp-server.mjs`            | —               | **nothing** — the server card is worker-computed, not a committed artifact |
 
 Stale committed artifacts fail the **derived-artifact freshness** + **contract-drift** gates.
+
+**Client SDK version:** do **not** bump `packages/client/package.json` in your PR. The
+`sync-client-version` workflow auto-opens a `chore/sync-client-version` PR after a contract-changing
+merge. `validate:client-sdk-sync` now emits a notice (not a failure) when the version wasn't bumped
+in the contributor PR.
 
 ### Phase B4 — Run the gates locally (must be green)
 
@@ -280,7 +286,9 @@ the PR template with the validation commands you actually ran. Sync with `main` 
 **Path B (code/schema):**
 
 - [ ] In scope, narrow, anchored on ≥2 analogues; general not special-cased.
-- [ ] Regenerated + committed: `npm run build` artifacts (OpenAPI/types/contracts) as applicable.
+- [ ] Regenerated + committed: `npm run build` artifacts (OpenAPI/types/contracts) as applicable. MCP
+      tool additions do NOT require server-card regen (worker-computed). Client version bump NOT required
+      (auto-sync workflow handles it post-merge).
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).

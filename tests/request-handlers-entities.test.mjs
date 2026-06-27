@@ -1412,6 +1412,18 @@ describe("handleBlock", () => {
     assert.equal(body.data.ref, HASH);
     assert.equal(body.data.block.block_hash, HASH);
   });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockDetail: blockRow() });
+    await handleBlock(req(`/api/v1/blocks/${upperHash}`), env, upperHash);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
+  });
 });
 
 describe("handleBlockExtrinsics", () => {
@@ -1502,6 +1514,23 @@ describe("handleBlockExtrinsics", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.extrinsic_count, 0);
   });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockNumberByHash: 9, extrinsics: [] });
+    await handleBlockExtrinsics(
+      req(`/api/v1/blocks/${upperHash}/extrinsics`),
+      env,
+      upperHash,
+      url(`/api/v1/blocks/${upperHash}/extrinsics`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
+  });
 });
 
 describe("handleBlockEvents", () => {
@@ -1575,6 +1604,23 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
   });
+
+  test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ blockNumberByHash: 9, blockEvents: [] });
+    await handleBlockEvents(
+      req(`/api/v1/blocks/${upperHash}/events`),
+      env,
+      upperHash,
+      url(`/api/v1/blocks/${upperHash}/events`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /SELECT block_number FROM blocks WHERE block_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected a block_hash resolution lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
+  });
 });
 
 describe("handleExtrinsics", () => {
@@ -1629,20 +1675,33 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
-  test("forces observed-at index hint for standalone time filters", async () => {
+  test("keeps broad standalone time filters planner-selected", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
       req("/api/v1/extrinsics"),
       env,
-      url("/api/v1/extrinsics?from=1750000000000"),
+      url("/api/v1/extrinsics?from=0"),
     );
     const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
     assert.ok(sql);
     assert.ok(
-      /FROM extrinsics INDEXED BY idx_extrinsics_observed_order/.test(sql),
-      "standalone observed_at filters must use the covering timestamp index",
+      !/INDEXED BY/.test(sql),
+      "broad filters must not force a sort-heavy timestamp index",
     );
     assert.ok(/observed_at >= \?/.test(sql));
+  });
+
+  test("ignores malformed time filters instead of broadening them", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?from=abc"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/INDEXED BY/.test(sql));
+    assert.ok(!/observed_at >= \?/.test(sql));
   });
 
   test("short-circuits impossible future time filters before D1", async () => {
@@ -1711,6 +1770,38 @@ describe("handleExtrinsics", () => {
     assert.ok(/observed_at <= \?/.test(sql));
   });
 
+  test("uses the observed-at index for selective one-sided time filters", async () => {
+    const now = Date.now();
+
+    {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?from=${now + 60_000}`),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql, "a near-future one-sided from filter must reach D1");
+      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+      assert.ok(/observed_at >= \?/.test(sql));
+    }
+
+    {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(
+          `/api/v1/extrinsics?to=${now - 365 * 24 * 60 * 60 * 1000 + 60_000}`,
+        ),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql, "a near-floor one-sided to filter must reach D1");
+      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+      assert.ok(/observed_at <= \?/.test(sql));
+    }
+  });
+
   test("drops the observed-at index hint when an equality filter is present", async () => {
     // With a (signer) equality the planner should use the order-aligned
     // signer index, not be forced onto the observed-at one.
@@ -1775,6 +1866,22 @@ describe("handleExtrinsic", () => {
     );
     assert.equal(body.data.extrinsic.extrinsic_hash, HASH);
     assert.equal(body.data.extrinsic.call_function, "add_stake");
+  });
+
+  test("normalizes an uppercase 0x extrinsic_hash to lowercase before D1 lookup", async () => {
+    const upperHash = `0x${"A".repeat(64)}`;
+    const lowerHash = upperHash.toLowerCase();
+    const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
+    await handleExtrinsic(
+      req(`/api/v1/extrinsics/${upperHash}`),
+      env,
+      upperHash,
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /WHERE extrinsic_hash = \?/.test(s),
+    );
+    assert.ok(idx !== -1, "expected an extrinsic_hash lookup");
+    assert.equal(captures.params[idx][0], lowerHash);
   });
 
   test("happy path resolves by composite id block-index", async () => {

@@ -60,6 +60,7 @@ import {
   sha256Hex,
   slugify,
   stableStringify,
+  subnetSurfaceKey,
   writeJson,
   writeRepositoryJson,
 } from "../scripts/lib.mjs";
@@ -1577,6 +1578,17 @@ describe("script utility contracts", () => {
         kind: "docs",
         url: "https://docs.all-ways.io/",
       }),
+      "7|docs|https://docs.all-ways.io/",
+    );
+    // A stored surface has no netuid (keys as "unknown|…"); subnetSurfaceKey
+    // injects the parent netuid so it matches an explicitly-keyed surface.
+    const storedSurface = { kind: "docs", url: "https://docs.all-ways.io/" };
+    assert.equal(
+      registrySurfaceKey(storedSurface),
+      "unknown|docs|https://docs.all-ways.io/",
+    );
+    assert.equal(
+      subnetSurfaceKey(storedSurface, 7),
       "7|docs|https://docs.all-ways.io/",
     );
     assert.equal(slugify("TAO / Metagraph: Build"), "tao-metagraph-build");

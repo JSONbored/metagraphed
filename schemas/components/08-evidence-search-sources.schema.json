@@ -55,6 +55,50 @@
         },
         "additionalProperties": false
       },
+      "SearchIndexDocument": {
+        "type": "object",
+        "required": ["id", "type", "title", "artifact_path"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": ["subnet", "surface", "provider"]
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "artifact_path": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "EvidenceClaim": {
         "type": "object",
         "required": [
@@ -267,6 +311,30 @@
                 "type": "array",
                 "items": {
                   "$ref": "#/components/schemas/SearchDocument"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SearchIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["documents"],
+            "properties": {
+              "document_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "documents": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SearchIndexDocument"
                 }
               }
             },

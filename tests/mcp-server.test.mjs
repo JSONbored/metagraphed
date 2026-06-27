@@ -1661,6 +1661,50 @@ describe("MCP AI tools (semantic_search + ask)", () => {
     assert.equal(out.results[0].netuid, 1);
   });
 
+  test("semantic_search forwards the type scope to Vectorize", async () => {
+    const env = aiEnv();
+    let lastOptions;
+    env.VECTORIZE.query = (_vector, options) => {
+      lastOptions = options;
+      return Promise.resolve({ matches: [] });
+    };
+    const res = await callTool(
+      "semantic_search",
+      { query: "images", type: ["subnet", "provider"] },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(lastOptions.filter, {
+      type: { $in: ["subnet", "provider"] },
+    });
+  });
+
+  test("semantic_search rejects an unknown type with invalid_params", async () => {
+    const res = await callTool(
+      "semantic_search",
+      { query: "images", type: "widget" },
+      { env: aiEnv() },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Unknown type|Valid types/);
+  });
+
+  test("ask forwards the type scope to Vectorize", async () => {
+    const env = aiEnv();
+    let lastOptions;
+    env.VECTORIZE.query = (_vector, options) => {
+      lastOptions = options;
+      return Promise.resolve({ matches: [] });
+    };
+    const res = await callTool(
+      "ask",
+      { question: "which providers?", type: "provider" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(lastOptions.filter, { type: "provider" });
+  });
+
   test("ask returns a grounded answer with citations when AI is enabled", async () => {
     const res = await callTool(
       "ask",
@@ -3470,6 +3514,541 @@ describe("MCP account tools (get_account + events + subnets)", () => {
       { env },
     );
     assert.equal(res.body.result.structuredContent.next_cursor, "200.1");
+  });
+});
+
+describe("MCP account tail tools (history, extrinsics, transfers)", () => {
+  // The account tail tools complete the account chain-data surface: daily
+  // activity (get_account_history), signed extrinsics (get_account_extrinsics),
+  // and native-TAO transfers (get_account_transfers).
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function tailD1(fixtures = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/FROM account_events_daily/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.days || [],
+                    });
+                  if (/FROM extrinsics WHERE signer/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.extrinsics || [],
+                    });
+                  if (/event_kind = 'Transfer'/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.transfers || [],
+                    });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_account_history returns daily series with fields correctly shaped", async () => {
+    const env = tailD1({
+      days: [
+        {
+          day: "2025-06-24",
+          netuid: 7,
+          event_count: 3,
+          event_kinds: "StakeAdded,WeightsSet",
+          first_block: 100,
+          last_block: 200,
+        },
+      ],
+    });
+    const res = await callTool("get_account_history", { ss58: SS58 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].day, "2025-06-24");
+    assert.equal(out.days[0].netuid, 7);
+    assert.deepEqual(out.days[0].event_kinds, ["StakeAdded", "WeightsSet"]);
+    assert.equal(out.days[0].first_block, 100);
+  });
+
+  test("get_account_history passes netuid and date bounds to the SQL query", async () => {
+    const capture = [];
+    const env = tailD1({ days: [] }, capture);
+    await callTool(
+      "get_account_history",
+      {
+        ss58: SS58,
+        netuid: 7,
+        from: "2025-01-01",
+        to: "2025-06-30",
+        limit: 10,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM account_events_daily/.test(c.sql));
+    assert.ok(q, "daily query must be executed");
+    assert.ok(/AND netuid = \?/.test(q.sql), "netuid filter must be applied");
+    assert.ok(/AND day >= \?/.test(q.sql), "from filter must be applied");
+    assert.ok(/AND day <= \?/.test(q.sql), "to filter must be applied");
+    assert.ok(q.params.includes(7));
+    assert.ok(q.params.includes("2025-01-01"));
+    assert.ok(q.params.includes("2025-06-30"));
+    assert.ok(q.params.includes(10));
+  });
+
+  test("get_account_history degrades to empty payload on cold D1", async () => {
+    const res = await callTool("get_account_history", { ss58: SS58 });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.day_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.days, []);
+  });
+
+  test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {
+    const env = tailD1({
+      extrinsics: [
+        {
+          block_number: 500,
+          extrinsic_index: 2,
+          extrinsic_hash: "0xabc",
+          signer: SS58,
+          call_module: "SubtensorModule",
+          call_function: "set_weights",
+          call_args: null,
+          success: 1,
+          fee_tao: 0.001,
+          tip_tao: null,
+          observed_at: 1750009000000,
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58, limit: 50 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.extrinsic_count, 1);
+    assert.equal(out.limit, 50);
+    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
+    assert.equal(out.extrinsics[0].success, true);
+  });
+
+  test("get_account_extrinsics degrades to empty payload on cold D1", async () => {
+    const res = await callTool("get_account_extrinsics", { ss58: SS58 });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("get_account_transfers returns transfers with direction field", async () => {
+    const env = tailD1({
+      transfers: [
+        {
+          block_number: 300,
+          event_index: 1,
+          event_kind: "Transfer",
+          hotkey: SS58,
+          coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+          amount_tao: 10.5,
+          alpha_amount: null,
+          observed_at: 1750009000000,
+          extrinsic_index: null,
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_account_transfers",
+      { ss58: SS58 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.transfer_count, 1);
+    assert.equal(out.transfers[0].direction, "sent");
+    assert.equal(out.transfers[0].amount_tao, 10.5);
+  });
+
+  test("get_account_transfers filters by direction=received", async () => {
+    const capture = [];
+    const env = tailD1({ transfers: [] }, capture);
+    await callTool(
+      "get_account_transfers",
+      { ss58: SS58, direction: "received" },
+      { env },
+    );
+    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
+    assert.ok(q, "transfer query must be executed");
+    assert.ok(/coldkey = \?/.test(q.sql), "received side uses coldkey match");
+    assert.ok(!/hotkey = \?/.test(q.sql), "received must not match hotkey");
+  });
+
+  test("get_account_transfers degrades to empty payload on cold D1", async () => {
+    const res = await callTool("get_account_transfers", { ss58: SS58 });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.transfer_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.transfers, []);
+  });
+
+  test("account tail tools reject a malformed ss58", async () => {
+    for (const name of [
+      "get_account_history",
+      "get_account_extrinsics",
+      "get_account_transfers",
+    ]) {
+      const res = await callTool(name, { ss58: "bad" }, { env: {} });
+      assert.equal(
+        res.body.result.isError,
+        true,
+        `${name} must reject bad ss58`,
+      );
+      assert.match(res.body.result.content[0].text, /ss58/);
+    }
+  });
+
+  test("account tail payloads validate against their declared outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const dayRow = {
+      day: "2025-06-24",
+      netuid: 7,
+      event_count: 3,
+      event_kinds: "StakeAdded",
+      first_block: 100,
+      last_block: 200,
+    };
+    const extrinsicRow = {
+      block_number: 500,
+      extrinsic_index: 2,
+      extrinsic_hash: "0xabc",
+      signer: SS58,
+      call_module: "SubtensorModule",
+      call_function: "set_weights",
+      call_args: null,
+      success: 1,
+      fee_tao: 0.001,
+      tip_tao: null,
+      observed_at: 1750009000000,
+    };
+    const transferRow = {
+      block_number: 300,
+      event_index: 1,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+      amount_tao: 10.5,
+      alpha_amount: null,
+      observed_at: 1750009000000,
+      extrinsic_index: null,
+    };
+    const cases = [
+      ["get_account_history", tailD1({ days: [dayRow] })],
+      ["get_account_extrinsics", tailD1({ extrinsics: [extrinsicRow] })],
+      ["get_account_transfers", tailD1({ transfers: [transferRow] })],
+    ];
+    for (const [name, env] of cases) {
+      const res = await callTool(name, { ss58: SS58 }, { env });
+      const validate = validatorFor(name);
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        `${name}: ${JSON.stringify(validate.errors)}`,
+      );
+    }
+  });
+});
+
+describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get_extrinsic)", () => {
+  // Tests for the chain block-explorer MCP surface.
+
+  function chainD1(fixtures = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/FROM blocks WHERE block_number = \?/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.block ? [fixtures.block] : [],
+                    });
+                  if (/FROM blocks WHERE block_hash = \?/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.block ? [fixtures.block] : [],
+                    });
+                  if (
+                    /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: [
+                        {
+                          prev: fixtures.prev ?? null,
+                          next: fixtures.next ?? null,
+                        },
+                      ],
+                    });
+                  if (/FROM blocks/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.blocks || [],
+                    });
+                  if (/FROM extrinsics WHERE extrinsic_hash/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
+                    });
+                  if (
+                    /FROM extrinsics WHERE block_number = \? AND extrinsic_index/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
+                    });
+                  if (/FROM extrinsics/.test(sql))
+                    return Promise.resolve({
+                      results: fixtures.extrinsics || [],
+                    });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  const BLOCK_ROW = {
+    block_number: 4200000,
+    block_hash: "0x" + "a".repeat(64),
+    parent_hash: "0x" + "b".repeat(64),
+    author: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    extrinsic_count: 5,
+    event_count: 12,
+    spec_version: 207,
+    observed_at: 1750009000000,
+  };
+
+  const EXTRINSIC_ROW = {
+    block_number: 4200000,
+    extrinsic_index: 3,
+    extrinsic_hash: "0x" + "c".repeat(64),
+    signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    call_module: "SubtensorModule",
+    call_function: "set_weights",
+    call_args: null,
+    success: 1,
+    fee_tao: 0.0005,
+    tip_tao: null,
+    observed_at: 1750009000000,
+  };
+
+  test("list_blocks returns block feed with block_count and correct fields", async () => {
+    const env = chainD1({ blocks: [BLOCK_ROW] });
+    const res = await callTool("list_blocks", {}, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 1);
+    assert.equal(out.blocks[0].block_number, 4200000);
+    assert.equal(out.blocks[0].extrinsic_count, 5);
+    assert.equal(out.blocks[0].spec_version, 207);
+  });
+
+  test("list_blocks emits next_cursor for a full page", async () => {
+    const blocks = Array.from({ length: 50 }, (_, i) => ({
+      ...BLOCK_ROW,
+      block_number: 4200000 - i,
+    }));
+    const env = chainD1({ blocks });
+    const res = await callTool("list_blocks", { limit: 50 }, { env });
+    const out = res.body.result.structuredContent;
+    assert.ok(out.next_cursor, "full page must emit a keyset cursor");
+    assert.equal(out.block_count, 50);
+  });
+
+  test("list_blocks uses cursor WHERE clause instead of OFFSET", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [] }, capture);
+    await callTool("list_blocks", { cursor: "4200000" }, { env });
+    const q = capture.find((c) => /FROM blocks/.test(c.sql));
+    assert.ok(/WHERE block_number < \?/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.ok(q.params.includes(4200000));
+  });
+
+  test("list_blocks degrades to empty payload on cold D1", async () => {
+    const res = await callTool("list_blocks", {});
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.block_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.blocks, []);
+  });
+
+  test("get_block returns block detail with prev/next neighbors", async () => {
+    const capture = [];
+    const env = chainD1(
+      { block: BLOCK_ROW, prev: 4199999, next: 4200001 },
+      capture,
+    );
+    const res = await callTool("get_block", { ref: "4200000" }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, "4200000");
+    assert.equal(out.block.block_number, 4200000);
+    assert.equal(out.prev_block_number, 4199999);
+    assert.equal(out.next_block_number, 4200001);
+    const neighborQuery = capture.find(
+      (c) => /AS prev/.test(c.sql) && /AS next/.test(c.sql),
+    );
+    assert.ok(neighborQuery, "get_block must query nearest stored neighbors");
+    assert.ok(/WHERE block_number < \?/.test(neighborQuery.sql));
+    assert.ok(/WHERE block_number > \?/.test(neighborQuery.sql));
+    assert.ok(!/CASE WHEN block_number/.test(neighborQuery.sql));
+    assert.deepEqual(neighborQuery.params, [4200000, 4200000]);
+  });
+
+  test("get_block accepts a 0x hash ref", async () => {
+    const capture = [];
+    const env = chainD1({ block: BLOCK_ROW }, capture);
+    const hash = "0x" + "a".repeat(64);
+    await callTool("get_block", { ref: hash }, { env });
+    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
+    assert.ok(q, "hash ref must query by block_hash");
+    assert.ok(q.params.includes(hash));
+  });
+
+  test("get_block returns block:null for an unknown ref (cold store)", async () => {
+    const res = await callTool("get_block", { ref: "9999999" });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.block, null);
+  });
+
+  test("get_block rejects a missing ref argument", async () => {
+    const res = await callTool("get_block", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ref/);
+  });
+
+  test("list_extrinsics returns extrinsic feed with correct fields", async () => {
+    const env = chainD1({ extrinsics: [EXTRINSIC_ROW] });
+    const res = await callTool("list_extrinsics", {}, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 1);
+    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
+    assert.equal(out.extrinsics[0].success, true);
+  });
+
+  test("list_extrinsics filters by signer, call_module, call_function", async () => {
+    const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    await callTool(
+      "list_extrinsics",
+      {
+        signer: SS58,
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/signer = \?/.test(q.sql));
+    assert.ok(/call_module = \?/.test(q.sql));
+    assert.ok(/call_function = \?/.test(q.sql));
+    assert.ok(q.params.includes(SS58));
+    assert.ok(q.params.includes("SubtensorModule"));
+    assert.ok(q.params.includes("set_weights"));
+  });
+
+  test("list_extrinsics uses cursor row-value seek instead of OFFSET", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    await callTool("list_extrinsics", { cursor: "4200000.3" }, { env });
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(
+      /\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql),
+      "cursor must use row-value seek",
+    );
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.ok(q.params.includes(4200000) && q.params.includes(3));
+  });
+
+  test("list_extrinsics degrades to empty payload on cold D1", async () => {
+    const res = await callTool("list_extrinsics", {});
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+    assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("get_extrinsic returns extrinsic detail by 0x hash", async () => {
+    const hash = "0x" + "c".repeat(64);
+    const env = chainD1({ extrinsic: EXTRINSIC_ROW });
+    const res = await callTool("get_extrinsic", { ref: hash }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, hash);
+    assert.equal(out.extrinsic.block_number, 4200000);
+    assert.equal(out.extrinsic.call_function, "set_weights");
+  });
+
+  test("get_extrinsic returns extrinsic detail by composite block-index ref", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsic: EXTRINSIC_ROW }, capture);
+    await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
+    const q = capture.find((c) =>
+      /block_number = \? AND extrinsic_index = \?/.test(c.sql),
+    );
+    assert.ok(
+      q,
+      "composite ref must use block_number + extrinsic_index PK hit",
+    );
+    assert.ok(q.params.includes(4200000) && q.params.includes(3));
+  });
+
+  test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
+    const res = await callTool("get_extrinsic", { ref: "0x" + "f".repeat(64) });
+    assert.equal(res.body.result.isError, false);
+    assert.equal(res.body.result.structuredContent.extrinsic, null);
+  });
+
+  test("get_extrinsic rejects a missing ref argument", async () => {
+    const res = await callTool("get_extrinsic", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ref/);
+  });
+
+  test("block-explorer payloads validate against their declared outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const hash = "0x" + "c".repeat(64);
+    const cases = [
+      ["list_blocks", chainD1({ blocks: [BLOCK_ROW] }), {}],
+      [
+        "get_block",
+        chainD1({ block: BLOCK_ROW, prev: 4199999, next: 4200001 }),
+        { ref: "4200000" },
+      ],
+      ["list_extrinsics", chainD1({ extrinsics: [EXTRINSIC_ROW] }), {}],
+      ["get_extrinsic", chainD1({ extrinsic: EXTRINSIC_ROW }), { ref: hash }],
+    ];
+    for (const [name, env, args] of cases) {
+      const res = await callTool(name, args, { env });
+      const validate = validatorFor(name);
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        `${name}: ${JSON.stringify(validate.errors)}`,
+      );
+    }
   });
 });
 

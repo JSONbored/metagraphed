@@ -3,6 +3,8 @@
 // chain-direct poller (scripts/fetch-events.py) that fills account_events, NOT
 // Taostats. This module holds the load contract, the row→API shaping, and the
 // retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
+import { clampInt } from "../workers/config.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
 // Postgres cold tier (#1519) ships. pruneBlocks runs in the HEALTH_PRUNE_CRON.
@@ -136,4 +138,57 @@ export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
     next_cursor: nextCursor ?? null,
     blocks,
   };
+}
+
+// ---- Block D1 read paths ---------------------------------------------------
+// One source of truth for the block SQL + pagination, shared by the REST
+// handlers and the MCP block-explorer tools. `d1` is a
+// (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
+
+// Recent-block feed (newest first) with keyset cursor support (#1851). A cursor
+// takes precedence over offset when present (WHERE block_number < ?).
+export async function loadBlocks(d1, { limit, offset, cursor } = {}) {
+  const lim = clampInt(limit, 50, 1, 100);
+  const off = clampInt(offset, 0, 0, 1_000_000);
+  const cur = decodeCursor(cursor, 1);
+  let rows;
+  if (cur) {
+    rows = await d1(
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
+      [cur[0], lim],
+    );
+  } else {
+    rows = await d1(
+      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
+      [lim, off],
+    );
+  }
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last ? encodeCursor([last.block_number]) : null;
+  return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
+}
+
+// Per-block detail by numeric block_number or 0x block_hash. Includes nearest
+// stored neighbors (prev_block_number, next_block_number) for chain-walk nav
+// (#1853). Returns block:null when the ref is unknown or the store is cold —
+// never throws (schema-stable zero, mirrors the REST route).
+export async function loadBlock(d1, ref) {
+  const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
+  const sql = isHash
+    ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
+    : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
+  const param = isHash ? String(ref) : Number(ref);
+  const rows = await d1(sql, [param]);
+  let prev = null;
+  let next = null;
+  const resolvedNumber = rows[0]?.block_number;
+  if (Number.isInteger(resolvedNumber)) {
+    const nbr = await d1(
+      `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
+      [resolvedNumber, resolvedNumber],
+    );
+    prev = nbr[0]?.prev ?? null;
+    next = nbr[0]?.next ?? null;
+  }
+  return buildBlock(rows[0], ref, { prev, next });
 }
