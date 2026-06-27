@@ -107,6 +107,12 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Postgres-backed serving (ADR 0013): the dedicated data Worker (wrangler.data.jsonc)
+  // owns the postgres.js driver + Hyperdrive binding; this Worker routes the
+  // chain_events / deep-history paths to it, keeping this bundle lean.
+  "services": [
+    { "binding": "DATA_API", "service": "metagraphed-data-api" },
+  ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
   // (served live); the hourly trigger prunes the D1 time-series. 15 min (96
   // checks/day/surface) is ample for a registry's uptime + incident signal and

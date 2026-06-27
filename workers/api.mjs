@@ -839,6 +839,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
 
+  // Postgres-backed all-events tier (ADR 0013): the dedicated data Worker (DATA_API
+  // service binding) serves chain_events + deep history via Hyperdrive, keeping the
+  // postgres.js driver out of this Worker's bundle. 503 if the binding is absent
+  // (e.g. a preview deploy without the data Worker).
+  if (
+    url.pathname === "/api/v1/chain-events" ||
+    /^\/api\/v1\/blocks\/\d+\/events$/.test(url.pathname)
+  ) {
+    if (env.DATA_API) return env.DATA_API.fetch(request);
+    return new Response(JSON.stringify({ error: "data tier unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {

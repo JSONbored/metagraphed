@@ -110,6 +110,7 @@
   },
   "dependencies": {
     "graphql": "^17.0.1",
+    "postgres": "^3.4.9",
     "workers-og": "^0.0.27"
   },
   "devDependencies": {
