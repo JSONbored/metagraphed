@@ -39,7 +39,9 @@ def _decoded():
                 "signer": "5Signer",
                 "call_module": "SubtensorModule",
                 "call_function": "add_stake",
-                "success": True,
+                # _extrinsic_success_map emits 1/0 (int), NOT a bool — the shape
+                # the indexer must coerce for the Postgres BOOLEAN column.
+                "success": 1,
                 "fee_tao": 0.0001,
                 "tip_tao": 0.0,
                 # The verified decode (_safe_json) emits call_args as a compact
@@ -81,6 +83,17 @@ class RowsFromDecoded(unittest.TestCase):
         self.assertEqual(set(x.keys()), set(ic.EXTRINSIC_COLS))
         self.assertEqual(x["extrinsic_index"], 2)
         self.assertEqual(x["call_module"], "SubtensorModule")
+
+    def test_success_int_is_coerced_to_bool_for_postgres(self):
+        # Regression: _extrinsic_success_map emits 1/0 (int); the Postgres column
+        # is BOOLEAN (strict), so 1 -> True, 0 -> False, missing -> None.
+        x = ic.rows_from_decoded(_decoded())["extrinsics"][0]
+        self.assertIs(x["success"], True)
+        d = _decoded()
+        d["extrinsics"][0]["success"] = 0
+        self.assertIs(ic.rows_from_decoded(d)["extrinsics"][0]["success"], False)
+        d["extrinsics"][0]["success"] = None
+        self.assertIsNone(ic.rows_from_decoded(d)["extrinsics"][0]["success"])
 
     def test_call_args_json_string_is_decoded_to_an_object(self):
         # Regression: the decode emits call_args as a JSON STRING; it must be

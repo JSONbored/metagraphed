@@ -84,6 +84,13 @@ def _json_obj(value):
     return value  # already an object or None
 
 
+def _as_bool(value):
+    """`success` arrives as 1/0 (int) from _extrinsic_success_map, but the Postgres
+    `extrinsics.success` column is BOOLEAN (strict — unlike the loose D1/SQLite era).
+    Coerce; None stays NULL (index missing its ExtrinsicSuccess/Failed event)."""
+    return None if value is None else bool(value)
+
+
 def _has_ts(row):
     """observed_at is BIGINT NOT NULL. decode_head emits None when a block's
     Timestamp query fails; drop such rows (mirrors the D1-era Worker validators
@@ -112,6 +119,7 @@ def rows_from_decoded(decoded):
     for x in decoded.get("extrinsics") or []:
         row = {c: x.get(c) for c in EXTRINSIC_COLS}
         row["call_args"] = _json_obj(row["call_args"])
+        row["success"] = _as_bool(row.get("success"))
         if _has_ts(row):
             extrinsics.append(row)
     events = []
