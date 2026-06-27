@@ -180,7 +180,9 @@ export const SAFE_RPC_METHODS = new Set([
 // Read-only WebSocket subscriptions — WSS-ONLY. The HTTP proxy uses SAFE_RPC_METHODS
 // alone (subscriptions need a persistent connection, so they make no sense over HTTP);
 // the wss-lb additionally allows these. Their notifications stream upstream→client.
-// All read-only — author_submitAndWatchExtrinsic stays blocked by the author_ prefix.
+// Deliberately excludes persistent storage subscriptions, which can create
+// unbounded upstream watcher state for arbitrary keys. All allowed entries are
+// read-only — author_submitAndWatchExtrinsic stays blocked by the author_ prefix.
 export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_subscribeNewHeads",
   "chain_subscribeNewHead",
@@ -191,8 +193,6 @@ export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_unsubscribeFinalisedHeads",
   "chain_subscribeAllHeads",
   "chain_unsubscribeAllHeads",
-  "state_subscribeStorage",
-  "state_unsubscribeStorage",
   "state_subscribeRuntimeVersion",
   "state_unsubscribeRuntimeVersion",
 ]);

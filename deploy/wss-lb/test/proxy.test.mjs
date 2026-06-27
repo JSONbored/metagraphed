@@ -208,6 +208,54 @@ test("security: nested non-scalar RPC ids are not reflected in errors", async ()
   await good.close();
 });
 
+test("security: storage subscriptions are rejected before reaching upstream", async () => {
+  const upstreamMessages = [];
+  const http = createServer();
+  const wss = new WebSocketServer({ server: http });
+  wss.on("connection", (ws) => {
+    ws.on("message", (d) => {
+      upstreamMessages.push(d.toString());
+      ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "accepted" }));
+    });
+  });
+  const upstream = await new Promise((resolve) =>
+    http.listen(0, "127.0.0.1", () =>
+      resolve(`ws://127.0.0.1:${http.address().port}`),
+    ),
+  );
+  const lb = await lbServer([upstream]);
+
+  const reply = await new Promise((resolve, reject) => {
+    const c = new WebSocket(lb.url);
+    c.on("open", () =>
+      c.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "state_subscribeStorage",
+          params: [["0x" + "00".repeat(32)]],
+        }),
+      ),
+    );
+    c.on("message", (d) => {
+      c.close();
+      resolve(JSON.parse(d.toString()));
+    });
+    c.on("error", reject);
+    setTimeout(() => reject(new Error("timeout")), 8000);
+  });
+
+  assert.equal(reply.error?.code, -32601);
+  assert.equal(
+    reply.error?.message,
+    "RPC method is not allowed through this proxy: state_subscribeStorage",
+  );
+  assert.deepEqual(upstreamMessages, []);
+
+  await lb.close();
+  await new Promise((resolve) => http.close(resolve));
+});
+
 test("subscriptions: read-only subscribe frames are relayed to upstream", async () => {
   const upstreamMethods = [];
   const http = createServer();
