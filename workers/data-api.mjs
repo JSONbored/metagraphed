@@ -13,6 +13,11 @@ import postgres from "postgres";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
+const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+function validEventFilter(value) {
+  return value == null || value === "" || FILTER_PATTERN.test(value);
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -51,6 +56,7 @@ export default {
     });
 
     try {
+      await sql`SET statement_timeout = '3000ms'`;
       // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events
       // tier). Distinct from the existing /blocks/:ref/events (curated, D1, #1852).
       const block = url.pathname.match(
@@ -68,11 +74,21 @@ export default {
 
       // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&before=&limit=
       // recent all-events feed. block= scopes to one block; block=+extrinsic= scopes to
-      // a single extrinsic's emitted events (explorer extrinsic-detail view).
+      // a single extrinsic's emitted events (explorer extrinsic-detail view). Ignore
+      // extrinsic without block to avoid an unindexed global extrinsic_index scan.
       if (url.pathname === "/api/v1/chain-events") {
         const limit = clampLimit(url.searchParams.get("limit"));
         const pallet = url.searchParams.get("pallet");
         const method = url.searchParams.get("method");
+        if (!validEventFilter(pallet) || !validEventFilter(method)) {
+          return json(
+            {
+              error:
+                "pallet and method must be 1-64 ASCII letters, digits, or underscores, starting with a letter",
+            },
+            400,
+          );
+        }
         const numParam = (k) => {
           const v = url.searchParams.get(k);
           if (v == null || v === "") return null;
@@ -80,8 +96,16 @@ export default {
           return Number.isFinite(n) ? n : null;
         };
         const blockN = numParam("block");
-        const extrN = numParam("extrinsic");
+        const extrN = blockN != null ? numParam("extrinsic") : null;
         const beforeBn = numParam("before"); // block_number cursor (exclusive)
+        if (method && !pallet && blockN == null) {
+          return json(
+            {
+              error: "method filter requires pallet unless block is specified",
+            },
+            400,
+          );
+        }
         const rows = await sql`
           SELECT block_number, event_index, pallet, method, args, phase, extrinsic_index, observed_at
           FROM chain_events

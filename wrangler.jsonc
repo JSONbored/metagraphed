@@ -164,5 +164,17 @@
         "period": 60,
       },
     },
+    // Per-client abuse control for Postgres-backed data API routes. 60
+    // requests / 60s per client IP, paired with strict query validation and DB
+    // statement timeouts in the data Worker. Skipped when the binding is absent
+    // (local dev/CI).
+    {
+      "name": "DATA_RATE_LIMITER",
+      "namespace_id": "1004",
+      "simple": {
+        "limit": 60,
+        "period": 60,
+      },
+    },
   ],
 }

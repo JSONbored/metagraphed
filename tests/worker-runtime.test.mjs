@@ -35,6 +35,38 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).ok, true);
   });
 
+  test("applies a dedicated rate limiter before forwarding chain-events to DATA_API", async () => {
+    let dataCalls = 0;
+    let rateCalls = 0;
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      {
+        ...env,
+        DATA_RATE_LIMITER: {
+          limit({ key }) {
+            rateCalls += 1;
+            assert.equal(key, "data:203.0.113.9");
+            return Promise.resolve({ success: false });
+          },
+        },
+        DATA_API: {
+          fetch() {
+            dataCalls += 1;
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 429);
+    assert.equal((await response.json()).error.code, "data_rate_limited");
+    assert.equal(response.headers.get("x-ratelimit-limit"), "60");
+    assert.equal(rateCalls, 1);
+    assert.equal(dataCalls, 0);
+  });
+
   test("serves API envelopes with cache and CORS headers", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/7"),

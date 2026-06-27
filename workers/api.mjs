@@ -67,6 +67,7 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  canonicalSubnetConcentrationHistoryCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -850,6 +851,25 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     url.pathname === "/api/v1/chain-events" ||
     /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname)
   ) {
+    if (env.DATA_RATE_LIMITER?.limit) {
+      const { success } = await env.DATA_RATE_LIMITER.limit({
+        key: `data:${resolveClientIp(request)}`,
+      });
+      if (!success) {
+        return errorResponse(
+          "data_rate_limited",
+          "Too many data API requests from this client; slow down.",
+          429,
+          {},
+          {
+            "retry-after": "60",
+            "x-ratelimit-limit": "60",
+            "x-ratelimit-policy": "60;w=60",
+            "x-ratelimit-remaining": "0",
+          },
+        );
+      }
+    }
     if (env.DATA_API) return env.DATA_API.fetch(request);
     return new Response(JSON.stringify({ error: "data tier unavailable" }), {
       status: 503,
@@ -1127,6 +1147,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(concentrationHistoryMatch[1]),
             resolved.url,
           ),
+        canonicalSubnetConcentrationHistoryCachePath(resolved.url),
       );
     }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(
