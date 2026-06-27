@@ -27,6 +27,7 @@ compute_from_block = _fe.compute_from_block
 compute_scan_range = _fe.compute_scan_range
 _parse_cursor = _fe._parse_cursor
 _block_author = _fe._block_author
+_aura_slot = _fe._aura_slot
 AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
 PRUNE_HORIZON = _fe.PRUNE_HORIZON
 event_rows_for_events = _fe.event_rows_for_events
@@ -163,6 +164,40 @@ class BlockAuthorTest(unittest.TestCase):
             _block_author(substrate, "0xblock", self.header("0x0100000000000000")),
             "5AUTHORITY01",
         )
+
+    def test_aura_digest_decodes_raw_utf8_slot(self):
+        # Regression: some runtimes return the PreRuntime slot as a raw UTF-8 str,
+        # not "0x" hex (finney #4000000). bytes.fromhex used to raise -> author NULL.
+        # slot bytes 4eca9508.. arrive as this str; slot=144034382, 144034382 % 3 == 2.
+        substrate = self.Substrate()
+        self.assertEqual(
+            _block_author(substrate, "0xblock", self.header("Nʕ\x08\x00\x00\x00\x00")),
+            "5AUTHORITY02",
+        )
+
+
+class AuraSlotTest(unittest.TestCase):
+    SLOT = 144034382  # little-endian u64 of bytes 4e ca 95 08 00 00 00 00
+
+    def test_raw_utf8_str_payload(self):
+        # The bug: substrate-interface UTF-8-decodes the 8 slot bytes into a str
+        # (the 0xca 0x95 pair becomes U+0295), which bytes.fromhex cannot parse.
+        self.assertEqual(_aura_slot("Nʕ\x08\x00\x00\x00\x00"), self.SLOT)
+
+    def test_hex_string_payload(self):
+        self.assertEqual(_aura_slot("0x4eca950800000000"), self.SLOT)
+
+    def test_raw_bytes_payload(self):
+        self.assertEqual(_aura_slot(bytes.fromhex("4eca950800000000")), self.SLOT)
+
+    def test_wrong_length_is_none(self):
+        self.assertIsNone(_aura_slot("0x01"))  # too short
+        self.assertIsNone(_aura_slot("0x010000000000000000"))  # 9 bytes, too long
+        self.assertIsNone(_aura_slot(b"\x01\x02\x03"))  # short bytes
+
+    def test_non_payload_is_none(self):
+        self.assertIsNone(_aura_slot(None))
+        self.assertIsNone(_aura_slot(12345))
 
 
 class ParseCursorTest(unittest.TestCase):
