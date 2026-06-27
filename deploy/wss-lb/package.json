@@ -9,7 +9,7 @@
     "test": "node --test --test-force-exit test/*.test.mjs"
   },
   "dependencies": {
-    "ws": "8.18.3"
+    "ws": "^8.21.0"
   },
   "engines": {
     "node": ">=20"
