@@ -49,6 +49,24 @@ export const INDEXED_EVENT_KINDS = [
   "RootClaimed",
 ];
 
+// The FULL set of event kinds the poller actually ingests (scripts/fetch-events.py
+// EXTRACTORS) — a superset of INDEXED_EVENT_KINDS that also covers subnet
+// lifecycle, delegation, key-rotation, and the native Balances.Transfer feed.
+// Used to validate the public ?kind= filter so an unknown kind 400s instead of
+// forcing a full index walk. MUST stay in sync with fetch-events.py EXTRACTORS;
+// scoping validation to INDEXED_EVENT_KINDS alone would wrongly reject valid kinds.
+export const INGESTED_EVENT_KINDS = [
+  ...INDEXED_EVENT_KINDS,
+  "NetworkAdded",
+  "NetworkRemoved",
+  "DelegateAdded",
+  "TakeDecreased",
+  "TakeIncreased",
+  "HotkeySwapped",
+  "ColdkeySwapped",
+  "Transfer",
+];
+
 function toIso(ms) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }

@@ -1212,6 +1212,30 @@ describe("handleSubnetEvents", () => {
     assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
   });
 
+  test("rejects an unknown event kind with 400", async () => {
+    const res = await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?kind=Nonexistent`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "kind");
+  });
+
+  test("accepts a non-SubtensorModule ingested kind (Transfer), not just INDEXED_EVENT_KINDS", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ event_kind: "Transfer" })],
+    });
+    await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?kind=Transfer`),
+    );
+    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
+  });
+
   test("cursor uses keyset seek instead of offset", async () => {
     const { env, captures } = dbWith({
       subnetEvents: [accountEventRow({ block_number: 150, event_index: 2 })],
