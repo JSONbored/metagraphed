@@ -838,6 +838,30 @@
         },
         "additionalProperties": true
       },
+      "SubnetTurnoverArtifact": {
+        "type": "object",
+        "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
+        "required": ["schema_version", "netuid", "comparable"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "start_date": { "type": ["string", "null"] },
+          "end_date": { "type": ["string", "null"] },
+          "comparable": { "type": "boolean" },
+          "validators_start": { "type": "integer", "minimum": 0 },
+          "validators_end": { "type": "integer", "minimum": 0 },
+          "validators_entered": { "type": "integer", "minimum": 0 },
+          "validators_exited": { "type": "integer", "minimum": 0 },
+          "validator_retention": { "type": ["number", "null"] },
+          "neurons_start": { "type": "integer", "minimum": 0 },
+          "neurons_end": { "type": "integer", "minimum": 0 },
+          "uids_deregistered": { "type": "integer", "minimum": 0 },
+          "neuron_retention": { "type": ["number", "null"] },
+          "stability_score": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
       "GlobalIncidentsArtifact": {
         "type": "object",
         "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",
