@@ -9,6 +9,18 @@
   ingestion — the continuous indexer this deploys), ADR 0001/0006 (storage tiers),
   and the own-the-core infrastructure program (#1345, #1349, #1519, #1749).
 
+> **Amendment (2026-06-27): node tier is a FULL ARCHIVE, superseding the
+> pruned-node default below.** We are running a real archive node
+> (`--pruning=archive --sync=full`, complete state from genesis, ~3.5 TB+ on
+> ~8 TB+ NVMe) on the dedicated box, not a 128 GB pruned node. Rationale: a pruned
+> node is not a true archive — it can't serve historical state queries or be a
+> self-sufficient backfill source, and we want a **first-party archive RPC origin**
+> (addable to the RPC/WSS pools) independent of public archives' rate limits. The
+> cost the original decision avoided (the ~3.5 TB archive) is consciously accepted
+> for that capability. The pruned-node + transient-public-backfill path below
+> remains the cheaper dev/interim fallback (`SUBTENSOR_PRUNING=2000`). Everything
+> else in this ADR (CF edge · Postgres · Hyperdrive cutover · sequencing) stands.
+
 ## Context
 
 The explorer's chain data is structurally a **rolling cache, not an archive**, and
