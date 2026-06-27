@@ -16,16 +16,47 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 
 ## Topology
 
-| Tier          | Where                                  | Pieces                                                                                                                          |
-| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented) | **Cloudflare**                         | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy |
-| Core (owned)  | **Railway project `metagraphed-core`** | `postgres`, `redis`, `subtensor-node` (pruned), `indexer`, `health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`      |
-| Escape hatch  | **Hetzner** (later)                    | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                 |
+| Tier          | Where                                  | Pieces                                                                                                                                               |
+| ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented) | **Cloudflare**                         | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                      |
+| Core (owned)  | **Railway project `metagraphed-core`** | `postgres`, `redis`, `subtensor-node` (pruned), `indexer`, `health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`, `wss-lb` (public WSS LB) |
+| Escape hatch  | **Hetzner** (later)                    | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                      |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
 private network (`<service>.railway.internal`, zero egress). The existing
 `metagraphed-streamer` project is **separate and untouched** — it is superseded
 by `indexer` only at decommission (final step).
+
+## Railway: one project, many services
+
+A Railway **project** is the unit that groups cooperating services — the docs call
+it "an application stack, a service group" — so **all** of metagraphed-core's
+services (`postgres`, `redis`, `subtensor-node`, `indexer`, the crons, and the
+public `wss-lb`) live in **one project**, **not** one project each. Only
+same-project + same-environment services get the automatic **private network**
+(`<service>.railway.internal`, Wireguard-encrypted) and **reference variables**
+`${{Postgres.DATABASE_URL}}` / `${{Redis.REDIS_URL}}`; split them across projects
+and you lose internal DNS + cross-service vars and must wire public URLs by hand.
+
+**Two config layers — this is the "is it all one `railway.json`?" answer: no.**
+
+- **Per-service build config** (`railway.json` / `railway.toml`): each service reads
+  its OWN file. Railway does **not** auto-discover it from a subdirectory — set the
+  service's **Settings → Config-as-code → "Railway Config File"** to an **absolute**
+  repo-root path (it does **not** follow Root Directory):
+  - `metagraphed-streamer` → `/railway.json`
+  - `wss-lb` → `/deploy/wss-lb/railway.json`
+  - `indexer` → `/deploy/indexer.railway.json`
+
+  Each builds its Dockerfile from the **repo-root** build context (leave Root
+  Directory unset) and scopes redeploys with `watchPatterns`, so a streamer change
+  never rebuilds the indexer.
+
+- **Whole-project config** (`.railway/railway.ts`, project-as-code): defines ALL
+  services + DBs + variables + references in **one file**, applied with
+  `railway config plan` / `railway config apply`. Scaffold with `railway config init`
+  (or `railway config pull` to import the live project). This is the cleanest way to
+  define + version the entire topology as code once the service set stabilizes.
 
 ## Bare-metal bring-up (the recommended core — one command)
 
@@ -83,6 +114,15 @@ railway add -s indexer --repo JSONbored/metagraphed --branch main \
   -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
   -v REDIS_URL='${{Redis.REDIS_URL}}' \
   -v EVENTS_RPC_URL='wss://entrypoint-finney.opentensor.ai:443'
+```
+
+The public `wss-lb` is independent of Postgres/Redis (it reads only the public
+API), so it can ship **first**, before any DB exists:
+
+```bash
+railway add -s wss-lb --repo JSONbored/metagraphed --branch main
+# set its Config File = /deploy/wss-lb/railway.json (dashboard), then expose it:
+railway domain
 ```
 
 Cron services (`rollups`, `exporter`, `reconciler`) get a crontab via the service
