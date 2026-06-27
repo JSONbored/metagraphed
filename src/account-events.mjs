@@ -53,12 +53,20 @@ function toIso(ms) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+// Coerce a block height or index cell to a non-negative integer, or null when
+// missing, non-finite, or negative — chain positions are never negative.
+function toBlockNumber(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+}
+
 // One D1 account_events row → a clean API event object (#1347 consumes this).
 export function formatAccountEvent(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    block_number: row.block_number ?? null,
-    event_index: row.event_index ?? null,
+    block_number: toBlockNumber(row.block_number),
+    event_index: toBlockNumber(row.event_index),
     event_kind: row.event_kind ?? null,
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
@@ -221,7 +229,7 @@ export function formatAccountActivity(agg, modules) {
   const a = agg || {};
   return {
     tx_count: a.tx_count ?? 0,
-    last_tx_block: a.last_tx_block ?? null,
+    last_tx_block: toBlockNumber(a.last_tx_block),
     last_tx_at: toIso(a.last_tx_at),
     total_fee_tao: a.total_fee_tao ?? null,
     modules_called: (modules || [])
@@ -240,8 +248,8 @@ export function buildAccountSummary(
     ss58,
     event_count: a.c ?? 0,
     subnet_count: a.sc ?? 0,
-    first_block: a.fb ?? null,
-    last_block: a.lb ?? null,
+    first_block: toBlockNumber(a.fb),
+    last_block: toBlockNumber(a.lb),
     first_seen_at: toIso(a.fo),
     last_seen_at: toIso(a.lo),
     event_kinds: (kinds || [])
@@ -328,8 +336,8 @@ export function formatAccountDay(row) {
       typeof row.event_kinds === "string" && row.event_kinds.length > 0
         ? row.event_kinds.split(",").filter(Boolean)
         : [],
-    first_block: row.first_block ?? null,
-    last_block: row.last_block ?? null,
+    first_block: toBlockNumber(row.first_block),
+    last_block: toBlockNumber(row.last_block),
   };
 }
 
