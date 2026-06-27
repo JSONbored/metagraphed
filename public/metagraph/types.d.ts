@@ -1569,6 +1569,7 @@ export interface components {
             day_count: number;
             days: components["schemas"]["AccountDay"][];
             limit?: number;
+            next_cursor?: string | null;
             offset?: number;
             schema_version: number;
             ss58: string;
@@ -1614,6 +1615,7 @@ export interface components {
         /** @description The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file). */
         AccountTransfersArtifact: {
             limit?: number;
+            next_cursor?: string | null;
             offset?: number;
             schema_version: number;
             ss58: string;
@@ -4169,6 +4171,7 @@ export interface components {
             events: components["schemas"]["AccountEvent"][];
             limit?: number;
             netuid: number;
+            next_cursor?: string | null;
             offset?: number;
             schema_version: number;
         } & {
@@ -5475,6 +5478,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1,
                      *         "ss58": "example"
@@ -5691,6 +5695,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1,
                      *         "ss58": "example",
@@ -14299,6 +14304,7 @@ export interface operations {
                      *         ],
                      *         "limit": 1,
                      *         "netuid": 7,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1
                      *       },
