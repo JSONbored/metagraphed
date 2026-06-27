@@ -5,7 +5,7 @@ This is the **operator runbook**: what runs where, the exact provisioning
 commands, and the gated cutover steps.
 
 ```
-Chain → pruned subtensor-node → indexer → Postgres/Timescale
+Chain → full archive subtensor-node → indexer → Postgres/Timescale
                                               │
                           (Cloudflare Hyperdrive, pooled + cached)
                                               ▼
@@ -16,11 +16,11 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 
 ## Topology
 
-| Tier          | Where                                  | Pieces                                                                                                                                               |
-| ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented) | **Cloudflare**                         | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                      |
-| Core (owned)  | **Railway project `metagraphed-core`** | `postgres`, `redis`, `subtensor-node` (pruned), `indexer`, `health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`, `wss-lb` (public WSS LB) |
-| Escape hatch  | **Hetzner** (later)                    | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                      |
+| Tier          | Where                                                     | Pieces                                                                                                                                                                                                                                                           |
+| ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented) | **Cloudflare**                                            | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                                                                                                                                  |
+| Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). _Interim: Postgres/Redis/indexer run on Railway until the box is live._ |
+| Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                                                                                                  |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
 private network (`<service>.railway.internal`, zero egress). The existing
@@ -75,10 +75,12 @@ That starts:
   boot; never binds a public port (Cloudflare reaches it via Hyperdrive over a
   tunnel).
 - **`redis`** — the indexer cursor + heartbeat mirror.
-- **`subtensor`** — a pruned finney node (the head source + first-party RPC
-  origin). For the one-time historical backfill, point the indexer at a transient
-  archive source via `EVENTS_RPC_URL` / `START_BLOCK` / a raised
-  `EVENTS_MAX_LOOKBACK`.
+- **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
+  complete state from genesis), the head source + first-party RPC origin + the
+  indexer's self-sufficient backfill source. Needs **~8 TB+ NVMe**; the from-genesis
+  full sync takes days, so seed the volume from an opentensor archive snapshot when
+  available. (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp` for a small pruned
+  node; deep backfill then comes from the public archive via `EVENTS_RPC_URL`.)
 - **`indexer`** (`scripts/index-chain.py`) — follows the finalized head from the
   durable cursor and idempotently writes `blocks` / `extrinsics` /
   `account_events` into Postgres. Its pure transforms are unit-tested
@@ -118,7 +120,7 @@ cross-service variable references, e.g.:
 railway add -s indexer --repo JSONbored/metagraphed --branch main \
   -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
   -v REDIS_URL='${{Redis.REDIS_URL}}' \
-  -v EVENTS_RPC_URL='wss://entrypoint-finney.opentensor.ai:443'
+  -v EVENTS_RPC_URL='wss://archive.chain.opentensor.ai:443'   # archive, NOT pruned entrypoint
 ```
 
 The public `wss-lb` is independent of Postgres/Redis (it reads only the public
@@ -138,9 +140,14 @@ Redis so the Worker can surface "realtime stale".
 
 ## Cloudflare side
 
+The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunnel +
+Workers VPC, tier-by-tier with D1 fallback) is its own runbook:
+[`hyperdrive-cutover.md`](hyperdrive-cutover.md). In short:
+
 ```bash
-# Hyperdrive over a Cloudflared tunnel / Workers VPC to the Railway Postgres.
-npx wrangler hyperdrive create metagraphed-core --connection-string "$POSTGRES_PRIVATE_URL"
+# Workers VPC over a Cloudflare Tunnel to the private Postgres (box or Railway):
+npx wrangler hyperdrive create metagraphed-core --service-id <VPC_SERVICE_ID> \
+  --database metagraphed --user metagraphed --password <PW> --scheme postgresql
 # then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
 ```
 
@@ -151,8 +158,9 @@ tees each decoded batch to it for SSE/WS/GraphQL-subscription fan-out.
 
 Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
 
-1. **`subtensor-node`** — pruned (128 GB volume), follows head. (A permanent
-   archive node is ~3.5 TB — avoided; backfill uses a transient archive source.)
+1. **`subtensor-node`** — **full archive** (~3.5 TB+, ~8 TB+ NVMe volume): complete
+   state from genesis, so it serves first-party archive RPC + self-sufficient
+   backfill. Seed from a snapshot to skip the multi-day from-genesis sync.
 2. **`indexer` + one-time backfill** — then **verify ~100 % capture vs D1**
    before trusting it.
 3. **Serving cutover** — point the Worker at Hyperdrive→Postgres **tier by tier**

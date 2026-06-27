@@ -43,10 +43,17 @@ services:
       timeout: 5s
       retries: 10
 
-  # The Bittensor node. Pruned by default (--pruning=2000 → small on-disk, not a
-  # full archive) — it follows the head + serves the indexer + is the first-party
-  # RPC origin. For the one-time historical
-  # backfill, point the indexer at a transient archive source instead (ADR 0013).
+  # The Bittensor node — a FULL ARCHIVE by default: --pruning=archive keeps the
+  # complete state trie from genesis and --sync=full replays every block to build
+  # it, so it is a real archive (state queryable at ANY block), the first-party
+  # RPC origin, and a self-sufficient backfill source for the indexer.
+  #
+  #   Requires ~8 TB+ NVMe (chain ~3.5 TB + ~1.4 TB/yr) — see deploy/README.md.
+  #   A from-genesis full sync takes DAYS; import an opentensor archive snapshot
+  #   into the volume first to skip the replay.
+  #   Dev override (pruned, small): SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp.
+  #   (NOTE: warp + archive is contradictory — warp skips historical state, so a
+  #   real archive MUST use --sync=full.)
   # If you run subtensor directly on the host, drop this service and set the
   # indexer's EVENTS_RPC_URL to the host endpoint.
   subtensor:
@@ -58,8 +65,8 @@ services:
     command:
       - --base-path=/data
       - --chain=finney
-      - --sync=warp
-      - --pruning=2000
+      - --sync=${SUBTENSOR_SYNC:-full}
+      - --pruning=${SUBTENSOR_PRUNING:-archive}
       - --rpc-external
       - --rpc-cors=all
     volumes:
