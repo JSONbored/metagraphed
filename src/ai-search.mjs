@@ -188,6 +188,18 @@ async function readManifest(env) {
   }
 }
 
+// A valid embedding is an array of exactly EMBED_DIMENSIONS finite numbers.
+// Workers AI batch embedding can return fewer rows than requested, an
+// error-shaped body (so `data` is `[]`), or a malformed row — none of which may
+// be upserted into Vectorize or recorded as "embedded" in the manifest.
+function isValidEmbeddingVector(values) {
+  return (
+    Array.isArray(values) &&
+    values.length === EMBED_DIMENSIONS &&
+    values.every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
 // Embedding-sync cron: diff the search index against a deployment-scoped
 // content-hash manifest in KV, (re)embed only the deltas, upsert to Vectorize,
 // drop removed ids. Runs in
@@ -204,28 +216,55 @@ export async function runEmbeddingSync(env, deps = {}) {
   const previous = await readManifest(env);
   const next = {};
   const pending = [];
+  const currentIds = new Set();
   for (const doc of docs) {
     if (!doc?.id) continue;
     const id = vectorId(doc.id);
     const hash = contentHash(embeddingText(doc));
-    next[id] = hash;
-    if (previous[id] !== hash) pending.push({ id, doc });
+    currentIds.add(id);
+    if (previous[id] === hash) {
+      // Already embedded under this exact content — carry the hash forward so it
+      // is neither re-embedded nor treated as removed.
+      next[id] = hash;
+    } else {
+      // New or changed: (re)embed. Recorded into `next` ONLY after a valid
+      // vector is actually upserted (below), so a failed embed is retried next
+      // run instead of being permanently marked done.
+      pending.push({ id, doc, hash });
+    }
   }
-  const removed = Object.keys(previous).filter((id) => !(id in next));
+  // Removed = ids that left the index entirely, derived from the CURRENT doc set
+  // (not `next`). A doc whose embedding fails this run is absent from `next` but
+  // still present in `currentIds`, so it keeps its existing vector (stale beats
+  // missing) and is retried — never wrongly deleted.
+  const removed = Object.keys(previous).filter((id) => !currentIds.has(id));
 
   let embedded = 0;
   for (const batch of chunk(pending, EMBED_BATCH_SIZE)) {
     const response = await env.AI.run(EMBED_MODEL, {
       text: batch.map((entry) => embeddingText(entry.doc)),
     });
-    const data = response?.data || [];
-    const vectors = batch.map((entry, i) => ({
-      id: entry.id,
-      values: data[i],
-      metadata: embeddingMetadata(entry.doc),
-    }));
-    await env.VECTORIZE.upsert(vectors);
-    embedded += vectors.length;
+    const data = Array.isArray(response?.data) ? response.data : [];
+    // Upsert (and record in the manifest) ONLY entries that produced a valid
+    // vector. If Workers AI returns fewer/empty/malformed rows, the affected
+    // docs are left out of both the upsert and `next`, so the next cron retries
+    // them rather than leaving a permanent hole in the index.
+    const valid = [];
+    for (let i = 0; i < batch.length; i += 1) {
+      if (isValidEmbeddingVector(data[i])) {
+        valid.push({ entry: batch[i], values: data[i] });
+      }
+    }
+    if (valid.length === 0) continue;
+    await env.VECTORIZE.upsert(
+      valid.map(({ entry, values }) => ({
+        id: entry.id,
+        values,
+        metadata: embeddingMetadata(entry.doc),
+      })),
+    );
+    for (const { entry } of valid) next[entry.id] = entry.hash;
+    embedded += valid.length;
   }
   if (removed.length && typeof env.VECTORIZE.deleteByIds === "function") {
     await env.VECTORIZE.deleteByIds(removed);

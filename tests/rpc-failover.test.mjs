@@ -32,16 +32,20 @@ const jsonResponse = (status, body) => ({
 });
 
 // fetchFn that returns the i-th scripted reply (a thunk that may throw, or a
-// response object), recording the URLs it was called with.
+// response object), recording the URLs AND init options it was called with so a
+// test can assert the security-critical fetch options (e.g. redirect:"manual").
 function scriptedFetch(...replies) {
   const calls = [];
-  const fn = async (url) => {
+  const inits = [];
+  const fn = async (url, init) => {
     const reply = replies[calls.length];
     calls.push(url);
+    inits.push(init);
     if (typeof reply === "function") return reply();
     return reply;
   };
   fn.calls = calls;
+  fn.inits = inits;
   return fn;
 }
 
@@ -51,6 +55,15 @@ describe("classifyUpstreamAttempt", () => {
     ["http 500", { status: 500 }, "transient"],
     ["http 503", { status: 503 }, "transient"],
     ["http 429", { status: 429 }, "transient"],
+    // 3xx redirects + the opaqueredirect sentinel (status 0) are never valid
+    // JSON-RPC responses; they must be failed attempts (transient), never
+    // reaching the status<400 success branch — the allowlist only vetted the
+    // initial upstream, so a redirect target is unvetted.
+    ["http 301", { status: 301 }, "transient"],
+    ["http 302", { status: 302 }, "transient"],
+    ["http 307", { status: 307 }, "transient"],
+    ["http 399", { status: 399 }, "transient"],
+    ["opaqueredirect (status 0)", { status: 0 }, "transient"],
     ["http 400", { status: 400 }, "fatal"],
     ["http 404", { status: 404 }, "fatal"],
     ["200 result", { status: 200, parsedBody: { result: {} } }, "success"],
@@ -185,6 +198,64 @@ describe("proxyWithFailover", () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
     assert.equal(res.headers.get("x-metagraph-rpc-attempts"), "2");
+    assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
+  });
+
+  test("treats an upstream 3xx as a failed attempt and never follows the redirect", async () => {
+    // A trusted upstream replies 302 with a Location to an off-allowlist host.
+    // With redirect:"manual" the fetch surfaces the 3xx itself; the proxy must
+    // NOT accept or follow it — it fails over to the next allowlisted endpoint
+    // and never re-POSTs the caller's body to the redirect target.
+    const fetchFn = scriptedFetch(
+      { status: 302, headers: new Headers({ location: UNSAFE }), body: null },
+      jsonResponse(200, { jsonrpc: "2.0", id: 1, result: { ok: true } }),
+    );
+    const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
+      ...base,
+      fetchFn,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
+    assert.equal(res.headers.get("x-metagraph-rpc-attempts"), "2");
+    // Only the two allowlisted endpoints were contacted — never the redirect
+    // target (the deepEqual is exact, so it proves UNSAFE was not fetched; an
+    // `.includes(UNSAFE)` substring check would trip CodeQL's
+    // incomplete-url-substring-sanitization rule and is redundant here).
+    assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
+    // The security property itself: the upstream fetch pins redirect:"manual" so
+    // the platform never auto-follows a 3xx (without this, the body would be
+    // re-POSTed to the off-allowlist Location). Guards against the option being
+    // dropped in a future refactor.
+    assert.equal(fetchFn.inits[0]?.redirect, "manual");
+  });
+
+  test("treats an opaqueredirect (status 0) as a failed attempt", async () => {
+    const fetchFn = scriptedFetch(
+      { status: 0, body: null }, // opaqueredirect sentinel from redirect:"manual"
+      jsonResponse(200, { jsonrpc: "2.0", id: 1, result: { ok: true } }),
+    );
+    const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
+      ...base,
+      fetchFn,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
+    assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
+  });
+
+  test("returns 502 when every upstream redirects (body never re-POSTed off-allowlist)", async () => {
+    const fetchFn = scriptedFetch(
+      { status: 302, headers: new Headers({ location: UNSAFE }), body: null },
+      { status: 0, body: null },
+    );
+    const res = await proxyWithFailover([ep("a", SAFE_A), ep("b", SAFE_B)], {
+      ...base,
+      fetchFn,
+    });
+    assert.equal(res.status, 502);
+    // Both allowlisted endpoints tried; neither redirect was followed (the
+    // exact deepEqual proves UNSAFE was not fetched without a URL-substring
+    // check).
     assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
   });
 

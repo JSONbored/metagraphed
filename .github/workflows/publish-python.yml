@@ -45,6 +45,17 @@ jobs:
           RELEASE_PLEASE_TRIGGERED: ${{ inputs.released_by_release_please }}
         run: bash scripts/validate-python-release.sh
 
+      # Run the SDK's test suite (37 cases) BEFORE building/uploading, in THIS
+      # unprivileged job — a red suite fails the run before the privileged publish
+      # job (which `needs: build`) can ship to PyPI. `validate-python-release.sh`
+      # only checks version/tag/PyPI-existence, not behavior, so without this the
+      # path from source to PyPI had no test gate. `--extra test` installs the
+      # httpx-backed test deps so the async cases run. Tests deliberately never run
+      # on the privileged publish job (keep third-party code off the OIDC runner).
+      - name: Test Python SDK
+        working-directory: python
+        run: uv run --extra test python -m unittest discover -s tests
+
       # Build happens in THIS unprivileged job (no id-token). The privileged
       # publish job below never builds, so a compromised build dependency can't
       # reach the OIDC token (mirrors the npm publish split, codex #251).
