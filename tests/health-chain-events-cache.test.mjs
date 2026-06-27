@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  CHAIN_EVENTS_DB_TTL_MS,
-  readChainEventsDb,
-} from "../workers/api.mjs";
+import { CHAIN_EVENTS_DB_TTL_MS, readChainEventsDb } from "../workers/api.mjs";
 
 function mkDbEnv(row = { block: 100, at: 1_700_000_000_000 }) {
   let queries = 0;
