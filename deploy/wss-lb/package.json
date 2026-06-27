@@ -1,0 +1,17 @@
+{
+  "name": "metagraphed-wss-lb",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Health-aware WebSocket load balancer for Bittensor RPC (ADR 0013)",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

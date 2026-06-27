@@ -41,6 +41,8 @@ export default [
         process: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
         TextDecoder: "readonly",
         TextEncoder: "readonly",
         WebSocket: "readonly",
