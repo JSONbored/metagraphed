@@ -2238,18 +2238,21 @@ async function handleHealthRequest(request, env) {
   // growing toward the ~5-min poller backstop if it's down. Reported for
   // observability (does NOT gate the HTTP status, like operational_health);
   // best-effort + null on a cold/unbound store.
-  const chainEventsRow = (await readChainEventsDb(env)) || {};
-  const chainEventsAtMs = Number(chainEventsRow.at);
-  const chainEventsFresh = Number.isFinite(chainEventsAtMs);
-  const chainEvents = {
-    latest_indexed_block: chainEventsRow.block ?? null,
-    latest_event_at: chainEventsFresh
-      ? new Date(chainEventsAtMs).toISOString()
-      : null,
-    age_seconds: chainEventsFresh
-      ? Math.round((Date.now() - chainEventsAtMs) / 1000)
-      : null,
-  };
+  let chainEvents = null;
+  if (bindings.health_db) {
+    const chainEventsRow = await readChainEventsDb(env);
+    const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
+    const chainEventsFresh = Number.isFinite(chainEventsAtMs);
+    chainEvents = {
+      latest_indexed_block: chainEventsRow?.block ?? null,
+      latest_event_at: chainEventsFresh
+        ? new Date(chainEventsAtMs).toISOString()
+        : null,
+      age_seconds: chainEventsFresh
+        ? Math.round((Date.now() - chainEventsAtMs) / 1000)
+        : null,
+    };
+  }
 
   const body = JSON.stringify({
     status: stale ? "degraded" : "ok",
