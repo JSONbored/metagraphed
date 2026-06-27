@@ -67,6 +67,7 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  canonicalSubnetConcentrationHistoryCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -1127,6 +1128,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(concentrationHistoryMatch[1]),
             resolved.url,
           ),
+        canonicalSubnetConcentrationHistoryCachePath(resolved.url),
       );
     }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(

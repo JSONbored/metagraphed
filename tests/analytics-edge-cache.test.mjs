@@ -69,6 +69,12 @@ function rowsForSql(sql) {
       },
     ];
   }
+  if (sql.includes("FROM neuron_daily")) {
+    return [
+      { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+      { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+    ];
+  }
   return [];
 }
 
@@ -204,6 +210,39 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 3);
     assert.equal(cache.putKeys.length, 3);
     assert.equal(new Set(cache.putKeys).size, 3);
+  });
+
+  test("concentration history canonicalizes equivalent window query strings before caching", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const variants = [
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d",
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d&",
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d&&",
+    ];
+
+    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    for (const variant of variants.slice(1)) {
+      const hit = await handleRequest(new Request(variant), env, ctx);
+      assert.equal(hit.status, 200);
+    }
+
+    assert.equal(queries.length, queriesAfterMiss);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-concentration-history",
+        "/api/v1/subnets/7/concentration/history",
+        "?window=90d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
   });
 
   test("HIT: a pre-populated cache serves the cached body WITHOUT touching D1", async () => {
