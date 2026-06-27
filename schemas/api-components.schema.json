@@ -12707,6 +12707,92 @@
         ],
         "type": "object"
       },
+      "SubnetTurnoverArtifact": {
+        "additionalProperties": true,
+        "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "neurons_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_score": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "start_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uids_deregistered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validators_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_entered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_exited": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "comparable"
+        ],
+        "type": "object"
+      },
       "SubnetType": {
         "enum": [
           "root",

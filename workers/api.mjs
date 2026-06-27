@@ -67,6 +67,7 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  handleSubnetTurnover,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -229,6 +230,7 @@ import {
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
+  SUBNET_TURNOVER_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1140,6 +1142,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
           request,
           env,
           Number(concentrationMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
+    const turnoverMatch = SUBNET_TURNOVER_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (turnoverMatch) {
+      // Boundary-snapshot diff over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(request, ctx, env, "subnet-turnover", () =>
+        handleSubnetTurnover(
+          request,
+          env,
+          Number(turnoverMatch[1]),
           resolved.url,
         ),
       );

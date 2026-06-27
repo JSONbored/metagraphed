@@ -45,6 +45,10 @@ export const SUBNET_CONCENTRATION_PATH_PATTERN =
 // rollup, no static file.
 export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/;
+// Validator-set & registration turnover (churn) from the neuron_daily rollup,
+// no static file.
+export const SUBNET_TURNOVER_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/turnover$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
