@@ -49,6 +49,9 @@ test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () =
   expect(body.count).toBe(1);
   expect(body.events[0].pallet).toBe("System");
   expect(body.events[0].method).toBe("ExtrinsicSuccess");
+  // observed_at is coerced from the postgres.js BIGINT string to a number.
+  expect(body.events[0].observed_at).toBe(100);
+  expect(typeof body.events[0].observed_at).toBe("number");
 });
 
 test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)", async () => {
@@ -58,7 +61,12 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.count).toBe(1);
-  expect(body.next_before).toBe("123"); // rows.length === limit → cursor is the last row
+  expect(body.next_before).toBe(123); // rows.length === limit → cursor is the last row
+  // BIGINT columns are coerced from postgres.js strings to numbers (D1-route parity).
+  expect(body.events[0].block_number).toBe(123);
+  expect(typeof body.events[0].block_number).toBe("number");
+  expect(body.events[0].observed_at).toBe(100);
+  expect(typeof body.events[0].observed_at).toBe("number");
 });
 
 test("limit is clamped and defaults safely", async () => {
