@@ -56,6 +56,16 @@ test("limit is clamped and defaults safely", async () => {
   expect(res.status).toBe(200); // clamp to MAX_LIMIT, no error
 });
 
+test("chain-events accepts block + extrinsic filters (extrinsic-detail view)", async () => {
+  const res = await req("/api/v1/chain-events?block=5870000&extrinsic=3");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.count).toBe(1);
+  // non-numeric filter values are ignored, not errors:
+  const res2 = await req("/api/v1/chain-events?block=abc&extrinsic=");
+  expect(res2.status).toBe(200);
+});
+
 test("POST is rejected with 405", async () => {
   const res = await req("/api/v1/chain-events", { method: "POST" });
   expect(res.status).toBe(405);
