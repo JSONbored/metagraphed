@@ -241,7 +241,10 @@ const CATALOG_BODY = (() => {
         {
           anchor: `${base}/api/v1`,
           "service-desc": [
-            { href: `${base}/metagraph/openapi.json`, type: "application/json" },
+            {
+              href: `${base}/metagraph/openapi.json`,
+              type: "application/json",
+            },
           ],
           "service-doc": [
             { href: `${base}/llms.txt`, type: "text/plain" },

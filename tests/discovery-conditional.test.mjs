@@ -233,9 +233,7 @@ describe("discovery conditional requests", () => {
 
   test("homepage honors If-None-Match lists and the * wildcard", async () => {
     await assertConditional((headers) =>
-      homepageResponse(
-        new Request("https://api.metagraph.sh/", { headers }),
-      ),
+      homepageResponse(new Request("https://api.metagraph.sh/", { headers })),
     );
   });
 
