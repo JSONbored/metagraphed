@@ -75,6 +75,7 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -310,6 +311,59 @@ export async function handleSubnetConcentrationHistory(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
         data.points[0]?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/turnover?window=7d|30d|90d|1y|all: validator-set &
+// registration churn between the window's start and end neuron_daily snapshots —
+// validators entered/exited + Jaccard retention, UID deregistrations, and a 0–100
+// stability score. Reads only the two boundary snapshot_dates (a MIN/MAX bounds
+// query then their rows). Cold/absent store or a single snapshot → 200 with
+// comparable:false + zeroed metrics (schema-stable, never 404).
+export async function handleSubnetTurnover(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  let boundsSql =
+    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
+  const boundsParams = [netuid];
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    boundsSql += " AND snapshot_date >= ?";
+    boundsParams.push(cutoff);
+  }
+  const bounds = await d1All(env, boundsSql, boundsParams);
+  const startDate = bounds[0]?.start_date ?? null;
+  const endDate = bounds[0]?.end_date ?? null;
+  const rows =
+    startDate == null || endDate == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
+          [netuid, startDate, endDate],
+        );
+  const data = buildTurnover(rows, netuid, {
+    window: label,
+    startDate,
+    endDate,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/turnover.json`,
+        endDate,
       ),
     },
     "short",
