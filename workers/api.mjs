@@ -46,6 +46,7 @@ import {
   handleChainFees,
   handleChainSigners,
   handleGlobalIncidents,
+  loadGlobalIncidentsLedger,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
@@ -65,6 +66,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -226,6 +228,7 @@ import {
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
+  SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -839,6 +842,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
 
+  // Postgres-backed all-events tier (ADR 0013): the dedicated data Worker (DATA_API
+  // service binding) serves chain_events + deep history via Hyperdrive, keeping the
+  // postgres.js driver out of this Worker's bundle. 503 if the binding is absent
+  // (e.g. a preview deploy without the data Worker).
+  if (
+    url.pathname === "/api/v1/chain-events" ||
+    /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname)
+  ) {
+    if (env.DATA_API) return env.DATA_API.fetch(request);
+    return new Response(JSON.stringify({ error: "data tier unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {
@@ -903,6 +921,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleFeedRequest(request, env, url, {
       readArtifact,
       errorResponse,
+      loadLiveIncidents: async (feedEnv) => {
+        const { data } = await loadGlobalIncidentsLedger(feedEnv);
+        return data;
+      },
     });
   }
 
@@ -1086,6 +1108,25 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (uptimeMatch) {
       return withEdgeCache(request, ctx, env, "uptime", () =>
         handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
+    }
+    const concentrationHistoryMatch =
+      SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (concentrationHistoryMatch) {
+      // Per-day concentration trend over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-concentration-history",
+        () =>
+          handleSubnetConcentrationHistory(
+            request,
+            env,
+            Number(concentrationHistoryMatch[1]),
+            resolved.url,
+          ),
       );
     }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(

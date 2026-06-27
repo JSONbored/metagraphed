@@ -107,23 +107,39 @@ def decode_head(s, block_number):
         head_ts = None
     events = s.query("System", "Events", block_hash=block_hash)
     event_rows = []
+    chain_event_rows = []
     for event_index, ev in enumerate(events):
         v = ev.value if isinstance(ev.value, dict) else {}
         e = v.get("event", {}) if isinstance(v.get("event"), dict) else {}
-        # Match the CI poller's coverage (#1850): SubtensorModule + Balances, so
-        # realtime ingest captures native-TAO Transfer events too (extract()
-        # returns None for any non-indexed kind, so this only widens, never noise).
+        # Link the event to its emitting extrinsic (#1849): the ApplyExtrinsic-phase
+        # extrinsic_idx, null for Initialization/Finalization events.
+        phase = v.get("phase")
+        xidx = v.get("extrinsic_idx") if phase == "ApplyExtrinsic" else None
+        if not isinstance(xidx, int) or xidx < 0:
+            xidx = None
+        # All-events tier (chain_events): EVERY decoded event, every pallet/method —
+        # the complete block-explorer record, not just the curated account_events.
+        # args is a compact JSON string of the decoded attributes (parsed to JSONB at
+        # insert, like extrinsics.call_args). NEVER raises (best-effort _safe_json).
+        chain_event_rows.append(
+            {
+                "block_number": block_number,
+                "event_index": event_index,
+                "pallet": e.get("module_id"),
+                "method": e.get("event_id"),
+                "args": _fe._safe_json(e.get("attributes")),
+                "phase": phase if isinstance(phase, str) else None,
+                "extrinsic_index": xidx,
+                "observed_at": head_ts if head_ts else None,
+            }
+        )
+        # Curated account_events: SubtensorModule + Balances known kinds only (#1850);
+        # extract() returns None for any non-indexed kind, so this only narrows.
         if e.get("module_id") not in ("SubtensorModule", "Balances"):
             continue
         ent = extract(e.get("event_id"), e.get("attributes"))
         if ent is None:
             continue
-        # Link the event to its emitting extrinsic (#1849), kept 1:1 with the CI
-        # poller's fetch-events.py emit: the ApplyExtrinsic-phase extrinsic_idx,
-        # null for Initialization/Finalization events.
-        xidx = v.get("extrinsic_idx") if v.get("phase") == "ApplyExtrinsic" else None
-        if not isinstance(xidx, int) or xidx < 0:
-            xidx = None
         event_rows.append(
             {
                 "block_number": block_number,
@@ -149,7 +165,12 @@ def decode_head(s, block_number):
     extrinsic_rows = _fe.extrinsics_for_block(s, block_number, block_hash, events)
     for xrow in extrinsic_rows:
         xrow["observed_at"] = head_ts
-    return {"events": event_rows, "block": block_row, "extrinsics": extrinsic_rows}
+    return {
+        "events": event_rows,
+        "block": block_row,
+        "extrinsics": extrinsic_rows,
+        "chain_events": chain_event_rows,
+    }
 
 
 def push(url, payload):

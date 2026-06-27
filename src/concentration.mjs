@@ -5,6 +5,12 @@
 // distribution yields a schema-stable `null` block (never throws), matching the
 // live metagraph tiers the entity handlers already own.
 
+// The neurons-tier columns the concentration handler reads — the D1 read contract
+// for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
+// here next to its consumer so the Worker handler stays a thin SELECT.
+export const CONCENTRATION_READ_COLUMNS =
+  "stake_tao, emission_tao, coldkey, validator_permit, captured_at";
+
 // Top-K%-of-holders cutoffs reported as cumulative shares of the total.
 const TOP_PERCENTILES = [1, 5, 10, 20];
 
@@ -128,9 +134,44 @@ export function computeConcentration(values) {
   };
 }
 
-// Shape the neurons-tier rows for one subnet into the concentration artifact:
-// stake + emission scorecards plus the snapshot stamp. Null-safe on junk/sparse
-// rows — an empty array yields a schema-stable zero (stake/emission: null).
+// Coerce one raw cell to a finite number (or 0) for summation — when totaling a
+// coldkey's UIDs a non-finite cell must contribute 0, not poison the sum.
+function numeric(value) {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Collapse a subnet's UID rows into one holder per controlling entity (coldkey),
+// summing stake + emission across all of an entity's hotkeys. A row with no
+// coldkey becomes its own singleton entity (a fresh object key), so the entity
+// count never under-counts unknown owners. Returns per-entity value arrays + the
+// distinct-entity count, all consistent.
+function groupByEntity(rows) {
+  const stake = new Map();
+  const emission = new Map();
+  for (const row of rows) {
+    const hasColdkey =
+      typeof row?.coldkey === "string" && row.coldkey.length > 0;
+    const key = hasColdkey ? row.coldkey : {};
+    stake.set(key, (stake.get(key) ?? 0) + numeric(row?.stake_tao));
+    emission.set(key, (emission.get(key) ?? 0) + numeric(row?.emission_tao));
+  }
+  return {
+    stake: [...stake.values()],
+    emission: [...emission.values()],
+    count: stake.size,
+  };
+}
+
+// Shape the neurons-tier rows for one subnet into the concentration artifact —
+// three lenses over the same snapshot:
+//   • per-UID         → `stake`, `emission`
+//   • per-ENTITY      → `entity_stake`, `entity_emission` (coldkeys collapsed, the
+//                       TRUE control distribution once an operator's many hotkeys
+//                       count as one holder) + `entity_count` / `uids_per_entity`
+//   • consensus power → `validator_stake` (only validator-permit UIDs)
+// Null-safe on junk/sparse rows — an empty array yields a schema-stable zero
+// (every metric block null).
 export function buildConcentration(rows, netuid) {
   const list = Array.isArray(rows) ? rows : [];
   // The rows share one cron capture, but don't assume an order — take the newest.
@@ -141,12 +182,108 @@ export function buildConcentration(rows, netuid) {
       capturedAt = captured;
     }
   }
+  const entities = groupByEntity(list);
+  const validatorStake = list
+    .filter((row) => Number(row?.validator_permit) === 1)
+    .map((row) => row?.stake_tao);
   return {
     schema_version: 1,
     netuid,
     neuron_count: list.length,
+    entity_count: entities.count,
+    // UIDs per controlling entity — a Sybil/consolidation signal (1.0 = every UID
+    // a distinct owner; higher = fewer operators each running many hotkeys).
+    uids_per_entity:
+      entities.count > 0 ? round(list.length / entities.count, 4) : null,
     captured_at: capturedAt,
     stake: computeConcentration(list.map((row) => row?.stake_tao)),
     emission: computeConcentration(list.map((row) => row?.emission_tao)),
+    entity_stake: computeConcentration(entities.stake),
+    entity_emission: computeConcentration(entities.emission),
+    validator_stake: computeConcentration(validatorStake),
+  };
+}
+
+// ---- Concentration HISTORY (decentralization over time) --------------------
+// Per-day concentration from the dated neuron_daily rollup, so a subnet's
+// centralization trend (is power consolidating?) is chartable. Windows are
+// bounded to a chartable range because each day needs its full per-UID
+// distribution (concentration can't be a cheap SQL GROUP BY like the structural
+// history) — a row cap then guards an unexpectedly large subnet.
+const CONCENTRATION_HISTORY_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
+const DEFAULT_CONCENTRATION_HISTORY_WINDOW = "30d";
+// Safety valve on the raw per-UID read (≈256 UIDs × 90d ≈ 23k; this leaves head
+// room and the builder drops a truncated oldest day so every point is complete).
+export const CONCENTRATION_HISTORY_ROW_CAP = 50_000;
+
+// Parse ?window for the history route — a deliberately smaller set than the
+// structural history (no 1y/all) so the raw read stays bounded. Returns
+// {label, days} or {error:{parameter,message}} (the analyticsQueryError shape).
+export function parseConcentrationHistoryWindow(value) {
+  const v =
+    typeof value === "string" && value
+      ? value
+      : DEFAULT_CONCENTRATION_HISTORY_WINDOW;
+  if (!Object.prototype.hasOwnProperty.call(CONCENTRATION_HISTORY_WINDOWS, v)) {
+    return {
+      error: {
+        parameter: "window",
+        message: `window must be one of: ${Object.keys(CONCENTRATION_HISTORY_WINDOWS).join(", ")}`,
+      },
+    };
+  }
+  return { label: v, days: CONCENTRATION_HISTORY_WINDOWS[v] };
+}
+
+// Project one day's per-UID rows to a flat, chartable concentration point. Flat
+// (not nested) fields keep a time series trivial to plot. Null-safe — a cold/empty
+// day yields null metrics, never throws.
+function concentrationHistoryPoint(date, dayRows) {
+  const stake = computeConcentration(dayRows.map((row) => row?.stake_tao));
+  const emission = computeConcentration(
+    dayRows.map((row) => row?.emission_tao),
+  );
+  return {
+    snapshot_date: date,
+    neuron_count: dayRows.length,
+    stake_gini: stake?.gini ?? null,
+    stake_nakamoto_coefficient: stake?.nakamoto_coefficient ?? null,
+    stake_top_10pct_share: stake?.top_10pct_share ?? null,
+    emission_gini: emission?.gini ?? null,
+    emission_nakamoto_coefficient: emission?.nakamoto_coefficient ?? null,
+    emission_top_10pct_share: emission?.top_10pct_share ?? null,
+  };
+}
+
+// Build the per-day concentration time series (newest first) from neuron_daily
+// rows already ordered snapshot_date DESC. `capped` (the read hit the row cap)
+// drops the oldest day, which may be a partial distribution. Null-safe: a cold
+// store yields point_count:0.
+export function buildConcentrationHistory(
+  rows,
+  netuid,
+  { window, capped } = {},
+) {
+  const list = Array.isArray(rows) ? rows : [];
+  // Group by snapshot_date. Rows arrive newest-first + same-date contiguous, so
+  // Map insertion order is the newest-first date order we want.
+  const byDate = new Map();
+  for (const row of list) {
+    const date = row?.snapshot_date;
+    if (typeof date !== "string" || !date) continue;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(row);
+  }
+  let dates = [...byDate.keys()];
+  if (capped && dates.length > 1) dates = dates.slice(0, -1);
+  const points = dates.map((date) =>
+    concentrationHistoryPoint(date, byDate.get(date)),
+  );
+  return {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    point_count: points.length,
+    points,
   };
 }
