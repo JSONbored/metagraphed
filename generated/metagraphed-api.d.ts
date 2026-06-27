@@ -1150,8 +1150,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet's per-UID distribution (computed live from the neurons D1 tier). */
+        /** Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier). */
         get: operations["subnetConcentration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/concentration/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). */
+        get: operations["subnetConcentrationHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4015,10 +4032,43 @@ export interface components {
         /** @enum {unknown} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
         SubnetCandidatesArtifact: components["schemas"]["CandidatesArtifact"];
-        /** @description Stake & emission concentration / decentralization metrics over one subnet's per-UID distribution, computed live from the neurons D1 tier. */
+        /** @description Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake). */
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
             emission: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_count: number;
+            entity_emission?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_stake?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
                 gini?: number | null;
@@ -4053,6 +4103,44 @@ export interface components {
             } & {
                 [key: string]: unknown;
             }) | null;
+            uids_per_entity?: number | null;
+            validator_stake?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup. */
+        SubnetConcentrationHistoryArtifact: {
+            netuid: number;
+            point_count: number;
+            points: ({
+                emission_gini?: number | null;
+                emission_nakamoto_coefficient?: number | null;
+                emission_top_10pct_share?: number | null;
+                neuron_count?: number;
+                snapshot_date: string;
+                stake_gini?: number | null;
+                stake_nakamoto_coefficient?: number | null;
+                stake_top_10pct_share?: number | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            schema_version: number;
+            window?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -14015,10 +14103,54 @@ export interface operations {
                      *           "top_5pct_share": 0.5,
                      *           "total": 1
                      *         },
+                     *         "entity_count": 1,
+                     *         "entity_emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
                      *         "netuid": 7,
                      *         "neuron_count": 1,
                      *         "schema_version": 1,
                      *         "stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "uids_per_entity": 0.5,
+                     *         "validator_stake": {
                      *           "entropy": 0.5,
                      *           "entropy_normalized": 0.5,
                      *           "gini": 0.5,
@@ -14061,6 +14193,117 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetConcentrationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetConcentrationHistory: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "snapshot_date": "example"
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetConcentrationHistoryArtifact"];
                     };
                 };
             };

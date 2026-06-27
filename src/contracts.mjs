@@ -915,8 +915,14 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
-    "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over one subnet's per-UID distribution, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
+    "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
     "SubnetConcentrationArtifact",
+  ),
+  artifact(
+    "subnet-concentration-history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
+    "SubnetConcentrationHistoryArtifact",
   ),
   artifact(
     "subnet-metagraph",
@@ -1649,10 +1655,26 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
-    "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet's per-UID distribution (computed live from the neurons D1 tier).",
+    "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-concentration-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/concentration/history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

@@ -13,6 +13,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
@@ -184,6 +185,7 @@ function dbWith({
   neurons,
   neuronDailyUid,
   neuronDailySubnet,
+  neuronDailyHistory,
   agg,
   kinds,
   registrations,
@@ -236,6 +238,14 @@ function dbWith({
                     /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
                   ) {
                     return { results: neuronDailyUid || [] };
+                  }
+                  // Raw per-day neuron_daily rows (concentration history).
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: neuronDailyHistory || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (/GROUP BY event_kind/.test(sql)) {
@@ -721,11 +731,29 @@ describe("handleSubnetConcentration", () => {
     assert.equal(body.data.emission, null);
   });
 
-  test("happy path computes stake + emission concentration over the neurons tier", async () => {
+  test("computes per-UID, per-entity, and validator concentration over the neurons tier", async () => {
     const { env, captures } = dbWith({
       neurons: [
-        neuronRow({ stake_tao: 100, emission_tao: 2 }),
-        neuronRow({ uid: 1, stake_tao: 50, emission_tao: 1 }),
+        neuronRow({
+          stake_tao: 100,
+          emission_tao: 2,
+          coldkey: "ck-a",
+          validator_permit: 1,
+        }),
+        neuronRow({
+          uid: 1,
+          stake_tao: 50,
+          emission_tao: 1,
+          coldkey: "ck-a",
+          validator_permit: 0,
+        }),
+        neuronRow({
+          uid: 2,
+          stake_tao: 30,
+          emission_tao: 1,
+          coldkey: "ck-b",
+          validator_permit: 1,
+        }),
       ],
     });
     const body = await json(
@@ -737,22 +765,88 @@ describe("handleSubnetConcentration", () => {
       ),
     );
     assert.equal(body.data.netuid, NETUID);
-    assert.equal(body.data.neuron_count, 2);
-    assert.equal(body.data.stake.holders, 2);
-    assert.equal(body.data.stake.total, 150);
-    assert.equal(body.data.emission.holders, 2);
-    assert.ok(body.data.stake.gini > 0);
-    assert.equal(body.data.stake.nakamoto_coefficient, 1); // top holder > 50%
-    // Bound to the netuid via the neurons-tier read.
-    assert.ok(
-      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
+    assert.equal(body.data.neuron_count, 3);
+    assert.equal(body.data.entity_count, 2); // ck-a (2 UIDs) + ck-b
+    assert.equal(body.data.uids_per_entity, 1.5);
+    assert.equal(body.data.stake.holders, 3); // per-UID
+    assert.equal(body.data.entity_stake.holders, 2); // ck-a's UIDs collapsed
+    assert.equal(body.data.entity_stake.total, 180);
+    assert.equal(body.data.validator_stake.holders, 2); // the two permitted UIDs
+    assert.equal(body.data.validator_stake.total, 130); // 100 + 30
+    // Bound to the netuid; the read selects coldkey + validator_permit.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neurons WHERE netuid = \?/.test(s),
     );
-    assert.equal(
-      captures.params[
-        captures.sql.findIndex((s) => /FROM neurons WHERE netuid = \?/.test(s))
-      ][0],
+    assert.ok(idx !== -1);
+    assert.ok(/coldkey/.test(captures.sql[idx]));
+    assert.ok(/validator_permit/.test(captures.sql[idx]));
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
+describe("handleSubnetConcentrationHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
       NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
     );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-range window with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable empty series on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetConcentrationHistory,
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("happy path computes a per-day concentration trend", async () => {
+    const { env, captures } = dbWith({
+      neuronDailyHistory: [
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentrationHistory(
+        req(`/api/v1/subnets/${NETUID}/concentration/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.point_count, 2);
+    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.ok(body.data.points[0].stake_gini > body.data.points[1].stake_gini);
+    // Windowed neuron_daily read bound to the netuid.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
   });
 });
 

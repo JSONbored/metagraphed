@@ -68,7 +68,13 @@ import {
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
-import { buildConcentration } from "../../src/concentration.mjs";
+import {
+  CONCENTRATION_HISTORY_ROW_CAP,
+  CONCENTRATION_READ_COLUMNS,
+  buildConcentration,
+  buildConcentrationHistory,
+  parseConcentrationHistoryWindow,
+} from "../../src/concentration.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -228,15 +234,17 @@ export async function handleSubnetHistory(request, env, netuid, url) {
 
 // GET /api/v1/subnets/{netuid}/concentration: stake & emission decentralization
 // metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over
-// the subnet's live per-UID distribution (#2106). Computed from the neurons D1
-// tier; a cold/absent store or empty subnet → 200 with stake/emission:null
-// (schema-stable, never 404), mirroring the sibling metagraph/history routes.
+// the subnet's live distribution (#2106), across three lenses — per-UID, per-entity
+// (coldkeys collapsed, the true control distribution) and validator-only consensus
+// power. Computed from the neurons D1 tier; a cold/absent store or empty
+// subnet → 200 with null blocks (schema-stable, never 404), mirroring the sibling
+// metagraph/history routes.
 export async function handleSubnetConcentration(request, env, netuid, url) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const rows = await d1All(
     env,
-    "SELECT stake_tao, emission_tao, captured_at FROM neurons WHERE netuid = ?",
+    `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
     [netuid],
   );
   const data = buildConcentration(rows, netuid);
@@ -248,6 +256,50 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
+// stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share)
+// from the dated neuron_daily rollup — "is this subnet centralizing over time?".
+// Each day needs its full per-UID distribution, so the read is the raw rows (not a
+// GROUP BY) bounded by a row cap; a cold/absent store → 200 with points:[]
+// (schema-stable, never 404).
+export async function handleSubnetConcentrationHistory(
+  request,
+  env,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const cutoff = new Date(Date.now() - days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+    [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
+  );
+  const data = buildConcentrationHistory(rows, netuid, {
+    window: label,
+    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/concentration/history.json`,
+        data.points[0]?.snapshot_date ?? null,
       ),
     },
     "short",
