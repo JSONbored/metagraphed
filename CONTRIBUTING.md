@@ -7,6 +7,12 @@ Live: [metagraph.sh](https://metagraph.sh) · API [api.metagraph.sh](https://api
 Two kinds of contribution, two paths:
 
 - **Code / schema changes** → normal feature PR, run the gates below.
+- **Documentation-only changes** → normal PR touching markdown under `docs/`,
+  `CONTRIBUTING.md`, `README.md`, ADRs, or other non-generated sources. These
+  are **not** community surface submissions: they change no
+  `registry/subnets/*.json` file and follow the standard maintainer review path.
+  Keep docs PRs focused — clarify wording, fix typos, expand examples — and do
+  not bundle generated artifacts unless you also ran `npm run build`.
 - **Community data** → add a surface to one subnet file, see [Community submissions](#community-submissions).
 
 ## Setup & gates
@@ -98,6 +104,12 @@ Callable surface with documented limits? Add an optional structured `rate_limit`
 - Include the validation commands you ran in the PR body.
 - No local paths, machine-specific setup, env dumps, or private notes.
 - Keep UI/frontend work out of this repo — it owns backend data contracts and generated JSON. The web app lives at [metagraphed-ui](https://github.com/JSONbored/metagraphed-ui).
+
+For **docs-only PRs**, validation is lighter: you do not need `npm run build`
+unless you touched schemas or generated outputs. A quick read-through of the
+changed markdown is sufficient before opening the PR. Mention in the description
+which section you clarified so maintainers can review without running the full
+pipeline.
 
 ## How reviews work
 

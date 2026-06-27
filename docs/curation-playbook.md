@@ -67,6 +67,30 @@ Queue rows include a compact `candidate_evidence_summary`; the detailed
 guidance only; health, uptime, latency, and pool eligibility remain
 probe-derived.
 
+## Documentation contributions
+
+Not every helpful PR adds a subnet surface. Documentation improvements — fixing
+typos, clarifying review expectations, expanding ADRs, or improving contributor
+onboarding in `CONTRIBUTING.md` — follow the normal maintainer review path and
+do **not** need `npm run surface:add` or changes to
+`registry/subnets/*.json`.
+
+When opening a docs PR:
+
+- Limit the diff to markdown and other non-generated sources under `docs/`,
+  `CONTRIBUTING.md`, `README.md`, or ADRs.
+- Do not edit files under `public/metagraph/` or `generated/` unless you also
+  ran the full schema/build pipeline in the same PR.
+- Use a Conventional Commit-style title such as `docs: clarify curation queue
+  evidence actions` so reviewers can triage quickly.
+- In the PR body, note which section you updated and why — one paragraph is
+  enough for a small clarification.
+
+Docs PRs are welcome and do not compete with surface submissions for review
+throughput. They still must pass CI when they touch validated paths, but they
+typically do not require `npm run build` unless schemas or generated outputs
+changed.
+
 ## What Fully Curated Means
 
 For each subnet, aim to confirm the maximum public surface set the subnet
