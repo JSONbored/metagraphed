@@ -15,6 +15,7 @@ import {
   runEmbeddingSync,
   semanticSearch,
   askQuestion,
+  SEMANTIC_MAX_QUERY_LENGTH,
 } from "../src/ai-search.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -580,6 +581,34 @@ describe("semanticSearch", () => {
   test("rejects a blank query", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     await assert.rejects(() => semanticSearch(env, "   "), /required/);
+  });
+  test("rejects a query over SEMANTIC_MAX_QUERY_LENGTH and does not call env.AI.run", async () => {
+    let aiCalled = false;
+    const env = {
+      AI: {
+        run(...args) {
+          aiCalled = true;
+          return stubAi().run(...args);
+        },
+      },
+      VECTORIZE: stubVectorize(),
+    };
+    const overlong = "x".repeat(SEMANTIC_MAX_QUERY_LENGTH + 1);
+    await assert.rejects(
+      () => semanticSearch(env, overlong),
+      (err) => err.aiInput === true,
+    );
+    assert.equal(
+      aiCalled,
+      false,
+      "env.AI.run must not be called for an oversized query",
+    );
+  });
+  test("accepts a query exactly at the length cap", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const atCap = "x".repeat(SEMANTIC_MAX_QUERY_LENGTH);
+    const out = await semanticSearch(env, atCap, { limit: 1 });
+    assert.ok(out.results.length >= 0);
   });
   test("clamps the limit to the maximum", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
