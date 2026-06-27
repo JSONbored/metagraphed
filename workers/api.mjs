@@ -142,6 +142,7 @@ import {
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
+  overlayRpcPoolEligibility,
   overlaySubnetEconomics,
   overlaySubnetHealth,
   resolveLiveEconomics,
@@ -259,6 +260,7 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   "health",
   "subnet-health",
   "rpc-endpoints",
+  "rpc-pools",
   "freshness",
   "subnet-overview",
   "agent-catalog",
@@ -2911,6 +2913,7 @@ function unknownSubnetHealth(netuid) {
 const ENDPOINT_OVERLAY_EXCLUDED_IDS = new Set([
   "subnet-health",
   "rpc-endpoints",
+  "rpc-pools",
   "freshness",
   "agent-catalog",
   "agent-catalog-subnet",
@@ -2943,6 +2946,32 @@ async function liveHealthOverlay(env, matched, staticData) {
     case "rpc-endpoints": {
       const pool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
       data = mergeRpcEndpoints(staticData, pool);
+      break;
+    }
+    case "rpc-pools": {
+      // The served pool scores feed the public RPC load-balancer (deploy/wss-lb)
+      // and the proxy's pool selection. Overlay the same 15-minute cron health the
+      // HTTP proxy applies (overlayRpcPoolEligibility) so a sustained-down/wrong-chain
+      // upstream baked into the static artifact is marked ineligible instead of being
+      // routed to. Each pool in pools[] shares the per-endpoint shape the overlay
+      // expects; without a live snapshot the pools pass through unchanged.
+      const livePool = await readHealthKv(env, KV_HEALTH_RPC_POOL);
+      if (
+        livePool &&
+        Array.isArray(livePool.endpoints) &&
+        Array.isArray(staticData?.pools)
+      ) {
+        data = {
+          ...staticData,
+          source: "live-cron-prober",
+          operational_observed_at: livePool.last_run_at || null,
+          pools: staticData.pools.map((pool) =>
+            overlayRpcPoolEligibility(pool, livePool),
+          ),
+        };
+      } else {
+        data = null;
+      }
       break;
     }
     case "freshness": {
