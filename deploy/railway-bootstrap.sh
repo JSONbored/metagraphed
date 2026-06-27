@@ -18,10 +18,11 @@ set -euo pipefail
 REPO="JSONbored/metagraphed"
 BRANCH="main"
 WORKSPACE="aethereal"
-# ARCHIVE endpoint — the indexer backfills old-block state, which pruned nodes
-# (entrypoint-finney) discard ("State already discarded"). On the box this points
-# at the local archive node instead.
-RPC_URL="${EVENTS_RPC_URL:-wss://archive.chain.opentensor.ai:443}"
+# WS ARCHIVE endpoint — the indexer backfills old-block state, which pruned nodes
+# (entrypoint-finney) discard ("State already discarded"). archive.chain is an
+# HTTP JSON-RPC proxy, not a substrate-interface WS endpoint. On the box this
+# points at the local archive node instead.
+RPC_URL="${EVENTS_RPC_URL:-wss://bittensor-finney.api.onfinality.io/public-ws}"
 
 echo "==> 1. Create the project + default (production) environment"
 railway init --name metagraphed-core --workspace "$WORKSPACE" --json

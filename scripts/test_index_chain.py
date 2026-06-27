@@ -214,6 +214,17 @@ class PostgresSchemaContract(unittest.TestCase):
             self.assertIn(column, self.schema)
 
 
+class RpcDefault(unittest.TestCase):
+    def test_default_rpc_is_substrate_interface_ws_archive(self):
+        # Regression: archive.chain.opentensor.ai is a Subway HTTP JSON-RPC proxy,
+        # not a substrate-interface WebSocket endpoint, so the default must stay
+        # on the known-good WS archive unless EVENTS_RPC_URL explicitly overrides it.
+        self.assertEqual(
+            ic.DEFAULT_RPC, "wss://bittensor-finney.api.onfinality.io/public-ws"
+        )
+        self.assertEqual(ic.RPC, ic.DEFAULT_RPC)
+
+
 class BackfillStart(unittest.TestCase):
     def test_cold_cursor_with_start_block_anchors_there(self):
         # cursor=None + START_BLOCK set short-circuits before any chain/module load.

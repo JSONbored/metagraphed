@@ -25,8 +25,8 @@ gate is "~100% capture vs D1" before any serving cutover.
 Heavy deps (psycopg2, substrate-interface) are imported lazily so the pure
 transforms test without them. Run (the compose stack wires these):
   DATABASE_URL          postgresql://… (the Timescale sink)
-  EVENTS_RPC_URL        ws://subtensor:9944 (the local node)  [default: public ARCHIVE
-                        archive.chain.opentensor.ai — NOT pruned entrypoint-finney]
+  EVENTS_RPC_URL        ws://subtensor:9944 (the local node)  [default: public WS ARCHIVE
+                        bittensor-finney.api.onfinality.io — NOT pruned entrypoint-finney]
   REDIS_URL             redis://redis:6379  (optional — cursor/heartbeat mirror)
   START_BLOCK           cold-cursor anchor (else the overlap floor)
   EVENTS_WINDOW         overlap re-scan floor (default 256)
@@ -41,12 +41,16 @@ import signal
 import sys
 import time
 
-# Default to the ARCHIVE endpoint, not entrypoint-finney: the indexer's backfill
-# reads state at older blocks (System.Events/Timestamp at a past block_hash), and
-# entrypoint-finney is PRUNED — it discards old state and fails the backfill with
-# "UnknownBlock: State already discarded" (verified live). archive.chain retains
-# full state. On the bare-metal box, EVENTS_RPC_URL points at the local node.
-RPC = os.environ.get("EVENTS_RPC_URL", "wss://archive.chain.opentensor.ai:443")
+# Default to a real WS ARCHIVE endpoint, not entrypoint-finney: the indexer's
+# backfill reads state at older blocks (System.Events/Timestamp at a past
+# block_hash), and entrypoint-finney is PRUNED — it discards old state and fails
+# the backfill with "UnknownBlock: State already discarded" (verified live).
+# archive.chain.opentensor.ai is a Subway HTTP JSON-RPC proxy and does not speak
+# substrate-interface's WS protocol; OnFinality's public endpoint is the known-good
+# WS archive used by the historical backfills. On the bare-metal box,
+# EVENTS_RPC_URL points at the local node.
+DEFAULT_RPC = "wss://bittensor-finney.api.onfinality.io/public-ws"
+RPC = os.environ.get("EVENTS_RPC_URL", DEFAULT_RPC)
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", "512"))
 START_BLOCK = os.environ.get("START_BLOCK")

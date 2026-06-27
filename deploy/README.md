@@ -120,7 +120,7 @@ cross-service variable references, e.g.:
 railway add -s indexer --repo JSONbored/metagraphed --branch main \
   -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
   -v REDIS_URL='${{Redis.REDIS_URL}}' \
-  -v EVENTS_RPC_URL='wss://archive.chain.opentensor.ai:443'   # archive, NOT pruned entrypoint
+  -v EVENTS_RPC_URL='wss://bittensor-finney.api.onfinality.io/public-ws'   # WS archive, NOT pruned entrypoint
 ```
 
 The public `wss-lb` is independent of Postgres/Redis (it reads only the public
