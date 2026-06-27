@@ -936,11 +936,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // Both are worker-owned (see wrangler `run_worker_first`) so they carry the
   // right headers/content-type instead of 404-ing through to the static assets.
   if (url.pathname === "/" || url.pathname === "") {
-    return homepageResponse(request);
+    return await homepageResponse(request);
   }
 
   if (url.pathname === "/.well-known/api-catalog") {
-    return apiCatalogResponse(request);
+    return await apiCatalogResponse(request);
   }
 
   if (url.pathname === "/.well-known/mcp/server-card.json") {
