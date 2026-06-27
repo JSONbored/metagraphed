@@ -161,8 +161,15 @@ def _compute_from_block(cursor, head, window, max_lookback):
 
 def _decode_head():
     # stream-events imports the verified decode; reuse it so the mapping never
-    # drifts from the streamer/poller.
-    se = _load("stream_events", "stream-events.py")
+    # drifts from the streamer/poller. That module also installs CLI signal
+    # handlers at import time, so preserve the indexer handlers around the load.
+    previous_term = signal.getsignal(signal.SIGTERM)
+    previous_int = signal.getsignal(signal.SIGINT)
+    try:
+        se = _load("stream_events", "stream-events.py")
+    finally:
+        signal.signal(signal.SIGTERM, previous_term)
+        signal.signal(signal.SIGINT, previous_int)
     return se.decode_head
 
 

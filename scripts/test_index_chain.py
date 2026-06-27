@@ -8,7 +8,10 @@ schema/decode change can't silently corrupt the write path. Run:
 """
 import importlib.util
 import os
+import signal
+import types
 import unittest
+from unittest import mock
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location(
@@ -128,6 +131,36 @@ class RowsFromDecoded(unittest.TestCase):
         self.assertEqual(rows, {"blocks": [], "extrinsics": [], "account_events": []})
         rows2 = ic.rows_from_decoded({})  # missing keys
         self.assertEqual(rows2, {"blocks": [], "extrinsics": [], "account_events": []})
+
+
+class DecodeHeadImport(unittest.TestCase):
+    def test_decode_head_preserves_indexer_signal_handlers(self):
+        previous_term = signal.getsignal(signal.SIGTERM)
+        previous_int = signal.getsignal(signal.SIGINT)
+
+        def stream_events_signal_handler(_signum, _frame):
+            return None
+
+        def decode_head(_s, _block_number):
+            return {}
+
+        def import_stream_events(_modname, _filename):
+            signal.signal(signal.SIGTERM, stream_events_signal_handler)
+            signal.signal(signal.SIGINT, stream_events_signal_handler)
+            return types.SimpleNamespace(decode_head=decode_head)
+
+        try:
+            signal.signal(signal.SIGTERM, ic._handle_signal)
+            signal.signal(signal.SIGINT, ic._handle_signal)
+
+            with mock.patch.object(ic, "_load", side_effect=import_stream_events):
+                self.assertIs(ic._decode_head(), decode_head)
+
+            self.assertIs(signal.getsignal(signal.SIGTERM), ic._handle_signal)
+            self.assertIs(signal.getsignal(signal.SIGINT), ic._handle_signal)
+        finally:
+            signal.signal(signal.SIGTERM, previous_term)
+            signal.signal(signal.SIGINT, previous_int)
 
 
 class BackfillStart(unittest.TestCase):
