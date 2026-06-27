@@ -90,10 +90,10 @@ export default {
 
       return json({ error: "not found" }, 404);
     } catch (err) {
-      return json(
-        { error: "data query failed", detail: String(err).slice(0, 200) },
-        502,
-      );
+      // Log internally (Wrangler observability) but NEVER leak DB error details
+      // (schema, table, or connection info) to API clients.
+      console.error("data-api query failed:", err);
+      return json({ error: "data query failed" }, 502);
     } finally {
       ctx.waitUntil(sql.end({ timeout: 5 }).catch(() => {}));
     }
