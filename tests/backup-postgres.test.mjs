@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -17,7 +17,17 @@ function writeExecutable(filePath, content) {
   chmodSync(filePath, 0o755);
 }
 
-function runBackupWithMocks(pgDumpScript) {
+function runBackupWithMocks(
+  pgDumpScript,
+  awsScript = `#!/usr/bin/env sh
+set -eu
+if [ "$1" != "s3" ] || [ "$2" != "cp" ]; then
+  exit 2
+fi
+cat "$3" > "$FAKE_UPLOAD_PATH"
+`,
+  options = {},
+) {
   const temporaryDirectory = mkdtempSync(
     path.join(tmpdir(), "metagraphed-backup-test-"),
   );
@@ -25,20 +35,12 @@ function runBackupWithMocks(pgDumpScript) {
   const uploadPath = path.join(temporaryDirectory, "uploaded.sql.gz");
   mkdirp(binDirectory);
   writeExecutable(path.join(binDirectory, "pg_dump"), pgDumpScript);
-  writeExecutable(
-    path.join(binDirectory, "aws"),
-    `#!/usr/bin/env sh
-set -eu
-if [ "$1" != "s3" ] || [ "$2" != "cp" ]; then
-  exit 2
-fi
-cat "$3" > "$FAKE_UPLOAD_PATH"
-`,
-  );
+  writeExecutable(path.join(binDirectory, "aws"), awsScript);
 
   const result = spawnSync("sh", ["deploy/backup/backup-postgres.sh"], {
     cwd: process.cwd(),
     encoding: "utf8",
+    ...options,
     env: {
       ...process.env,
       AWS_ACCESS_KEY_ID: "test-key",
@@ -71,7 +73,34 @@ exit 42
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /backup failed: pg_dump exited nonzero/);
     assert.doesNotMatch(result.stdout, /backup complete/);
-    assert.ok(readFileSync(uploadPath).length > 0);
+    assert.equal(existsSync(uploadPath), false);
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("backup script fails promptly when aws exits before upload", () => {
+  const { result, temporaryDirectory, uploadPath } = runBackupWithMocks(
+    `#!/usr/bin/env sh
+python3 - <<'PY'
+import sys
+for _ in range(1024):
+    sys.stdout.write("x" * 1024)
+PY
+`,
+    `#!/usr/bin/env sh
+echo 'aws mock: immediate CLI/config failure' >&2
+exit 64
+`,
+    { timeout: 2000 },
+  );
+
+  try {
+    assert.notEqual(result.status, null);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /backup failed: aws upload exited nonzero/);
+    assert.doesNotMatch(result.stdout, /backup complete/);
+    assert.equal(existsSync(uploadPath), false);
   } finally {
     rmSync(temporaryDirectory, { recursive: true, force: true });
   }
