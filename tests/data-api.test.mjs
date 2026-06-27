@@ -91,6 +91,23 @@ test("chain-events rejects method-only feed filters without a block scope", asyn
   expect((await res.json()).error).toMatch(/method filter requires pallet/);
 });
 
+test("chain-events/stats returns the activity aggregate with a clamped window", async () => {
+  const res = await req("/api/v1/chain-events/stats?blocks=500");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window_blocks).toBe(500);
+  expect(Array.isArray(body.activity)).toBe(true);
+  // window clamps: oversized → 5000, non-numeric → default 1000
+  expect(
+    (await (await req("/api/v1/chain-events/stats?blocks=99999")).json())
+      .window_blocks,
+  ).toBe(5000);
+  expect(
+    (await (await req("/api/v1/chain-events/stats?blocks=abc")).json())
+      .window_blocks,
+  ).toBe(1000);
+});
+
 test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
   const res = await req(`/api/v1/chain-events?pallet=${"A".repeat(65)}`);
   expect(res.status).toBe(400);
