@@ -10,6 +10,9 @@
 //                      (alias: reliability), from the live uptime rollup in D1
 //   metric=grade       the A–F reliability grade letter itself (e.g. "A") —
 //                      same uptime data + color band as uptime, one-glyph message
+//   metric=apis        count of callable machine-integration surfaces
+//                      (subnet-api, openapi, sse, data-artifact) from the
+//                      per-subnet surfaces artifact
 //   style=flat-square  square corners, no gradient (default: flat)
 //   label=…            override the left "metagraphed" segment text
 //
@@ -31,7 +34,17 @@ const BADGE_METRICS = {
   uptime: "reliability",
   reliability: "reliability",
   grade: "grade",
+  apis: "apis",
 };
+// Machine-integration surface kinds mirrored from buildSubnetServices /
+// AGENT_SERVICE_KINDS — the callable API surface set the registry surfaces.
+const API_BADGE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
+const API_BADGE_COLOR = "#007ec6";
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square"]);
 // A–F grade → color band (gray for unknown); bands match reliability.mjs.
@@ -284,6 +297,68 @@ async function reliabilityContent({
     : NA_CONTENT;
 }
 
+export function countCallableApiSurfaces(surfaces) {
+  return (surfaces || []).filter(
+    (surface) =>
+      surface &&
+      API_BADGE_KINDS.has(surface.kind) &&
+      Boolean(surface.public_safe),
+  ).length;
+}
+
+function apisBadgeMessage(count) {
+  return count === 1 ? "1 api" : `${count} apis`;
+}
+
+function apisBadgeColor(count) {
+  return count > 0 ? API_BADGE_COLOR : UNKNOWN_COLOR;
+}
+
+// Callable API surface count: per-subnet from surfaces/{netuid}.json, or summed
+// across a provider's subnets (mirrors readiness/reliability aggregation).
+async function apisContent({ target, readArtifact, env }) {
+  if (target.kind === "subnet") {
+    const data = await readData(
+      readArtifact,
+      env,
+      `/metagraph/surfaces/${target.netuid}.json`,
+    );
+    if (!data) return NA_CONTENT;
+    const count = countCallableApiSurfaces(data.surfaces);
+    return {
+      message: apisBadgeMessage(count),
+      color: apisBadgeColor(count),
+    };
+  }
+
+  const providers = await readData(
+    readArtifact,
+    env,
+    "/metagraph/providers.json",
+  );
+  const provider = findProvider(providers, target.slug);
+  if (!provider) return NA_CONTENT;
+  const netuids = provider.netuids || [];
+  if (!netuids.length) return NA_CONTENT;
+
+  const counts = await Promise.all(
+    netuids.map(async (netuid) => {
+      const data = await readData(
+        readArtifact,
+        env,
+        `/metagraph/surfaces/${netuid}.json`,
+      );
+      return data ? countCallableApiSurfaces(data.surfaces) : null;
+    }),
+  );
+  if (counts.every((count) => count == null)) return NA_CONTENT;
+  const total = counts.reduce((sum, count) => sum + (count ?? 0), 0);
+  return {
+    message: apisBadgeMessage(total),
+    color: apisBadgeColor(total),
+  };
+}
+
 function badgeHeaders() {
   return {
     "content-type": "image/svg+xml; charset=utf-8",
@@ -308,10 +383,13 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
 
   let content = NA_CONTENT;
   if (target && typeof readArtifact === "function") {
-    content =
-      metric === "reliability" || metric === "grade"
-        ? await reliabilityContent({ ...ctx, metric })
-        : await readinessContent(ctx);
+    if (metric === "reliability" || metric === "grade") {
+      content = await reliabilityContent({ ...ctx, metric });
+    } else if (metric === "apis") {
+      content = await apisContent(ctx);
+    } else {
+      content = await readinessContent(ctx);
+    }
   }
 
   const svg = renderBadge(content.message, content.color, { label, style });

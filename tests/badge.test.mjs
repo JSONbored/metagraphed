@@ -8,6 +8,7 @@ import {
   parseBadgePath,
   parseBadgeOptions,
   formatUptimePercent,
+  countCallableApiSurfaces,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -49,6 +50,33 @@ const RELIABILITY = {
   7: { score: 99, grade: "A", uptime_ratio: 0.9983 }, // subnet 7
   "7,12": { score: 88, grade: "D", uptime_ratio: 0.88 }, // provider datura
 };
+
+const SURFACES_7 = {
+  surfaces: [
+    { kind: "subnet-api", public_safe: true },
+    { kind: "openapi", public_safe: true },
+    { kind: "docs", public_safe: true },
+    { kind: "sse", public_safe: false },
+  ],
+};
+const SURFACES_12 = {
+  surfaces: [{ kind: "data-artifact", public_safe: true }],
+};
+
+async function badgeWithSurfaces(pathname, fixtures = {}) {
+  const url = new URL(`https://api.metagraph.sh${pathname}`);
+  const res = await handleBadgeRequest(new Request(url), {}, url, {
+    readArtifact: makeReadArtifact({
+      "/metagraph/subnets.json": SUBNETS,
+      "/metagraph/providers.json": PROVIDERS,
+      "/metagraph/surfaces/7.json": SURFACES_7,
+      "/metagraph/surfaces/12.json": SURFACES_12,
+      ...fixtures,
+    }),
+    loadReliability: makeLoadReliability(RELIABILITY),
+  });
+  return { res, text: await res.text() };
+}
 
 async function badge(pathname, { method = "GET" } = {}) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
@@ -150,6 +178,7 @@ describe("badge — rendering", () => {
       "reliability",
     );
     assert.equal(parseBadgeOptions(sp("metric=GRADE")).metric, "grade");
+    assert.equal(parseBadgeOptions(sp("metric=APIS")).metric, "apis");
     assert.equal(parseBadgeOptions(sp("metric=bogus")).metric, "readiness");
     // style: flat default; flat-square allowed; anything else → flat.
     assert.equal(parseBadgeOptions(sp("")).style, "flat");
@@ -311,6 +340,63 @@ describe("badge — grade metric", () => {
   test("unknown subnet grade degrades to n/a (gray, still 200)", async () => {
     const { res, text } = await badge(
       "/api/v1/subnets/999/badge.svg?metric=grade",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+});
+
+describe("badge — apis metric", () => {
+  test("countCallableApiSurfaces counts only public-safe machine-integration kinds", () => {
+    assert.equal(countCallableApiSurfaces(SURFACES_7.surfaces), 2);
+    assert.equal(countCallableApiSurfaces([]), 0);
+    assert.equal(
+      countCallableApiSurfaces([
+        { kind: "openapi", public_safe: false },
+        { kind: "website", public_safe: true },
+      ]),
+      0,
+    );
+  });
+
+  test("subnet apis renders the callable count in informational blue", async () => {
+    const { text } = await badgeWithSurfaces(
+      "/api/v1/subnets/7/badge.svg?metric=apis",
+    );
+    assert.match(text, /aria-label="metagraphed: 2 apis"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("subnet with zero callable apis is gray (still 200)", async () => {
+    const { res, text } = await badgeWithSurfaces(
+      "/api/v1/subnets/3/badge.svg?metric=apis",
+      { "/metagraph/surfaces/3.json": { surfaces: [] } },
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /aria-label="metagraphed: 0 apis"/);
+    assert.match(text, /#9f9f9f/);
+  });
+
+  test("singular message for exactly one callable api", async () => {
+    const { text } = await badgeWithSurfaces(
+      "/api/v1/subnets/12/badge.svg?metric=apis",
+    );
+    assert.match(text, /aria-label="metagraphed: 1 api"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("provider apis sums across its subnets", async () => {
+    const { text } = await badgeWithSurfaces(
+      "/api/v1/providers/datura/badge.svg?metric=apis",
+    );
+    assert.match(text, /aria-label="metagraphed: 3 apis"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("unknown subnet apis degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badgeWithSurfaces(
+      "/api/v1/subnets/999/badge.svg?metric=apis",
     );
     assert.equal(res.status, 200);
     assert.match(text, /n\/a/);
