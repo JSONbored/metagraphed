@@ -25,7 +25,8 @@ gate is "~100% capture vs D1" before any serving cutover.
 Heavy deps (psycopg2, substrate-interface) are imported lazily so the pure
 transforms test without them. Run (the compose stack wires these):
   DATABASE_URL          postgresql://… (the Timescale sink)
-  EVENTS_RPC_URL        ws://subtensor:9944 (the local node)  [default: public finney]
+  EVENTS_RPC_URL        ws://subtensor:9944 (the local node)  [default: public ARCHIVE
+                        archive.chain.opentensor.ai — NOT pruned entrypoint-finney]
   REDIS_URL             redis://redis:6379  (optional — cursor/heartbeat mirror)
   START_BLOCK           cold-cursor anchor (else the overlap floor)
   EVENTS_WINDOW         overlap re-scan floor (default 256)
@@ -40,7 +41,12 @@ import signal
 import sys
 import time
 
-RPC = os.environ.get("EVENTS_RPC_URL", "wss://entrypoint-finney.opentensor.ai:443")
+# Default to the ARCHIVE endpoint, not entrypoint-finney: the indexer's backfill
+# reads state at older blocks (System.Events/Timestamp at a past block_hash), and
+# entrypoint-finney is PRUNED — it discards old state and fails the backfill with
+# "UnknownBlock: State already discarded" (verified live). archive.chain retains
+# full state. On the bare-metal box, EVENTS_RPC_URL points at the local node.
+RPC = os.environ.get("EVENTS_RPC_URL", "wss://archive.chain.opentensor.ai:443")
 WINDOW = int(os.environ.get("EVENTS_WINDOW", "256"))
 MAX_LOOKBACK = int(os.environ.get("EVENTS_MAX_LOOKBACK", "512"))
 START_BLOCK = os.environ.get("START_BLOCK")
@@ -67,7 +73,8 @@ EXTRINSIC_COLS = (
 )
 EVENT_COLS = (
     "block_number", "event_index", "extrinsic_index", "event_kind",
-    "hotkey", "coldkey", "netuid", "uid", "amount", "alpha", "observed_at",
+    "hotkey", "coldkey", "netuid", "uid",
+    "amount_tao", "alpha_amount", "observed_at",
 )
 
 
@@ -84,6 +91,13 @@ def _json_obj(value):
     return value  # already an object or None
 
 
+def _as_bool(value):
+    """`success` arrives as 1/0 (int) from _extrinsic_success_map, but the Postgres
+    `extrinsics.success` column is BOOLEAN (strict — unlike the loose D1/SQLite era).
+    Coerce; None stays NULL (index missing its ExtrinsicSuccess/Failed event)."""
+    return None if value is None else bool(value)
+
+
 def _has_ts(row):
     """observed_at is BIGINT NOT NULL. decode_head emits None when a block's
     Timestamp query fails; drop such rows (mirrors the D1-era Worker validators
@@ -97,9 +111,8 @@ def rows_from_decoded(decoded):
     """PURE: a decoded block (the stream-events.decode_head shape) -> column dicts
     keyed exactly by the Postgres schema. No DB/chain access — unit-tested.
 
-    The block + extrinsic dicts already use the schema's column names; account
-    events are remapped (amount_tao -> amount, alpha_amount -> alpha) and keep
-    uid. call_args is decoded from its JSON-string form; rows missing a valid
+    The block, extrinsic, and account-event dicts use the serving schema's column
+    names. call_args is decoded from its JSON-string form; rows missing a valid
     observed_at are dropped (NOT NULL).
     """
     blocks = []
@@ -112,6 +125,7 @@ def rows_from_decoded(decoded):
     for x in decoded.get("extrinsics") or []:
         row = {c: x.get(c) for c in EXTRINSIC_COLS}
         row["call_args"] = _json_obj(row["call_args"])
+        row["success"] = _as_bool(row.get("success"))
         if _has_ts(row):
             extrinsics.append(row)
     events = []
@@ -125,8 +139,8 @@ def rows_from_decoded(decoded):
             "coldkey": e.get("coldkey"),
             "netuid": e.get("netuid"),
             "uid": e.get("uid"),
-            "amount": e.get("amount_tao"),
-            "alpha": e.get("alpha_amount"),
+            "amount_tao": e.get("amount_tao"),
+            "alpha_amount": e.get("alpha_amount"),
             "observed_at": e.get("observed_at"),
         }
         if _has_ts(row):
@@ -161,8 +175,15 @@ def _compute_from_block(cursor, head, window, max_lookback):
 
 def _decode_head():
     # stream-events imports the verified decode; reuse it so the mapping never
-    # drifts from the streamer/poller.
-    se = _load("stream_events", "stream-events.py")
+    # drifts from the streamer/poller. That module also installs CLI signal
+    # handlers at import time, so preserve the indexer handlers around the load.
+    previous_term = signal.getsignal(signal.SIGTERM)
+    previous_int = signal.getsignal(signal.SIGINT)
+    try:
+        se = _load("stream_events", "stream-events.py")
+    finally:
+        signal.signal(signal.SIGTERM, previous_term)
+        signal.signal(signal.SIGINT, previous_int)
     return se.decode_head
 
 
@@ -265,6 +286,15 @@ def run():
     while not _stop:
         try:
             s = SubstrateInterface(url=RPC)
+            # Warm the runtime metadata BEFORE the cold backfill. decode_head's
+            # per-block `s.query(...)` needs `s.metadata`, which is lazy-loaded;
+            # the streamer gets it implicitly because it only decodes from inside
+            # subscribe_block_headers (which inits the runtime first). The indexer
+            # decodes in the backfill loop first, so without this the very first
+            # query raises AttributeError: 'NoneType' has no attribute
+            # 'get_metadata_pallet'. init_runtime() loads metadata at the head;
+            # recent blocks share that runtime version, so it is reused.
+            s.init_runtime()
             backoff = 5  # reset after a clean connect
             cursor = read_cursor(conn)
             head = s.get_block_number(s.get_chain_finalised_head())

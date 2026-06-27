@@ -5,7 +5,7 @@ This is the **operator runbook**: what runs where, the exact provisioning
 commands, and the gated cutover steps.
 
 ```
-Chain → pruned subtensor-node → indexer → Postgres/Timescale
+Chain → full archive subtensor-node → indexer → Postgres/Timescale
                                               │
                           (Cloudflare Hyperdrive, pooled + cached)
                                               ▼
@@ -16,16 +16,47 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 
 ## Topology
 
-| Tier          | Where                                  | Pieces                                                                                                                          |
-| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented) | **Cloudflare**                         | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy |
-| Core (owned)  | **Railway project `metagraphed-core`** | `postgres`, `redis`, `subtensor-node` (pruned), `indexer`, `health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`      |
-| Escape hatch  | **Hetzner** (later)                    | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                 |
+| Tier          | Where                                                     | Pieces                                                                                                                                                                                                                                                           |
+| ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented) | **Cloudflare**                                            | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                                                                                                                                  |
+| Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). _Interim: Postgres/Redis/indexer run on Railway until the box is live._ |
+| Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                                                                                                  |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
 private network (`<service>.railway.internal`, zero egress). The existing
 `metagraphed-streamer` project is **separate and untouched** — it is superseded
 by `indexer` only at decommission (final step).
+
+## Railway: one project, many services
+
+A Railway **project** is the unit that groups cooperating services — the docs call
+it "an application stack, a service group" — so **all** of metagraphed-core's
+services (`postgres`, `redis`, `subtensor-node`, `indexer`, the crons, and the
+public `wss-lb`) live in **one project**, **not** one project each. Only
+same-project + same-environment services get the automatic **private network**
+(`<service>.railway.internal`, Wireguard-encrypted) and **reference variables**
+`${{Postgres.DATABASE_URL}}` / `${{Redis.REDIS_URL}}`; split them across projects
+and you lose internal DNS + cross-service vars and must wire public URLs by hand.
+
+**Two config layers — this is the "is it all one `railway.json`?" answer: no.**
+
+- **Per-service build config** (`railway.json` / `railway.toml`): each service reads
+  its OWN file. Railway does **not** auto-discover it from a subdirectory — set the
+  service's **Settings → Config-as-code → "Railway Config File"** to an **absolute**
+  repo-root path (it does **not** follow Root Directory):
+  - `metagraphed-streamer` → `/railway.json`
+  - `wss-lb` → `/deploy/wss-lb/railway.json`
+  - `indexer` → `/deploy/indexer.railway.json`
+
+  Each builds its Dockerfile from the **repo-root** build context (leave Root
+  Directory unset) and scopes redeploys with `watchPatterns`, so a streamer change
+  never rebuilds the indexer.
+
+- **Whole-project config** (`.railway/railway.ts`, project-as-code): defines ALL
+  services + DBs + variables + references in **one file**, applied with
+  `railway config plan` / `railway config apply`. Scaffold with `railway config init`
+  (or `railway config pull` to import the live project). This is the cleanest way to
+  define + version the entire topology as code once the service set stabilizes.
 
 ## Bare-metal bring-up (the recommended core — one command)
 
@@ -44,10 +75,12 @@ That starts:
   boot; never binds a public port (Cloudflare reaches it via Hyperdrive over a
   tunnel).
 - **`redis`** — the indexer cursor + heartbeat mirror.
-- **`subtensor`** — a pruned finney node (the head source + first-party RPC
-  origin). For the one-time historical backfill, point the indexer at a transient
-  archive source via `EVENTS_RPC_URL` / `START_BLOCK` / a raised
-  `EVENTS_MAX_LOOKBACK`.
+- **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
+  complete state from genesis), the head source + first-party RPC origin + the
+  indexer's self-sufficient backfill source. Needs **~8 TB+ NVMe**; the from-genesis
+  full sync takes days, so seed the volume from an opentensor archive snapshot when
+  available. (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp` for a small pruned
+  node; deep backfill then comes from the public archive via `EVENTS_RPC_URL`.)
 - **`indexer`** (`scripts/index-chain.py`) — follows the finalized head from the
   durable cursor and idempotently writes `blocks` / `extrinsics` /
   `account_events` into Postgres. Its pure transforms are unit-tested
@@ -60,6 +93,11 @@ backups/HA), delete the `postgres` service and point the indexer's
 changes.
 
 ## Provisioning Railway (only if NOT co-locating Postgres on bare metal)
+
+The whole project bring-up is scripted in [`railway-bootstrap.sh`](railway-bootstrap.sh)
+— the canonical, version-controlled record of the topology (run it once against a
+fresh project to recreate prod or stand up `staging`, so it is never assembled by
+hand). The commands below are that script, annotated.
 
 > Idle managed Postgres/Redis bill from the moment they exist, and nothing reads
 > them until the `indexer` lands. Provision as part of the indexer phase, not
@@ -82,7 +120,16 @@ cross-service variable references, e.g.:
 railway add -s indexer --repo JSONbored/metagraphed --branch main \
   -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
   -v REDIS_URL='${{Redis.REDIS_URL}}' \
-  -v EVENTS_RPC_URL='wss://entrypoint-finney.opentensor.ai:443'
+  -v EVENTS_RPC_URL='wss://archive.chain.opentensor.ai:443'   # archive, NOT pruned entrypoint
+```
+
+The public `wss-lb` is independent of Postgres/Redis (it reads only the public
+API), so it can ship **first**, before any DB exists:
+
+```bash
+railway add -s wss-lb --repo JSONbored/metagraphed --branch main
+# set its Config File = /deploy/wss-lb/railway.json (dashboard), then expose it:
+railway domain
 ```
 
 Cron services (`rollups`, `exporter`, `reconciler`) get a crontab via the service
@@ -93,9 +140,14 @@ Redis so the Worker can surface "realtime stale".
 
 ## Cloudflare side
 
+The full, gated **serving cutover** (D1 → Postgres via Hyperdrive over a Tunnel +
+Workers VPC, tier-by-tier with D1 fallback) is its own runbook:
+[`hyperdrive-cutover.md`](hyperdrive-cutover.md). In short:
+
 ```bash
-# Hyperdrive over a Cloudflared tunnel / Workers VPC to the Railway Postgres.
-npx wrangler hyperdrive create metagraphed-core --connection-string "$POSTGRES_PRIVATE_URL"
+# Workers VPC over a Cloudflare Tunnel to the private Postgres (box or Railway):
+npx wrangler hyperdrive create metagraphed-core --service-id <VPC_SERVICE_ID> \
+  --database metagraphed --user metagraphed --password <PW> --scheme postgresql
 # then add the [[hyperdrive]] binding to wrangler.jsonc and read via the binding.
 ```
 
@@ -106,8 +158,9 @@ tees each decoded batch to it for SSE/WS/GraphQL-subscription fan-out.
 
 Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
 
-1. **`subtensor-node`** — pruned (128 GB volume), follows head. (A permanent
-   archive node is ~3.5 TB — avoided; backfill uses a transient archive source.)
+1. **`subtensor-node`** — **full archive** (~3.5 TB+, ~8 TB+ NVMe volume): complete
+   state from genesis, so it serves first-party archive RPC + self-sufficient
+   backfill. Seed from a snapshot to skip the multi-day from-genesis sync.
 2. **`indexer` + one-time backfill** — then **verify ~100 % capture vs D1**
    before trusting it.
 3. **Serving cutover** — point the Worker at Hyperdrive→Postgres **tier by tier**
@@ -117,8 +170,41 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
    `metagraphed-streamer` project, and the `*/3` R2-staging drain; demote D1 to a
    hot cache.
 
-## Backups (mandatory)
+## Backup job (Postgres → R2)
 
-Postgres holds irreplaceable derived state (the node is restorable from chain).
-Ship WAL/dumps to **R2** (zero-egress): a `pg_dump`/WAL job to an R2 bucket, or
-Railway's managed backups + a periodic R2 export via the `exporter` service.
+`deploy/backup/` is the scheduled durability job — `pg_dump | gzip | aws s3 cp` to
+R2 (zero egress). Restoring a dump is minutes; re-backfilling history is weeks.
+
+One-time setup:
+
+1. Create an R2 bucket (e.g. `metagraphed-backups`) + an **R2 API token** (S3
+   access key + secret) in the Cloudflare dashboard.
+2. Add a Railway service from the repo, **Config File = `/deploy/backup.railway.json`**,
+   env: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `R2_BUCKET`, `R2_ENDPOINT`
+   (`https://<accountid>.r2.cloudflarestorage.com`), `AWS_ACCESS_KEY_ID`,
+   `AWS_SECRET_ACCESS_KEY`.
+3. Set the service's **Cron Schedule** in Settings (e.g. `17 4 * * *` — daily) so it
+   runs and terminates (`restartPolicyType: NEVER` is already in the config).
+4. Set an **R2 lifecycle rule** on the bucket for retention (e.g. expire after 30
+   days) — the robust way, not a script-side prune.
+
+## Backups + PITR (mandatory)
+
+Postgres holds derived state. It is **re-derivable** (re-index from the chain via
+the archive node), but a full re-index is slow — so back it up; you just don't
+need a near-zero RPO.
+
+- **Enable Railway scheduled backups — daily.** Cheap insurance. Railway bills a
+  backup at the **incremental size, per GB-minute**, so daily snapshots of a
+  compressing DB add only a modest fraction on top of the volume cost.
+- **Full continuous PITR is optional / overkill here.** PITR buys a seconds-level
+  RPO via continuous WAL — worth it for un-recreatable OLTP data, but our worst
+  case is "re-index the last day from chain," which a daily snapshot already
+  bounds. It also adds WAL-storage cost. Skip it unless the re-index window
+  becomes painful; daily snapshots + the R2 export below are enough.
+- **Cheapest durable copy: `pg_dump` → R2** (zero-egress) via the `exporter`
+  service on a schedule — the long-term archive, independent of Railway.
+
+Whichever you pick, the DB volume + backups are the storage-cost driver; when they
+outgrow Railway economics, that is the trigger for the Hetzner escape hatch
+(TimescaleDB compression ~10–20×) in ADR 0013.

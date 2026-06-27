@@ -488,6 +488,69 @@ describe("runEmbeddingSync", () => {
     assert.equal(env2.VECTORIZE.ops.deletes.length, 0);
   });
 
+  test("a changed doc whose re-embed fails is deleted if it is later removed", async () => {
+    const kv = memKv();
+    await runEmbeddingSync(
+      { AI: stubAi(), VECTORIZE: stubVectorize(), METAGRAPH_CONTROL: kv },
+      { readArtifact: reader(searchDocs) },
+    );
+
+    const changed = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Two CHANGED",
+            tokens: ["b"],
+          },
+        ],
+      },
+    };
+    await runEmbeddingSync(
+      {
+        AI: embedAiWith(() => []),
+        VECTORIZE: stubVectorize(),
+        METAGRAPH_CONTROL: kv,
+      },
+      { readArtifact: reader(changed) },
+    );
+
+    const dropped = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+        ],
+      },
+    };
+    const env3 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+
+    const r3 = await runEmbeddingSync(env3, { readArtifact: reader(dropped) });
+
+    assert.equal(r3.removed, 1, "stale vector is still tracked for removal");
+    assert.deepEqual(env3.VECTORIZE.ops.deletes[0], ["subnet:2"]);
+  });
+
   test("skips docs without an id", async () => {
     const env = {
       AI: stubAi(),

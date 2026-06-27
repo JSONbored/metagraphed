@@ -24,8 +24,9 @@ RUN pip install --no-cache-dir \
       "redis==5.2.1"
 
 # Reuse the verified decode (fetch-events.py) + the streamer's decode_head
-# (stream-events.py) — imported, never duplicated.
-COPY scripts/fetch-events.py scripts/stream-events.py scripts/index-chain.py /app/scripts/
+# (stream-events.py) — imported, never duplicated. backfill-chain.py shares this
+# image; the backfill service overrides the start command (deploy/backfill.railway.json).
+COPY scripts/fetch-events.py scripts/stream-events.py scripts/index-chain.py scripts/backfill-chain.py /app/scripts/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
