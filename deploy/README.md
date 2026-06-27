@@ -92,6 +92,11 @@ changes.
 
 ## Provisioning Railway (only if NOT co-locating Postgres on bare metal)
 
+The whole project bring-up is scripted in [`railway-bootstrap.sh`](railway-bootstrap.sh)
+— the canonical, version-controlled record of the topology (run it once against a
+fresh project to recreate prod or stand up `staging`, so it is never assembled by
+hand). The commands below are that script, annotated.
+
 > Idle managed Postgres/Redis bill from the moment they exist, and nothing reads
 > them until the `indexer` lands. Provision as part of the indexer phase, not
 > ahead of it. Run from a **dedicated directory** (NOT this repo) so this repo's
@@ -157,8 +162,23 @@ Each needs a human who can verify/roll back (ADR 0013 _Sequencing_):
    `metagraphed-streamer` project, and the `*/3` R2-staging drain; demote D1 to a
    hot cache.
 
-## Backups (mandatory)
+## Backups + PITR (mandatory)
 
-Postgres holds irreplaceable derived state (the node is restorable from chain).
-Ship WAL/dumps to **R2** (zero-egress): a `pg_dump`/WAL job to an R2 bucket, or
-Railway's managed backups + a periodic R2 export via the `exporter` service.
+Postgres holds derived state. It is **re-derivable** (re-index from the chain via
+the archive node), but a full re-index is slow — so back it up; you just don't
+need a near-zero RPO.
+
+- **Enable Railway scheduled backups — daily.** Cheap insurance. Railway bills a
+  backup at the **incremental size, per GB-minute**, so daily snapshots of a
+  compressing DB add only a modest fraction on top of the volume cost.
+- **Full continuous PITR is optional / overkill here.** PITR buys a seconds-level
+  RPO via continuous WAL — worth it for un-recreatable OLTP data, but our worst
+  case is "re-index the last day from chain," which a daily snapshot already
+  bounds. It also adds WAL-storage cost. Skip it unless the re-index window
+  becomes painful; daily snapshots + the R2 export below are enough.
+- **Cheapest durable copy: `pg_dump` → R2** (zero-egress) via the `exporter`
+  service on a schedule — the long-term archive, independent of Railway.
+
+Whichever you pick, the DB volume + backups are the storage-cost driver; when they
+outgrow Railway economics, that is the trigger for the Hetzner escape hatch
+(TimescaleDB compression ~10–20×) in ADR 0013.
