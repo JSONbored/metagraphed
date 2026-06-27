@@ -919,6 +919,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConcentrationArtifact",
   ),
   artifact(
+    "subnet-concentration-history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
+    "SubnetConcentrationHistoryArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -1653,6 +1659,22 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-concentration-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/concentration/history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

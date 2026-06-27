@@ -69,8 +69,11 @@ import {
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
 import {
+  CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_READ_COLUMNS,
   buildConcentration,
+  buildConcentrationHistory,
+  parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
@@ -253,6 +256,50 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
         data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
+// stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share)
+// from the dated neuron_daily rollup — "is this subnet centralizing over time?".
+// Each day needs its full per-UID distribution, so the read is the raw rows (not a
+// GROUP BY) bounded by a row cap; a cold/absent store → 200 with points:[]
+// (schema-stable, never 404).
+export async function handleSubnetConcentrationHistory(
+  request,
+  env,
+  netuid,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  const cutoff = new Date(Date.now() - days * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1All(
+    env,
+    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+    [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
+  );
+  const data = buildConcentrationHistory(rows, netuid, {
+    window: label,
+    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/concentration/history.json`,
+        data.points[0]?.snapshot_date ?? null,
       ),
     },
     "short",

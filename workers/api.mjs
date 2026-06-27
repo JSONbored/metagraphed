@@ -65,6 +65,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -226,6 +227,7 @@ import {
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
+  SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1101,6 +1103,25 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (uptimeMatch) {
       return withEdgeCache(request, ctx, env, "uptime", () =>
         handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
+    }
+    const concentrationHistoryMatch =
+      SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (concentrationHistoryMatch) {
+      // Per-day concentration trend over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-concentration-history",
+        () =>
+          handleSubnetConcentrationHistory(
+            request,
+            env,
+            Number(concentrationHistoryMatch[1]),
+            resolved.url,
+          ),
       );
     }
     const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(

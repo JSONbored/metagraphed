@@ -10641,6 +10641,91 @@
         ],
         "type": "object"
       },
+      "SubnetConcentrationHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "emission_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "emission_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "emission_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "stake_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stake_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "stake_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
+      },
       "SubnetDetail": {
         "additionalProperties": false,
         "properties": {

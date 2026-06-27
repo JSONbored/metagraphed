@@ -223,6 +223,25 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(typeof body.data.stake.nakamoto_coefficient, "number");
   });
 
+  test("GET /subnets/{n}/concentration/history routes to the trend handler", async () => {
+    const dailyEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 5 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+      ]),
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/concentration/history?window=7d",
+      dailyEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "7d");
+    assert.equal(Array.isArray(body.data.points), true);
+    assert.equal(body.data.point_count, 1); // both rows share one snapshot_date
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);

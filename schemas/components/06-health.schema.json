@@ -806,6 +806,38 @@
         },
         "additionalProperties": true
       },
+      "SubnetConcentrationHistoryArtifact": {
+        "type": "object",
+        "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",
+        "required": ["schema_version", "netuid", "point_count", "points"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "point_count": { "type": "integer", "minimum": 0 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["snapshot_date"],
+              "properties": {
+                "snapshot_date": { "type": "string" },
+                "neuron_count": { "type": "integer", "minimum": 0 },
+                "stake_gini": { "type": ["number", "null"] },
+                "stake_nakamoto_coefficient": { "type": ["integer", "null"] },
+                "stake_top_10pct_share": { "type": ["number", "null"] },
+                "emission_gini": { "type": ["number", "null"] },
+                "emission_nakamoto_coefficient": {
+                  "type": ["integer", "null"]
+                },
+                "emission_top_10pct_share": { "type": ["number", "null"] }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "GlobalIncidentsArtifact": {
         "type": "object",
         "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",

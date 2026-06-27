@@ -13,6 +13,7 @@ import {
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
@@ -184,6 +185,7 @@ function dbWith({
   neurons,
   neuronDailyUid,
   neuronDailySubnet,
+  neuronDailyHistory,
   agg,
   kinds,
   registrations,
@@ -236,6 +238,14 @@ function dbWith({
                     /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
                   ) {
                     return { results: neuronDailyUid || [] };
+                  }
+                  // Raw per-day neuron_daily rows (concentration history).
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: neuronDailyHistory || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (/GROUP BY event_kind/.test(sql)) {
@@ -770,6 +780,72 @@ describe("handleSubnetConcentration", () => {
     assert.ok(idx !== -1);
     assert.ok(/coldkey/.test(captures.sql[idx]));
     assert.ok(/validator_permit/.test(captures.sql[idx]));
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
+describe("handleSubnetConcentrationHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-range window with 400", async () => {
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("returns schema-stable empty series on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetConcentrationHistory,
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("happy path computes a per-day concentration trend", async () => {
+    const { env, captures } = dbWith({
+      neuronDailyHistory: [
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentrationHistory(
+        req(`/api/v1/subnets/${NETUID}/concentration/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.point_count, 2);
+    assert.equal(body.data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.ok(body.data.points[0].stake_gini > body.data.points[1].stake_gini);
+    // Windowed neuron_daily read bound to the netuid.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
+    );
+    assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], NETUID);
   });
 });

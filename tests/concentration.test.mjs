@@ -3,6 +3,8 @@ import { describe, test } from "vitest";
 import {
   computeConcentration,
   buildConcentration,
+  buildConcentrationHistory,
+  parseConcentrationHistoryWindow,
 } from "../src/concentration.mjs";
 
 describe("computeConcentration", () => {
@@ -164,5 +166,92 @@ describe("buildConcentration", () => {
     assert.equal(data.captured_at, "2026-06-26T03:00:00Z");
     assert.equal(data.stake.holders, 1);
     assert.equal(data.emission.holders, 1);
+  });
+});
+
+describe("parseConcentrationHistoryWindow", () => {
+  test("accepts 7d / 30d / 90d", () => {
+    assert.deepEqual(parseConcentrationHistoryWindow("7d"), {
+      label: "7d",
+      days: 7,
+    });
+    assert.deepEqual(parseConcentrationHistoryWindow("30d"), {
+      label: "30d",
+      days: 30,
+    });
+    assert.deepEqual(parseConcentrationHistoryWindow("90d"), {
+      label: "90d",
+      days: 90,
+    });
+  });
+
+  test("defaults a missing/blank window to 30d", () => {
+    assert.equal(parseConcentrationHistoryWindow(undefined).days, 30);
+    assert.equal(parseConcentrationHistoryWindow("").days, 30);
+    assert.equal(parseConcentrationHistoryWindow(null).days, 30);
+  });
+
+  test("rejects unsupported windows (incl. the longer history windows)", () => {
+    for (const bad of ["1y", "all", "bogus", "0d"]) {
+      const { error } = parseConcentrationHistoryWindow(bad);
+      assert.equal(error.parameter, "window");
+      assert.match(error.message, /7d, 30d, 90d/);
+    }
+  });
+});
+
+describe("buildConcentrationHistory", () => {
+  test("computes a per-day trend, newest first", () => {
+    // Rows arrive snapshot_date DESC (as the SQL returns them).
+    const rows = [
+      { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+      { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+      { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+      { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+      { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+    ];
+    const data = buildConcentrationHistory(rows, 7, { window: "30d" });
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "30d");
+    assert.equal(data.point_count, 2);
+    assert.equal(data.points[0].snapshot_date, "2026-06-27"); // newest first
+    assert.equal(data.points[1].snapshot_date, "2026-06-26");
+    assert.equal(data.points[0].neuron_count, 3);
+    // The newest day is concentrated (one whale); the older day is 50/50.
+    assert.ok(data.points[0].stake_gini > data.points[1].stake_gini);
+    assert.equal(data.points[1].stake_gini, 0);
+    assert.equal(data.points[0].stake_nakamoto_coefficient, 1);
+    assert.equal(typeof data.points[0].stake_top_10pct_share, "number");
+    assert.equal(typeof data.points[0].emission_gini, "number");
+  });
+
+  test("drops the oldest (possibly partial) day when the read was capped", () => {
+    const rows = [
+      { snapshot_date: "2026-06-27", stake_tao: 10 },
+      { snapshot_date: "2026-06-26", stake_tao: 5 },
+    ];
+    const data = buildConcentrationHistory(rows, 1, {
+      window: "7d",
+      capped: true,
+    });
+    assert.equal(data.point_count, 1);
+    assert.equal(data.points[0].snapshot_date, "2026-06-27");
+  });
+
+  test("skips rows with no snapshot_date and is cold-store safe", () => {
+    const data = buildConcentrationHistory(
+      [
+        { snapshot_date: null, stake_tao: 5 },
+        { snapshot_date: "2026-06-27", stake_tao: 5 },
+      ],
+      1,
+      {},
+    );
+    assert.equal(data.point_count, 1);
+    for (const rows of [[], null, undefined]) {
+      const empty = buildConcentrationHistory(rows, 3, { window: "30d" });
+      assert.equal(empty.point_count, 0);
+      assert.deepEqual(empty.points, []);
+    }
   });
 });
