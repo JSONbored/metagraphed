@@ -3786,7 +3786,11 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
                     return Promise.resolve({
                       results: fixtures.block ? [fixtures.block] : [],
                     });
-                  if (/MAX\(CASE WHEN block_number/.test(sql))
+                  if (
+                    /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
+                      sql,
+                    )
+                  )
                     return Promise.resolve({
                       results: [
                         {
@@ -3890,13 +3894,25 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
   });
 
   test("get_block returns block detail with prev/next neighbors", async () => {
-    const env = chainD1({ block: BLOCK_ROW, prev: 4199999, next: 4200001 });
+    const capture = [];
+    const env = chainD1(
+      { block: BLOCK_ROW, prev: 4199999, next: 4200001 },
+      capture,
+    );
     const res = await callTool("get_block", { ref: "4200000" }, { env });
     const out = res.body.result.structuredContent;
     assert.equal(out.ref, "4200000");
     assert.equal(out.block.block_number, 4200000);
     assert.equal(out.prev_block_number, 4199999);
     assert.equal(out.next_block_number, 4200001);
+    const neighborQuery = capture.find(
+      (c) => /AS prev/.test(c.sql) && /AS next/.test(c.sql),
+    );
+    assert.ok(neighborQuery, "get_block must query nearest stored neighbors");
+    assert.ok(/WHERE block_number < \?/.test(neighborQuery.sql));
+    assert.ok(/WHERE block_number > \?/.test(neighborQuery.sql));
+    assert.ok(!/CASE WHEN block_number/.test(neighborQuery.sql));
+    assert.deepEqual(neighborQuery.params, [4200000, 4200000]);
   });
 
   test("get_block accepts a 0x hash ref", async () => {

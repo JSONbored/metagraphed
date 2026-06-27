@@ -740,6 +740,15 @@ async function rpcCacheKey(network, method, params) {
 export function classifyUpstreamAttempt({ thrown, status, parsedBody }) {
   if (thrown) return "transient"; // network error or AbortSignal timeout
   if (status >= 500 || status === 429) return "transient";
+  // A redirect (3xx) or the opaqueredirect sentinel (status 0, produced by the
+  // `redirect: "manual"` fetch below) is never a valid JSON-RPC response. The
+  // allowlist only vetted the INITIAL upstream, so a redirect must not be
+  // followed OR accepted. Classify it as transient — NOT fatal: the success
+  // branch in proxyWithFailover gates on `status < 400` (not the classification),
+  // so a "fatal" 3xx would still slip through there and be returned to the
+  // client with recordRpcSuccess. "transient" is caught first, so the attempt is
+  // recorded as failed and we fail over to the next allowlisted endpoint.
+  if (status === 0 || (status >= 300 && status < 400)) return "transient";
   if (status >= 400) return "fatal"; // upstream rejected the request itself
   if (parsedBody && typeof parsedBody === "object" && parsedBody.error) {
     if (TRANSIENT_RPC_ERROR_CODES.has(Number(parsedBody.error.code))) {
@@ -859,6 +868,13 @@ export async function proxyWithFailover(
         method: "POST",
         headers: { "content-type": "application/json" },
         body: bodyText,
+        // Never auto-follow an upstream redirect: only the initial endpoint was
+        // checked against TRUSTED_RPC_UPSTREAM_ORIGINS, so following a 3xx would
+        // re-POST the caller's body to an unvetted host. A 3xx/opaqueredirect is
+        // classified transient (see classifyUpstreamAttempt) → failed attempt.
+        // Mirrors the redirect:"manual" invariant in webhooks.mjs /
+        // health-probe-core.mjs.
+        redirect: "manual",
         signal: AbortSignal.timeout(timeoutMs),
       });
       status = upstream.status;

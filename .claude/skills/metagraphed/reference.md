@@ -70,13 +70,18 @@ Subnet-level fields you must **not** touch in a community PR: `curation` (`level
 
 **Every contributor PR runs the FULL validation — there is no reduced "ugc" fast-lane.** (It was
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
-one-file surface PR runs the same gates as a code PR. Two parallel jobs both build:
+one-file surface PR runs the same gates as a code PR. Three parallel jobs (the two Node jobs both
+build):
 
 - **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
   except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
   Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
   `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe).
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
+- **`python`** — runs the Python SDK's unittest suite via `uv run --extra test python -m unittest
+discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
+  it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
+  `build` job before the artifact is built, so a red suite blocks a PyPI publish.
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
