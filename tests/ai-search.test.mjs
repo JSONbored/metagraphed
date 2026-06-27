@@ -535,7 +535,11 @@ describe("semanticSearch", () => {
       () => semanticSearch(env, overlong),
       (err) => err.aiInput === true,
     );
-    assert.equal(aiCalled, false, "env.AI.run must not be called for an oversized query");
+    assert.equal(
+      aiCalled,
+      false,
+      "env.AI.run must not be called for an oversized query",
+    );
   });
   test("accepts a query exactly at the length cap", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
