@@ -85,6 +85,19 @@ test("chain-events ignores extrinsic without block to avoid global scans", async
   expect(queryText()).not.toContain("AND block_number =");
 });
 
+test("chain-events rejects method-only feed filters without a block scope", async () => {
+  const res = await req("/api/v1/chain-events?method=ExtrinsicSuccess");
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toMatch(/method filter requires pallet/);
+});
+
+test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
+  const res = await req(`/api/v1/chain-events?pallet=${"A".repeat(65)}`);
+  expect(res.status).toBe(400);
+  const punct = await req("/api/v1/chain-events?pallet=System;DROP");
+  expect(punct.status).toBe(400);
+});
+
 test("POST is rejected with 405", async () => {
   const res = await req("/api/v1/chain-events", { method: "POST" });
   expect(res.status).toBe(405);
