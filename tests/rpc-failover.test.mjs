@@ -218,9 +218,10 @@ describe("proxyWithFailover", () => {
     assert.equal(res.headers.get("x-metagraph-rpc-endpoint-id"), "b");
     assert.equal(res.headers.get("x-metagraph-rpc-attempts"), "2");
     // Only the two allowlisted endpoints were contacted — never the redirect
-    // target (the proxy did not auto-follow the 302).
+    // target (the deepEqual is exact, so it proves UNSAFE was not fetched; an
+    // `.includes(UNSAFE)` substring check would trip CodeQL's
+    // incomplete-url-substring-sanitization rule and is redundant here).
     assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
-    assert.equal(fetchFn.calls.includes(UNSAFE), false);
     // The security property itself: the upstream fetch pins redirect:"manual" so
     // the platform never auto-follows a 3xx (without this, the body would be
     // re-POSTed to the off-allowlist Location). Guards against the option being
@@ -252,9 +253,10 @@ describe("proxyWithFailover", () => {
       fetchFn,
     });
     assert.equal(res.status, 502);
-    // Both allowlisted endpoints tried; neither redirect was followed.
+    // Both allowlisted endpoints tried; neither redirect was followed (the
+    // exact deepEqual proves UNSAFE was not fetched without a URL-substring
+    // check).
     assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
-    assert.equal(fetchFn.calls.includes(UNSAFE), false);
   });
 
   test("fails over on HTTP 5xx without reading its response body", async () => {
