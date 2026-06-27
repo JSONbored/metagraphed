@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS account_events (
   hotkey           TEXT,
   coldkey          TEXT,
   netuid           INTEGER,
+  uid              INTEGER,                 -- neuron uid when the event carries one
   amount           NUMERIC,
   alpha            NUMERIC,
   observed_at      BIGINT NOT NULL,

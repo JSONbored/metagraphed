@@ -27,7 +27,39 @@ private network (`<service>.railway.internal`, zero egress). The existing
 `metagraphed-streamer` project is **separate and untouched** — it is superseded
 by `indexer` only at decommission (final step).
 
-## Provisioning (run when the indexer is ready — NOT before)
+## Bare-metal bring-up (the recommended core — one command)
+
+With a dedicated server (the cost-optimal home for the storage-heavy node +
+Postgres, ADR 0013), co-locate **node + TimescaleDB + Redis + indexer** in one
+stack so every hop is localhost. The whole core comes up with:
+
+```bash
+cp deploy/.env.example deploy/.env     # set POSTGRES_PASSWORD
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+```
+
+That starts:
+
+- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` on first
+  boot; never binds a public port (Cloudflare reaches it via Hyperdrive over a
+  tunnel).
+- **`redis`** — the indexer cursor + heartbeat mirror.
+- **`subtensor`** — a pruned finney node (the head source + first-party RPC
+  origin). For the one-time historical backfill, point the indexer at a transient
+  archive source via `EVENTS_RPC_URL` / `START_BLOCK` / a raised
+  `EVENTS_MAX_LOOKBACK`.
+- **`indexer`** (`scripts/index-chain.py`) — follows the finalized head from the
+  durable cursor and idempotently writes `blocks` / `extrinsics` /
+  `account_events` into Postgres. Its pure transforms are unit-tested
+  (`scripts/test_index_chain.py`); **verify ~100% capture vs D1 before any
+  serving cutover** (the ADR 0013 gate).
+
+To use **managed Railway Postgres** instead of the in-stack one (for managed
+backups/HA), delete the `postgres` service and point the indexer's
+`DATABASE_URL` at the Railway URL — the schema is portable and nothing else
+changes.
+
+## Provisioning Railway (only if NOT co-locating Postgres on bare metal)
 
 > Idle managed Postgres/Redis bill from the moment they exist, and nothing reads
 > them until the `indexer` lands. Provision as part of the indexer phase, not
