@@ -14,10 +14,16 @@ function isSafeRpcMethod(method) {
   );
 }
 
+function normalizeRpcId(id) {
+  return typeof id === "string" || typeof id === "number" || id === null
+    ? id
+    : null;
+}
+
 function rpcError(id, code, message) {
   return JSON.stringify({
     jsonrpc: "2.0",
-    id: id ?? null,
+    id: normalizeRpcId(id),
     error: { code, message },
   });
 }

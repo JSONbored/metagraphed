@@ -180,3 +180,30 @@ test("security: unsafe and oversized client RPC frames do not reach upstream", a
   await lb.close();
   await new Promise((resolve) => http.close(resolve));
 });
+
+test("security: nested non-scalar RPC ids are not reflected in errors", async () => {
+  const good = await echoServer();
+  const lb = await lbServer([good.url]);
+  const nestedId = "[".repeat(5000) + "null" + "]".repeat(5000);
+  const payload = `{"jsonrpc":"2.0","id":${nestedId},"method":"author_submitExtrinsic"}`;
+
+  const reply = await new Promise((resolve, reject) => {
+    const c = new WebSocket(lb.url);
+    c.on("open", () => {
+      c.send(payload);
+    });
+    c.on("message", (d) => {
+      c.close();
+      resolve(JSON.parse(d.toString()));
+    });
+    c.on("error", reject);
+    setTimeout(() => reject(new Error("timeout")), 8000);
+  });
+
+  assert.equal(reply.id, null);
+  assert.equal(reply.error?.code, -32601);
+  assert.equal(good.connections, 1);
+
+  await lb.close();
+  await good.close();
+});
