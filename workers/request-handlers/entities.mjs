@@ -1042,11 +1042,15 @@ export async function handleExtrinsics(request, env, url) {
     params.push(cur[0], cur[1]);
   }
   // Standalone observed_at windows can be highly selective while the feed order
-  // is block_number/extrinsic_index. Only force the timestamp index for bounded
-  // narrow windows; broad or malformed public filters must stay planner-selected
-  // so SQLite/D1 can use the order-aligned primary-key path and stop at LIMIT.
+  // is block_number/extrinsic_index. Force the timestamp index for bounded
+  // narrow windows and one-sided ranges whose effective retained window is
+  // narrow; broad public filters stay planner-selected so SQLite/D1 can use the
+  // order-aligned primary-key path and stop at LIMIT.
+  const effectiveFromMs = fromMs ?? observedFloorMs;
+  const effectiveToMs = toMs ?? nowMs + DAY_MS;
   const hasNarrowObservedWindow =
-    fromMs != null && toMs != null && toMs - fromMs <= DAY_MS;
+    (fromMs != null || toMs != null) &&
+    effectiveToMs - effectiveFromMs <= DAY_MS;
   const forceObservedOrderIndex =
     hasNarrowObservedWindow &&
     !hasBlockFilter &&

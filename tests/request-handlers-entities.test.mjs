@@ -1770,6 +1770,38 @@ describe("handleExtrinsics", () => {
     assert.ok(/observed_at <= \?/.test(sql));
   });
 
+  test("uses the observed-at index for selective one-sided time filters", async () => {
+    const now = Date.now();
+
+    {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?from=${now + 60_000}`),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql, "a near-future one-sided from filter must reach D1");
+      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+      assert.ok(/observed_at >= \?/.test(sql));
+    }
+
+    {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(
+          `/api/v1/extrinsics?to=${now - 365 * 24 * 60 * 60 * 1000 + 60_000}`,
+        ),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql, "a near-floor one-sided to filter must reach D1");
+      assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(sql));
+      assert.ok(/observed_at <= \?/.test(sql));
+    }
+  });
+
   test("drops the observed-at index hint when an equality filter is present", async () => {
     // With a (signer) equality the planner should use the order-aligned
     // signer index, not be forced onto the observed-at one.
