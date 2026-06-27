@@ -58,6 +58,23 @@ function stubAi() {
   };
 }
 
+// Embedding AI stub whose batch `data` is computed from the input texts, so a
+// test can simulate Workers AI returning fewer/empty/malformed rows than asked.
+function embedAiWith(dataFor) {
+  const calls = [];
+  return {
+    calls,
+    run(model, input) {
+      calls.push({ model, input });
+      if (model === EMBED_MODEL) {
+        return Promise.resolve({ data: dataFor(input.text) });
+      }
+      return Promise.resolve({ response: "x" });
+    },
+  };
+}
+const validVec = () => new Array(1024).fill(0.02);
+
 function stubVectorize() {
   const ops = { upserts: [], deletes: [] };
   return {
@@ -367,6 +384,108 @@ describe("runEmbeddingSync", () => {
     const r3 = await runEmbeddingSync(env3, { readArtifact: reader(dropped) });
     assert.equal(r3.removed, 1, "dropped doc is deleted");
     assert.deepEqual(env3.VECTORIZE.ops.deletes[0], ["subnet:2"]);
+  });
+
+  test("records nothing and upserts nothing when the embedder returns an empty batch", async () => {
+    const kv = memKv();
+    const env = {
+      AI: embedAiWith(() => []), // error-shaped / empty body
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r = await runEmbeddingSync(env, { readArtifact: reader(searchDocs) });
+    assert.equal(r.embedded, 0);
+    assert.equal(env.VECTORIZE.ops.upserts.length, 0, "nothing upserted");
+    // The failed docs must NOT be recorded as embedded.
+    const manifest = JSON.parse(kv.store.get(EMBED_MANIFEST_KEY) || "{}");
+    assert.deepEqual(Object.keys(manifest), [], "no doc marked embedded");
+    // A subsequent run with a working embedder re-attempts both docs.
+    const env2 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, {
+      readArtifact: reader(searchDocs),
+    });
+    assert.equal(r2.embedded, 2, "both docs retried after a failed run");
+    assert.equal(env2.VECTORIZE.ops.upserts[0].length, 2);
+  });
+
+  test("only upserts and records docs that produced a valid vector (partial batch)", async () => {
+    const kv = memKv();
+    // pending order is [subnet:1, subnet:2]; the embedder returns a valid vector
+    // for the first and a missing one for the second.
+    const env = {
+      AI: embedAiWith(() => [validVec(), undefined]),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r = await runEmbeddingSync(env, { readArtifact: reader(searchDocs) });
+    assert.equal(r.embedded, 1, "only the valid vector counts");
+    assert.equal(env.VECTORIZE.ops.upserts[0].length, 1, "only one upsert");
+    // No vector with undefined values is ever upserted.
+    assert.ok(
+      env.VECTORIZE.ops.upserts[0].every((v) => Array.isArray(v.values)),
+      "no upsert carries an undefined vector",
+    );
+    const manifest = JSON.parse(kv.store.get(EMBED_MANIFEST_KEY) || "{}");
+    assert.equal(
+      Object.keys(manifest).length,
+      1,
+      "only the embedded doc is recorded",
+    );
+    // Next run (working embedder) re-attempts only the previously-failed doc.
+    const env2 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, {
+      readArtifact: reader(searchDocs),
+    });
+    assert.equal(r2.embedded, 1, "only the previously-failed doc retried");
+  });
+
+  test("a present doc whose re-embed fails is retried, never deleted", async () => {
+    const kv = memKv();
+    // First run embeds both docs successfully.
+    await runEmbeddingSync(
+      { AI: stubAi(), VECTORIZE: stubVectorize(), METAGRAPH_CONTROL: kv },
+      { readArtifact: reader(searchDocs) },
+    );
+    // Second run: doc 2's content changes but the embedder fails for it. It is
+    // still a current doc, so it must NOT be treated as removed (stale beats
+    // missing) — regression guard for basing `removed` on the current doc set.
+    const changed = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Two CHANGED",
+            tokens: ["b"],
+          },
+        ],
+      },
+    };
+    const env2 = {
+      AI: embedAiWith(() => []), // re-embed of the changed doc fails
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, { readArtifact: reader(changed) });
+    assert.equal(r2.removed, 0, "a present-but-failed doc is never deleted");
+    assert.equal(env2.VECTORIZE.ops.deletes.length, 0);
   });
 
   test("skips docs without an id", async () => {

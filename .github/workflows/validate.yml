@@ -301,3 +301,26 @@ jobs:
 
       - name: Validate private boundary
         run: npm run validate:private-boundary
+
+  # The Python SDK (python/) ships its own hermetic unittest suite (37 cases) but
+  # was never run in CI — a regression in retry/backoff, Retry-After capping,
+  # pagination, JSON-RPC unwrap, or the SSRF-safe redirect handler could land on a
+  # PR (and reach PyPI) despite covering tests existing. This job runs it on every
+  # PR. It is independent of the Node jobs, so it adds no wall-clock to the
+  # test/checks long poles.
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      # `--extra test` installs the httpx-backed test deps (declared in pyproject's
+      # [test] extra) so the async cases run instead of skipping. uv provisions a
+      # Python within `requires-python = ">=3.9"`. No new runtime dependency.
+      - name: Test Python SDK
+        working-directory: python
+        run: uv run --extra test python -m unittest discover -s tests
