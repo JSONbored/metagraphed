@@ -32,16 +32,20 @@ const jsonResponse = (status, body) => ({
 });
 
 // fetchFn that returns the i-th scripted reply (a thunk that may throw, or a
-// response object), recording the URLs it was called with.
+// response object), recording the URLs AND init options it was called with so a
+// test can assert the security-critical fetch options (e.g. redirect:"manual").
 function scriptedFetch(...replies) {
   const calls = [];
-  const fn = async (url) => {
+  const inits = [];
+  const fn = async (url, init) => {
     const reply = replies[calls.length];
     calls.push(url);
+    inits.push(init);
     if (typeof reply === "function") return reply();
     return reply;
   };
   fn.calls = calls;
+  fn.inits = inits;
   return fn;
 }
 
@@ -217,6 +221,11 @@ describe("proxyWithFailover", () => {
     // target (the proxy did not auto-follow the 302).
     assert.deepEqual(fetchFn.calls, [SAFE_A, SAFE_B]);
     assert.equal(fetchFn.calls.includes(UNSAFE), false);
+    // The security property itself: the upstream fetch pins redirect:"manual" so
+    // the platform never auto-follows a 3xx (without this, the body would be
+    // re-POSTed to the off-allowlist Location). Guards against the option being
+    // dropped in a future refactor.
+    assert.equal(fetchFn.inits[0]?.redirect, "manual");
   });
 
   test("treats an opaqueredirect (status 0) as a failed attempt", async () => {
