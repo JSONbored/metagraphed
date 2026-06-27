@@ -46,6 +46,7 @@ import {
   handleChainFees,
   handleChainSigners,
   handleGlobalIncidents,
+  loadGlobalIncidentsLedger,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
@@ -920,6 +921,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleFeedRequest(request, env, url, {
       readArtifact,
       errorResponse,
+      loadLiveIncidents: async (feedEnv) => {
+        const { data } = await loadGlobalIncidentsLedger(feedEnv);
+        return data;
+      },
     });
   }
 

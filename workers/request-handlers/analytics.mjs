@@ -606,15 +606,7 @@ export async function handleHealthIncidents(
 // — the per-subnet /incidents route (no global cap) is the authoritative source
 // for a single subnet. Widening this to an exact bound would mean aggregating
 // from surface_uptime_daily (out of scope here).
-export async function handleGlobalIncidents(request, env, url) {
-  const { label, days, error } = analyticsWindow(url);
-  if (error) {
-    return analyticsQueryError(error);
-  }
-  const since = Date.now() - days * DAY_MS;
-  const incidentRows = await d1All(
-    env,
-    `WITH recent_checks AS (
+const GLOBAL_INCIDENTS_SQL = `WITH recent_checks AS (
        -- Source-row cap (LIMIT ?): bounds the gap-island scan, but an incident
        -- straddling this newest-N boundary is only partially counted (see the
        -- handler doc-note above — this feed is approximate near the cap).
@@ -650,21 +642,39 @@ export async function handleGlobalIncidents(request, env, url) {
      GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
-     LIMIT ?`,
-    [
-      since,
-      MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
-      INCIDENT_GAP_MS,
-      MIN_INCIDENT_SAMPLES,
-      MAX_INCIDENT_ROWS,
-    ],
-  );
+     LIMIT ?`;
+
+/** Shared D1 incident ledger used by GET /api/v1/incidents and content feeds. */
+export async function loadGlobalIncidentsLedger(
+  env,
+  { label = "7d", days = 7 } = {},
+) {
+  const since = Date.now() - days * DAY_MS;
+  const incidentRows = await d1All(env, GLOBAL_INCIDENTS_SQL, [
+    since,
+    MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+    INCIDENT_GAP_MS,
+    MIN_INCIDENT_SAMPLES,
+    MAX_INCIDENT_ROWS,
+  ]);
   const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
     observedAt: meta?.last_run_at || null,
     incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
+  });
+  return { data, incidentRows };
+}
+
+export async function handleGlobalIncidents(request, env, url) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) {
+    return analyticsQueryError(error);
+  }
+  const { data, incidentRows } = await loadGlobalIncidentsLedger(env, {
+    label,
+    days,
   });
   const response = await envelopeResponse(
     request,
