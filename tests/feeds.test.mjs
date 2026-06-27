@@ -18,6 +18,7 @@ const {
   atomFeed,
   escapeXml,
   filterByTag,
+  filterSince,
 } = __test;
 
 const CHANGELOG = {
@@ -256,6 +257,59 @@ describe("feeds — filterByTag", () => {
 
   test("an item with no tags array is safely skipped", () => {
     assert.deepEqual(filterByTag([{ id: "x" }], "incident"), []);
+  });
+});
+
+describe("feeds — filterSince", () => {
+  const items = [
+    { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
+    { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
+    { id: "bad", timestamp: "not-a-date" },
+  ];
+
+  test("a null bound is a no-op (returns the input)", () => {
+    assert.equal(filterSince(items, null), items);
+  });
+
+  test("keeps items at or after the bound; drops unparseable timestamps", () => {
+    const kept = filterSince(items, Date.parse("2026-06-15T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+
+  test("is inclusive of the exact bound", () => {
+    const kept = filterSince(items, Date.parse("2026-06-20T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+});
+
+describe("feeds — ?since= filter", () => {
+  test("a future since yields an empty but valid feed (200)", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2030-01-01",
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("a past since keeps items and composes with ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2000-01-01&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.ok(items.length > 0);
+    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+  });
+
+  test("a malformed since is rejected with 400", async () => {
+    const { res } = await feed("/api/v1/feeds/registry.json?since=notadate");
+    assert.equal(res.status, 400);
   });
 });
 
