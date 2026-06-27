@@ -640,15 +640,20 @@ export async function handleAccountBalance(request, env, ss58) {
       const data = rpcBody?.result?.data;
       if (data && typeof data.free !== "undefined") {
         // free + reserved are hex-encoded u128 rao values (1 TAO = 1e9 rao).
-        const freeRao =
-          typeof data.free === "string"
-            ? Number(BigInt(data.free))
-            : Number(data.free);
-        const reservedRao =
-          typeof data.reserved === "string"
-            ? Number(BigInt(data.reserved))
-            : Number(data.reserved ?? 0);
-        balanceTao = (freeRao + reservedRao) / 1e9;
+        // Sum in BigInt space and split the whole / fractional TAO only at the
+        // end, so a balance above Number.MAX_SAFE_INTEGER rao (~9.007M TAO) keeps
+        // its low-order rao digits — a direct Number(BigInt(...)) cast would
+        // collapse them to the nearest double *before* the 1e9 scale. A malformed
+        // hex `free` still throws here (BigInt parse) and is caught below →
+        // balance_tao:null, 200 (unchanged error path).
+        const toRao = (v) =>
+          typeof v === "string"
+            ? BigInt(v)
+            : BigInt(Math.trunc(Number(v ?? 0)));
+        const totalRao = toRao(data.free) + toRao(data.reserved);
+        balanceTao =
+          Number(totalRao / 1_000_000_000n) +
+          Number(totalRao % 1_000_000_000n) / 1e9;
         rpcOk = true;
       }
     }
