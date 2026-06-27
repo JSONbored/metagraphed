@@ -16,11 +16,11 @@ R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
 
 ## Topology
 
-| Tier          | Where                                  | Pieces                                                                                                                                               |
-| ------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented) | **Cloudflare**                         | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                      |
+| Tier          | Where                                                     | Pieces                                                                                                                                                                                                                                                           |
+| ------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge (rented) | **Cloudflare**                                            | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose, R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy                                                                                                                                  |
 | Core (owned)  | **Dedicated box** (data plane) + **Railway** (light glue) | box: `subtensor-node` (**full archive**, ~3.5 TB+ NVMe) + `postgres` + `redis` + `indexer`; Railway: `wss-lb` + crons (`health-prober`, `rollups`, `alerter`, `exporter`, `reconciler`). _Interim: Postgres/Redis/indexer run on Railway until the box is live._ |
-| Escape hatch  | **Hetzner** (later)                    | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                      |
+| Escape hatch  | **Hetzner** (later)                                       | `postgres` (+ optional node) when compressed history > ~300–500 GB or the 1 TB Railway cap looms — see ADR 0013                                                                                                                                                  |
 
 One Railway **project**, two **environments** (`production`, `staging`), one
 private network (`<service>.railway.internal`, zero egress). The existing
