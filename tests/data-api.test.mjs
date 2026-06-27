@@ -28,10 +28,11 @@ vi.mock("postgres", () => ({
 const { default: worker } = await import("../workers/data-api.mjs");
 const env = { HYPERDRIVE: { connectionString: "postgres://mock" } };
 const ctx = { waitUntil() {} };
-const req = (path, init) => worker.fetch(new Request(`https://d${path}`, init), env, ctx);
+const req = (path, init) =>
+  worker.fetch(new Request(`https://d${path}`, init), env, ctx);
 
-test("GET /api/v1/blocks/:n/events returns the block's events", async () => {
-  const res = await req("/api/v1/blocks/123/events");
+test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () => {
+  const res = await req("/api/v1/blocks/123/chain-events");
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.block_number).toBe(123);
@@ -41,7 +42,9 @@ test("GET /api/v1/blocks/:n/events returns the block's events", async () => {
 });
 
 test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)", async () => {
-  const res = await req("/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500");
+  const res = await req(
+    "/api/v1/chain-events?limit=1&pallet=System&method=ExtrinsicSuccess&before=500",
+  );
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.count).toBe(1);
@@ -64,6 +67,10 @@ test("unknown path is 404", async () => {
 });
 
 test("missing Hyperdrive binding is 503", async () => {
-  const res = await worker.fetch(new Request("https://d/api/v1/chain-events"), {}, ctx);
+  const res = await worker.fetch(
+    new Request("https://d/api/v1/chain-events"),
+    {},
+    ctx,
+  );
   expect(res.status).toBe(503);
 });

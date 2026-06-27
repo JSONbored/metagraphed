@@ -13,7 +13,7 @@
     {
       "binding": "HYPERDRIVE",
       "id": "d8c62acb5520402b82d039ec482f7cc3",
-      "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed"
-    }
-  ]
+      "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
+    },
+  ],
 }

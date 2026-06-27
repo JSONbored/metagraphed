@@ -845,7 +845,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // (e.g. a preview deploy without the data Worker).
   if (
     url.pathname === "/api/v1/chain-events" ||
-    /^\/api\/v1\/blocks\/\d+\/events$/.test(url.pathname)
+    /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname)
   ) {
     if (env.DATA_API) return env.DATA_API.fetch(request);
     return new Response(JSON.stringify({ error: "data tier unavailable" }), {

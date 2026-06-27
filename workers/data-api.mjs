@@ -34,7 +34,8 @@ function clampLimit(raw) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (request.method !== "GET") return json({ error: "method not allowed" }, 405);
+    if (request.method !== "GET")
+      return json({ error: "method not allowed" }, 405);
     if (!env.HYPERDRIVE?.connectionString) {
       return json({ error: "hyperdrive binding unavailable" }, 503);
     }
@@ -50,8 +51,11 @@ export default {
     });
 
     try {
-      // GET /api/v1/blocks/:n/events — EVERY event in a block (the all-events tier).
-      const block = url.pathname.match(/^\/api\/v1\/blocks\/(\d+)\/events$/);
+      // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events
+      // tier). Distinct from the existing /blocks/:ref/events (curated, D1, #1852).
+      const block = url.pathname.match(
+        /^\/api\/v1\/blocks\/(\d+)\/chain-events$/,
+      );
       if (block) {
         const bn = Number(block[1]);
         const rows = await sql`
@@ -68,7 +72,8 @@ export default {
         const pallet = url.searchParams.get("pallet");
         const method = url.searchParams.get("method");
         const before = url.searchParams.get("before"); // block_number cursor (exclusive)
-        const beforeBn = before != null && before !== "" ? Number(before) : null;
+        const beforeBn =
+          before != null && before !== "" ? Number(before) : null;
         const rows = await sql`
           SELECT block_number, event_index, pallet, method, args, phase, extrinsic_index, observed_at
           FROM chain_events
@@ -78,13 +83,17 @@ export default {
             ${method ? sql`AND method = ${method}` : sql``}
           ORDER BY block_number DESC, event_index DESC
           LIMIT ${limit}`;
-        const next = rows.length === limit ? rows[rows.length - 1].block_number : null;
+        const next =
+          rows.length === limit ? rows[rows.length - 1].block_number : null;
         return json({ count: rows.length, next_before: next, events: rows });
       }
 
       return json({ error: "not found" }, 404);
     } catch (err) {
-      return json({ error: "data query failed", detail: String(err).slice(0, 200) }, 502);
+      return json(
+        { error: "data query failed", detail: String(err).slice(0, 200) },
+        502,
+      );
     } finally {
       ctx.waitUntil(sql.end({ timeout: 5 }).catch(() => {}));
     }
