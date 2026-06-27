@@ -1,6 +1,34 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
+
+// SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
+// assert the query shape (keyset seek vs offset).
+function dbCapture(days = []) {
+  const captured = [];
+  return {
+    captured,
+    env: {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              captured.push({ sql, params });
+              return {
+                async all() {
+                  return {
+                    results: /FROM account_events_daily/.test(sql) ? days : [],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    },
+  };
+}
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -108,4 +136,34 @@ test("GET /accounts/{ss58}/history is schema-stable when cold (never 404)", asyn
   const body = await res.json();
   assert.equal(body.data.day_count, 0);
   assert.equal(Array.isArray(body.data.days), true);
+});
+
+test("GET /accounts/{ss58}/history cursor uses a (day, netuid) keyset seek, not offset", async () => {
+  const { env, captured } = dbCapture([DAY]);
+  const res = await handleRequest(
+    req(
+      `/api/v1/accounts/${SS58}/history?limit=1&cursor=${encodeCursor([20260625, 9])}`,
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const sql = captured.find((q) => /FROM account_events_daily/.test(q.sql)).sql;
+  assert.ok(/\(day, netuid\) < \(\?, \?\)/.test(sql));
+  assert.ok(!/OFFSET/.test(sql));
+  // DAY is 2026-06-24 / netuid 7 → next_cursor encodes day as 20260624.
+  assert.equal(body.data.next_cursor, encodeCursor([20260624, 7]));
+});
+
+test("GET /accounts/{ss58}/history ignores a malformed cursor (first page)", async () => {
+  const { env, captured } = dbCapture([DAY]);
+  await handleRequest(
+    req(`/api/v1/accounts/${SS58}/history?cursor=not-a-cursor`),
+    env,
+    {},
+  );
+  const sql = captured.find((q) => /FROM account_events_daily/.test(q.sql)).sql;
+  assert.ok(/OFFSET/.test(sql));
+  assert.ok(!/\(day, netuid\) </.test(sql));
 });

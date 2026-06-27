@@ -5,7 +5,7 @@ import {
   MAX_RPC_BODY_BYTES,
   SAFE_RPC_METHODS,
   DENIED_RPC_PREFIXES,
-} from "../../../workers/config.mjs";
+} from "./rpc-policy.mjs";
 
 function isSafeRpcMethod(method) {
   return (

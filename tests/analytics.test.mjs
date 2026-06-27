@@ -126,6 +126,35 @@ describe("formatIncidents", () => {
     assert.equal(out.surfaces[0].incident_count, 2);
     assert.equal(out.surfaces[0].incidents.length, 2);
   });
+  test("caps incidents per surface independently (regression: global cap starvation)", () => {
+    const t = 1_000_000_000_000;
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [
+        { surface_id: "a", total: 10, ok_count: 5 },
+        { surface_id: "z", total: 10, ok_count: 5 },
+      ],
+      incidentRows: [
+        ...Array.from({ length: 3 }, (_, i) => ({
+          surface_id: "a",
+          started_at: t + i * 60_000,
+          ended_at: t + i * 60_000 + 1_000,
+          failed_samples: 1,
+        })),
+        ...Array.from({ length: 2 }, (_, i) => ({
+          surface_id: "z",
+          started_at: t + 100_000 + i * 60_000,
+          ended_at: t + 100_000 + i * 60_000 + 1_000,
+          failed_samples: 1,
+        })),
+      ],
+      maxIncidents: 2,
+    });
+    const a = out.surfaces.find((surface) => surface.surface_id === "a");
+    const z = out.surfaces.find((surface) => surface.surface_id === "z");
+    assert.equal(a.incident_count, 2);
+    assert.equal(z.incident_count, 2);
+  });
 });
 
 describe("formatLeaderboards", () => {
@@ -1065,9 +1094,10 @@ describe("analytics routes (fake D1 with data)", () => {
       queries[1].sql,
       /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
     );
-    assert.match(queries[1].sql, /FROM grouped\n {7}WHERE ok = 0/);
+    assert.match(queries[1].sql, /incidents AS \(/);
+    assert.match(queries[1].sql, /FROM grouped\n {9}WHERE ok = 0/);
   });
-  test("incidents SQL uses a hard incident row cap", async () => {
+  test("incidents SQL caps rows per surface_key", async () => {
     const queries = [];
     const { status } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
@@ -1077,7 +1107,8 @@ describe("analytics routes (fake D1 with data)", () => {
     const incidentQuery = queries.find((query) =>
       query.sql.includes("WITH checks"),
     );
-    assert.ok(incidentQuery.sql.includes("LIMIT ?"));
+    assert.ok(incidentQuery.sql.includes("ROW_NUMBER()"));
+    assert.ok(incidentQuery.sql.includes("WHERE rn <= ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
     // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
     assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));

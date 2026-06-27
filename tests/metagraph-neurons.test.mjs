@@ -206,6 +206,42 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.neurons[0].uid, 0);
   });
 
+  test("GET /subnets/{n}/concentration computes per-UID, entity, and validator metrics", async () => {
+    const { res, body } = await getJson("/api/v1/subnets/7/concentration", env);
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.stake.holders, 2); // 2 UIDs
+    assert.equal(body.data.emission.holders, 2);
+    // ROW + MINER share coldkey "5Co1" → one controlling entity.
+    assert.equal(body.data.entity_count, 1);
+    assert.equal(body.data.uids_per_entity, 2);
+    assert.equal(body.data.entity_stake.holders, 1);
+    // Only ROW carries a validator permit.
+    assert.equal(body.data.validator_stake.holders, 1);
+    assert.equal(typeof body.data.stake.gini, "number");
+    assert.equal(typeof body.data.stake.nakamoto_coefficient, "number");
+  });
+
+  test("GET /subnets/{n}/concentration/history routes to the trend handler", async () => {
+    const dailyEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 5 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+      ]),
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/concentration/history?window=7d",
+      dailyEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "7d");
+    assert.equal(Array.isArray(body.data.points), true);
+    assert.equal(body.data.point_count, 1); // both rows share one snapshot_date
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);

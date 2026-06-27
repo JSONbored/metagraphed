@@ -192,6 +192,69 @@ describe("list-query sort with missing values", () => {
   });
 });
 
+describe("list-query sort tie-break", () => {
+  test("ties on a non-unique field are broken by ascending netuid", () => {
+    const data = {
+      subnets: [
+        { netuid: 3, name: "Alpha" },
+        { netuid: 1, name: "Alpha" },
+        { netuid: 2, name: "Beta" },
+        { netuid: 5, name: "Alpha" },
+      ],
+    };
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=name"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [1, 3, 5, 2],
+      "ties on name=Alpha must be broken by ascending netuid",
+    );
+  });
+
+  test("ties on a non-unique field in desc order are still broken by ascending netuid", () => {
+    const data = {
+      subnets: [
+        { netuid: 3, name: "Alpha" },
+        { netuid: 1, name: "Alpha" },
+        { netuid: 2, name: "Beta" },
+      ],
+    };
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=name&order=desc"),
+      "subnets",
+    );
+    // desc: Beta first, then Alpha ties broken by netuid asc
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [2, 1, 3],
+    );
+  });
+
+  test("ties where rows lack netuid fall back to stable source order", () => {
+    const data = {
+      subnets: [
+        { id: "c", name: "Alpha" },
+        { id: "a", name: "Alpha" },
+        { id: "b", name: "Beta" },
+      ],
+    };
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=name"),
+      "subnets",
+    );
+    // Both Alpha rows lack netuid — sort falls back to stable source order (c, a)
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.id),
+      ["c", "a", "b"],
+    );
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [

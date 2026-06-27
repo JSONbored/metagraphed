@@ -206,6 +206,40 @@ test("GET /accounts/{ss58}/balance decodes hex-encoded rao balances", async () =
   );
 });
 
+test("GET /accounts/{ss58}/balance keeps u128 rao precision above 2^53 (#2070)", async () => {
+  // A u128 `free` far above Number.MAX_SAFE_INTEGER rao. The pre-fix path
+  // Number(BigInt(free)) / 1e9 collapses the low-order rao digits to the nearest
+  // double *before* scaling; summing in BigInt and splitting whole/fractional TAO
+  // at the very end preserves them. This magnitude is where the two paths diverge
+  // as IEEE-754 doubles, so it doubles as a regression guard.
+  const freeRao = 123_456_789_012_345_678_901n; // 0x6b14e9f812f366c35
+  const exact =
+    Number(freeRao / 1_000_000_000n) + Number(freeRao % 1_000_000_000n) / 1e9;
+  const preFix = Number(freeRao) / 1e9; // what the old conversion produced
+  assert.notEqual(exact, preFix); // sanity: the paths really differ at this scale
+  await withFetchStub(
+    async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { data: { free: `0x${freeRao.toString(16)}` } },
+      }),
+    }),
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.data.balance_tao, exact);
+      assert.notEqual(body.data.balance_tao, preFix);
+    },
+  );
+});
+
 test("GET /accounts/{ss58}/balance returns null when RPC responds non-ok", async () => {
   await withFetchStub(
     async () => ({ ok: false }),

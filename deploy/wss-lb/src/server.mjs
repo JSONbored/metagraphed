@@ -77,9 +77,17 @@ const server = http.createServer((req, res) => {
       NETWORKS.map((n) => [n, poolFor(n).length]),
     );
     const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
+    // Railway keys health on the HTTP status, so keep the readiness signal in the
+    // status code: a stale or uninitialized pool would also reject configured WSS
+    // upgrades with 503 because there are no eligible upstreams.
     res.writeHead(stale ? 503 : 200, { "content-type": "application/json" });
     res.end(
-      JSON.stringify({ ok: !stale, pools, last_refresh_ms: lastRefresh }),
+      JSON.stringify({
+        ok: !stale,
+        stale,
+        pools,
+        last_refresh_ms: lastRefresh,
+      }),
     );
     return;
   }

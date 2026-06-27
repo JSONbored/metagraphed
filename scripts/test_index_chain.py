@@ -140,10 +140,34 @@ class RowsFromDecoded(unittest.TestCase):
         self.assertEqual(len(rows["account_events"]), 1)
 
     def test_empty_inputs_are_safe(self):
+        empty = {"blocks": [], "extrinsics": [], "account_events": [], "chain_events": []}
         rows = ic.rows_from_decoded({"block": None, "extrinsics": [], "events": []})
-        self.assertEqual(rows, {"blocks": [], "extrinsics": [], "account_events": []})
+        self.assertEqual(rows, empty)
         rows2 = ic.rows_from_decoded({})  # missing keys
-        self.assertEqual(rows2, {"blocks": [], "extrinsics": [], "account_events": []})
+        self.assertEqual(rows2, empty)
+
+    def test_chain_events_all_events_with_args_jsonb(self):
+        d = {
+            "chain_events": [
+                {
+                    "block_number": 9, "event_index": 0, "pallet": "System",
+                    "method": "ExtrinsicSuccess", "args": '{"weight":123}',
+                    "phase": "ApplyExtrinsic", "extrinsic_index": 2, "observed_at": 7,
+                },
+                {  # no observed_at -> dropped (BIGINT NOT NULL)
+                    "block_number": 9, "event_index": 1, "pallet": "Aura",
+                    "method": "X", "args": None, "phase": "Initialization",
+                    "extrinsic_index": None, "observed_at": None,
+                },
+            ]
+        }
+        ce = ic.rows_from_decoded(d)["chain_events"]
+        self.assertEqual(len(ce), 1)  # the row missing observed_at is dropped
+        self.assertEqual(ce[0]["pallet"], "System")
+        self.assertEqual(ce[0]["method"], "ExtrinsicSuccess")
+        self.assertEqual(ce[0]["args"], {"weight": 123})  # JSON string -> JSONB object
+        self.assertEqual(ce[0]["phase"], "ApplyExtrinsic")
+        self.assertEqual(ce[0]["extrinsic_index"], 2)
 
 
 class DecodeHeadImport(unittest.TestCase):

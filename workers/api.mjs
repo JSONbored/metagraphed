@@ -64,6 +64,8 @@ import {
   handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
+  handleSubnetConcentration,
+  handleSubnetConcentrationHistory,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -224,6 +226,8 @@ import {
   SUBNET_VALIDATORS_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
+  SUBNET_CONCENTRATION_PATH_PATTERN,
+  SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -837,6 +841,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     return handleRpcProxyRequest(request, env, url, ctx);
   }
 
+  // Postgres-backed all-events tier (ADR 0013): the dedicated data Worker (DATA_API
+  // service binding) serves chain_events + deep history via Hyperdrive, keeping the
+  // postgres.js driver out of this Worker's bundle. 503 if the binding is absent
+  // (e.g. a preview deploy without the data Worker).
+  if (
+    url.pathname === "/api/v1/chain-events" ||
+    /^\/api\/v1\/blocks\/\d+\/chain-events$/.test(url.pathname)
+  ) {
+    if (env.DATA_API) return env.DATA_API.fetch(request);
+    return new Response(JSON.stringify({ error: "data tier unavailable" }), {
+      status: 503,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
   // must run before the read-only method gate below (like the RPC proxy).
   if (url.pathname.startsWith("/api/v1/webhooks/")) {
@@ -936,11 +955,11 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // Both are worker-owned (see wrangler `run_worker_first`) so they carry the
   // right headers/content-type instead of 404-ing through to the static assets.
   if (url.pathname === "/" || url.pathname === "") {
-    return homepageResponse(request);
+    return await homepageResponse(request);
   }
 
   if (url.pathname === "/.well-known/api-catalog") {
-    return apiCatalogResponse(request);
+    return await apiCatalogResponse(request);
   }
 
   if (url.pathname === "/.well-known/mcp/server-card.json") {
@@ -1084,6 +1103,40 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (uptimeMatch) {
       return withEdgeCache(request, ctx, env, "uptime", () =>
         handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+      );
+    }
+    const concentrationHistoryMatch =
+      SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.exec(resolved.url.pathname);
+    if (concentrationHistoryMatch) {
+      // Per-day concentration trend over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-concentration-history",
+        () =>
+          handleSubnetConcentrationHistory(
+            request,
+            env,
+            Number(concentrationHistoryMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
+    const concentrationMatch = SUBNET_CONCENTRATION_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (concentrationMatch) {
+      // Per-UID range read over the neurons tier, deterministic per cron snapshot
+      // — edge-cache on last_run_at like the sibling metagraph routes.
+      return withEdgeCache(request, ctx, env, "subnet-concentration", () =>
+        handleSubnetConcentration(
+          request,
+          env,
+          Number(concentrationMatch[1]),
+          resolved.url,
+        ),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -1324,13 +1377,40 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    pathname === "/api/v1/health" ||
+    pathname === "/api/v1/incidents" ||
+    pathname === "/api/v1/rpc/usage" ||
+    pathname === "/api/v1/chain/activity" ||
+    pathname === "/api/v1/chain/calls" ||
+    pathname === "/api/v1/chain/signers" ||
+    pathname === "/api/v1/chain/fees" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||
     PERCENTILES_PATH_PATTERN.test(pathname) ||
     INCIDENTS_PATH_PATTERN.test(pathname) ||
     TRAJECTORY_PATH_PATTERN.test(pathname) ||
-    UPTIME_PATH_PATTERN.test(pathname)
+    UPTIME_PATH_PATTERN.test(pathname) ||
+    /^\/api\/v1\/subnets\/(\d+)\/health$/.test(pathname) ||
+    SUBNET_METAGRAPH_PATH_PATTERN.test(pathname) ||
+    SUBNET_NEURON_PATH_PATTERN.test(pathname) ||
+    SUBNET_NEURON_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
+    SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||
+    SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
+    BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
+    BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
+    BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||
+    BLOCK_EVENTS_PATH_PATTERN.test(pathname) ||
+    EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
+    EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname)
   );
 }
 
@@ -1452,10 +1532,11 @@ async function handleRawArtifactRequest(
   }
 
   const networkPath = artifactPathForNetwork(url.pathname, network);
-  if (
-    network.isDefault &&
-    RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN.test(networkPath)
-  ) {
+  // Current-state health artifacts are retired on every network prefix — the
+  // live-only policy (#490/#498) is not mainnet-specific. Match the canonical
+  // path (prefix already stripped by resolveNetworkPrefix); networkPath is only
+  // the partitioned R2 key used in the error payload.
+  if (RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN.test(url.pathname)) {
     return errorResponse(
       "retired_artifact",
       "Current-state health artifacts are retired; use the live API health endpoints instead.",
@@ -1745,6 +1826,31 @@ export async function readEconomicsCurrentKv(env, now = Date.now()) {
       value,
       expiresAt: now + ECONOMICS_CURRENT_KV_TTL_MS,
     };
+  }
+  return value;
+}
+
+// Chain-events index heartbeat read. Memoized per-isolate at a short TTL so
+// repeated /health probes on warm isolates don't issue a billed D1 query per
+// request. Null results are not cached (cold/unbound store stays re-queried).
+// Keyed on env so tests / multi-binding callers never cross-read.
+export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
+let chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
+
+export async function readChainEventsDb(env, now = Date.now()) {
+  if (chainEventsDbMemo.env === env && now < chainEventsDbMemo.expiresAt) {
+    return chainEventsDbMemo.value;
+  }
+  if (!env?.METAGRAPH_HEALTH_DB?.prepare) return null;
+  const rows = await d1All(
+    env,
+    "SELECT block_number AS block, observed_at AS at FROM account_events " +
+      "ORDER BY observed_at DESC LIMIT 1",
+    [],
+  );
+  const value = rows[0] || null;
+  if (value !== null) {
+    chainEventsDbMemo = { env, value, expiresAt: now + CHAIN_EVENTS_DB_TTL_MS };
   }
   return value;
 }
@@ -2154,7 +2260,7 @@ function matchRoute(pathname) {
 }
 
 // Lightweight readiness probe for uptime checks and load balancers. Reports
-// which bindings are wired without touching R2/KV (no I/O, no cold-start cost).
+// which bindings are wired; KV reads are in-isolate memoized.
 async function handleHealthRequest(request, env) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return errorResponse(
@@ -2215,19 +2321,17 @@ async function handleHealthRequest(request, env) {
   // best-effort + null on a cold/unbound store.
   let chainEvents = null;
   if (bindings.health_db) {
-    const rows = await d1All(
-      env,
-      "SELECT block_number AS block, observed_at AS at FROM account_events " +
-        "ORDER BY observed_at DESC LIMIT 1",
-      [],
-    );
-    const row = rows[0] || {};
-    const atMs = Number(row.at);
-    const fresh = Number.isFinite(atMs);
+    const chainEventsRow = await readChainEventsDb(env);
+    const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
+    const chainEventsFresh = Number.isFinite(chainEventsAtMs);
     chainEvents = {
-      latest_indexed_block: row.block ?? null,
-      latest_event_at: fresh ? new Date(atMs).toISOString() : null,
-      age_seconds: fresh ? Math.round((Date.now() - atMs) / 1000) : null,
+      latest_indexed_block: chainEventsRow?.block ?? null,
+      latest_event_at: chainEventsFresh
+        ? new Date(chainEventsAtMs).toISOString()
+        : null,
+      age_seconds: chainEventsFresh
+        ? Math.round((Date.now() - chainEventsAtMs) / 1000)
+        : null,
     };
   }
 

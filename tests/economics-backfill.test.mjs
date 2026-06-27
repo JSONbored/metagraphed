@@ -85,6 +85,7 @@ test("economics backfill upserts valid rows + filters invalid (200, parameterize
     row({ netuid: 11, alpha_price_tao: "0.1" }), // non-numeric price → filtered
     row({ netuid: -1 }), // negative netuid → filtered
     row({ netuid: 12, alpha_price_tao: Number.NaN }), // NaN price → filtered
+    row({ netuid: 13, alpha_price_tao: -0.5 }), // negative price → filtered
   ];
   const res = await handleEconomicsBackfill(
     post(rows, { secret: SECRET }),
@@ -93,7 +94,7 @@ test("economics backfill upserts valid rows + filters invalid (200, parameterize
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.ok, true);
-  assert.equal(body.received, 7);
+  assert.equal(body.received, 8);
   assert.equal(body.inserted, 2);
   assert.equal(captured.length, 1); // one batch
   assert.equal(captured[0].length, 2); // of the 2 valid rows
@@ -194,4 +195,10 @@ test("validEconomicsBackfillRows + upsert: captured_at falls back to the snapsho
   // netuid 0 and alpha_price_tao 0 are preserved (not treated as falsy-invalid).
   assert.equal(stmts[1].v[0], 0);
   assert.equal(stmts[1].v[2], 0);
+  assert.equal(
+    validEconomicsBackfillRows([
+      { netuid: 8, snapshot_date: "2025-12-01", alpha_price_tao: -0.5 },
+    ]).length,
+    0,
+  );
 });

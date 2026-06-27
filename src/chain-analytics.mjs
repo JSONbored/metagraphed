@@ -110,7 +110,14 @@ export function buildChainCalls({
 }) {
   const totalExtrinsics = toCount(total);
   const calls = (Array.isArray(rows) ? rows : [])
-    .filter((r) => r && typeof r.call_module === "string")
+    .filter(
+      (r) =>
+        r &&
+        typeof r.call_module === "string" &&
+        r.call_module.length > 0 &&
+        (groupBy !== "module_function" ||
+          (typeof r.call_function === "string" && r.call_function.length > 0)),
+    )
     .map((r) => {
       const count = toCount(r.count);
       return {

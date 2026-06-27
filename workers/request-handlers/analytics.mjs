@@ -147,6 +147,18 @@ function validateIntegerParam(url, parameter, min, max) {
   return null;
 }
 
+// Bound an optional free-text filter so an oversized value never reaches D1.
+function validateMaxLength(url, parameter, max) {
+  const raw = url.searchParams.get(parameter);
+  if (raw !== null && raw.length > max) {
+    return {
+      parameter,
+      message: `${parameter} must be ${max} characters or fewer.`,
+    };
+  }
+  return null;
+}
+
 let d1FallbackGeneration = 0;
 const D1_FALLBACK_ROWS = new WeakSet();
 const D1_FALLBACK_RESPONSES = new WeakSet();
@@ -491,8 +503,8 @@ export async function handleHealthIncidents(
         [netuid, since],
       ),
       // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-      // incident threshold) into one incident row, then cap the public payload so
-      // flapping endpoints cannot force unbounded result sets/responses.
+      // incident threshold) into one incident row, then cap per surface_key so
+      // one flappy endpoint cannot starve sibling surfaces in the same subnet.
       d1All(
         env,
         `WITH checks AS (
@@ -513,18 +525,37 @@ export async function handleHealthIncidents(
                 SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                   OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
          FROM checks
+       ),
+       incidents AS (
+         SELECT MAX(surface_id) AS surface_id,
+                surface_key,
+                MIN(checked_at) AS started_at,
+                MAX(checked_at) AS ended_at,
+                COUNT(*) AS failed_samples
+         FROM grouped
+         WHERE ok = 0
+         GROUP BY surface_key, grp
+         HAVING COUNT(*) >= ?
        )
-       SELECT MAX(surface_id) AS surface_id,
+       SELECT surface_id,
               surface_key,
-              MIN(checked_at) AS started_at,
-              MAX(checked_at) AS ended_at,
-              COUNT(*) AS failed_samples
-       FROM grouped
-       WHERE ok = 0
-       GROUP BY surface_key, grp
-       HAVING COUNT(*) >= ?
-       ORDER BY surface_id, started_at
-       LIMIT ?`,
+              started_at,
+              ended_at,
+              failed_samples
+       FROM (
+         SELECT surface_id,
+                surface_key,
+                started_at,
+                ended_at,
+                failed_samples,
+                ROW_NUMBER() OVER (
+                  PARTITION BY surface_key
+                  ORDER BY started_at
+                ) AS rn
+         FROM incidents
+       ) ranked
+       WHERE rn <= ?
+       ORDER BY surface_id, started_at`,
         [
           netuid,
           since,
@@ -785,11 +816,16 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 // count over the window. The observed_at index bounds the scan to the hot window;
 // the aggregation is amortized behind the edge cache (runs only on a new snapshot).
 export async function handleChainSigners(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const limitError = validateIntegerParam(url, "limit", 1, 100);
   if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  // Optional pallet scope, backed by idx_extrinsics_call_module_order.
+  const callModule = url.searchParams.get("call_module");
+  const callModuleError = validateMaxLength(url, "call_module", 100);
+  if (callModuleError) return analyticsQueryError(callModuleError);
+  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(request, ctx, env, "chain-signers", async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const rows = await d1All(
@@ -800,11 +836,11 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
               SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
               MAX(block_number) AS last_tx_block
        FROM extrinsics
-       WHERE observed_at >= ? AND signer IS NOT NULL
+       WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
        GROUP BY signer
        ORDER BY tx_count DESC
        LIMIT ?`,
-      [cutoff, limit],
+      callModule ? [cutoff, callModule, limit] : [cutoff, limit],
     );
     const meta = await readHealthMetaKv(env);
     const data = buildChainSigners({
@@ -834,11 +870,17 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
 // SUMs; exact median is a deliberate follow-up (no native percentile in D1).
 export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const limitError = validateIntegerParam(url, "limit", 1, 100);
   if (limitError) return analyticsQueryError(limitError);
   const limit = clampInt(url.searchParams.get("limit"), 25, 1, 100);
+  // Optional pallet scope (applies to both the daily series and the payer list),
+  // backed by idx_extrinsics_call_module_order.
+  const callModule = url.searchParams.get("call_module");
+  const callModuleError = validateMaxLength(url, "call_module", 100);
+  if (callModuleError) return analyticsQueryError(callModuleError);
+  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(request, ctx, env, "chain-fees", async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const [dailyRows, payerRows] = await Promise.all([
@@ -849,9 +891,9 @@ export async function handleChainFees(request, env, url, ctx = {}) {
                 SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
          FROM extrinsics
-         WHERE observed_at >= ?
+         WHERE observed_at >= ?${moduleClause}
          GROUP BY day`,
-        [cutoff],
+        callModule ? [cutoff, callModule] : [cutoff],
       ),
       d1All(
         env,
@@ -860,11 +902,11 @@ export async function handleChainFees(request, env, url, ctx = {}) {
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
                 COUNT(*) AS extrinsic_count
          FROM extrinsics
-         WHERE observed_at >= ? AND signer IS NOT NULL
+         WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
          GROUP BY signer
          ORDER BY total_fee_tao DESC
          LIMIT ?`,
-        [cutoff, limit],
+        callModule ? [cutoff, callModule, limit] : [cutoff, limit],
       ),
     ]);
     const meta = await readHealthMetaKv(env);

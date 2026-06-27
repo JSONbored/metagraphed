@@ -31,7 +31,7 @@ function gradeFor(score) {
 // is already collapsed to 1 upstream). Only a genuine okCount === samples ratio
 // (exactly 1) keeps the perfect value; any sub-1 ratio clamps to the largest
 // 4-decimal value below 1.
-function displayUptimeRatio(ratio) {
+export function displayUptimeRatio(ratio) {
   const rounded = Number(ratio.toFixed(4));
   return rounded >= 1 && ratio < 1 ? 0.9999 : rounded;
 }

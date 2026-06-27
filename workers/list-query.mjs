@@ -274,7 +274,12 @@ function sortRows(rows, params) {
       present.push(row);
     }
   }
-  present.sort((a, b) => compareValues(a[key], b[key]) * direction);
+  present.sort((a, b) => {
+    const cmp = compareValues(a[key], b[key]) * direction;
+    if (cmp !== 0) return cmp;
+    if (a.netuid != null && b.netuid != null) return a.netuid - b.netuid;
+    return 0;
+  });
   return [...present, ...missing];
 }
 

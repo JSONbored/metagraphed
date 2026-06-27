@@ -1230,6 +1230,7 @@ describe("handleHealthIncidents", () => {
     );
     assert.ok(cap.sql.some((s) => s.includes("GROUP BY COALESCE")));
     assert.ok(cap.sql.some((s) => s.includes("WITH checks")));
+    assert.ok(cap.sql.some((s) => s.includes("ROW_NUMBER()")));
     assert.equal(cap.sql.length, 2);
   });
 

@@ -206,6 +206,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
 <li><a href="/.well-known/agent-tools/index.json">Agent tool specs</a> — paste-ready OpenAI + Anthropic tools</li>
 <li><a href="/api/v1/feeds/registry">Content feeds</a> — registry changes + incidents (RSS / Atom / JSON Feed)</li>
+<li>Public RPC — load-balanced Bittensor RPC (read-only, health-checked, automatic failover): <code>wss://wss.metagraph.sh/finney</code> (mainnet) · <code>wss://wss.metagraph.sh/test</code> (testnet). Live pool: <a href="/api/v1/rpc/pools">/api/v1/rpc/pools</a></li>
 <li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
 <li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
 </ul>
@@ -230,10 +231,67 @@ function discoveryHeaders(contentType) {
   return headers;
 }
 
+// Pre-serialized once per isolate — the catalog content depends only on the
+// module-level PRIMARY_DOMAIN constant, so allocating + stringifying per
+// request is redundant. ETag is lazy-memoized (weakEtag is async).
+const CATALOG_BODY = (() => {
+  const base = `https://${PRIMARY_DOMAIN}`;
+  return `${JSON.stringify(
+    {
+      linkset: [
+        {
+          anchor: `${base}/api/v1`,
+          "service-desc": [
+            {
+              href: `${base}/metagraph/openapi.json`,
+              type: "application/json",
+            },
+          ],
+          "service-doc": [
+            { href: `${base}/llms.txt`, type: "text/plain" },
+            { href: `${base}/agent.md`, type: "text/markdown" },
+            { href: `${base}/agent-workflows.md`, type: "text/markdown" },
+          ],
+          status: [{ href: `${base}/health`, type: "application/json" }],
+          describedby: [
+            {
+              href: `${base}/.well-known/mcp/server-card.json`,
+              type: "application/json",
+            },
+            {
+              href: `${base}/.well-known/agent-tools/index.json`,
+              type: "application/json",
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  )}\n`;
+})();
+
+let _homepageEtagPromise = null;
+function getHomepageEtag() {
+  if (!_homepageEtagPromise) _homepageEtagPromise = weakEtag(HOMEPAGE_HTML);
+  return _homepageEtagPromise;
+}
+
+let _catalogEtagPromise = null;
+function getCatalogEtag() {
+  if (!_catalogEtagPromise) _catalogEtagPromise = weakEtag(CATALOG_BODY);
+  return _catalogEtagPromise;
+}
+
 // api.metagraph.sh homepage: a small human/agent landing whose response carries
 // the RFC 8288 Link headers (an agent can bootstrap from a single HEAD of `/`).
-export function homepageResponse(request) {
+export async function homepageResponse(request) {
+  const etag = await getHomepageEtag();
   const headers = discoveryHeaders("text/html; charset=utf-8");
+  headers.set("etag", etag);
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   if (request.method === "HEAD") {
     return new Response(null, { headers });
   }
@@ -244,39 +302,17 @@ export function homepageResponse(request) {
 // canonical API host (api.metagraph.sh) regardless of which host served this —
 // the apex (metagraph.sh) routes /.well-known/* here too, and its catalog must
 // reference the real API, not the apex.
-export function apiCatalogResponse(request) {
-  const base = `https://${PRIMARY_DOMAIN}`;
-  const linkset = {
-    linkset: [
-      {
-        anchor: `${base}/api/v1`,
-        "service-desc": [
-          { href: `${base}/metagraph/openapi.json`, type: "application/json" },
-        ],
-        "service-doc": [
-          { href: `${base}/llms.txt`, type: "text/plain" },
-          { href: `${base}/agent.md`, type: "text/markdown" },
-          { href: `${base}/agent-workflows.md`, type: "text/markdown" },
-        ],
-        status: [{ href: `${base}/health`, type: "application/json" }],
-        describedby: [
-          {
-            href: `${base}/.well-known/mcp/server-card.json`,
-            type: "application/json",
-          },
-          {
-            href: `${base}/.well-known/agent-tools/index.json`,
-            type: "application/json",
-          },
-        ],
-      },
-    ],
-  };
+export async function apiCatalogResponse(request) {
+  const etag = await getCatalogEtag();
   const headers = discoveryHeaders("application/linkset+json");
+  headers.set("etag", etag);
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   if (request.method === "HEAD") {
     return new Response(null, { headers });
   }
-  return new Response(`${JSON.stringify(linkset, null, 2)}\n`, { headers });
+  return new Response(CATALOG_BODY, { headers });
 }
 
 // Stable deterministic JSON serializer (recursive key sort) — matches
