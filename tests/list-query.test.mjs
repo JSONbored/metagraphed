@@ -233,6 +233,26 @@ describe("list-query sort tie-break", () => {
       [2, 1, 3],
     );
   });
+
+  test("ties where rows lack netuid fall back to stable source order", () => {
+    const data = {
+      subnets: [
+        { id: "c", name: "Alpha" },
+        { id: "a", name: "Alpha" },
+        { id: "b", name: "Beta" },
+      ],
+    };
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=name"),
+      "subnets",
+    );
+    // Both Alpha rows lack netuid — sort falls back to stable source order (c, a)
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.id),
+      ["c", "a", "b"],
+    );
+  });
 });
 
 describe("list-query numeric range filters", () => {
