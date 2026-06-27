@@ -954,6 +954,23 @@ function d1With(rows) {
 }
 const req = (path) => new Request(`https://api.metagraph.sh${path}`);
 
+// Minimal R2 archive binding that serves a single static rpc/pools.json fixture
+// (the artifact is R2-only, so there is nothing on disk for createLocalArtifactEnv
+// to read). Keyed on `latest/rpc/pools.json`, mirroring latestR2Key().
+function rpcPoolsArchiveFixture(artifact) {
+  return {
+    async get(key) {
+      if (String(key).replace(/^latest\//, "") !== "rpc/pools.json")
+        return null;
+      return {
+        async json() {
+          return artifact;
+        },
+      };
+    },
+  };
+}
+
 describe("worker live health serving", () => {
   test("/api/v1/health serves the live operational summary from KV", async () => {
     const env = createLocalArtifactEnv({
@@ -1094,6 +1111,74 @@ describe("worker live health serving", () => {
       body.data.windows["7d"].subnets[1].points[0].uptime_ratio,
       0.8,
     );
+  });
+
+  test("/api/v1/rpc/pools overlays live KV health so a dead upstream is marked ineligible", async () => {
+    // The static R2 artifact still lists `dead` as pool_eligible (it was healthy
+    // at build time). The wss-lb / proxy route off this served body, so without
+    // the overlay they would keep routing to a node that has been down for ~30 min.
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: rpcPoolsArchiveFixture({
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        source: "rpc-endpoint-probes",
+        pools: [
+          {
+            id: "finney-rpc",
+            kind: "subtensor-rpc",
+            endpoints: [
+              { id: "live", pool_eligible: true, status: "ok" },
+              { id: "dead", pool_eligible: true, status: "ok" },
+            ],
+          },
+        ],
+      }),
+      METAGRAPH_CONTROL: kvWith({
+        "health:rpc-pool": {
+          schema_version: 1,
+          last_run_at: FRESH_RUN,
+          endpoints: [
+            { id: "live", status: "ok", consecutive_failures: 0 },
+            // Sustained-down (≥2 consecutive failed prober runs) → drop from pool.
+            { id: "dead", status: "failed", consecutive_failures: 3 },
+          ],
+        },
+      }),
+    });
+    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.meta.source, "live-cron-prober");
+    assert.equal(body.meta.operational_observed_at, FRESH_RUN);
+    const endpoints = body.data.pools[0].endpoints;
+    const live = endpoints.find((e) => e.id === "live");
+    const dead = endpoints.find((e) => e.id === "dead");
+    assert.equal(live.pool_eligible, true);
+    assert.equal(dead.pool_eligible, false);
+    assert.equal(dead.status, "failed");
+    assert.equal(dead.health_source, "live-cron-prober");
+  });
+
+  test("/api/v1/rpc/pools serves the static artifact when the live KV snapshot is cold", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: rpcPoolsArchiveFixture({
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        source: "rpc-endpoint-probes",
+        pools: [
+          {
+            id: "finney-rpc",
+            endpoints: [{ id: "dead", pool_eligible: true, status: "ok" }],
+          },
+        ],
+      }),
+      // No health:rpc-pool entry → cold live snapshot → static passthrough.
+      METAGRAPH_CONTROL: kvWith({}),
+    });
+    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.pools[0].endpoints[0].pool_eligible, true);
   });
 });
 

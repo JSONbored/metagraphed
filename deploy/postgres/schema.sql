@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS chain_events (
   PRIMARY KEY (block_number, event_index)
 );
 CREATE INDEX IF NOT EXISTS idx_ce_pallet_method ON chain_events (pallet, method, block_number DESC);
+-- Pallet-only feed (pallet= without method=): serves the ORDER BY without a full PK scan.
+CREATE INDEX IF NOT EXISTS idx_ce_pallet_block  ON chain_events (pallet, block_number DESC, event_index DESC);
 CREATE INDEX IF NOT EXISTS idx_ce_observed      ON chain_events (observed_at DESC);
 
 -- ---------------------------------------------------------------------------
