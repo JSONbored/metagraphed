@@ -77,13 +77,10 @@ const server = http.createServer((req, res) => {
       NETWORKS.map((n) => [n, poolFor(n).length]),
     );
     const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
-    // Always 200 once the process is listening — the platform healthcheck verifies
-    // the server is UP, not that the upstream pool is warm. A cold start (the first
-    // pool refresh not yet complete) or a transient API blip would otherwise 503
-    // and fail the deploy even though the proxy is fine (this failed Railway
-    // deploys). `stale`/`ok` report pool freshness as a non-fatal field; a wss
-    // upgrade still 503s on its own when its network has zero eligible upstreams.
-    res.writeHead(200, { "content-type": "application/json" });
+    // Railway keys health on the HTTP status, so keep the readiness signal in the
+    // status code: a stale or uninitialized pool would also reject configured WSS
+    // upgrades with 503 because there are no eligible upstreams.
+    res.writeHead(stale ? 503 : 200, { "content-type": "application/json" });
     res.end(
       JSON.stringify({
         ok: !stale,
