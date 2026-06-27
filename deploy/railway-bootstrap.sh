@@ -18,7 +18,10 @@ set -euo pipefail
 REPO="JSONbored/metagraphed"
 BRANCH="main"
 WORKSPACE="aethereal"
-RPC_URL="${EVENTS_RPC_URL:-wss://entrypoint-finney.opentensor.ai:443}"
+# ARCHIVE endpoint — the indexer backfills old-block state, which pruned nodes
+# (entrypoint-finney) discard ("State already discarded"). On the box this points
+# at the local archive node instead.
+RPC_URL="${EVENTS_RPC_URL:-wss://archive.chain.opentensor.ai:443}"
 
 echo "==> 1. Create the project + default (production) environment"
 railway init --name metagraphed-core --workspace "$WORKSPACE" --json
