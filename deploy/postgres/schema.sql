@@ -190,13 +190,19 @@ CREATE INDEX IF NOT EXISTS idx_account_events_daily_netuid_day
 -- Indexer coordination
 -- ---------------------------------------------------------------------------
 
--- Durable cursor (also mirrored in Redis for hot access). Single row id=1.
+-- Durable cursors (also mirrored in Redis for hot access).
+-- id=1 is the live indexer; id=2 is the independent historical backfill job.
 CREATE TABLE IF NOT EXISTS indexer_cursor (
   id               SMALLINT PRIMARY KEY DEFAULT 1,
   last_block       BIGINT NOT NULL,
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
+  CONSTRAINT indexer_cursor_singleton CHECK (id IN (1, 2))
 );
+
+-- Upgrade deployments created before the backfill cursor existed.
+ALTER TABLE indexer_cursor
+  DROP CONSTRAINT IF EXISTS indexer_cursor_singleton,
+  ADD CONSTRAINT indexer_cursor_singleton CHECK (id IN (1, 2));
 
 -- ===========================================================================
 -- TimescaleDB (OPTIONAL) — compressed hypertables for the time-series tiers.

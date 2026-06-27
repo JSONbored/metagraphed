@@ -213,6 +213,11 @@ class PostgresSchemaContract(unittest.TestCase):
         ):
             self.assertIn(column, self.schema)
 
+    def test_indexer_cursor_schema_allows_live_and_backfill_cursors(self):
+        self.assertIn("CHECK (id IN (1, 2))", self.schema)
+        self.assertIn("DROP CONSTRAINT IF EXISTS indexer_cursor_singleton", self.schema)
+        self.assertNotIn("CHECK (id = 1)", self.schema)
+
 
 class BackfillStart(unittest.TestCase):
     def test_cold_cursor_with_start_block_anchors_there(self):

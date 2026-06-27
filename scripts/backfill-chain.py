@@ -5,7 +5,8 @@ WITHOUT stalling live ingestion.
 
 It reuses the indexer's verified decode + idempotent upserts (rows_from_decoded,
 _upsert) so there is zero decode/schema drift. Progress is a SEPARATE cursor row
-(indexer_cursor id=2) — it never touches the live cursor (id=1), and the
+(indexer_cursor id=2, allowed by deploy/postgres/schema.sql) — it never touches
+the live cursor (id=1), and the
 `INSERT ... ON CONFLICT DO NOTHING` keys make concurrent backfill + live-follow
 safe (overlapping ranges re-insert harmlessly).
 
@@ -188,7 +189,7 @@ def run():
                     pass
 
     if _stop:
-        log.info("stopped at #%d (resumable from the id=2 cursor)", committed)
+        log.info("stopped at #%d (resumable from the backfill cursor)", committed)
     else:
         log.info("backfill complete: #%d..#%d", frm, to)
 
