@@ -22,6 +22,17 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
+function captureStamp(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return { ms: value, value: new Date(value).toISOString() };
+  }
+  if (typeof value === "string") {
+    const ms = Date.parse(value);
+    if (Number.isFinite(ms)) return { ms, value };
+  }
+  return null;
+}
+
 // Coerce a raw column array to the finite, strictly-positive values that actually
 // make up a distribution. Zero / negative / NaN / null entries carry no share and
 // are dropped, so `holders` counts real participants and the shares sum to 1.
@@ -177,8 +188,8 @@ export function buildConcentration(rows, netuid) {
   // The rows share one cron capture, but don't assume an order — take the newest.
   let capturedAt = null;
   for (const row of list) {
-    const captured = row?.captured_at ?? null;
-    if (captured != null && (capturedAt == null || captured > capturedAt)) {
+    const captured = captureStamp(row?.captured_at);
+    if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
       capturedAt = captured;
     }
   }
@@ -195,7 +206,7 @@ export function buildConcentration(rows, netuid) {
     // a distinct owner; higher = fewer operators each running many hotkeys).
     uids_per_entity:
       entities.count > 0 ? round(list.length / entities.count, 4) : null,
-    captured_at: capturedAt,
+    captured_at: capturedAt?.value ?? null,
     stake: computeConcentration(list.map((row) => row?.stake_tao)),
     emission: computeConcentration(list.map((row) => row?.emission_tao)),
     entity_stake: computeConcentration(entities.stake),

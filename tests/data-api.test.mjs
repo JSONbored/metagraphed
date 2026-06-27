@@ -1,7 +1,9 @@
 // Unit tests for the Postgres-serving data Worker (workers/data-api.mjs). postgres.js
 // is mocked so the routing + response shaping are tested with no real DB — the live
 // Hyperdrive→Railway path is validated separately.
-import { test, expect, vi } from "vitest";
+import { beforeEach, test, expect, vi } from "vitest";
+
+const sqlCalls = vi.hoisted(() => []);
 
 vi.mock("postgres", () => ({
   default: () => {
@@ -19,7 +21,10 @@ vi.mock("postgres", () => ({
     ];
     // Every tagged-template call (top-level query OR nested fragment) resolves to rows;
     // the handler awaits the outer query and ignores interpolated fragment values.
-    const sql = () => Promise.resolve(rows);
+    const sql = (strings, ...values) => {
+      sqlCalls.push({ text: Array.from(strings).join("?"), values });
+      return Promise.resolve(rows);
+    };
     sql.end = () => Promise.resolve();
     return sql;
   },
@@ -30,6 +35,11 @@ const env = { HYPERDRIVE: { connectionString: "postgres://mock" } };
 const ctx = { waitUntil() {} };
 const req = (path, init) =>
   worker.fetch(new Request(`https://d${path}`, init), env, ctx);
+const queryText = () => sqlCalls.map((call) => call.text).join("\n");
+
+beforeEach(() => {
+  sqlCalls.length = 0;
+});
 
 test("GET /api/v1/blocks/:n/chain-events returns the block's events", async () => {
   const res = await req("/api/v1/blocks/123/chain-events");
@@ -61,9 +71,31 @@ test("chain-events accepts block + extrinsic filters (extrinsic-detail view)", a
   expect(res.status).toBe(200);
   const body = await res.json();
   expect(body.count).toBe(1);
+  expect(queryText()).toContain("AND block_number =");
+  expect(queryText()).toContain("AND extrinsic_index =");
   // non-numeric filter values are ignored, not errors:
   const res2 = await req("/api/v1/chain-events?block=abc&extrinsic=");
   expect(res2.status).toBe(200);
+});
+
+test("chain-events ignores extrinsic without block to avoid global scans", async () => {
+  const res = await req("/api/v1/chain-events?extrinsic=999999&limit=1");
+  expect(res.status).toBe(200);
+  expect(queryText()).not.toContain("AND extrinsic_index =");
+  expect(queryText()).not.toContain("AND block_number =");
+});
+
+test("chain-events rejects method-only feed filters without a block scope", async () => {
+  const res = await req("/api/v1/chain-events?method=ExtrinsicSuccess");
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toMatch(/method filter requires pallet/);
+});
+
+test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
+  const res = await req(`/api/v1/chain-events?pallet=${"A".repeat(65)}`);
+  expect(res.status).toBe(400);
+  const punct = await req("/api/v1/chain-events?pallet=System;DROP");
+  expect(punct.status).toBe(400);
 });
 
 test("POST is rejected with 405", async () => {

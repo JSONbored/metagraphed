@@ -262,6 +262,16 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
   );
 }
 
+export function canonicalSubnetConcentrationHistoryCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseConcentrationHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 // GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
 // stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share)
 // from the dated neuron_daily rollup — "is this subnet centralizing over time?".
