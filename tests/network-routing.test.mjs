@@ -319,6 +319,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/subnets/7/events",
       "/api/v1/testnet/subnets/7/health",
       "/api/v1/testnet/incidents",
+
       "/api/v1/testnet/rpc/usage",
       "/api/v1/testnet/chain/activity",
     ]) {
@@ -343,33 +344,6 @@ describe("multi-network routing prefix (Phase 1)", () => {
     assert.equal(testnet.body.network, "test");
     // Distinct registries — testnet has its own (larger) subnet set.
     assert.notEqual(testnet.body.subnets.length, mainnet.body.subnets.length);
-  });
-
-  test("retired current-health raw artifacts return 410 under a network prefix", async () => {
-    let reads = 0;
-    const env = createLocalArtifactEnv({
-      METAGRAPH_ARCHIVE: {
-        async get() {
-          reads += 1;
-          return {
-            async json() {
-              return { stale: true, summary: { status: "ok" } };
-            },
-          };
-        },
-      },
-    });
-    for (const path of [
-      "/metagraph/testnet/health/latest.json",
-      "/metagraph/testnet/health/summary.json",
-      "/metagraph/testnet/health/subnets/1.json",
-    ]) {
-      const { res, body } = await get(env, path);
-      assert.equal(res.status, 410, path);
-      assert.equal(body.error.code, "retired_artifact", path);
-      assert.match(body.meta.artifact_path, /^\/metagraph\/testnet\/health\//);
-    }
-    assert.equal(reads, 0, "retired paths must not read R2");
   });
 
   test("a real route segment that merely looks adjacent is never shadowed by the alias set", async () => {

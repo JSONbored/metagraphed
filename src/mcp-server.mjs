@@ -222,6 +222,32 @@ async function loadArtifactData(ctx, artifactPath) {
   return result.data;
 }
 
+async function loadOptionalArtifact(ctx, artifactPath) {
+  const result = await ctx.readArtifact(ctx.env, artifactPath);
+  return result?.ok ? result.data : null;
+}
+
+// Resolve a catalogued surface by current id, stable surface_key, or deprecated
+// surface_id alias — same resolution verify_integration uses (#358, #1005).
+async function findCataloguedSurface(ctx, surfaceId) {
+  const catalog = await loadOptionalArtifact(
+    ctx,
+    "/metagraph/operational-surfaces.json",
+  );
+  const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
+  let surface = findSurface(surfaces, surfaceId);
+  if (!surface) {
+    const aliases = await loadOptionalArtifact(ctx, SURFACE_ALIASES_PATH);
+    surface = findSurface(surfaces, surfaceId, aliases);
+  }
+  return surface;
+}
+
+async function resolveArtifactSurfaceId(ctx, surfaceId) {
+  const surface = await findCataloguedSurface(ctx, surfaceId);
+  return surface?.surface_id ?? surfaceId;
+}
+
 // Freshest live operational snapshot (KV health:current → D1 surface_status),
 // so MCP tools serve live health like the REST routes do — never a build-time
 // value. Returns null when no live source is available (caller renders
@@ -1804,7 +1830,8 @@ export const MCP_TOOLS = [
           "surface_id contains invalid characters.",
         );
       }
-      return loadArtifactData(ctx, `/metagraph/schemas/${surfaceId}.json`);
+      const artifactId = await resolveArtifactSurfaceId(ctx, surfaceId);
+      return loadArtifactData(ctx, `/metagraph/schemas/${artifactId}.json`);
     },
   },
   {
@@ -1839,7 +1866,8 @@ export const MCP_TOOLS = [
           "surface_id contains invalid characters.",
         );
       }
-      return loadArtifactData(ctx, `/metagraph/fixtures/${surfaceId}.json`);
+      const artifactId = await resolveArtifactSurfaceId(ctx, surfaceId);
+      return loadArtifactData(ctx, `/metagraph/fixtures/${artifactId}.json`);
     },
   },
   {
@@ -2424,14 +2452,7 @@ export const MCP_TOOLS = [
         if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
           throw toolError("invalid_params", "Invalid surface_id format.");
         }
-        surface = findSurface(surfaces, args.surface_id);
-        if (!surface) {
-          const aliases = await loadArtifactData(
-            ctx,
-            SURFACE_ALIASES_PATH,
-          ).catch(() => null);
-          surface = findSurface(surfaces, args.surface_id, aliases);
-        }
+        surface = await findCataloguedSurface(ctx, args.surface_id);
         if (!surface) {
           throw toolError(
             "not_found",

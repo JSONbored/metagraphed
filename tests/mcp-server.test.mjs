@@ -1131,6 +1131,57 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(res.body.result.content[0].text.includes("invalid"));
   });
 
+  test("get_api_schema and get_fixture resolve deprecated surface_id aliases", async () => {
+    const aliasDeps = makeDeps({
+      "/metagraph/operational-surfaces.json": {
+        surfaces: [
+          {
+            surface_id: "7:subnet-api:new",
+            surface_key: "srf-renamed",
+            netuid: 7,
+            kind: "subnet-api",
+            url: "https://api.example/new",
+          },
+        ],
+      },
+      "/metagraph/surface-aliases.json": {
+        aliases: [
+          {
+            deprecated_id: "7:subnet-api:old",
+            surface_key: "srf-renamed",
+            current_id: "7:subnet-api:new",
+            netuid: 7,
+            kind: "subnet-api",
+          },
+        ],
+      },
+      "/metagraph/schemas/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        openapi: "3.1.0",
+        paths: { "/v1": {} },
+      },
+      "/metagraph/fixtures/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        response: { status: 200, body: { renamed: true } },
+      },
+    });
+    const schema = await callTool(
+      "get_api_schema",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.equal(schema.body.result.structuredContent.openapi, "3.1.0");
+
+    const fixture = await callTool(
+      "get_fixture",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.deepEqual(fixture.body.result.structuredContent.response.body, {
+      renamed: true,
+    });
+  });
+
   test("get_agent_catalog returns the global catalog with no netuid", async () => {
     const res = await callTool("get_agent_catalog", {}, { deps });
     assert.ok(Array.isArray(res.body.result.structuredContent.subnets));
