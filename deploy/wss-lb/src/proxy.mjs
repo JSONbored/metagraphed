@@ -1,6 +1,87 @@
 // Client→upstream wss piping with connect-time failover (extracted for testing).
 import { WebSocket } from "ws";
 
+import {
+  MAX_RPC_BODY_BYTES,
+  SAFE_RPC_METHODS,
+  DENIED_RPC_PREFIXES,
+} from "../../../workers/config.mjs";
+
+function isSafeRpcMethod(method) {
+  return (
+    SAFE_RPC_METHODS.has(method) &&
+    !DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
+  );
+}
+
+function rpcError(id, code, message) {
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id: id ?? null,
+    error: { code, message },
+  });
+}
+
+function validateClientFrame(data, isBinary) {
+  if (isBinary)
+    return {
+      ok: false,
+      reply: rpcError(
+        null,
+        -32600,
+        "Binary JSON-RPC frames are not supported.",
+      ),
+    };
+  const size = Buffer.isBuffer(data)
+    ? data.length
+    : Buffer.byteLength(String(data));
+  if (size > MAX_RPC_BODY_BYTES) {
+    return {
+      ok: false,
+      reply: rpcError(
+        null,
+        -32600,
+        "RPC request body is too large for the read-only proxy.",
+      ),
+    };
+  }
+  let rpc;
+  try {
+    rpc = JSON.parse(data.toString());
+  } catch {
+    return {
+      ok: false,
+      reply: rpcError(null, -32700, "RPC frame must be valid JSON."),
+    };
+  }
+  if (
+    !rpc ||
+    Array.isArray(rpc) ||
+    typeof rpc !== "object" ||
+    typeof rpc.method !== "string"
+  ) {
+    return {
+      ok: false,
+      reply: rpcError(
+        rpc?.id,
+        -32600,
+        "Only single JSON-RPC request objects are supported.",
+      ),
+    };
+  }
+  if (!isSafeRpcMethod(rpc.method)) {
+    return {
+      ok: false,
+      reply: rpcError(
+        rpc.id,
+        -32601,
+        `RPC method is not allowed through this proxy: ${rpc.method}`,
+      ),
+    };
+  }
+  return { ok: true };
+}
+
 // Pipe a client wss connection to the first healthy upstream, failing over to the
 // next on a failed handshake. The client listeners attach ONCE; `up` is the
 // current upstream socket, reassigned per attempt.
@@ -21,9 +102,14 @@ export function proxy(client, upstreams, opts = {}) {
   const pending = [];
 
   client.on("message", (data, isBinary) => {
+    const validation = validateClientFrame(data, isBinary);
+    if (!validation.ok) {
+      if (client.readyState === WebSocket.OPEN) client.send(validation.reply);
+      return;
+    }
     if (opened && up && up.readyState === WebSocket.OPEN)
-      up.send(data, { binary: isBinary });
-    else pending.push([data, isBinary]);
+      up.send(data, { binary: false });
+    else pending.push([data, false]);
   });
   client.on("close", () => {
     clientClosed = true;

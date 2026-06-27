@@ -66,7 +66,11 @@ test("failover: dead upstream then good → one dial, echo works, no crash", asy
   const lb = await lbServer([await deadUrl(), good.url]);
   const echoed = await new Promise((resolve, reject) => {
     const c = new WebSocket(lb.url);
-    c.on("open", () => c.send("ping")); // pre-open send → the buffered/crash path
+    c.on("open", () =>
+      c.send(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, method: "system_health" }),
+      ),
+    ); // pre-open send → the buffered/crash path
     c.on("message", (d) => {
       c.close();
       resolve(d.toString());
@@ -74,7 +78,11 @@ test("failover: dead upstream then good → one dial, echo works, no crash", asy
     c.on("error", reject);
     setTimeout(() => reject(new Error("timeout")), 8000);
   });
-  assert.equal(echoed, "ping");
+  assert.deepEqual(JSON.parse(echoed), {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "system_health",
+  });
   assert.equal(good.connections, 1); // not 2 — no duplicate dial
   await lb.close();
   await good.close();
@@ -89,4 +97,86 @@ test("all upstreams dead → client closed with 1013", async () => {
   });
   assert.equal(code, 1013);
   await lb.close();
+});
+
+test("security: unsafe and oversized client RPC frames do not reach upstream", async () => {
+  const upstreamMessages = [];
+  const http = createServer();
+  const wss = new WebSocketServer({ server: http });
+  wss.on("connection", (ws) => {
+    ws.on("message", (d) => {
+      upstreamMessages.push(d.toString());
+      ws.send(JSON.stringify({ jsonrpc: "2.0", id: 99, result: "accepted" }));
+    });
+  });
+  const upstream = await new Promise((resolve) =>
+    http.listen(0, "127.0.0.1", () =>
+      resolve(`ws://127.0.0.1:${http.address().port}`),
+    ),
+  );
+  const lb = await lbServer([upstream]);
+
+  const replies = await new Promise((resolve, reject) => {
+    const seen = [];
+    const c = new WebSocket(lb.url);
+    c.on("open", () => {
+      c.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "author_submitExtrinsic",
+        }),
+      );
+      c.send(
+        JSON.stringify({ jsonrpc: "2.0", id: 2, method: "system_health" }),
+      );
+      c.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "state_call",
+          params: ["x".repeat(70000)],
+        }),
+      );
+    });
+    c.on("message", (d) => {
+      seen.push(JSON.parse(d.toString()));
+      if (seen.length === 3) {
+        c.close();
+        resolve(seen);
+      }
+    });
+    c.on("error", reject);
+    setTimeout(() => reject(new Error("timeout")), 8000);
+  });
+
+  assert.ok(
+    replies.some(
+      (reply) =>
+        reply.error?.message ===
+        "RPC method is not allowed through this proxy: author_submitExtrinsic",
+    ),
+  );
+  assert.ok(
+    replies.some(
+      (reply) =>
+        reply.error?.message ===
+        "RPC request body is too large for the read-only proxy.",
+    ),
+  );
+  assert.ok(
+    replies.some(
+      (reply) =>
+        reply.jsonrpc === "2.0" &&
+        reply.id === 99 &&
+        reply.result === "accepted",
+    ),
+  );
+  assert.deepEqual(
+    upstreamMessages.map((m) => JSON.parse(m).method),
+    ["system_health"],
+  );
+
+  await lb.close();
+  await new Promise((resolve) => http.close(resolve));
 });
