@@ -50,12 +50,29 @@ const RELIABILITY = {
   "7,12": { score: 88, grade: "D", uptime_ratio: 0.88 }, // provider datura
 };
 
+// Per-subnet surfaces artifacts for the apis metric. Callable kinds are
+// subnet-api / openapi / sse / data-artifact; docs/website/etc. don't count.
+const SURFACES = {
+  "/metagraph/surfaces/7.json": {
+    surfaces: [
+      { kind: "subnet-api" },
+      { kind: "openapi" },
+      { kind: "docs" },
+      { kind: "website" },
+    ],
+  }, // 2 callable
+  "/metagraph/surfaces/12.json": { surfaces: [{ kind: "sse" }] }, // 1 callable
+  "/metagraph/surfaces/3.json": { surfaces: [{ kind: "docs" }] }, // 0 callable
+  // netuid 9 has no surfaces artifact → n/a
+};
+
 async function badge(pathname, { method = "GET" } = {}) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
   const res = await handleBadgeRequest(new Request(url, { method }), {}, url, {
     readArtifact: makeReadArtifact({
       "/metagraph/subnets.json": SUBNETS,
       "/metagraph/providers.json": PROVIDERS,
+      ...SURFACES,
     }),
     loadReliability: makeLoadReliability(RELIABILITY),
   });
@@ -150,6 +167,7 @@ describe("badge — rendering", () => {
       "reliability",
     );
     assert.equal(parseBadgeOptions(sp("metric=GRADE")).metric, "grade");
+    assert.equal(parseBadgeOptions(sp("metric=APIS")).metric, "apis");
     assert.equal(parseBadgeOptions(sp("metric=bogus")).metric, "readiness");
     // style: flat default; flat-square allowed; anything else → flat.
     assert.equal(parseBadgeOptions(sp("")).style, "flat");
@@ -311,6 +329,46 @@ describe("badge — grade metric", () => {
   test("unknown subnet grade degrades to n/a (gray, still 200)", async () => {
     const { res, text } = await badge(
       "/api/v1/subnets/999/badge.svg?metric=grade",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+});
+
+describe("badge — apis metric", () => {
+  test("subnet apis counts only callable surface kinds, informational blue", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=apis");
+    // surfaces/7 = subnet-api + openapi (callable) + docs + website (not) → 2
+    assert.match(text, /aria-label="metagraphed: 2 apis"/);
+    assert.match(text, /#007ec6/); // informational blue for >0
+    assert.ok(!text.includes("/100")); // not the readiness rendering
+  });
+
+  test("singular 'api' when exactly one callable surface", async () => {
+    const { text } = await badge("/api/v1/subnets/12/badge.svg?metric=apis");
+    assert.match(text, /aria-label="metagraphed: 1 api"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("zero callable surfaces renders '0 apis' in gray", async () => {
+    const { text } = await badge("/api/v1/subnets/3/badge.svg?metric=apis");
+    assert.match(text, /aria-label="metagraphed: 0 apis"/);
+    assert.match(text, /#9f9f9f/); // gray for none
+  });
+
+  test("provider apis sums callable surfaces across its subnets", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/datura/badge.svg?metric=apis",
+    );
+    // datura = netuids [7, 12] → 2 + 1 = 3
+    assert.match(text, /aria-label="metagraphed: 3 apis"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("a subnet with no surfaces artifact degrades to n/a (still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/9/badge.svg?metric=apis",
     );
     assert.equal(res.status, 200);
     assert.match(text, /n\/a/);
