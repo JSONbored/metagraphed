@@ -245,14 +245,18 @@ export async function runEmbeddingSync(env, deps = {}) {
       text: batch.map((entry) => embeddingText(entry.doc)),
     });
     const data = Array.isArray(response?.data) ? response.data : [];
-    // Upsert (and record in the manifest) ONLY entries that produced a valid
-    // vector. If Workers AI returns fewer/empty/malformed rows, the affected
-    // docs are left out of both the upsert and `next`, so the next cron retries
-    // them rather than leaving a permanent hole in the index.
+    // Upsert (and record the new hash for) ONLY entries that produced a valid
+    // vector. If Workers AI returns fewer/empty/malformed rows, keep any
+    // existing manifest hash so a later removal still deletes the stale vector,
+    // while the changed content remains a delta and is retried next run. New
+    // docs with no previous vector stay absent from the manifest until they
+    // embed successfully.
     const valid = [];
     for (let i = 0; i < batch.length; i += 1) {
       if (isValidEmbeddingVector(data[i])) {
         valid.push({ entry: batch[i], values: data[i] });
+      } else if (Object.prototype.hasOwnProperty.call(previous, batch[i].id)) {
+        next[batch[i].id] = previous[batch[i].id];
       }
     }
     if (valid.length === 0) continue;

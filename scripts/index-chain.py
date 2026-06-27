@@ -67,7 +67,8 @@ EXTRINSIC_COLS = (
 )
 EVENT_COLS = (
     "block_number", "event_index", "extrinsic_index", "event_kind",
-    "hotkey", "coldkey", "netuid", "uid", "amount", "alpha", "observed_at",
+    "hotkey", "coldkey", "netuid", "uid",
+    "amount_tao", "alpha_amount", "observed_at",
 )
 
 
@@ -104,9 +105,8 @@ def rows_from_decoded(decoded):
     """PURE: a decoded block (the stream-events.decode_head shape) -> column dicts
     keyed exactly by the Postgres schema. No DB/chain access — unit-tested.
 
-    The block + extrinsic dicts already use the schema's column names; account
-    events are remapped (amount_tao -> amount, alpha_amount -> alpha) and keep
-    uid. call_args is decoded from its JSON-string form; rows missing a valid
+    The block, extrinsic, and account-event dicts use the serving schema's column
+    names. call_args is decoded from its JSON-string form; rows missing a valid
     observed_at are dropped (NOT NULL).
     """
     blocks = []
@@ -133,8 +133,8 @@ def rows_from_decoded(decoded):
             "coldkey": e.get("coldkey"),
             "netuid": e.get("netuid"),
             "uid": e.get("uid"),
-            "amount": e.get("amount_tao"),
-            "alpha": e.get("alpha_amount"),
+            "amount_tao": e.get("amount_tao"),
+            "alpha_amount": e.get("alpha_amount"),
             "observed_at": e.get("observed_at"),
         }
         if _has_ts(row):
@@ -169,8 +169,15 @@ def _compute_from_block(cursor, head, window, max_lookback):
 
 def _decode_head():
     # stream-events imports the verified decode; reuse it so the mapping never
-    # drifts from the streamer/poller.
-    se = _load("stream_events", "stream-events.py")
+    # drifts from the streamer/poller. That module also installs CLI signal
+    # handlers at import time, so preserve the indexer handlers around the load.
+    previous_term = signal.getsignal(signal.SIGTERM)
+    previous_int = signal.getsignal(signal.SIGINT)
+    try:
+        se = _load("stream_events", "stream-events.py")
+    finally:
+        signal.signal(signal.SIGTERM, previous_term)
+        signal.signal(signal.SIGINT, previous_int)
     return se.decode_head
 
 
