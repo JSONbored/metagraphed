@@ -42,7 +42,9 @@ def _decoded():
                 "success": True,
                 "fee_tao": 0.0001,
                 "tip_tao": 0.0,
-                "call_args": {"hotkey": "5HK", "amount": 1},
+                # The verified decode (_safe_json) emits call_args as a compact
+                # JSON STRING, not a dict — the shape the indexer must handle.
+                "call_args": '{"hotkey":"5HK","amount":1}',
                 "observed_at": 1_700_000_000_000,
             }
         ],
@@ -79,7 +81,30 @@ class RowsFromDecoded(unittest.TestCase):
         self.assertEqual(set(x.keys()), set(ic.EXTRINSIC_COLS))
         self.assertEqual(x["extrinsic_index"], 2)
         self.assertEqual(x["call_module"], "SubtensorModule")
+
+    def test_call_args_json_string_is_decoded_to_an_object(self):
+        # Regression: the decode emits call_args as a JSON STRING; it must be
+        # parsed to an object so the single Json() wrap stores a JSONB object,
+        # not a double-encoded scalar string.
+        x = ic.rows_from_decoded(_decoded())["extrinsics"][0]
+        self.assertIsInstance(x["call_args"], dict)
         self.assertEqual(x["call_args"], {"hotkey": "5HK", "amount": 1})
+        # Unparseable call_args degrades to None (never a raw string into JSONB).
+        d = _decoded()
+        d["extrinsics"][0]["call_args"] = "{not valid json"
+        self.assertIsNone(ic.rows_from_decoded(d)["extrinsics"][0]["call_args"])
+
+    def test_rows_without_observed_at_are_dropped(self):
+        # observed_at is NOT NULL; a None (Timestamp miss) must be dropped, not
+        # sent to INSERT (which would IntegrityError + wedge the indexer).
+        d = _decoded()
+        d["block"]["observed_at"] = None
+        d["extrinsics"][0]["observed_at"] = None
+        d["events"][0]["observed_at"] = None
+        rows = ic.rows_from_decoded(d)
+        self.assertEqual(rows["blocks"], [])
+        self.assertEqual(rows["extrinsics"], [])
+        self.assertEqual(rows["account_events"], [])
 
     def test_event_row_remaps_amount_alpha_and_keeps_uid(self):
         e = ic.rows_from_decoded(_decoded())["account_events"][0]

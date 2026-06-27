@@ -51,7 +51,11 @@ services:
   subtensor:
     image: ghcr.io/opentensor/subtensor:latest
     restart: unless-stopped
+    # `command:` REPLACES the image CMD, so --base-path MUST be re-supplied or the
+    # node writes its DB to its home dir (not the volume) and re-syncs from scratch
+    # on every restart.
     command:
+      - --base-path=/data
       - --chain=finney
       - --sync=warp
       - --pruning=2000

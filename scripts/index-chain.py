@@ -32,6 +32,7 @@ transforms test without them. Run (the compose stack wires these):
   EVENTS_MAX_LOOKBACK   max blocks one backfill reaches back (raise for archive)
 """
 import importlib.util
+import json
 import logging
 import os
 import random
@@ -70,24 +71,52 @@ EVENT_COLS = (
 )
 
 
+def _json_obj(value):
+    """call_args arrives from the verified decode (_safe_json) as a COMPACT JSON
+    STRING, not an object. Parse it back so the single psycopg2 Json() wrap at
+    insert time stores a proper JSONB object — not a double-encoded scalar string
+    (which would break every `call_args->>'…'` serving query)."""
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (ValueError, TypeError):
+            return None
+    return value  # already an object or None
+
+
+def _has_ts(row):
+    """observed_at is BIGINT NOT NULL. decode_head emits None when a block's
+    Timestamp query fails; drop such rows (mirrors the D1-era Worker validators
+    the direct Postgres sink bypasses) so the INSERT never hits a NOT NULL
+    violation. Recent misses self-heal via the overlap re-scan (idempotent
+    re-insert once the timestamp resolves)."""
+    return isinstance(row.get("observed_at"), int)
+
+
 def rows_from_decoded(decoded):
     """PURE: a decoded block (the stream-events.decode_head shape) -> column dicts
     keyed exactly by the Postgres schema. No DB/chain access — unit-tested.
 
     The block + extrinsic dicts already use the schema's column names; account
     events are remapped (amount_tao -> amount, alpha_amount -> alpha) and keep
-    uid (the explorer surfaces it).
+    uid. call_args is decoded from its JSON-string form; rows missing a valid
+    observed_at are dropped (NOT NULL).
     """
     blocks = []
     block = decoded.get("block")
     if block:
-        blocks.append({c: block.get(c) for c in BLOCK_COLS})
-    extrinsics = [
-        {c: x.get(c) for c in EXTRINSIC_COLS}
-        for x in decoded.get("extrinsics") or []
-    ]
-    events = [
-        {
+        b = {c: block.get(c) for c in BLOCK_COLS}
+        if _has_ts(b):
+            blocks.append(b)
+    extrinsics = []
+    for x in decoded.get("extrinsics") or []:
+        row = {c: x.get(c) for c in EXTRINSIC_COLS}
+        row["call_args"] = _json_obj(row["call_args"])
+        if _has_ts(row):
+            extrinsics.append(row)
+    events = []
+    for e in decoded.get("events") or []:
+        row = {
             "block_number": e.get("block_number"),
             "event_index": e.get("event_index"),
             "extrinsic_index": e.get("extrinsic_index"),
@@ -100,8 +129,8 @@ def rows_from_decoded(decoded):
             "alpha": e.get("alpha_amount"),
             "observed_at": e.get("observed_at"),
         }
-        for e in decoded.get("events") or []
-    ]
+        if _has_ts(row):
+            events.append(row)
     return {"blocks": blocks, "extrinsics": extrinsics, "account_events": events}
 
 
@@ -266,11 +295,30 @@ def run():
                 return None
 
             s.subscribe_block_headers(handler, finalized_only=True)
-        except Exception as e:  # noqa: BLE001 — connection lost; reconnect
+        except Exception as e:  # noqa: BLE001 — RPC or DB error; recover + retry
             if _stop:
                 break
+            # Clear any aborted transaction (autocommit is off): a failed INSERT
+            # leaves the connection in InFailedSqlTransaction, so without this the
+            # next read_cursor re-raises "current transaction is aborted" forever —
+            # a tight ~5s crash loop that never advances the cursor. If the
+            # connection itself died, reconnect rather than reuse a dead handle.
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            if getattr(conn, "closed", 0):
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                try:
+                    conn = psycopg2.connect(db_url)
+                    conn.autocommit = False
+                except Exception:
+                    pass
             sleep_for = backoff + random.uniform(0, backoff / 2)
-            log.error("indexer error (%s) — reconnecting in %.1fs", repr(e)[:160], sleep_for)
+            log.error("indexer error (%s) — recovering in %.1fs", repr(e)[:160], sleep_for)
             time.sleep(sleep_for)
             backoff = min(backoff * 2, MAX_BACKOFF)
     try:
