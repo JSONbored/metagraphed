@@ -1131,10 +1131,9 @@ await fs.rm(r2ArtifactDir("verification/subnets"), {
   recursive: true,
   force: true,
 });
+const verificationResultsByNetuid = groupByNetuid(fullVerification.results || []);
 for (const subnet of mergedSubnets) {
-  const results = (fullVerification.results || []).filter(
-    (result) => result.netuid === subnet.netuid,
-  );
+  const results = verificationResultsByNetuid.get(subnet.netuid) || [];
   await writeJson(artifactFile(`verification/subnets/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1254,9 +1253,6 @@ const overviewGapsByNetuid = new Map(
 const overviewGapPriorities = groupByNetuid(
   curationReview.gap_priorities || [],
 );
-const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
-// #1002: overview counts.candidates is a per-subnet count → exclude superseded.
-const overviewCandidatesByNetuid = groupByNetuid(activeCandidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
 for (const subnet of mergedSubnets) {
   const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
@@ -1276,8 +1272,8 @@ for (const subnet of mergedSubnets) {
     gaps: overviewGapsByNetuid.get(subnet.netuid)?.gaps || null,
     counts: {
       surfaces: (overviewSurfacesByNetuid.get(subnet.netuid) || []).length,
-      endpoints: (overviewEndpointsByNetuid.get(subnet.netuid) || []).length,
-      candidates: (overviewCandidatesByNetuid.get(subnet.netuid) || []).length,
+      endpoints: (endpointsByNetuid.get(subnet.netuid) || []).length,
+      candidates: (activeCandidateIndexByNetuid.get(subnet.netuid) || []).length,
     },
     gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
   });
