@@ -97,6 +97,16 @@ function validateQueryParams(url, allowedParams) {
   return null;
 }
 
+function canonicalAnalyticsCacheRoute(url, params = []) {
+  const search = new URL("https://cache-key.invalid/").searchParams;
+  for (const param of [ANALYTICS_WINDOW_PARAM, ...params]) {
+    const value = url.searchParams.get(param);
+    if (value !== null) search.set(param, value);
+  }
+  const query = search.toString();
+  return `${url.pathname}${query ? `?${query}` : ""}`;
+}
+
 function analyticsWindow(url, extraParams = []) {
   const validationError = validateQueryParams(url, [
     ANALYTICS_WINDOW_PARAM,
@@ -230,13 +240,15 @@ async function analyticsMeta(env, artifactPath, observedAt) {
 // keying, same conditional-GET 304 short-circuit, same ctx.waitUntil put.
 //
 // The key varies on everything that changes the body: contract_version (a deploy
-// can never serve a cross-version payload) + the cron snapshot stamp
-// (`last_run_at`) + the request path (carries netuid) + the canonical search
-// (carries `window`). `keyParts` is the extra namespace segment per route. When
-// the snapshot stamp is cold (null), caching is skipped entirely so a cold-KV
-// empty payload can never seed a stale entry — identical to the overlay cache's
-// `if (lastRunAt)` guard. The cache is transparent: body/shape/headers are
-// whatever buildResponse() produced; only 200s are cached, never errors.
+// can never serve a cross-version payload) + a freshness stamp + the request
+// path (carries netuid) + the canonical search (carries `window`). By default
+// the stamp is the health cron snapshot (`last_run_at`); neurons-tier routes
+// pass `resolveCacheStamp` to bust on neuron `captured_at` instead (#1346).
+// `keyParts` is the extra namespace segment per route. When the stamp is cold
+// (null), caching is skipped entirely so a cold-KV/empty payload can never seed
+// a stale entry — identical to the overlay cache's `if (lastRunAt)` guard. The
+// cache is transparent: body/shape/headers are whatever buildResponse() produced;
+// only 200s are cached, never errors.
 export async function withEdgeCache(
   request,
   ctx,
@@ -244,19 +256,27 @@ export async function withEdgeCache(
   keyParts,
   buildResponse,
   cachePathAndSearch = null,
+  resolveCacheStamp = null,
 ) {
   const cache = request.method === "GET" ? globalThis.caches?.default : null;
-  // Cheap, per-isolate-memoized read of just the snapshot time. On a hit this +
-  // the cache match is the whole request (no D1 aggregation at all).
-  const lastRunAt = cache ? (await readHealthMetaKv(env))?.last_run_at : null;
+  // Cheap freshness read. On a hit this + the cache match is the whole request
+  // (no D1 aggregation at all for the handler body).
+  let stamp = null;
+  if (cache) {
+    if (typeof resolveCacheStamp === "function") {
+      stamp = await resolveCacheStamp(env);
+    } else {
+      stamp = (await readHealthMetaKv(env))?.last_run_at ?? null;
+    }
+  }
   let cacheKey = null;
-  if (cache && lastRunAt) {
+  if (cache && stamp) {
     const url = new URL(request.url);
     const cacheRoute = cachePathAndSearch ?? `${url.pathname}${url.search}`;
     cacheKey = new Request(
       `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
         contractVersion(env),
-      )}/${encodeURIComponent(lastRunAt)}/${keyParts}${cacheRoute}`,
+      )}/${encodeURIComponent(stamp)}/${keyParts}${cacheRoute}`,
     );
     const hit = await cache.match(cacheKey);
     if (hit) {
@@ -281,6 +301,41 @@ export async function withEdgeCache(
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
   return response;
+}
+
+// Neurons-tier routes refresh on the ~3-minute events/metagraph cron, not the
+// 15-minute health prober — bust their edge cache on per-subnet snapshot time.
+export async function readSubnetNeuronsCacheStamp(env, netuid) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neurons WHERE netuid = ?",
+    [netuid],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
+export function withNeuronsEdgeCache(
+  request,
+  ctx,
+  env,
+  netuid,
+  keyParts,
+  buildResponse,
+  cachePathAndSearch = null,
+) {
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    keyParts,
+    buildResponse,
+    cachePathAndSearch,
+    (edgeEnv) => readSubnetNeuronsCacheStamp(edgeEnv, netuid),
+  );
 }
 
 // D1-backed 7d/30d daily uptime + latency trends across all subnets. This is a
@@ -606,15 +661,7 @@ export async function handleHealthIncidents(
 // — the per-subnet /incidents route (no global cap) is the authoritative source
 // for a single subnet. Widening this to an exact bound would mean aggregating
 // from surface_uptime_daily (out of scope here).
-export async function handleGlobalIncidents(request, env, url) {
-  const { label, days, error } = analyticsWindow(url);
-  if (error) {
-    return analyticsQueryError(error);
-  }
-  const since = Date.now() - days * DAY_MS;
-  const incidentRows = await d1All(
-    env,
-    `WITH recent_checks AS (
+const GLOBAL_INCIDENTS_SQL = `WITH recent_checks AS (
        -- Source-row cap (LIMIT ?): bounds the gap-island scan, but an incident
        -- straddling this newest-N boundary is only partially counted (see the
        -- handler doc-note above — this feed is approximate near the cap).
@@ -650,21 +697,39 @@ export async function handleGlobalIncidents(request, env, url) {
      GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
-     LIMIT ?`,
-    [
-      since,
-      MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
-      INCIDENT_GAP_MS,
-      MIN_INCIDENT_SAMPLES,
-      MAX_INCIDENT_ROWS,
-    ],
-  );
+     LIMIT ?`;
+
+/** Shared D1 incident ledger used by GET /api/v1/incidents and content feeds. */
+export async function loadGlobalIncidentsLedger(
+  env,
+  { label = "7d", days = 7 } = {},
+) {
+  const since = Date.now() - days * DAY_MS;
+  const incidentRows = await d1All(env, GLOBAL_INCIDENTS_SQL, [
+    since,
+    MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
+    INCIDENT_GAP_MS,
+    MIN_INCIDENT_SAMPLES,
+    MAX_INCIDENT_ROWS,
+  ]);
   const meta = await readHealthMetaKv(env);
   const data = formatGlobalIncidents({
     window: label,
     observedAt: meta?.last_run_at || null,
     incidentRows,
     maxIncidents: MAX_INCIDENT_ROWS,
+  });
+  return { data, incidentRows };
+}
+
+export async function handleGlobalIncidents(request, env, url) {
+  const { label, days, error } = analyticsWindow(url);
+  if (error) {
+    return analyticsQueryError(error);
+  }
+  const { data, incidentRows } = await loadGlobalIncidentsLedger(env, {
+    label,
+    days,
   });
   const response = await envelopeResponse(
     request,
@@ -826,11 +891,16 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
   const moduleClause = callModule ? " AND call_module = ?" : "";
-  return withEdgeCache(request, ctx, env, "chain-signers", async () => {
-    const cutoff = Date.now() - days * DAY_MS;
-    const rows = await d1All(
-      env,
-      `SELECT signer,
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-signers",
+    async () => {
+      const cutoff = Date.now() - days * DAY_MS;
+      const rows = await d1All(
+        env,
+        `SELECT signer,
               COUNT(*) AS tx_count,
               SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
               SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
@@ -840,30 +910,32 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
        GROUP BY signer
        ORDER BY tx_count DESC
        LIMIT ?`,
-      callModule ? [cutoff, callModule, limit] : [cutoff, limit],
-    );
-    const meta = await readHealthMetaKv(env);
-    const data = buildChainSigners({
-      window: label,
-      observedAt: meta?.last_run_at || null,
-      rows,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          "/metagraph/chain/signers.json",
-          data.observed_at,
-        ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(rows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+        callModule ? [cutoff, callModule, limit] : [cutoff, limit],
+      );
+      const meta = await readHealthMetaKv(env);
+      const data = buildChainSigners({
+        window: label,
+        observedAt: meta?.last_run_at || null,
+        rows,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/signers.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(rows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit", "call_module"]),
+  );
 }
 
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + averages)
@@ -881,23 +953,28 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
   const moduleClause = callModule ? " AND call_module = ?" : "";
-  return withEdgeCache(request, ctx, env, "chain-fees", async () => {
-    const cutoff = Date.now() - days * DAY_MS;
-    const [dailyRows, payerRows] = await Promise.all([
-      d1All(
-        env,
-        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-fees",
+    async () => {
+      const cutoff = Date.now() - days * DAY_MS;
+      const [dailyRows, payerRows] = await Promise.all([
+        d1All(
+          env,
+          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
                 COUNT(*) AS extrinsic_count,
                 SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
          FROM extrinsics
          WHERE observed_at >= ?${moduleClause}
          GROUP BY day`,
-        callModule ? [cutoff, callModule] : [cutoff],
-      ),
-      d1All(
-        env,
-        `SELECT signer,
+          callModule ? [cutoff, callModule] : [cutoff],
+        ),
+        d1All(
+          env,
+          `SELECT signer,
                 SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
                 SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
                 COUNT(*) AS extrinsic_count
@@ -906,32 +983,34 @@ export async function handleChainFees(request, env, url, ctx = {}) {
          GROUP BY signer
          ORDER BY total_fee_tao DESC
          LIMIT ?`,
-        callModule ? [cutoff, callModule, limit] : [cutoff, limit],
-      ),
-    ]);
-    const meta = await readHealthMetaKv(env);
-    const data = buildChainFees({
-      window: label,
-      observedAt: meta?.last_run_at || null,
-      dailyRows,
-      payerRows,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          "/metagraph/chain/fees.json",
-          data.observed_at,
+          callModule ? [cutoff, callModule, limit] : [cutoff, limit],
         ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(dailyRows, payerRows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+      ]);
+      const meta = await readHealthMetaKv(env);
+      const data = buildChainFees({
+        window: label,
+        observedAt: meta?.last_run_at || null,
+        dailyRows,
+        payerRows,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/fees.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(dailyRows, payerRows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit", "call_module"]),
+  );
 }
 
 // Shared analytics helpers also used by the deferred handler clusters (trajectory,
@@ -941,6 +1020,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
 export {
   analyticsMeta,
   analyticsQueryError,
+  canonicalAnalyticsCacheRoute,
   analyticsWindow,
   d1All,
   d1Runner,

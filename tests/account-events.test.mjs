@@ -6,11 +6,15 @@ import {
   INDEXED_EVENT_KINDS,
   EVENT_RETENTION_MS,
   formatAccountEvent,
+  formatAccountDay,
   formatRegistration,
   buildAccountSummary,
   buildAccountEvents,
   buildAccountSubnets,
   loadAccountSummary,
+  loadAccountEvents,
+  loadAccountHistory,
+  loadAccountSubnets,
   ACCOUNT_ACTIVITY_RECENT_LIMIT,
   eventInsertStatements,
   utcDayBounds,
@@ -18,6 +22,7 @@ import {
   pruneAccountEvents,
   validEventRows,
 } from "../src/account-events.mjs";
+import { encodeCursor } from "../src/cursor.mjs";
 
 test("validEventRows enforces the strict row shape (#1371)", () => {
   assert.deepEqual(validEventRows("not-an-array"), []);
@@ -301,6 +306,33 @@ test("buildAccountSummary threads the signing activity sub-object (#1847)", () =
   assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
 });
 
+test("account builders null invalid block heights and indices", () => {
+  const event = formatAccountEvent({
+    block_number: -1,
+    event_index: -2,
+    event_kind: "StakeAdded",
+    observed_at: 1,
+  });
+  assert.equal(event.block_number, null);
+  assert.equal(event.event_index, null);
+
+  const summary = buildAccountSummary("5Hk", {
+    agg: { fb: -5, lb: "nope" },
+    activity: { last_tx_block: -99 },
+  });
+  assert.equal(summary.first_block, null);
+  assert.equal(summary.last_block, null);
+  assert.equal(summary.activity.last_tx_block, null);
+
+  const day = formatAccountDay({
+    day: "2026-01-01",
+    first_block: -1,
+    last_block: 100,
+  });
+  assert.equal(day.first_block, null);
+  assert.equal(day.last_block, 100);
+});
+
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
   // A registration row with NONE of the optional fields must still produce a
   // fully-shaped object (nulls + coerced false), never undefined — the
@@ -406,4 +438,262 @@ test("loadAccountSummary bounds signing activity before aggregating", async () =
   assert.ok(/FROM \(SELECT call_module FROM extrinsics/.test(modules.sql));
   assert.ok(/LIMIT \?\) GROUP BY call_module/.test(modules.sql));
   assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
+});
+
+// ---- Async loader failure-path coverage ------------------------------------
+// The shared loaders take a (sql, params) => Promise<rows[]> runner. The real
+// d1All swallows a D1 timeout/schema-drift to [] (workers analytics), so from a
+// loader's view a cold store, a timed-out read, and an empty subnet all arrive
+// as []. These assert the loaders stay schema-stable on that empty path and that
+// pagination (offset vs keyset cursor, clamping) is wired correctly.
+
+// A d1 runner that returns [] for every query — the shape d1All hands back on a
+// cold/unbound DB OR a swallowed D1 timeout/schema-drift error.
+const emptyD1 = async () => [];
+
+test("loadAccountEvents is schema-stable when the D1 read yields nothing", async () => {
+  const out = await loadAccountEvents(emptyD1, "5Hk", { limit: 50, offset: 0 });
+  assert.equal(out.schema_version, 1);
+  assert.equal(out.ss58, "5Hk");
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.limit, 50); // clamped value still echoed
+  assert.equal(out.offset, 0);
+  assert.equal(out.next_cursor, null); // no full page → no next cursor
+});
+
+test("loadAccountEvents propagates a rejecting D1 runner (no silent swallow)", async () => {
+  // If the injected runner rejects (e.g. a non-swallowed downstream failure),
+  // the loader must not mask it as an empty feed — the caller decides.
+  await assert.rejects(
+    loadAccountEvents(async () => {
+      throw new Error("d1 timeout");
+    }, "5Hk"),
+    /d1 timeout/,
+  );
+});
+
+test("loadAccountEvents clamps limit/offset and matches both account keys", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { limit: 9999, offset: -5 }, // over max / below min
+  );
+  // limit clamps to the 1000 ceiling, offset clamps up to the 0 floor.
+  assert.ok(captured.sql.includes("LIMIT ?"));
+  assert.ok(captured.sql.includes("OFFSET ?"));
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", 1000, 0]);
+});
+
+test("loadAccountEvents applies the ?kind filter as a bound param", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { kind: "StakeAdded" },
+  );
+  assert.ok(/AND event_kind = \?/.test(captured.sql));
+  // [ss58, ss58, kind, limit(default 100), offset(default 0)]
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", "StakeAdded", 100, 0]);
+});
+
+test("loadAccountEvents emits a next_cursor only on a full page", async () => {
+  // A full page (rows.length === limit) → keyset cursor off the last row.
+  const full = await loadAccountEvents(
+    async () => [
+      { block_number: 9, event_index: 2, event_kind: "WeightsSet" },
+      { block_number: 8, event_index: 0, event_kind: "StakeAdded" },
+    ],
+    "5Hk",
+    { limit: 2 },
+  );
+  assert.equal(full.event_count, 2);
+  assert.equal(full.next_cursor, encodeCursor([8, 0]));
+
+  // A partial page (fewer than limit) → end-of-window, no cursor.
+  const partial = await loadAccountEvents(
+    async () => [{ block_number: 9, event_index: 2, event_kind: "WeightsSet" }],
+    "5Hk",
+    { limit: 2 },
+  );
+  assert.equal(partial.next_cursor, null);
+});
+
+test("loadAccountEvents uses a keyset seek (not OFFSET) when a cursor is given", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { cursor: encodeCursor([1000, 3]), limit: 50 },
+  );
+  assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(captured.sql));
+  assert.ok(!/OFFSET/.test(captured.sql)); // cursor overrides offset
+  // [ss58, ss58, curBlock, curIndex, limit]
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", 1000, 3, 50]);
+});
+
+test("loadAccountEvents ignores a malformed cursor and falls back to OFFSET", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { cursor: "not-a-cursor", offset: 20 },
+  );
+  assert.ok(/OFFSET \?/.test(captured.sql));
+  assert.ok(!/\(block_number, event_index\) </.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", 100, 20]);
+});
+
+test("loadAccountHistory is schema-stable when the D1 read yields nothing", async () => {
+  const out = await loadAccountHistory(emptyD1, "5Hk", {
+    limit: 25,
+    offset: 0,
+  });
+  assert.equal(out.schema_version, 1);
+  assert.equal(out.ss58, "5Hk");
+  assert.equal(out.day_count, 0);
+  assert.deepEqual(out.days, []);
+  assert.equal(out.limit, 25);
+  assert.equal(out.offset, 0);
+});
+
+test("loadAccountHistory propagates a rejecting D1 runner", async () => {
+  await assert.rejects(
+    loadAccountHistory(async () => {
+      throw new Error("d1 down");
+    }, "5Hk"),
+    /d1 down/,
+  );
+});
+
+test("loadAccountHistory binds netuid/from/to filters and clamps pagination", async () => {
+  let captured;
+  await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 0, offset: 5 },
+  );
+  assert.ok(/AND netuid = \?/.test(captured.sql));
+  assert.ok(/AND day >= \?/.test(captured.sql));
+  assert.ok(/AND day <= \?/.test(captured.sql));
+  assert.ok(/ORDER BY day DESC LIMIT \? OFFSET \?/.test(captured.sql));
+  // limit 0 is below the floor → clamps to 1; offset 5 passes through.
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    7,
+    "2026-06-01",
+    "2026-06-30",
+    1,
+    5,
+  ]);
+});
+
+test("loadAccountHistory ignores a non-integer netuid filter", async () => {
+  let captured;
+  await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { netuid: 7.5 },
+  );
+  assert.ok(!/AND netuid = \?/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", 100, 0]);
+});
+
+test("loadAccountHistory maps sparse rollup rows null-safely", async () => {
+  const out = await loadAccountHistory(
+    async () => [
+      { day: "2026-06-24" }, // every other column absent
+      { day: "2026-06-23", netuid: 1, event_count: 4, event_kinds: "" },
+    ],
+    "5Hk",
+  );
+  assert.equal(out.day_count, 2);
+  assert.equal(out.days[0].netuid, null);
+  assert.equal(out.days[0].event_count, null);
+  assert.deepEqual(out.days[0].event_kinds, []); // missing CSV → []
+  assert.deepEqual(out.days[1].event_kinds, []); // empty CSV → []
+});
+
+test("loadAccountSubnets is schema-stable when the D1 read yields nothing", async () => {
+  const out = await loadAccountSubnets(emptyD1, "5Hk");
+  assert.equal(out.schema_version, 1);
+  assert.equal(out.ss58, "5Hk");
+  assert.equal(out.subnet_count, 0);
+  assert.deepEqual(out.subnets, []);
+});
+
+test("loadAccountSubnets propagates a rejecting D1 runner", async () => {
+  await assert.rejects(
+    loadAccountSubnets(async () => {
+      throw new Error("d1 timeout");
+    }, "5Hk"),
+    /d1 timeout/,
+  );
+});
+
+test("loadAccountSubnets reads neurons by hotkey ordered by netuid", async () => {
+  let captured;
+  await loadAccountSubnets(async (sql, params) => {
+    captured = { sql, params };
+    return [];
+  }, "5Hk");
+  assert.ok(/FROM neurons WHERE hotkey = \?/.test(captured.sql));
+  assert.ok(/ORDER BY netuid/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk"]);
+});
+
+test("loadAccountSubnets maps sparse registration rows null-safely", async () => {
+  const out = await loadAccountSubnets(
+    async () => [{ netuid: 7 }], // uid/stake/permit/active absent
+    "5Hk",
+  );
+  assert.equal(out.subnet_count, 1);
+  assert.equal(out.subnets[0].netuid, 7);
+  assert.equal(out.subnets[0].uid, null);
+  assert.equal(out.subnets[0].stake_tao, null);
+  assert.equal(out.subnets[0].validator_permit, false);
+  assert.equal(out.subnets[0].active, false);
+});
+
+test("loadAccountSummary is schema-stable when every parallel read times out to []", async () => {
+  // Mirrors d1All swallowing a timeout/cold store to [] for all six reads.
+  const out = await loadAccountSummary(emptyD1, "5Hk");
+  assert.equal(out.event_count, 0);
+  assert.equal(out.subnet_count, 0);
+  assert.deepEqual(out.registrations, []);
+  assert.deepEqual(out.recent_events, []);
+  assert.equal(out.activity.tx_count, 0);
+});
+
+test("loadAccountSummary propagates when any parallel D1 read rejects", async () => {
+  // Promise.all rejects fast if any one of the six reads throws — the loader
+  // must not swallow that into a falsely-empty summary.
+  let n = 0;
+  await assert.rejects(
+    loadAccountSummary(async () => {
+      n += 1;
+      if (n === 3) throw new Error("d1 read 3 failed");
+      return [];
+    }, "5Hk"),
+    /d1 read 3 failed/,
+  );
 });

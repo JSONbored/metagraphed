@@ -13,9 +13,11 @@ import {
   validNeuronDailyRows,
   buildNeuronHistory,
   buildSubnetHistory,
+  buildEconomicsTrends,
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
+import { buildConcentrationHistory } from "../src/concentration.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { NEURON_HISTORY_ROLLUP_CRON } from "../workers/config.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -212,6 +214,117 @@ describe("history builders", () => {
     assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, null);
   });
+
+  test("buildEconomicsTrends rolls per-subnet rows up to one network point per day", () => {
+    const out = buildEconomicsTrends(
+      [
+        // newest first; day A has two subnets, day B one.
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.06,
+          validator_count: 2,
+          miner_count: 10,
+          emission_share: 0.02,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.01,
+          validator_count: 4,
+          miner_count: 20,
+          emission_share: 0.03,
+        },
+      ],
+      { window: "7d" },
+    );
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 2);
+    const [recent] = out.days;
+    assert.equal(recent.snapshot_date, "2026-06-02");
+    assert.equal(recent.subnet_count, 2);
+    assert.equal(recent.total_stake_tao, 400);
+    // (0.02·300 + 0.06·100)/400 = 0.03 weighted; median([0.02,0.06]) = 0.04.
+    assert.equal(recent.alpha_price_tao_weighted, 0.03);
+    assert.equal(recent.alpha_price_tao_median, 0.04);
+    assert.equal(recent.mean_emission_share, 0.03);
+  });
+
+  test("buildEconomicsTrends skips zero-stake rows from the weighted price, keeps them in the median", () => {
+    const out = buildEconomicsTrends([
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: 0,
+        alpha_price_tao: 0.5,
+        validator_count: 1,
+        miner_count: 1,
+        emission_share: 0.1,
+      },
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: 200,
+        alpha_price_tao: 0.1,
+        validator_count: 3,
+        miner_count: 5,
+        emission_share: 0.2,
+      },
+    ]);
+    const [day] = out.days;
+    // Only the staked row carries the weighted mean → 0.1.
+    assert.equal(day.alpha_price_tao_weighted, 0.1);
+    // Both prices count toward the unweighted median → median([0.1,0.5]) = 0.3.
+    assert.equal(day.alpha_price_tao_median, 0.3);
+    assert.equal(day.total_stake_tao, 200);
+    assert.equal(day.window, undefined);
+  });
+
+  test("buildEconomicsTrends is empty + null-safe on no rows", () => {
+    const out = buildEconomicsTrends([]);
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
+    assert.equal(out.window, null);
+  });
+
+  test("buildNeuronHistory drops malformed rows and the count tracks the array (#1793)", () => {
+    // A null/non-object row can't become a Neuron point, so it must not leak into
+    // the array — and the count tracks the array (point_count === points.length),
+    // mirroring the blocks/extrinsics/metagraph builders' .filter(Boolean). A
+    // non-object element must also degrade gracefully, never throw.
+    const out = buildNeuronHistory(
+      [dailyRow(), null, dailyRow({ uid: 9 }), undefined, 0],
+      7,
+      3,
+    );
+    assert.equal(out.points.length, 2);
+    assert.equal(out.point_count, 2);
+    assert.ok(out.points.every(Boolean));
+    assert.deepEqual(
+      out.points.map((p) => p.uid),
+      [3, 9],
+    );
+    // A null/undefined rows argument is tolerated (empty series, never throws).
+    assert.deepEqual(buildNeuronHistory(null, 7, 3).points, []);
+  });
+
+  test("buildSubnetHistory drops malformed rows and the count tracks the array (#1793)", () => {
+    const out = buildSubnetHistory(
+      [{ snapshot_date: "2026-06-20", neuron_count: 256 }, null, undefined],
+      7,
+    );
+    assert.equal(out.points.length, 1);
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].neuron_count, 256);
+    assert.deepEqual(buildSubnetHistory(undefined, 7).points, []);
+  });
 });
 
 describe("rollupNeuronDaily idempotency invariant (#1345)", () => {
@@ -244,6 +357,101 @@ describe("rollupNeuronDaily idempotency invariant (#1345)", () => {
     assert.doesNotMatch(seen[0], /\bnetuid = excluded/);
     assert.doesNotMatch(seen[0], /\buid = excluded/);
     assert.match(seen[0], /updated_at = excluded\.updated_at/);
+  });
+});
+
+describe("rollupNeuronDaily stake-column invariant (P7)", () => {
+  // The forward rollup copies `neurons` -> `neuron_daily` verbatim, so stake_tao
+  // MUST be one of the rolled + upserted columns. The historical backfill
+  // (scripts/backfill-neuron-history.py) intentionally deferred per-UID stake to
+  // null, which is the documented historical gap — but the FORWARD path must never
+  // silently drop stake the way the backfill omits it, or the daily
+  // total_stake_tao / stake_gini / stake_nakamoto aggregates go null again. This
+  // locks stake_tao into both the INSERT...SELECT projection and the ON CONFLICT
+  // SET clause so a future column refactor can't regress it.
+  test("rolls stake_tao in the INSERT...SELECT and re-applies it on conflict", async () => {
+    let sql = "";
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(s) {
+          sql = s;
+          return {
+            bind: () => ({
+              run: () => Promise.resolve({ meta: { changes: 1 } }),
+            }),
+          };
+        },
+      },
+    };
+    await rollupNeuronDaily(env, { now: 1 });
+    // Projected from neurons in the INSERT column list...
+    assert.match(sql, /INSERT INTO neuron_daily \([^)]*\bstake_tao\b/);
+    // ...and carried forward on an intra-day re-run.
+    assert.match(sql, /stake_tao = excluded\.stake_tao/);
+  });
+});
+
+describe("stake aggregates surface when the rolled rows carry stake (P7)", () => {
+  // Locks the documented historical behaviour: a day whose neuron_daily rows have
+  // a real per-UID stake distribution yields populated total_stake_tao / stake_gini
+  // / stake_nakamoto, while a day backfilled with stake_tao = null yields nulls —
+  // the exact split observed in production (stake populated from 2026-06-22, the
+  // day the forward rollup began carrying it; null before, from the backfill).
+  test("buildSubnetHistory: SUM(stake) day -> number, null-stake day -> null", () => {
+    const out = buildSubnetHistory(
+      [
+        // A populated forward-rollup day (SQL SUM(stake_tao) is a number).
+        {
+          snapshot_date: "2026-06-22",
+          neuron_count: 2,
+          validator_count: 1,
+          total_stake_tao: 150,
+          total_emission_tao: 3,
+        },
+        // A backfilled day: SUM over all-null stake_tao -> SQLite returns NULL.
+        {
+          snapshot_date: "2026-06-21",
+          neuron_count: 2,
+          validator_count: 1,
+          total_stake_tao: null,
+          total_emission_tao: 3,
+        },
+      ],
+      64,
+      { window: "30d" },
+    );
+    assert.equal(out.points[0].total_stake_tao, 150);
+    assert.equal(out.points[0].total_emission_tao, 3);
+    // The backfilled day keeps emission but nulls stake (the production gap).
+    assert.equal(out.points[1].total_stake_tao, null);
+    assert.equal(out.points[1].total_emission_tao, 3);
+  });
+
+  test("buildConcentrationHistory: stake metrics null on a null-stake day, populated otherwise", () => {
+    const out = buildConcentrationHistory(
+      [
+        // Forward-rollup day: real per-UID stake distribution.
+        { snapshot_date: "2026-06-22", stake_tao: 100, emission_tao: 10 },
+        { snapshot_date: "2026-06-22", stake_tao: 1, emission_tao: 1 },
+        // Backfilled day: stake_tao null, emission present.
+        { snapshot_date: "2026-06-21", stake_tao: null, emission_tao: 10 },
+        { snapshot_date: "2026-06-21", stake_tao: null, emission_tao: 1 },
+      ],
+      64,
+      { window: "30d" },
+    );
+    assert.equal(out.points[0].snapshot_date, "2026-06-22");
+    assert.equal(typeof out.points[0].stake_gini, "number");
+    assert.equal(out.points[0].stake_nakamoto_coefficient, 1);
+    assert.equal(typeof out.points[0].stake_top_10pct_share, "number");
+    // The backfilled day has no stake distribution -> stake metrics null, but
+    // emission metrics still populate (proves it's a stake-data gap, not a builder
+    // bug).
+    assert.equal(out.points[1].snapshot_date, "2026-06-21");
+    assert.equal(out.points[1].stake_gini, null);
+    assert.equal(out.points[1].stake_nakamoto_coefficient, null);
+    assert.equal(out.points[1].stake_top_10pct_share, null);
+    assert.equal(typeof out.points[1].emission_gini, "number");
   });
 });
 

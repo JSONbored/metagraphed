@@ -25,8 +25,41 @@ TS="$(date -u +%Y%m%dT%H%M%SZ)"
 KEY="${PREFIX}/metagraphed-${TS}.sql.gz"
 
 echo "backup: pg_dump | gzip -> s3://${R2_BUCKET}/${KEY}"
-# Stream straight through — never lands the full dump on the container disk.
-pg_dump --no-owner --no-privileges "$DATABASE_URL" \
-  | gzip -9 \
-  | aws s3 cp - "s3://${R2_BUCKET}/${KEY}" --endpoint-url "$R2_ENDPOINT"
+# Stream pg_dump through gzip without landing the raw dump on container disk.
+# The compressed dump does land in TMPDIR before upload; size the service's
+# ephemeral disk for the compressed backup, not the raw database dump.
+# Keep the upload as a separate step so early aws CLI/config failures cannot
+# deadlock the dump/gzip FIFO chain before the script observes them.
+# Use explicit process waits instead of a shell pipeline: POSIX sh reports
+# only the last command's status for pipelines, which can hide pg_dump failures.
+TMPDIR="$(mktemp -d)"
+RAW_FIFO="${TMPDIR}/dump.sql"
+GZ_FILE="${TMPDIR}/dump.sql.gz"
+cleanup() {
+  rm -rf "$TMPDIR"
+}
+trap cleanup EXIT HUP INT TERM
+mkfifo "$RAW_FIFO"
+
+gzip -9 <"$RAW_FIFO" >"$GZ_FILE" &
+GZIP_PID=$!
+pg_dump --no-owner --no-privileges "$DATABASE_URL" >"$RAW_FIFO" &
+PG_DUMP_PID=$!
+
+STATUS=0
+if ! wait "$PG_DUMP_PID"; then
+  echo "backup failed: pg_dump exited nonzero" >&2
+  STATUS=1
+fi
+if ! wait "$GZIP_PID"; then
+  echo "backup failed: gzip exited nonzero" >&2
+  STATUS=1
+fi
+if [ "$STATUS" -ne 0 ]; then
+  exit "$STATUS"
+fi
+if ! aws s3 cp "$GZ_FILE" "s3://${R2_BUCKET}/${KEY}" --endpoint-url "$R2_ENDPOINT"; then
+  echo "backup failed: aws upload exited nonzero" >&2
+  exit 1
+fi
 echo "backup complete: s3://${R2_BUCKET}/${KEY}"

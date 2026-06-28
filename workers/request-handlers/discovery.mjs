@@ -206,6 +206,7 @@ const HOMEPAGE_HTML = `<!doctype html>
 <li><a href="/.well-known/agent-skills/index.json">Agent Skills index</a></li>
 <li><a href="/.well-known/agent-tools/index.json">Agent tool specs</a> — paste-ready OpenAI + Anthropic tools</li>
 <li><a href="/api/v1/feeds/registry">Content feeds</a> — registry changes + incidents (RSS / Atom / JSON Feed)</li>
+<li>Public RPC — load-balanced Bittensor RPC (read-only, health-checked, automatic failover): <code>wss://wss.metagraph.sh/finney</code> (mainnet) · <code>wss://wss.metagraph.sh/test</code> (testnet). Live pool: <a href="/api/v1/rpc/pools">/api/v1/rpc/pools</a></li>
 <li><a href="/api/v1">REST API index</a> · <a href="/sitemap.xml">sitemap.xml</a> · <a href="/auth.md">auth.md</a></li>
 <li><a href="https://metagraph.sh">metagraph.sh</a> — human web app</li>
 </ul>

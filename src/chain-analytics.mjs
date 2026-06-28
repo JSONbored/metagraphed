@@ -28,6 +28,13 @@ function toTao(value) {
   return Math.round(n * 1e9) / 1e9;
 }
 
+// Coerce a block-height cell to a non-negative integer, or null when the value is
+// missing, non-finite, or negative — block numbers are never negative on-chain.
+function toBlockNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+}
+
 // Merge the two per-UTC-day aggregations (extrinsics tier + blocks tier) into one
 // newest-first daily series. `extrinsicRows` carries extrinsic_count /
 // successful_extrinsics / unique_signers; `blockRows` carries block_count /
@@ -151,9 +158,7 @@ export function buildChainSigners({ window, observedAt = null, rows = [] }) {
       tx_count: toCount(r.tx_count),
       total_fee_tao: toTao(r.total_fee_tao),
       total_tip_tao: toTao(r.total_tip_tao),
-      last_tx_block: Number.isFinite(Number(r.last_tx_block))
-        ? Math.trunc(Number(r.last_tx_block))
-        : null,
+      last_tx_block: toBlockNumber(r.last_tx_block),
     }));
   return {
     schema_version: 1,

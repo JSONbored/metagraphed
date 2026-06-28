@@ -8,6 +8,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
   configureAnalyticsRoutes,
   handleCompare,
+  handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
@@ -121,6 +122,108 @@ describe("handleTrajectory", () => {
       ["2026-06-01", "2026-06-02"],
     );
     assert.equal(body.data.points[1].completeness_score, 40);
+  });
+});
+
+describe("handleEconomicsTrends", () => {
+  test("returns schema-stable empty series on cold D1", async () => {
+    const body = await json(
+      await handleEconomicsTrends(req("/"), {}, url("/")),
+    );
+    assert.equal(body.data.day_count, 0);
+    assert.deepEqual(body.data.days, []);
+    assert.equal(body.data.window, "30d");
+  });
+
+  test("rejects unsupported query parameters", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?bogus=1"));
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "bogus");
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?window=99d"));
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "window");
+  });
+
+  test("aggregates per-day across subnets (sums + weighted/median price)", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        // newest day first (the SQL orders DESC); two subnets contribute.
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.06,
+          validator_count: 2,
+          miner_count: 10,
+          emission_share: 0.02,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.01,
+          validator_count: 4,
+          miner_count: 20,
+          emission_share: 0.03,
+        },
+      ],
+    });
+    const body = await json(
+      await handleEconomicsTrends(req("/"), env, url("/?window=7d")),
+    );
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.day_count, 2);
+    // Newest-first order preserved from the query.
+    const [recent, older] = body.data.days;
+    assert.equal(recent.snapshot_date, "2026-06-02");
+    assert.equal(recent.subnet_count, 2);
+    assert.equal(recent.total_stake_tao, 400);
+    assert.equal(recent.validator_count, 10);
+    assert.equal(recent.miner_count, 60);
+    // Stake-weighted mean price: (0.02·300 + 0.06·100) / 400 = 0.03.
+    assert.equal(recent.alpha_price_tao_weighted, 0.03);
+    // Unweighted median of [0.02, 0.06] = 0.04.
+    assert.equal(recent.alpha_price_tao_median, 0.04);
+    // Mean emission share: (0.04 + 0.02) / 2 = 0.03.
+    assert.equal(recent.mean_emission_share, 0.03);
+    assert.equal(older.snapshot_date, "2026-06-01");
+    assert.equal(older.subnet_count, 1);
+    assert.equal(older.total_stake_tao, 100);
+  });
+
+  test("nulls a metric for a day when no subnet reported it", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-03",
+          total_stake_tao: null,
+          alpha_price_tao: null,
+          validator_count: null,
+          miner_count: null,
+          emission_share: null,
+        },
+      ],
+    });
+    const body = await json(
+      await handleEconomicsTrends(req("/"), env, url("/")),
+    );
+    const [day] = body.data.days;
+    assert.equal(day.subnet_count, 1);
+    assert.equal(day.total_stake_tao, null);
+    assert.equal(day.alpha_price_tao_weighted, null);
+    assert.equal(day.alpha_price_tao_median, null);
+    assert.equal(day.validator_count, null);
+    assert.equal(day.miner_count, null);
+    assert.equal(day.mean_emission_share, null);
   });
 });
 

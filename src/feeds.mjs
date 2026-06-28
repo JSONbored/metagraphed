@@ -16,6 +16,10 @@
 // "subnet"/"artifact"/"coverage" + the change verb (added/removed/renamed/
 // modified); incident items carry "incident", "sn<netuid>", and
 // "ongoing"/"resolved". An unknown tag yields an empty (but valid) feed.
+//
+// Optional `?since=<ISO-8601>` returns only items at or after that instant
+// (e.g. ?since=2026-06-01 or ?since=2026-06-01T00:00:00Z), for incremental
+// polling; it composes with `?tag=`. A malformed `since` is a 400.
 
 import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.mjs";
 
@@ -218,6 +222,17 @@ function filterByTag(items, tag) {
   return items.filter((item) => (item.tags || []).includes(tag));
 }
 
+// Optional `?since=` filter: keep only items at or after `sinceMs` (epoch ms).
+// A null bound (absent param) is a no-op; items whose timestamp can't be parsed
+// are dropped, so a malformed feed entry never leaks past an explicit `since`.
+function filterSince(items, sinceMs) {
+  if (sinceMs == null) return items;
+  return items.filter((item) => {
+    const t = Date.parse(item.timestamp);
+    return !Number.isNaN(t) && t >= sinceMs;
+  });
+}
+
 function jsonFeed(meta, items) {
   return `${JSON.stringify(
     {
@@ -350,6 +365,17 @@ async function readData(readArtifact, env, path) {
   }
 }
 
+async function loadIncidentsData(deps, env) {
+  if (typeof deps.loadLiveIncidents === "function") {
+    try {
+      return await deps.loadLiveIncidents(env);
+    } catch {
+      return null;
+    }
+  }
+  return readData(deps.readArtifact, env, "/metagraph/incidents.json");
+}
+
 export async function handleFeedRequest(request, env, url, deps = {}) {
   const readArtifact = deps.readArtifact;
   // Feed errors go through the shared canonical envelope (workers/http.mjs
@@ -367,6 +393,21 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     );
   }
   const format = resolveFeedFormat(url.pathname, request.headers.get("accept"));
+
+  // Optional `?since=` lower bound (parsed once, here, so a malformed value is
+  // rejected before any artifact work). null when the param is absent.
+  let sinceMs = null;
+  const sinceParam = url.searchParams.get("since");
+  if (sinceParam != null) {
+    sinceMs = Date.parse(sinceParam);
+    if (Number.isNaN(sinceMs)) {
+      return fail(
+        "invalid_since",
+        "`since` must be an ISO-8601 date or date-time, e.g. 2026-06-01 or 2026-06-01T00:00:00Z.",
+        400,
+      );
+    }
+  }
 
   let items;
   let title;
@@ -386,11 +427,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
       "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
     updatedSource = changelog?.generated_at;
   } else if (target.kind === "incidents") {
-    const incidents = await readData(
-      readArtifact,
-      env,
-      "/metagraph/incidents.json",
-    );
+    const incidents = await loadIncidentsData(deps, env);
     items = incidentItems(incidents);
     title = "metagraphed — surface incidents";
     description =
@@ -399,7 +436,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
-      readData(readArtifact, env, "/metagraph/incidents.json"),
+      loadIncidentsData(deps, env),
     ]);
     items = [
       ...registryItems(changelog, target.netuid),
@@ -412,6 +449,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   }
 
   items = filterByTag(items, url.searchParams.get("tag"));
+  items = filterSince(items, sinceMs);
   items = sortAndCap(items);
   const meta = {
     title,
@@ -465,4 +503,5 @@ export const __test = {
   atomFeed,
   escapeXml,
   filterByTag,
+  filterSince,
 };
