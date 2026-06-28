@@ -179,7 +179,7 @@ import {
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { handleFeedRequest } from "../src/feeds.mjs";
+import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
@@ -990,14 +990,40 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // method gate); `/api/*` is run_worker_first so these never fall through to
   // the static assets. Read-only, content-negotiated, edge-cached.
   if (url.pathname.startsWith("/api/v1/feeds/")) {
-    return handleFeedRequest(request, env, url, {
-      readArtifact,
-      errorResponse,
-      loadLiveIncidents: async (feedEnv) => {
-        const { data } = await loadGlobalIncidentsLedger(feedEnv);
-        return data;
-      },
-    });
+    const feedCacheParams = [
+      `format=${encodeURIComponent(
+        resolveFeedFormat(url.pathname, request.headers.get("accept")),
+      )}`,
+    ];
+    const tag = url.searchParams.get("tag");
+    if (tag != null) feedCacheParams.push(`tag=${encodeURIComponent(tag)}`);
+    const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
+    const feedRequest =
+      request.method === "HEAD"
+        ? new Request(request.url, { method: "GET", headers: request.headers })
+        : request;
+    const response = await withEdgeCache(
+      feedRequest,
+      ctx,
+      env,
+      "feeds",
+      () =>
+        handleFeedRequest(feedRequest, env, url, {
+          readArtifact,
+          errorResponse,
+          loadLiveIncidents: async (feedEnv) => {
+            const { data } = await loadGlobalIncidentsLedger(feedEnv);
+            return data;
+          },
+        }),
+      feedCachePath,
+    );
+    return request.method === "HEAD"
+      ? new Response(null, {
+          status: response.status,
+          headers: response.headers,
+        })
+      : response;
   }
 
   // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
@@ -9,6 +9,34 @@ import {
 } from "../src/feeds.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+
+let originalCaches;
+beforeEach(() => {
+  originalCaches = globalThis.caches;
+});
+
+afterEach(() => {
+  if (originalCaches === undefined) {
+    delete globalThis.caches;
+  } else {
+    globalThis.caches = originalCaches;
+  }
+});
+
+function installMockCache() {
+  const store = new Map();
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        const cached = store.get(request.url);
+        return cached ? cached.clone() : undefined;
+      },
+      async put(request, response) {
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+}
 
 const {
   registryItems,
@@ -654,7 +682,9 @@ describe("feeds — Worker dispatch integration", () => {
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
-  test("handleRequest wires incidents feed to loadGlobalIncidentsLedger", async () => {
+  test("handleRequest caches live incidents feed aggregations at the edge", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
@@ -662,21 +692,24 @@ describe("feeds — Worker dispatch integration", () => {
           return {
             bind() {
               return {
-                all: () =>
-                  sql.includes("recent_checks")
-                    ? Promise.resolve({
-                        results: [
-                          {
-                            netuid: 7,
-                            surface_id: "allways-api",
-                            surface_key: "allways-api",
-                            started_at: 1781266255266,
-                            ended_at: 1781499480737,
-                            failed_samples: 1945,
-                          },
-                        ],
-                      })
-                    : Promise.resolve({ results: [] }),
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
               };
             },
           };
@@ -691,15 +724,50 @@ describe("feeds — Worker dispatch integration", () => {
         },
       },
     };
-    const res = await handleRequest(
+    const ctx = { waitUntil: (promise) => promise };
+    const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
       env,
-      {},
+      ctx,
     );
-    assert.equal(res.status, 200);
-    const parsed = await res.json();
-    assert.ok(parsed.items.length >= 1);
-    assert.ok(parsed.items[0].id.startsWith("incident:"));
+    assert.equal(first.status, 200);
+    assert.ok((await first.json()).items[0].id.startsWith("incident:"));
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    assert.equal(recentChecksQueries, 1);
+
+    const cached = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?cachebust=1",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(cached.status, 200);
+    assert.equal(recentChecksQueries, 1);
+
+    const head = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
+    assert.equal(recentChecksQueries, 1);
+
+    const conditionalHead = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(conditionalHead.status, 304);
+    assert.equal(await conditionalHead.text(), "");
+    assert.equal(recentChecksQueries, 1);
   });
 
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {
