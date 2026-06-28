@@ -410,6 +410,40 @@ test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async
   assert.equal(bad.status, 400);
 });
 
+// #2086: the five numeric value filters were parsed with clampInt/parseTimeBound,
+// which silently coerce a non-numeric value (?block=abc -> 0; ?from=foo -> dropped)
+// and return a 200 with the wrong/empty page. They must now reject with a 400.
+for (const qs of [
+  "block=abc",
+  "block=-1",
+  "block=1.5",
+  "block_start=foo",
+  "block_end=bar",
+  "from=notanumber",
+  "to=12e3",
+]) {
+  test(`GET /extrinsics?${qs} rejects the non-integer value filter with 400 (#2086)`, async () => {
+    const env = dbWith({ feed: [] });
+    const res = await handleRequest(req(`/api/v1/extrinsics?${qs}`), env, {});
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_param");
+    assert.match(body.error.message, /must be a non-negative integer/);
+  });
+}
+
+test("GET /extrinsics still accepts valid numeric value filters (#2086 guard)", async () => {
+  const env = dbWith({ feed: [] });
+  const res = await handleRequest(
+    req(
+      "/api/v1/extrinsics?block_start=100&block_end=200&from=0&to=9999999999999",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+});
+
 test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () => {
   let boundSql;
   const env = {

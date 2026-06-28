@@ -1257,6 +1257,22 @@ export async function handleExtrinsics(request, env, url) {
     "to",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  // Numeric VALUE filters must be non-negative integers (#2086). clampInt /
+  // parseTimeBound silently coerce a non-numeric value (?block=abc -> 0 =>
+  // block_number = 0; ?from=foo -> NaN => bound dropped), so the client gets a
+  // 200 with the wrong/empty page and no signal. Reject present-but-non-integer
+  // values up front with a 400, matching the sibling handleAccountHistory. limit/
+  // offset keep clampInt — they are bounded UI controls, not value filters.
+  for (const name of ["block", "block_start", "block_end", "from", "to"]) {
+    const raw = url.searchParams.get(name);
+    if (raw != null && !/^\d+$/.test(raw)) {
+      return errorResponse(
+        "invalid_param",
+        `${name} must be a non-negative integer.`,
+        400,
+      );
+    }
+  }
   const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const sp = url.searchParams;
