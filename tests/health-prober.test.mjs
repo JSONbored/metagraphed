@@ -610,6 +610,65 @@ describe("runHealthProber", () => {
     assert.equal(rpcUpsert.binds[12], 3);
   });
 
+  test("a degraded subtensor-wss run accrues toward pool eviction", async () => {
+    // Regression for #2072: subtensor-wss is base-layer RPC (proxy-routable,
+    // pooled) exactly like subtensor-rpc, so a persistently-degraded WSS endpoint
+    // must accrue toward the sustained-down breaker. Before the fix the breaker
+    // matched only subtensor-rpc, so a degraded WSS run reset the streak to 0 and
+    // the endpoint stayed pool_eligible forever.
+    const wssSurface = {
+      surface_id: "opentensor-finney-wss",
+      surface_key: "srf-rootwsskey00000",
+      netuid: 0,
+      kind: "subtensor-wss",
+      url: "wss://entrypoint-finney.opentensor.ai",
+      provider: "opentensor",
+      authority: "official",
+      auth_required: false,
+      public_safe: true,
+      subnet_slug: "root",
+      subnet_name: "root",
+      probe: { method: "JSON-RPC", expect: "json" },
+    };
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "opentensor-finney-wss",
+          surface_key: "srf-rootwsskey00000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    // The WSS endpoint probes `degraded` (e.g. rate-limited), not failed.
+    const degradedWssProbe = async () => ({
+      status: "degraded",
+      classification: "rate-limited",
+      latency_ms: null,
+      status_code: 429,
+    });
+
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => [wssSurface],
+        probeSurface: degradedWssProbe,
+        probeOptions: {},
+      },
+    );
+
+    const wssUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "opentensor-finney-wss");
+    // binds[12] = consecutive_failures: a degraded base-layer WSS run must bump
+    // 2 -> 3 so the sustained-down breaker can eventually evict it.
+    assert.equal(wssUpsert.binds[12], 3);
+  });
+
   test("no-ops cleanly when there are no operational surfaces", async () => {
     const result = await runHealthProber(
       {},
