@@ -13,6 +13,7 @@ import {
   validNeuronDailyRows,
   buildNeuronHistory,
   buildSubnetHistory,
+  buildEconomicsTrends,
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
@@ -211,6 +212,85 @@ describe("history builders", () => {
     assert.equal(out.points[0].validator_count, null);
     assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, null);
+  });
+
+  test("buildEconomicsTrends rolls per-subnet rows up to one network point per day", () => {
+    const out = buildEconomicsTrends(
+      [
+        // newest first; day A has two subnets, day B one.
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.06,
+          validator_count: 2,
+          miner_count: 10,
+          emission_share: 0.02,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.01,
+          validator_count: 4,
+          miner_count: 20,
+          emission_share: 0.03,
+        },
+      ],
+      { window: "7d" },
+    );
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 2);
+    const [recent] = out.days;
+    assert.equal(recent.snapshot_date, "2026-06-02");
+    assert.equal(recent.subnet_count, 2);
+    assert.equal(recent.total_stake_tao, 400);
+    // (0.02·300 + 0.06·100)/400 = 0.03 weighted; median([0.02,0.06]) = 0.04.
+    assert.equal(recent.alpha_price_tao_weighted, 0.03);
+    assert.equal(recent.alpha_price_tao_median, 0.04);
+    assert.equal(recent.mean_emission_share, 0.03);
+  });
+
+  test("buildEconomicsTrends skips zero-stake rows from the weighted price, keeps them in the median", () => {
+    const out = buildEconomicsTrends([
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: 0,
+        alpha_price_tao: 0.5,
+        validator_count: 1,
+        miner_count: 1,
+        emission_share: 0.1,
+      },
+      {
+        snapshot_date: "2026-06-05",
+        total_stake_tao: 200,
+        alpha_price_tao: 0.1,
+        validator_count: 3,
+        miner_count: 5,
+        emission_share: 0.2,
+      },
+    ]);
+    const [day] = out.days;
+    // Only the staked row carries the weighted mean → 0.1.
+    assert.equal(day.alpha_price_tao_weighted, 0.1);
+    // Both prices count toward the unweighted median → median([0.1,0.5]) = 0.3.
+    assert.equal(day.alpha_price_tao_median, 0.3);
+    assert.equal(day.total_stake_tao, 200);
+    assert.equal(day.window, undefined);
+  });
+
+  test("buildEconomicsTrends is empty + null-safe on no rows", () => {
+    const out = buildEconomicsTrends([]);
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
+    assert.equal(out.window, null);
   });
 });
 

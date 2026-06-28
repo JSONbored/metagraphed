@@ -302,6 +302,116 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
   };
 }
 
+// Network-wide economics time series (#1307): roll the per-subnet daily
+// subnet_snapshots rows up to ONE point per UTC day across all subnets. Each input
+// row is {snapshot_date, total_stake_tao, alpha_price_tao, validator_count,
+// miner_count, emission_share}; the handler reads them raw (not a GROUP BY) so the
+// stake-weighted mean + median alpha price can be computed here. Rows arrive newest
+// first; the output preserves that order. Null-safe throughout — a metric is null
+// for a day only when NO subnet reported it.
+export function buildEconomicsTrends(rows, { window } = {}) {
+  const byDay = new Map(); // snapshot_date -> accumulator (insertion order = newest first)
+  for (const r of rows || []) {
+    const day = r.snapshot_date;
+    if (day == null) continue;
+    let acc = byDay.get(day);
+    if (!acc) {
+      acc = {
+        subnet_count: 0,
+        stake_sum: 0,
+        stake_seen: false,
+        validator_sum: 0,
+        validator_seen: false,
+        miner_sum: 0,
+        miner_seen: false,
+        emission_sum: 0,
+        emission_seen: 0,
+        weighted_price_num: 0, // Σ(price · stake)
+        weighted_price_den: 0, // Σ(stake) over rows with a price
+        prices: [], // for the unweighted median
+      };
+      byDay.set(day, acc);
+    }
+    acc.subnet_count += 1;
+    const stake = toFiniteOrNull(r.total_stake_tao);
+    const price = toFiniteOrNull(r.alpha_price_tao);
+    const validators = toFiniteOrNull(r.validator_count);
+    const miners = toFiniteOrNull(r.miner_count);
+    const emission = toFiniteOrNull(r.emission_share);
+    if (stake != null) {
+      acc.stake_sum += stake;
+      acc.stake_seen = true;
+    }
+    if (validators != null) {
+      acc.validator_sum += validators;
+      acc.validator_seen = true;
+    }
+    if (miners != null) {
+      acc.miner_sum += miners;
+      acc.miner_seen = true;
+    }
+    if (emission != null) {
+      acc.emission_sum += emission;
+      acc.emission_seen += 1;
+    }
+    if (price != null) {
+      acc.prices.push(price);
+      // Stake-weight the price; a positive stake is required for a weighted mean.
+      if (stake != null && stake > 0) {
+        acc.weighted_price_num += price * stake;
+        acc.weighted_price_den += stake;
+      }
+    }
+  }
+  const days = [...byDay.entries()].map(([snapshot_date, acc]) => ({
+    snapshot_date,
+    subnet_count: acc.subnet_count,
+    total_stake_tao: acc.stake_seen ? roundTao(acc.stake_sum) : null,
+    alpha_price_tao_weighted:
+      acc.weighted_price_den > 0
+        ? roundPrice(acc.weighted_price_num / acc.weighted_price_den)
+        : null,
+    alpha_price_tao_median: median(acc.prices),
+    validator_count: acc.validator_seen ? acc.validator_sum : null,
+    miner_count: acc.miner_seen ? acc.miner_sum : null,
+    mean_emission_share:
+      acc.emission_seen > 0
+        ? roundShare(acc.emission_sum / acc.emission_seen)
+        : null,
+  }));
+  return {
+    schema_version: 1,
+    window: window ?? null,
+    day_count: days.length,
+    days,
+  };
+}
+
+function toFiniteOrNull(v) {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function roundTao(v) {
+  return Math.round(v * 1e6) / 1e6;
+}
+function roundPrice(v) {
+  return Math.round(v * 1e9) / 1e9;
+}
+function roundShare(v) {
+  return Math.round(v * 1e6) / 1e6;
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const raw =
+    sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  return roundPrice(raw);
+}
+
 // Per-subnet metric-over-time: the daily count + a couple of cheap aggregates per
 // snapshot_date (newest first), for a subnet-level history sparkline without
 // shipping every UID. Rows come from a GROUP BY snapshot_date query.

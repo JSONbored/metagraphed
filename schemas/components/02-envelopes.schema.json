@@ -154,6 +154,9 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "schema": {
             "type": "object",
             "additionalProperties": true

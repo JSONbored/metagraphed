@@ -86,6 +86,7 @@ import {
   canonicalCompareCachePath,
   configureAnalyticsRoutes,
   handleCompare,
+  handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
@@ -814,6 +815,56 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   return runHealthProber(env, ctx);
 }
 
+// Postgres-backed all-events tier proxy (ADR 0013). The dedicated data Worker
+// (DATA_API) returns a bare JSON body; this rewraps it in the canonical API
+// envelope so /api/v1/chain-events* matches the OpenAPI contract (typed `data`
+// payload + ETag/cache headers) like every other route. The MCP get_chain_activity
+// tool calls DATA_API directly and keeps consuming the bare shape — only this
+// public REST path is enveloped. 503 when the binding is absent (e.g. a preview
+// deploy without the data Worker); upstream non-2xx maps to a clean error envelope.
+async function handleChainEventsProxy(request, env, url) {
+  if (!env.DATA_API) {
+    return errorResponse(
+      "data_tier_unavailable",
+      "The all-events data tier is not bound to this deployment.",
+      503,
+    );
+  }
+  const upstream = await env.DATA_API.fetch(request);
+  let body;
+  try {
+    body = await upstream.json();
+  } catch {
+    return errorResponse(
+      "data_tier_unavailable",
+      "The all-events data tier returned an unreadable response.",
+      502,
+    );
+  }
+  if (!upstream.ok) {
+    return errorResponse(
+      "data_query_failed",
+      typeof body?.error === "string"
+        ? body.error
+        : "The all-events data tier returned an error.",
+      upstream.status,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data: body,
+      meta: {
+        artifact_path: url.pathname,
+        cache: "short",
+        contract_version: contractVersion(env),
+        source: "data-worker-postgres",
+      },
+    },
+    "short",
+  );
+}
+
 export async function handleRequest(request, env = {}, ctx = {}) {
   let url = new URL(request.url);
 
@@ -873,11 +924,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         );
       }
     }
-    if (env.DATA_API) return env.DATA_API.fetch(request);
-    return new Response(JSON.stringify({ error: "data tier unavailable" }), {
-      status: 503,
-      headers: { "content-type": "application/json" },
-    });
+    return handleChainEventsProxy(request, env, url);
   }
 
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
@@ -1370,6 +1417,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/fees") {
       return handleChainFees(request, env, resolved.url, ctx);
     }
+    // Network-wide economics time series (#1307): deterministic per cron snapshot
+    // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
+    // sibling history/trajectory routes; ?window rides the search into the key.
+    if (resolved.url.pathname === "/api/v1/economics/trends") {
+      return withEdgeCache(request, ctx, env, "economics-trends", () =>
+        handleEconomicsTrends(request, env, resolved.url),
+      );
+    }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);
   }
 
@@ -1413,6 +1468,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/calls" ||
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
+    pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
     TRENDS_PATH_PATTERN.test(pathname) ||

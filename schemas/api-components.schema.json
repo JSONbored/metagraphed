@@ -1322,6 +1322,9 @@
       "ApiQueryParameter": {
         "additionalProperties": false,
         "properties": {
+          "description": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -1605,6 +1608,34 @@
         },
         "required": [
           "block_number"
+        ],
+        "type": "object"
+      },
+      "BlockChainEventsArtifact": {
+        "additionalProperties": true,
+        "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{block_number}/chain-events. Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "block_number",
+          "count",
+          "events"
         ],
         "type": "object"
       },
@@ -2375,6 +2406,149 @@
           "total_extrinsics",
           "call_count",
           "calls"
+        ],
+        "type": "object"
+      },
+      "ChainEvent": {
+        "additionalProperties": false,
+        "description": "One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer.",
+        "properties": {
+          "args": {
+            "type": [
+              "object",
+              "array",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number",
+          "event_index",
+          "pallet",
+          "method"
+        ],
+        "type": "object"
+      },
+      "ChainEventEntry": {
+        "additionalProperties": false,
+        "description": "One pallet.method event-distribution bucket: the count of that event over the recent-blocks window.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pallet",
+          "method",
+          "count"
+        ],
+        "type": "object"
+      },
+      "ChainEventsFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). next_before is the cursor for the next page (null when the page was not full). Empty (count:0, events:[]) before the all-events backfill runs.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          },
+          "next_before": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "ChainEventsStatsArtifact": {
+        "additionalProperties": true,
+        "description": "Chain-activity aggregate: the pallet.method event distribution over the most recent N blocks from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats and consumed by the get_chain_activity MCP tool. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Empty (groups:0, activity:[]) before the all-events backfill runs.",
+        "properties": {
+          "activity": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEventEntry"
+            },
+            "type": "array"
+          },
+          "groups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_blocks": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_blocks",
+          "groups",
+          "activity"
         ],
         "type": "object"
       },
@@ -3762,6 +3936,92 @@
             "type": "object"
           }
         ]
+      },
+      "EconomicsTrendsArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup — the same source the per-subnet /api/v1/subnets/{netuid}/trajectory reads. Each day rolls up total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share. Served live at /api/v1/economics/trends over a 7d|30d|90d|1y|all window (no static file); day_count is 0 and days is empty when the rollup is cold.",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/EconomicsTrendsDay"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "days"
+        ],
+        "type": "object"
+      },
+      "EconomicsTrendsDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of network-wide economics aggregated across every subnet that has a snapshot that day. subnet_count is how many subnets contributed; total_stake_tao / validator_count / miner_count are sums; alpha_price_tao_weighted is the stake-weighted mean alpha price; alpha_price_tao_median is the unweighted median; mean_emission_share is the mean per-subnet emission share. Sums are null only when no subnet reported a value that day.",
+        "properties": {
+          "alpha_price_tao_median": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_tao_weighted": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_emission_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "snapshot_date": {
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "snapshot_date",
+          "subnet_count"
+        ],
+        "type": "object"
       },
       "EndpointIncident": {
         "additionalProperties": false,
