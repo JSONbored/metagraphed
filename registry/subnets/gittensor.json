@@ -397,6 +397,56 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-programming-languages",
+      "kind": "data-artifact",
+      "name": "Gittensor programming language scoring weights",
+      "notes": "Maps file extensions to language weight multipliers (0.1–2.0) used by validators when scoring PR contributions. Higher weights mean more TAO earned per token for that language.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": [
+        "https://github.com/entrius/gittensor/blob/main/gittensor/validator/weights/programming_languages.json"
+      ],
+      "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/programming_languages.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-token-weights",
+      "kind": "data-artifact",
+      "name": "Gittensor AST token scoring weights",
+      "notes": "Maps tree-sitter AST node types to point values used in semantic code scoring. Structural nodes (functions, classes) score 0.35–2.5; leaf tokens (identifiers, operators) score 0.25–1.5. Drives the token_score component of each PR's final earned_score.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": [
+        "https://github.com/entrius/gittensor/blob/main/gittensor/validator/weights/token_weights.json"
+      ],
+      "url": "https://raw.githubusercontent.com/entrius/gittensor/main/gittensor/validator/weights/token_weights.json"
     }
   ],
   "website_url": "https://gittensor.io/"
