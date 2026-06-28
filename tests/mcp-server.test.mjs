@@ -1457,7 +1457,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     const dataApi = makeDataApi({
       payload: { window_blocks: 1000, groups: 0, activity: [] },
     });
-    let limiterCalls = 0;
+    const limiterKeys = [];
     const res = await rpc(
       [
         {
@@ -1477,8 +1477,8 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
         env: {
           DATA_API: dataApi,
           DATA_RATE_LIMITER: {
-            async limit() {
-              limiterCalls += 1;
+            async limit({ key }) {
+              limiterKeys.push(key);
               return { success: true };
             },
           },
@@ -1487,7 +1487,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     );
     assert.equal(res.status, 200);
     assert.equal(res.body.length, 2);
-    assert.equal(limiterCalls, 2);
+    assert.deepEqual(limiterKeys, ["data:anonymous", "data:anonymous"]);
     assert.equal(dataApi.calls.length, 2);
   });
 
