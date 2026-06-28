@@ -11,9 +11,13 @@
 export const COUNTERPARTIES_READ_COLUMNS =
   "hotkey, coldkey, amount_tao, block_number";
 
+export const COUNTERPARTY_RELATIONSHIP_READ_COLUMNS =
+  "block_number, event_index, hotkey, coldkey, netuid, amount_tao, observed_at";
+
 // Bound the transfer scan so a hot wallet can't force an unbounded read. Rows are
 // read newest-first; the summary flags when the cap truncated older history.
 export const COUNTERPARTIES_SCAN_CAP = 5000;
+export const COUNTERPARTY_RELATIONSHIP_SCAN_CAP = 5000;
 
 // Coerce one raw cell to a finite number (or 0) for summation.
 function numeric(value) {
@@ -27,6 +31,28 @@ function round(value, dp = 9) {
   if (!Number.isFinite(value)) return 0;
   const factor = 10 ** dp;
   return Math.round(value * factor) / factor;
+}
+
+function nullableNumber(value) {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? round(n) : null;
+}
+
+function nullableInteger(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+}
+
+function nullableTimestamp(value) {
+  if (value == null) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toIso(timestamp) {
+  return timestamp == null ? null : new Date(timestamp).toISOString();
 }
 
 // Aggregate an account's Transfer rows into per-counterparty fund flow: for each
@@ -115,5 +141,82 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
     total_sent_tao: round(totalSent),
     total_received_tao: round(totalReceived),
     counterparties: ranked.slice(0, cap),
+  };
+}
+
+// Drill into ONE account/counterparty relationship. The handler reads a bounded
+// newest-first pair scan; this builder summarizes that scan and returns the first
+// `limit` transfer rows as evidence, preserving the account-relative direction.
+export function buildCounterpartyRelationship(
+  rows,
+  ss58,
+  counterparty,
+  { limit = 50 } = {},
+) {
+  const list = Array.isArray(rows) ? rows : [];
+  const transfers = [];
+  let totalSent = 0;
+  let totalReceived = 0;
+  let firstBlock = null;
+  let lastBlock = null;
+  let firstObserved = null;
+  let lastObserved = null;
+
+  for (const row of list) {
+    if (ss58 === counterparty) continue;
+    if (!row || typeof row !== "object") continue;
+    const from = row.hotkey ?? null;
+    const to = row.coldkey ?? null;
+    const sent = from === ss58 && to === counterparty;
+    const received = from === counterparty && to === ss58;
+    if (!sent && !received) continue;
+
+    const amount = nullableNumber(row.amount_tao);
+    if (amount == null) continue;
+    if (sent) totalSent += amount;
+    if (received) totalReceived += amount;
+
+    const block = nullableInteger(row.block_number);
+    if (block != null) {
+      firstBlock = firstBlock == null ? block : Math.min(firstBlock, block);
+      lastBlock = lastBlock == null ? block : Math.max(lastBlock, block);
+    }
+    const observed = nullableTimestamp(row.observed_at);
+    if (observed != null) {
+      firstObserved =
+        firstObserved == null ? observed : Math.min(firstObserved, observed);
+      lastObserved =
+        lastObserved == null ? observed : Math.max(lastObserved, observed);
+    }
+
+    transfers.push({
+      block_number: block,
+      event_index: nullableInteger(row.event_index),
+      netuid: nullableInteger(row.netuid),
+      from,
+      to,
+      amount_tao: amount,
+      direction: sent ? "sent" : "received",
+      observed_at: toIso(observed),
+    });
+  }
+
+  const cap = Math.max(1, Math.min(limit, 100));
+  return {
+    schema_version: 1,
+    ss58,
+    counterparty,
+    transfer_count: transfers.length,
+    transfers_scanned: list.length,
+    scan_capped: list.length >= COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+    total_sent_tao: round(totalSent),
+    total_received_tao: round(totalReceived),
+    net_tao: round(totalReceived - totalSent),
+    first_block: firstBlock,
+    last_block: lastBlock,
+    first_seen_at: toIso(firstObserved),
+    last_seen_at: toIso(lastObserved),
+    limit: cap,
+    transfers: transfers.slice(0, cap),
   };
 }

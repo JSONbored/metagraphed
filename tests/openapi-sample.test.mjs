@@ -93,6 +93,10 @@ describe("sampleFromSchema", () => {
       status: "ok",
       grade: "A",
       method: "GET",
+      ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      from: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      counterparty: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+      to: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
       surface_id: "example",
       unmatched_field: "example",
     };
@@ -117,6 +121,17 @@ describe("sampleFromSchema", () => {
     assert.equal(
       s({ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
       "2026-06-01",
+    );
+    assert.equal(
+      s({ type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" }, "ss58"),
+      "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    );
+    assert.equal(
+      s(
+        { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
+        "counterparty",
+      ),
+      "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
     );
     assert.match(
       s({ type: "string", pattern: "^[a-z0-9][a-z0-9-]*$" }),
@@ -189,12 +204,158 @@ describe("sampleFromSchema", () => {
     // description/summary-style string fields
     assert.equal(s({ type: "string" }, "description"), "Example description.");
     assert.equal(s({ type: "string" }, "summary"), "Example description.");
-    assert.equal(s({ type: "string" }, "version"), "2026-06-06.1");
+    assert.equal(s({ type: "string" }, "version"), "2026-06-29.1");
     // clamp DOWN to maximum (block seeds high, capped here)
     assert.equal(s({ type: "integer", maximum: 3 }, "block"), 3);
     // allOf whose only member is a scalar -> returns that scalar
     assert.equal(s({ allOf: [{ const: "x" }] }), "x");
     assert.equal(s({ allOf: [{ type: "string" }] }), "example");
+  });
+
+  test("counterparty relationship samples keep totals consistent with evidence", () => {
+    const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
+    const relationshipSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "ss58",
+        "counterparty",
+        "transfer_count",
+        "transfers_scanned",
+        "scan_capped",
+        "total_sent_tao",
+        "total_received_tao",
+        "net_tao",
+        "first_block",
+        "last_block",
+        "limit",
+        "transfers",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string", pattern: ss58Pattern },
+        counterparty: { type: "string", pattern: ss58Pattern },
+        transfer_count: { type: "integer" },
+        transfers_scanned: { type: "integer" },
+        scan_capped: { type: "boolean" },
+        total_sent_tao: { type: "number" },
+        total_received_tao: { type: "number" },
+        net_tao: { type: "number" },
+        first_block: { type: ["integer", "null"] },
+        last_block: { type: ["integer", "null"] },
+        limit: { type: "integer" },
+        transfers: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["from", "to", "amount_tao", "direction"],
+            properties: {
+              from: { type: "string", pattern: ss58Pattern },
+              to: { type: "string", pattern: ss58Pattern },
+              amount_tao: { type: "number" },
+              direction: { enum: ["sent", "received"] },
+            },
+          },
+        },
+      },
+    };
+    const accountCounterpartiesSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "ss58",
+        "counterparty_count",
+        "counterparties",
+        "transfers_scanned",
+        "scan_capped",
+        "total_sent_tao",
+        "total_received_tao",
+        "relationship",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        ss58: { type: "string", pattern: ss58Pattern },
+        counterparty_count: { type: "integer" },
+        counterparties: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["address"],
+            properties: {
+              address: { type: "string", pattern: ss58Pattern },
+              sent_tao: { type: "number" },
+              received_tao: { type: "number" },
+              net_tao: { type: "number" },
+              transfer_count: { type: "integer" },
+              last_block: { type: ["integer", "null"] },
+            },
+          },
+        },
+        transfers_scanned: { type: "integer" },
+        scan_capped: { type: "boolean" },
+        total_sent_tao: { type: "number" },
+        total_received_tao: { type: "number" },
+        relationship: relationshipSchema,
+      },
+    };
+    const sample = s(accountCounterpartiesSchema, "data");
+
+    assert.equal(sample.relationship.transfers[0].direction, "sent");
+    assert.equal(sample.relationship.total_sent_tao, 0.5);
+    assert.equal(sample.relationship.total_received_tao, 0);
+    assert.equal(sample.relationship.net_tao, -0.5);
+    assert.equal(sample.total_sent_tao, 0.5);
+    assert.equal(sample.total_received_tao, 0);
+    assert.deepEqual(sample.counterparties, [
+      {
+        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        sent_tao: 0.5,
+        received_tao: 0,
+        net_tao: -0.5,
+        transfer_count: 1,
+        last_block: 5000000,
+      },
+    ]);
+
+    const receivedRelationshipSchema = JSON.parse(
+      JSON.stringify(relationshipSchema),
+    );
+    receivedRelationshipSchema.properties.transfers.items.properties.direction.enum =
+      ["received", "sent"];
+    const receivedSample = s(receivedRelationshipSchema, "relationship");
+    assert.equal(receivedSample.transfers[0].direction, "received");
+    assert.equal(receivedSample.total_sent_tao, 0);
+    assert.equal(receivedSample.total_received_tao, 0.5);
+    assert.equal(receivedSample.net_tao, 0.5);
+
+    const badAmountRelationshipSchema = JSON.parse(
+      JSON.stringify(relationshipSchema),
+    );
+    badAmountRelationshipSchema.properties.transfers.items.properties.amount_tao =
+      { const: "bad" };
+    const badAmountSample = s(badAmountRelationshipSchema, "relationship");
+    assert.equal(badAmountSample.total_sent_tao, 0);
+    assert.equal(badAmountSample.transfer_count, 1);
+
+    const ignoredDirectionSchema = JSON.parse(
+      JSON.stringify(relationshipSchema),
+    );
+    ignoredDirectionSchema.properties.transfers.items.properties.direction.enum =
+      ["ignored"];
+    const ignoredSample = s(ignoredDirectionSchema, "relationship");
+    assert.equal(ignoredSample.transfer_count, 0);
+    assert.equal(ignoredSample.total_sent_tao, 0);
+    assert.equal(ignoredSample.total_received_tao, 0);
+
+    const emptyAccountSchema = JSON.parse(
+      JSON.stringify(accountCounterpartiesSchema),
+    );
+    emptyAccountSchema.properties.relationship.properties.transfers.items = {
+      type: "null",
+    };
+    const emptySample = s(emptyAccountSchema, "data");
+    assert.equal(emptySample.relationship.transfer_count, 0);
+    assert.deepEqual(emptySample.counterparties, []);
   });
 
   test("bounds recursion: deep objects drop optionals, deep arrays bottom out", () => {

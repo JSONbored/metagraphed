@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-06.1";
+export const CONTRACT_VERSION = "2026-06-29.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1005,7 +1005,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
     "AccountCounterpartiesArtifact",
   ),
   artifact(
@@ -1912,10 +1912,16 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100).",
     "short",
     ["accounts", "analytics"],
-    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
+    [
+      {
+        name: "counterparty",
+        schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(

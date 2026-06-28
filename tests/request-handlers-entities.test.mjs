@@ -5,7 +5,11 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
+import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -34,6 +38,7 @@ import {
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const COUNTERPARTY = "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
 const HASH = `0x${"a".repeat(64)}`;
 const NETUID = 7;
 const UID = 3;
@@ -197,6 +202,7 @@ function dbWith({
   accountEvents,
   accountEventsDaily,
   transfers,
+  relationshipTransfers,
   subnetEvents,
   blockEvents,
   extrinsicEvents,
@@ -297,6 +303,15 @@ function dbWith({
                     )
                   ) {
                     return { results: blockEvents || [] };
+                  }
+                  // Account/counterparty pair detail: bounded Transfer scan for
+                  // both directions between two specific SS58 addresses.
+                  if (
+                    /event_kind = 'Transfer' AND \(\(hotkey = \? AND coldkey = \?\) OR \(hotkey = \? AND coldkey = \?\)\)/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: relationshipTransfers || [] };
                   }
                   // Native transfer feed.
                   if (/event_kind = 'Transfer'/.test(sql)) {
@@ -421,6 +436,22 @@ async function assertColdSchema(handlerFn, ...args) {
   const body = await res.json();
   assert.equal(body.ok, true);
   return body;
+}
+
+async function assertValidComponent(componentName, data) {
+  const generatedAt = "2026-06-24T12:00:00.000Z";
+  const openapi = buildOpenApiArtifact(
+    generatedAt,
+    await loadOpenApiComponentSchemas(generatedAt),
+  );
+  const ajv = new Ajv2020({ strict: false, allErrors: true });
+  addFormats(ajv);
+  const validate = ajv.compile({
+    $id: `https://metagraph.sh/test/${componentName}.json`,
+    components: openapi.components,
+    $ref: `#/components/schemas/${componentName}`,
+  });
+  assert.equal(validate(data), true, ajv.errorsText(validate.errors));
 }
 
 // An env whose D1 read REJECTS (schema drift / "no such column" / connection
@@ -1507,6 +1538,115 @@ describe("handleAccountCounterparties", () => {
     assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], SS58);
     assert.equal(captures.params[idx][1], SS58);
+  });
+});
+
+describe("handleAccountCounterparties relationship drilldown", () => {
+  test("rejects malformed counterparty and limits before D1 work", async () => {
+    for (const counterparty of ["not-ss58", SS58]) {
+      const captures = { sql: [], params: [] };
+      const { env } = dbWith({ captures });
+      const res = await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${counterparty}`,
+        ),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "counterparty");
+      assert.equal(captures.sql.length, 0);
+    }
+
+    for (const limit of ["random_nonce", "Infinity", "0", "101", "10.5"]) {
+      const captures = { sql: [], params: [] };
+      const { env } = dbWith({ captures });
+      const res = await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=${limit}`,
+        ),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(captures.sql.length, 0);
+    }
+  });
+
+  test("returns schema-stable empty pair detail on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountCounterparties,
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(
+        `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+      ),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 0);
+    assert.deepEqual(body.data.counterparties, []);
+    assert.equal(body.data.relationship.counterparty, COUNTERPARTY);
+    assert.equal(body.data.relationship.transfer_count, 0);
+    assert.deepEqual(body.data.relationship.transfers, []);
+  });
+
+  test("returns pair-level fund-flow detail and recent transfer evidence", async () => {
+    const { env, captures } = dbWith({
+      relationshipTransfers: [
+        transferEventRow({
+          block_number: 20,
+          event_index: 2,
+          hotkey: COUNTERPARTY,
+          coldkey: SS58,
+          amount_tao: 4,
+          observed_at: Date.UTC(2026, 5, 2),
+        }),
+        transferEventRow({
+          block_number: 10,
+          event_index: 1,
+          hotkey: SS58,
+          coldkey: COUNTERPARTY,
+          amount_tao: 10,
+          observed_at: Date.UTC(2026, 5, 1),
+        }),
+      ],
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=1`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.counterparties[0].address, COUNTERPARTY);
+    assert.equal(body.data.relationship.transfer_count, 2);
+    assert.equal(body.data.total_sent_tao, 10);
+    assert.equal(body.data.total_received_tao, 4);
+    assert.equal(body.data.relationship.net_tao, -6);
+    assert.equal(body.data.relationship.transfers.length, 1);
+    assert.equal(body.data.relationship.transfers[0].direction, "received");
+    const idx = captures.sql.findIndex((s) =>
+      /\(\(hotkey = \? AND coldkey = \?\) OR \(hotkey = \? AND coldkey = \?\)\)/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.deepEqual(captures.params[idx].slice(0, 4), [
+      SS58,
+      COUNTERPARTY,
+      COUNTERPARTY,
+      SS58,
+    ]);
+    await assertValidComponent("AccountCounterpartiesArtifact", body.data);
   });
 });
 

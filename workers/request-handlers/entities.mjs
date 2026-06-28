@@ -17,7 +17,12 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
+import {
+  DAY_MS,
+  SS58_ADDRESS_PATTERN,
+  clampInt,
+  resolveClientIp,
+} from "../config.mjs";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -86,6 +91,9 @@ import {
 import {
   COUNTERPARTIES_READ_COLUMNS,
   COUNTERPARTIES_SCAN_CAP,
+  COUNTERPARTY_RELATIONSHIP_READ_COLUMNS,
+  COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+  buildCounterpartyRelationship,
   buildCounterparties,
 } from "../../src/counterparties.mjs";
 import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
@@ -692,21 +700,87 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 }
 
 // GET /api/v1/accounts/{ss58}/counterparties?limit=N: who this account transacts
-// with — the account's recent account_events Transfers aggregated per counterparty
-// into sent / received / net flow + count, ranked by total volume (the address
-// "relationship" view). The transfer scan is bounded (newest-first); the summary
-// flags truncation. Cold/absent store → 200 with counterparties:[] (schema-stable,
-// never 404), mirroring the sibling account routes.
+// with. Add ?counterparty=<ss58> to return a focused relationship drilldown on
+// the same route without expanding the public path surface.
 export async function handleAccountCounterparties(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["limit"]);
+  const validationError = validateQueryParams(url, ["counterparty", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
+  const counterparty = url.searchParams.get("counterparty");
   const parsedLimit = parseBoundedIntParam(url, "limit", {
-    def: 20,
+    def: counterparty == null ? 20 : 50,
     min: 1,
     max: 100,
   });
   if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
   const limit = parsedLimit.value;
+  if (counterparty != null) {
+    if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+      return analyticsQueryError({
+        parameter: "counterparty",
+        message: "counterparty must be a valid SS58 account address.",
+      });
+    }
+    if (ss58 === counterparty) {
+      return analyticsQueryError({
+        parameter: "counterparty",
+        message: "counterparty must differ from ss58.",
+      });
+    }
+    const rows = await d1All(
+      env,
+      `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ((hotkey = ? AND coldkey = ?) OR (hotkey = ? AND coldkey = ?)) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
+      [
+        ss58,
+        counterparty,
+        counterparty,
+        ss58,
+        COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+      ],
+    );
+    const relationship = buildCounterpartyRelationship(
+      rows,
+      ss58,
+      counterparty,
+      {
+        limit,
+      },
+    );
+    const counterpartyRow =
+      relationship.transfer_count === 0
+        ? []
+        : [
+            {
+              address: counterparty,
+              sent_tao: relationship.total_sent_tao,
+              received_tao: relationship.total_received_tao,
+              net_tao: relationship.net_tao,
+              transfer_count: relationship.transfer_count,
+              last_block: relationship.last_block,
+            },
+          ];
+    return envelopeResponse(
+      request,
+      {
+        data: {
+          schema_version: 1,
+          ss58,
+          counterparty_count: counterpartyRow.length,
+          transfers_scanned: relationship.transfers_scanned,
+          scan_capped: relationship.scan_capped,
+          total_sent_tao: relationship.total_sent_tao,
+          total_received_tao: relationship.total_received_tao,
+          counterparties: counterpartyRow,
+          relationship,
+        },
+        meta: await accountMeta(
+          env,
+          `/metagraph/accounts/${ss58}/counterparties.json`,
+          relationship.last_seen_at,
+        ),
+      },
+      "short",
+    );
+  }
   const rows = await d1All(
     env,
     `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
