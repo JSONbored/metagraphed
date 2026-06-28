@@ -450,7 +450,7 @@
       "id": "sn-74-gittensor-commits",
       "kind": "data-artifact",
       "name": "Gittensor PR commit log",
-      "notes": "Paginated log of merged pull requests including PR number, title, miner hotkey, additions, deletions, commit count, label, repository, and merge timestamp. Useful for auditing contribution history.",
+      "notes": "Paginated log of merged pull requests including PR number, title, miner identifier, additions, deletions, commit count, label, repository, and merge timestamp. Useful for auditing contribution history.",
       "probe": {
         "enabled": true,
         "expect": "json",
