@@ -769,6 +769,12 @@ export const PUBLIC_ARTIFACTS = [
     "EconomicsArtifact",
   ),
   artifact(
+    "economics-trends",
+    "/metagraph/economics/trends.json",
+    "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+    "EconomicsTrendsArtifact",
+  ),
+  artifact(
     "registry-summary",
     "/metagraph/registry-summary.json",
     "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
@@ -925,6 +931,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConcentrationHistoryArtifact",
   ),
   artifact(
+    "subnet-turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
+    "SubnetTurnoverArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -991,6 +1003,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountTransfersArtifact",
   ),
   artifact(
+    "account-counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "AccountCounterpartiesArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -1025,6 +1043,24 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/blocks/{ref}/events.json",
     "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
     "BlockEventsArtifact",
+  ),
+  artifact(
+    "chain-events-feed",
+    "/metagraph/chain-events.json",
+    "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
+    "ChainEventsFeedArtifact",
+  ),
+  artifact(
+    "block-chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
+    "BlockChainEventsArtifact",
+  ),
+  artifact(
+    "chain-events-stats",
+    "/metagraph/chain-events/stats.json",
+    "Chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats (no static file) and consumed by the get_chain_activity MCP tool.",
+    "ChainEventsStatsArtifact",
   ),
   artifact(
     "extrinsics-feed",
@@ -1428,10 +1464,26 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
+  ),
+  route(
+    "economics-trends",
+    "GET",
+    "/api/v1/economics/trends",
+    "/metagraph/economics/trends.json",
+    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [],
   ),
   route(
     "registry-summary",
@@ -1678,6 +1730,22 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-turnover",
+    "GET",
+    "/api/v1/subnets/{netuid}/turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-metagraph",
     "GET",
     "/api/v1/subnets/{netuid}/metagraph",
@@ -1840,6 +1908,17 @@ export const API_ROUTES = [
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
+    "account-counterparties",
+    "GET",
+    "/api/v1/accounts/{ss58}/counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+    "short",
+    ["accounts", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
     "account-subnets",
     "GET",
     "/api/v1/accounts/{ss58}/subnets",
@@ -1921,6 +2000,51 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-events-feed",
+    "GET",
+    "/api/v1/chain-events",
+    "/metagraph/chain-events.json",
+    "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "pallet", schema: { type: "string", maxLength: 64 } },
+      { name: "method", schema: { type: "string", maxLength: 64 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
+      { name: "before", schema: { type: "integer", minimum: 0 } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-events-stats",
+    "GET",
+    "/api/v1/chain-events/stats",
+    "/metagraph/chain-events/stats.json",
+    "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      {
+        name: "blocks",
+        schema: { type: "integer", minimum: 1, maximum: 5000 },
+      },
+    ],
+    [],
+  ),
+  route(
+    "block-chain-events",
+    "GET",
+    "/api/v1/blocks/{ref}/chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+    "short",
+    ["blocks", "chain", "analytics"],
+    [],
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -2635,10 +2759,14 @@ function listQuery(collection, options = {}) {
       },
       {
         name: "sort",
+        description:
+          "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
         schema: { type: "string", enum: config.sort_fields },
       },
       {
         name: "order",
+        description:
+          "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
         schema: { enum: ["asc", "desc"] },
       },
     ],

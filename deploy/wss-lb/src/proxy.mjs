@@ -4,20 +4,27 @@ import { WebSocket } from "ws";
 import {
   MAX_RPC_BODY_BYTES,
   SAFE_RPC_METHODS,
+  SAFE_RPC_SUBSCRIPTIONS,
   DENIED_RPC_PREFIXES,
 } from "./rpc-policy.mjs";
 
 function isSafeRpcMethod(method) {
   return (
-    SAFE_RPC_METHODS.has(method) &&
+    (SAFE_RPC_METHODS.has(method) || SAFE_RPC_SUBSCRIPTIONS.has(method)) &&
     !DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
   );
+}
+
+function normalizeRpcId(id) {
+  return typeof id === "string" || typeof id === "number" || id === null
+    ? id
+    : null;
 }
 
 function rpcError(id, code, message) {
   return JSON.stringify({
     jsonrpc: "2.0",
-    id: id ?? null,
+    id: normalizeRpcId(id),
     error: { code, message },
   });
 }

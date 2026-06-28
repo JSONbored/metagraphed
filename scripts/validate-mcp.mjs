@@ -387,6 +387,16 @@ assert.equal(
 const askCold = await call("ask", { question: "Which subnet exposes an API?" });
 assert.equal(askCold.isError, true, "ask must isError without the AI layer");
 
+// get_chain_activity reads the all-events tier through the DATA_API service
+// binding, absent in this cold env. It must return a clean isError result (the
+// "tier unavailable" guard), never throw.
+const activityCold = await call("get_chain_activity", { blocks: 500 });
+assert.equal(
+  activityCold.isError,
+  true,
+  "get_chain_activity must isError without the DATA_API binding",
+);
+
 // --- Negative paths --------------------------------------------------------
 
 const unknownMethod = await mcp({

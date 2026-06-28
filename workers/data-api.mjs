@@ -13,6 +13,11 @@ import postgres from "postgres";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
+const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+function validEventFilter(value) {
+  return value == null || value === "" || FILTER_PATTERN.test(value);
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -29,6 +34,28 @@ function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
   return Math.min(Math.floor(n), MAX_LIMIT);
+}
+
+function clampStatsBlocks(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 1000;
+  return Math.min(Math.max(Math.floor(n), 1), 5000);
+}
+
+// postgres.js returns BIGINT columns as strings; the D1-backed routes return them
+// as numbers. block_number and observed_at are both < 2^53, so Number(...) is
+// lossless — coerce them per event row for a consistent numeric API shape.
+function numberOrNull(v) {
+  return v == null ? null : Number(v);
+}
+function coerceEvent(row) {
+  return {
+    ...row,
+    ...(row.block_number !== undefined
+      ? { block_number: numberOrNull(row.block_number) }
+      : {}),
+    observed_at: numberOrNull(row.observed_at),
+  };
 }
 
 export default {
@@ -51,6 +78,7 @@ export default {
     });
 
     try {
+      await sql`SET statement_timeout = '3000ms'`;
       // GET /api/v1/blocks/:n/chain-events — EVERY event in a block (the all-events
       // tier). Distinct from the existing /blocks/:ref/events (curated, D1, #1852).
       const block = url.pathname.match(
@@ -63,16 +91,30 @@ export default {
           FROM chain_events
           WHERE block_number = ${bn}
           ORDER BY event_index ASC`;
-        return json({ block_number: bn, count: rows.length, events: rows });
+        return json({
+          block_number: bn,
+          count: rows.length,
+          events: rows.map(coerceEvent),
+        });
       }
 
       // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&before=&limit=
       // recent all-events feed. block= scopes to one block; block=+extrinsic= scopes to
-      // a single extrinsic's emitted events (explorer extrinsic-detail view).
+      // a single extrinsic's emitted events (explorer extrinsic-detail view). Ignore
+      // extrinsic without block to avoid an unindexed global extrinsic_index scan.
       if (url.pathname === "/api/v1/chain-events") {
         const limit = clampLimit(url.searchParams.get("limit"));
         const pallet = url.searchParams.get("pallet");
         const method = url.searchParams.get("method");
+        if (!validEventFilter(pallet) || !validEventFilter(method)) {
+          return json(
+            {
+              error:
+                "pallet and method must be 1-64 ASCII letters, digits, or underscores, starting with a letter",
+            },
+            400,
+          );
+        }
         const numParam = (k) => {
           const v = url.searchParams.get(k);
           if (v == null || v === "") return null;
@@ -80,8 +122,16 @@ export default {
           return Number.isFinite(n) ? n : null;
         };
         const blockN = numParam("block");
-        const extrN = numParam("extrinsic");
+        const extrN = blockN != null ? numParam("extrinsic") : null;
         const beforeBn = numParam("before"); // block_number cursor (exclusive)
+        if (method && !pallet && blockN == null) {
+          return json(
+            {
+              error: "method filter requires pallet unless block is specified",
+            },
+            400,
+          );
+        }
         const rows = await sql`
           SELECT block_number, event_index, pallet, method, args, phase, extrinsic_index, observed_at
           FROM chain_events
@@ -94,8 +144,33 @@ export default {
           ORDER BY block_number DESC, event_index DESC
           LIMIT ${limit}`;
         const next =
-          rows.length === limit ? rows[rows.length - 1].block_number : null;
-        return json({ count: rows.length, next_before: next, events: rows });
+          rows.length === limit
+            ? numberOrNull(rows[rows.length - 1].block_number)
+            : null;
+        return json({
+          count: rows.length,
+          next_before: next,
+          events: rows.map(coerceEvent),
+        });
+      }
+
+      // GET /api/v1/chain-events/stats?blocks=N — chain-activity aggregate: the
+      // pallet.method event distribution over the most recent N blocks (default
+      // 1000, capped 5000). Bounded window + capped output keep it index-cheap.
+      if (url.pathname === "/api/v1/chain-events/stats") {
+        const blocks = clampStatsBlocks(url.searchParams.get("blocks"));
+        const rows = await sql`
+          SELECT pallet, method, count(*)::int AS count
+          FROM chain_events
+          WHERE block_number > (SELECT max(block_number) FROM chain_events) - ${blocks}
+          GROUP BY pallet, method
+          ORDER BY count DESC
+          LIMIT 100`;
+        return json({
+          window_blocks: blocks,
+          groups: rows.length,
+          activity: rows,
+        });
       }
 
       return json({ error: "not found" }, 404);

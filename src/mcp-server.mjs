@@ -10,7 +10,12 @@
 // Artifact/KV reads are injected (`deps.readArtifact`, `deps.readHealthKv`) so
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
-import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.mjs";
+import {
+  clampInt,
+  DAY_MS,
+  resolveClientIp,
+  SS58_ADDRESS_PATTERN,
+} from "../workers/config.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
@@ -32,7 +37,7 @@ import {
 import {
   findSurface,
   primarySurfaceForNetuid,
-  verifySurface,
+  verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
@@ -42,6 +47,7 @@ import {
   LEADERBOARD_BOARDS,
   loadSubnetReliability,
   loadSubnetTrajectory,
+  mergeFreshness,
   overlayCatalogDetail,
   overlayCatalogIndex,
   overlayOverviewHealth,
@@ -56,6 +62,8 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
+  ACCOUNT_EVENT_COLUMNS,
+  buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
   loadAccountSubnets,
@@ -63,6 +71,19 @@ import {
   loadAccountExtrinsics,
   loadAccountTransfers,
 } from "./account-events.mjs";
+import {
+  buildNeuronHistory,
+  buildSubnetHistory,
+  MAX_HISTORY_POINTS,
+  NEURON_DAILY_READ_COLUMNS,
+  parseHistoryWindow,
+} from "./neuron-history.mjs";
+import {
+  buildConcentrationHistory,
+  CONCENTRATION_HISTORY_ROW_CAP,
+  parseConcentrationHistoryWindow,
+} from "./concentration.mjs";
+import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
 import {
@@ -96,7 +117,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.4.0";
+export const MCP_SERVER_VERSION = "1.6.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -222,6 +243,32 @@ async function loadArtifactData(ctx, artifactPath) {
   return result.data;
 }
 
+async function loadOptionalArtifact(ctx, artifactPath) {
+  const result = await ctx.readArtifact(ctx.env, artifactPath);
+  return result?.ok ? result.data : null;
+}
+
+// Resolve a catalogued surface by current id, stable surface_key, or deprecated
+// surface_id alias — same resolution verify_integration uses (#358, #1005).
+async function findCataloguedSurface(ctx, surfaceId) {
+  const catalog = await loadOptionalArtifact(
+    ctx,
+    "/metagraph/operational-surfaces.json",
+  );
+  const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
+  let surface = findSurface(surfaces, surfaceId);
+  if (!surface) {
+    const aliases = await loadOptionalArtifact(ctx, SURFACE_ALIASES_PATH);
+    surface = findSurface(surfaces, surfaceId, aliases);
+  }
+  return surface;
+}
+
+async function resolveArtifactSurfaceId(ctx, surfaceId) {
+  const surface = await findCataloguedSurface(ctx, surfaceId);
+  return surface?.surface_id ?? surfaceId;
+}
+
 // Freshest live operational snapshot (KV health:current → D1 surface_status),
 // so MCP tools serve live health like the REST routes do — never a build-time
 // value. Returns null when no live source is available (caller renders
@@ -278,10 +325,209 @@ async function loadSubnetEconomics(ctx, netuid) {
   };
 }
 
+// Chain-activity aggregate (pallet.method event distribution) over the most
+// recent N blocks, from the Postgres-backed all-events tier. That tier lives in
+// the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
+// this Worker's bundle; MCP handlers reach it through the DATA_API service
+// binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
+// A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
+// upstream response surfaces as a clean tool error, never an exception.
+async function loadChainActivity(ctx, blocks) {
+  // Optional in previews/local runs; production binds this beside DATA_API so
+  // MCP calls pay the same data-tier rate limit as REST proxy calls.
+  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
+    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+      key: `data:${ctx.clientIp}`,
+    });
+    if (!success) {
+      throw toolError(
+        "data_rate_limited",
+        "Too many data API requests from this client; slow down.",
+      );
+    }
+  }
+
+  const dataApi = ctx.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw toolError(
+      "tier_unavailable",
+      "The chain activity tier is unavailable (the all-events data Worker is " +
+        "not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(
+      new Request(`https://d/api/v1/chain-events/stats?blocks=${blocks}`),
+    );
+  } catch {
+    throw toolError(
+      "tier_unavailable",
+      "The chain activity tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw toolError(
+      "tier_unavailable",
+      `The chain activity tier returned an error (status ${response.status}). ` +
+        "Try again shortly.",
+    );
+  }
+  const data = await response.json();
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
+  };
+}
+
 async function mcpObservedAt(ctx) {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
   return meta?.last_run_at || null;
+}
+
+// Resolve + validate a history window arg (7d|30d|90d|1y|all) the way the REST
+// /history routes do, mapping a bad value to a clean tool error. Returns the
+// parsed {label, days} (days is null for the unbounded `all` window).
+function requireHistoryWindow(args) {
+  const { label, days, error } = parseHistoryWindow(args?.window);
+  if (error) {
+    throw toolError("invalid_params", error.message);
+  }
+  return { label, days };
+}
+
+// Day-cutoff (YYYY-MM-DD) for a window's `days`, matching the REST handlers'
+// JS-computed cutoff bound against the dated `snapshot_date` column.
+function historyCutoff(days) {
+  return new Date(Date.now() - days * DAY_MS).toISOString().slice(0, 10);
+}
+
+// One subnet's per-day aggregate history — mirrors handleSubnetHistory: a GROUP
+// BY snapshot_date read over the neuron_daily rollup, newest first, bounded by
+// MAX_HISTORY_POINTS, shaped by buildSubnetHistory. A cold/absent D1 yields the
+// schema-stable point_count:0 payload (never throws).
+async function loadSubnetHistory(ctx, netuid, { label, days }) {
+  const run = mcpD1Runner(ctx);
+  const params = [netuid];
+  let sql =
+    "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
+    "SUM(validator_permit) AS validator_count, " +
+    "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+    "FROM neuron_daily WHERE netuid = ?";
+  if (days != null) {
+    sql += " AND snapshot_date >= ?";
+    params.push(historyCutoff(days));
+  }
+  sql += " GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await run(sql, params);
+  return buildSubnetHistory(rows, netuid, { window: label });
+}
+
+// One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
+// for (netuid, uid), newest first, bounded, shaped by buildNeuronHistory. Cold D1
+// → point_count:0.
+async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
+  const run = mcpD1Runner(ctx);
+  const params = [netuid, uid];
+  let sql = `SELECT ${NEURON_DAILY_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND uid = ?`;
+  if (days != null) {
+    sql += " AND snapshot_date >= ?";
+    params.push(historyCutoff(days));
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(MAX_HISTORY_POINTS);
+  const rows = await run(sql, params);
+  return buildNeuronHistory(rows, netuid, uid, { window: label });
+}
+
+// One subnet's per-day concentration trend — mirrors
+// handleSubnetConcentrationHistory: the raw per-UID neuron_daily distribution
+// (each day re-computed into Gini/Nakamoto/top-10%), bounded by the row cap and
+// shaped by buildConcentrationHistory. Window is the smaller 7d|30d|90d set.
+async function loadSubnetConcentrationHistory(ctx, netuid, args) {
+  const { label, days, error } = parseConcentrationHistoryWindow(args?.window);
+  if (error) {
+    throw toolError("invalid_params", error.message);
+  }
+  const run = mcpD1Runner(ctx);
+  const rows = await run(
+    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+    [netuid, historyCutoff(days), CONCENTRATION_HISTORY_ROW_CAP],
+  );
+  return buildConcentrationHistory(rows, netuid, {
+    window: label,
+    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+  });
+}
+
+// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
+// account_events filtered by netuid, newest first, optional kind filter, keyset
+// (cursor) pagination on (block_number, event_index) with offset as the
+// deprecated fallback. Cold D1 → event_count:0.
+async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
+  const run = mcpD1Runner(ctx);
+  const resolvedLimit = clampInt(limit, 100, 1, 1000);
+  const resolvedOffset = clampInt(offset, 0, 0, 1_000_000);
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const params = [netuid];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(resolvedLimit);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(resolvedOffset);
+  }
+  const rows = await run(sql, params);
+  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  return buildSubnetEvents(rows, netuid, {
+    limit: resolvedLimit,
+    offset: resolvedOffset,
+    nextCursor,
+  });
+}
+
+// One provider's detail + (optionally) its endpoints, mirroring GET
+// /api/v1/providers/{slug}{,/endpoints}. Both are artifact-backed; the endpoints
+// artifact is optional (a provider may have no endpoints artifact), so a missing
+// one degrades to endpoints:null rather than failing the whole call. The detail
+// artifact missing is a real not_found (loadArtifactData maps it).
+async function loadProviderDetail(ctx, slug, includeEndpoints) {
+  const detail = await loadArtifactData(
+    ctx,
+    `/metagraph/providers/${slug}.json`,
+  );
+  if (!includeEndpoints) return detail;
+  const endpoints = await loadOptionalArtifact(
+    ctx,
+    `/metagraph/providers/${slug}/endpoints.json`,
+  );
+  return { provider: detail, endpoints };
+}
+
+// The freshness/staleness state, mirroring GET /api/v1/freshness: the committed
+// freshness artifact overlaid with the live 15-minute prober's last_run_at
+// (mergeFreshness) so the surface-health source reads `current` like the REST
+// route. With no live meta the committed artifact passes through unchanged.
+async function loadFreshness(ctx) {
+  const base = await loadArtifactData(ctx, "/metagraph/freshness.json");
+  if (!ctx.readHealthKv) return base;
+  const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
+  return mergeFreshness(base, meta) ?? base;
 }
 
 async function loadEconomicsSubnetRows(ctx) {
@@ -476,6 +722,22 @@ function requireSs58(args) {
 // The ss58 inputSchema `pattern` (advisory; runtime validation is requireSs58),
 // derived from the single pattern source so it can't drift.
 const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
+
+// The optional `blocks` window for get_chain_activity: a missing value defaults
+// to 1000; a provided value must be a positive integer and is clamped to the
+// data Worker's 1-5000 bound so a stray large value is silently capped (the data
+// Worker clamps too, but capping here keeps the request URL honest).
+function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null) return 1000;
+  if (!Number.isInteger(value) || value < 1) {
+    throw toolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, 5000);
+}
 
 function clampLimit(value, fallback, max) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
@@ -1308,6 +1570,149 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_history",
+    title: "Get a subnet's daily history",
+    description:
+      "Fetch one subnet's per-day history from the neuron_daily rollup: neuron " +
+      "count, validator count, total stake (TAO) and total emission (TAO) per " +
+      "snapshot_date, newest first. Choose the window (7d, 30d, 90d, 1y, all; " +
+      "default 30d). Use it to chart how a subnet's size, stake, and emission " +
+      "have moved over time. Mirrors GET /api/v1/subnets/{netuid}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
+    },
+  },
+  {
+    name: "get_subnet_concentration_history",
+    title: "Get a subnet's concentration history",
+    description:
+      "Fetch one subnet's per-day stake & emission concentration trend from the " +
+      "dated neuron_daily distribution: Gini, Nakamoto coefficient, and top-10% " +
+      "share for both stake and emission per snapshot_date, newest first. Choose " +
+      "the window (7d, 30d, 90d; default 30d). Use it to answer 'is this subnet " +
+      "centralizing over time?'. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/concentration/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetConcentrationHistory(ctx, netuid, args);
+    },
+  },
+  {
+    name: "get_neuron_history",
+    title: "Get one neuron's daily history",
+    description:
+      "Fetch a single neuron's per-day time series in one subnet by its UID, from " +
+      "the neuron_daily rollup: stake, rank, trust, consensus, incentive, " +
+      "dividends, emission, validator permit, and axon per snapshot_date, newest " +
+      "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Use it to " +
+      "track how one miner or validator has performed over time. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        uid: {
+          type: "integer",
+          description: "The neuron UID within the subnet.",
+          minimum: 0,
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid", "uid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const uid = requireNonNegativeInt(args, "uid");
+      return loadNeuronHistory(ctx, netuid, uid, requireHistoryWindow(args));
+    },
+  },
+  {
+    name: "get_subnet_events",
+    title: "Get a subnet's chain-event stream",
+    description:
+      "Fetch the paginated first-party chain-event stream for one subnet by its " +
+      "netuid, newest first: each event's kind, block, UID, hot/cold keys, " +
+      "amount, and timestamp. Optionally filter by event kind (e.g. StakeAdded, " +
+      "NeuronRegistered, AxonServed, WeightsSet) and page with limit (1-1000, " +
+      "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
+      "Use it to watch what is happening on one subnet right now. Events are " +
+      "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        kind: {
+          type: "string",
+          description:
+            "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
+            "Omit for all kinds; an unknown kind simply matches nothing.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset into the stream. Default 0.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const kind = optionalString(args, "kind");
+      const cursor = optionalString(args, "cursor");
+      return loadSubnetEvents(ctx, netuid, {
+        kind,
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor,
+      });
+    },
+  },
+  {
     name: "get_account",
     title: "Get a cross-subnet account summary",
     description:
@@ -1739,6 +2144,36 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_activity",
+    title: "Get recent chain-activity aggregate",
+    description:
+      "Fetch the chain-activity aggregate from the all-events tier: the " +
+      "pallet.method event distribution (each with its count, busiest first) " +
+      "over the most recent `blocks` blocks. Use it to see what the chain has " +
+      "been doing lately — which pallets and calls dominate recent traffic — " +
+      "before drilling into specific blocks (get_block) or extrinsics " +
+      "(list_extrinsics). Mirrors GET /api/v1/chain-events/stats.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        blocks: {
+          type: "integer",
+          description:
+            "How many of the most recent blocks to aggregate over (1-5000, " +
+            "default 1000).",
+          minimum: 1,
+          maximum: 5000,
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const blocks = optionalBlocksWindow(args);
+      return loadChainActivity(ctx, blocks);
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -1804,7 +2239,8 @@ export const MCP_TOOLS = [
           "surface_id contains invalid characters.",
         );
       }
-      return loadArtifactData(ctx, `/metagraph/schemas/${surfaceId}.json`);
+      const artifactId = await resolveArtifactSurfaceId(ctx, surfaceId);
+      return loadArtifactData(ctx, `/metagraph/schemas/${artifactId}.json`);
     },
   },
   {
@@ -1839,7 +2275,141 @@ export const MCP_TOOLS = [
           "surface_id contains invalid characters.",
         );
       }
-      return loadArtifactData(ctx, `/metagraph/fixtures/${surfaceId}.json`);
+      const artifactId = await resolveArtifactSurfaceId(ctx, surfaceId);
+      return loadArtifactData(ctx, `/metagraph/fixtures/${artifactId}.json`);
+    },
+  },
+  {
+    name: "get_provider_detail",
+    title: "Get one provider's detail",
+    description:
+      "Fetch one provider/source by its slug: its identity, authority, the " +
+      "subnets and surfaces it backs, and its catalogued endpoints. A provider is " +
+      "an operator or service that publishes one or more subnet surfaces (e.g. an " +
+      "API host or RPC operator). Set include_endpoints to also attach its full " +
+      "endpoint list (per-endpoint health is overlaid live on the REST route; the " +
+      "MCP detail serves the catalogued endpoints). Mirrors " +
+      "GET /api/v1/providers/{slug} (+ /endpoints). Discover slugs via the " +
+      "providers list at /metagraph/providers.json.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: {
+          type: "string",
+          description:
+            "Provider slug (slug-style), e.g. 'datura' or 'rayonlabs'.",
+        },
+        include_endpoints: {
+          type: "boolean",
+          description:
+            "When true, also attach the provider's catalogued endpoints under " +
+            "`endpoints` (the detail moves under `provider`). Default false.",
+        },
+      },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const slug = requireString(args, "slug");
+      // slug is part of an R2 key path; reject anything that could escape the
+      // providers/ namespace.
+      if (!/^[A-Za-z0-9._:-]+$/.test(slug)) {
+        throw toolError("invalid_params", "slug contains invalid characters.");
+      }
+      return loadProviderDetail(
+        ctx,
+        slug,
+        optionalBoolean(args, "include_endpoints"),
+      );
+    },
+  },
+  {
+    name: "list_fixtures",
+    title: "List captured live fixtures",
+    description:
+      "Fetch the index of captured live request/response fixtures: which subnet " +
+      "surfaces carry a sanitized real sample, with capture status and metadata. " +
+      "Use it to discover which surfaces have a fixture, then fetch one with " +
+      "get_fixture. Mirrors GET /api/v1/fixtures.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/fixtures.json");
+    },
+  },
+  {
+    name: "list_schemas",
+    title: "List captured API schemas",
+    description:
+      "Fetch the index of captured OpenAPI/Swagger schema snapshots across " +
+      "subnets: which surfaces publish a machine-readable schema, its hash, and " +
+      "drift status (new/unchanged/changed). Use it to discover which surfaces " +
+      "have a schema, then fetch one with get_api_schema. Mirrors " +
+      "GET /api/v1/schemas.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/schemas/index.json");
+    },
+  },
+  {
+    name: "get_lineage",
+    title: "Get cross-network subnet lineage",
+    description:
+      "Fetch the maintainer-approved cross-network subnet lineage: which testnet " +
+      "subnets have graduated to mainnet (mainnet ↔ testnet pairs with the match " +
+      "evidence), plus any flagged broken links. Use it to map a mainnet subnet " +
+      "to its testnet counterpart or vice versa. Mirrors GET /api/v1/lineage.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/lineage.json");
+    },
+  },
+  {
+    name: "get_freshness",
+    title: "Get registry data freshness",
+    description:
+      "Fetch the registry's freshness and staleness state: per-source last-" +
+      "captured timestamps, staleness windows, and current status for each data " +
+      "lane (adapter snapshots, the chain-event index, operational surface " +
+      "health, etc.). The operational surface-health source is overlaid with the " +
+      "live 15-minute prober's last run. Use it to judge how current the data is " +
+      "before relying on it. Mirrors GET /api/v1/freshness.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadFreshness(ctx);
+    },
+  },
+  {
+    name: "get_source_health",
+    title: "Get per-provider source health",
+    description:
+      "Fetch the per-provider source-health rollup: for each provider/source, " +
+      "the count of candidate surfaces and how they classify (live / redirected " +
+      "/ dead), endpoint and RPC-endpoint counts, verification-result count, and " +
+      "an overall status. Use it to see which providers are publishing healthy, " +
+      "still-reachable surfaces. Mirrors GET /api/v1/source-health.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/source-health.json");
     },
   },
   {
@@ -2424,14 +2994,7 @@ export const MCP_TOOLS = [
         if (!SURFACE_ID_PATTERN.test(args.surface_id)) {
           throw toolError("invalid_params", "Invalid surface_id format.");
         }
-        surface = findSurface(surfaces, args.surface_id);
-        if (!surface) {
-          const aliases = await loadArtifactData(
-            ctx,
-            SURFACE_ALIASES_PATH,
-          ).catch(() => null);
-          surface = findSurface(surfaces, args.surface_id, aliases);
-        }
+        surface = await findCataloguedSurface(ctx, args.surface_id);
         if (!surface) {
           throw toolError(
             "not_found",
@@ -2452,7 +3015,7 @@ export const MCP_TOOLS = [
           "Provide either surface_id or netuid.",
         );
       }
-      return await verifySurface(surface, {
+      return await verifySurfaceWithCache(surface, {
         isUnsafeUrl: workerResolvedUrlSafetyGuard({
           fetchImpl: globalThis.fetch,
         }),
@@ -2765,6 +3328,72 @@ const TOOL_OUTPUT_SCHEMAS = {
       neuron: { type: ["object", "null"] },
     },
   },
+  get_subnet_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        neuron_count: NULLABLE_INT,
+        validator_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+      }),
+    },
+  },
+  get_subnet_concentration_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        neuron_count: NULLABLE_INT,
+        stake_gini: ANY,
+        stake_nakamoto_coefficient: ANY,
+        stake_top_10pct_share: ANY,
+        emission_gini: ANY,
+        emission_nakamoto_coefficient: ANY,
+        emission_top_10pct_share: ANY,
+      }),
+    },
+  },
+  get_neuron_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "uid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      uid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_subnet_events: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "event_count", "events"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      event_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
   get_account: {
     type: "object",
     additionalProperties: true,
@@ -2921,6 +3550,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       extrinsic: { type: ["object", "null"], additionalProperties: true },
     },
   },
+  get_chain_activity: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window_blocks", "groups", "activity"],
+    properties: {
+      window_blocks: { type: "integer" },
+      groups: { type: "integer" },
+      activity: objectItems({
+        pallet: NULLABLE_STRING,
+        method: NULLABLE_STRING,
+        count: NULLABLE_INT,
+      }),
+    },
+  },
   list_subnet_apis: {
     type: "object",
     additionalProperties: true,
@@ -2952,6 +3595,78 @@ const TOOL_OUTPUT_SCHEMAS = {
     additionalProperties: true,
     required: ["surface_id"],
     properties: { surface_id: { type: "string" } },
+  },
+  get_provider_detail: {
+    // Two shapes: the bare provider detail (default) or {provider, endpoints}
+    // when include_endpoints is set. Both are operator-controlled artifact
+    // payloads, so nothing is required; the keys below describe each shape when
+    // present.
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      id: NULLABLE_STRING,
+      slug: NULLABLE_STRING,
+      name: NULLABLE_STRING,
+      authority: NULLABLE_STRING,
+      kind: NULLABLE_STRING,
+      provider: { type: ["object", "null"] },
+      endpoints: { type: ["object", "array", "null"] },
+    },
+  },
+  list_fixtures: {
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      candidate_count: { type: "integer" },
+      coverage: { type: "array", items: { type: "object" } },
+      generated_at: NULLABLE_STRING,
+    },
+  },
+  list_schemas: {
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      schemas: { type: "array", items: { type: "object" } },
+      observed_at: NULLABLE_STRING,
+      generated_at: NULLABLE_STRING,
+      notes: NULLABLE_STRING,
+    },
+  },
+  get_lineage: {
+    type: "object",
+    additionalProperties: true,
+    required: [],
+    properties: {
+      link_count: { type: "integer" },
+      graduated_subnet_count: { type: "integer" },
+      broken_link_count: { type: "integer" },
+      links: { type: "array", items: { type: "object" } },
+      broken_links: { type: "array", items: { type: "object" } },
+      generated_at: NULLABLE_STRING,
+    },
+  },
+  get_freshness: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sources"],
+    properties: {
+      schema_version: { type: "integer" },
+      sources: { type: "array", items: { type: "object" } },
+      summary: { type: ["object", "null"] },
+      generated_at: NULLABLE_STRING,
+    },
+  },
+  get_source_health: {
+    type: "object",
+    additionalProperties: true,
+    required: ["providers"],
+    properties: {
+      providers: { type: "array", items: { type: "object" } },
+      generated_at: NULLABLE_STRING,
+    },
   },
   get_agent_catalog: {
     // Two shapes: the global index (no netuid) and a single-subnet catalog
@@ -3142,6 +3857,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       status_code: NULLABLE_INT,
       error: NULLABLE_STRING,
       probed_at: NULLABLE_STRING,
+      from_cache: { type: "boolean" },
     },
   },
 };

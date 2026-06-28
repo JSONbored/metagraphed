@@ -20,6 +20,7 @@ import {
   hasD1FallbackRows,
   markD1FallbackResponse,
   analyticsQueryError,
+  canonicalAnalyticsCacheRoute,
 } from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
@@ -324,6 +325,26 @@ describe("validateQueryParams", () => {
     const u = url("/x?netuid=7");
     const err = validateQueryParams(u, []);
     assert.equal(err.parameter, "netuid");
+  });
+});
+
+describe("canonicalAnalyticsCacheRoute", () => {
+  test("normalizes decoded query values for cache keys", () => {
+    const plain = url(
+      "/api/v1/chain/signers?call_module=Balances&limit=10&window=30d",
+    );
+    const encoded = url(
+      "/api/v1/chain/signers?limit=10&call_module=%42alances&window=30d",
+    );
+
+    assert.equal(
+      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
+      "/api/v1/chain/signers?window=30d&limit=10&call_module=Balances",
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module"]),
+      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
+    );
   });
 });
 

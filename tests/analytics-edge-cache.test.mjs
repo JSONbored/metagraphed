@@ -69,6 +69,12 @@ function rowsForSql(sql) {
       },
     ];
   }
+  if (sql.includes("FROM neuron_daily")) {
+    return [
+      { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 10 },
+      { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+    ];
+  }
   return [];
 }
 
@@ -204,6 +210,39 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 3);
     assert.equal(cache.putKeys.length, 3);
     assert.equal(new Set(cache.putKeys).size, 3);
+  });
+
+  test("concentration history canonicalizes equivalent window query strings before caching", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const variants = [
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d",
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d&",
+      "https://api.metagraph.sh/api/v1/subnets/7/concentration/history?window=90d&&",
+    ];
+
+    const first = await handleRequest(new Request(variants[0]), env, ctx);
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    for (const variant of variants.slice(1)) {
+      const hit = await handleRequest(new Request(variant), env, ctx);
+      assert.equal(hit.status, 200);
+    }
+
+    assert.equal(queries.length, queriesAfterMiss);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-concentration-history",
+        "/api/v1/subnets/7/concentration/history",
+        "?window=90d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
   });
 
   test("HIT: a pre-populated cache serves the cached body WITHOUT touching D1", async () => {
@@ -561,5 +600,162 @@ describe("analytics edge cache", () => {
         `${r.keyParts}: a HIT issues no further D1 query`,
       );
     }
+  });
+});
+
+const NEURON_CAPTURED_AT = 1_781_500_000_000;
+const NEURON_ROW = {
+  uid: 0,
+  hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+  coldkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+  active: 1,
+  validator_permit: 1,
+  rank: 0.1,
+  trust: 0.9,
+  validator_trust: 0.8,
+  consensus: 0.7,
+  incentive: 0.6,
+  dividends: 0.5,
+  emission_tao: 1,
+  stake_tao: 100,
+  registered_at_block: 1,
+  is_immunity_period: 0,
+  axon: null,
+  block_number: 100,
+  captured_at: NEURON_CAPTURED_AT,
+};
+
+function neuronsEnv(
+  queries,
+  { lastRunAt = LAST_RUN_AT, neuronCapturedAt = NEURON_CAPTURED_AT } = {},
+) {
+  return {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            queries.push({ sql, params });
+            if (sql.includes("MAX(captured_at)")) {
+              return {
+                all: () =>
+                  Promise.resolve({
+                    results: [{ captured_at: neuronCapturedAt }],
+                  }),
+              };
+            }
+            if (sql.includes("FROM neurons")) {
+              return {
+                all: () => Promise.resolve({ results: [NEURON_ROW] }),
+              };
+            }
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+    METAGRAPH_CONTROL: {
+      async get(key) {
+        if (key === "health:meta") {
+          return lastRunAt ? { last_run_at: lastRunAt } : null;
+        }
+        return null;
+      },
+    },
+  };
+}
+
+function expectedStampKey(stamp, keyParts, pathname, search = "") {
+  return `https://edge-cache.metagraph.sh/analytics/${encodeURIComponent(
+    CONTRACT_VERSION,
+  )}/${encodeURIComponent(stamp)}/${keyParts}${pathname}${search}`;
+}
+
+describe("neurons-tier edge cache", () => {
+  test("metagraph/validators/concentration key on neuron captured_at, not health last_run_at", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = neuronsEnv(queries);
+
+    for (const [keyParts, path] of [
+      ["subnet-metagraph", "/api/v1/subnets/7/metagraph"],
+      ["subnet-validators", "/api/v1/subnets/7/validators"],
+      ["subnet-concentration", "/api/v1/subnets/7/concentration"],
+    ]) {
+      await handleRequest(
+        new Request(`https://api.metagraph.sh${path}`),
+        env,
+        ctx,
+      );
+      await Promise.resolve();
+      assert.ok(
+        cache.putKeys.some((key) =>
+          key.includes(encodeURIComponent(String(NEURON_CAPTURED_AT))),
+        ),
+        `${keyParts}: cache key must include neuron captured_at`,
+      );
+      assert.ok(
+        !cache.putKeys.some((key) =>
+          key.includes(encodeURIComponent(LAST_RUN_AT)),
+        ),
+        `${keyParts}: cache key must not use health last_run_at`,
+      );
+    }
+  });
+
+  test("a new neuron captured_at busts cache while health last_run_at is unchanged", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const envA = neuronsEnv(queries, { neuronCapturedAt: NEURON_CAPTURED_AT });
+    const url = "https://api.metagraph.sh/api/v1/subnets/7/metagraph";
+
+    await handleRequest(new Request(url), envA, ctx);
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [
+      expectedStampKey(
+        String(NEURON_CAPTURED_AT),
+        "subnet-metagraph",
+        "/api/v1/subnets/7/metagraph",
+      ),
+    ]);
+
+    const envB = neuronsEnv(queries, {
+      neuronCapturedAt: NEURON_CAPTURED_AT + 60_000,
+    });
+    await handleRequest(new Request(url), envB, ctx);
+    await Promise.resolve();
+    assert.equal(
+      cache.store.size,
+      2,
+      "a newer captured_at must seed a new entry",
+    );
+  });
+
+  test("health percentiles still bust on health last_run_at only", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = neuronsEnv(queries);
+
+    await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "percentiles",
+        "/api/v1/subnets/7/health/percentiles",
+        "?window=7d",
+      ),
+    ]);
   });
 });

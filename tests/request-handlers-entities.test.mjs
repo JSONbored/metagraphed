@@ -14,11 +14,13 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  handleSubnetTurnover,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
   handleAccountExtrinsics,
   handleAccountTransfers,
+  handleAccountCounterparties,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -186,6 +188,8 @@ function dbWith({
   neuronDailyUid,
   neuronDailySubnet,
   neuronDailyHistory,
+  turnoverBounds,
+  turnoverRows,
   agg,
   kinds,
   registrations,
@@ -238,6 +242,19 @@ function dbWith({
                     /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
                   ) {
                     return { results: neuronDailyUid || [] };
+                  }
+                  // Turnover: MIN/MAX boundary-date probe (checked before the
+                  // generic `snapshot_date >=` history match below).
+                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    return { results: turnoverBounds || [] };
+                  }
+                  // Turnover: the two boundary snapshots' rows.
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: turnoverRows || [] };
                   }
                   // Raw per-day neuron_daily rows (concentration history).
                   if (
@@ -403,6 +420,28 @@ async function assertColdSchema(handlerFn, ...args) {
   const body = await res.json();
   assert.equal(body.ok, true);
   return body;
+}
+
+// An env whose D1 read REJECTS (schema drift / "no such column" / connection
+// failure). d1All catches this and degrades to [] — the handler must stay 200 +
+// schema-stable, never propagate the throw or 404. Bound (a real prepared
+// statement chain) so .prepare().bind().all() exists and only .all() rejects.
+function dbThrows(message = "no such column") {
+  return {
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                throw new Error(message);
+              },
+            };
+          },
+        };
+      },
+    },
+  };
 }
 
 describe("handleSubnetMetagraph", () => {
@@ -782,6 +821,50 @@ describe("handleSubnetConcentration", () => {
     assert.ok(/validator_permit/.test(captures.sql[idx]));
     assert.equal(captures.params[idx][0], NETUID);
   });
+
+  test("degrades to schema-stable null blocks when the D1 read throws", async () => {
+    // A bound DB whose .all() rejects (schema drift) — d1All swallows it to [],
+    // so the handler still answers 200 with null metric blocks, never 5xx/404.
+    const res = await handleSubnetConcentration(
+      req(`/api/v1/subnets/${NETUID}/concentration`),
+      dbThrows("no such column: validator_permit"),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.stake, null);
+    assert.equal(body.data.emission, null);
+    assert.equal(body.data.validator_stake, null);
+    assert.equal(body.data.captured_at, null);
+  });
+
+  test("is null-safe on sparse / all-zero neuron rows (null metric blocks)", async () => {
+    // Rows present but carrying no positive distribution (zero stake/emission,
+    // missing coldkeys) → neuron_count reflects the rows, every metric block null.
+    const { env } = dbWith({
+      neurons: [
+        neuronRow({ stake_tao: 0, emission_tao: 0, coldkey: null }),
+        neuronRow({ uid: 1, stake_tao: 0, emission_tao: 0, coldkey: "" }),
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentration(
+        req(`/api/v1/subnets/${NETUID}/concentration`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration`),
+      ),
+    );
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.entity_count, 2); // two missing-coldkey singletons
+    assert.equal(body.data.stake, null); // no positive stake → null block
+    assert.equal(body.data.emission, null);
+    assert.equal(body.data.validator_stake, null);
+  });
 });
 
 describe("handleSubnetConcentrationHistory", () => {
@@ -844,6 +927,148 @@ describe("handleSubnetConcentrationHistory", () => {
     // Windowed neuron_daily read bound to the netuid.
     const idx = captures.sql.findIndex((s) =>
       /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+
+  test("degrades to an empty series when the D1 read throws", async () => {
+    // d1All swallows the rejecting read to []; the trend stays 200 + points:[].
+    const res = await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      dbThrows("d1 timeout"),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.point_count, 0);
+    assert.deepEqual(body.data.points, []);
+  });
+
+  test("binds the windowed read with a row cap and an ISO date cutoff", async () => {
+    // The raw per-UID read is bounded by CONCENTRATION_HISTORY_ROW_CAP and a
+    // window-derived YYYY-MM-DD cutoff — assert both are bound (params, not SQL).
+    const { env, captures } = dbWith({ neuronDailyHistory: [] });
+    await handleSubnetConcentrationHistory(
+      req(`/api/v1/subnets/${NETUID}/concentration/history`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/concentration/history?window=30d`),
+    );
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \? ORDER BY snapshot_date DESC LIMIT \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    const [boundNetuid, cutoff, cap] = captures.params[idx];
+    assert.equal(boundNetuid, NETUID);
+    assert.match(cutoff, /^\d{4}-\d{2}-\d{2}$/); // ISO day cutoff
+    assert.equal(cap, 50_000); // CONCENTRATION_HISTORY_ROW_CAP
+  });
+
+  test("skips dateless rows and is null-safe on sparse history rows", async () => {
+    const { env } = dbWith({
+      neuronDailyHistory: [
+        { snapshot_date: null, stake_tao: 5 }, // dropped (no date)
+        { snapshot_date: "2026-06-27" }, // present but no value columns
+        { snapshot_date: "2026-06-27", stake_tao: 0, emission_tao: 0 },
+      ],
+    });
+    const body = await json(
+      await handleSubnetConcentrationHistory(
+        req(`/api/v1/subnets/${NETUID}/concentration/history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/concentration/history?window=7d`),
+      ),
+    );
+    assert.equal(body.data.point_count, 1); // only the dated day
+    assert.equal(body.data.points[0].snapshot_date, "2026-06-27");
+    assert.equal(body.data.points[0].neuron_count, 2);
+    // No positive distribution in that day → null per-metric fields, not throws.
+    assert.equal(body.data.points[0].stake_gini, null);
+    assert.equal(body.data.points[0].emission_gini, null);
+  });
+});
+
+describe("handleSubnetTurnover", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetTurnover(
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty turnover on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetTurnover,
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.comparable, false);
+    assert.equal(body.data.validator_retention, null);
+  });
+
+  test("happy path computes validator churn between the two boundary snapshots", async () => {
+    const { env, captures } = dbWith({
+      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+      turnoverRows: [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "V2",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "V3",
+          validator_permit: 1,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetTurnover(
+        req(`/api/v1/subnets/${NETUID}/turnover`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/turnover?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.comparable, true);
+    assert.equal(body.data.start_date, "2026-06-01");
+    assert.equal(body.data.end_date, "2026-06-30");
+    assert.equal(body.data.validators_entered, 1); // V3 joined
+    assert.equal(body.data.validators_exited, 1); // V2 left
+    assert.equal(body.data.uids_deregistered, 1); // uid1: V2 → V3
+    // Bound to the netuid; reads the two boundary snapshots.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(s),
     );
     assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], NETUID);
@@ -1215,6 +1440,59 @@ describe("handleAccountTransfers", () => {
   });
 });
 
+describe("handleAccountCounterparties", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty rollup on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountCounterparties,
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties`),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 0);
+    assert.deepEqual(body.data.counterparties, []);
+  });
+
+  test("aggregates the account's transfers by counterparty", async () => {
+    const { env, captures } = dbWith({
+      transfers: [
+        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
+        { hotkey: "A", coldkey: SS58, amount_tao: 30, block_number: 8 },
+        { hotkey: "B", coldkey: SS58, amount_tao: 200, block_number: 7 },
+      ],
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=10`),
+      ),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 2); // A, B
+    assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
+    // Read is a Transfer scan bound to the account on both sides.
+    const idx = captures.sql.findIndex((s) =>
+      /event_kind = 'Transfer' AND \(hotkey = \? OR coldkey = \?\)/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], SS58);
+  });
+});
+
 describe("handleAccountSubnets", () => {
   test("returns schema-stable empty subnets on cold D1", async () => {
     const body = await assertColdSchema(
@@ -1302,6 +1580,30 @@ describe("handleSubnetEvents", () => {
       env,
       NETUID,
       url(`/api/v1/subnets/${NETUID}/events?kind=WeightsSet`),
+    );
+    assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
+  });
+
+  test("rejects an unknown event kind with 400", async () => {
+    const res = await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?kind=Nonexistent`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "kind");
+  });
+
+  test("accepts a non-SubtensorModule ingested kind (Transfer), not just INDEXED_EVENT_KINDS", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ event_kind: "Transfer" })],
+    });
+    await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?kind=Transfer`),
     );
     assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
   });

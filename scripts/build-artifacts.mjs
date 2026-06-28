@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import {
   OPERATIONAL_SURFACE_KINDS,
+  mapLimit,
   rollupSubnetStatus,
 } from "../src/health-probe-core.mjs";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
@@ -99,6 +100,15 @@ import {
 } from "../src/artifact-storage.mjs";
 
 const execFileAsync = promisify(execFile);
+
+// #2057: batch the independent per-subnet/per-provider artifact writes with
+// bounded-concurrency mapLimit instead of serial awaits. Safe because each write
+// targets a distinct path and atomicWriteFile isolates via a per-call mkdtemp dir.
+// Env-overridable for hosts with tight file-descriptor limits.
+const ARTIFACT_WRITE_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.METAGRAPH_ARTIFACT_WRITE_CONCURRENCY) || 16,
+);
 
 // Freshness auto-demotion (Finding 9): an operational surface not probed healthy
 // within this many days is treated as stale and contributes a reduced share of
@@ -325,6 +335,8 @@ for (const surface of surfaces) {
   providerIdsByNetuid.get(surface.netuid).add(surface.provider);
 }
 const derivedDescriptionByNetuid = new Map();
+// serial: accumulates into derivedDescriptionByNetuid (shared state), so unlike the
+// #2057 per-subnet write loops this is intentionally not parallelized.
 for (const subnet of mergedSubnets) {
   if (subnet.description) continue;
   const ids = [...(providerIdsByNetuid.get(subnet.netuid) || [])].sort(
@@ -1008,16 +1020,20 @@ await fs.rm(r2ArtifactDir("providers"), {
   recursive: true,
   force: true,
 });
-for (const provider of enrichedProviders) {
-  const providerEndpoints = endpointsByProvider.get(provider.id) || [];
-  await writeJson(artifactFile(`providers/${provider.id}.json`), {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    provider,
-    endpoint_summary: endpointSummary(providerEndpoints),
-  });
-}
+await mapLimit(
+  enrichedProviders,
+  ARTIFACT_WRITE_CONCURRENCY,
+  async (provider) => {
+    const providerEndpoints = endpointsByProvider.get(provider.id) || [];
+    await writeJson(artifactFile(`providers/${provider.id}.json`), {
+      schema_version: 1,
+      contract_version: contractVersion,
+      generated_at: generatedAt,
+      provider,
+      endpoint_summary: endpointSummary(providerEndpoints),
+    });
+  },
+);
 
 await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,
@@ -1060,7 +1076,7 @@ await writeJson(artifactFile("lineage.json"), {
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
 await fs.rm(r2ArtifactDir("profiles"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   // #1002: per-subnet candidate lists drop surface-superseded dupes so an agent
   // sees each (netuid, kind, url) once — as a verified surface, not also as a
   // candidate. The full candidates.json registry still carries the flagged dupe.
@@ -1089,7 +1105,7 @@ for (const subnet of mergedSubnets) {
     gaps: subnet.gaps,
     surfaces: subnetSurfaces,
   });
-}
+});
 
 await writeJson(artifactFile("profiles.json"), {
   schema_version: 1,
@@ -1122,7 +1138,7 @@ await fs.rm(r2ArtifactDir("surfaces"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`surfaces/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1132,7 +1148,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     surfaces: overviewSurfacesByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 
 await writeJson(artifactFile("candidates.json"), {
   schema_version: 1,
@@ -1145,7 +1161,7 @@ await fs.rm(r2ArtifactDir("candidates"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`candidates/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1155,7 +1171,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     candidates: candidateIndexByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 
 await writeJson(artifactFile("review-queue.json"), {
   schema_version: 1,
@@ -1186,7 +1202,7 @@ await fs.rm(r2ArtifactDir("verification/subnets"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const results = (fullVerification.results || []).filter(
     (result) => result.netuid === subnet.netuid,
   );
@@ -1208,7 +1224,7 @@ for (const subnet of mergedSubnets) {
     },
     results,
   });
-}
+});
 
 await writeJson(artifactFile("metagraph/latest.json"), metagraphLatest);
 await fs.rm(r2ArtifactDir("health/subnets"), {
@@ -1240,7 +1256,7 @@ await fs.rm(r2ArtifactDir("endpoints"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const subnetEndpoints = endpointsByNetuid.get(subnet.netuid) || [];
   await writeJson(artifactFile(`endpoints/${subnet.netuid}.json`), {
     schema_version: 1,
@@ -1252,8 +1268,8 @@ for (const subnet of mergedSubnets) {
     summary: endpointSummary(subnetEndpoints),
     endpoints: subnetEndpoints,
   });
-}
-for (const provider of providers) {
+});
+await mapLimit(providers, ARTIFACT_WRITE_CONCURRENCY, async (provider) => {
   const providerEndpoints = endpointsByProvider.get(provider.id) || [];
   await writeJson(artifactFile(`providers/${provider.id}/endpoints.json`), {
     schema_version: 1,
@@ -1268,14 +1284,18 @@ for (const provider of providers) {
     summary: endpointSummary(providerEndpoints),
     endpoints: providerEndpoints,
   });
-}
+});
 // Per-subnet current-health is live-only (served from KV/D1, not stored); see
 // the note above. Badges are kept: the badge route overlays live status and the
 // static badge is only an SVG-render fallback (it shows "unavailable" when cold,
 // not a stale status an agent would parse).
-for (const [netuid, badge] of healthArtifacts.badges) {
-  await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
-}
+await mapLimit(
+  [...healthArtifacts.badges],
+  ARTIFACT_WRITE_CONCURRENCY,
+  async ([netuid, badge]) => {
+    await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
+  },
+);
 coverage.completeness = buildCompletenessSummary(
   profileArtifacts.profiles,
   subnetIndex,
@@ -1313,7 +1333,7 @@ const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
 // #1002: overview counts.candidates is a per-subnet count → exclude superseded.
 const overviewCandidatesByNetuid = groupByNetuid(activeCandidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
   await writeJson(artifactFile(`overview/${subnet.netuid}.json`), {
     schema_version: 1,
@@ -1336,7 +1356,7 @@ for (const subnet of mergedSubnets) {
     },
     gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
   });
-}
+});
 // --- Agent capability catalog ------------------------------------------------
 // Machine-readable "which subnet exposes which callable service + how to call it"
 // index for AI agents: per-subnet callable surfaces (subnet-api/openapi/sse/
@@ -1633,6 +1653,8 @@ const agentCatalogIndex = [];
 const blockedAgentCatalogIndex = [];
 const agentReadinessByNetuid = new Map();
 let callableServiceCount = 0;
+// serial: accumulates shared state (callableServiceCount and the catalog index
+// arrays), so unlike the #2057 per-subnet write loops this is not parallelized.
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = servicesByNetuid.get(subnet.netuid) || [];
@@ -2252,7 +2274,7 @@ for (const claim of evidenceLedger.claims || []) {
   claimsByNetuid.set(netuid, bucket);
 }
 await fs.rm(r2ArtifactDir("evidence"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`evidence/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -2262,7 +2284,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     claims: claimsByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 // Testnet base-layer RPC endpoints → the static /rpc/v1/test pool (see
 // registry/native/test-base-endpoints.json). Mapped to the probe-derived endpoint
 // shape with static eligibility/score so the proxy can route immediately; the
@@ -2357,9 +2379,16 @@ const fixtureIndexEntries = [...capturedFixtures.values()]
   }))
   .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
 const fixtureCoverage = fixtureCoverageEntries(surfaces);
-for (const fixture of capturedFixtures.values()) {
-  await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
-}
+await mapLimit(
+  [...capturedFixtures.values()],
+  ARTIFACT_WRITE_CONCURRENCY,
+  async (fixture) => {
+    await writeJson(
+      artifactFile(`fixtures/${fixture.surface_id}.json`),
+      fixture,
+    );
+  },
+);
 if (capturedFixtureReport) {
   await writeJson(artifactFile("fixtures/_capture-report.json"), {
     ...capturedFixtureReport,
@@ -2410,7 +2439,7 @@ const gapPrioritiesByNetuid = groupByNetuid(
 );
 const enrichmentQueueByNetuid = groupByNetuid(enrichmentQueue.queue || []);
 await fs.rm(r2ArtifactDir("review/gaps"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`review/gaps/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -2421,7 +2450,7 @@ for (const subnet of mergedSubnets) {
     priorities: gapPrioritiesByNetuid.get(subnet.netuid) || [],
     enrichment_queue: enrichmentQueueByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 await writeJson(
   artifactFile("review/enrichment-evidence.json"),
   enrichmentArtifacts.evidenceArtifact,
@@ -2439,9 +2468,13 @@ await writeJson(artifactFile("review/maintainer-decisions.json"), {
     "Public-safe maintainer curation decisions only. No secrets, wallets, PATs, private dashboards, or validator-local state.",
 });
 
-for (const [slug, artifact] of Object.entries(adapterArtifacts)) {
-  await writeJson(artifactFile(`adapters/${slug}.json`), artifact);
-}
+await mapLimit(
+  Object.entries(adapterArtifacts),
+  ARTIFACT_WRITE_CONCURRENCY,
+  async ([slug, artifact]) => {
+    await writeJson(artifactFile(`adapters/${slug}.json`), artifact);
+  },
+);
 
 const currentArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
