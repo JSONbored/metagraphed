@@ -9,6 +9,7 @@ import {
   findCuratedSurface,
 } from "../src/surface-detail.mjs";
 import { handleRequest } from "../workers/api.mjs";
+import { handleSurfaceDetail } from "../workers/request-handlers/surface-detail.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
@@ -187,5 +188,75 @@ describe("GET /api/v1/subnets/{netuid}/surfaces/{surface_id}", () => {
     const { status, body } = await get("/api/v1/subnets/7/surfaces/bad%20id");
     assert.equal(status, 400);
     assert.equal(body.error?.code, "invalid_surface_id");
+  });
+
+  test("404 artifact_unavailable when subnet has no surfaces file", async () => {
+    const { status, body } = await get(
+      "/api/v1/subnets/999999/surfaces/no-such-surface",
+    );
+    assert.equal(status, 404);
+    assert.equal(body.error?.code, "artifact_unavailable");
+    assert.equal(body.meta?.netuid, 999999);
+  });
+});
+
+const stubHealthDeps = {
+  resolveLiveHealth: async () => null,
+  readHealthKv: async () => null,
+};
+
+function detailRequest(path = "/") {
+  return new Request(`https://api.metagraph.sh${path}`);
+}
+
+describe("handleSurfaceDetail", () => {
+  test("400 invalid_netuid when netuid is negative or non-integer", async () => {
+    for (const netuid of [-1, 1.5, Number.NaN]) {
+      const res = await handleSurfaceDetail(
+        detailRequest(),
+        createLocalArtifactEnv(),
+        netuid,
+        "some-surface",
+        stubHealthDeps,
+      );
+      assert.equal(res.status, 400, `netuid=${netuid}`);
+      const body = await res.json();
+      assert.equal(body.error?.code, "invalid_netuid");
+    }
+  });
+
+  test("404 artifact_unavailable when curated surfaces artifact is missing", async () => {
+    const res = await handleSurfaceDetail(
+      detailRequest(),
+      createLocalArtifactEnv(),
+      999999,
+      "some-surface",
+      stubHealthDeps,
+    );
+    assert.equal(res.status, 404);
+    const body = await res.json();
+    assert.equal(body.error?.code, "artifact_unavailable");
+    assert.equal(body.meta?.artifact_path, "/metagraph/surfaces/999999.json");
+  });
+
+  test("503 artifact_unavailable when surfaces artifact read fails non-404", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_R2_TIMEOUT_MS: 1,
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          await new Promise(() => {});
+        },
+      },
+    });
+    const res = await handleSurfaceDetail(
+      detailRequest(),
+      env,
+      7,
+      "some-surface",
+      stubHealthDeps,
+    );
+    assert.equal(res.status, 503);
+    const body = await res.json();
+    assert.equal(body.error?.code, "artifact_unavailable");
   });
 });
