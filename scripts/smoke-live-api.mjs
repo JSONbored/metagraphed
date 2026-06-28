@@ -375,8 +375,9 @@ export function apiRouteUrl(routePath, date) {
   // uid 0 always exists; an all-zero hash / block 0 hit the cold→null wrapper
   // (still a 200 envelope); the accounts route requires a checksum-valid SS58, so
   // use the canonical dev address (Alice) rather than an arbitrary string (which
-  // 404s on the checksum). Without these, the smoke step requests literal-
-  // placeholder URLs that match no route and 404 (#1682).
+  // 404s on the checksum); surface_id uses a long-lived curated id on netuid 7
+  // (allways). Without these, the smoke step requests literal-placeholder URLs
+  // that match no route and 404 (#1682).
   const route = routePath
     .replace("{netuid}", "7")
     .replace("{slug}", "allways")
@@ -384,7 +385,8 @@ export function apiRouteUrl(routePath, date) {
     .replace("{uid}", "0")
     .replace("{hash}", `0x${"0".repeat(64)}`)
     .replace("{ref}", "0")
-    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+    .replace("{surface_id}", "allways-api-health");
   // Guard against the recurring #1682 class: any leftover `{` means a route
   // placeholder was never substituted, which silently 404s against a live URL
   // that matches no route. Fail fast with the offending path.
