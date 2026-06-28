@@ -869,7 +869,35 @@ export interface AccountEvent {
   netuid?: number | null;
   uid?: number | null;
   amount_tao?: number | null;
+  alpha_amount?: number | null;
+  extrinsic_index?: number | null;
   observed_at?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * One keyset page of an account's first-party chain events from
+ * /api/v1/accounts/{ss58}/events. `next_cursor` lives in the body (not meta)
+ * and is null at end-of-window.
+ */
+export interface AccountEventsPage {
+  ss58: string;
+  event_count: number;
+  limit?: number | null;
+  offset?: number | null;
+  next_cursor?: string | null;
+  events: AccountEvent[];
+  [key: string]: unknown;
+}
+
+/**
+ * Cross-subnet footprint for one account from /api/v1/accounts/{ss58}/subnets.
+ * Same registration shape as the summary, ordered by netuid ascending.
+ */
+export interface AccountSubnets {
+  ss58: string;
+  subnet_count: number;
+  subnets: AccountRegistration[];
   [key: string]: unknown;
 }
 
@@ -1026,6 +1054,116 @@ export interface SubnetNeuronHistory {
   points: SubnetNeuronHistoryPoint[];
 }
 
+// ---- Subnet economic depth: metagraph / validators / concentration ----------
+//
+// Render shapes for the live metagraph-snapshot tier:
+//   - /subnets/{n}/metagraph      → the full neuron table
+//   - /subnets/{n}/validators     → pre-filtered + ranked validators (same row)
+//   - /subnets/{n}/neurons/{uid}  → a single neuron snapshot
+//   - /subnets/{n}/concentration  → stake/emission distribution metrics
+//   - /subnets/{n}/concentration/history → daily Gini/Nakamoto/top-share drift
+// Every per-neuron field is optional + nullable: the snapshot fills rank/axon/
+// emission with null for inactive UIDs, so consumers must be null-safe.
+
+/** One neuron row from /subnets/{n}/metagraph (and /validators, /neurons/{uid}). */
+export interface MetagraphNeuron {
+  uid: number;
+  hotkey?: string;
+  coldkey?: string;
+  active?: boolean;
+  validator_permit?: boolean;
+  rank?: number | null;
+  trust?: number;
+  validator_trust?: number;
+  consensus?: number;
+  incentive?: number;
+  dividends?: number;
+  emission_tao?: number;
+  stake_tao?: number;
+  registered_at_block?: number;
+  is_immunity_period?: boolean;
+  axon?: string | null;
+  [key: string]: unknown;
+}
+
+/** The full metagraph snapshot from /api/v1/subnets/{netuid}/metagraph. */
+export interface SubnetMetagraph {
+  netuid: number;
+  neuron_count?: number;
+  captured_at?: string;
+  block_number?: number;
+  neurons: MetagraphNeuron[];
+}
+
+/** The pre-filtered/ranked validator set from /api/v1/subnets/{netuid}/validators. */
+export interface SubnetValidators {
+  netuid: number;
+  validator_count?: number;
+  captured_at?: string;
+  block_number?: number;
+  validators: MetagraphNeuron[];
+}
+
+/** A single neuron snapshot from /api/v1/subnets/{netuid}/neurons/{uid}. */
+export interface SubnetNeuronSnapshot {
+  netuid: number;
+  uid: number;
+  captured_at?: string;
+  block_number?: number;
+  neuron?: MetagraphNeuron;
+}
+
+/** One distribution metric block (stake / emission / entity_* / validator_*). */
+export interface ConcentrationMetrics {
+  holders?: number;
+  total?: number;
+  gini?: number;
+  hhi?: number;
+  hhi_normalized?: number;
+  nakamoto_coefficient?: number;
+  top_1pct_share?: number;
+  top_5pct_share?: number;
+  top_10pct_share?: number;
+  top_20pct_share?: number;
+  entropy?: number;
+  entropy_normalized?: number;
+}
+
+/** Concentration metrics from /api/v1/subnets/{netuid}/concentration. */
+export interface SubnetConcentration {
+  netuid: number;
+  neuron_count?: number;
+  entity_count?: number;
+  uids_per_entity?: number;
+  captured_at?: string;
+  stake?: ConcentrationMetrics;
+  emission?: ConcentrationMetrics;
+  entity_stake?: ConcentrationMetrics;
+  entity_emission?: ConcentrationMetrics;
+  validator_stake?: ConcentrationMetrics;
+}
+
+/** One daily concentration-history point from /concentration/history. */
+export interface ConcentrationHistoryPoint {
+  snapshot_date: string;
+  neuron_count?: number;
+  stake_gini?: number | null;
+  stake_nakamoto_coefficient?: number | null;
+  stake_top_10pct_share?: number | null;
+  emission_gini?: number | null;
+  emission_nakamoto_coefficient?: number | null;
+  emission_top_10pct_share?: number | null;
+  [key: string]: unknown;
+}
+
+/** Concentration drift from /api/v1/subnets/{netuid}/concentration/history. */
+export interface SubnetConcentrationHistory {
+  netuid: number;
+  window?: string;
+  point_count?: number;
+  points: ConcentrationHistoryPoint[];
+}
+
 // --- Compile-time contract enforcement ---------------------------------------
 //
 // These are type-only assertions (zero runtime cost). They tie this file's UI
@@ -1151,4 +1289,290 @@ export interface ChainFees {
   day_count: number;
   daily: ChainFeeDay[];
   top_fee_payers: ChainFeePayer[];
+}
+
+/* ===================== Theme C: registry & network-health depth ===================== */
+
+/**
+ * /api/v1/health/trends — the BULK per-day health trend artifact. Distinct from
+ * the per-subnet /api/v1/subnets/{netuid}/health/trends shape (HealthTrendWindow):
+ * this one carries `windows[range].subnets[].points[]`, one real point per day.
+ */
+export interface BulkHealthTrendPoint {
+  date: string; // YYYY-MM-DD
+  samples?: number;
+  uptime_ratio?: number | null; // 0–1
+  avg_latency_ms?: number | null;
+  latency_sample_count?: number;
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrendSubnet {
+  netuid: number;
+  samples?: number;
+  uptime_ratio?: number;
+  avg_latency_ms?: number;
+  latency_sample_count?: number;
+  points: BulkHealthTrendPoint[];
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrendWindow {
+  days?: number;
+  granularity?: string;
+  subnet_count?: number;
+  subnets: BulkHealthTrendSubnet[];
+  [key: string]: unknown;
+}
+
+export interface BulkHealthTrends {
+  observed_at?: string;
+  schema_version?: number;
+  source?: string;
+  windows: Record<string, BulkHealthTrendWindow>;
+}
+
+/** One per-day aggregate distilled from all subnets' points[] for a window. */
+export interface HealthTrendDay {
+  date: string;
+  uptime_ratio: number; // 0–1, sample-weighted mean across subnets
+  samples: number;
+  subnet_count: number;
+}
+
+/** /api/v1/registry/summary — counts, distributions, and a top-subnet leaderboard. */
+export interface RegistrySummaryDimension {
+  pct?: number;
+  present?: number;
+}
+
+export interface RegistrySummaryTopSubnet {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  completeness_score?: number;
+  curation_level?: string;
+  profile_level?: string;
+}
+
+export interface RegistrySummary {
+  contract_version?: string;
+  generated_at?: string;
+  subnet_count?: number;
+  counts: Record<string, number>;
+  curation_level_counts: Record<string, number>;
+  profile_level_counts: Record<string, number>;
+  coverage: {
+    average_score?: number;
+    median_score?: number;
+    fully_complete_count?: number;
+    fully_complete_pct?: number;
+    scored_subnet_count?: number;
+    score_distribution: Record<string, number>;
+    dimension_coverage: Record<string, RegistrySummaryDimension>;
+  };
+  top_subnets: RegistrySummaryTopSubnet[];
+}
+
+/** /api/v1/coverage-depth — per-subnet dimension counts + a ranked enrichment queue. */
+export interface CoverageDepthDimensions {
+  surface_count?: number;
+  official_surface_count?: number;
+  service_count?: number;
+  callable_service_count?: number;
+  schema_service_count?: number;
+  schema_missing_count?: number;
+  sdk_count?: number;
+  example_count?: number;
+  data_artifact_count?: number;
+  candidate_count?: number;
+  candidate_operational_count?: number;
+  fixture_available_count?: number;
+  docs_url_present?: boolean;
+  source_repo_present?: boolean;
+  provider_claimed_surface_count?: number;
+  registry_observed_surface_count?: number;
+  service_kinds?: string[];
+  fixture_status_counts?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface CoverageDepthRow {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  tier?: string;
+  agent_status?: string;
+  blocker_level?: string;
+  score?: number;
+  readiness_score?: number;
+  priority_score?: number;
+  completeness_score?: number;
+  curation_level?: string;
+  profile_level?: string;
+  subnet_type?: string;
+  recommended_next_action?: string;
+  top_gap_codes?: string[];
+  dimensions: CoverageDepthDimensions;
+  [key: string]: unknown;
+}
+
+export interface CoverageDepthQueueRow {
+  rank: number;
+  netuid: number;
+  name?: string;
+  slug?: string;
+  priority_score?: number;
+  score?: number;
+  severity?: string;
+  tier?: string;
+  recommended_next_action?: string;
+  top_gap_codes?: string[];
+}
+
+export interface CoverageDepth {
+  contract_version?: string;
+  generated_at?: string;
+  subnet_count?: number;
+  ranked_queue: CoverageDepthQueueRow[];
+  rows: CoverageDepthRow[];
+}
+
+/** /api/v1/health/history/{date} — one day's per-surface probe snapshot. */
+export interface HealthHistorySurface {
+  surface_id?: string;
+  netuid?: number;
+  provider?: string;
+  kind?: string;
+  status?: string; // ok | degraded | failed | unknown
+  classification?: string;
+  latency_ms?: number | null;
+  status_code?: number | null;
+  last_checked?: string;
+  last_ok?: string | null;
+  verified_at?: string;
+  error_class?: string | null;
+  [key: string]: unknown;
+}
+
+export interface HealthHistory {
+  date?: string;
+  probe_started_at?: string;
+  probe_finished_at?: string;
+  summary: {
+    status_counts: Record<string, number>;
+    classification_counts: Record<string, number>;
+    surface_count?: number;
+  };
+  surfaces: HealthHistorySurface[];
+}
+
+/** /api/v1/source-health — per-provider verification + status rollup. */
+export interface SourceHealthProvider {
+  id: string;
+  name?: string;
+  kind?: string;
+  authority?: string;
+  status?: string; // ok | degraded | failed | unknown
+  endpoint_count?: number;
+  rpc_endpoint_count?: number;
+  candidate_count?: number;
+  verification_result_count?: number;
+  classifications?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface SourceHealth {
+  generated_at?: string;
+  providers: SourceHealthProvider[];
+  summary: {
+    provider_count?: number;
+    endpoint_count?: number;
+    rpc_endpoint_count?: number;
+    candidate_count?: number;
+    verification_result_count?: number;
+    status_counts: Record<string, number>;
+  };
+}
+
+/* ===================== Theme C: agent-catalog (capability) ===================== */
+
+export interface AgentCatalogBlocker {
+  code?: string;
+  field?: string;
+  message?: string;
+  next_action?: string;
+  severity?: string;
+}
+
+export interface AgentReadiness {
+  status?: string;
+  blocker_level?: string;
+  blockers?: AgentCatalogBlocker[];
+  missing_fields?: string[];
+  [key: string]: unknown;
+}
+
+export interface AgentCatalogServiceHealth {
+  status?: string;
+  classification?: string;
+  latency_ms?: number;
+  last_ok?: string;
+  last_checked?: string;
+  stale?: boolean;
+  observed_by?: string;
+}
+
+export interface AgentCatalogService {
+  kind?: string; // subnet-api | openapi | sse | data-artifact
+  capability?: string;
+  description?: string | null;
+  base_url?: string;
+  provider?: string;
+  authority?: string;
+  auth_required?: boolean;
+  auth_schemes?: string[];
+  health?: AgentCatalogServiceHealth;
+  eligibility?: { callable?: boolean; live_status?: string; reasons?: string[] };
+  schema_url?: string | null;
+  surface_id?: string;
+  snippets?: { curl?: string; python?: string; typescript?: string };
+  [key: string]: unknown;
+}
+
+export interface AgentCatalogReadiness {
+  score?: number;
+  readiness_tier?: string;
+  components?: Record<string, boolean>;
+  readiness_verified?: boolean;
+  [key: string]: unknown;
+}
+
+/** A row in the /api/v1/agent-catalog list (ready or blocked bucket). */
+export interface AgentCatalogSummary {
+  netuid: number;
+  name?: string;
+  slug?: string;
+  subnet_type?: string;
+  integration_readiness?: number;
+  completeness_score?: number;
+  readiness_tier?: string;
+  service_count?: number;
+  callable_count?: number;
+  service_kinds?: string[];
+  categories?: string[];
+  base_url?: string;
+  health?: string;
+  agent_readiness?: AgentReadiness;
+  readiness?: AgentCatalogReadiness;
+}
+
+/** /api/v1/agent-catalog/{netuid} detail (services + examples). */
+export interface AgentCatalogDetail extends AgentCatalogSummary {
+  services?: AgentCatalogService[];
+  examples?: unknown[];
+  example_count?: number;
+  generated_at?: string;
+  operational_observed_at?: string;
+  health_source?: string;
 }

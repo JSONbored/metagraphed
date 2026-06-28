@@ -37,11 +37,39 @@ import {
   coverageQuery,
   healthQuery,
   subnetHealthMapQuery,
+  agentCatalogMapQuery,
 } from "@/lib/metagraphed/queries";
 import { classNames, formatNumber } from "@/lib/metagraphed/format";
 import { joinHealth, matchesQuery, sortBy, tableSearchSchema } from "@/lib/metagraphed/url-state";
 import { API_BASE } from "@/lib/metagraphed/config";
-import type { Subnet } from "@/lib/metagraphed/types";
+import type { AgentCatalogSummary, Subnet } from "@/lib/metagraphed/types";
+
+// #9: a list row enriched with its agent-catalog capability fields (flattened
+// from the netuid-keyed catalog map so client-side sort/filter can read them).
+type SubnetRow = Subnet & {
+  health?: string;
+  service_kinds?: string[];
+  integration_readiness?: number;
+  readiness_tier?: string;
+  service_count?: number;
+};
+
+function joinCatalog(
+  rows: Array<Subnet & { health?: string }>,
+  catalogMap: Record<number, AgentCatalogSummary | undefined>,
+): SubnetRow[] {
+  return rows.map((s) => {
+    const c = catalogMap[s.netuid];
+    if (!c) return s;
+    return {
+      ...s,
+      service_kinds: c.service_kinds,
+      integration_readiness: c.integration_readiness,
+      readiness_tier: c.readiness_tier,
+      service_count: c.service_count,
+    };
+  });
+}
 
 export const Route = createFileRoute("/subnets/")({
   validateSearch: tableSearchSchema,
@@ -68,7 +96,13 @@ function SubnetsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const filtersActive =
-    !!search.q || !!search.sort || !!search.curation || !!search.health || !!search.cursor;
+    !!search.q ||
+    !!search.sort ||
+    !!search.curation ||
+    !!search.health ||
+    !!search.serviceKind ||
+    !!search.readiness ||
+    !!search.cursor;
   const onReset = () =>
     navigate({
       search: { limit: search.limit, view: search.view } as never,
@@ -216,19 +250,29 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   const healthMapRaw = useSuspenseQuery(subnetHealthMapQuery()).data.data;
   const healthMap = useMemo(() => healthMapRaw ?? {}, [healthMapRaw]);
 
+  // #9: per-subnet agent-catalog capability (service kinds + integration
+  // readiness). Joined the same way as health so the capability filter and the
+  // Readiness column resolve. Best-effort: subnets with no catalog entry pass
+  // through with no capability data (and are simply excluded by the filters).
+  const catalogMapRaw = useSuspenseQuery(agentCatalogMapQuery()).data.data;
+  const catalogMap = useMemo(() => catalogMapRaw ?? {}, [catalogMapRaw]);
+
   const pages = data.pages as Array<(typeof data.pages)[number] & { cursorInvalid?: boolean }>;
   const lastPage = pages[pages.length - 1];
   const cursorInvalid = !!lastPage?.cursorInvalid;
-  // Join the fetched pages with per-subnet probe health. Memoized on its real
-  // inputs (the page set + the health map) so a keystroke/hover that only
+  // Join the fetched pages with per-subnet probe health + agent-catalog
+  // capability. Memoized on its real inputs so a keystroke/hover that only
   // re-renders the route doesn't re-flatten and re-clone every row.
   const all = useMemo(
     () =>
-      joinHealth(
-        pages.flatMap((p) => (p.data ?? []) as Subnet[]),
-        healthMap,
+      joinCatalog(
+        joinHealth(
+          pages.flatMap((p) => (p.data ?? []) as Subnet[]),
+          healthMap,
+        ),
+        catalogMap,
       ),
-    [pages, healthMap],
+    [pages, healthMap, catalogMap],
   );
   const total = pages[0]?.meta?.pagination?.total ?? pages[0]?.meta?.total;
 
@@ -252,7 +296,14 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         }) as never,
     });
 
-  const filtersActive = !!(search.q || search.curation || search.health || search.sort);
+  const filtersActive = !!(
+    search.q ||
+    search.curation ||
+    search.health ||
+    search.serviceKind ||
+    search.readiness ||
+    search.sort
+  );
 
   // Client-side filter + sort (the list API only honors q + cursor/limit).
   // Both are memoized on the joined rows and the exact search params they read,
@@ -264,9 +315,14 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         if (!matchesQuery([s.netuid, s.name, s.symbol], search.q)) return false;
         if (search.curation && s.curation_level !== search.curation) return false;
         if (search.health && s.health !== search.health) return false;
+        // Capability: subnet must expose the selected service kind. Rows with no
+        // catalog entry (no service_kinds) are excluded when this filter is set.
+        if (search.serviceKind && !(s.service_kinds ?? []).includes(search.serviceKind))
+          return false;
+        if (search.readiness && s.readiness_tier !== search.readiness) return false;
         return true;
       }),
-    [all, search.q, search.curation, search.health],
+    [all, search.q, search.curation, search.health, search.serviceKind, search.readiness],
   );
   const rows = useMemo(
     () =>
@@ -332,6 +388,28 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           { value: "warn", label: "warn" },
           { value: "down", label: "down" },
           { value: "unknown", label: "unknown" },
+        ]}
+      />
+      <SelectFilter
+        label="service"
+        value={search.serviceKind}
+        onChange={(v) => setSearch({ serviceKind: v })}
+        options={[
+          { value: "subnet-api", label: "subnet-api" },
+          { value: "openapi", label: "openapi" },
+          { value: "sse", label: "sse" },
+          { value: "data-artifact", label: "data-artifact" },
+        ]}
+      />
+      <SelectFilter
+        label="readiness"
+        value={search.readiness}
+        onChange={(v) => setSearch({ readiness: v })}
+        options={[
+          { value: "buildable", label: "buildable" },
+          { value: "emerging", label: "emerging" },
+          { value: "identity-only", label: "identity-only" },
+          { value: "dormant", label: "dormant" },
         ]}
       />
       <PageSizeSelect value={search.limit} onChange={(n) => setSearch({ limit: n })} />
@@ -518,6 +596,19 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                     align="right"
                   />
                 </th>
+                <th
+                  className={classNames(cellPad, "text-right")}
+                  aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
+                >
+                  <SortHeader
+                    label="Readiness"
+                    field="integration_readiness"
+                    active={search.sort === "integration_readiness"}
+                    order={search.order}
+                    onSort={onSort}
+                    align="right"
+                  />
+                </th>
                 <th className={cellPad}>Health</th>
                 <th
                   className={classNames(cellPad, "text-right")}
@@ -586,6 +677,13 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                   </td>
                   <td className={classNames(cellPad, "text-right")}>
                     <SurfacesCell subnet={s} density={density} />
+                  </td>
+                  <td className={classNames(cellPad, "text-right")}>
+                    <ReadinessCell
+                      score={s.integration_readiness}
+                      tier={s.readiness_tier}
+                      kinds={s.service_kinds}
+                    />
                   </td>
                   <td className={cellPad}>
                     <HealthPill state={s.health} />
@@ -780,6 +878,51 @@ function ParticipantsCell({
         </span>
       </span>
     </SparkLegend>
+  );
+}
+
+// #9: integration-readiness score + tier badge, fed by the agent-catalog join.
+// Tier drives the colour; the score is the 0–100 integration_readiness. Subnets
+// with no catalog entry render a muted dash.
+const READINESS_TIER_TONE: Record<string, string> = {
+  buildable: "text-health-ok border-health-ok/40",
+  emerging: "text-accent-text border-accent/40",
+  "identity-only": "text-health-warn border-health-warn/40",
+  dormant: "text-ink-muted border-border",
+};
+
+function ReadinessCell({
+  score,
+  tier,
+  kinds,
+}: {
+  score?: number;
+  tier?: string;
+  kinds?: string[];
+}) {
+  if (score == null && !tier) {
+    return <span className="font-mono text-[11px] text-ink-muted">—</span>;
+  }
+  const tone = READINESS_TIER_TONE[tier ?? ""] ?? "text-ink-muted border-border";
+  return (
+    <span
+      className="inline-flex flex-col items-end gap-0.5"
+      title={kinds && kinds.length ? `Services: ${kinds.join(", ")}` : undefined}
+    >
+      <span className="font-mono text-[12px] tabular-nums text-ink-strong">
+        {score != null ? score : "—"}
+      </span>
+      {tier ? (
+        <span
+          className={classNames(
+            "inline-flex items-center rounded border px-1 py-0.5 font-mono text-[8px] uppercase tracking-widest",
+            tone,
+          )}
+        >
+          {tier}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

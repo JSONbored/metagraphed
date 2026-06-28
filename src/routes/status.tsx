@@ -14,6 +14,10 @@ import { AnimatedNumber } from "@/components/metagraphed/animated-number";
 import { healthQuery, globalIncidentsQuery } from "@/lib/metagraphed/queries";
 import { classNames, humaniseSeconds, isStaleFreshness } from "@/lib/metagraphed/format";
 import type { GlobalIncidentSurface } from "@/lib/metagraphed/types";
+import {
+  HealthHistoryDrilldown,
+  SourceHealthTable,
+} from "@/components/metagraphed/status-diagnostics";
 
 const REFRESH_MS = 60_000;
 const SURFACES_INITIAL = 10;
@@ -67,8 +71,41 @@ function StatusPage() {
             </Suspense>
           </QueryErrorBoundary>
         </section>
+
+        {/* #8: operational diagnostics — a per-day probe drill-down and a
+            provider verification rollup, both probe-derived. */}
+        <section>
+          <SectionHeading
+            title="Probe history"
+            intro="Per-surface probe results for any captured day. Pick a date to inspect."
+          />
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+              <HealthHistoryDrilldown />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
+
+        <section>
+          <SectionHeading
+            title="Source health"
+            intro="Per-provider verification status, endpoint counts, and classification mix."
+          />
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+              <SourceHealthTable />
+            </Suspense>
+          </QueryErrorBoundary>
+        </section>
       </div>
-      <ApiSourceFooter paths={["/api/v1/health", "/api/v1/incidents"]} />
+      <ApiSourceFooter
+        paths={[
+          "/api/v1/health",
+          "/api/v1/incidents",
+          "/api/v1/health/history/{date}",
+          "/api/v1/source-health",
+        ]}
+      />
     </AppShell>
   );
 }

@@ -22,6 +22,11 @@ import { ScrollReveal } from "@/components/metagraphed/scroll-reveal";
 import { CoverageFunnel } from "@/components/metagraphed/analytics/coverage-funnel";
 import { NetworkPulseBand } from "@/components/metagraphed/analytics/network-pulse-band";
 import { WhatChangedFeed } from "@/components/metagraphed/analytics/what-changed-feed";
+import {
+  RegistryScoreHistogram,
+  DimensionCoverageHeatmap,
+  EnrichmentQueueTable,
+} from "@/components/metagraphed/analytics/registry-depth";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { TimeRangeScrub } from "@/components/metagraphed/analytics/time-range-scrub";
 import { SubnetPriceTicker } from "@/components/metagraphed/subnet-price-ticker";
@@ -127,6 +132,46 @@ function OverviewPage() {
               </div>
             </QueryErrorBoundary>
           </TimeRangeProvider>
+        </section>
+      </ScrollReveal>
+
+      {/* #5: registry depth — completeness score distribution, surface-dimension
+          coverage, and the ranked enrichment queue. Wired to /api/v1/registry/summary
+          + /api/v1/coverage-depth. Each module renders inside its own error boundary
+          so a single artifact gap never blanks the whole section. */}
+      <ScrollReveal>
+        <section className="mt-section-gap">
+          <SectionHeader
+            eyebrow="Registry depth"
+            title="How complete is the registry?"
+            description="Completeness scores, surface-dimension coverage, and the highest-priority subnets to enrich next."
+          />
+          <div className="grid gap-4 lg:grid-cols-12">
+            <QueryErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-64 lg:col-span-7" />}>
+                <div className="lg:col-span-7">
+                  <RegistryScoreHistogram className="h-full" />
+                </div>
+              </Suspense>
+            </QueryErrorBoundary>
+            <QueryErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-64 lg:col-span-5" />}>
+                <div className="lg:col-span-5">
+                  <DimensionCoverageHeatmap className="h-full" />
+                </div>
+              </Suspense>
+            </QueryErrorBoundary>
+            <div className="lg:col-span-12">
+              <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                Enrichment queue
+              </div>
+              <QueryErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <EnrichmentQueueTable />
+                </Suspense>
+              </QueryErrorBoundary>
+            </div>
+          </div>
         </section>
       </ScrollReveal>
 

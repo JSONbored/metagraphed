@@ -17,6 +17,9 @@ export const tableSearchSchema = z.object({
   health: fallback(z.string(), "").default(""),
   kind: fallback(z.string(), "").default(""),
   provider: fallback(z.string(), "").default(""),
+  // #9: agent-catalog capability filters (applied client-side over joined rows).
+  serviceKind: fallback(z.string(), "").default(""),
+  readiness: fallback(z.string(), "").default(""),
   // Layout state for list routes that support multiple views + row density.
   // Additive + optional with safe fallbacks so the toggles persist in the URL.
   view: fallback(z.enum(["table", "grid", "matrix"]), "table").default("table"),

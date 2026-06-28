@@ -56,6 +56,8 @@ describe("normalizeAccountSummary", () => {
         netuid: 7,
         uid: null,
         amount_tao: 1.5,
+        alpha_amount: null,
+        extrinsic_index: null,
         observed_at: undefined,
       },
     ]);

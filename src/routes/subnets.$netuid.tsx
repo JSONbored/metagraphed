@@ -26,6 +26,11 @@ import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
+import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
+import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
+import { ConcentrationLoader } from "@/components/metagraphed/concentration-panel";
+import { NeuronDetailCard } from "@/components/metagraphed/neuron-detail-card";
+import { NeuronHistoryChart } from "@/components/metagraphed/neuron-history-chart";
 import { useHashScroll } from "@/components/metagraphed/use-hash-scroll";
 import {
   subnetProfileQuery,
@@ -36,8 +41,9 @@ import {
   subnetEventsQuery,
   fixturesIndexQuery,
   lineageQuery,
+  agentCatalogDetailQuery,
 } from "@/lib/metagraphed/queries";
-import { isStaleFreshness, formatNumber } from "@/lib/metagraphed/format";
+import { isStaleFreshness, formatNumber, classNames } from "@/lib/metagraphed/format";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { TableState } from "@/components/metagraphed/table-state";
 import type {
@@ -47,7 +53,11 @@ import type {
   Candidate,
   SubnetProfile,
   FixtureIndexEntry,
+  AgentCatalogService,
+  AgentCatalogBlocker,
 } from "@/lib/metagraphed/types";
+import { HealthPill } from "@/components/metagraphed/chips";
+import { CopyableCode } from "@/components/metagraphed/copyable-code";
 import { IncidentTimeline } from "@/components/metagraphed/incident-timeline";
 import { TimeRangeProvider } from "@/components/metagraphed/analytics/time-range-context";
 import { SubnetMasthead } from "@/components/metagraphed/subnet-masthead";
@@ -62,13 +72,18 @@ import { SubnetCompareDrawer } from "@/components/metagraphed/subnet-compare-dra
 type SearchParams = {
   tab?: string;
   sev?: string;
+  uid?: number;
 };
 
 export const Route = createFileRoute("/subnets/$netuid")({
-  validateSearch: (s: Record<string, unknown>): SearchParams => ({
-    tab: typeof s.tab === "string" ? s.tab : undefined,
-    sev: typeof s.sev === "string" ? s.sev : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): SearchParams => {
+    const uidNum = Number(s.uid);
+    return {
+      tab: typeof s.tab === "string" ? s.tab : undefined,
+      sev: typeof s.sev === "string" ? s.sev : undefined,
+      uid: Number.isInteger(uidNum) && uidNum >= 0 ? uidNum : undefined,
+    };
+  },
   parseParams: ({ netuid }) => {
     const n = Number(netuid);
     if (!Number.isFinite(n) || n < 0) throw notFound();
@@ -122,7 +137,10 @@ export const Route = createFileRoute("/subnets/$netuid")({
 
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "metagraph", label: "Metagraph" },
+  { id: "validators", label: "Validators" },
   { id: "activity", label: "Activity" },
+  { id: "services", label: "Callable services" },
   { id: "surfaces", label: "Surfaces" },
   { id: "endpoints", label: "Endpoints" },
   { id: "schemas", label: "Schemas" },
@@ -141,6 +159,12 @@ const SECTION_TO_TAB: Record<string, string> = {
   reliability: "overview",
   lineage: "overview",
   evidence: "overview",
+  metagraph: "metagraph",
+  neuron: "metagraph",
+  concentration: "metagraph",
+  validators: "validators",
+  services: "services",
+  "agent-readiness": "services",
   surfaces: "surfaces",
   endpoints: "endpoints",
   "schema-drift": "schemas",
@@ -226,7 +250,10 @@ function ProfileShell({ netuid }: { netuid: number }) {
 
         <div className="mt-6 min-w-0 space-y-8">
           {tab === "overview" ? <OverviewPanel netuid={netuid} profile={profile} /> : null}
+          {tab === "metagraph" ? <MetagraphPanel netuid={netuid} /> : null}
+          {tab === "validators" ? <ValidatorsPanel netuid={netuid} /> : null}
           {tab === "activity" ? <ActivityPanel netuid={netuid} /> : null}
+          {tab === "services" ? <CallableServicesPanel netuid={netuid} /> : null}
           {tab === "surfaces" ? <SurfacesPanel netuid={netuid} /> : null}
           {tab === "endpoints" ? <EndpointsPanel netuid={netuid} /> : null}
           {tab === "schemas" ? <SchemasPanel netuid={netuid} /> : null}
@@ -510,6 +537,322 @@ function ActivityTableLoader({ netuid }: { netuid: number }) {
   );
 }
 
+/* ----------------------------- callable services (#9) ----------------------------- */
+
+// #9: the agent-catalog capability view for this subnet — every callable service
+// (subnet-api / openapi / sse / data-artifact) with its kind, base URL, auth,
+// live probe health, and copy-paste snippets. Fed by /api/v1/agent-catalog/{netuid}.
+function CallableServicesPanel({ netuid }: { netuid: number }) {
+  return (
+    <SectionAnchor
+      id="services"
+      title="Callable services"
+      subtitle="Public-safe, agent-callable interfaces with live health and ready-to-run snippets."
+      info="GET /api/v1/agent-catalog/{netuid}. Only public-safe callable surfaces (subnet-api, OpenAPI, SSE, data-artifact) appear here; health is probe-derived."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <CallableServicesList netuid={netuid} />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
+function serviceHealthState(status?: string): string {
+  if (status === "ok") return "ok";
+  if (status === "degraded" || status === "warn") return "warn";
+  if (status === "failed" || status === "down") return "down";
+  return "unknown";
+}
+
+function CallableServicesList({ netuid }: { netuid: number }) {
+  const { data } = useSuspenseQuery(agentCatalogDetailQuery(netuid));
+  const detail = data.data;
+  const services = (detail.services ?? []) as AgentCatalogService[];
+  const readiness = detail.agent_readiness;
+  const blockers = (readiness?.blockers ?? []) as AgentCatalogBlocker[];
+
+  if (services.length === 0) {
+    return (
+      <div className="space-y-3">
+        <AgentReadinessCard
+          tier={detail.readiness?.readiness_tier ?? detail.readiness_tier}
+          score={detail.integration_readiness}
+          status={readiness?.status}
+          blockers={blockers}
+        />
+        <TableState
+          variant="empty"
+          title="No callable service catalogued yet"
+          description="This subnet has no public-safe callable surface in the agent catalog. The readiness card above lists exactly what's blocking it — help close those gaps via the public registry repo."
+          generatedAt={detail.generated_at ?? data.meta?.generated_at}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <AgentReadinessCard
+        tier={detail.readiness?.readiness_tier ?? detail.readiness_tier}
+        score={detail.integration_readiness}
+        status={readiness?.status}
+        blockers={blockers}
+      />
+      <ul className="space-y-3">
+        {services.map((svc, i) => (
+          <ServiceCard key={svc.surface_id ?? `${svc.kind}-${i}`} service={svc} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const SERVICE_READINESS_TONE: Record<string, string> = {
+  buildable: "text-health-ok border-health-ok/40",
+  emerging: "text-accent-text border-accent/40",
+  "identity-only": "text-health-warn border-health-warn/40",
+  dormant: "text-ink-muted border-border",
+};
+
+function AgentReadinessCard({
+  tier,
+  score,
+  status,
+  blockers,
+}: {
+  tier?: string;
+  score?: number;
+  status?: string;
+  blockers: AgentCatalogBlocker[];
+}) {
+  const tone = SERVICE_READINESS_TONE[tier ?? ""] ?? "text-ink-muted border-border";
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <div className="mg-label">Integration readiness</div>
+          <div className="mt-0.5 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-semibold tabular-nums text-ink-strong">
+              {score != null ? score : "—"}
+            </span>
+            <span className="font-mono text-[10px] text-ink-muted">/ 100</span>
+          </div>
+        </div>
+        {tier ? (
+          <span
+            className={classNames(
+              "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest",
+              tone,
+            )}
+          >
+            {tier}
+          </span>
+        ) : null}
+        {status ? (
+          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-muted">
+            {status}
+          </span>
+        ) : null}
+      </div>
+      {blockers.length > 0 ? (
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="mg-label mb-1.5">What's blocking buildability</div>
+          <ul className="space-y-1.5">
+            {blockers.map((b, i) => (
+              <li key={b.code ?? i} className="text-[12px] leading-relaxed text-ink">
+                <span className="font-medium text-ink-strong">{b.message ?? b.code}</span>
+                {b.next_action ? <span className="text-ink-muted"> — {b.next_action}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ServiceCard({ service }: { service: AgentCatalogService }) {
+  const callable = service.eligibility?.callable;
+  const snippets = service.snippets;
+  return (
+    <li className="rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center rounded border border-accent/40 bg-primary-soft px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-accent-text">
+          {service.kind ?? "service"}
+        </span>
+        <span className="font-medium text-ink-strong truncate">
+          {service.capability ?? service.surface_id ?? "Service"}
+        </span>
+        {service.provider ? (
+          <span className="font-mono text-[10px] text-ink-muted">{service.provider}</span>
+        ) : null}
+        <span className="ml-auto inline-flex items-center gap-2">
+          <span
+            className={classNames(
+              "inline-flex items-center rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest",
+              service.auth_required
+                ? "border-health-warn/40 text-health-warn"
+                : "border-border text-ink-muted",
+            )}
+            title={
+              service.auth_schemes && service.auth_schemes.length
+                ? `Auth: ${service.auth_schemes.join(", ")}`
+                : undefined
+            }
+          >
+            {service.auth_required ? "auth" : "no auth"}
+          </span>
+          <HealthPill state={serviceHealthState(service.health?.status)} />
+        </span>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[11px] text-ink-muted">
+        {service.base_url ? (
+          <CopyableCode label="url" value={service.base_url} className="max-w-full" />
+        ) : null}
+        {service.health?.latency_ms != null ? (
+          <span className="tabular-nums">{service.health.latency_ms} ms</span>
+        ) : null}
+        {service.eligibility?.live_status ? <span>{service.eligibility.live_status}</span> : null}
+        {callable === false ? <span className="text-health-warn">not callable</span> : null}
+        {service.schema_url ? (
+          <ExternalLink href={service.schema_url} className="text-accent-text hover:underline">
+            schema
+          </ExternalLink>
+        ) : null}
+      </div>
+
+      {snippets && (snippets.curl || snippets.python || snippets.typescript) ? (
+        <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+          <div className="mg-label mb-1">Call it</div>
+          {snippets.curl ? (
+            <CopyableCode label="curl" value={snippets.curl} truncate={false} className="w-full" />
+          ) : null}
+          {snippets.python ? (
+            <CopyableCode
+              label="python"
+              value={snippets.python}
+              truncate={false}
+              className="w-full"
+            />
+          ) : null}
+          {snippets.typescript ? (
+            <CopyableCode
+              label="ts"
+              value={snippets.typescript}
+              truncate={false}
+              className="w-full"
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+/* ----------------------------- metagraph depth ----------------------------- */
+
+// Subnet economic depth (#1302+): the live metagraph snapshot — sortable neuron
+// table + stake distribution + validator-permit filter — with a per-UID
+// drill-in detail card (snapshot + history) driven by the `?uid=` search param.
+function MetagraphPanel({ netuid }: { netuid: number }) {
+  const { uid } = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  const select = (next: number | null) =>
+    navigate({
+      to: ".",
+      search: (prev: SearchParams) => ({ ...prev, uid: next ?? undefined }),
+      replace: true,
+    });
+
+  return (
+    <div className="space-y-6">
+      {uid != null ? (
+        <SectionAnchor
+          id="neuron"
+          title={`Neuron UID ${uid}`}
+          subtitle="Live snapshot and per-UID on-chain history for the selected neuron."
+          info="GET /api/v1/subnets/{netuid}/neurons/{uid} and /neurons/{uid}/history"
+          tone="accent"
+        >
+          <QueryErrorBoundary>
+            <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+              <NeuronDetailCard netuid={netuid} uid={uid} onClose={() => select(null)} />
+            </Suspense>
+          </QueryErrorBoundary>
+          <div className="mt-4">
+            <QueryErrorBoundary>
+              <NeuronHistoryChart netuid={netuid} uid={uid} />
+            </QueryErrorBoundary>
+          </div>
+        </SectionAnchor>
+      ) : null}
+
+      <SectionAnchor
+        id="metagraph"
+        title="Metagraph"
+        subtitle="Live neuron snapshot — stake, emission, rank, trust, consensus, and validator permits."
+        info="GET /api/v1/subnets/{netuid}/metagraph — the full neuron set from the latest metagraph snapshot. Select a UID to drill into its snapshot + history."
+      >
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+            <MetagraphTableLoader netuid={netuid} onSelect={(u) => select(u)} selectedUid={uid} />
+          </Suspense>
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="concentration"
+        title="Concentration"
+        subtitle="Stake- and emission-distribution metrics: Gini, HHI, Nakamoto coefficient, and top-percentile shares with daily drift."
+        info="GET /api/v1/subnets/{netuid}/concentration and /concentration/history — how concentrated stake and emission are across neurons."
+        tone="muted"
+      >
+        <QueryErrorBoundary>
+          <Suspense fallback={<Skeleton className="h-48 w-full" />}>
+            <ConcentrationLoader netuid={netuid} />
+          </Suspense>
+        </QueryErrorBoundary>
+      </SectionAnchor>
+    </div>
+  );
+}
+
+// Top-validator stake distribution + leaderboard. Rows drill into the same
+// per-UID neuron view (switches to the Metagraph tab where the detail renders).
+function ValidatorsPanel({ netuid }: { netuid: number }) {
+  const { uid } = Route.useSearch();
+  const navigate = Route.useNavigate();
+
+  return (
+    <SectionAnchor
+      id="validators"
+      title="Validators"
+      subtitle="Active validator set ranked by stake — emission, trust, and consensus."
+      info="GET /api/v1/subnets/{netuid}/validators — the permitted, stake-ranked validator set from the latest snapshot. Select a UID to open it in the Metagraph tab."
+    >
+      <QueryErrorBoundary>
+        <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+          <ValidatorsTableLoader
+            netuid={netuid}
+            selectedUid={uid}
+            onSelect={(u) =>
+              navigate({
+                to: ".",
+                search: (prev: SearchParams) => ({ ...prev, tab: "metagraph", uid: u }),
+                replace: true,
+              })
+            }
+          />
+        </Suspense>
+      </QueryErrorBoundary>
+    </SectionAnchor>
+  );
+}
+
 function EndpointsPanel({ netuid }: { netuid: number }) {
   return (
     <SectionAnchor
@@ -628,6 +971,7 @@ function ApiPanel({ netuid }: { netuid: number }) {
     { label: "endpoints", path: `/api/v1/subnets/${netuid}/endpoints` },
     { label: "candidates", path: `/api/v1/subnets/${netuid}/candidates` },
     { label: "health", path: `/api/v1/subnets/${netuid}/health` },
+    { label: "agent-catalog", path: `/api/v1/agent-catalog/${netuid}` },
     { label: "artifact", path: `/metagraph/subnets/${netuid}.json` },
   ];
   return (
