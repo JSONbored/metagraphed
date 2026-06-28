@@ -1,0 +1,119 @@
+// Account counterparty / fund-flow analytics: who one account transacts with,
+// aggregated from the account_events Transfer tier (hotkey = from, coldkey = to,
+// amount_tao). Pure + exported for unit tests; the Worker does the D1 read +
+// envelope. Null-safe: no transfers → a schema-stable empty list (never throws),
+// matching the live account tiers the entity handlers already own.
+
+// The account_events columns the counterparties handler reads — its D1 read
+// contract (mirrors BLOCK_READ_COLUMNS / TURNOVER_READ_COLUMNS). A bare coldkey
+// column name is public metagraph vocabulary, not a secret; kept in src/ next to
+// its consumer so the Worker handler stays a thin SELECT.
+export const COUNTERPARTIES_READ_COLUMNS =
+  "hotkey, coldkey, amount_tao, block_number";
+
+// Bound the transfer scan so a hot wallet can't force an unbounded read. Rows are
+// read newest-first; the summary flags when the cap truncated older history.
+export const COUNTERPARTIES_SCAN_CAP = 5000;
+
+// Coerce one raw cell to a finite number (or 0) for summation.
+function numeric(value) {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Round a TAO sum to rao precision so accumulated float error never leaks a long
+// tail into the JSON.
+function round(value, dp = 9) {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** dp;
+  return Math.round(value * factor) / factor;
+}
+
+// Aggregate an account's Transfer rows into per-counterparty fund flow: for each
+// transfer the account is one side of, attribute the amount to the OTHER party as
+// sent (account = from) or received (account = to). Returns the top-`limit`
+// counterparties by total volume (sent + received), each with net flow, count, and
+// last block, plus a summary over the full scanned set. Null-safe.
+export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  const byParty = new Map();
+  let totalSent = 0;
+  let totalReceived = 0;
+  for (const row of list) {
+    const from = row?.hotkey;
+    const to = row?.coldkey;
+    const amount = numeric(row?.amount_tao);
+    const isSender = from === ss58;
+    const isReceiver = to === ss58;
+    // The counterparty is the side that ISN'T this account. Skip self-transfers
+    // (both sides the account) and rows missing the other side's address.
+    let party = null;
+    let sent = 0;
+    let received = 0;
+    if (isSender && !isReceiver && typeof to === "string" && to.length > 0) {
+      party = to;
+      sent = amount;
+    } else if (
+      isReceiver &&
+      !isSender &&
+      typeof from === "string" &&
+      from.length > 0
+    ) {
+      party = from;
+      received = amount;
+    }
+    if (party == null) continue;
+    totalSent += sent;
+    totalReceived += received;
+    const entry = byParty.get(party) ?? {
+      address: party,
+      sent: 0,
+      received: 0,
+      count: 0,
+      lastBlock: null,
+    };
+    entry.sent += sent;
+    entry.received += received;
+    entry.count += 1;
+    // `row` is non-null here (it produced a party), so no optional chain needed.
+    const block = row.block_number;
+    if (
+      typeof block === "number" &&
+      (entry.lastBlock == null || block > entry.lastBlock)
+    ) {
+      entry.lastBlock = block;
+    }
+    byParty.set(party, entry);
+  }
+
+  const ranked = [...byParty.values()]
+    .map((entry) => ({
+      address: entry.address,
+      sent_tao: round(entry.sent),
+      received_tao: round(entry.received),
+      net_tao: round(entry.received - entry.sent),
+      transfer_count: entry.count,
+      last_block: entry.lastBlock,
+    }))
+    .sort((a, b) => {
+      const volumeDelta =
+        b.sent_tao + b.received_tao - (a.sent_tao + a.received_tao);
+      if (volumeDelta !== 0) return volumeDelta;
+      const blockDelta = (b.last_block ?? 0) - (a.last_block ?? 0);
+      if (blockDelta !== 0) return blockDelta;
+      // Counterparties are distinct Map keys, so addresses are never equal here.
+      return a.address < b.address ? -1 : 1;
+    });
+
+  const cap = Math.max(1, Math.min(limit, 100));
+  return {
+    schema_version: 1,
+    ss58,
+    counterparty_count: byParty.size,
+    transfers_scanned: list.length,
+    scan_capped: list.length >= COUNTERPARTIES_SCAN_CAP,
+    total_sent_tao: round(totalSent),
+    total_received_tao: round(totalReceived),
+    counterparties: ranked.slice(0, cap),
+  };
+}

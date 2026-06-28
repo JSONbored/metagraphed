@@ -335,6 +335,29 @@ assert.ok(
 const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
 assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 
+// Account tools are D1-backed too; the cold env degrades each to its
+// schema-stable empty payload (validated against the declared outputSchema).
+const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const account = await callOk("get_account", { ss58: SS58 });
+assert.ok(
+  Array.isArray(account.registrations) && Array.isArray(account.recent_events),
+  "get_account must return registrations[] + recent_events[]",
+);
+const accountEvents = await callOk("get_account_events", {
+  ss58: SS58,
+  kind: "StakeAdded",
+  limit: 50,
+});
+assert.ok(
+  Array.isArray(accountEvents.events),
+  "get_account_events must return events[]",
+);
+const accountSubnets = await callOk("get_account_subnets", { ss58: SS58 });
+assert.ok(
+  Array.isArray(accountSubnets.subnets),
+  "get_account_subnets must return subnets[]",
+);
+
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);
 if (schemaService) {
@@ -363,6 +386,16 @@ assert.equal(
 );
 const askCold = await call("ask", { question: "Which subnet exposes an API?" });
 assert.equal(askCold.isError, true, "ask must isError without the AI layer");
+
+// get_chain_activity reads the all-events tier through the DATA_API service
+// binding, absent in this cold env. It must return a clean isError result (the
+// "tier unavailable" guard), never throw.
+const activityCold = await call("get_chain_activity", { blocks: 500 });
+assert.equal(
+  activityCold.isError,
+  true,
+  "get_chain_activity must isError without the DATA_API binding",
+);
 
 // --- Negative paths --------------------------------------------------------
 

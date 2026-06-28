@@ -77,3 +77,45 @@ export async function verifySurface(
     probed_at: probe.last_checked || probe.verified_at || null,
   };
 }
+
+export const VERIFY_CACHE_TTL_SECONDS = 60;
+
+export function verifyCacheRequest(surface) {
+  const canonicalSurfaceId = surface.surface_key || surface.surface_id;
+  return new Request(
+    `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
+  );
+}
+
+// Shared 60s Cache-API layer for REST verify and MCP verify_integration (#358).
+export async function verifySurfaceWithCache(
+  surface,
+  probeOptions = {},
+  { cache = globalThis.caches?.default ?? null, waitUntil = null, prober } = {},
+) {
+  const cacheKey = cache ? verifyCacheRequest(surface) : null;
+  if (cache && cacheKey) {
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const cached = await hit.json();
+      return { ...cached, from_cache: true };
+    }
+  }
+
+  const result = await verifySurface(surface, probeOptions, prober);
+  if (cache && cacheKey) {
+    const stored = new Response(JSON.stringify(result), {
+      headers: {
+        "content-type": "application/json",
+        "cache-control": `public, s-maxage=${VERIFY_CACHE_TTL_SECONDS}`,
+      },
+    });
+    const put = cache.put(cacheKey, stored);
+    if (typeof waitUntil === "function") {
+      waitUntil(put);
+    } else {
+      await put;
+    }
+  }
+  return { ...result, from_cache: false };
+}

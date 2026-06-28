@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 14,
-  "name": "Cacheon",
-  "slug": "cacheon",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -12,113 +7,186 @@
     "official-source-repo",
     "official-website"
   ],
-  "website_url": "https://cacheon.ai/",
-  "docs_url": "https://cacheon.ai/docs",
-  "dashboard_url": null,
-  "source_repo": "https://github.com/latent-to/cacheon",
-  "notes": "Reviewed overlay for SN14 Cacheon. The public docs include miner API contract documentation for OpenAI-compatible inference endpoints, but no shared hosted public subnet API endpoint is promoted from that contract.",
+  "contact": "hello@cacheon.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:45:00.000Z",
-    "verified_at": "2026-06-08T15:45:00.000Z",
-    "source_count": 7,
     "gap_notes": [
       "Official website, docs, source repository, and miner API contract documentation are verified live.",
       "The miner API contract describes required miner-hosted endpoints rather than a shared hosted public subnet API endpoint.",
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:45:00.000Z",
+    "source_count": 7,
+    "verified_at": "2026-06-08T15:45:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": "https://cacheon.ai/docs",
+  "name": "Cacheon",
+  "netuid": 14,
+  "notes": "Reviewed overlay for SN14 Cacheon. The public docs include miner API contract documentation for OpenAI-compatible inference endpoints, but no shared hosted public subnet API endpoint is promoted from that contract.",
+  "schema_version": 1,
+  "slug": "cacheon",
+  "social": {
+    "x": "https://x.com/cacheon_ai"
+  },
+  "source_repo": "https://github.com/latent-to/cacheon",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-14-cacheon-website",
-      "name": "Cacheon website",
-      "kind": "website",
-      "url": "https://cacheon.ai/",
-      "provider": "cacheon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-14-cacheon-website",
+      "kind": "website",
+      "name": "Cacheon website",
+      "notes": "Official Cacheon website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/",
         "https://github.com/latent-to/cacheon"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Cacheon website."
+      "url": "https://cacheon.ai/"
     },
     {
-      "id": "sn-14-cacheon-docs",
-      "name": "Cacheon docs",
-      "kind": "docs",
-      "url": "https://cacheon.ai/docs",
-      "provider": "cacheon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-14-cacheon-docs",
+      "kind": "docs",
+      "name": "Cacheon docs",
+      "notes": "Official Cacheon documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/docs",
         "https://github.com/latent-to/cacheon"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Cacheon documentation."
+      "url": "https://cacheon.ai/docs"
     },
     {
-      "id": "sn-14-cacheon-source-repo",
-      "name": "Cacheon source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/latent-to/cacheon",
-      "provider": "cacheon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-14-cacheon-source-repo",
+      "kind": "source-repo",
+      "name": "Cacheon source repository",
+      "notes": "Public Cacheon source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
         "https://github.com/latent-to/cacheon",
         "https://cacheon.ai/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Cacheon source repository."
+      "url": "https://github.com/latent-to/cacheon"
     },
     {
-      "id": "sn-14-cacheon-api-contract-docs",
-      "name": "Cacheon miner API contract docs",
-      "kind": "docs",
-      "url": "https://cacheon.ai/docs/miners/api-contract",
-      "provider": "cacheon",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-14-cacheon-api-contract-docs",
+      "kind": "docs",
+      "name": "Cacheon miner API contract docs",
+      "notes": "Official miner API contract documentation for Cacheon. This is documentation for miner-hosted OpenAI-compatible endpoints, not a promoted shared public API endpoint.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
       "public_safe": true,
       "source_urls": [
         "https://cacheon.ai/docs/miners/api-contract",
         "https://github.com/latent-to/cacheon"
       ],
+      "url": "https://cacheon.ai/docs/miners/api-contract"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-data-artifact",
+      "kind": "data-artifact",
+      "name": "Cacheon community data-artifact",
       "probe": {
         "enabled": true,
+        "expect": "any",
         "method": "HEAD",
-        "expect": "html",
         "timeout_ms": 10000
       },
-      "notes": "Official miner API contract documentation for Cacheon. This is documentation for miner-hosted OpenAI-compatible endpoints, not a promoted shared public API endpoint."
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "url": "https://api.cacheon.ai/api/container-logs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-openapi",
+      "kind": "openapi",
+      "name": "Cacheon community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.cacheon.ai/openapi.json",
+      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "url": "https://api.cacheon.ai/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-14-cacheon-subnet-api",
+      "kind": "subnet-api",
+      "name": "Cacheon community subnet-api",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "cacheon",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://cacheon.ai/docs/miners/api-contract"],
+      "url": "https://api.cacheon.ai/api/status"
     }
   ],
-  "social": {
-    "x": "https://x.com/cacheon_ai"
-  },
-  "contact": "hello@cacheon.ai"
+  "website_url": "https://cacheon.ai/"
 }

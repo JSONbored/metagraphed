@@ -22,7 +22,34 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
-const env = createLocalArtifactEnv();
+// The chain-events routes proxy to the Postgres-backed data Worker (DATA_API
+// service binding). It's a separate Worker not present in this harness, so mock it
+// with the bare response shapes it serves (ADR 0013) — api.mjs rewraps them in the
+// canonical envelope, which is what the checks below assert.
+const env = createLocalArtifactEnv({
+  DATA_API: {
+    async fetch(request) {
+      const pathname = new URL(request.url).pathname;
+      const headers = { "content-type": "application/json" };
+      if (pathname === "/api/v1/chain-events") {
+        return new Response(
+          JSON.stringify({ count: 0, next_before: null, events: [] }),
+          { status: 200, headers },
+        );
+      }
+      if (pathname === "/api/v1/chain-events/stats") {
+        return new Response(
+          JSON.stringify({ window_blocks: 1000, groups: 0, activity: [] }),
+          { status: 200, headers },
+        );
+      }
+      return new Response(
+        JSON.stringify({ block_number: 100, count: 0, events: [] }),
+        { status: 200, headers },
+      );
+    },
+  },
+});
 // health/latest.json is no longer generated (live-only health). Daily
 // health-history snapshots are R2-only locally, so validate against the newest
 // staged/public snapshot instead of inferring a date from an unrelated artifact.
@@ -79,6 +106,36 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/concentration",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.neuron_count, "number");
+      // Cold D1 → schema-stable null blocks; with rows → metric objects.
+      assert.ok(
+        body.data.stake === null || typeof body.data.stake === "object",
+      );
+      assert.ok(
+        body.data.emission === null || typeof body.data.emission === "object",
+      );
+    },
+  ],
+  [
+    "/api/v1/subnets/7/concentration/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+    },
+  ],
+  [
+    "/api/v1/subnets/7/turnover?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.comparable, "boolean");
+      assert.equal(typeof body.data.validators_entered, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -120,6 +177,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/events",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
     (body) => {
       assert.equal(
@@ -138,10 +203,155 @@ const checks = [
     },
   ],
   [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/transfers",
+    (body) => {
+      assert.equal(Array.isArray(body.data.transfers), true);
+      assert.equal(typeof body.data.transfer_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties",
+    (body) => {
+      assert.equal(Array.isArray(body.data.counterparties), true);
+      assert.equal(typeof body.data.counterparty_count, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/subnets",
     (body) => {
       assert.equal(Array.isArray(body.data.subnets), true);
       assert.equal(typeof body.data.subnet_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/balance",
+    (body) => {
+      assert.equal(
+        body.data.ss58,
+        "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+      );
+      assert.equal("balance_tao" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/blocks",
+    (body) => {
+      assert.equal(Array.isArray(body.data.blocks), true);
+      assert.equal(typeof body.data.block_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal("block" in body.data, true);
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000/extrinsics",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/1000000/events",
+    (body) => {
+      assert.equal(body.data.ref, "1000000");
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.event_count, "number");
+    },
+  ],
+  [
+    "/api/v1/extrinsics",
+    (body) => {
+      assert.equal(Array.isArray(body.data.extrinsics), true);
+      assert.equal(typeof body.data.extrinsic_count, "number");
+    },
+  ],
+  [
+    `/api/v1/extrinsics/0x${"a".repeat(64)}`,
+    (body) => {
+      assert.equal(body.data.ref, `0x${"a".repeat(64)}`);
+      assert.equal("extrinsic" in body.data, true);
+    },
+  ],
+  [
+    // Postgres-backed all-events tier (ADR 0013): DATA_API is mocked above; api.mjs
+    // rewraps the bare body in the canonical envelope, so the data shape is asserted.
+    "/api/v1/chain-events",
+    (body) => {
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.count, "number");
+    },
+  ],
+  [
+    "/api/v1/chain-events/stats",
+    (body) => {
+      assert.equal(Array.isArray(body.data.activity), true);
+      assert.equal(typeof body.data.window_blocks, "number");
+      assert.equal(typeof body.data.groups, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/100/chain-events",
+    (body) => {
+      assert.equal(Array.isArray(body.data.events), true);
+      assert.equal(typeof body.data.count, "number");
+    },
+  ],
+  [
+    "/api/v1/chain/activity",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+      assert.equal(typeof body.data.window, "string");
+    },
+  ],
+  [
+    "/api/v1/chain/calls",
+    (body) => {
+      assert.equal(Array.isArray(body.data.calls), true);
+      assert.equal(typeof body.data.total_extrinsics, "number");
+      assert.equal(typeof body.data.group_by, "string");
+    },
+  ],
+  [
+    "/api/v1/chain/signers",
+    (body) => {
+      assert.equal(Array.isArray(body.data.signers), true);
+      assert.equal(typeof body.data.signer_count, "number");
+    },
+  ],
+  [
+    "/api/v1/chain/fees",
+    (body) => {
+      assert.equal(Array.isArray(body.data.daily), true);
+      assert.equal(Array.isArray(body.data.top_fee_payers), true);
+      assert.equal(typeof body.data.day_count, "number");
+    },
+  ],
+  [
+    "/api/v1/economics/trends",
+    (body) => {
+      assert.equal(Array.isArray(body.data.days), true);
+      assert.equal(typeof body.data.day_count, "number");
+      assert.equal(typeof body.data.window, "string");
     },
   ],
   [
@@ -157,6 +367,15 @@ const checks = [
     (body) => {
       assert.equal(typeof body.data.boards, "object");
       assert.equal(Array.isArray(body.data.boards["most-complete"]), true);
+    },
+  ],
+  [
+    "/api/v1/compare?netuids=1",
+    (body) => {
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(body.data.subnets.length, 1);
+      assert.equal(body.data.subnets[0].netuid, 1);
+      assert.equal(Array.isArray(body.data.requested_netuids), true);
     },
   ],
   [
@@ -522,6 +741,15 @@ const checks = [
   [
     "/api/v1/search?q=allways",
     (body) => assert.equal(body.data.documents.length > 0, true),
+  ],
+  [
+    "/api/v1/search-index?q=allways",
+    (body) =>
+      assert.equal(
+        body.data.documents.length > 0 &&
+          body.data.documents.every((document) => !("tokens" in document)),
+        true,
+      ),
   ],
   [
     "/api/v1/contracts",

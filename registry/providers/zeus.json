@@ -1,0 +1,13 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/Orpheus-AI/Zeus",
+  "id": "zeus",
+  "kind": "subnet-team",
+  "name": "Zeus",
+  "public_notes": "Subnet 18 (Zeus) team profile — pushing weather forecasts beyond state-of-the-art. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+  "schema_version": 1,
+  "social": {
+    "x": "https://x.com/zeussubnet"
+  },
+  "website_url": "https://www.zeussubnet.com/"
+}

@@ -141,6 +141,54 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.operational_observed_at, "r");
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
+
+  test("a failing endpoint's observed_at is the sweep time, not its stale last_ok", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [{ id: "a", status: "ok", health_source: "probe-derived" }],
+    };
+    const live = {
+      last_run_at: "2026-06-11T00:00:00Z",
+      endpoints: [
+        {
+          id: "a",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          // last successful probe was hours ago; the endpoint is failing now.
+          last_ok: "2026-06-10T08:00:00Z",
+        },
+      ],
+    };
+    const a = mergeRpcEndpoints(stat, live).endpoints.find((e) => e.id === "a");
+    // health_stale:false claims a fresh observation, so observed_at must be the
+    // run time — not the stale last-success timestamp.
+    assert.equal(a.health_stale, false);
+    assert.equal(a.observed_at, "2026-06-11T00:00:00Z");
+  });
+
+  test("observed_at falls back to last_ok, then null, when the run time is absent", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [
+        { id: "a", status: "ok" },
+        { id: "b", status: "ok" },
+      ],
+    };
+    // No last_run_at on the pool → fall back to the endpoint's last_ok, then null.
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", last_ok: "2026-06-10T08:00:00Z" },
+        { id: "b", status: "failed" },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live).endpoints;
+    assert.equal(
+      merged.find((e) => e.id === "a").observed_at,
+      "2026-06-10T08:00:00Z",
+    );
+    assert.equal(merged.find((e) => e.id === "b").observed_at, null);
+  });
 });
 
 describe("overlayRpcPoolEligibility", () => {
@@ -236,6 +284,25 @@ describe("formatTrends", () => {
     assert.equal(out.windows["7d"].surfaces[0].avg_latency_ms, 50);
     assert.equal(out.windows["30d"].uptime_ratio, 0.95);
     assert.equal(out.netuid, 7);
+  });
+  test("clamps a sub-perfect uptime_ratio that would round up to 1", () => {
+    const out = formatTrends({
+      netuid: 7,
+      observedAt: "r",
+      windows: {
+        "7d": [{ surface_id: "a", total: 25000, ok_count: 24999 }],
+      },
+    });
+    assert.equal(out.windows["7d"].uptime_ratio, 0.9999);
+    assert.equal(out.windows["7d"].surfaces[0].uptime_ratio, 0.9999);
+    const perfect = formatTrends({
+      netuid: 7,
+      observedAt: "r",
+      windows: {
+        "7d": [{ surface_id: "a", total: 25000, ok_count: 25000 }],
+      },
+    });
+    assert.equal(perfect.windows["7d"].uptime_ratio, 1);
   });
   test("empty windows yield null ratios (D1 cold)", () => {
     const out = formatTrends({
@@ -342,14 +409,17 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.failed_count, 2);
   });
-  test("unrecognized status key initializes its own count (|| 0 branch)", () => {
-    // A status outside the known keys exercises the `counts[row.status] || 0`
-    // default-init branch in summarizeRows. With no failed/degraded counts,
-    // rollupStatus reports "ok".
+  test("unrecognized status values roll up as unknown, not ok", () => {
     const out = summarizeRows([row("weird"), row("weird")]);
-    assert.equal(out.status, "ok");
-    assert.equal(out.failed_count, 0);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
     assert.equal(out.ok_count, 0);
+    assert.equal(out.failed_count, 0);
+  });
+  test("null or missing status is treated as unknown", () => {
+    const out = summarizeRows([row(null), { status: undefined }]);
+    assert.equal(out.status, "unknown");
+    assert.equal(out.unknown_count, 2);
   });
   test("aggregates latency (rounded), latest last_checked/last_ok", () => {
     const out = summarizeRows([
@@ -884,6 +954,23 @@ function d1With(rows) {
 }
 const req = (path) => new Request(`https://api.metagraph.sh${path}`);
 
+// Minimal R2 archive binding that serves a single static rpc/pools.json fixture
+// (the artifact is R2-only, so there is nothing on disk for createLocalArtifactEnv
+// to read). Keyed on `latest/rpc/pools.json`, mirroring latestR2Key().
+function rpcPoolsArchiveFixture(artifact) {
+  return {
+    async get(key) {
+      if (String(key).replace(/^latest\//, "") !== "rpc/pools.json")
+        return null;
+      return {
+        async json() {
+          return artifact;
+        },
+      };
+    },
+  };
+}
+
 describe("worker live health serving", () => {
   test("/api/v1/health serves the live operational summary from KV", async () => {
     const env = createLocalArtifactEnv({
@@ -982,18 +1069,25 @@ describe("worker live health serving", () => {
   });
 
   test("/api/v1/health/trends queries compact all-subnet D1 rows", async () => {
+    // Date the rows relative to "now" so they always fall inside the live 7d
+    // window the handler derives from Date.now() (`day >= now − 7d`). A fixed
+    // calendar date ages out of the window and turns this into a time-bomb that
+    // fails repo-wide the day the clock passes it.
+    const recentDay = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: d1With([
         {
           netuid: 8,
-          date: "2026-06-17",
+          date: recentDay,
           total: 10,
           ok_count: 8,
           avg_latency_ms: 30,
         },
         {
           netuid: 7,
-          date: "2026-06-17",
+          date: recentDay,
           total: 5,
           ok_count: 5,
           avg_latency_ms: 20,
@@ -1017,6 +1111,74 @@ describe("worker live health serving", () => {
       body.data.windows["7d"].subnets[1].points[0].uptime_ratio,
       0.8,
     );
+  });
+
+  test("/api/v1/rpc/pools overlays live KV health so a dead upstream is marked ineligible", async () => {
+    // The static R2 artifact still lists `dead` as pool_eligible (it was healthy
+    // at build time). The wss-lb / proxy route off this served body, so without
+    // the overlay they would keep routing to a node that has been down for ~30 min.
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: rpcPoolsArchiveFixture({
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        source: "rpc-endpoint-probes",
+        pools: [
+          {
+            id: "finney-rpc",
+            kind: "subtensor-rpc",
+            endpoints: [
+              { id: "live", pool_eligible: true, status: "ok" },
+              { id: "dead", pool_eligible: true, status: "ok" },
+            ],
+          },
+        ],
+      }),
+      METAGRAPH_CONTROL: kvWith({
+        "health:rpc-pool": {
+          schema_version: 1,
+          last_run_at: FRESH_RUN,
+          endpoints: [
+            { id: "live", status: "ok", consecutive_failures: 0 },
+            // Sustained-down (≥2 consecutive failed prober runs) → drop from pool.
+            { id: "dead", status: "failed", consecutive_failures: 3 },
+          ],
+        },
+      }),
+    });
+    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.meta.source, "live-cron-prober");
+    assert.equal(body.meta.operational_observed_at, FRESH_RUN);
+    const endpoints = body.data.pools[0].endpoints;
+    const live = endpoints.find((e) => e.id === "live");
+    const dead = endpoints.find((e) => e.id === "dead");
+    assert.equal(live.pool_eligible, true);
+    assert.equal(dead.pool_eligible, false);
+    assert.equal(dead.status, "failed");
+    assert.equal(dead.health_source, "live-cron-prober");
+  });
+
+  test("/api/v1/rpc/pools serves the static artifact when the live KV snapshot is cold", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: rpcPoolsArchiveFixture({
+        schema_version: 1,
+        generated_at: "1970-01-01T00:00:00.000Z",
+        source: "rpc-endpoint-probes",
+        pools: [
+          {
+            id: "finney-rpc",
+            endpoints: [{ id: "dead", pool_eligible: true, status: "ok" }],
+          },
+        ],
+      }),
+      // No health:rpc-pool entry → cold live snapshot → static passthrough.
+      METAGRAPH_CONTROL: kvWith({}),
+    });
+    const res = await handleRequest(req("/api/v1/rpc/pools"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.pools[0].endpoints[0].pool_eligible, true);
   });
 });
 
@@ -1104,6 +1266,43 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.deepEqual(observedCutoffs, [1_699_999_100_000]);
     // ms → ISO conversion for D1 timestamps.
     assert.match(live.surfaces[0].last_checked, /^20\d\d-/);
+  });
+
+  test("D1 fallback folds unrecognized surface status into unknown in global status_counts", async () => {
+    const now = 1_700_000_600_000;
+    const db = {
+      prepare: () => ({
+        bind: () => ({
+          all: async () => ({
+            results: [
+              {
+                surface_id: "7:subnet-api:x",
+                surface_key: "srf-d1fallback0000",
+                netuid: 7,
+                kind: "subnet-api",
+                provider: "x",
+                url: "https://x",
+                status: "throttled",
+                classification: "rate-limited",
+                latency_ms: null,
+                status_code: 429,
+                last_checked: 1_700_000_000_000,
+                last_ok: null,
+              },
+            ],
+          }),
+        }),
+      }),
+    };
+    const live = await resolveLiveHealth({
+      readHealthKv: async () => null,
+      env: {},
+      db,
+      now: () => now,
+    });
+    assert.equal(live.summary.status_counts.unknown, 1);
+    assert.equal(live.summary.status_counts.throttled, undefined);
+    assert.equal(live.summary.surface_count, 1);
   });
 
   test("does not return stale D1-only surface_status rows", async () => {
@@ -1388,6 +1587,45 @@ describe("composed-artifact health overlays", () => {
     assert.equal(out.operational_observed_at, live.last_run_at);
     assert.equal(out.health_source, "live-cron-prober");
     assert.deepEqual(out.summary.by_status, { failed: 1, unknown: 1 });
+    assert.equal(out.summary.pool_eligible_count, 0);
+  });
+
+  test("overlayArtifactEndpoints folds unrecognized live status into unknown in by_status", () => {
+    const live = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      health_source: "live-cron-prober",
+      surfaces: [
+        {
+          surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
+          netuid: 7,
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          last_checked: "2026-06-13T00:00:00.000Z",
+          last_ok: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const artifact = {
+      summary: { by_status: { ok: 1 }, pool_eligible_count: 1 },
+      endpoints: [
+        {
+          surface_id: "7:subnet-api:x",
+          surface_key: "srf-subnetapix0000",
+          url: "https://x",
+          status: "ok",
+          health_source: "probe-derived",
+          health_stale: false,
+          observed_at: "BUILD",
+          pool_eligible: true,
+        },
+      ],
+    };
+    const out = overlayArtifactEndpoints(artifact, live);
+    assert.equal(out.endpoints[0].status, "unknown");
+    assert.deepEqual(out.summary.by_status, { unknown: 1 });
+    assert.equal(out.summary.by_status.throttled, undefined);
     assert.equal(out.summary.pool_eligible_count, 0);
   });
 
@@ -2032,6 +2270,28 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.observed_at, ts);
   });
 
+  test("clamps per-day uptime_ratio that SQL ROUND rounds up to 1 for sub-perfect days", () => {
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 25000,
+          ok_count: 24999,
+          uptime_ratio: 1, // SQL ROUND(24999/25000, 4) = 1.0
+          avg_latency_ms: 50,
+          status: "degraded",
+        },
+      ],
+    });
+    // per-day series must not show 1 when samples < ok_count
+    assert.equal(out.surfaces[0].days[0].uptime_ratio, 0.9999);
+    // window-wide ratio must also be clamped
+    assert.equal(out.surfaces[0].uptime_ratio, 0.9999);
+  });
+
   test("handles null ratios/latency, missing status, zero samples, and no window", () => {
     const out = formatUptime({
       netuid: 7,
@@ -2154,6 +2414,40 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(out.surfaces.b.grade, "F");
   });
 
+  test("aggregates a renamed surface as ONE bucket via stable surface_key", () => {
+    // The same physical surface across a rename: one stable surface_key, two
+    // different surface_id values on either side of the rename boundary. It must
+    // NOT split into two surfaces (which would inflate surface_count and
+    // fragment the per-surface score).
+    const out = computeReliability(
+      [
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-12",
+          samples: 100,
+          ok_count: 80,
+          avg_latency_ms: 100,
+        },
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-13",
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+        },
+      ],
+      { window: "30d", now: "2026-06-13T00:00:00.000Z" },
+    );
+    assert.equal(out.subnet.surface_count, 1);
+    assert.equal(out.subnet.sample_count, 200);
+    // surfaces map is keyed by the stable surface_key, not either surface_id.
+    assert.deepEqual(Object.keys(out.surfaces), ["srf-stableapi0000"]);
+    assert.equal(out.surfaces["srf-stableapi0000"].uptime_ratio, 0.9);
+    assert.equal(out.surfaces["7:api:old"], undefined);
+  });
+
   test("weights latency by healthy readings and reports latency_sample_count", () => {
     const out = computeReliability(
       [
@@ -2220,6 +2514,29 @@ describe("computeReliability (score from uptime history)", () => {
     assert.equal(
       scoreFromStats({ samples: 0, okCount: 0, avgLatencyMs: 10 }),
       null,
+    );
+  });
+
+  test("a sub-perfect ratio that rounds to 1 is not reported as a perfect 1", () => {
+    // 24999/25000 = 0.99996; (0.99996).toFixed(4) === "1.0000", which would
+    // otherwise overstate a 99.996%-uptime subnet as a perfect-uptime "100%"
+    // badge. Clamp the displayed ratio to the largest 4-decimal value below 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 24999, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9999,
+    );
+    // a genuine okCount === samples ratio still reports an exact 1.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .uptime_ratio,
+      1,
+    );
+    // an ordinary sub-1 ratio is unchanged (rounded to 4 decimals as before).
+    assert.equal(
+      scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
+        .uptime_ratio,
+      0.9983,
     );
   });
 
@@ -2298,6 +2615,37 @@ describe("loadSubnetReliability (D1-backed)", () => {
     assert.equal(out.surface_count, 2);
     assert.equal(out.uptime_ratio, 0.75); // (720+360)/1440
     assert.equal(out.computed_at, "2026-06-13T00:00:00.000Z");
+  });
+
+  test("counts a renamed surface once across the rename boundary", async () => {
+    // The query GROUP BYs COALESCE(surface_key, surface_id) per day and emits
+    // MAX(surface_id) per group, so a surface renamed mid-window yields rows with
+    // ONE stable surface_key but a different surface_id on each side of the
+    // rename. surface_count must stay 1 (not inflate to 2).
+    const out = await loadSubnetReliability({
+      db: uptimeDb([
+        {
+          surface_id: "7:api:new",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-13",
+          samples: 720,
+          ok_count: 720,
+          avg_latency_ms: 120,
+        },
+        {
+          surface_id: "7:api:old",
+          surface_key: "srf-stableapi0000",
+          day: "2026-06-12",
+          samples: 720,
+          ok_count: 540,
+          avg_latency_ms: 120,
+        },
+      ]),
+      netuid: 7,
+      now: "2026-06-14T00:00:00.000Z",
+    });
+    assert.equal(out.surface_count, 1);
+    assert.equal(out.uptime_ratio, 0.875); // (720+540)/1440
   });
 
   test("returns null (not throw) when the query fails", async () => {

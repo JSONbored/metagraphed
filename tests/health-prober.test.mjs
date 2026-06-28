@@ -94,6 +94,15 @@ describe("workerResolvedUrlSafetyGuard (DNS-aware SSRF)", () => {
     assert.equal(await guard("https://v6.example.com/x"), true);
   });
 
+  test("blocks an fec0::/10 site-local AAAA answer (issue #1538)", async () => {
+    for (const aaaa of ["fec0::1", "fed0:1:2::3", "feff::1"]) {
+      const guard = workerResolvedUrlSafetyGuard({
+        fetchImpl: dohFetch({ "evil.example.com": { AAAA: [aaaa] } }),
+      });
+      assert.equal(await guard("https://evil.example.com/x"), true, aaaa);
+    }
+  });
+
   test("blocks an AAAA answer that tunnels a private v4 (mapped/6to4/NAT64)", async () => {
     // A rebinding answer can hide a loopback/link-local target inside an IPv6
     // literal; the guard must decode the embedded v4 and block it.
@@ -372,6 +381,48 @@ describe("runHealthProber", () => {
     const meta = kv.json(KV_HEALTH_META);
     assert.equal(meta.probed_count, 2);
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
+  });
+
+  test("folds unrecognized probe status into unknown in global status_counts", async () => {
+    const kv = makeKv();
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 60000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => [SURFACES[0]],
+        probeSurface: async () => ({
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          status_code: 429,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.deepEqual(result.counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    const current = kv.json(KV_HEALTH_CURRENT);
+    assert.deepEqual(current.summary.status_counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    const meta = kv.json(KV_HEALTH_META);
+    assert.deepEqual(meta.status_counts, {
+      ok: 0,
+      degraded: 0,
+      failed: 0,
+      unknown: 1,
+    });
+    assert.equal(current.summary.status_counts.throttled, undefined);
   });
 
   test("rejects unsafe or implausibly high live RPC block heights", async () => {
@@ -1730,6 +1781,28 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.equal(stmts[1].binds[0], Date.UTC(2026, 5, 12));
   });
 
+  test("clamps a sub-perfect day's stored uptime_ratio below 1 (#1799)", async () => {
+    // The stored uptime_ratio is served verbatim in the per-day series, so a
+    // sub-perfect day must never round up to a perfect 1.0 (SQLite
+    // ROUND(0.99996, 4) === 1.0). Only SUM(ok) = COUNT(*) may store 1; any other
+    // day that rounds to 1 is clamped to 0.9999, mirroring displayUptimeRatio —
+    // and so the stored ratio never contradicts the co-computed degraded status.
+    const db = makeDb();
+    await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    const { sql } = db.calls.batches[0][0];
+    assert.match(sql, /WHEN SUM\(ok\) = COUNT\(\*\) THEN 1/);
+    assert.match(sql, /THEN 0\.9999/);
+    // The naive bare-round form (which collapses 0.99996 -> 1) must be gone as
+    // the standalone column expression.
+    assert.doesNotMatch(
+      sql,
+      /ROUND\(CAST\(SUM\(ok\) AS REAL\) \/ COUNT\(\*\), 4\) AS uptime_ratio/,
+    );
+  });
+
   test("no-ops without a D1 binding", async () => {
     assert.deepEqual(await rollupDailyUptime({}), { rolled: false });
   });
@@ -1743,6 +1816,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
     };
     assert.deepEqual(await rollupDailyUptime({ METAGRAPH_HEALTH_DB: db }), {
       rolled: false,
+      error: "d1 unavailable",
     });
   });
 

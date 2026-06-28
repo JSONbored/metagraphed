@@ -4,14 +4,21 @@ import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { Agent } from "undici";
 import {
   ARTIFACT_STORAGE_TIERS,
   R2_STAGING_RELATIVE_ROOT,
   artifactRelativePath,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.mjs";
+import { sanitizeChainText } from "./lib/formatting.mjs";
 
-export const repoRoot = new URL("..", import.meta.url).pathname;
+// Resolve via fileURLToPath rather than `new URL("..").pathname` so the repo
+// root is a valid native path on every OS. On Windows the bare `.pathname` form
+// yields a leading-slash, drive-prefixed string (e.g. `/E:/work/...`) that
+// `path.join` mangles into `E:\E:\work\...`, breaking every artifact read.
+export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
@@ -86,6 +93,7 @@ unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
 unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
 unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
 unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
+unsafeIpBlocks.addSubnet("fec0::", 10, "ipv6"); // deprecated site-local (RFC 3879)
 unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export function buildEvidenceSubjectNetuidIndex({
@@ -427,22 +435,17 @@ export async function listJsonFilesRecursive(dirPath) {
 }
 
 export async function loadProviders() {
-  // Top-level registry/providers/*.json are curated providers (flat objects).
-  // Community-submitted providers live in registry/providers/community/ as a
-  // { provider, submission } wrapper; they are first-class once merged — unwrap
-  // them so they load / validate / serve exactly like curated providers (mirrors
-  // how loadCandidates loads registry/candidates/community/). A curated provider
-  // wins over a community one of the same id (defensive — ids do not collide today).
-  const [flatFiles, communityFiles] = await Promise.all([
-    listJsonFiles(path.join(repoRoot, "registry/providers")),
-    listJsonFiles(path.join(repoRoot, "registry/providers/community")),
-  ]);
-  const flat = await Promise.all(flatFiles.map(readJson));
-  const community = (await Promise.all(communityFiles.map(readJson))).map(
+  // All providers are flat objects in registry/providers/*.json. Trust is the
+  // per-file `authority` field (official / provider-claimed / community /
+  // registry-observed), NOT the directory — the old registry/providers/community/
+  // wrapper lane was flattened (#1678). The `.provider || document` unwrap is kept
+  // defensively for any legacy { provider } shape; dedup by id (ids don't collide).
+  const files = await listJsonFiles(path.join(repoRoot, "registry/providers"));
+  const providers = (await Promise.all(files.map(readJson))).map(
     (document) => document.provider || document,
   );
   const byId = new Map();
-  for (const provider of [...community, ...flat]) {
+  for (const provider of providers) {
     if (provider?.id) byId.set(provider.id, provider);
   }
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
@@ -531,6 +534,47 @@ export async function loadDetailedVerification() {
   }
 }
 
+// #1757: the resolved per-surface `curation_level` (the CurationLevel trust
+// tier), derived once at the source from the surface's provider `authority`
+// (the Authority enum) and its verification state, so consumers stop conflating
+// the two distinct enums with `s.curation_level ?? s.authority`. The subnet's
+// curation level is the trust ceiling: an official, freshly-verified surface
+// inherits the subnet's maintainer-reviewed / adapter-backed tier; otherwise the
+// level falls out of authority + freshness, with `native` as the floor.
+//   adapter-backed      — subnet is adapter-backed and the surface is official
+//   maintainer-reviewed — subnet is maintainer-reviewed and the surface is
+//                         official and not stale (a human vetted this surface)
+//   machine-verified    — verified (has a last_verified_at) and not stale
+//   candidate-discovered — auto-discovered / unverified (registry-observed,
+//                         community, provider-claimed, or no verification yet)
+//   native              — defensive floor (no authority at all)
+export function resolveSurfaceCurationLevel({
+  authority,
+  lastVerifiedAt,
+  stale,
+  subnetCurationLevel,
+}) {
+  const official = authority === "official";
+  const verifiedFresh = Boolean(lastVerifiedAt) && stale !== true;
+  if (subnetCurationLevel === "adapter-backed" && official) {
+    return "adapter-backed";
+  }
+  if (
+    subnetCurationLevel === "maintainer-reviewed" &&
+    official &&
+    verifiedFresh
+  ) {
+    return "maintainer-reviewed";
+  }
+  if (verifiedFresh) {
+    return "machine-verified";
+  }
+  if (authority) {
+    return "candidate-discovered";
+  }
+  return "native";
+}
+
 export function flattenSurfaces(subnets) {
   return subnets
     .flatMap((subnet) =>
@@ -551,6 +595,16 @@ export function flattenSurfaces(subnets) {
           surface.verification?.verified_at ??
           subnet.curation?.verified_at ??
           null;
+        // #1757: the resolved trust tier for this surface. `stale` is stamped
+        // later (withSurfaceFreshness, which carries the nowMs reference), so a
+        // surface fresh at flatten time may still resolve down a tier once the
+        // freshness pass runs — withSurfaceFreshness re-resolves it there.
+        flattened.curation_level = resolveSurfaceCurationLevel({
+          authority: surface.authority ?? null,
+          lastVerifiedAt: flattened.last_verified_at,
+          stale: false,
+          subnetCurationLevel: subnet.curation?.level ?? null,
+        });
         return flattened;
       }),
     )
@@ -602,10 +656,33 @@ export function isSurfaceStale(lastVerifiedAt, kind, nowMs) {
 // needs the `nowMs` reference flattenSurfaces does not carry; build + validate
 // both call this with the same captured_at so per-subnet artifacts reproduce.
 export function withSurfaceFreshness(surfaces, nowMs) {
-  return surfaces.map((surface) => ({
-    ...surface,
-    stale: isSurfaceStale(surface.last_verified_at, surface.kind, nowMs),
-  }));
+  return surfaces.map((surface) => {
+    const stale = isSurfaceStale(surface.last_verified_at, surface.kind, nowMs);
+    return {
+      ...surface,
+      stale,
+      // #1757: re-resolve the trust tier now that staleness is known — a stale
+      // verification demotes machine-verified/maintainer-reviewed down to
+      // candidate-discovered, the same demotion the freshness model applies
+      // elsewhere. subnet_curation_level isn't carried on the flattened row, so
+      // an already-resolved maintainer-reviewed/adapter-backed level (set in
+      // flattenSurfaces from the subnet ceiling) is preserved when still fresh.
+      curation_level: stale
+        ? resolveSurfaceCurationLevel({
+            authority: surface.authority ?? null,
+            lastVerifiedAt: surface.last_verified_at,
+            stale: true,
+            subnetCurationLevel: null,
+          })
+        : (surface.curation_level ??
+          resolveSurfaceCurationLevel({
+            authority: surface.authority ?? null,
+            lastVerifiedAt: surface.last_verified_at,
+            stale: false,
+            subnetCurationLevel: null,
+          })),
+    };
+  });
 }
 
 // Stable surface identity (#1005): a short hash of the netuid|kind|url key, so a
@@ -619,77 +696,6 @@ export function surfaceStableKey(entry) {
 
 export function stableStringify(value) {
   return JSON.stringify(sortValue(value), null, 2);
-}
-
-export function nativeNameQuality(subnet) {
-  const rawName =
-    typeof subnet?.raw_name === "string" ? subnet.raw_name : subnet?.name;
-  return classifyNativeName(rawName, subnet?.netuid).quality;
-}
-
-export function formatLlmMarkdownText(value, { maxLength = 160 } = {}) {
-  const markdownCharacters = new Set("\\&<>{}[]()#*_`|!");
-  const chars = Array.from(String(value ?? "")).slice(0, maxLength);
-  let safeValue = "";
-
-  for (const char of chars) {
-    const codePoint = char.codePointAt(0);
-    if (char === "\r") {
-      safeValue += "\\r";
-    } else if (char === "\n") {
-      safeValue += "\\n";
-    } else if (char === "\t") {
-      safeValue += " ";
-    } else if (codePoint < 0x20 || (codePoint >= 0x7f && codePoint <= 0x9f)) {
-      safeValue += `\\u${codePoint.toString(16).padStart(4, "0")}`;
-    } else if (markdownCharacters.has(char)) {
-      safeValue += `\\${char}`;
-    } else {
-      safeValue += char;
-    }
-  }
-
-  return safeValue;
-}
-
-export function nativeDisplayName(subnet, fallbackName = null) {
-  const quality = nativeNameQuality(subnet);
-  const candidate =
-    quality === "chain"
-      ? typeof subnet?.raw_name === "string"
-        ? subnet.raw_name
-        : subnet?.name
-      : fallbackName;
-  // Defang prompt-injection in the chain/overlay display name before it becomes
-  // subnet.name. That value flows verbatim into the search index title/tokens,
-  // the embeddings, the /ask RAG context, and llms.txt — the same sinks the
-  // description/additional fields are scrubbed for (lib.mjs threat model). The
-  // injection rules are no-ops for legitimate names, so a real name is unchanged.
-  const cleaned =
-    typeof candidate === "string"
-      ? sanitizeChainText(candidate).text
-      : candidate;
-  return cleaned || `Subnet ${subnet?.netuid ?? "unknown"}`;
-}
-
-export function classifyNativeName(value, netuid) {
-  const raw = typeof value === "string" ? value.trim() : "";
-  if (!raw) {
-    return { raw_name: null, quality: "empty" };
-  }
-
-  const normalized = raw.toLowerCase();
-  const genericName =
-    Number.isInteger(netuid) && normalized === `subnet ${netuid}`.toLowerCase();
-  if (
-    genericName ||
-    ["unknown", "none", "null", "n/a", "na", "unnamed"].includes(normalized) ||
-    !/[\p{L}\p{N}]/u.test(raw)
-  ) {
-    return { raw_name: raw, quality: "placeholder" };
-  }
-
-  return { raw_name: raw, quality: "chain" };
 }
 
 export function sortValue(value) {
@@ -873,6 +879,102 @@ export async function resolvePublicUrlAddresses(value, resolver = lookup) {
 
 export async function isUnsafeResolvedUrl(value, resolver = lookup) {
   return (await resolvePublicUrlAddresses(value, resolver)).length === 0;
+}
+
+const SAFE_FETCH_REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
+
+// The connect-time DNS lookup that pins the single validated answer: every
+// connection for this hop resolves `hostname` to the exact `address` that
+// resolvePublicUrlAddresses already vetted, and rejects a lookup for any other
+// host — closing the TOCTOU DNS-rebinding window between the safety check and the
+// actual socket. Returns a Node `dns.lookup`-shaped callback (single-answer and
+// `{ all: true }` array forms). Exported so its branches are unit-covered.
+export function createPinnedLookup(hostname, address, family) {
+  return (requestedHostname, options, callback) => {
+    if (normalizeHostname(requestedHostname) !== hostname) {
+      callback(new Error("safeFetch attempted to resolve an unpinned host"));
+      return;
+    }
+    if (options?.all) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
+}
+
+function createPinnedAddressDispatcher(hostname, address, family) {
+  return new Agent({
+    connect: { lookup: createPinnedLookup(hostname, address, family) },
+  });
+}
+
+// SSRF-safe outbound GET: re-validates EVERY hop — the initial URL AND each
+// redirect Location — against isUnsafeResolvedUrl before connecting, so a public
+// host can't 30x-redirect into a private/internal address (169.254.169.254,
+// localhost, …). Each validated DNS answer is also pinned into undici's
+// connection lookup for that hop, closing the DNS-rebinding gap between the
+// safety check and the actual fetch. `redirect: "follow"` would bypass the
+// guard; this follows manually, bounded by maxRedirects. Returns exactly one of:
+//   { ok: true,  response, status, url }  final non-redirect 2xx response
+//   { ok: false, response, status, url }  final non-redirect non-2xx response
+//   { ok: false, unsafe: true, url }      a hop resolved to a private/unsafe addr
+//   { ok: false, error }                  network error / timeout / too many redirects
+// The caller owns response.body (read or cancel it).
+export async function safeFetch(
+  url,
+  {
+    accept = "*/*",
+    maxRedirects = 5,
+    timeoutMs = 12000,
+    resolver = lookup,
+  } = {},
+) {
+  let target = url;
+  for (let hop = 0; hop <= maxRedirects; hop += 1) {
+    const addresses = await resolvePublicUrlAddresses(target, resolver);
+    if (addresses.length === 0) {
+      return { ok: false, unsafe: true, url: target };
+    }
+    const targetUrl = new URL(target);
+    const host = normalizeHostname(targetUrl.hostname);
+    const dispatcher = createPinnedAddressDispatcher(
+      host,
+      addresses[0].address,
+      addresses[0].family,
+    );
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    try {
+      response = await fetch(target, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+        dispatcher,
+        headers: { "user-agent": "metagraphed/0.0", accept },
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.name === "AbortError" ? "timeout" : error.message,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+    const location = response.headers.get("location");
+    if (SAFE_FETCH_REDIRECT_CODES.has(response.status) && location) {
+      await response.body?.cancel();
+      try {
+        target = new URL(location, target).toString();
+      } catch {
+        return { ok: false, error: "invalid redirect location" };
+      }
+      continue;
+    }
+    return { ok: response.ok, response, status: response.status, url: target };
+  }
+  return { ok: false, error: "too many redirects" };
 }
 
 function isUnsafeHostname(host) {
@@ -1287,46 +1389,19 @@ export function registrySurfaceKey(entry) {
     .toLowerCase();
 }
 
+// Locator key for a surface stored under a subnet. Stored surfaces have no
+// netuid (it lives on the parent), so inject it before keying — otherwise
+// registrySurfaceKey degrades to "unknown|kind|url" and never matches.
+export function subnetSurfaceKey(surface, netuid) {
+  return registrySurfaceKey({ ...surface, netuid });
+}
+
 export function sha256Hex(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
 export function hashJson(value) {
   return sha256Hex(stableStringify(value));
-}
-
-// Content hash for publish diagnostics: an artifact's hash with the pure build
-// stamp (`generated_at`) normalized out. `captured_at` is deliberately NOT
-// normalized: it is the chain-snapshot time consumers read as freshness. Non-JSON
-// artifacts (svg/txt) and unparseable files hash as-is.
-// NOTE: this is not an integrity hash. Upload/download decisions must use the
-// real `sha256` of the actual bytes so latest manifests and objects stay aligned.
-const DELTA_GENERATED_AT_PLACEHOLDER = "1970-01-01T00:00:00.000Z";
-
-export function artifactContentHash(relativePath, raw) {
-  if (!relativePath.endsWith(".json")) return sha256Hex(raw);
-  let parsed;
-  try {
-    parsed = JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
-  } catch {
-    return sha256Hex(raw);
-  }
-  return hashJson(stripGeneratedAt(parsed));
-}
-
-function stripGeneratedAt(value) {
-  if (Array.isArray(value)) return value.map(stripGeneratedAt);
-  if (value && typeof value === "object") {
-    const out = {};
-    for (const [key, val] of Object.entries(value)) {
-      out[key] =
-        key === "generated_at"
-          ? DELTA_GENERATED_AT_PLACEHOLDER
-          : stripGeneratedAt(val);
-    }
-    return out;
-  }
-  return value;
 }
 
 export function isJsonContentType(value) {
@@ -1413,71 +1488,19 @@ export function buildTimestamp() {
   return process.env.METAGRAPH_BUILD_TIMESTAMP || "1970-01-01T00:00:00.000Z";
 }
 
-// Strip embedded URLs/emails/bare-domains from free text — they shred into junk
-// search tokens ("https"/"com"/"gg") and read poorly.
-export function stripUrls(value) {
-  if (typeof value !== "string") return "";
-  return value
-    .replace(/https?:\/\/\S+/gi, " ")
-    .replace(/\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi, " ")
-    .replace(
-      /\b[\w-]+\.(?:com|io|org|net|gg|ai|xyz|dev|app|finance|sh|co)\b\S*/gi,
-      " ",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// On-chain identity text (SubnetIdentitiesV3 description/name/additional, and any
-// candidate-overlay text seeded from it) is attacker-controllable and is piped
-// verbatim to LLMs via /ask, the MCP tools, search, and llms.txt. These rules
-// DEFUSE prompt-injection: they neutralize the markers an attacker uses to make
-// a reading model treat the data as instructions — chat-template/role tokens,
-// turn/role boundaries, fence break-outs, and "ignore previous"/"act as" takeover
-// phrasing — while leaving ordinary prose readable. We defang, not delete, so a
-// benign description that merely mentions these words stays legible. All patterns
-// use bounded quantifiers (no nested unbounded repetition) so they are
-// ReDoS-safe. Order: specific tokens first, then phrasing.
-const CHAIN_TEXT_INJECTION_RULES = [
-  // Chat-template / model special tokens: ChatML <|...|>, Llama [INST], BOS/EOS.
-  { re: /<\|[^|>\n]{0,40}\|>/g, to: " " },
-  { re: /\[\/?INST\]/gi, to: " " },
-  { re: /<\/?(?:s|system|user|assistant)>/gi, to: " " },
-  // Fenced code/quote delimiters used to "break out" of a quoted data span.
-  { re: /```+|~~~+/g, to: " " },
-  // Line-start role / section markers: "System:", "### Instruction:", "Assistant：".
-  {
-    re: /(^|\n)[ \t]{0,8}#{0,4}[ \t]*(system|assistant|user|developer|human|instruction|prompt)[ \t]*[:：]/gi,
-    to: "$1$2 ",
-  },
-  // Classic instruction-override phrasing ("ignore the previous instructions").
-  {
-    re: /\b(?:ignore|disregard|forget|override|bypass)\b(?:[ \t,]+\w+){0,4}[ \t]+(?:previous|prior|above|earlier|preceding|system|initial|all)\b[^.!?\n]{0,40}/gi,
-    to: " [scrubbed] ",
-  },
-  // Role-takeover phrasing ("you are now ...", "act as a developer", "new instructions:").
-  {
-    re: /\b(?:you are now|from now on|act as(?: an?)?|pretend(?: to be| you are)?|new instructions?)\b[^.!?\n]{0,40}/gi,
-    to: " [scrubbed] ",
-  },
-];
-
-// Neutralize prompt-injection markers in attacker-controllable on-chain text.
-// Returns the defanged text plus `scrubbed` (whether any marker was neutralized)
-// so artifacts can tag `injection_scrubbed` and downstream agents know the text
-// was modified and must be treated as untrusted data, never instructions.
-// Deterministic + idempotent, so the build and the reproducibility validator
-// derive identical output. Does NOT strip URLs — that is cleanDescription's job.
-export function sanitizeChainText(value) {
-  if (typeof value !== "string") return { text: null, scrubbed: false };
-  let text = value;
-  let scrubbed = false;
-  for (const { re, to } of CHAIN_TEXT_INJECTION_RULES) {
-    const next = text.replace(re, to);
-    if (next !== text) scrubbed = true;
-    text = next;
+/**
+ * Returns the committed manifest's `generated_at` when running a local build
+ * (no publish env vars set), so `npm run build` never clobbers the live
+ * timestamp with the 1970 epoch placeholder. Returns null during publish runs
+ * (METAGRAPH_BUILD_TIMESTAMP or METAGRAPH_RUN_ID set) or when no manifest
+ * exists yet — callers fall back to generatedAt in those cases.
+ */
+export async function readCommittedManifestGeneratedAt(manifestPath) {
+  if (process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID) {
+    return null;
   }
-  return { text, scrubbed };
+  const manifest = await readJson(manifestPath).catch(() => null);
+  return manifest?.generated_at ?? null;
 }
 
 // Conservative shape for a Discord-style handle: optional leading @, then a
@@ -1526,23 +1549,6 @@ export function nativeContactHandle(value) {
 // index builders so the two projections cannot drift.
 export function nativeContactUrl(contact) {
   return contact && /^(?:https?|wss?):\/\//i.test(contact) ? contact : null;
-}
-
-// Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
-// neutralize prompt-injection, strip URLs, collapse whitespace, drop empties.
-// Shared by the build + the reproducibility validator so the two never drift.
-// Bare placeholder words some subnets set as their ENTIRE on-chain description
-// ("deprecated", "none", "tbd", …) — treated as no description, mirroring
-// CONTACT_HANDLE_JUNK. Several deprecated subnets (sn3/39/81) carry a literal
-// "deprecated" description on-chain that should not leak into the served data.
-const JUNK_DESCRIPTION = /^(?:deprecated|none|null|n\/a|tbd|todo|test)$/i;
-
-export function cleanDescription(value) {
-  if (typeof value !== "string") return null;
-  const cleaned = stripUrls(sanitizeChainText(value).text);
-  if (cleaned.length < 2) return null;
-  if (JUNK_DESCRIPTION.test(cleaned.trim())) return null;
-  return cleaned;
 }
 
 // Domain/capability tag derivation (issue #345) lives in the worker-safe
@@ -1780,6 +1786,37 @@ export function clusterDomainFromUrl(value) {
   }
 }
 
+// Hostname-only registrable unit for dedupe / same-site checks (#1636, #1910).
+// Mirrors clusterDomainFromUrl but accepts bare hostnames and always returns a
+// string (falls back to the last-two-label heuristic for bare suffix hosts).
+export function registrableHostDomain(hostname) {
+  const host = String(hostname || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!host) return "";
+  const labels = host.split(".").filter(Boolean);
+  return (
+    clusterDomainFromUrl(`https://${host}/`) ??
+    (labels.length >= 2 ? labels.slice(-2).join(".") : host)
+  );
+}
+
+// Same-site check for candidate discovery (#1910): exact hostname match or the
+// same registrable host (honors multi-label public suffixes via registrableHostDomain).
+export function isLikelyProjectDomain(baseUrl, candidateUrl) {
+  try {
+    const base = new URL(baseUrl);
+    const candidate = new URL(candidateUrl);
+    return (
+      candidate.hostname === base.hostname ||
+      registrableHostDomain(candidate.hostname) ===
+        registrableHostDomain(base.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // #1004 — derive the conventional `api.` and `docs.` subdomain origins for a
 // project's registrable domain so the OpenAPI spec sweep reaches APIs that live
 // on api.<domain> (or docs.<domain>) rather than the marketing root — the
@@ -1915,6 +1952,7 @@ export function buildProvenanceReviewQueue({
   nativeSubnets = [],
   verificationResults = [],
   subnets = [],
+  generatedAt = buildTimestamp(),
 }) {
   const levelByNetuid = new Map(
     subnets.map((subnet) => [subnet.netuid, subnet.curation?.level ?? null]),
@@ -1945,7 +1983,7 @@ export function buildProvenanceReviewQueue({
   return {
     schema_version: 1,
     generated_by: "metagraphed-review-queue",
-    generated_at: buildTimestamp(),
+    generated_at: generatedAt,
     notes:
       "Suggested maintainer-review elevations: provenance-strong, live callable " +
       "APIs on each subnet's own on-chain-asserted domain that are not yet at the " +
@@ -1967,22 +2005,6 @@ export function corroboratingSources(candidate) {
     ? candidate.source_urls
     : [];
   return [...new Set(urls.map(clusterDomainFromUrl).filter(Boolean))].sort();
-}
-
-// Build a fallback "what does it do" blurb from curated provider notes when a
-// subnet has no chain/overlay description (issue #346). Sanitized + truncated to
-// a word boundary. This populates a SEPARATE derived_description field — it never
-// backfills the curated description, so the gap stays visible to the SN74
-// flywheel. Returns null when there is nothing usable.
-export function deriveDescriptionFromNotes(notes, { maxLength = 280 } = {}) {
-  if (typeof notes !== "string") return null;
-  const cleaned = cleanDescription(notes);
-  if (!cleaned) return null;
-  if (cleaned.length <= maxLength) return cleaned;
-  return `${cleaned
-    .slice(0, maxLength)
-    .replace(/\s+\S*$/, "")
-    .trimEnd()}…`;
 }
 
 // Pull a usable OAuth2/OIDC token (or authorize) endpoint out of a security
@@ -2170,6 +2192,22 @@ export function staleOperationalKinds({
   return stale;
 }
 
+// Chain-text formatting and sanitization helpers were extracted to
+// scripts/lib/formatting.mjs (#510 maintainability decomposition). Re-exported
+// here verbatim so every existing importer of scripts/lib.mjs keeps its import
+// path unchanged — pure code-motion with byte-identical artifact output.
+export {
+  slugify,
+  formatLlmMarkdownText,
+  classifyNativeName,
+  nativeNameQuality,
+  nativeDisplayName,
+  sanitizeChainText,
+  stripUrls,
+  cleanDescription,
+  deriveDescriptionFromNotes,
+} from "./lib/formatting.mjs";
+
 // README link selection + classification was extracted to scripts/lib/readme-links.mjs
 // (#510 maintainability decomposition). Re-exported here verbatim so every existing
 // importer of scripts/lib.mjs keeps its import path unchanged — pure code-motion
@@ -2181,16 +2219,6 @@ export {
   selectReviewableReadmeLinks,
   isReviewableReadmeLink,
 } from "./lib/readme-links.mjs";
-
-export function slugify(value) {
-  return String(value || "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
 
 // Economics + endpoint artifact derivation were extracted to dedicated modules
 // under scripts/lib/ (#510 maintainability decomposition). They are re-exported

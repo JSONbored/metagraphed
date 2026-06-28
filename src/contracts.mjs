@@ -31,6 +31,7 @@ export const QUERY_ENUMS = {
   curationLevel: [
     "native",
     "candidate-discovered",
+    "community-seeded",
     "machine-verified",
     "maintainer-reviewed",
     "adapter-backed",
@@ -575,6 +576,7 @@ export const API_QUERY_COLLECTIONS = {
       status: enumSchema(QUERY_ENUMS.subnetStatus),
       subnet_type: enumSchema(QUERY_ENUMS.subnetType),
     },
+    search: ["name", "slug"],
     sort: [
       "block",
       "candidate_count",
@@ -587,6 +589,16 @@ export const API_QUERY_COLLECTIONS = {
       "probed_surface_count",
       "status",
       "subnet_type",
+      "surface_count",
+      "tempo",
+    ],
+    // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    rangeFilters: [
+      "block",
+      "candidate_count",
+      "mechanism_count",
+      "participant_count",
+      "probed_surface_count",
       "surface_count",
       "tempo",
     ],
@@ -733,6 +745,12 @@ export const PUBLIC_ARTIFACTS = [
     "SearchArtifact",
   ),
   artifact(
+    "search-index",
+    "/metagraph/search-index.json",
+    "Slim search index (the same documents as search.json without the per-document token blobs) for fast browser typeahead and listing.",
+    "SearchIndexArtifact",
+  ),
+  artifact(
     "coverage",
     "/metagraph/coverage.json",
     "Registry coverage counts and source precedence.",
@@ -749,6 +767,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/economics.json",
     "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
     "EconomicsArtifact",
+  ),
+  artifact(
+    "economics-trends",
+    "/metagraph/economics/trends.json",
+    "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+    "EconomicsTrendsArtifact",
   ),
   artifact(
     "registry-summary",
@@ -895,6 +919,24 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTrajectoryArtifact",
   ),
   artifact(
+    "subnet-concentration",
+    "/metagraph/subnets/{netuid}/concentration.json",
+    "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
+    "SubnetConcentrationArtifact",
+  ),
+  artifact(
+    "subnet-concentration-history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
+    "SubnetConcentrationHistoryArtifact",
+  ),
+  artifact(
+    "subnet-turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
+    "SubnetTurnoverArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -911,6 +953,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/validators.json",
     "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
     "SubnetValidatorsArtifact",
+  ),
+  artifact(
+    "subnet-events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+    "SubnetEventsArtifact",
   ),
   artifact(
     "subnet-neuron-history",
@@ -937,10 +985,118 @@ export const PUBLIC_ARTIFACTS = [
     "AccountEventsArtifact",
   ),
   artifact(
+    "account-history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+    "AccountHistoryArtifact",
+  ),
+  artifact(
+    "account-extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "AccountExtrinsicsArtifact",
+  ),
+  artifact(
+    "account-transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+    "AccountTransfersArtifact",
+  ),
+  artifact(
+    "account-counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "AccountCounterpartiesArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
     "AccountSubnetsArtifact",
+  ),
+  artifact(
+    "account-balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
+    "AccountBalanceArtifact",
+  ),
+  artifact(
+    "blocks-feed",
+    "/metagraph/blocks.json",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "BlocksFeedArtifact",
+  ),
+  artifact(
+    "block-detail",
+    "/metagraph/blocks/{ref}.json",
+    "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
+    "BlockDetailArtifact",
+  ),
+  artifact(
+    "block-extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
+    "BlockExtrinsicsArtifact",
+  ),
+  artifact(
+    "block-events",
+    "/metagraph/blocks/{ref}/events.json",
+    "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
+    "BlockEventsArtifact",
+  ),
+  artifact(
+    "chain-events-feed",
+    "/metagraph/chain-events.json",
+    "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
+    "ChainEventsFeedArtifact",
+  ),
+  artifact(
+    "block-chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
+    "BlockChainEventsArtifact",
+  ),
+  artifact(
+    "chain-events-stats",
+    "/metagraph/chain-events/stats.json",
+    "Chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats (no static file) and consumed by the get_chain_activity MCP tool.",
+    "ChainEventsStatsArtifact",
+  ),
+  artifact(
+    "extrinsics-feed",
+    "/metagraph/extrinsics.json",
+    "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+    "ExtrinsicsFeedArtifact",
+  ),
+  artifact(
+    "extrinsic-detail",
+    "/metagraph/extrinsics/{hash}.json",
+    "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
+    "ExtrinsicDetailArtifact",
+  ),
+  artifact(
+    "chain-activity",
+    "/metagraph/chain/activity.json",
+    "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
+    "ChainActivityArtifact",
+  ),
+  artifact(
+    "chain-calls",
+    "/metagraph/chain/calls.json",
+    "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
+    "ChainCallsArtifact",
+  ),
+  artifact(
+    "chain-signers",
+    "/metagraph/chain/signers.json",
+    "Windowed most-active-account leaderboard (signers ranked by extrinsic count, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
+    "ChainSignersArtifact",
+  ),
+  artifact(
+    "chain-fees",
+    "/metagraph/chain/fees.json",
+    "Fee/tip market analytics (daily totals + averages and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+    "ChainFeesArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -957,8 +1113,14 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
     "RegistryLeaderboardsArtifact",
+  ),
+  artifact(
+    "compare",
+    "/metagraph/compare.json",
+    "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
+    "CompareArtifact",
   ),
   artifact(
     "rpc-usage",
@@ -1302,10 +1464,26 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
+  ),
+  route(
+    "economics-trends",
+    "GET",
+    "/api/v1/economics/trends",
+    "/metagraph/economics/trends.json",
+    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [],
   ),
   route(
     "registry-summary",
@@ -1525,6 +1703,49 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-concentration",
+    "GET",
+    "/api/v1/subnets/{netuid}/concentration",
+    "/metagraph/subnets/{netuid}/concentration.json",
+    "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-concentration-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/concentration/history",
+    "/metagraph/subnets/{netuid}/concentration/history.json",
+    "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-turnover",
+    "GET",
+    "/api/v1/subnets/{netuid}/turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-metagraph",
     "GET",
     "/api/v1/subnets/{netuid}/metagraph",
@@ -1558,6 +1779,21 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-events",
+    "GET",
+    "/api/v1/subnets/{netuid}/events",
+    "/metagraph/subnets/{netuid}/events.json",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "kind", schema: { type: "string" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -1611,14 +1847,75 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/events",
     "/metagraph/accounts/{ss58}/events.json",
-    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
     "short",
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
     ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-history",
+    "GET",
+    "/api/v1/accounts/{ss58}/history",
+    "/metagraph/accounts/{ss58}/history.json",
+    "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "string", format: "date" } },
+      { name: "to", schema: { type: "string", format: "date" } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-extrinsics",
+    "GET",
+    "/api/v1/accounts/{ss58}/extrinsics",
+    "/metagraph/accounts/{ss58}/extrinsics.json",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-transfers",
+    "GET",
+    "/api/v1/accounts/{ss58}/transfers",
+    "/metagraph/accounts/{ss58}/transfers.json",
+    "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "sent", "received"] },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-counterparties",
+    "GET",
+    "/api/v1/accounts/{ss58}/counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+    "short",
+    ["accounts", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -1631,6 +1928,218 @@ export const API_ROUTES = [
     ["accounts", "subnets"],
     [],
     [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-balance",
+    "GET",
+    "/api/v1/accounts/{ss58}/balance",
+    "/metagraph/accounts/{ss58}/balance.json",
+    "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+    "short",
+    ["accounts"],
+    [],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "blocks-feed",
+    "GET",
+    "/api/v1/blocks",
+    "/metagraph/blocks.json",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+      { name: "author", schema: { type: "string" } },
+      { name: "spec_version", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "min_extrinsics", schema: { type: "integer", minimum: 0 } },
+      { name: "min_events", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "block-detail",
+    "GET",
+    "/api/v1/blocks/{ref}",
+    "/metagraph/blocks/{ref}.json",
+    "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-extrinsics",
+    "GET",
+    "/api/v1/blocks/{ref}/extrinsics",
+    "/metagraph/blocks/{ref}/extrinsics.json",
+    "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "block-events",
+    "GET",
+    "/api/v1/blocks/{ref}/events",
+    "/metagraph/blocks/{ref}/events.json",
+    "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+    "short",
+    ["blocks", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+    ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-events-feed",
+    "GET",
+    "/api/v1/chain-events",
+    "/metagraph/chain-events.json",
+    "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "pallet", schema: { type: "string", maxLength: 64 } },
+      { name: "method", schema: { type: "string", maxLength: 64 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
+      { name: "before", schema: { type: "integer", minimum: 0 } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-events-stats",
+    "GET",
+    "/api/v1/chain-events/stats",
+    "/metagraph/chain-events/stats.json",
+    "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      {
+        name: "blocks",
+        schema: { type: "integer", minimum: 1, maximum: 5000 },
+      },
+    ],
+    [],
+  ),
+  route(
+    "block-chain-events",
+    "GET",
+    "/api/v1/blocks/{ref}/chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+    "short",
+    ["blocks", "chain", "analytics"],
+    [],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "extrinsics-feed",
+    "GET",
+    "/api/v1/extrinsics",
+    "/metagraph/extrinsics.json",
+    "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+    "short",
+    ["extrinsics", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "signer", schema: { type: "string" } },
+      { name: "call_module", schema: { type: "string" } },
+      { name: "call_function", schema: { type: "string" } },
+      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
+      { name: "from", schema: { type: "integer", minimum: 0 } },
+      { name: "to", schema: { type: "integer", minimum: 0 } },
+    ],
+    [],
+  ),
+  route(
+    "extrinsic-detail",
+    "GET",
+    "/api/v1/extrinsics/{hash}",
+    "/metagraph/extrinsics/{hash}.json",
+    "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
+    "short",
+    ["extrinsics", "analytics"],
+    [],
+    [{ name: "hash", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-activity",
+    "GET",
+    "/api/v1/chain/activity",
+    "/metagraph/chain/activity.json",
+    "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+    "short",
+    ["chain", "analytics"],
+    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
+  ),
+  route(
+    "chain-calls",
+    "GET",
+    "/api/v1/chain/calls",
+    "/metagraph/chain/calls.json",
+    "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      {
+        name: "group_by",
+        schema: { type: "string", enum: ["module", "module_function"] },
+      },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-signers",
+    "GET",
+    "/api/v1/chain/signers",
+    "/metagraph/chain/signers.json",
+    "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "call_module", schema: { type: "string", maxLength: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-fees",
+    "GET",
+    "/api/v1/chain/fees",
+    "/metagraph/chain/fees.json",
+    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "call_module", schema: { type: "string", maxLength: 100 } },
+    ],
+    [],
   ),
   route(
     "subnet-uptime",
@@ -1648,7 +2157,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
+    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
     "standard",
     ["registry", "analytics", "subnets"],
     [
@@ -1662,6 +2171,7 @@ export const API_ROUTES = [
             "most-complete",
             "most-enriched",
             "fastest-growing",
+            "most-reliable",
             "open-slots",
             "cheapest-registration",
             "highest-emission",
@@ -1670,6 +2180,27 @@ export const API_ROUTES = [
         },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "compare",
+    "GET",
+    "/api/v1/compare",
+    "/metagraph/compare.json",
+    "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+    "standard",
+    ["registry", "subnets", "analytics"],
+    [
+      {
+        name: "netuids",
+        schema: {
+          type: "string",
+          maxLength: 767,
+          pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
+        },
+      },
+      { name: "dimensions", schema: { type: "string" } },
     ],
     [],
   ),
@@ -1817,6 +2348,16 @@ export const API_ROUTES = [
     "/api/v1/search",
     "/metagraph/search.json",
     "Fetch compact search index.",
+    "standard",
+    ["search"],
+    listQuery("documents"),
+  ),
+  route(
+    "search-index",
+    "GET",
+    "/api/v1/search-index",
+    "/metagraph/search-index.json",
+    "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
     "standard",
     ["search"],
     listQuery("documents"),
@@ -2030,13 +2571,16 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         "unauthenticated GET. Responses use a stable JSON envelope " +
         "`{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and " +
         "carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per " +
-        "client. Multi-network: prefix a path with `/testnet/` (mainnet is the " +
-        "default — no prefix) to read testnet data, e.g. `/testnet/api/v1/subnets`.",
+        "client. Multi-network: insert a `/{network}/` segment after `/api/v1/` " +
+        "(mainnet is the default — omit it) to read testnet data, e.g. " +
+        "`/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have " +
+        "data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     },
     servers: [
       {
         url: `https://${PRIMARY_DOMAIN}`,
-        description: "Production (mainnet; prefix /testnet/ for testnet data)",
+        description:
+          "Production (mainnet default; insert /testnet/ after /api/v1/ for testnet data)",
       },
     ],
     // The API is intentionally public + unauthenticated; an empty top-level
@@ -2073,9 +2617,13 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
+    .replace("{uid}", String(params.uid ?? ""))
+    .replace("{ss58}", String(params.ss58 ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
-    .replace("{surface_id}", String(params.surface_id ?? ""));
+    .replace("{surface_id}", String(params.surface_id ?? ""))
+    .replace("{ref}", String(params.ref ?? ""))
+    .replace("{hash}", String(params.hash ?? ""));
 }
 
 export function compileRoutePattern(pathTemplate) {
@@ -2085,7 +2633,12 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
-    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__");
+    .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
+    // Block-explorer {ref} (#1345): a numeric block_number OR a 0x block_hash.
+    .replace(/\{ref\}/g, "__METAGRAPH_REF__")
+    // Block-explorer {hash} (#1345/#1848): a 0x extrinsic_hash OR
+    // composite <block_number>-<extrinsic_index> ref.
+    .replace(/\{hash\}/g, "__METAGRAPH_HASH__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -2093,7 +2646,9 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)");
+    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
+    .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
@@ -2152,6 +2707,10 @@ function queryCollection(dataKey, options = {}) {
     // union is tested for the value. e.g. { domain: ["categories",
     // "derived_categories"] } makes `?domain=inference` match either array.
     array_filters: options.arrayFilters || {},
+    // Numeric range filters: each field F here accepts `min_F` and `max_F` query
+    // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
+    // hand-rolled min_readiness the MCP list_subnets tool did.
+    range_filters: options.rangeFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2174,12 +2733,18 @@ function listQuery(collection, options = {}) {
     .filter((parameter) => !excluded.has(parameter.name));
   const searchParameters =
     config.search_keys.length > 0 ? [{ name: "q", schema: textSchema }] : [];
+  // Each numeric range field F → a `min_F` + `max_F` inclusive-bound parameter.
+  const rangeParameters = config.range_filters.flatMap((field) => [
+    { name: `min_${field}`, schema: { type: "number" } },
+    { name: `max_${field}`, schema: { type: "number" } },
+  ]);
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
     parameters: [
       ...filterParameters,
       ...searchParameters,
+      ...rangeParameters,
       {
         name: "fields",
         schema: fieldListSchema,
@@ -2194,10 +2759,14 @@ function listQuery(collection, options = {}) {
       },
       {
         name: "sort",
+        description:
+          "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
         schema: { type: "string", enum: config.sort_fields },
       },
       {
         name: "order",
+        description:
+          "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
         schema: { enum: ["asc", "desc"] },
       },
     ],

@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import {
   OPERATIONAL_SURFACE_KINDS,
+  mapLimit,
   rollupSubnetStatus,
 } from "../src/health-probe-core.mjs";
 import { generateServiceSnippets } from "../src/integration-snippets.mjs";
@@ -18,6 +19,7 @@ import {
   buildEndpointPoolArtifact,
   buildEndpointIncidentArtifact,
   buildTimestamp,
+  readCommittedManifestGeneratedAt,
   cleanDescription,
   deriveDescriptionFromNotes,
   deriveDomainTags,
@@ -59,6 +61,16 @@ import {
   writeJson,
 } from "./lib.mjs";
 import {
+  buildAgentReadiness,
+  buildCoverageDepthArtifact,
+  subnetIntegrationReadiness,
+  summarizeAgentReadinessBlockers,
+} from "./lib/build-readiness.mjs";
+import {
+  buildEnrichmentQueueArtifacts,
+  directSubmissionKindsForProfile,
+} from "./lib/enrichment-queue-artifacts.mjs";
+import {
   API_ROUTES,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
@@ -67,13 +79,8 @@ import {
 } from "../src/contracts.mjs";
 import {
   MCP_SERVER_INFO,
-  MCP_INSTRUCTIONS,
-  MCP_PROTOCOL_VERSIONS,
   MCP_REGISTRY_META,
-  MCP_CAPABILITIES,
-  MCP_RESOURCE_TEMPLATES,
   listToolDefinitions,
-  listPromptDefinitions,
 } from "../src/mcp-server.mjs";
 import { buildDatasetExports } from "./datasets.mjs";
 import { buildChangelog } from "./changelog.mjs";
@@ -94,12 +101,56 @@ import {
 
 const execFileAsync = promisify(execFile);
 
+// #2057: batch the independent per-subnet/per-provider artifact writes with
+// bounded-concurrency mapLimit instead of serial awaits. Safe because each write
+// targets a distinct path and atomicWriteFile isolates via a per-call mkdtemp dir.
+// Env-overridable for hosts with tight file-descriptor limits.
+const ARTIFACT_WRITE_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.METAGRAPH_ARTIFACT_WRITE_CONCURRENCY) || 16,
+);
+
 // Freshness auto-demotion (Finding 9): an operational surface not probed healthy
 // within this many days is treated as stale and contributes a reduced share of
 // the completeness score (and is flagged via gap_reasons `stale-<kind>`).
 const FRESHNESS_STALE_AFTER_DAYS =
   Number(process.env.METAGRAPH_FRESHNESS_STALE_AFTER_DAYS) || 7;
 const FRESHNESS_DEMOTION_FACTOR = 0.5;
+
+// #1757: the high-value interface/identity surface kinds the backend already
+// ranks gaps by (reviewPriorityScore weights these 12 pts each). Shared by the
+// gap-priority score and the per-gap-row `gap_severity` so the API exposes the
+// SAME weighting the review queue uses, instead of consumers inventing a
+// divergent `core>=1 && missing>=3` threshold. "Core" callable/integration kinds
+// (the ones that make a subnet agent-usable) drive the critical/warning split.
+const HIGH_VALUE_GAP_KINDS = [
+  "source-repo",
+  "docs",
+  "website",
+  "openapi",
+  "subnet-api",
+];
+const CORE_INTERFACE_GAP_KINDS = ["openapi", "subnet-api"];
+
+// Resolve a per-gap-row severity (critical/warning/info — the EndpointIncidentSeverity
+// vocabulary already in the contract) from the subnet's missing surface kinds,
+// using the existing high-value/core classification rather than a new scale.
+function gapRowSeverity(missingKinds) {
+  const missing = new Set(missingKinds || []);
+  const missingHighValue = HIGH_VALUE_GAP_KINDS.filter((kind) =>
+    missing.has(kind),
+  );
+  const missingCore = CORE_INTERFACE_GAP_KINDS.some((kind) =>
+    missing.has(kind),
+  );
+  if (missingCore && missingHighValue.length >= 3) {
+    return "critical";
+  }
+  if (missingHighValue.length >= 2) {
+    return "warning";
+  }
+  return "info";
+}
 
 const providers = await loadProviders();
 const overlays = await loadSubnets();
@@ -284,6 +335,8 @@ for (const surface of surfaces) {
   providerIdsByNetuid.get(surface.netuid).add(surface.provider);
 }
 const derivedDescriptionByNetuid = new Map();
+// serial: accumulates into derivedDescriptionByNetuid (shared state), so unlike the
+// #2057 per-subnet write loops this is intentionally not parallelized.
 for (const subnet of mergedSubnets) {
   if (subnet.description) continue;
   const ids = [...(providerIdsByNetuid.get(subnet.netuid) || [])].sort(
@@ -782,9 +835,6 @@ const serviceKindsByNetuid = new Map(
     ].sort(),
   ]),
 );
-// v2 (#356): added readiness_tier + non-API low-weight components
-// (has_source_repo / has_public_docs / has_candidate_api).
-const READINESS_VERSION = 2;
 const readinessByNetuid = new Map(
   mergedSubnets.map((subnet) => [
     subnet.netuid,
@@ -823,6 +873,8 @@ const enrichmentArtifacts = buildEnrichmentQueueArtifacts({
   reviewProfiles: profileArtifacts.reviewProfiles,
   subnets: activeOverlays,
   verification,
+  contractVersion,
+  generatedAt,
 });
 const enrichmentQueue = enrichmentArtifacts.queueArtifact;
 
@@ -846,14 +898,29 @@ const curationIndex = mergedSubnets.map((subnet) => ({
   surface_count: subnet.surface_count,
 }));
 
-const gapsIndex = mergedSubnets.map((subnet) => ({
-  coverage_level: subnet.coverage_level,
-  curation_level: subnet.curation.level,
-  gaps: subnet.gaps,
-  name: subnet.name,
-  netuid: subnet.netuid,
-  slug: subnet.slug,
-}));
+const gapsIndex = mergedSubnets.map((subnet) => {
+  const missingKinds = subnet.gaps.missing_kinds || [];
+  return {
+    coverage_level: subnet.coverage_level,
+    curation_level: subnet.curation.level,
+    gaps: subnet.gaps,
+    // #1757: per-gap-row severity + priority derived from the EXISTING backend
+    // weighted model (the high-value identity/interface kinds reviewPriorityScore
+    // ranks + reviewPriorityScore itself), so consumers stop inventing a divergent
+    // `core>=1 && missing>=3` scale. severity uses the EndpointIncidentSeverity
+    // vocabulary (critical/warning/info) already in the contract; gap_priority is
+    // the same 0-100 priority_score the review/gap-priorities artifact exposes.
+    gap_severity: gapRowSeverity(missingKinds),
+    gap_priority: reviewPriorityScore(
+      subnet,
+      surfacesByNetuidForCounts.get(subnet.netuid) || [],
+      activeCandidatesByNetuid.get(subnet.netuid) || [],
+    ),
+    name: subnet.name,
+    netuid: subnet.netuid,
+    slug: subnet.slug,
+  };
+});
 
 // Generic hosting/social domains that must NOT form a shared-team cluster — a
 // github.com repo URL is not a shared team. Providers on these fall back to
@@ -953,16 +1020,20 @@ await fs.rm(r2ArtifactDir("providers"), {
   recursive: true,
   force: true,
 });
-for (const provider of enrichedProviders) {
-  const providerEndpoints = endpointsByProvider.get(provider.id) || [];
-  await writeJson(artifactFile(`providers/${provider.id}.json`), {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    provider,
-    endpoint_summary: endpointSummary(providerEndpoints),
-  });
-}
+await mapLimit(
+  enrichedProviders,
+  ARTIFACT_WRITE_CONCURRENCY,
+  async (provider) => {
+    const providerEndpoints = endpointsByProvider.get(provider.id) || [];
+    await writeJson(artifactFile(`providers/${provider.id}.json`), {
+      schema_version: 1,
+      contract_version: contractVersion,
+      generated_at: generatedAt,
+      provider,
+      endpoint_summary: endpointSummary(providerEndpoints),
+    });
+  },
+);
 
 await writeJson(artifactFile("subnets.json"), {
   schema_version: 1,
@@ -1005,7 +1076,7 @@ await writeJson(artifactFile("lineage.json"), {
 
 await fs.rm(r2ArtifactDir("subnets"), { recursive: true, force: true });
 await fs.rm(r2ArtifactDir("profiles"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   // #1002: per-subnet candidate lists drop surface-superseded dupes so an agent
   // sees each (netuid, kind, url) once — as a verified surface, not also as a
   // candidate. The full candidates.json registry still carries the flagged dupe.
@@ -1034,7 +1105,7 @@ for (const subnet of mergedSubnets) {
     gaps: subnet.gaps,
     surfaces: subnetSurfaces,
   });
-}
+});
 
 await writeJson(artifactFile("profiles.json"), {
   schema_version: 1,
@@ -1067,7 +1138,7 @@ await fs.rm(r2ArtifactDir("surfaces"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`surfaces/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1077,7 +1148,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     surfaces: overviewSurfacesByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 
 await writeJson(artifactFile("candidates.json"), {
   schema_version: 1,
@@ -1090,7 +1161,7 @@ await fs.rm(r2ArtifactDir("candidates"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`candidates/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -1100,7 +1171,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     candidates: candidateIndexByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 
 await writeJson(artifactFile("review-queue.json"), {
   schema_version: 1,
@@ -1131,7 +1202,7 @@ await fs.rm(r2ArtifactDir("verification/subnets"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const results = (fullVerification.results || []).filter(
     (result) => result.netuid === subnet.netuid,
   );
@@ -1153,7 +1224,7 @@ for (const subnet of mergedSubnets) {
     },
     results,
   });
-}
+});
 
 await writeJson(artifactFile("metagraph/latest.json"), metagraphLatest);
 await fs.rm(r2ArtifactDir("health/subnets"), {
@@ -1185,7 +1256,7 @@ await fs.rm(r2ArtifactDir("endpoints"), {
   recursive: true,
   force: true,
 });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const subnetEndpoints = endpointsByNetuid.get(subnet.netuid) || [];
   await writeJson(artifactFile(`endpoints/${subnet.netuid}.json`), {
     schema_version: 1,
@@ -1197,8 +1268,8 @@ for (const subnet of mergedSubnets) {
     summary: endpointSummary(subnetEndpoints),
     endpoints: subnetEndpoints,
   });
-}
-for (const provider of providers) {
+});
+await mapLimit(providers, ARTIFACT_WRITE_CONCURRENCY, async (provider) => {
   const providerEndpoints = endpointsByProvider.get(provider.id) || [];
   await writeJson(artifactFile(`providers/${provider.id}/endpoints.json`), {
     schema_version: 1,
@@ -1213,14 +1284,18 @@ for (const provider of providers) {
     summary: endpointSummary(providerEndpoints),
     endpoints: providerEndpoints,
   });
-}
+});
 // Per-subnet current-health is live-only (served from KV/D1, not stored); see
 // the note above. Badges are kept: the badge route overlays live status and the
 // static badge is only an SVG-render fallback (it shows "unavailable" when cold,
 // not a stale status an agent would parse).
-for (const [netuid, badge] of healthArtifacts.badges) {
-  await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
-}
+await mapLimit(
+  [...healthArtifacts.badges],
+  ARTIFACT_WRITE_CONCURRENCY,
+  async ([netuid, badge]) => {
+    await writeJson(artifactFile(`health/badges/${netuid}.json`), badge);
+  },
+);
 coverage.completeness = buildCompletenessSummary(
   profileArtifacts.profiles,
   subnetIndex,
@@ -1258,7 +1333,7 @@ const overviewEndpointsByNetuid = groupByNetuid(endpointResources.endpoints);
 // #1002: overview counts.candidates is a per-subnet count → exclude superseded.
 const overviewCandidatesByNetuid = groupByNetuid(activeCandidateIndex);
 await fs.rm(r2ArtifactDir("overview"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   const curationEntry = overviewCurationByNetuid.get(subnet.netuid);
   await writeJson(artifactFile(`overview/${subnet.netuid}.json`), {
     schema_version: 1,
@@ -1281,7 +1356,7 @@ for (const subnet of mergedSubnets) {
     },
     gap_priorities: overviewGapPriorities.get(subnet.netuid) || [],
   });
-}
+});
 // --- Agent capability catalog ------------------------------------------------
 // Machine-readable "which subnet exposes which callable service + how to call it"
 // index for AI agents: per-subnet callable surfaces (subnet-api/openapi/sse/
@@ -1557,643 +1632,6 @@ function buildSubnetServices(netuid) {
     .sort((a, b) => a.surface_id.localeCompare(b.surface_id));
 }
 
-// Codified, OBJECTIVE "can a developer build on this subnet today" score
-// (0-100), composed only from deterministic build-time signals — never the live
-// 15-minute prober — so it stays a reproducible committed value. The live "is it
-// up right now" dimension is intentionally separate (get_subnet_health / the
-// health overlay). Components are published so agents can re-weight to their own
-// needs. Rubric: docs/integration-readiness.md.
-// #356: a categorical readiness gradient that turns the API-less long tail into
-// a ranked curation pipeline instead of a single 0-15 cliff. Derived purely from
-// components (not the numeric score) so the tier stays stable if weights move.
-function readinessTier(components) {
-  if (components.has_callable_api) return "buildable";
-  if (components.has_candidate_api || components.has_public_docs)
-    return "emerging";
-  if (components.has_source_repo || components.active_lifecycle)
-    return "identity-only";
-  return "dormant";
-}
-
-function subnetIntegrationReadiness({
-  services,
-  lifecycle,
-  completenessScore,
-  sourceRepo,
-  docsUrl,
-  candidates,
-}) {
-  const callable = services.filter((service) => service.eligibility.callable);
-  const components = {
-    has_callable_api: services.length > 0,
-    documented: services.some((service) => Boolean(service.schema_artifact)),
-    auth_clarity:
-      services.length > 0 &&
-      callable.every(
-        (service) => !service.auth_required || service.auth_schemes.length > 0,
-      ),
-    callable_now: callable.length > 0,
-    active_lifecycle: lifecycle === "active",
-    profile_complete: (completenessScore ?? 0) >= 70,
-    // #356: low-weight, NON-API signals so the ~99 API-less subnets stop
-    // cliffing at one score and rank as a curation pipeline. has_public_docs is
-    // any docs link (distinct from `documented`, which needs a verified schema);
-    // has_candidate_api is an unverified community-flagged operational surface.
-    has_source_repo: Boolean(sourceRepo),
-    has_public_docs: Boolean(docsUrl),
-    has_candidate_api: (candidates ?? []).some((candidate) =>
-      OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
-    ),
-  };
-  const score = Math.min(
-    100,
-    (components.has_callable_api ? 30 : 0) +
-      (components.documented ? 25 : 0) +
-      (components.auth_clarity ? 15 : 0) +
-      (components.callable_now ? 15 : 0) +
-      (components.active_lifecycle ? 10 : 0) +
-      (components.profile_complete ? 5 : 0) +
-      // Low-weight curation-pipeline signals (#356) — they spread the API-less
-      // tail without disturbing the API-led top (the sum still caps at 100).
-      (components.has_source_repo ? 4 : 0) +
-      (components.has_candidate_api ? 4 : 0) +
-      (components.has_public_docs ? 3 : 0),
-  );
-  return {
-    score,
-    readiness_tier: readinessTier(components),
-    readiness_version: READINESS_VERSION,
-    components,
-  };
-}
-
-function buildAgentReadiness({
-  subnet,
-  profile,
-  services,
-  readiness,
-  callableCount,
-}) {
-  const components = readiness?.components || {};
-  const subnetType = profile?.subnet_type || subnet.subnet_type || null;
-  const blockers = [];
-  const add = (code, severity, message, field, nextAction) => {
-    blockers.push({
-      code,
-      severity,
-      message,
-      field,
-      next_action: nextAction,
-    });
-  };
-
-  if (subnetType === "root") {
-    add(
-      "base-layer-only",
-      "hard",
-      "Root/base-layer surfaces are not application-subnet APIs.",
-      "subnet_type",
-      "Use get_best_rpc_endpoint or /api/v1/rpc/endpoints for chain RPC access.",
-    );
-  }
-  if (!components.active_lifecycle) {
-    add(
-      "inactive-lifecycle",
-      "hard",
-      "The subnet is not marked active in the registry snapshot.",
-      "lifecycle",
-      "Wait for an active mainnet subnet before recommending it for integrations.",
-    );
-  }
-  if ((services || []).length === 0) {
-    add(
-      "missing-callable-service",
-      "missing-data",
-      "No public-safe callable service is catalogued for this subnet yet.",
-      "surfaces",
-      "Find and verify an official subnet-api, OpenAPI, SSE, or data-artifact surface.",
-    );
-  } else if (callableCount === 0) {
-    add(
-      "service-not-callable",
-      "hard",
-      "Catalogued services exist, but none are structurally callable.",
-      "services.eligibility.callable",
-      "Review unsafe/dead service classifications before recommending this subnet.",
-    );
-  }
-  if (components.has_candidate_api && callableCount === 0) {
-    add(
-      "candidate-api-needs-review",
-      "needs-review",
-      "A candidate operational surface exists but has not been promoted into the callable catalog.",
-      "registry.candidates",
-      "Verify the candidate surface and promote it if it is public, safe, and subnet-owned.",
-    );
-  }
-  if (!components.has_candidate_api && callableCount === 0) {
-    add(
-      "no-candidate-api",
-      "missing-data",
-      "No candidate API surface has been found for this subnet.",
-      "registry.candidates",
-      "Search official docs, source repos, and project sites for a public integration surface.",
-    );
-  }
-  if (!components.documented && callableCount > 0) {
-    add(
-      "missing-schema",
-      "missing-data",
-      "At least one callable service exists, but no captured schema artifact is available.",
-      "schemas",
-      "Capture an official OpenAPI/Swagger/JSON Schema source or document that no schema exists.",
-    );
-  }
-  if (!components.auth_clarity && callableCount > 0) {
-    add(
-      "unclear-auth",
-      "missing-data",
-      "Callable services exist, but auth requirements are not fully machine-readable.",
-      "auth",
-      "Declare auth_required/auth_schemes or capture auth metadata from the service schema.",
-    );
-  }
-  if (!components.has_public_docs) {
-    add(
-      "missing-docs",
-      "missing-data",
-      "No public documentation link is recorded.",
-      "docs_url",
-      "Add an official docs URL or document that no public docs exist.",
-    );
-  }
-  if (!components.has_source_repo) {
-    add(
-      "missing-source-repo",
-      "missing-data",
-      "No public source repository is recorded.",
-      "source_repo",
-      "Add an official source repo or document that no public repo exists.",
-    );
-  }
-  if (!components.profile_complete) {
-    add(
-      "profile-incomplete",
-      "missing-data",
-      "The subnet profile is below the completeness threshold used by integration readiness.",
-      "completeness_score",
-      "Fill the missing required and operational registry fields for this subnet.",
-    );
-  }
-
-  const status =
-    callableCount > 0
-      ? "callable"
-      : subnetType === "root"
-        ? "base-layer"
-        : components.has_candidate_api
-          ? "candidate"
-          : components.has_public_docs || components.has_source_repo
-            ? "needs-evidence"
-            : "blocked";
-  const blockerLevel = blockers.some((blocker) => blocker.severity === "hard")
-    ? "hard-blocked"
-    : blockers.some((blocker) => blocker.severity === "needs-review")
-      ? "needs-review"
-      : blockers.length > 0
-        ? "missing-data"
-        : "none";
-
-  return {
-    status,
-    blocker_level: blockerLevel,
-    blockers,
-    missing_fields: [
-      ...new Set(
-        blockers
-          .filter((blocker) => blocker.severity === "missing-data")
-          .map((blocker) => blocker.field),
-      ),
-    ].sort(),
-  };
-}
-
-function summarizeAgentReadinessBlockers(blockedSubnets) {
-  const blockers = blockedSubnets.flatMap(
-    (subnet) => subnet.agent_readiness?.blockers || [],
-  );
-  return {
-    by_status: countBy(
-      blockedSubnets,
-      (subnet) => subnet.agent_readiness?.status || "unknown",
-    ),
-    by_level: countBy(
-      blockedSubnets,
-      (subnet) => subnet.agent_readiness?.blocker_level || "unknown",
-    ),
-    by_severity: countBy(blockers, "severity"),
-    by_code: countBy(blockers, "code"),
-  };
-}
-
-const COVERAGE_DEPTH_VERSION = 1;
-const COVERAGE_DEPTH_WEIGHTS = {
-  callable_service: 25,
-  schema_availability: 15,
-  fixture_state: 10,
-  examples_or_sdk: 10,
-  provenance: 15,
-  readiness_blockers: 15,
-  profile_completeness: 10,
-};
-const COVERAGE_DEPTH_QUEUE_LIMIT = 100;
-const COVERAGE_DEPTH_SEVERITY_RANK = {
-  hard: 0,
-  "needs-review": 1,
-  "missing-data": 2,
-};
-
-function coverageDepthTier({ agentReadiness, dimensions, gaps, score }) {
-  if (agentReadiness?.blocker_level === "hard-blocked") {
-    return "hard-blocked";
-  }
-  if (
-    dimensions.callable_service_count > 0 &&
-    agentReadiness?.blocker_level === "none" &&
-    gaps.length === 0 &&
-    score >= 80
-  ) {
-    return "agent-ready";
-  }
-  if (dimensions.callable_service_count > 0) {
-    return "machine-usable";
-  }
-  if (
-    agentReadiness?.status === "candidate" ||
-    dimensions.candidate_operational_count > 0
-  ) {
-    return "candidate-review";
-  }
-  if (agentReadiness?.status === "needs-evidence") {
-    return "needs-evidence";
-  }
-  return "missing-interface";
-}
-
-function addCoverageDepthGap(gaps, seenCodes, gap) {
-  if (seenCodes.has(gap.code)) return;
-  seenCodes.add(gap.code);
-  gaps.push(gap);
-}
-
-function sortCoverageDepthGaps(gaps) {
-  return [...gaps].sort((a, b) => {
-    const severityDelta =
-      (COVERAGE_DEPTH_SEVERITY_RANK[a.severity] ?? 9) -
-      (COVERAGE_DEPTH_SEVERITY_RANK[b.severity] ?? 9);
-    if (severityDelta !== 0) return severityDelta;
-    return a.code.localeCompare(b.code);
-  });
-}
-
-function scoreCoverageDepthDimensions({
-  dimensions,
-  agentReadiness,
-  completenessScore,
-}) {
-  const callableCoverage =
-    dimensions.callable_service_count > 0
-      ? 1
-      : dimensions.candidate_operational_count > 0
-        ? 0.3
-        : 0;
-  const schemaCoverage =
-    dimensions.callable_service_count > 0
-      ? dimensions.schema_service_count / dimensions.callable_service_count
-      : 0;
-  const explicitFixtureAbsenceCount = Object.values(
-    dimensions.fixture_status_counts,
-  ).reduce((sum, count) => sum + count, 0);
-  const fixtureCoverage =
-    dimensions.callable_service_count > 0
-      ? dimensions.fixture_available_count > 0
-        ? dimensions.fixture_available_count / dimensions.callable_service_count
-        : explicitFixtureAbsenceCount > 0
-          ? 0.4
-          : 0
-      : 0;
-  const exampleSdkCoverage =
-    dimensions.example_count + dimensions.sdk_count > 0 ? 1 : 0;
-  const provenanceCoverage =
-    dimensions.official_surface_count > 0
-      ? 1
-      : dimensions.provider_claimed_surface_count > 0
-        ? 0.6
-        : dimensions.registry_observed_surface_count > 0
-          ? 0.35
-          : 0;
-  const readinessCoverage =
-    agentReadiness?.blocker_level === "none"
-      ? 1
-      : agentReadiness?.blocker_level === "missing-data"
-        ? 0.65
-        : agentReadiness?.blocker_level === "needs-review"
-          ? 0.45
-          : 0;
-  const profileCoverage = Math.max(
-    0,
-    Math.min(1, Number(completenessScore || 0) / 100),
-  );
-
-  return Math.round(
-    COVERAGE_DEPTH_WEIGHTS.callable_service * callableCoverage +
-      COVERAGE_DEPTH_WEIGHTS.schema_availability * schemaCoverage +
-      COVERAGE_DEPTH_WEIGHTS.fixture_state * fixtureCoverage +
-      COVERAGE_DEPTH_WEIGHTS.examples_or_sdk * exampleSdkCoverage +
-      COVERAGE_DEPTH_WEIGHTS.provenance * provenanceCoverage +
-      COVERAGE_DEPTH_WEIGHTS.readiness_blockers * readinessCoverage +
-      COVERAGE_DEPTH_WEIGHTS.profile_completeness * profileCoverage,
-  );
-}
-
-function coverageDepthPriorityScore({ row, gaps }) {
-  const actionableGaps = gaps.filter((gap) => gap.severity !== "hard");
-  if (row.subnet_type === "root" || actionableGaps.length === 0) {
-    return 0;
-  }
-  const severityWeight = actionableGaps.reduce((sum, gap) => {
-    if (gap.severity === "needs-review") return sum + 18;
-    return sum + 12;
-  }, 0);
-  const base =
-    row.dimensions.callable_service_count > 0
-      ? 42
-      : row.dimensions.candidate_operational_count > 0
-        ? 30
-        : 14;
-  const deficitWeight = Math.round((100 - row.score) * 0.25);
-  const reviewWeight = row.curation_level === "maintainer-reviewed" ? 0 : 6;
-  const hardBlockerPenalty = row.blocker_level === "hard-blocked" ? 35 : 0;
-  return Math.max(
-    0,
-    Math.min(
-      100,
-      base +
-        Math.min(32, severityWeight) +
-        deficitWeight +
-        reviewWeight -
-        hardBlockerPenalty,
-    ),
-  );
-}
-
-function buildCoverageDepthArtifact({
-  subnets,
-  profileByNetuid,
-  surfacesByNetuid,
-  servicesByNetuid,
-  candidatesByNetuid,
-  readinessByNetuid,
-  agentReadinessByNetuid,
-  examplesByNetuid,
-  generatedAt,
-  contractVersion,
-}) {
-  const rows = subnets
-    .map((subnet) => {
-      const profile = profileByNetuid.get(subnet.netuid) || null;
-      const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
-      const services = servicesByNetuid.get(subnet.netuid) || [];
-      const callableServices = services.filter(
-        (service) => service.eligibility?.callable,
-      );
-      const candidatesForSubnet = candidatesByNetuid.get(subnet.netuid) || [];
-      const agentReadiness = agentReadinessByNetuid.get(subnet.netuid) || {
-        status: "blocked",
-        blocker_level: "missing-data",
-        blockers: [],
-        missing_fields: [],
-      };
-      const readiness = readinessByNetuid.get(subnet.netuid) || {
-        score: 0,
-      };
-      const examples = examplesByNetuid.get(subnet.netuid) || [];
-      const sdkCount = subnetSurfaces.filter(
-        (surface) => surface.kind === "sdk",
-      ).length;
-      const fixtureStatusCounts = countBy(
-        callableServices,
-        (service) => service.fixture_status?.status || "missing",
-      );
-      const dimensions = {
-        surface_count: subnetSurfaces.length,
-        official_surface_count: subnetSurfaces.filter(
-          (surface) => surface.authority === "official",
-        ).length,
-        registry_observed_surface_count: subnetSurfaces.filter(
-          (surface) => surface.authority === "registry-observed",
-        ).length,
-        provider_claimed_surface_count: subnetSurfaces.filter(
-          (surface) => surface.authority === "provider-claimed",
-        ).length,
-        service_count: services.length,
-        callable_service_count: callableServices.length,
-        service_kinds: [
-          ...new Set(callableServices.map((service) => service.kind)),
-        ].sort(),
-        schema_service_count: callableServices.filter(
-          (service) => service.schema_artifact,
-        ).length,
-        schema_missing_count: callableServices.filter(
-          (service) => !service.schema_artifact,
-        ).length,
-        fixture_available_count: callableServices.filter(
-          (service) => service.fixture_status?.status === "available",
-        ).length,
-        fixture_status_counts: fixtureStatusCounts,
-        example_count: examples.length,
-        sdk_count: sdkCount,
-        candidate_count: candidatesForSubnet.length,
-        candidate_operational_count: candidatesForSubnet.filter((candidate) =>
-          OPERATIONAL_SURFACE_KINDS.includes(candidate.kind),
-        ).length,
-        data_artifact_count: callableServices.filter(
-          (service) => service.kind === "data-artifact",
-        ).length,
-        source_repo_present: Boolean(subnet.source_repo),
-        docs_url_present: Boolean(subnet.docs_url),
-      };
-      const score = scoreCoverageDepthDimensions({
-        dimensions,
-        agentReadiness,
-        completenessScore: profile?.completeness_score,
-      });
-      const gaps = [];
-      const seenGapCodes = new Set();
-      for (const blocker of agentReadiness.blockers || []) {
-        addCoverageDepthGap(gaps, seenGapCodes, blocker);
-      }
-      if (
-        dimensions.callable_service_count > 0 &&
-        dimensions.schema_missing_count > 0 &&
-        dimensions.schema_service_count > 0
-      ) {
-        addCoverageDepthGap(gaps, seenGapCodes, {
-          code: "partial-schema-coverage",
-          severity: "missing-data",
-          message:
-            "Some callable services have captured schemas, but at least one callable service is still schema-less.",
-          field: "schemas",
-          next_action:
-            "Capture or explicitly mark schema absence for the remaining callable services.",
-        });
-      }
-      if (
-        dimensions.callable_service_count > 0 &&
-        dimensions.fixture_available_count === 0 &&
-        ((dimensions.fixture_status_counts.missing || 0) > 0 ||
-          (dimensions.fixture_status_counts["capture-failed"] || 0) > 0)
-      ) {
-        addCoverageDepthGap(gaps, seenGapCodes, {
-          code: "missing-fixture",
-          severity: "missing-data",
-          message:
-            "Callable services exist, but no sanitized request/response fixture is available.",
-          field: "fixtures",
-          next_action:
-            "Run fixture capture in write mode or document why the callable surface cannot publish a public sample.",
-        });
-      }
-      if (
-        dimensions.callable_service_count > 0 &&
-        dimensions.example_count + dimensions.sdk_count === 0
-      ) {
-        addCoverageDepthGap(gaps, seenGapCodes, {
-          code: "missing-example-or-sdk",
-          severity: "missing-data",
-          message:
-            "Callable services exist, but no example or SDK surface is recorded.",
-          field: "examples",
-          next_action:
-            "Add an official quickstart, SDK, or minimal code example for this subnet.",
-        });
-      }
-      if (
-        dimensions.surface_count > 0 &&
-        dimensions.official_surface_count === 0
-      ) {
-        addCoverageDepthGap(gaps, seenGapCodes, {
-          code: "missing-official-provenance",
-          severity: "needs-review",
-          message:
-            "Surfaces are catalogued, but none are marked operator-official.",
-          field: "authority",
-          next_action:
-            "Verify whether any recorded surface is first-party, or add official evidence.",
-        });
-      }
-      const sortedGaps = sortCoverageDepthGaps(gaps);
-      const row = {
-        netuid: subnet.netuid,
-        slug: subnet.slug,
-        name: subnet.name,
-        subnet_type: profile?.subnet_type || subnet.subnet_type || null,
-        curation_level: profile?.curation_level || null,
-        profile_level: profile?.profile_level || null,
-        score,
-        tier: coverageDepthTier({
-          agentReadiness,
-          dimensions,
-          gaps: sortedGaps,
-          score,
-        }),
-        priority_score: 0,
-        agent_status: agentReadiness.status,
-        blocker_level: agentReadiness.blocker_level,
-        readiness_score: readiness.score,
-        completeness_score: profile?.completeness_score ?? null,
-        dimensions,
-        top_gaps: sortedGaps.slice(0, 6),
-        top_gap_codes: sortedGaps.slice(0, 6).map((gap) => gap.code),
-        recommended_next_action:
-          sortedGaps.find((gap) => gap.severity !== "hard")?.next_action ||
-          sortedGaps[0]?.next_action ||
-          null,
-      };
-      row.priority_score = coverageDepthPriorityScore({
-        row,
-        gaps: sortedGaps,
-      });
-      return row;
-    })
-    .sort((a, b) => a.netuid - b.netuid);
-
-  const rankedQueue = rows
-    .filter((row) => row.priority_score > 0 && row.top_gaps.length > 0)
-    .sort((a, b) => {
-      const priorityDelta = b.priority_score - a.priority_score;
-      if (priorityDelta !== 0) return priorityDelta;
-      const scoreDelta = a.score - b.score;
-      if (scoreDelta !== 0) return scoreDelta;
-      return a.netuid - b.netuid;
-    })
-    .slice(0, COVERAGE_DEPTH_QUEUE_LIMIT)
-    .map((row, index) => {
-      const primaryGap =
-        row.top_gaps.find((gap) => gap.severity !== "hard") || row.top_gaps[0];
-      return {
-        rank: index + 1,
-        netuid: row.netuid,
-        slug: row.slug,
-        name: row.name,
-        tier: row.tier,
-        score: row.score,
-        priority_score: row.priority_score,
-        severity: primaryGap.severity,
-        top_gap_codes: row.top_gap_codes,
-        recommended_next_action:
-          row.recommended_next_action || primaryGap.next_action,
-      };
-    });
-  const allTopGaps = rows.flatMap((row) => row.top_gaps);
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    coverage_depth_version: COVERAGE_DEPTH_VERSION,
-    subnet_count: rows.length,
-    summary: {
-      row_count: rows.length,
-      agent_ready_count: rows.filter((row) => row.tier === "agent-ready")
-        .length,
-      callable_subnet_count: rows.filter(
-        (row) => row.dimensions.callable_service_count > 0,
-      ).length,
-      blocked_subnet_count: rows.filter(
-        (row) => row.blocker_level === "hard-blocked",
-      ).length,
-      queue_count: rankedQueue.length,
-      average_score:
-        rows.length === 0
-          ? 0
-          : Math.round(
-              rows.reduce((sum, row) => sum + row.score, 0) / rows.length,
-            ),
-      tier_counts: countBy(rows, "tier"),
-      blocker_level_counts: countBy(rows, "blocker_level"),
-      severity_counts: countBy(allTopGaps, "severity"),
-      gap_code_counts: countBy(allTopGaps, "code"),
-    },
-    scoring: {
-      methodology:
-        "Deterministic build-time score over callable services, schema coverage, fixture state, examples/SDKs, provenance, readiness blockers, and profile completeness. Live health is intentionally separate.",
-      weights: COVERAGE_DEPTH_WEIGHTS,
-    },
-    rows,
-    ranked_queue: rankedQueue,
-  };
-}
-
 await fs.rm(r2ArtifactDir("agent-catalog"), { recursive: true, force: true });
 // #1008: code-examples (quickstarts / SDK snippets) per subnet, projected from
 // the curated `example`-kind surfaces. They are reference material, not callable
@@ -2215,6 +1653,8 @@ const agentCatalogIndex = [];
 const blockedAgentCatalogIndex = [];
 const agentReadinessByNetuid = new Map();
 let callableServiceCount = 0;
+// serial: accumulates shared state (callableServiceCount and the catalog index
+// arrays), so unlike the #2057 per-subnet write loops this is not parallelized.
 for (const subnet of mergedSubnets) {
   const profile = profileArtifacts.byNetuid.get(subnet.netuid) || null;
   const services = servicesByNetuid.get(subnet.netuid) || [];
@@ -2359,6 +1799,7 @@ const llmsHeader = [
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
   `- [Ask](${llmsApiBase}/api/v1/ask): POST { question } for a grounded, cited answer over the registry`,
+  `- [GraphQL](${llmsApiBase}/api/v1/graphql): POST a shaped query to fetch a subnet with its health, surfaces, endpoints, and economics — plus a provider with its subnets and the economic opportunity boards — in one request. GET returns the SDL; introspection is enabled.`,
   `- [API index](${llmsApiBase}/api/v1): route list + response envelope`,
   `- [Registry summary](${llmsApiBase}/api/v1/registry/summary): coverage + completeness leaderboard`,
   `- [Bulk datasets](${llmsApiBase}/datasets/index.json): whole-registry CSV exports (subnets, surfaces, providers)`,
@@ -2410,49 +1851,14 @@ await fs.writeFile(
   "utf8",
 );
 
-// MCP server card + SEP-1960 discovery doc — lets MCP-aware crawlers/registries
-// (Smithery, PulseMCP, mcp.so, the official registry) autodiscover the server.
-// Served as static ASSETS at api.metagraph.sh; reuses the exact MCP
-// server-info/instructions/tool definitions so the card can never drift from
-// what POST /mcp tools/list advertises.
+// SEP-1960 discovery document — lets MCP-aware crawlers/registries (Smithery,
+// PulseMCP, mcp.so, the official registry) autodiscover the server via
+// /.well-known/mcp.json. The server card (SEP-1649) is worker-computed from the
+// live tool registry; only this pointer document is a committed artifact.
 const mcpEndpoint = `${llmsApiBase}/mcp`;
 await fs.mkdir(path.join(repoRoot, "public/.well-known/mcp"), {
   recursive: true,
 });
-const serverCardContent = {
-  schema_version: 1,
-  // SEP-1649 server card shape: a nested serverInfo { name, version } is the
-  // standardized identity block. Top-level name/title/version are kept for
-  // backward compatibility with the registries already reading this card.
-  serverInfo: { name: MCP_SERVER_INFO.name, version: MCP_SERVER_INFO.version },
-  name: MCP_SERVER_INFO.name,
-  title: MCP_SERVER_INFO.title,
-  description: MCP_INSTRUCTIONS,
-  version: MCP_SERVER_INFO.version,
-  repository: "https://github.com/JSONbored/metagraphed",
-  documentation: `${llmsApiBase}/llms.txt`,
-  endpoint: mcpEndpoint,
-  transport: "streamable-http",
-  protocol_versions: MCP_PROTOCOL_VERSIONS,
-  authentication: "none",
-  capabilities: MCP_CAPABILITIES,
-  // Backlink to this server's MCP Registry identity (mirrors server.json).
-  _meta: MCP_REGISTRY_META,
-  tools: listToolDefinitions(),
-  resource_templates: MCP_RESOURCE_TEMPLATES,
-  prompts: listPromptDefinitions(),
-};
-await writeJson(
-  path.join(repoRoot, "public/.well-known/mcp/server-card.json"),
-  {
-    ...serverCardContent,
-    // Real publish time + deterministic content fingerprint (issue #349) so
-    // agents don't read the deterministic 1970 generated_at as "stale".
-    generated_at: generatedAt,
-    published_at: publishedAt(),
-    content_hash: hashJson(serverCardContent),
-  },
-);
 await writeJson(path.join(repoRoot, "public/.well-known/mcp.json"), {
   schema_version: 1,
   servers: [
@@ -2659,6 +2065,12 @@ const agentResourcesContent = {
       url: `${llmsApiBase}/api/v1/ask`,
     },
     {
+      id: "graphql",
+      title: "GraphQL (shaped registry queries)",
+      kind: "api",
+      url: `${llmsApiBase}/api/v1/graphql`,
+    },
+    {
       id: "fixtures",
       title: "Live request/response fixtures",
       kind: "api",
@@ -2800,15 +2212,17 @@ await writeJson(
   buildApiIndexArtifact(generatedAt, contracts),
 );
 await writeJson(artifactFile("openapi.json"), openApi);
+const searchIndexArtifact = buildSearchIndex(
+  mergedSubnets,
+  surfaces,
+  providers,
+  profileArtifacts.byNetuid,
+  serviceKindsByNetuid,
+);
+await writeJson(artifactFile("search.json"), searchIndexArtifact);
 await writeJson(
-  artifactFile("search.json"),
-  buildSearchIndex(
-    mergedSubnets,
-    surfaces,
-    providers,
-    profileArtifacts.byNetuid,
-    serviceKindsByNetuid,
-  ),
+  artifactFile("search-index.json"),
+  buildSlimSearchIndex(searchIndexArtifact),
 );
 await writeJson(
   artifactFile("freshness.json"),
@@ -2860,7 +2274,7 @@ for (const claim of evidenceLedger.claims || []) {
   claimsByNetuid.set(netuid, bucket);
 }
 await fs.rm(r2ArtifactDir("evidence"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`evidence/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -2870,7 +2284,7 @@ for (const subnet of mergedSubnets) {
     name: subnet.name,
     claims: claimsByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 // Testnet base-layer RPC endpoints → the static /rpc/v1/test pool (see
 // registry/native/test-base-endpoints.json). Mapped to the probe-derived endpoint
 // shape with static eligibility/score so the proxy can route immediately; the
@@ -2965,9 +2379,16 @@ const fixtureIndexEntries = [...capturedFixtures.values()]
   }))
   .sort((a, b) => String(a.surface_id).localeCompare(String(b.surface_id)));
 const fixtureCoverage = fixtureCoverageEntries(surfaces);
-for (const fixture of capturedFixtures.values()) {
-  await writeJson(artifactFile(`fixtures/${fixture.surface_id}.json`), fixture);
-}
+await mapLimit(
+  [...capturedFixtures.values()],
+  ARTIFACT_WRITE_CONCURRENCY,
+  async (fixture) => {
+    await writeJson(
+      artifactFile(`fixtures/${fixture.surface_id}.json`),
+      fixture,
+    );
+  },
+);
 if (capturedFixtureReport) {
   await writeJson(artifactFile("fixtures/_capture-report.json"), {
     ...capturedFixtureReport,
@@ -3018,7 +2439,7 @@ const gapPrioritiesByNetuid = groupByNetuid(
 );
 const enrichmentQueueByNetuid = groupByNetuid(enrichmentQueue.queue || []);
 await fs.rm(r2ArtifactDir("review/gaps"), { recursive: true, force: true });
-for (const subnet of mergedSubnets) {
+await mapLimit(mergedSubnets, ARTIFACT_WRITE_CONCURRENCY, async (subnet) => {
   await writeJson(artifactFile(`review/gaps/${subnet.netuid}.json`), {
     schema_version: 1,
     contract_version: contractVersion,
@@ -3029,7 +2450,7 @@ for (const subnet of mergedSubnets) {
     priorities: gapPrioritiesByNetuid.get(subnet.netuid) || [],
     enrichment_queue: enrichmentQueueByNetuid.get(subnet.netuid) || [],
   });
-}
+});
 await writeJson(
   artifactFile("review/enrichment-evidence.json"),
   enrichmentArtifacts.evidenceArtifact,
@@ -3047,9 +2468,13 @@ await writeJson(artifactFile("review/maintainer-decisions.json"), {
     "Public-safe maintainer curation decisions only. No secrets, wallets, PATs, private dashboards, or validator-local state.",
 });
 
-for (const [slug, artifact] of Object.entries(adapterArtifacts)) {
-  await writeJson(artifactFile(`adapters/${slug}.json`), artifact);
-}
+await mapLimit(
+  Object.entries(adapterArtifacts),
+  ARTIFACT_WRITE_CONCURRENCY,
+  async ([slug, artifact]) => {
+    await writeJson(artifactFile(`adapters/${slug}.json`), artifact);
+  },
+);
 
 const currentArtifactDigests = await collectArtifactDigests({
   includeR2Root: false,
@@ -3166,11 +2591,14 @@ const artifactSizesBeforeR2 = await collectArtifactSizes({
   publicRoot: outputRoot,
   r2Root: r2OutputRoot,
 });
+const manifestGeneratedAt =
+  (await readCommittedManifestGeneratedAt(artifactFile("r2-manifest.json"))) ??
+  generatedAt;
 await writeJson(
   artifactFile("r2-manifest.json"),
   buildR2Manifest({
     artifactSizes: artifactSizesBeforeR2,
-    generatedAt,
+    generatedAt: manifestGeneratedAt,
   }),
 );
 
@@ -3567,966 +2995,6 @@ function buildSubnetProfileArtifacts({
       ).length,
     },
   };
-}
-
-function buildEnrichmentQueueArtifacts({
-  candidates,
-  curationReview,
-  profiles,
-  reviewProfiles,
-  subnets,
-  verification,
-}) {
-  const verificationByCandidate = new Map(
-    (verification.results || []).map((result) => [result.candidate_id, result]),
-  );
-  const reviewProfileByNetuid = new Map(
-    reviewProfiles.map((profile) => [profile.netuid, profile]),
-  );
-  const gapPriorityByNetuid = new Map(
-    (curationReview.gap_priorities || []).map((priority) => [
-      priority.netuid,
-      priority,
-    ]),
-  );
-  const adapterCandidateByNetuid = new Map(
-    (curationReview.adapter_candidates || []).map((candidate) => [
-      candidate.netuid,
-      candidate,
-    ]),
-  );
-  const excludedCandidateIdsByNetuid = new Map(
-    subnets.map((subnet) => [
-      subnet.netuid,
-      new Set(subnet.baseline_excluded_surface_ids || []),
-    ]),
-  );
-  const excludedCandidateUrlsByNetuid = new Map(
-    subnets.map((subnet) => [
-      subnet.netuid,
-      new Set(
-        (subnet.baseline_excluded_surface_urls || [])
-          .map((url) => normalizePublicUrl(url))
-          .filter(Boolean),
-      ),
-    ]),
-  );
-  const candidatesByNetuid = groupByNetuid(candidates);
-
-  const fullQueue = profiles
-    .map((profile) =>
-      enrichmentQueueEntry({
-        adapterCandidate: adapterCandidateByNetuid.get(profile.netuid),
-        gapPriority: gapPriorityByNetuid.get(profile.netuid),
-        profile,
-        reviewProfile: reviewProfileByNetuid.get(profile.netuid),
-        subnetCandidates: enrichmentCandidatesForSubnet({
-          excludedIds: excludedCandidateIdsByNetuid.get(profile.netuid),
-          excludedUrls: excludedCandidateUrlsByNetuid.get(profile.netuid),
-          subnetCandidates: candidatesByNetuid.get(profile.netuid) || [],
-        }),
-        verificationByCandidate,
-      }),
-    )
-    .sort(
-      (a, b) =>
-        b.priority_score - a.priority_score ||
-        a.lane.localeCompare(b.lane) ||
-        a.netuid - b.netuid,
-    );
-  const queue = fullQueue.map(compactEnrichmentQueueEntry);
-  const evidenceEntries = fullQueue.map(enrichmentEvidenceEntry);
-
-  const queueArtifact = {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    notes:
-      "Prioritized enrichment queue derived from public-safe profile gaps, candidate counts, review state, adapter potential, and probe-derived endpoint incidents. It is contributor guidance, not a contribution API.",
-    summary: {
-      subnet_count: profiles.length,
-      queue_count: queue.length,
-      direct_submission_count: queue.filter(
-        (entry) => entry.lane === "direct-submission",
-      ).length,
-      maintainer_review_count: queue.filter(
-        (entry) => entry.lane === "maintainer-review",
-      ).length,
-      adapter_candidate_count: queue.filter(
-        (entry) => entry.lane === "adapter-candidate",
-      ).length,
-      monitoring_followup_count: queue.filter(
-        (entry) => entry.lane === "monitoring-followup",
-      ).length,
-      baseline_monitoring_count: queue.filter(
-        (entry) => entry.lane === "baseline-monitoring",
-      ).length,
-      manual_review_required_count: queue.filter(
-        (entry) => entry.manual_review_required,
-      ).length,
-      lane_counts: countBy(queue, "lane"),
-      identity_level_counts: countBy(queue, "identity_level"),
-      evidence_action_counts: countBy(queue, "evidence_action"),
-      top_direct_submission_kinds: countDirectSubmissionKinds(queue),
-    },
-    queue,
-  };
-  const evidenceArtifact = {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    notes:
-      "Detailed candidate evidence by missing or contributor-target surface kind. This is contributor guidance and maintainer review context; it does not create registry truth or observed health.",
-    entries: evidenceEntries,
-    summary: {
-      subnet_count: evidenceEntries.length,
-      entry_count: evidenceEntries.length,
-      evidence_action_counts: countBy(evidenceEntries, "evidence_action"),
-      stale_candidate_count: evidenceEntries.reduce(
-        (sum, entry) =>
-          sum + entry.candidate_evidence_summary.stale_or_failed_count,
-        0,
-      ),
-      unverified_candidate_count: evidenceEntries.reduce(
-        (sum, entry) => sum + entry.candidate_evidence_summary.unverified_count,
-        0,
-      ),
-    },
-  };
-  const targetArtifact = buildEnrichmentTargetsArtifact({
-    evidenceEntries,
-    queue,
-  });
-  return { evidenceArtifact, queueArtifact, targetArtifact };
-}
-
-function enrichmentCandidatesForSubnet({
-  excludedIds,
-  excludedUrls,
-  subnetCandidates,
-}) {
-  const hasExcludedIds = excludedIds && excludedIds.size > 0;
-  const hasExcludedUrls = excludedUrls && excludedUrls.size > 0;
-  if (!hasExcludedIds && !hasExcludedUrls) {
-    return subnetCandidates;
-  }
-  return subnetCandidates.filter((candidate) => {
-    if (hasExcludedIds && excludedIds.has(candidate.id)) {
-      return false;
-    }
-    if (!hasExcludedUrls) {
-      return true;
-    }
-    const candidateUrl = normalizePublicUrl(candidate.url);
-    return !candidateUrl || !excludedUrls.has(candidateUrl);
-  });
-}
-
-function buildEnrichmentTargetsArtifact({ evidenceEntries, queue }) {
-  const evidenceByNetuid = new Map(
-    evidenceEntries.map((entry) => [entry.netuid, entry]),
-  );
-  const targets = queue
-    .flatMap((entry) =>
-      enrichmentTargetsForEntry({
-        entry,
-        evidenceEntry: evidenceByNetuid.get(entry.netuid),
-      }),
-    )
-    .sort(
-      (a, b) =>
-        b.priority_score - a.priority_score ||
-        a.target_type.localeCompare(b.target_type) ||
-        String(a.kind || "").localeCompare(String(b.kind || "")) ||
-        a.netuid - b.netuid,
-    );
-
-  return {
-    schema_version: 1,
-    contract_version: contractVersion,
-    generated_at: generatedAt,
-    notes:
-      "Contributor-oriented enrichment target pack derived from the queue and evidence artifacts. It provides public-safe submission guidance only; observed health and registry truth remain probe/generated artifacts.",
-    summary: {
-      target_count: targets.length,
-      subnet_count: new Set(targets.map((target) => target.netuid)).size,
-      auto_review_candidate_count: targets.filter(
-        (target) => target.auto_review_candidate,
-      ).length,
-      manual_review_required_count: targets.filter(
-        (target) => target.manual_review_required,
-      ).length,
-      new_evidence_count: targets.filter(
-        (target) => target.evidence_action === "submit-new-evidence",
-      ).length,
-      stale_replacement_count: targets.filter(
-        (target) => target.evidence_action === "replace-stale-evidence",
-      ).length,
-      by_evidence_action: countBy(targets, "evidence_action"),
-      by_kind: countBy(
-        targets.filter((target) => target.kind),
-        "kind",
-      ),
-      by_lane: countBy(targets, "lane"),
-      by_target_type: countBy(targets, "target_type"),
-    },
-    groups: enrichmentTargetGroups(targets),
-    targets,
-  };
-}
-
-function enrichmentTargetsForEntry({ entry, evidenceEntry }) {
-  if (entry.lane === "direct-submission") {
-    return entry.direct_submission_kinds.map((kind) =>
-      surfaceCandidateTarget({ entry, evidenceEntry, kind }),
-    );
-  }
-  if (entry.lane === "adapter-candidate") {
-    return [
-      nonSurfaceEnrichmentTarget({ entry, targetType: "adapter-review" }),
-    ];
-  }
-  if (entry.lane === "maintainer-review") {
-    return [
-      nonSurfaceEnrichmentTarget({
-        entry,
-        targetType: "maintainer-review",
-      }),
-    ];
-  }
-  return [
-    nonSurfaceEnrichmentTarget({
-      entry,
-      targetType: "monitoring-followup",
-    }),
-  ];
-}
-
-function surfaceCandidateTarget({ entry, evidenceEntry, kind }) {
-  const candidateEvidence = evidenceEntry?.candidate_evidence_by_kind?.[
-    kind
-  ] || {
-    candidate_count: 0,
-    classifications: {},
-    live_or_redirected_count: 0,
-    reviewable_count: 0,
-    sample_candidate_ids: [],
-    stale_or_failed_count: 0,
-    unverified_count: 0,
-  };
-  const evidenceAction = surfaceEvidenceAction(candidateEvidence);
-  const action = surfaceTargetAction(evidenceAction);
-  return {
-    auto_review_candidate: !entry.manual_review_required,
-    candidate_command: candidateCommandTemplate(entry.netuid, kind),
-    candidate_evidence: candidateEvidence,
-    contribution_prompt: contributionPromptForKind(kind, evidenceAction),
-    evidence_action: evidenceAction,
-    identity_level: entry.identity_level,
-    kind,
-    lane: entry.lane,
-    manual_review_required: entry.manual_review_required,
-    missing_kinds: entry.missing_kinds,
-    name: entry.name,
-    netuid: entry.netuid,
-    priority_score: entry.priority_score,
-    profile_level: entry.profile_level,
-    queue_context: enrichmentTargetQueueContext(entry),
-    reason_codes: entry.reason_codes,
-    recommended_action: entry.recommended_action,
-    sample_live_candidate_ids: entry.sample_live_candidate_ids,
-    sample_stale_candidate_ids: entry.sample_stale_candidate_ids,
-    sample_target_candidate_ids: entry.sample_target_candidate_ids,
-    slug: entry.slug,
-    source_requirements: sourceRequirementsForKind(kind),
-    source_urls: entry.source_urls.slice(0, 3),
-    submission_route: "direct-candidate-pr",
-    target_id: enrichmentTargetId(entry, "surface-candidate", kind),
-    target_type: "surface-candidate",
-    target_action: action,
-  };
-}
-
-function surfaceEvidenceAction(candidateEvidence) {
-  if (!candidateEvidence || candidateEvidence.candidate_count === 0) {
-    return "submit-new-evidence";
-  }
-  if (candidateEvidence.live_or_redirected_count > 0) {
-    return "review-existing-evidence";
-  }
-  if (candidateEvidence.stale_or_failed_count > 0) {
-    return "replace-stale-evidence";
-  }
-  return "verify-existing-evidence";
-}
-
-function nonSurfaceEnrichmentTarget({ entry, targetType }) {
-  const routeByType = {
-    "adapter-review": "adapter-request",
-    "maintainer-review": "maintainer-review",
-    "monitoring-followup": "status-report",
-  };
-  return {
-    auto_review_candidate: false,
-    candidate_command: null,
-    candidate_evidence: null,
-    contribution_prompt: contributionPromptForTargetType(targetType),
-    evidence_action: entry.evidence_action,
-    identity_level: entry.identity_level,
-    kind: null,
-    lane: entry.lane,
-    manual_review_required: true,
-    missing_kinds: entry.missing_kinds,
-    name: entry.name,
-    netuid: entry.netuid,
-    priority_score: entry.priority_score,
-    profile_level: entry.profile_level,
-    queue_context: enrichmentTargetQueueContext(entry),
-    reason_codes: entry.reason_codes,
-    recommended_action: entry.recommended_action,
-    sample_live_candidate_ids: entry.sample_live_candidate_ids,
-    sample_stale_candidate_ids: entry.sample_stale_candidate_ids,
-    sample_target_candidate_ids: entry.sample_target_candidate_ids,
-    slug: entry.slug,
-    source_requirements: sourceRequirementsForTargetType(targetType),
-    source_urls: entry.source_urls.slice(0, 3),
-    submission_route: routeByType[targetType],
-    target_id: enrichmentTargetId(entry, targetType, null),
-    target_type: targetType,
-    target_action: targetType,
-  };
-}
-
-function enrichmentTargetQueueContext(entry) {
-  return {
-    adapter_score: entry.adapter_score,
-    candidate_count: entry.candidate_count,
-    completeness_score: entry.completeness_score,
-    curation_level: entry.curation_level,
-    direct_submission_kind_count: entry.direct_submission_kinds.length,
-    endpoint_count: entry.endpoint_count,
-    identity_surface_count: entry.identity_surface_count,
-    operational_interface_count: entry.operational_interface_count,
-    profile_level: entry.profile_level,
-    review_state: entry.review_state,
-    source_url_count: entry.source_urls.length,
-    stale_candidate_count: entry.stale_candidate_count,
-    surface_count: entry.surface_count,
-    verified_candidate_count: entry.verified_candidate_count,
-  };
-}
-
-function enrichmentTargetGroups(targets) {
-  return [...groupBy(targets, "target_type").entries()]
-    .flatMap(([targetType, rows]) => {
-      const byKind = groupBy(rows, (row) => row.kind || targetType);
-      return [...byKind.entries()].map(([kind, kindRows]) => ({
-        auto_review_candidate_count: kindRows.filter(
-          (target) => target.auto_review_candidate,
-        ).length,
-        kind: kind === targetType ? null : kind,
-        manual_review_required_count: kindRows.filter(
-          (target) => target.manual_review_required,
-        ).length,
-        target_count: kindRows.length,
-        target_ids: kindRows.map((target) => target.target_id).slice(0, 20),
-        target_type: targetType,
-        top_netuids: kindRows
-          .slice()
-          .sort(
-            (a, b) =>
-              b.priority_score - a.priority_score || a.netuid - b.netuid,
-          )
-          .slice(0, 10)
-          .map((target) => target.netuid),
-      }));
-    })
-    .sort(
-      (a, b) =>
-        a.target_type.localeCompare(b.target_type) ||
-        String(a.kind || "").localeCompare(String(b.kind || "")),
-    );
-}
-
-function enrichmentTargetId(entry, targetType, kind) {
-  return [`sn-${entry.netuid}`, targetType, kind || entry.lane]
-    .map(slugify)
-    .join("-");
-}
-
-function candidateCommandTemplate(netuid, kind) {
-  return `npm run candidate:new -- --netuid ${netuid} --kind ${kind} --url <public-url> --source-url <public-source-url> --provider <provider-slug> --submitted-by <github-login> --write`;
-}
-
-function surfaceTargetAction(evidenceAction) {
-  if (evidenceAction === "replace-stale-evidence") {
-    return "replace-stale-candidate";
-  }
-  if (evidenceAction === "verify-existing-evidence") {
-    return "verify-existing-candidate";
-  }
-  if (evidenceAction === "review-existing-evidence") {
-    return "review-existing-candidate";
-  }
-  return "submit-new-candidate";
-}
-
-function contributionPromptForKind(kind, evidenceAction) {
-  const verb =
-    evidenceAction === "replace-stale-evidence"
-      ? "Replace stale or failed"
-      : evidenceAction === "review-existing-evidence"
-        ? "Confirm and submit"
-        : "Submit";
-  return `${verb} official public ${kind} evidence for this subnet. Use one candidate per PR and include a public source URL that proves provenance.`;
-}
-
-function contributionPromptForTargetType(targetType) {
-  if (targetType === "adapter-review") {
-    return "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.";
-  }
-  if (targetType === "maintainer-review") {
-    return "Review existing machine-verified surfaces and promote only source-backed public interfaces.";
-  }
-  return "Review probe-derived status or request a re-probe. Contributor reports never set observed health directly.";
-}
-
-function sourceRequirementsForKind(kind) {
-  if (["website", "docs", "source-repo"].includes(kind)) {
-    return [
-      "Prefer an official project/team source.",
-      "The source URL must be public and show the subnet/project relationship.",
-      "Do not submit Discord-only claims, private dashboards, wallet paths, PATs, or validator internals.",
-    ];
-  }
-  if (["openapi", "subnet-api", "sse", "data-artifact"].includes(kind)) {
-    return [
-      "The URL must be public-safe and read-only.",
-      "The source URL must document or link the interface.",
-      "Do not submit authenticated, write-capable, wallet, PAT, or validator-private flows.",
-    ];
-  }
-  return [
-    "The URL and source URL must both be public.",
-    "The source URL must explain ownership or relevance.",
-    "Do not submit secrets, private URLs, wallet paths, or validator internals.",
-  ];
-}
-
-function sourceRequirementsForTargetType(targetType) {
-  if (targetType === "adapter-review") {
-    return [
-      "Existing public API/schema/data evidence should be stable enough to normalize.",
-      "Adapter work requires maintainer review before publication.",
-    ];
-  }
-  if (targetType === "maintainer-review") {
-    return [
-      "Use public provenance to confirm or reject existing machine-verified surfaces.",
-      "Promotion decisions must stay public-safe and source-backed.",
-    ];
-  }
-  return [
-    "Use status reports to trigger review or re-probes only.",
-    "Observed uptime, latency, and incidents remain probe-derived.",
-  ];
-}
-
-function compactEnrichmentQueueEntry(entry) {
-  const { candidate_evidence_by_kind: evidenceByKind, ...compact } = entry;
-  return {
-    ...compact,
-    candidate_evidence_summary: summarizeCandidateEvidence(evidenceByKind),
-  };
-}
-
-function enrichmentEvidenceEntry(entry) {
-  return {
-    candidate_evidence_by_kind: entry.candidate_evidence_by_kind,
-    candidate_evidence_summary: summarizeCandidateEvidence(
-      entry.candidate_evidence_by_kind,
-    ),
-    direct_submission_kinds: entry.direct_submission_kinds,
-    evidence_action: entry.evidence_action,
-    lane: entry.lane,
-    missing_kinds: entry.missing_kinds,
-    name: entry.name,
-    netuid: entry.netuid,
-    priority_score: entry.priority_score,
-    slug: entry.slug,
-  };
-}
-
-function summarizeCandidateEvidence(evidenceByKind) {
-  const entries = Object.entries(evidenceByKind || {});
-  const summary = {
-    candidate_count: 0,
-    kinds_with_candidates: [],
-    live_kinds: [],
-    live_or_redirected_count: 0,
-    reviewable_count: 0,
-    stale_kinds: [],
-    stale_or_failed_count: 0,
-    unverified_count: 0,
-    unverified_kinds: [],
-  };
-
-  for (const [kind, evidence] of entries) {
-    summary.candidate_count += evidence.candidate_count || 0;
-    summary.live_or_redirected_count += evidence.live_or_redirected_count || 0;
-    summary.reviewable_count += evidence.reviewable_count || 0;
-    summary.stale_or_failed_count += evidence.stale_or_failed_count || 0;
-    summary.unverified_count += evidence.unverified_count || 0;
-    if ((evidence.candidate_count || 0) > 0) {
-      summary.kinds_with_candidates.push(kind);
-    }
-    if ((evidence.live_or_redirected_count || 0) > 0) {
-      summary.live_kinds.push(kind);
-    }
-    if ((evidence.stale_or_failed_count || 0) > 0) {
-      summary.stale_kinds.push(kind);
-    }
-    if ((evidence.unverified_count || 0) > 0) {
-      summary.unverified_kinds.push(kind);
-    }
-  }
-
-  summary.kinds_with_candidates.sort();
-  summary.live_kinds.sort();
-  summary.stale_kinds.sort();
-  summary.unverified_kinds.sort();
-  return summary;
-}
-
-function enrichmentQueueEntry({
-  adapterCandidate,
-  gapPriority,
-  profile,
-  reviewProfile,
-  subnetCandidates,
-  verificationByCandidate,
-}) {
-  const missingRequired = profile.completeness.missing_required || [];
-  const missingOperational = profile.completeness.missing_operational || [];
-  const missingKinds = [
-    ...new Set([
-      ...(gapPriority?.missing_kinds || []),
-      ...missingRequired,
-      ...missingOperational,
-    ]),
-  ].sort();
-  const directSubmissionKinds = directSubmissionKindsForProfile(profile);
-  const candidateEvidenceByKind = candidateEvidenceByKindForQueue({
-    directSubmissionKinds,
-    missingKinds,
-    subnetCandidates,
-    verificationByCandidate,
-  });
-  const lane = enrichmentLane({
-    adapterCandidate,
-    directSubmissionKinds,
-    profile,
-  });
-  const evidenceAction = enrichmentEvidenceAction({
-    candidateEvidenceByKind,
-    directSubmissionKinds,
-    lane,
-  });
-  const manualReviewRequired = [
-    "maintainer-review",
-    "adapter-candidate",
-  ].includes(lane);
-  const adapterScore = adapterCandidate?.priority_score || 0;
-  const priorityScore =
-    (reviewProfile?.priority_score || 100 - profile.completeness_score) +
-    Math.floor((gapPriority?.priority_score || 0) / 2) +
-    Math.floor(adapterScore / 2);
-
-  return {
-    adapter_score: adapterScore,
-    candidate_evidence_by_kind: candidateEvidenceByKind,
-    candidate_count: profile.candidate_count,
-    completeness_score: profile.completeness_score,
-    contribution_hint: enrichmentContributionHint(lane, directSubmissionKinds),
-    curation_level: profile.curation_level,
-    direct_submission_kinds: directSubmissionKinds,
-    endpoint_count: profile.endpoint_count,
-    evidence_action: evidenceAction,
-    identity_level: profile.identity_level,
-    identity_surface_count: profile.identity_surface_count,
-    lane,
-    manual_review_required: manualReviewRequired,
-    missing_identity: profile.missing_identity,
-    missing_kinds: missingKinds,
-    name: profile.name,
-    netuid: profile.netuid,
-    operational_interface_count: profile.operational_interface_count,
-    priority_score: priorityScore,
-    profile_level: profile.profile_level,
-    reason_codes: enrichmentReasonCodes({
-      adapterCandidate,
-      directSubmissionKinds,
-      profile,
-    }),
-    recommended_action: enrichmentRecommendedAction({
-      adapterCandidate,
-      directSubmissionKinds,
-      lane,
-      profile,
-      reviewProfile,
-    }),
-    review_state: profile.review_state,
-    sample_candidate_ids: subnetCandidates
-      .map((candidate) => candidate.id)
-      .filter(Boolean)
-      .sort()
-      .slice(0, 5),
-    sample_live_candidate_ids: sampleCandidateIdsForQueue({
-      candidateClasses: ["live", "redirected"],
-      directSubmissionKinds,
-      missingKinds,
-      subnetCandidates,
-      verificationByCandidate,
-    }),
-    sample_stale_candidate_ids: sampleCandidateIdsForQueue({
-      candidateClasses: [
-        "content-mismatch",
-        "dead",
-        "timeout",
-        "unsafe",
-        "unsupported",
-      ],
-      directSubmissionKinds,
-      missingKinds,
-      subnetCandidates,
-      verificationByCandidate,
-    }),
-    sample_target_candidate_ids: sampleCandidateIdsForQueue({
-      directSubmissionKinds,
-      missingKinds,
-      subnetCandidates,
-      verificationByCandidate,
-    }),
-    slug: profile.slug,
-    source_urls: (profile.provenance.source_urls || []).slice(0, 8),
-    stale_candidate_count: staleCandidateCount(candidateEvidenceByKind),
-    surface_count: profile.surface_count,
-    verified_candidate_count: gapPriority?.verified_candidate_count || 0,
-  };
-}
-
-function candidateEvidenceByKindForQueue({
-  directSubmissionKinds,
-  missingKinds,
-  subnetCandidates,
-  verificationByCandidate,
-}) {
-  const relevantKinds = [
-    ...new Set([...missingKinds, ...directSubmissionKinds]),
-  ].sort();
-  const candidatesByKind = groupBy(
-    subnetCandidates.filter((candidate) =>
-      relevantKinds.includes(candidate.kind),
-    ),
-    "kind",
-  );
-
-  return Object.fromEntries(
-    relevantKinds.map((kind) => {
-      const kindCandidates = candidatesByKind.get(kind) || [];
-      const classifications = countBy(
-        kindCandidates.map((candidate) => ({
-          classification:
-            verificationByCandidate.get(candidate.id)?.classification ||
-            candidate.verification?.classification ||
-            candidate.state ||
-            "unknown",
-        })),
-        "classification",
-      );
-      const liveCount =
-        (classifications.live || 0) + (classifications.redirected || 0);
-      const unverifiedCount =
-        (classifications["schema-valid"] || 0) +
-        (classifications["maintainer-review"] || 0) +
-        (classifications.verified || 0) +
-        (classifications.unknown || 0);
-      const deadCount =
-        (classifications.dead || 0) +
-        (classifications.timeout || 0) +
-        (classifications.unsafe || 0) +
-        (classifications.unsupported || 0) +
-        (classifications["content-mismatch"] || 0);
-      const reviewableCount = kindCandidates.filter((candidate) =>
-        ["schema-valid", "maintainer-review", "verified"].includes(
-          candidate.state,
-        ),
-      ).length;
-      return [
-        kind,
-        {
-          candidate_count: kindCandidates.length,
-          classifications,
-          live_or_redirected_count: liveCount,
-          reviewable_count: reviewableCount,
-          stale_or_failed_count: deadCount,
-          unverified_count: unverifiedCount,
-          sample_candidate_ids: kindCandidates
-            .map((candidate) => candidate.id)
-            .filter(Boolean)
-            .sort()
-            .slice(0, 3),
-        },
-      ];
-    }),
-  );
-}
-
-function sampleCandidateIdsForQueue({
-  candidateClasses = null,
-  directSubmissionKinds,
-  missingKinds,
-  subnetCandidates,
-  verificationByCandidate,
-}) {
-  const relevantKinds = new Set(
-    directSubmissionKinds.length > 0 ? directSubmissionKinds : missingKinds,
-  );
-  const classSet = candidateClasses ? new Set(candidateClasses) : null;
-  return subnetCandidates
-    .filter((candidate) => relevantKinds.has(candidate.kind))
-    .filter((candidate) => {
-      if (!classSet) {
-        return true;
-      }
-      return classSet.has(
-        candidateQueueClassification(candidate, verificationByCandidate),
-      );
-    })
-    .sort(
-      (a, b) =>
-        candidateQueuePriority(a, verificationByCandidate) -
-          candidateQueuePriority(b, verificationByCandidate) ||
-        a.kind.localeCompare(b.kind) ||
-        String(a.id || "").localeCompare(String(b.id || "")),
-    )
-    .map((candidate) => candidate.id)
-    .filter(Boolean)
-    .slice(0, 5);
-}
-
-function candidateQueueClassification(candidate, verificationByCandidate) {
-  return (
-    verificationByCandidate.get(candidate.id)?.classification ||
-    candidate.verification?.classification ||
-    candidate.state ||
-    "unknown"
-  );
-}
-
-function candidateQueuePriority(candidate, verificationByCandidate) {
-  const classification = candidateQueueClassification(
-    candidate,
-    verificationByCandidate,
-  );
-  const weights = {
-    live: 0,
-    redirected: 1,
-    verified: 2,
-    "maintainer-review": 3,
-    "schema-valid": 4,
-    unknown: 5,
-    "auth-required": 6,
-    "rate-limited": 7,
-    timeout: 8,
-    "content-mismatch": 9,
-    unsupported: 10,
-    dead: 11,
-    unsafe: 12,
-    rejected: 13,
-  };
-  return weights[classification] ?? 20;
-}
-
-function enrichmentEvidenceAction({
-  candidateEvidenceByKind,
-  directSubmissionKinds,
-  lane,
-}) {
-  if (["adapter-candidate", "maintainer-review"].includes(lane)) {
-    return "maintainer-review-existing-evidence";
-  }
-  if (lane !== "direct-submission") {
-    return "monitor";
-  }
-
-  const targetEvidence = directSubmissionKinds.map(
-    (kind) => candidateEvidenceByKind[kind],
-  );
-  if (
-    targetEvidence.some(
-      (evidence) =>
-        evidence &&
-        evidence.candidate_count > 0 &&
-        evidence.live_or_redirected_count === 0,
-    )
-  ) {
-    if (
-      targetEvidence.some(
-        (evidence) => evidence && evidence.stale_or_failed_count > 0,
-      )
-    ) {
-      return "replace-stale-evidence";
-    }
-    return "verify-existing-evidence";
-  }
-  if (
-    targetEvidence.some(
-      (evidence) => evidence && evidence.live_or_redirected_count > 0,
-    )
-  ) {
-    return "review-existing-evidence";
-  }
-  return "submit-new-evidence";
-}
-
-function staleCandidateCount(candidateEvidenceByKind) {
-  return Object.values(candidateEvidenceByKind).reduce(
-    (sum, evidence) => sum + (evidence.stale_or_failed_count || 0),
-    0,
-  );
-}
-
-function directSubmissionKindsForProfile(profile) {
-  const missingRequired = new Set(profile.completeness.missing_required || []);
-  const identityTargets = ["docs", "website", "source-repo"].filter((kind) =>
-    missingRequired.has(kind),
-  );
-  if (identityTargets.length > 0) {
-    return identityTargets;
-  }
-
-  const missingOperational = new Set(
-    profile.completeness.missing_operational || [],
-  );
-  const hasOperationalEvidence = profile.operational_interface_count > 0;
-  const operationalTargets = ["openapi", "subnet-api", "data-artifact"].filter(
-    (kind) => missingOperational.has(kind),
-  );
-  if (!hasOperationalEvidence) {
-    return operationalTargets;
-  }
-
-  const hasApiLikeEvidence = profile.operational_interface_kinds.some((kind) =>
-    ["openapi", "subnet-api"].includes(kind),
-  );
-  if (!hasApiLikeEvidence) {
-    return operationalTargets.filter((kind) =>
-      ["openapi", "subnet-api"].includes(kind),
-    );
-  }
-
-  return [];
-}
-
-function enrichmentLane({ adapterCandidate, directSubmissionKinds, profile }) {
-  if (directSubmissionKinds.length > 0) {
-    return "direct-submission";
-  }
-  if (
-    profile.review_state !== "maintainer-reviewed" &&
-    profile.surface_count > 0
-  ) {
-    return "maintainer-review";
-  }
-  if (adapterCandidate?.operational_surface_count > 0) {
-    return "adapter-candidate";
-  }
-  return "baseline-monitoring";
-}
-
-function enrichmentReasonCodes({
-  adapterCandidate,
-  directSubmissionKinds,
-  profile,
-}) {
-  const reasons = [];
-  if (profile.profile_level === "directory-only") {
-    reasons.push("directory-only-profile");
-  }
-  for (const kind of directSubmissionKinds) {
-    reasons.push(`missing-${kind}`);
-  }
-  if (profile.review_state !== "maintainer-reviewed") {
-    reasons.push("needs-maintainer-review");
-  }
-  if (adapterCandidate?.operational_surface_count > 0) {
-    reasons.push("adapter-candidate");
-  }
-  return [...new Set(reasons)].sort();
-}
-
-function enrichmentContributionHint(lane, directSubmissionKinds) {
-  if (lane === "direct-submission") {
-    const kinds = directSubmissionKinds.join(", ");
-    return `Submit one official public ${kinds || "interface"} candidate with npm run candidate:new.`;
-  }
-  if (lane === "maintainer-review") {
-    return "Maintainer should review current machine-verified surfaces and promote only source-backed entries.";
-  }
-  if (lane === "adapter-candidate") {
-    return "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.";
-  }
-  if (lane === "monitoring-followup") {
-    return "Endpoint status reports can trigger re-probes or review, but observed health remains probe-derived.";
-  }
-  return "No immediate enrichment action; keep monitoring for drift and new public interfaces.";
-}
-
-function enrichmentRecommendedAction({
-  adapterCandidate,
-  directSubmissionKinds,
-  lane,
-  profile,
-  reviewProfile,
-}) {
-  if (lane === "direct-submission") {
-    if (
-      directSubmissionKinds.some((kind) =>
-        ["docs", "website", "source-repo"].includes(kind),
-      )
-    ) {
-      return "submit official docs, website, or source repository evidence";
-    }
-    return "submit public API, OpenAPI, SSE, or data-artifact surfaces if the subnet exposes them";
-  }
-  if (lane === "maintainer-review") {
-    return (
-      reviewProfile?.suggested_next_action ||
-      "review promoted surfaces and mark maintainer-reviewed where provenance is strong"
-    );
-  }
-  if (lane === "adapter-candidate") {
-    const kinds = (adapterCandidate.operational_kinds || []).join(", ");
-    return `evaluate adapter support for ${kinds || "operational surfaces"}`;
-  }
-  if (profile.operational_interface_count > 0) {
-    return "profile is baseline-complete; monitor operational surfaces for drift";
-  }
-  return "profile is baseline-complete; monitor for new public interfaces";
-}
-
-function countDirectSubmissionKinds(queue) {
-  return Object.fromEntries(
-    Object.entries(
-      queue.reduce((accumulator, entry) => {
-        for (const kind of entry.direct_submission_kinds || []) {
-          accumulator[kind] = (accumulator[kind] || 0) + 1;
-        }
-        return accumulator;
-      }, {}),
-    ).sort(([a], [b]) => a.localeCompare(b)),
-  );
 }
 
 function countGapReasons(profiles) {
@@ -5568,35 +4036,91 @@ function reusableSchemaIndexArtifact(surfaces, previous, capturedDetails) {
   ) {
     return null;
   }
-  const previousSchemas = previous.schemas || [];
+  // A captured entry must point at a real schema-detail artifact path; a
+  // not-captured entry legitimately has none, so only captured claims are gated.
   if (
-    previousSchemas.some(
-      (schema) => !schemaDetailArtifactRelativePath(schema.path || ""),
+    previous.schemas.some(
+      (schema) =>
+        schema.status === "captured" &&
+        !schemaDetailArtifactRelativePath(schema.path || ""),
     )
   ) {
     return null;
   }
   const currentSurfaces = openApiSurfacesById(surfaces);
-  if (
-    !sameStringSet(
-      [...currentSurfaces.keys()].sort(),
-      previousSurfaceIds(previousSchemas),
-    )
-  ) {
-    return null;
+  // Forgery/staleness guard: a committed entry whose surface still exists but no
+  // longer matches it (tampered or drifted metadata) means the index can't be
+  // trusted — discard it wholesale and fall back to the build placeholder.
+  for (const entry of previous.schemas) {
+    const surface = currentSurfaces.get(entry.surface_id);
+    if (
+      surface &&
+      !schemaIndexEntryMatchesSurface(entry, surface, capturedDetails)
+    ) {
+      return null;
+    }
   }
-  if (
-    !previousSchemas.every((entry) =>
-      schemaIndexEntryMatchesSurface(
-        entry,
-        currentSurfaces.get(entry.surface_id),
-        capturedDetails,
-      ),
-    )
-  ) {
-    return null;
+  // Reconcile incrementally with the current surface set instead of nuking the
+  // whole index when it changes: keep every committed entry whose surface still
+  // exists (captured snapshots survive), drop entries for removed surfaces, and
+  // add a not-captured placeholder for each new openapi surface. Adding an
+  // openapi surface is now a routine single-file contribution, so it must never
+  // wipe the captured schema index; a later `schemas:snapshot` upgrades the
+  // placeholders to captured.
+  const previousIds = new Set(
+    previous.schemas.map((entry) => entry.surface_id),
+  );
+  const reconciled = previous.schemas.filter((entry) =>
+    currentSurfaces.has(entry.surface_id),
+  );
+  for (const [surfaceId, surface] of currentSurfaces) {
+    if (!previousIds.has(surfaceId)) {
+      reconciled.push(notCapturedSchemaIndexEntry(surface));
+    }
   }
-  return previous;
+  if (stableStringify(reconciled) === stableStringify(previous.schemas)) {
+    return previous;
+  }
+  reconciled.sort(
+    (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
+  );
+  return {
+    ...previous,
+    summary: {
+      surface_count: currentSurfaces.size,
+      schema_count: reconciled.filter((entry) => entry.status === "captured")
+        .length,
+      by_status: schemaEntryCounts(reconciled, "status"),
+      by_drift_status: schemaEntryCounts(reconciled, "drift_status"),
+    },
+    schemas: reconciled,
+  };
+}
+
+function notCapturedSchemaIndexEntry(surface) {
+  return {
+    netuid: surface.netuid,
+    subnet_slug: surface.subnet_slug,
+    surface_id: surface.id,
+    url: surface.url,
+    schema_url: surface.schema_url || null,
+    status: "not-captured",
+    drift_status: "not-captured",
+    hash: null,
+    previous_hash: null,
+    path: null,
+    error: null,
+  };
+}
+
+function schemaEntryCounts(entries, key) {
+  const counts = {};
+  for (const entry of entries) {
+    counts[entry[key]] = (counts[entry[key]] || 0) + 1;
+  }
+  return Object.fromEntries(
+    Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)),
+  );
 }
 
 function buildSchemaIndexPlaceholder() {
@@ -5793,6 +4317,24 @@ function buildSearchIndex(
     schema_version: 1,
     contract_version: contractVersion,
     generated_at: generatedAt,
+    document_count: documents.length,
+    documents,
+  };
+}
+
+// The slim companion to search.json: identical documents minus the per-document
+// `tokens` keyword blobs, which exist only to widen server-side `q` recall and
+// dominate the full index's byte size. Browsers loading the whole index for
+// typeahead/listing never need them, so dropping the field yields a much smaller
+// payload (roadmap Finding 8) while keeping every display + filter field.
+function buildSlimSearchIndex(searchIndex) {
+  const documents = searchIndex.documents.map(
+    ({ tokens: _tokens, ...rest }) => rest,
+  );
+  return {
+    schema_version: searchIndex.schema_version,
+    contract_version: searchIndex.contract_version,
+    generated_at: searchIndex.generated_at,
     document_count: documents.length,
     documents,
   };
@@ -6719,7 +5261,7 @@ async function walkIfExists(dirPath, onFile) {
 function reviewPriorityScore(subnet, surfacesForSubnet, candidatesForSubnet) {
   const missingKinds = subnet.gaps.missing_kinds || [];
   const highValueMissing = missingKinds.filter((kind) =>
-    ["source-repo", "docs", "website", "openapi", "subnet-api"].includes(kind),
+    HIGH_VALUE_GAP_KINDS.includes(kind),
   );
   const adapterBonus =
     surfacesForSubnet.filter((surface) =>

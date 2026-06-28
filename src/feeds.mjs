@@ -9,6 +9,19 @@
 //   /api/v1/feeds/incidents[.rss|.atom|.json]
 //   /api/v1/feeds/subnets/{netuid}[.rss|.atom|.json]
 // Format precedence: explicit .rss/.atom/.json suffix > Accept header > JSON Feed.
+//
+// Optional `?tag=<tag>` narrows a feed to items carrying that tag, so a single
+// feed URL can serve a focused subscription (e.g. ?tag=incident, ?tag=coverage,
+// ?tag=artifact). Item tags: registry items carry "registry" + one of
+// "subnet"/"artifact"/"coverage" + the change verb (added/removed/renamed/
+// modified); incident items carry "incident", "sn<netuid>", and
+// "ongoing"/"resolved". An unknown tag yields an empty (but valid) feed.
+//
+// Optional `?since=<ISO-8601>` returns only items at or after that instant
+// (e.g. ?since=2026-06-01 or ?since=2026-06-01T00:00:00Z), for incremental
+// polling; it composes with `?tag=`. A malformed `since` is a 400.
+
+import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.mjs";
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
@@ -201,6 +214,25 @@ function sortAndCap(items) {
     .slice(0, FEED_MAX_ITEMS);
 }
 
+// Optional `?tag=` filter: keep only items whose tags array includes the value.
+// A falsy/absent tag is a no-op (the whole feed). The tag is only ever compared,
+// never rendered into the feed body, so it needs no escaping.
+function filterByTag(items, tag) {
+  if (!tag) return items;
+  return items.filter((item) => (item.tags || []).includes(tag));
+}
+
+// Optional `?since=` filter: keep only items at or after `sinceMs` (epoch ms).
+// A null bound (absent param) is a no-op; items whose timestamp can't be parsed
+// are dropped, so a malformed feed entry never leaks past an explicit `since`.
+function filterSince(items, sinceMs) {
+  if (sinceMs == null) return items;
+  return items.filter((item) => {
+    const t = Date.parse(item.timestamp);
+    return !Number.isNaN(t) && t >= sinceMs;
+  });
+}
+
 function jsonFeed(meta, items) {
   return `${JSON.stringify(
     {
@@ -317,6 +349,58 @@ export function parseFeedPath(pathname) {
   return null;
 }
 
+// Strictly parse the public `?since=` contract instead of delegating validation
+// to Date.parse(), which accepts implementation-defined inputs and normalizes
+// overflow dates. Accepted forms are an ISO calendar date (UTC midnight) or an
+// ISO date-time with an explicit UTC/offset designator.
+function parseSinceParam(value) {
+  const raw = String(value);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    const ms = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    return new Date(ms).toISOString().slice(0, 10) === raw ? ms : Number.NaN;
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(
+      raw,
+    );
+  if (!match) return Number.NaN;
+
+  const [, year, month, day, hour, minute, second, fraction = "", zone] = match;
+  const date = `${year}-${month}-${day}`;
+  const dateMs = Date.UTC(Number(year), Number(month) - 1, Number(day));
+  if (new Date(dateMs).toISOString().slice(0, 10) !== date) return Number.NaN;
+
+  const hourNumber = Number(hour);
+  const minuteNumber = Number(minute);
+  const secondNumber = Number(second);
+  if (hourNumber > 23 || minuteNumber > 59 || secondNumber > 59) {
+    return Number.NaN;
+  }
+
+  const normalizedFraction = fraction
+    ? fraction.slice(0, 4).padEnd(4, "0")
+    : ".000";
+  const utcMs = Date.parse(
+    `${date}T${hour}:${minute}:${second}${normalizedFraction}Z`,
+  );
+  const offsetMs =
+    zone === "Z"
+      ? 0
+      : (() => {
+          const sign = zone[0] === "-" ? -1 : 1;
+          const hours = Number(zone.slice(1, 3));
+          const minutes = Number(zone.slice(4, 6));
+          if (hours > 23 || minutes > 59) return Number.NaN;
+          return sign * (hours * 60 + minutes) * 60_000;
+        })();
+  if (Number.isNaN(offsetMs)) return Number.NaN;
+
+  return utcMs - offsetMs;
+}
+
 function feedError(code, message, status) {
   return new Response(JSON.stringify({ ok: false, error: { code, message } }), {
     status,
@@ -331,6 +415,17 @@ async function readData(readArtifact, env, path) {
   } catch {
     return null;
   }
+}
+
+async function loadIncidentsData(deps, env) {
+  if (typeof deps.loadLiveIncidents === "function") {
+    try {
+      return await deps.loadLiveIncidents(env);
+    } catch {
+      return null;
+    }
+  }
+  return readData(deps.readArtifact, env, "/metagraph/incidents.json");
 }
 
 export async function handleFeedRequest(request, env, url, deps = {}) {
@@ -351,6 +446,21 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   }
   const format = resolveFeedFormat(url.pathname, request.headers.get("accept"));
 
+  // Optional `?since=` lower bound (parsed once, here, so a malformed value is
+  // rejected before any artifact work). null when the param is absent.
+  let sinceMs = null;
+  const sinceParam = url.searchParams.get("since");
+  if (sinceParam != null) {
+    sinceMs = parseSinceParam(sinceParam);
+    if (Number.isNaN(sinceMs)) {
+      return fail(
+        "invalid_since",
+        "`since` must be an ISO-8601 date or date-time, e.g. 2026-06-01 or 2026-06-01T00:00:00Z.",
+        400,
+      );
+    }
+  }
+
   let items;
   let title;
   let description;
@@ -369,11 +479,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
       "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
     updatedSource = changelog?.generated_at;
   } else if (target.kind === "incidents") {
-    const incidents = await readData(
-      readArtifact,
-      env,
-      "/metagraph/incidents.json",
-    );
+    const incidents = await loadIncidentsData(deps, env);
     items = incidentItems(incidents);
     title = "metagraphed — surface incidents";
     description =
@@ -382,7 +488,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
-      readData(readArtifact, env, "/metagraph/incidents.json"),
+      loadIncidentsData(deps, env),
     ]);
     items = [
       ...registryItems(changelog, target.netuid),
@@ -394,6 +500,8 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     updatedSource = changelog?.generated_at;
   }
 
+  items = filterByTag(items, url.searchParams.get("tag"));
+  items = filterSince(items, sinceMs);
   items = sortAndCap(items);
   const meta = {
     title,
@@ -405,14 +513,22 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   };
 
   const body = SERIALIZERS[format](meta, items);
+  // The body is deterministic for its inputs, so its hash is a stable validator.
+  const etag = await weakEtag(body);
+  const headers = {
+    "content-type": FEED_CONTENT_TYPES[format],
+    "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
+    vary: "Accept",
+    "x-content-type-options": "nosniff",
+    etag,
+  };
+  // Unchanged poll → cheap 304, same validators, no body.
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
   return new Response(request.method === "HEAD" ? null : body, {
     status: 200,
-    headers: {
-      "content-type": FEED_CONTENT_TYPES[format],
-      "cache-control": `public, max-age=${FEED_CACHE_SECONDS}`,
-      vary: "Accept",
-      "x-content-type-options": "nosniff",
-    },
+    headers,
   });
 }
 
@@ -438,4 +554,7 @@ export const __test = {
   rssFeed,
   atomFeed,
   escapeXml,
+  filterByTag,
+  filterSince,
+  parseSinceParam,
 };

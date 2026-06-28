@@ -37,6 +37,18 @@ export const INCIDENTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/health\/incidents$/;
 export const TRAJECTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/trajectory$/;
+// Stake/emission concentration metrics (#2106): computed live from the neurons
+// D1 tier, no static file.
+export const SUBNET_CONCENTRATION_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/concentration$/;
+// Per-day concentration history (decentralization trend) from the neuron_daily
+// rollup, no static file.
+export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/;
+// Validator-set & registration turnover (churn) from the neuron_daily rollup,
+// no static file.
+export const SUBNET_TURNOVER_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/turnover$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
@@ -45,6 +57,9 @@ export const SUBNET_NEURON_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)$/;
 export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
+// Per-subnet chain-event stream (#1345 block explorer): account_events filtered
+// by netuid, served live from the event tier.
+export const SUBNET_EVENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/events$/;
 // Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345): time
 // series read from the neuron_daily rollup tier.
 export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
@@ -53,12 +68,61 @@ export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
 // D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
+// A bare, anchored SS58 address — the same shape the route patterns capture,
+// reused by the MCP account tools so REST and MCP validate the address identically.
+export const SS58_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{47,48}$/;
 export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/events$/;
+// Per-account daily-history series (#1854): the durable per-day activity from the
+// account_events_daily rollup. Dispatched BEFORE the bare ACCOUNT_PATH_PATTERN.
+export const ACCOUNT_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/history$/;
+// Account entity routes (#1347):
 export const ACCOUNT_SUBNETS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/subnets$/;
+// Per-account signed extrinsics (#1844): the extrinsics this account signed,
+// matched by extrinsics.signer (a single column, not the hotkey or coldkey union).
+export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/extrinsics$/;
+// Per-account native-TAO transfers (#1850): the Balances.Transfer feed for this
+// account, from account_events (event_kind='Transfer'); ?direction=all|sent|received.
+export const ACCOUNT_TRANSFERS_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/transfers$/;
+// Per-account counterparty / fund-flow rollup: aggregates the account's
+// account_events Transfers into per-counterparty sent/received/net.
+export const ACCOUNT_COUNTERPARTIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/counterparties$/;
+// Live TAO balance query (#1818): captures any non-slash segment; the handler
+// applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
+export const ACCOUNT_BALANCE_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([^/]+)\/balance$/;
+// Block-explorer routes (#1345): recent feed + per-block detail, computed live
+// from the `blocks` D1 tier. {ref} is a numeric block_number OR a 0x block_hash
+// (32-byte hex = 64 chars).
+export const BLOCKS_FEED_PATH_PATTERN = /^\/api\/v1\/blocks$/;
+export const BLOCK_DETAIL_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})$/;
+// Per-block extrinsics sub-resource (#1845): the extrinsics in one block, by the
+// same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE the
+// detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EXTRINSICS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/extrinsics$/;
+// Per-block events sub-resource (#1852): the decoded chain events in one block,
+// by the same {ref} (numeric block_number or 0x block_hash). Dispatched BEFORE
+// the detail pattern (which is $-anchored, so it won't swallow the sub-path).
+export const BLOCK_EVENTS_PATH_PATTERN =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/events$/;
+// Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
+// detail, computed live from the `extrinsics` D1 tier. {hash} is a 0x extrinsic_hash
+// (32-byte blake2b = 64 hex chars).
+export const EXTRINSICS_FEED_PATH_PATTERN = /^\/api\/v1\/extrinsics$/;
+// Per-extrinsic detail (#1345/#1848): ref is a 0x extrinsic_hash OR the canonical
+// composite id "<block_number>-<extrinsic_index>" (the guaranteed-present id, since
+// the hash is best-effort/nullable). Single capture group; the handler branches.
+export const EXTRINSIC_DETAIL_PATH_PATTERN =
+  /^\/api\/v1\/extrinsics\/(0x[0-9a-fA-F]{64}|\d+-\d+)$/;
 export const UPTIME_WINDOWS = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
@@ -94,6 +158,16 @@ export function resolveClientIp(request) {
   return request.headers.get("cf-connecting-ip") || ANONYMOUS_CLIENT_KEY;
 }
 
+// Clamp a raw limit/offset (a query-param string or a tool-arg number) into
+// [min, max], falling back to `def` when absent/blank/non-finite. Shared by every
+// paginated route + tool so they bound page size identically.
+export function clampInt(raw, def, min, max) {
+  if (raw == null || raw === "") return def;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return def;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
 // Read-only, bounded Substrate/Subtensor methods safe to expose through the
 // public proxy. Deliberately excludes heavy/abusable reads (state_getMetadata,
 // state_getStorage) and anything mutating — those stay blocked by the allowlist
@@ -110,6 +184,26 @@ export const SAFE_RPC_METHODS = new Set([
   "system_name",
   "system_properties",
   "system_version",
+]);
+// Read-only WebSocket subscriptions — WSS-ONLY. The HTTP proxy uses SAFE_RPC_METHODS
+// alone (subscriptions need a persistent connection, so they make no sense over HTTP);
+// the wss-lb additionally allows these. Their notifications stream upstream→client.
+// Deliberately excludes persistent storage subscriptions, which can create
+// unbounded upstream watcher state for arbitrary keys.
+// All allowed entries are read-only; author_submitAndWatchExtrinsic stays blocked
+// by the author_ prefix.
+export const SAFE_RPC_SUBSCRIPTIONS = new Set([
+  "chain_subscribeNewHeads",
+  "chain_subscribeNewHead",
+  "chain_unsubscribeNewHeads",
+  "chain_subscribeFinalizedHeads",
+  "chain_subscribeFinalisedHeads",
+  "chain_unsubscribeFinalizedHeads",
+  "chain_unsubscribeFinalisedHeads",
+  "chain_subscribeAllHeads",
+  "chain_unsubscribeAllHeads",
+  "state_subscribeRuntimeVersion",
+  "state_unsubscribeRuntimeVersion",
 ]);
 export const DENIED_RPC_PREFIXES = [
   "author_",
@@ -137,6 +231,14 @@ export const MAX_EVENTS_INGEST_ROWS = 500;
 // script chunks well under these and the PK upsert makes any re-POST idempotent.
 export const MAX_BACKFILL_INGEST_BODY_BYTES = 1_048_576; // 1 MiB
 export const MAX_BACKFILL_INGEST_ROWS = 2_000;
+// Realtime block-explorer ingest (#1345 Option B): the finalized-head streamer also
+// POSTs the per-block `blocks` row + its `extrinsics` rows to POST
+// /api/v1/internal/blocks, authed by the SAME METAGRAPH_EVENTS_INGEST_SECRET over
+// EVENTS_INGEST_TOKEN_HEADER. Body is {blocks:[...], extrinsics:[...]}; idempotent
+// INSERT OR IGNORE on the PKs. Closes the blocks/extrinsics realtime gap (the
+// coalesced CI poller alone missed ~58% of blocks; #1749).
+export const MAX_BLOCKS_INGEST_BODY_BYTES = 262144; // 256 KB
+export const MAX_BLOCKS_INGEST_ROWS = 500; // cap per array (blocks[], extrinsics[])
 // Caps on the R2-staged chain-event drain (loadStagedEvents, #1346). Unlike the
 // single bounded HTTP body above, a staged file is produced by the CI poller and
 // can grow large on a backfill or a stuck window. The byte cap guards against
@@ -148,6 +250,26 @@ export const MAX_BACKFILL_INGEST_ROWS = 2_000;
 // re-drain idempotent.
 export const MAX_STAGED_EVENTS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
 export const MAX_STAGED_EVENT_ROWS = 10_000;
+// loadStagedNeurons retries the post-upsert snapshot prune when upserts span
+// multiple D1 batches. A transient DELETE failure must not leave deregistered
+// ghost rows until the next cron tick.
+export const NEURON_SNAPSHOT_PRUNE_RETRIES = 3;
+// Block-explorer hot window (#1345): the staged `blocks` sidecar caps. One block
+// row per finalized block in the rolling poller window, so the row volume is far
+// lower than the per-block event count — but keep the same byte ceiling +
+// progressive-drain row cap so a pathological body can never be materialized and
+// each */3 tick stays well under the subrequest limit. INSERT OR IGNORE on
+// block_number makes any re-drain idempotent.
+export const MAX_STAGED_BLOCKS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
+export const MAX_STAGED_BLOCK_ROWS = 10_000;
+// Block-explorer extrinsic slice (#1345): the staged `extrinsics` sidecar caps.
+// Several extrinsics per finalized block in the rolling poller window, so the row
+// volume sits between the per-block count and the per-event count — keep the same
+// byte ceiling + progressive-drain row cap so a pathological body can never be
+// materialized and each */3 tick stays well under the subrequest limit. INSERT OR
+// IGNORE on (block_number, extrinsic_index) makes any re-drain idempotent.
+export const MAX_STAGED_EXTRINSICS_BYTES = 4_194_304; // 4 MiB parse-safety ceiling
+export const MAX_STAGED_EXTRINSIC_ROWS = 10_000;
 // Dormant subscriptions self-clean after 180 days; the publish-time dispatcher
 // refreshes the TTL on each successful delivery.
 export const WEBHOOK_TTL_SECONDS = 180 * 24 * 60 * 60;

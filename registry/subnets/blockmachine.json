@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 19,
-  "name": "blockmachine",
-  "slug": "sn-19",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,80 +6,147 @@
     "official-source-repo",
     "official-website"
   ],
-  "docs_url": "https://blockmachine.io/whitepaper",
-  "source_repo": "https://github.com/taostat/blockmachine",
-  "dashboard_url": "https://taomarketcap.com/subnets/19",
-  "website_url": "https://blockmachine.io/",
-  "notes": "Reviewed overlay for SN19 using the official BlockMachine website, whitepaper, and source repository.",
+  "contact": "team@blockmachine.io",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T10:10:00.000Z",
-    "verified_at": "2026-06-08T10:10:00.000Z",
-    "source_count": 5,
     "gap_notes": [
       "No verified safe public subnet API endpoint yet.",
       "No verified OpenAPI/Swagger schema yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-06-08T10:10:00.000Z"
   },
+  "dashboard_url": "https://taomarketcap.com/subnets/19",
+  "docs_url": "https://blockmachine.io/whitepaper",
+  "name": "blockmachine",
+  "netuid": 19,
+  "notes": "Reviewed overlay for SN19 using the official BlockMachine website, whitepaper, and source repository.",
+  "schema_version": 1,
+  "slug": "sn-19",
+  "social": {
+    "x": "https://x.com/blockmachine_io"
+  },
+  "source_repo": "https://github.com/taostat/blockmachine",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-19-blockmachine-website",
-      "name": "BlockMachine website",
-      "kind": "website",
-      "url": "https://blockmachine.io/",
-      "provider": "blockmachine",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "id": "sn-19-blockmachine-website",
+      "kind": "website",
+      "name": "BlockMachine website",
+      "notes": "Official BlockMachine website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official BlockMachine website."
+      "provider": "blockmachine",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "url": "https://blockmachine.io/"
     },
     {
-      "id": "sn-19-blockmachine-whitepaper",
-      "name": "BlockMachine whitepaper",
-      "kind": "docs",
-      "url": "https://blockmachine.io/whitepaper",
-      "provider": "blockmachine",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-19-blockmachine-whitepaper",
+      "kind": "docs",
+      "name": "BlockMachine whitepaper",
+      "notes": "Official BlockMachine whitepaper.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
       "public_safe": true,
       "source_urls": ["https://blockmachine.io/whitepaper"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official BlockMachine whitepaper."
+      "url": "https://blockmachine.io/whitepaper"
     },
     {
-      "id": "sn-19-blockmachine-source",
-      "name": "BlockMachine source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/taostat/blockmachine",
-      "provider": "blockmachine",
       "auth_required": false,
       "authority": "official",
-      "public_safe": true,
-      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "id": "sn-19-blockmachine-source",
+      "kind": "source-repo",
+      "name": "BlockMachine source repository",
+      "notes": "Official BlockMachine source repository.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Official BlockMachine source repository."
+      "provider": "blockmachine",
+      "public_safe": true,
+      "source_urls": ["https://github.com/taostat/blockmachine"],
+      "url": "https://github.com/taostat/blockmachine"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-openapi",
+      "kind": "openapi",
+      "name": "blockmachine community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.blockmachine.io/openapi.json",
+      "source_urls": ["https://blockmachine.io/"],
+      "url": "https://api.blockmachine.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-subnet-api",
+      "kind": "subnet-api",
+      "name": "BlockMachine public leaderboard API",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-19-blockmachine-data-artifact",
+      "kind": "data-artifact",
+      "name": "BlockMachine finalized-epoch snapshot",
+      "provider": "blockmachine",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://blockmachine.io/",
+        "https://api.blockmachine.io/openapi.json"
+      ],
+      "url": "https://api.blockmachine.io/epochs/latest-finalized"
     }
   ],
-  "social": { "x": "https://x.com/blockmachine_io" },
-  "contact": "team@blockmachine.io"
+  "website_url": "https://blockmachine.io/"
 }

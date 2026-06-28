@@ -15,6 +15,7 @@ import {
   runEmbeddingSync,
   semanticSearch,
   askQuestion,
+  SEMANTIC_MAX_QUERY_LENGTH,
 } from "../src/ai-search.mjs";
 import { handleRequest, handleScheduled } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -57,6 +58,23 @@ function stubAi() {
     },
   };
 }
+
+// Embedding AI stub whose batch `data` is computed from the input texts, so a
+// test can simulate Workers AI returning fewer/empty/malformed rows than asked.
+function embedAiWith(dataFor) {
+  const calls = [];
+  return {
+    calls,
+    run(model, input) {
+      calls.push({ model, input });
+      if (model === EMBED_MODEL) {
+        return Promise.resolve({ data: dataFor(input.text) });
+      }
+      return Promise.resolve({ response: "x" });
+    },
+  };
+}
+const validVec = () => new Array(1024).fill(0.02);
 
 function stubVectorize() {
   const ops = { upserts: [], deletes: [] };
@@ -151,6 +169,17 @@ describe("embedding helpers", () => {
     );
     assert.equal(embeddingText({ title: "A" }), "A");
     assert.ok(embeddingText({ title: "x".repeat(5000) }).length <= 1500);
+  });
+  test("embeddingText truncates by code point and stays well-formed UTF-16", () => {
+    // An astral char straddling the 1500-unit boundary must not be severed into
+    // a lone surrogate (#1650): a .slice() cap would leave isWellFormed() false.
+    const text = embeddingText({ title: "a".repeat(1499) + "😀" });
+    assert.ok(text.isWellFormed());
+    assert.ok(!text.endsWith("\uD83D")); // no dangling high surrogate
+    // A long astral run is capped to <= 1500 code points (not UTF-16 units).
+    const astral = embeddingText({ title: "😀".repeat(5000) });
+    assert.ok([...astral].length <= 1500);
+    assert.ok(astral.isWellFormed());
   });
   test("embeddingText appends capability facets (categories + service_kinds)", () => {
     assert.equal(
@@ -358,6 +387,171 @@ describe("runEmbeddingSync", () => {
     assert.deepEqual(env3.VECTORIZE.ops.deletes[0], ["subnet:2"]);
   });
 
+  test("records nothing and upserts nothing when the embedder returns an empty batch", async () => {
+    const kv = memKv();
+    const env = {
+      AI: embedAiWith(() => []), // error-shaped / empty body
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r = await runEmbeddingSync(env, { readArtifact: reader(searchDocs) });
+    assert.equal(r.embedded, 0);
+    assert.equal(env.VECTORIZE.ops.upserts.length, 0, "nothing upserted");
+    // The failed docs must NOT be recorded as embedded.
+    const manifest = JSON.parse(kv.store.get(EMBED_MANIFEST_KEY) || "{}");
+    assert.deepEqual(Object.keys(manifest), [], "no doc marked embedded");
+    // A subsequent run with a working embedder re-attempts both docs.
+    const env2 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, {
+      readArtifact: reader(searchDocs),
+    });
+    assert.equal(r2.embedded, 2, "both docs retried after a failed run");
+    assert.equal(env2.VECTORIZE.ops.upserts[0].length, 2);
+  });
+
+  test("only upserts and records docs that produced a valid vector (partial batch)", async () => {
+    const kv = memKv();
+    // pending order is [subnet:1, subnet:2]; the embedder returns a valid vector
+    // for the first and a missing one for the second.
+    const env = {
+      AI: embedAiWith(() => [validVec(), undefined]),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r = await runEmbeddingSync(env, { readArtifact: reader(searchDocs) });
+    assert.equal(r.embedded, 1, "only the valid vector counts");
+    assert.equal(env.VECTORIZE.ops.upserts[0].length, 1, "only one upsert");
+    // No vector with undefined values is ever upserted.
+    assert.ok(
+      env.VECTORIZE.ops.upserts[0].every((v) => Array.isArray(v.values)),
+      "no upsert carries an undefined vector",
+    );
+    const manifest = JSON.parse(kv.store.get(EMBED_MANIFEST_KEY) || "{}");
+    assert.equal(
+      Object.keys(manifest).length,
+      1,
+      "only the embedded doc is recorded",
+    );
+    // Next run (working embedder) re-attempts only the previously-failed doc.
+    const env2 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, {
+      readArtifact: reader(searchDocs),
+    });
+    assert.equal(r2.embedded, 1, "only the previously-failed doc retried");
+  });
+
+  test("a present doc whose re-embed fails is retried, never deleted", async () => {
+    const kv = memKv();
+    // First run embeds both docs successfully.
+    await runEmbeddingSync(
+      { AI: stubAi(), VECTORIZE: stubVectorize(), METAGRAPH_CONTROL: kv },
+      { readArtifact: reader(searchDocs) },
+    );
+    // Second run: doc 2's content changes but the embedder fails for it. It is
+    // still a current doc, so it must NOT be treated as removed (stale beats
+    // missing) — regression guard for basing `removed` on the current doc set.
+    const changed = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Two CHANGED",
+            tokens: ["b"],
+          },
+        ],
+      },
+    };
+    const env2 = {
+      AI: embedAiWith(() => []), // re-embed of the changed doc fails
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+    const r2 = await runEmbeddingSync(env2, { readArtifact: reader(changed) });
+    assert.equal(r2.removed, 0, "a present-but-failed doc is never deleted");
+    assert.equal(env2.VECTORIZE.ops.deletes.length, 0);
+  });
+
+  test("a changed doc whose re-embed fails is deleted if it is later removed", async () => {
+    const kv = memKv();
+    await runEmbeddingSync(
+      { AI: stubAi(), VECTORIZE: stubVectorize(), METAGRAPH_CONTROL: kv },
+      { readArtifact: reader(searchDocs) },
+    );
+
+    const changed = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Two CHANGED",
+            tokens: ["b"],
+          },
+        ],
+      },
+    };
+    await runEmbeddingSync(
+      {
+        AI: embedAiWith(() => []),
+        VECTORIZE: stubVectorize(),
+        METAGRAPH_CONTROL: kv,
+      },
+      { readArtifact: reader(changed) },
+    );
+
+    const dropped = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+        ],
+      },
+    };
+    const env3 = {
+      AI: stubAi(),
+      VECTORIZE: stubVectorize(),
+      METAGRAPH_CONTROL: kv,
+    };
+
+    const r3 = await runEmbeddingSync(env3, { readArtifact: reader(dropped) });
+
+    assert.equal(r3.removed, 1, "stale vector is still tracked for removal");
+    assert.deepEqual(env3.VECTORIZE.ops.deletes[0], ["subnet:2"]);
+  });
+
   test("skips docs without an id", async () => {
     const env = {
       AI: stubAi(),
@@ -388,6 +582,34 @@ describe("semanticSearch", () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     await assert.rejects(() => semanticSearch(env, "   "), /required/);
   });
+  test("rejects a query over SEMANTIC_MAX_QUERY_LENGTH and does not call env.AI.run", async () => {
+    let aiCalled = false;
+    const env = {
+      AI: {
+        run(...args) {
+          aiCalled = true;
+          return stubAi().run(...args);
+        },
+      },
+      VECTORIZE: stubVectorize(),
+    };
+    const overlong = "x".repeat(SEMANTIC_MAX_QUERY_LENGTH + 1);
+    await assert.rejects(
+      () => semanticSearch(env, overlong),
+      (err) => err.aiInput === true,
+    );
+    assert.equal(
+      aiCalled,
+      false,
+      "env.AI.run must not be called for an oversized query",
+    );
+  });
+  test("accepts a query exactly at the length cap", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
+    const atCap = "x".repeat(SEMANTIC_MAX_QUERY_LENGTH);
+    const out = await semanticSearch(env, atCap, { limit: 1 });
+    assert.ok(out.results.length >= 0);
+  });
   test("clamps the limit to the maximum", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     const out = await semanticSearch(env, "x", { limit: 999 });
@@ -405,6 +627,170 @@ describe("semanticSearch", () => {
         `expected default-limit fan-out, got ${out.count} for ${JSON.stringify(noLimit)}`,
       );
     }
+  });
+});
+
+// Mixed-type pool for exercising the `type` scope.
+//   honorFilter:false  → Vectorize ignores the `filter` (returns mixed types);
+//                        proves the in-process post-filter still scopes results.
+//   rejectFilter:true  → Vectorize REJECTS any filtered query (the real behavior
+//                        when no metadata index exists on `type`); proves the
+//                        guarded retry falls back to an unfiltered fetch instead
+//                        of surfacing a 502.
+function stubVectorizeMixed({ honorFilter = true, rejectFilter = false } = {}) {
+  const pool = [
+    { type: "subnet", netuid: 1 },
+    { type: "surface", netuid: 1 },
+    { type: "provider", netuid: null },
+    { type: "subnet", netuid: 2 },
+    { type: "surface", netuid: 2 },
+    { type: "provider", netuid: null },
+  ].map((m, i) => ({
+    id: `${m.type}:${i}`,
+    score: 0.9 - i * 0.05,
+    metadata: {
+      type: m.type,
+      netuid: m.netuid,
+      slug: `${m.type}-${i}`,
+      title: `${m.type} ${i}`,
+      subtitle: `summary ${i}`,
+      url: `https://api.metagraph.sh/x/${i}`,
+      categories: [],
+      service_kinds: [],
+    },
+  }));
+  const calls = [];
+  return {
+    calls,
+    query(_vector, options) {
+      calls.push(options);
+      const want = options?.filter?.type;
+      if (rejectFilter && want != null) {
+        return Promise.reject(
+          new Error("no metadata index for the filter property 'type'"),
+        );
+      }
+      let matches = pool;
+      if (honorFilter && want != null) {
+        const allow = Array.isArray(want?.$in) ? want.$in : [want];
+        matches = pool.filter((m) => allow.includes(m.metadata.type));
+      }
+      return Promise.resolve({
+        matches: matches.slice(0, options?.topK ?? matches.length),
+      });
+    },
+  };
+}
+
+describe("semanticSearch type scope", () => {
+  for (const type of ["subnet", "surface", "provider"]) {
+    test(`scopes results to a single type='${type}'`, async () => {
+      const vectorize = stubVectorizeMixed();
+      const env = { AI: stubAi(), VECTORIZE: vectorize };
+      const out = await semanticSearch(env, "q", { type });
+      assert.ok(out.results.length > 0);
+      assert.ok(out.results.every((r) => r.type === type));
+      // A single type forwards an equality metadata filter to Vectorize.
+      assert.deepEqual(vectorize.calls.at(-1).filter, { type });
+    });
+  }
+
+  test("accepts a multi-type list ($in filter) and dedupes inputs", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", {
+      type: ["surface", "provider", "surface"],
+    });
+    assert.ok(out.results.length > 0);
+    assert.ok(
+      out.results.every((r) => r.type === "surface" || r.type === "provider"),
+    );
+    assert.deepEqual(vectorize.calls.at(-1).filter, {
+      type: { $in: ["surface", "provider"] },
+    });
+  });
+
+  test("post-filters when Vectorize ignores the metadata filter (no index)", async () => {
+    const vectorize = stubVectorizeMixed({ honorFilter: false });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "provider", limit: 5 });
+    assert.ok(out.results.length > 0);
+    assert.ok(out.results.every((r) => r.type === "provider"));
+    // A scoped query over-fetches to the topK cap so survivors remain to slice.
+    assert.equal(vectorize.calls.at(-1).topK, 20);
+  });
+
+  test("falls back to an unfiltered fetch when Vectorize rejects the filter (no metadata index)", async () => {
+    // Real prod shape: no metadata index on `type`, so a filtered query rejects.
+    // The guarded retry must recover via an unfiltered fetch + post-filter rather
+    // than 502, and the recovery call must carry no filter.
+    const vectorize = stubVectorizeMixed({ rejectFilter: true });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "surface", limit: 5 });
+    assert.ok(out.results.length > 0);
+    assert.ok(out.results.every((r) => r.type === "surface"));
+    // First attempt carried the filter (and rejected); the retry dropped it.
+    assert.deepEqual(vectorize.calls[0].filter, { type: "surface" });
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+    assert.equal(vectorize.calls.at(-1).topK, 20);
+  });
+
+  test("a non-filter Vectorize outage still propagates (no silent empty result)", async () => {
+    // The retry must not mask a genuine outage: if the unfiltered fetch also
+    // fails, the error surfaces (callers map it to 502) rather than returning [].
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.reject(new Error("vectorize down")) },
+    };
+    await assert.rejects(
+      () => semanticSearch(env, "q", { type: "subnet" }),
+      /vectorize down/,
+    );
+  });
+
+  test("honors `limit` AFTER filtering, not before", async () => {
+    const vectorize = stubVectorizeMixed({ honorFilter: false });
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: "subnet", limit: 1 });
+    assert.equal(out.results.length, 1);
+    assert.equal(out.results[0].type, "subnet");
+  });
+
+  for (const bad of ["", "subnets", "SUBNET", "node", 7, ["subnet", "bogus"]]) {
+    test(`rejects an unknown type ${JSON.stringify(bad)} with a clear error`, async () => {
+      const env = { AI: stubAi(), VECTORIZE: stubVectorizeMixed() };
+      await assert.rejects(
+        () => semanticSearch(env, "q", { type: bad }),
+        /Unknown type|Valid types/,
+      );
+    });
+  }
+
+  test("unfiltered default queries Vectorize without a filter (unchanged path)", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { limit: 4 });
+    assert.equal(out.results.length, 4);
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+    assert.equal(vectorize.calls.at(-1).topK, 4);
+  });
+
+  test("an empty type list is treated as 'all kinds'", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await semanticSearch(env, "q", { type: [], limit: 6 });
+    assert.equal(out.results.length, 6);
+    assert.equal(vectorize.calls.at(-1).filter, undefined);
+  });
+
+  test("tolerates a Vectorize response with no matches field", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve(undefined) },
+    };
+    const out = await semanticSearch(env, "q");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
   });
 });
 
@@ -427,6 +813,22 @@ describe("askQuestion", () => {
   test("rejects an overly long question", async () => {
     const env = { AI: stubAi(), VECTORIZE: stubVectorize() };
     await assert.rejects(() => askQuestion(env, "x".repeat(1001)), /at most/);
+  });
+  test("scopes retrieved context to the requested type", async () => {
+    const vectorize = stubVectorizeMixed();
+    const env = { AI: stubAi(), VECTORIZE: vectorize };
+    const out = await askQuestion(env, "which providers?", {
+      type: "provider",
+    });
+    assert.deepEqual(vectorize.calls.at(-1).filter, { type: "provider" });
+    assert.ok(out.citations.length > 0);
+  });
+  test("rejects an unknown type", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorizeMixed() };
+    await assert.rejects(
+      () => askQuestion(env, "q", { type: "bogus" }),
+      /Unknown type/,
+    );
   });
 });
 
@@ -457,6 +859,41 @@ describe("AI routes through the Worker dispatch", () => {
     assert.equal(body.ok, true);
     assert.equal(body.meta.source, "ai-live");
     assert.ok(body.data.results.length > 0);
+  });
+
+  test("enabled semantic threads a repeatable ?type= scope", async () => {
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=images&type=subnet&type=provider`),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.ok(body.data.results.every((r) => r.type === "subnet"));
+  });
+
+  test("semantic with an unknown ?type= is a 400", async () => {
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=x&type=bogus`),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_query");
+  });
+
+  test("ask with an unknown type is a 400", async () => {
+    const res = await handleRequest(
+      new Request(ASK_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: "which?", type: "bogus" }),
+      }),
+      aiWorkerEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, "invalid_request");
   });
 
   test("enabled ask returns a 200 envelope with citations", async () => {
@@ -826,6 +1263,34 @@ describe("ai-search defensive branches", () => {
     const userMessage = askCall.input.messages.at(-1).content;
     // Live "degraded" status overrides the baked "unknown" stub in the context.
     assert.match(userMessage, /degraded/);
+  });
+
+  test("askQuestion sends an explicit no-results context when Vectorize returns no matches", async () => {
+    // Empty-result path: the user prompt must carry the
+    // "(no matching registry entries)" sentinel (not an empty context block), so
+    // the model is told there is nothing to ground on rather than hallucinating.
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await askQuestion(env, "anything at all?");
+    assert.equal(out.context_count, 0);
+    assert.deepEqual(out.citations, []);
+    const askCall = env.AI.calls.find((c) => c.model === ASK_MODEL);
+    const userMessage = askCall.input.messages.find(
+      (m) => m.role === "user",
+    ).content;
+    assert.match(userMessage, /\(no matching registry entries\)/);
+  });
+
+  test("semanticSearch returns an empty result set when Vectorize has no matches", async () => {
+    const env = {
+      AI: stubAi(),
+      VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+    };
+    const out = await semanticSearch(env, "no such thing");
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.results, []);
   });
 
   test("askQuestion degrades gracefully when the catalog read fails", async () => {

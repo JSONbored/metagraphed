@@ -102,6 +102,33 @@ test("registry validates", () => {
   runNode("scripts/validate.mjs");
 });
 
+test("registry validation accepts the community-seeded curation level", () => {
+  const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
+  const fixture = tamperedOverlayFixture("sn-1-community-seeded");
+  fixture.curation.level = "community-seeded";
+  fixture.curation.review_state = "unreviewed";
+
+  let result;
+  try {
+    writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
+    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
+  } finally {
+    rmSync(overlayPath, { force: true });
+  }
+
+  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+  assert.doesNotMatch(
+    output,
+    /sn-1-community-seeded: invalid curation\.level/,
+    "community-seeded must be an accepted curation.level (added to schema in #1822)",
+  );
+});
+
 test("registry validation warns but does not block on cross-netuid on-chain name collisions", () => {
   const nativePath = "registry/native/finney-subnets.json";
   const original = readFileSync(nativePath, "utf8");
@@ -1070,25 +1097,26 @@ test("public artifacts are internally consistent", () => {
   const callableWithoutSchema = callableAgentServices.filter(
     (service) => !service.schema_artifact,
   );
-  assert.equal(
-    callableAgentServices.length,
-    68,
-    "agent-catalog callable-service count must stay deterministic",
+  // The callable-service population grows with every community surface addition,
+  // so we assert the schema-projection invariants rather than freezing an
+  // absolute count (a frozen count red-flagged legitimate single-file data PRs
+  // for every callable surface added). The concrete projection behaviour is
+  // pinned per-surface below (SN7/56/110/64).
+  assert.ok(
+    callableAgentServices.length > 0,
+    "agent-catalog must project callable services",
   );
-  assert.equal(
-    callableWithoutSchema.length,
-    31,
-    "schema projection should reduce callable services without schema artifacts",
+  assert.ok(
+    callableWithoutSchema.length > 0 &&
+      callableWithoutSchema.length < callableAgentServices.length,
+    "same-origin schema projection should reduce — but not eliminate — callable services without schema artifacts",
   );
-  assert.equal(
-    callableWithoutSchema.filter((service) => service.kind === "subnet-api")
-      .length,
-    6,
-    "schema projection should leave only explicitly uncaptured/unknown subnet APIs without schemas",
-  );
-  assert.equal(
-    callableWithoutSchema.filter((service) => service.kind === "sse").length,
-    1,
+  assert.ok(
+    callableAgentServices
+      .filter((service) => service.kind === "sse")
+      .every(
+        (service) => service.schema_source?.match !== "same-origin-openapi",
+      ),
     "SSE streams should not inherit same-origin OpenAPI schemas implicitly",
   );
   const serviceById = (catalog, surfaceId) =>
@@ -1744,6 +1772,36 @@ test("public artifacts are internally consistent", () => {
   );
   assert.equal(changelog.source, "generated-artifact-diff");
   assert.equal(search.document_count, search.documents.length);
+  // Slim search index (roadmap Finding 8): the same documents as search.json
+  // minus the per-document `tokens` keyword blobs, for a much lighter browser
+  // payload. It must stay in lock-step with the full index (same count + ids,
+  // same display fields) and carry no token blobs.
+  const searchIndex = readArtifact("search-index.json");
+  assert.equal(searchIndex.document_count, search.document_count);
+  assert.equal(searchIndex.documents.length, search.documents.length);
+  assert.equal(
+    searchIndex.documents.every(
+      (document) => !Object.hasOwn(document, "tokens"),
+    ),
+    true,
+    "slim search index documents must not carry token blobs",
+  );
+  assert.deepEqual(
+    searchIndex.documents.map((document) => document.id),
+    search.documents.map((document) => document.id),
+    "slim search index must preserve the full index's documents and order",
+  );
+  for (const slimDocument of searchIndex.documents) {
+    const fullDocument = search.documents.find(
+      (document) => document.id === slimDocument.id,
+    );
+    const { tokens: _tokens, ...expected } = fullDocument;
+    assert.deepEqual(
+      slimDocument,
+      expected,
+      `slim search document ${slimDocument.id} must equal the full document minus tokens`,
+    );
+  }
   const nodexoSearchDocument = search.documents.find(
     (document) => document.id === "subnet:27",
   );

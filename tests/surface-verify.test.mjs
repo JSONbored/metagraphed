@@ -4,6 +4,7 @@ import {
   findSurface,
   primarySurfaceForNetuid,
   verifySurface,
+  verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
 } from "../src/surface-verify.mjs";
 import { handleRequest } from "../workers/api.mjs";
@@ -136,6 +137,43 @@ describe("surface-verify core (#358)", () => {
     assert.equal(bare.auth_required, false);
     assert.equal(bare.netuid, null);
     assert.equal(bare.probed_at, "2026-06-16T01:00:00Z"); // verified_at fallback
+  });
+
+  test("verifySurfaceWithCache serves a 60s cache keyed by surface_key", async () => {
+    let probes = 0;
+    const store = new Map();
+    const cache = {
+      async match(key) {
+        return store.get(key.url);
+      },
+      async put(key, res) {
+        store.set(key.url, res);
+      },
+    };
+    const prober = async () => {
+      probes += 1;
+      return {
+        status: "ok",
+        classification: "live",
+        latency_ms: 12,
+        status_code: 200,
+        last_checked: "2026-06-16T00:00:00.000Z",
+      };
+    };
+    const first = await verifySurfaceWithCache(
+      surfaces[0],
+      {},
+      { cache, waitUntil: (p) => p, prober },
+    );
+    assert.equal(first.from_cache, false);
+    assert.equal(probes, 1);
+    const second = await verifySurfaceWithCache(
+      surfaces[0],
+      {},
+      { cache, prober },
+    );
+    assert.equal(second.from_cache, true);
+    assert.equal(probes, 1);
   });
 });
 
@@ -472,6 +510,65 @@ describe("verify_integration MCP tool (#358)", () => {
       globalThis.fetch = of;
     }
     assert.equal(surfaceFetches, 0);
+  });
+
+  test("caches probe results for ~60s like REST verify", async () => {
+    let probeCount = 0;
+    const store = new Map();
+    const cache = {
+      async match(key) {
+        return store.get(key.url);
+      },
+      async put(key, res) {
+        store.set(key.url, res);
+      },
+    };
+    const of = globalThis.fetch;
+    const oc = globalThis.caches;
+    globalThis.fetch = async () => {
+      probeCount += 1;
+      return new Response("{}", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    globalThis.caches = { default: cache };
+    const invoke = async (args) => {
+      const response = await handleMcpRequest(
+        new Request("https://metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: { name: "verify_integration", arguments: args },
+          }),
+        }),
+        {},
+        deps,
+      );
+      return (await response.json()).result;
+    };
+    try {
+      const first = await invoke({ surface_id: "x:api:1" });
+      assert.equal(first.isError, false);
+      assert.equal(first.structuredContent.from_cache, false);
+      const probesAfterFirst = probeCount;
+      assert.ok(probesAfterFirst > 0);
+
+      const second = await invoke({ surface_id: "x:api:1" });
+      assert.equal(second.isError, false);
+      assert.equal(second.structuredContent.from_cache, true);
+      assert.equal(
+        probeCount,
+        probesAfterFirst,
+        "second call must not re-probe",
+      );
+    } finally {
+      globalThis.fetch = of;
+      globalThis.caches = oc;
+    }
   });
 
   test("error paths require no probe", async () => {

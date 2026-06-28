@@ -6,9 +6,47 @@
 import { CACHE_SECONDS, CONTRACT_VERSION } from "../src/contracts.mjs";
 import { JSON_CONTENT_TYPE } from "./config.mjs";
 
+// Custom response headers a cross-origin browser script is allowed to read.
+// The Fetch spec hides every non-safelisted header unless the server names it in
+// Access-Control-Expose-Headers, so this canonical list is exposed on every
+// CORS-open response. Keep in sync as new client-facing headers are added.
+const EXPOSED_RESPONSE_HEADERS = [
+  "etag", // conditional-request validator (If-None-Match → 304)
+  "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
+  // rate-limit family: detect throttling, honour the back-off
+  "retry-after",
+  "x-ratelimit-limit",
+  "x-ratelimit-remaining",
+  "x-ratelimit-policy",
+  // x-metagraph-* diagnostics
+  "x-metagraph-contract-version",
+  "x-metagraph-stale-contract",
+  "x-metagraph-published-at",
+  "x-metagraph-events",
+  "x-metagraph-health",
+  "x-metagraph-cache-profile",
+  "x-metagraph-artifact-source",
+  "x-metagraph-storage-tier",
+  "x-metagraph-error-code",
+  "x-metagraph-rpc-cache",
+  "x-metagraph-rpc-endpoint-id",
+  "x-metagraph-rpc-provider",
+  "x-metagraph-rpc-attempts",
+];
+
+// Pre-joined value, for builders that emit plain header objects (the MCP server).
+export const EXPOSED_RESPONSE_HEADERS_VALUE =
+  EXPOSED_RESPONSE_HEADERS.join(", ");
+
+// Expose the canonical custom headers on a CORS-open response's Headers.
+export function exposeCustomResponseHeaders(headers) {
+  headers.set("access-control-expose-headers", EXPOSED_RESPONSE_HEADERS_VALUE);
+}
+
 export function apiHeaders(cacheProfile) {
   const headers = new Headers();
   headers.set("access-control-allow-origin", "*");
+  exposeCustomResponseHeaders(headers);
   headers.set(
     "cache-control",
     `public, max-age=${CACHE_SECONDS[cacheProfile] || CACHE_SECONDS.standard}, stale-while-revalidate=300`,
@@ -18,6 +56,11 @@ export function apiHeaders(cacheProfile) {
   headers.set("x-metagraph-cache-profile", cacheProfile);
   headers.set("vary", "Accept-Encoding");
   return headers;
+}
+
+// Join link entries into an RFC 8288 header value: `<uri>; rel="…", …`.
+export function linkHeader(links) {
+  return links.map(({ uri, rel }) => `<${uri}>; rel="${rel}"`).join(", ");
 }
 
 export function errorResponse(

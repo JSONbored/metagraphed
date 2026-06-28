@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 90,
-  "name": "DegenBrain",
-  "slug": "sn-90",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "identity-reviewed",
@@ -11,15 +6,7 @@
     "prediction-markets",
     "verification"
   ],
-  "website_url": "https://subnet90.com/",
-  "dashboard_url": "https://degenbrain.com/",
-  "notes": "Reviewed overlay for SN90 using the live DegenBrain project website. Native chain identity currently remains ogham; the project website identifies Subnet 90 as DegenBrain/Brain.",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T13:45:00.000Z",
-    "verified_at": "2026-06-08T13:45:00.000Z",
-    "source_count": 4,
     "gap_notes": [
       "Native chain name currently reports as ogham while the project website identifies SN90 as DegenBrain/Brain.",
       "The GitHub repository linked from the project website currently returns 404 and is not promoted.",
@@ -28,44 +15,99 @@
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T13:45:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T13:45:00.000Z"
   },
+  "dashboard_url": "https://degenbrain.com/",
+  "name": "DegenBrain",
+  "netuid": 90,
+  "notes": "Reviewed overlay for SN90 using the live DegenBrain project website. Native chain identity currently remains ogham; the project website identifies Subnet 90 as DegenBrain/Brain.",
+  "schema_version": 1,
+  "slug": "sn-90",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-90-degenbrain-website",
-      "name": "DegenBrain SN90 website",
-      "kind": "website",
-      "url": "https://subnet90.com/",
-      "provider": "degenbrain",
       "auth_required": false,
       "authority": "provider-claimed",
+      "id": "sn-90-degenbrain-website",
+      "kind": "website",
+      "name": "DegenBrain SN90 website",
+      "notes": "Live project website identifying Subnet 90 as DegenBrain/Brain for decentralized prediction-market statement resolution.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
       "public_safe": true,
       "source_urls": ["https://subnet90.com/"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Live project website identifying Subnet 90 as DegenBrain/Brain for decentralized prediction-market statement resolution."
+      "url": "https://subnet90.com/"
     },
     {
-      "id": "sn-90-degenbrain-app",
-      "name": "DegenBrain public app",
-      "kind": "dashboard",
-      "url": "https://degenbrain.com/",
-      "provider": "degenbrain",
       "auth_required": false,
       "authority": "provider-claimed",
-      "public_safe": true,
-      "source_urls": ["https://subnet90.com/", "https://degenbrain.com/"],
+      "id": "sn-90-degenbrain-app",
+      "kind": "dashboard",
+      "name": "DegenBrain public app",
+      "notes": "Public DegenBrain AI-resolution app linked from the SN90 project website.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "html",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Public DegenBrain AI-resolution app linked from the SN90 project website."
+      "provider": "degenbrain",
+      "public_safe": true,
+      "source_urls": ["https://subnet90.com/", "https://degenbrain.com/"],
+      "url": "https://degenbrain.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-openapi",
+      "kind": "openapi",
+      "name": "ogham community openapi",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.subnet90.com/openapi.json",
+      "source_urls": ["https://subnet90.com/"],
+      "url": "https://api.subnet90.com/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-subnet-api",
+      "kind": "subnet-api",
+      "name": "DegenBrain pending-markets API",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "minion1227"
+      },
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "url": "https://api.subnet90.com/api/markets/pending"
     }
-  ]
+  ],
+  "website_url": "https://subnet90.com/"
 }

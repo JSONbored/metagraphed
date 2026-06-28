@@ -37,11 +37,9 @@ const contentPatterns = [
 ];
 
 const allowedContentMentions = new Set([
-  "docs/submission-gate.md",
   "CONTRIBUTING.md",
-  "scripts/submission-notifications.mjs",
+  // This file defines the boundary patterns themselves, so it self-matches.
   "scripts/validate-private-boundary.mjs",
-  "tests/submission-gate.test.mjs",
 ]);
 
 const findings = [];

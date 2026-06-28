@@ -28,7 +28,8 @@ export function validEconomicsBackfillRows(rows) {
       typeof row.snapshot_date === "string" &&
       SNAPSHOT_DATE_RE.test(row.snapshot_date) &&
       typeof row.alpha_price_tao === "number" &&
-      Number.isFinite(row.alpha_price_tao),
+      Number.isFinite(row.alpha_price_tao) &&
+      row.alpha_price_tao >= 0,
   );
 }
 

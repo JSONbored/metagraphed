@@ -9,7 +9,7 @@
 //
 // --write shells out to `gh issue create` (needs gh auth). Each issue mirrors
 // the established format: title "Enrich SN<n> <name> — add <kinds>", body links
-// the candidate:new command + CONTRIBUTING, labels gittensor:priority +
+// the surface:add command + CONTRIBUTING, labels gittensor:priority +
 // good first issue + help wanted, and references the #427 tracker.
 import { execFileSync } from "node:child_process";
 
@@ -28,26 +28,30 @@ const API_BASE =
 const TRACKER = 427;
 const LABELS = ["gittensor:priority", "good first issue", "help wanted"];
 const LIMIT = Number(getOpt("--limit", "20"));
-// Default to the operational gaps (the remaining volume); identity gaps
-// (source-repo/website) are nearly exhausted by the existing tracker issues.
+// Operational gaps only — identity surfaces (source-repo/website) are
+// machine-promoted automatically from SubnetIdentitiesV3 chain data and injected
+// into every overlay via generateBaselineOverlaySet. Issuing contributor tasks for
+// them produces farming PRs that add no signal; the native-chain probe already
+// covers that surface kind for any subnet that has registered identity on-chain.
 const KINDS = getOpt("--kinds", "openapi,subnet-api,data-artifact,sse")
   .split(",")
   .map((k) => k.trim())
   .filter(Boolean);
 
 // Highest agent value first — a callable API + its spec beat artifacts/streams.
+// source-repo and website are intentionally absent: those are machine-promoted
+// from native-chain data; contributor submissions duplicate what the build already
+// injects automatically (see validate:surface native-chain dedup gate).
 const VALUE_PRIORITY = [
   "subnet-api",
   "openapi",
   "data-artifact",
   "sse",
-  "source-repo",
-  "website",
   "docs",
   "sdk",
 ];
 
-// Human phrasing + the candidate:new --kind value for each gap kind.
+// Human phrasing + the surface:add --kind value for each gap kind.
 const KIND_LABEL = {
   "source-repo": "source repository",
   website: "official website",
@@ -142,15 +146,16 @@ function issueBody(netuid, name, kinds) {
 ### Find it
 Search for the subnet's official ${kindList} (project site / GitHub / docs / Bittensor). Confirm each link is real, public, no-auth, and genuinely SN${netuid}'s — cross-reference the subnet name + Bittensor. ⚠️ Many subnets simply don't expose a public API yet, and on-chain identity links are often **stale/dead** — verify each link actually resolves before submitting. If the subnet genuinely exposes no such public surface, comment here so a maintainer can close it.
 
-### Submit — one candidate per surface, one file
-First find the provider slug for the team/operator behind the surface (a wrong slug is the #1 validation failure): \`npm run providers:list\`. Then generate one candidate file:
+### Submit — one subnet, one file
+Surfaces live in **one file per subnet**: \`registry/subnets/<slug>.json\` → its \`surfaces[]\` array. First find the provider slug for the team/operator behind the surface (a wrong slug is the #1 validation failure): \`npm run providers:list\`. Then append the surface to the subnet's file:
 \`\`\`bash
-npm run candidate:new -- --netuid ${netuid} --kind ${primary} \\
+npm run surface:add -- --netuid ${netuid} --kind ${primary} \\
   --url <real-public-url> --source-url <link-that-proves-it> \\
   --provider <slug> --submitted-by <your-login> --write
 \`\`\`
+\`surface:add\` writes it with \`authority: "community"\` and \`review.state: "community-submitted"\`.
 
-Open a PR touching **exactly one** \`registry/candidates/community/*.json\` file — the review gate validates + reviews it.
+Open a PR touching **exactly one** \`registry/subnets/<slug>.json\` file — the review gate validates + reviews it. (The per-candidate-file lane is retired: recreating \`registry/candidates/community/*.json\` is rejected by CI.)
 
 **Rules:** a real \`url\` that resolves · a \`source_url\` that proves it's official · one file · no generated artifacts · \`public_safe: true\` · \`auth_required: false\`. Full guide: [CONTRIBUTING → Community submissions](https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md#community-submissions).`;
 }
@@ -167,12 +172,12 @@ for (const entry of queue) {
   if (covered.has(netuid)) continue;
   const missing = (entry.missing_kinds || [])
     .filter((k) => KINDS.includes(k))
-    // Lead with the highest-value surface so the candidate:new command targets
+    // Lead with the highest-value surface so the surface:add command targets
     // it: a callable API + its spec matter more to agents than artifacts/streams.
     .sort((a, b) => VALUE_PRIORITY.indexOf(a) - VALUE_PRIORITY.indexOf(b));
   if (!missing.length) continue;
   // One issue per subnet; ask for its top 2 in-scope missing kinds (the
-  // candidate:new command targets the first).
+  // surface:add command targets the first).
   const kinds = missing.slice(0, 2);
   planned.push({
     netuid,

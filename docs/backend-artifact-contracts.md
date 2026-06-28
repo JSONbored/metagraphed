@@ -44,6 +44,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/candidates/{netuid}.json`: unpromoted candidate surfaces for one subnet. R2-backed.
 - `/metagraph/review-queue.json`: candidate surfaces queued for maintainer review. R2-backed.
 - `/metagraph/search.json`: compact search index for subnets, surfaces, and providers.
+- `/metagraph/search-index.json`: slim search index — the same documents as `search.json` without the per-document token blobs, for fast browser typeahead and listing.
 - `/metagraph/coverage.json`: count parity and coverage levels.
 - `/metagraph/economics.json`: per-subnet validator/economic metrics (counts, stake, registration cost, alpha price, emission share).
 - `/metagraph/curation.json`: curation state for every active subnet.
@@ -79,17 +80,41 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/health/percentiles/{netuid}.json`: schema for per-surface latency percentiles (p50/p95/p99) served live from D1 at `GET /api/v1/subnets/{netuid}/health/percentiles` (no static file).
 - `/metagraph/health/incidents/{netuid}.json`: schema for per-surface SLA + reconstructed downtime incidents served live from D1 at `GET /api/v1/subnets/{netuid}/health/incidents` (no static file).
 - `/metagraph/subnets/{netuid}/trajectory.json`: schema for the week-over-week structural trajectory served live from D1 at `GET /api/v1/subnets/{netuid}/trajectory` (no static file).
+- `/metagraph/subnets/{netuid}/concentration.json`: schema for stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) across per-UID, per-entity (coldkeys collapsed), and validator-only lenses, served live from the neurons D1 tier at `GET /api/v1/subnets/{netuid}/concentration` (no static file).
+- `/metagraph/subnets/{netuid}/concentration/history.json`: schema for the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window, served live from the neuron_daily D1 rollup at `GET /api/v1/subnets/{netuid}/concentration/history` (no static file).
+- `/metagraph/subnets/{netuid}/turnover.json`: schema for validator-set & registration turnover (validators entered/exited + retention, UID deregistrations, stability score) between a window's start and end snapshots, served live from the neuron_daily D1 rollup at `GET /api/v1/subnets/{netuid}/turnover` (no static file).
 - `/metagraph/subnets/{netuid}/uptime.json`: schema for the long-term daily uptime history per operational surface (90d/1y window), served live from the `surface_uptime_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/uptime` (no static file).
 - `/metagraph/subnets/{netuid}/metagraph.json`: schema for the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/metagraph` (no static file).
 - `/metagraph/subnets/{netuid}/neurons/{uid}.json`: schema for a single neuron's metagraph state served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/neurons/{uid}` (no static file).
 - `/metagraph/subnets/{netuid}/validators.json`: schema for a subnet's validators (validator_permit) ranked by stake, served live from the `neurons` D1 tier at `GET /api/v1/subnets/{netuid}/validators` (no static file).
+- `/metagraph/subnets/{netuid}/events.json`: schema for a subnet's first-party chain-event stream (registrations, stake, weights, axon, delegation, lifecycle, transfers) newest first, served live from the `account_events` D1 tier filtered by netuid at `GET /api/v1/subnets/{netuid}/events` (no static file).
 - `/metagraph/subnets/{netuid}/neurons/{uid}/history.json`: schema for a UID's per-day metagraph time series served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/neurons/{uid}/history` (no static file).
 - `/metagraph/subnets/{netuid}/history.json`: schema for a subnet's per-day metagraph history (one snapshot/day) served live from the `neuron_daily` D1 rollup at `GET /api/v1/subnets/{netuid}/history` (no static file).
 - `/metagraph/accounts/{ss58}.json`: schema for a cross-subnet account summary (chain-event aggregates joined to current registrations), served live from the `account_events` + `neurons` D1 tiers at `GET /api/v1/accounts/{ss58}` (no static file).
 - `/metagraph/accounts/{ss58}/events.json`: schema for an account's paginated chain-event history, served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/events` (no static file).
+- `/metagraph/accounts/{ss58}/history.json`: schema for an account's durable per-day activity series (hotkey-keyed, newest day first), served live from the `account_events_daily` rollup at `GET /api/v1/accounts/{ss58}/history` (no static file).
+- `/metagraph/accounts/{ss58}/extrinsics.json`: schema for the extrinsics an account signed (by signer), served live from the `extrinsics` D1 tier at `GET /api/v1/accounts/{ss58}/extrinsics` (no static file).
+- `/metagraph/accounts/{ss58}/transfers.json`: schema for the native-TAO Balances.Transfer feed for an account (directional), served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/transfers` (no static file).
+- `/metagraph/accounts/{ss58}/counterparties.json`: schema for the per-counterparty fund-flow rollup for an account (transfers aggregated by counterparty into sent/received/net, ranked by volume), served live from the `account_events` D1 tier at `GET /api/v1/accounts/{ss58}/counterparties` (no static file).
 - `/metagraph/accounts/{ss58}/subnets.json`: schema for the subnets where an account's hotkey is currently registered, served live from the `neurons` D1 tier at `GET /api/v1/accounts/{ss58}/subnets` (no static file).
+- `/metagraph/accounts/{ss58}/balance.json`: schema for an account's live TAO balance (free + reserved), queried from the finney RPC at request time with a 60s KV cache, served at `GET /api/v1/accounts/{ss58}/balance` (no static file).
+- `/metagraph/blocks.json`: schema for the recent-block feed (newest first) of the block explorer, served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks` (no static file).
+- `/metagraph/blocks/{ref}.json`: schema for per-block detail (by numeric `block_number` or `0x` `block_hash`), served live from the first-party `blocks` D1 tier at `GET /api/v1/blocks/{ref}` (no static file).
+- `/metagraph/blocks/{ref}/extrinsics.json`: schema for the extrinsics in one block (by numeric `block_number` or `0x` `block_hash`), served live from the first-party `extrinsics` D1 tier at `GET /api/v1/blocks/{ref}/extrinsics` (no static file).
+- `/metagraph/blocks/{ref}/events.json`: schema for the decoded chain events in one block (by numeric `block_number` or `0x` `block_hash`), served live from the first-party `account_events` D1 tier filtered by block_number at `GET /api/v1/blocks/{ref}/events` (no static file).
+- `/metagraph/extrinsics.json`: schema for the recent-extrinsic feed (newest first) of the block explorer, served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics` (no static file).
+- `/metagraph/extrinsics/{hash}.json`: schema for per-extrinsic detail (by `0x` `extrinsic_hash`), served live from the first-party `extrinsics` D1 tier at `GET /api/v1/extrinsics/{hash}` (no static file).
+- `/metagraph/chain/activity.json`: schema for the daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d/30d window, computed live from the first-party chain D1 tiers at `GET /api/v1/chain/activity` (no static file).
+- `/metagraph/chain/calls.json`: schema for the extrinsic call-mix breakdown (count + share per `call_module`/`call_function`) over a 7d/30d window, computed live from the first-party `extrinsics` D1 tier at `GET /api/v1/chain/calls` (no static file).
+- `/metagraph/chain/signers.json`: schema for the windowed most-active-account leaderboard (signers by extrinsic count, with fees/tips + newest block) over a 7d/30d window, computed live from the first-party `extrinsics` D1 tier at `GET /api/v1/chain/signers` (no static file).
+- `/metagraph/chain/fees.json`: schema for the fee/tip market analytics (per-day totals + averages and a top-fee-payer list) over a 7d/30d window, computed live from the first-party `extrinsics` D1 tier at `GET /api/v1/chain/fees` (no static file).
+- `/metagraph/chain-events.json`: schema for the recent all-events feed (newest first) — every raw pallet.method event from the Postgres-backed all-events tier (ADR 0013), served live by the data Worker at `GET /api/v1/chain-events` (no static file). Distinct from the curated account-attributed `/blocks/{ref}/events` stream.
+- `/metagraph/chain-events/stats.json`: schema for the chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at `GET /api/v1/chain-events/stats` (no static file) and consumed by the `get_chain_activity` MCP tool.
+- `/metagraph/blocks/{ref}/chain-events.json`: schema for every raw pallet-level event in one block (by numeric `block_number`, `event_index` ascending) from the Postgres-backed all-events tier (ADR 0013), served live at `GET /api/v1/blocks/{ref}/chain-events` (no static file).
+- `/metagraph/economics/trends.json`: schema for the network-wide economics time series (per UTC day across all subnets: total stake, stake-weighted + median alpha price, total validator/miner counts, mean emission share) aggregated live from the daily `subnet_snapshots` D1 rollup at `GET /api/v1/economics/trends` (no static file).
 - `/metagraph/incidents.json`: schema for recent cross-subnet downtime incidents reconstructed from probe history, served live from D1 at `GET /api/v1/incidents` (no static file).
 - `/metagraph/registry/leaderboards.json`: schema for the registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — served live from D1 + registry projections + the economics tier at `GET /api/v1/registry/leaderboards` (no static file).
+- `/metagraph/compare.json`: schema for the cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids — served live at `GET /api/v1/compare` (no static file).
 - `/metagraph/rpc/usage.json`: schema for RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets), served live from the `rpc_proxy_events` D1 telemetry at `GET /api/v1/rpc/usage` (no static file). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/metagraph/schema-drift.json`: OpenAPI snapshot/drift status.
 - `/metagraph/schemas/index.json`: captured machine-readable schema index.
@@ -125,16 +150,39 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/subnets/{netuid}/health/percentiles`: fetch p50/p95/p99 latency percentiles per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/health/incidents`: fetch SLA (uptime ratio) + reconstructed downtime incidents per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/trajectory`: fetch the week-over-week structural trajectory (completeness + counts) from daily snapshots (live from D1).
+- `/api/v1/subnets/{netuid}/concentration`: fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (live from the neurons D1 tier).
+- `/api/v1/subnets/{netuid}/concentration/history`: fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a `?window=7d|30d|90d` (live from the neuron_daily D1 rollup).
+- `/api/v1/subnets/{netuid}/turnover`: fetch validator-set & registration turnover (validators entered/exited + retention, UID deregistrations, stability score) for one subnet over a `?window=7d|30d|90d|1y|all` (live from the neuron_daily D1 rollup).
 - `/api/v1/subnets/{netuid}/uptime`: fetch long-term daily uptime history per operational surface over a 90d/1y window (live from the `surface_uptime_daily` D1 rollup).
 - `/api/v1/subnets/{netuid}/metagraph`: fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon); `?validator_permit=true` for validators only (live from the `neurons` D1 tier).
 - `/api/v1/subnets/{netuid}/neurons/{uid}`: fetch a single neuron's metagraph state by UID (live from the `neurons` D1 tier; 200 with `neuron:null` when cold/absent).
 - `/api/v1/subnets/{netuid}/validators`: fetch the validators (validator_permit) ranked by stake (live from the `neurons` D1 tier).
+- `/api/v1/subnets/{netuid}/events`: fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers) newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier filtered by netuid).
 - `/api/v1/subnets/{netuid}/neurons/{uid}/history`: fetch a UID's per-day metagraph time series over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
 - `/api/v1/subnets/{netuid}/history`: fetch a subnet's per-day metagraph history over a `?window=7d|30d|90d|1y|all` window (live from the `neuron_daily` D1 rollup).
 - `/api/v1/accounts/{ss58}`: fetch a cross-subnet account summary (chain-event aggregates joined to current registrations + stake) for a hotkey or coldkey (live from the `account_events` + `neurons` D1 tiers).
 - `/api/v1/accounts/{ss58}/events`: fetch an account's paginated chain-event history, newest first; `?kind=` filter, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
+- `/api/v1/accounts/{ss58}/history`: fetch an account's durable per-day activity series (hotkey-keyed, newest day first); `?netuid=` / `?from=` / `?to=` (YYYY-MM-DD) narrow, `?limit` (<=1000) / `?offset` (live from the `account_events_daily` rollup; an ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed).
+- `/api/v1/accounts/{ss58}/extrinsics`: fetch the extrinsics an account signed (matched by signer), newest first; `?limit` (<=1000) / `?offset` (live from the `extrinsics` D1 tier).
+- `/api/v1/accounts/{ss58}/transfers`: fetch the native-TAO Balances.Transfer feed for an account, newest first; `?direction=all|sent|received`, `?limit` (<=1000) / `?offset` (live from the `account_events` D1 tier).
+- `/api/v1/accounts/{ss58}/counterparties`: fetch the per-counterparty fund-flow rollup for an account — transfers aggregated by counterparty into sent/received/net + count, ranked by total volume; `?limit` (<=100) (live from the `account_events` D1 tier).
 - `/api/v1/accounts/{ss58}/subnets`: fetch the subnets where an account's hotkey is currently registered (live from the `neurons` D1 tier).
+- `/api/v1/accounts/{ss58}/balance`: fetch an account's live TAO balance (free + reserved, in TAO), queried from the finney RPC at request time with a 60s KV cache; `balance_tao` is null on RPC failure.
+- `/api/v1/blocks`: fetch the recent-block feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` (live from the first-party `blocks` D1 tier).
+- `/api/v1/blocks/{ref}`: fetch per-block detail by numeric `block_number` or `0x` `block_hash` (live from the first-party `blocks` D1 tier; 200 with `block:null` when cold/unknown).
+- `/api/v1/blocks/{ref}/extrinsics`: fetch the extrinsics in one block by numeric `block_number` or `0x` `block_hash`, natural order; `?limit` (<=100) / `?offset` (live from the first-party `extrinsics` D1 tier; 200 with `extrinsics:[]` when cold/unknown).
+- `/api/v1/blocks/{ref}/events`: fetch the decoded chain events in one block by numeric `block_number` or `0x` `block_hash`, natural order; `?limit` (<=1000) / `?offset` (live from the first-party `account_events` D1 tier filtered by block_number; 200 with `events:[]` when cold/unknown).
+- `/api/v1/extrinsics`: fetch the recent-extrinsic feed (newest first) for the block explorer; `?limit` (<=100) / `?offset` / optional `?block=<n>` (live from the first-party `extrinsics` D1 tier).
+- `/api/v1/extrinsics/{hash}`: fetch per-extrinsic detail by `0x` `extrinsic_hash` (live from the first-party `extrinsics` D1 tier; 200 with `extrinsic:null` when cold/unknown).
+- `/api/v1/chain/activity`: fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a `?window=7d|30d`, newest day first (computed live from the first-party chain D1 tiers; schema-stable `day_count:0`/`days:[]` when cold).
+- `/api/v1/chain/calls`: fetch the extrinsic call-mix breakdown (count + share per `call_module`, or per `call_module`/`call_function` with `?group_by=module_function`) over a `?window=7d|30d`; `?limit` (<=100) caps the long tail (computed live from the first-party `extrinsics` D1 tier; share denominator is the full-window total).
+- `/api/v1/chain/signers`: fetch the windowed most-active-account leaderboard (signers by extrinsic count, with total fees/tips + newest signed block) over a `?window=7d|30d`; `?limit` (<=100) (computed live from the first-party `extrinsics` D1 tier; schema-stable empty when cold).
+- `/api/v1/chain/fees`: fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a `?limit`-capped top-fee-payer list — over a `?window=7d|30d` (computed live from the first-party `extrinsics` D1 tier; exact median is a follow-up).
+- `/api/v1/chain-events`: fetch the recent all-events feed (newest first) — every raw pallet.method event from the Postgres-backed all-events tier (ADR 0013). `?pallet`/`?method` narrow by event id (`?method` requires `?pallet` unless `?block` is set); `?block` (+ optional `?extrinsic`) scopes to one block/extrinsic; `?before` is a `block_number` keyset cursor; `?limit` (<=200, default 50). Served live by the data Worker; empty before the all-events backfill runs.
+- `/api/v1/chain-events/stats`: fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks (`?blocks` default 1000, capped 5000) — from the Postgres-backed all-events tier (ADR 0013). Backs the `get_chain_activity` MCP tool.
+- `/api/v1/blocks/{ref}/chain-events`: fetch every raw pallet-level event in one block (by numeric `block_number`, `event_index` ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from `/api/v1/blocks/{ref}/events` (the curated account-attributed stream).
 - `/api/v1/registry/leaderboards`: fetch registry leaderboards (`board=healthiest|fastest-rpc|most-complete|most-enriched|fastest-growing|open-slots|cheapest-registration|highest-emission|validator-headroom`, or omit for all). The four economic boards rank cross-subnet miner/validator opportunity from the economics tier; pairs with the `find_subnet_opportunities` MCP tool.
+- `/api/v1/compare`: compare several subnets side by side across registry structure, the economics tier, and the live per-subnet health rollup. `netuids` (required) is a comma-separated list of 1-128 subnet ids; `dimensions` (optional) selects a subset of `structure,economics,health` (default all). Returns one entry per requested netuid in requested order, with `found:false` for unknown ids.
 - `/api/v1/rpc/usage`: fetch RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window (live from the `rpc_proxy_events` D1 telemetry). `7d` uses 1-hour buckets; `30d` uses 6-hour buckets.
 - `/api/v1/surfaces`: list curated public surfaces.
 - `/api/v1/subnets/{netuid}/surfaces`: list curated public surfaces for one subnet.
@@ -146,7 +194,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/providers/{slug}`: fetch per-provider detail.
 - `/api/v1/providers/{slug}/endpoints`: list endpoint resources for one provider or operator.
 - `/api/v1/coverage`: fetch registry coverage summary.
-- `/api/v1/economics`: list per-subnet validator/economic metrics, ordered by emission share.
+- `/api/v1/economics`: list per-subnet validator/economic metrics, default ordered by emission share descending. Sort with `sort=<field>&order=asc|desc` — two separate params (e.g. `?sort=total_stake_tao&order=desc`), not a combined `field:desc` token.
+- `/api/v1/economics/trends`: fetch the network-wide economics time series (per UTC day across all subnets: total stake, stake-weighted + median alpha price, total validator/miner counts, mean emission share) over a `?window=7d|30d|90d|1y|all` (default 30d), aggregated live from the daily `subnet_snapshots` D1 rollup; schema-stable `day_count:0`/`days:[]` when cold.
 - `/api/v1/curation`: fetch curation states by subnet.
 - `/api/v1/gaps`: fetch interface gap report.
 - `/api/v1/review/gaps`: fetch contributor-targeted subnet gap priorities.
@@ -174,6 +223,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/schemas`: fetch captured schema index.
 - `/api/v1/adapters/{slug}`: fetch adapter-backed public metrics.
 - `/api/v1/search`: fetch compact search index.
+- `/api/v1/search-index`: fetch the slim search index — the same documents as `/api/v1/search` without the per-document token blobs, for fast browser typeahead and listing.
 - `/api/v1/contracts`: fetch artifact contract metadata.
 - `/api/v1/openapi.json`: fetch OpenAPI 3.1 contract.
 - `/api/v1/build`: fetch generated build summary.
@@ -203,9 +253,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run contract:summary`: compare schema contracts against a base ref and classify changes as additive, risky, or breaking.
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
 - `npm run validate:intake`: validate GitHub issue intake templates.
-- `npm run candidate:new`: generate a one-candidate community PR file.
-- `npm run provider:new`: generate a one-provider-profile community PR file.
-- `npm run submission:comment`: render a deterministic Markdown submission report.
+- `npm run surface:add`: append a community surface to a subnet's file.
 - `npm run validate:workflows`: validate workflow hardening rules.
 - `npm run worker:deploy:dry-run`: validate Worker/Wrangler deployment shape without contacting Cloudflare.
 - `npm run sync:summary`: generate a registry-refresh PR summary from actual artifact diffs.

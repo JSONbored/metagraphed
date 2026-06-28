@@ -17,6 +17,7 @@
 import {
   isUnsafePublicUrl,
   mapLimit,
+  normalizeProbeStatus,
   okLatencyMs,
   probeSurface as coreProbeSurface,
   rollupSubnetStatus,
@@ -60,7 +61,13 @@ const DNS_RECORD_TYPES = ["A", "AAAA"];
 const DNS_TIMEOUT_MS = 4000;
 const RPC_BLOCK_PLAUSIBILITY_TOLERANCE = 10;
 
-const iso = (ms) => (Number.isFinite(ms) ? new Date(ms).toISOString() : null);
+// #1757: epoch-zero is a "never" sentinel, not a real probe time — `iso(0)`
+// would otherwise emit the "1970-01-01T00:00:00.000Z" placeholder onto a served
+// last_ok for a surface that has never probed OK. Treat any falsy/zero ms as
+// null at the source so consumers don't each need a pre-2000 sentinel guard. A
+// real timestamp (run time, last OK) is always a large positive ms.
+const iso = (ms) =>
+  Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString() : null;
 
 function safeRpcBlockNumber(value) {
   if (value == null) return null;
@@ -150,7 +157,9 @@ function isUnsafeIpAddress(value) {
     host.startsWith("64:ff9b:1:") ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    /^fe[89ab][0-9a-f]:/i.test(host) ||
+    // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879): the whole
+    // fe80::–feff: reserved range, matching the webhook guard (issue #1538).
+    /^fe[89a-f][0-9a-f]:/i.test(host) ||
     host.startsWith("ff")
   );
 }
@@ -341,7 +350,7 @@ function summarizeGroup(rows) {
   let lastOk = 0;
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (row.checked_at_ms > lastChecked) lastChecked = row.checked_at_ms;
     if (row.last_ok_ms && row.last_ok_ms > lastOk) lastOk = row.last_ok_ms;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
@@ -485,7 +494,7 @@ export async function runHealthProber(env, ctx, overrides = {}) {
   await persistToKv(kv, probed, runAt);
 
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
   const durationMs = now() - runAt;
   // Wall-time guard: the prober runs on a 15-minute Cron Trigger, a hard CF
   // ceiling. As the autonomous flywheel grows surfaces, a sweep that creeps past
@@ -583,7 +592,7 @@ async function persistToD1(db, probed, runAt) {
 async function persistToKv(kv, probed, runAt) {
   if (!kv?.put) return;
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
-  for (const row of probed) counts[row.status] = (counts[row.status] || 0) + 1;
+  for (const row of probed) counts[normalizeProbeStatus(row.status)] += 1;
 
   const surfaceRows = probed.map((row) => ({
     surface_id: row.surface_id,
@@ -717,7 +726,16 @@ export async function rollupDailyUptime(env, overrides = {}) {
        ? AS day,
        COUNT(*) AS samples,
        SUM(ok) AS ok_count,
-       ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) AS uptime_ratio,
+       -- Only a genuinely perfect day (every probe ok) stores 1; a sub-perfect
+       -- day whose 4-dp round would reach 1.0 (e.g. 0.99996) is clamped down to
+       -- 0.9999, mirroring displayUptimeRatio (#1799). Without this the stored
+       -- ratio contradicts the co-computed degraded status, and the per-day
+       -- series reports 100% for a day that had a failed probe.
+       CASE
+         WHEN SUM(ok) = COUNT(*) THEN 1.0
+         WHEN ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4) >= 1.0 THEN 0.9999
+         ELSE ROUND(CAST(SUM(ok) AS REAL) / COUNT(*), 4)
+       END AS uptime_ratio,
        ${latencyStatColumns({ roundedAvg: true, includeMinMax: false })},
        CASE
          WHEN SUM(ok) = COUNT(*) THEN 'ok'
@@ -735,8 +753,12 @@ export async function rollupDailyUptime(env, overrides = {}) {
       days.map(({ date, start, end }) => stmt.bind(start, end, date, runAt)),
     );
     return { rolled: true, days: days.map((d) => d.date) };
-  } catch {
-    return { rolled: false };
+  } catch (error) {
+    // Don't swallow silently: a failing INSERT here (e.g. a missing column from
+    // un-applied schema migration) freezes the daily uptime rollup invisibly.
+    // Surface the reason so the hourly cron's result is diagnosable.
+    console.error("[rollupDailyUptime]", String(error?.message ?? error));
+    return { rolled: false, error: String(error?.message ?? error) };
   }
 }
 

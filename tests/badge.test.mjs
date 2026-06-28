@@ -7,6 +7,7 @@ import {
   gradeColor,
   parseBadgePath,
   parseBadgeOptions,
+  formatUptimePercent,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -49,12 +50,30 @@ const RELIABILITY = {
   "7,12": { score: 88, grade: "D", uptime_ratio: 0.88 }, // provider datura
 };
 
-async function badge(pathname, { method = "GET" } = {}) {
+// Per-subnet surfaces artifacts for the apis metric. Callable kinds are
+// subnet-api / openapi / sse / data-artifact; docs/website/etc. don't count.
+const SURFACES = {
+  "/metagraph/surfaces/7.json": {
+    surfaces: [
+      { kind: "subnet-api" },
+      { kind: "openapi" },
+      { kind: "docs" },
+      { kind: "website" },
+    ],
+  }, // 2 callable
+  "/metagraph/surfaces/12.json": { surfaces: [{ kind: "sse" }] }, // 1 callable
+  "/metagraph/surfaces/3.json": { surfaces: [{ kind: "docs" }] }, // 0 callable
+  // netuid 9 has no surfaces artifact → n/a
+};
+
+async function badge(pathname, { method = "GET", fixtures = {} } = {}) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
   const res = await handleBadgeRequest(new Request(url, { method }), {}, url, {
     readArtifact: makeReadArtifact({
       "/metagraph/subnets.json": SUBNETS,
       "/metagraph/providers.json": PROVIDERS,
+      ...SURFACES,
+      ...fixtures,
     }),
     loadReliability: makeLoadReliability(RELIABILITY),
   });
@@ -90,6 +109,21 @@ describe("badge — rendering", () => {
       !loneSurrogate.test(svg),
       "SVG label must not contain a lone surrogate",
     );
+  });
+
+  test("renderBadge sizes emoji / CJK labels at least as wide as a capital", () => {
+    // sanitizeLabel admits emoji, but textWidth used to size every non-ASCII
+    // glyph at the 6.5px lowercase default — narrower than the 8px capital `W`,
+    // so an emoji label clipped its own segment (#1650).
+    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const capW = widthOf(renderBadge("ok", "#000", { label: "W" }));
+    const emoji = widthOf(renderBadge("ok", "#000", { label: "😀" }));
+    const cjk = widthOf(renderBadge("ok", "#000", { label: "字" }));
+    assert.ok(
+      emoji >= capW,
+      `emoji width ${emoji} should be >= W width ${capW}`,
+    );
+    assert.ok(cjk >= capW, `CJK width ${cjk} should be >= W width ${capW}`);
   });
 
   test("renderBadge style=flat-square drops the gradient + rounding", () => {
@@ -133,6 +167,8 @@ describe("badge — rendering", () => {
       parseBadgeOptions(sp("metric=reliability")).metric,
       "reliability",
     );
+    assert.equal(parseBadgeOptions(sp("metric=GRADE")).metric, "grade");
+    assert.equal(parseBadgeOptions(sp("metric=APIS")).metric, "apis");
     assert.equal(parseBadgeOptions(sp("metric=bogus")).metric, "readiness");
     // style: flat default; flat-square allowed; anything else → flat.
     assert.equal(parseBadgeOptions(sp("")).style, "flat");
@@ -274,6 +310,124 @@ describe("badge — uptime / reliability metric", () => {
   });
 });
 
+describe("badge — grade metric", () => {
+  test("subnet grade renders the A–F letter, colored by the grade band", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=grade");
+    assert.match(text, /aria-label="metagraphed: A"/); // the letter itself
+    assert.match(text, /#2ea44f/); // grade A → green
+    assert.ok(!text.includes("99.83")); // not the uptime % rendering
+    assert.ok(!text.includes("/100")); // not the readiness rendering
+  });
+
+  test("provider grade is the rollup grade across its subnets", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/datura/badge.svg?metric=grade",
+    );
+    assert.match(text, /aria-label="metagraphed: D"/);
+    assert.match(text, /#dfb317/); // grade D → yellow
+  });
+
+  test("unknown subnet grade degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/999/badge.svg?metric=grade",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+});
+
+describe("badge — apis metric", () => {
+  test("subnet apis counts only callable surface kinds, informational blue", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=apis");
+    // surfaces/7 = subnet-api + openapi (callable) + docs + website (not) → 2
+    assert.match(text, /aria-label="metagraphed: 2 apis"/);
+    assert.match(text, /#007ec6/); // informational blue for >0
+    assert.ok(!text.includes("/100")); // not the readiness rendering
+  });
+
+  test("singular 'api' when exactly one callable surface", async () => {
+    const { text } = await badge("/api/v1/subnets/12/badge.svg?metric=apis");
+    assert.match(text, /aria-label="metagraphed: 1 api"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("zero callable surfaces renders '0 apis' in gray", async () => {
+    const { text } = await badge("/api/v1/subnets/3/badge.svg?metric=apis");
+    assert.match(text, /aria-label="metagraphed: 0 apis"/);
+    assert.match(text, /#9f9f9f/); // gray for none
+  });
+
+  test("provider apis sums callable surfaces across its subnets", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/datura/badge.svg?metric=apis",
+    );
+    // datura = netuids [7, 12] → 2 + 1 = 3
+    assert.match(text, /aria-label="metagraphed: 3 apis"/);
+    assert.match(text, /#007ec6/);
+  });
+
+  test("a subnet with no surfaces artifact degrades to n/a (still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/9/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+
+  test("unknown subnet apis degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/999/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+
+  test("unknown provider apis degrades to n/a", async () => {
+    const { res, text } = await badge(
+      "/api/v1/providers/nobody/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with empty netuids is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/empty/badge.svg?metric=apis",
+      {
+        fixtures: {
+          "/metagraph/providers.json": {
+            providers: [{ slug: "empty", netuids: [] }],
+          },
+        },
+      },
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with no surfaces artifacts is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/byid/badge.svg?metric=apis",
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("apis metric survives a readArtifact throw (readData catch)", async () => {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/subnets/7/badge.svg?metric=apis",
+    );
+    const res = await handleBadgeRequest(new Request(url), {}, url, {
+      readArtifact: () => {
+        throw new Error("artifact read failed");
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /n\/a/);
+  });
+});
+
 describe("badge — Worker dispatch integration", () => {
   test("handleRequest routes /api/v1/subnets/{netuid}/badge.svg to a badge", async () => {
     const env = createLocalArtifactEnv();
@@ -285,5 +439,28 @@ describe("badge — Worker dispatch integration", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
     assert.match(await res.text(), /<svg /);
+  });
+});
+
+describe("badge — formatUptimePercent", () => {
+  test("documented contract: trims to two decimals", () => {
+    assert.equal(formatUptimePercent(0.9983), "99.83%");
+    assert.equal(formatUptimePercent(0.5), "50%");
+    assert.equal(formatUptimePercent(0), "0%");
+  });
+
+  test("only an exact full ratio renders 100%", () => {
+    assert.equal(formatUptimePercent(1), "100%");
+  });
+
+  test("a sub-1 ratio never rounds up to a perfect 100% (#1721)", () => {
+    assert.equal(formatUptimePercent(0.99996), "99.99%");
+    assert.equal(formatUptimePercent(0.99995), "99.99%");
+    assert.equal(formatUptimePercent(0.999999), "99.99%");
+  });
+
+  test("a non-numeric ratio degrades to 0%", () => {
+    assert.equal(formatUptimePercent(undefined), "0%");
+    assert.equal(formatUptimePercent(NaN), "0%");
   });
 });

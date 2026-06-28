@@ -39,6 +39,44 @@ async function loadPreviousAdapterSnapshot(slug) {
     return null;
   }
 }
+
+// Observation timestamps re-stamped on every snapshot run: the top-level
+// generated_at plus the per-dimension/per-schema captured_at (and the
+// carried-forward metadata_as_of). They are wall-clock, so a re-snapshot of
+// otherwise-unchanged GitHub data differs only here.
+const OBSERVATION_TIMESTAMP_KEYS = new Set([
+  "generated_at",
+  "captured_at",
+  "metadata_as_of",
+]);
+
+// Deep clone with every observation timestamp nulled, so two snapshots can be
+// compared on substance alone.
+export function stripObservationTimestamps(value) {
+  if (Array.isArray(value)) {
+    return value.map(stripObservationTimestamps);
+  }
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, inner] of Object.entries(value)) {
+      out[key] = OBSERVATION_TIMESTAMP_KEYS.has(key)
+        ? null
+        : stripObservationTimestamps(inner);
+    }
+    return out;
+  }
+  return value;
+}
+
+// True when the committed snapshot already reflects this run's data and differs
+// only in observation timestamps — i.e. re-writing would churn timestamps with
+// no substantive change.
+export function committedSnapshotIsCurrent(previous, fresh) {
+  return (
+    stableStringify(stripObservationTimestamps(previous)) ===
+    stableStringify(stripObservationTimestamps(fresh))
+  );
+}
 const OPENAPI_METHODS = new Set([
   "delete",
   "get",
@@ -70,8 +108,27 @@ async function main() {
   );
 
   if (!dryRun) {
+    // A publish run (METAGRAPH_BUILD_TIMESTAMP/RUN_ID set) always records fresh
+    // observation timestamps. A local run must not dirty the git-tracked
+    // snapshots: keep the committed file byte-identical when only timestamps
+    // differ, and never stamp the 1970 epoch placeholder (buildTimestamp() with
+    // the env unset) into a genuinely-changed one. Mirrors the committed-artifact
+    // timestamp guards in discover-candidates / verify-candidates / review-queue.
+    const publishRun = Boolean(
+      process.env.METAGRAPH_BUILD_TIMESTAMP || process.env.METAGRAPH_RUN_ID,
+    );
     for (const snapshot of snapshots) {
-      await writeJson(path.join(outputRoot, `${snapshot.slug}.json`), snapshot);
+      const outputPath = path.join(outputRoot, `${snapshot.slug}.json`);
+      if (!publishRun) {
+        const previous = await loadPreviousAdapterSnapshot(snapshot.slug);
+        if (previous && committedSnapshotIsCurrent(previous, snapshot)) {
+          continue;
+        }
+        if (previous?.generated_at) {
+          snapshot.generated_at = previous.generated_at;
+        }
+      }
+      await writeJson(outputPath, snapshot);
     }
   }
 
@@ -727,7 +784,7 @@ function isPublicSafeFieldName(key) {
   );
 }
 
-function summarizeGittensorMaster(url, fetched) {
+export function summarizeGittensorMaster(url, fetched) {
   if (!fetched.ok || !fetched.body || typeof fetched.body !== "object") {
     return {
       status: fetched.status || "failed",
@@ -741,14 +798,17 @@ function summarizeGittensorMaster(url, fetched) {
   const entries = Object.entries(fetched.body).sort(([a], [b]) =>
     a.localeCompare(b),
   );
-  const emissionShares = entries.map(
-    ([, config]) => Number(config.emission_share) || 0,
-  );
-  const maintainerCuts = entries.map(
-    ([, config]) => Number(config.maintainer_cut) || 0,
-  );
-  const issueDiscoveryShares = entries.map(
-    ([, config]) => Number(config.issue_discovery_share) || 0,
+  // A repo value may be JSON null, so read shares through optional chaining.
+  const repoShares = entries.map(([repository, config]) => ({
+    repository,
+    emission_share: Number(config?.emission_share) || 0,
+    maintainer_cut: Number(config?.maintainer_cut) || 0,
+    issue_discovery_share: Number(config?.issue_discovery_share) || 0,
+  }));
+  const emissionShares = repoShares.map((repo) => repo.emission_share);
+  const maintainerCuts = repoShares.map((repo) => repo.maintainer_cut);
+  const issueDiscoveryShares = repoShares.map(
+    (repo) => repo.issue_discovery_share,
   );
 
   return {
@@ -770,13 +830,7 @@ function summarizeGittensorMaster(url, fetched) {
     issue_discovery_enabled_count: issueDiscoveryShares.filter(
       (value) => value > 0,
     ).length,
-    top_emission_repositories: entries
-      .map(([repository, config]) => ({
-        repository,
-        emission_share: Number(config.emission_share) || 0,
-        maintainer_cut: Number(config.maintainer_cut) || 0,
-        issue_discovery_share: Number(config.issue_discovery_share) || 0,
-      }))
+    top_emission_repositories: [...repoShares]
       .sort(
         (a, b) =>
           b.emission_share - a.emission_share ||

@@ -5,6 +5,7 @@ import {
   buildSubnetMetagraph,
   buildSubnetValidators,
   buildNeuronDetail,
+  loadSubnetValidators,
 } from "../src/metagraph-neurons.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -89,9 +90,63 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].validator_permit, true);
   });
 
+  test("builders drop malformed rows and count only real neurons", () => {
+    // A null/non-object row can't be a Neuron, so it must not leak into the
+    // array — and the count tracks the array (neuron_count === neurons.length),
+    // matching the blocks/extrinsics feed builders' .filter(Boolean).
+    const data = buildSubnetMetagraph([ROW, null, MINER, undefined], 7);
+    assert.equal(data.neurons.length, 2);
+    assert.equal(data.neuron_count, 2);
+    assert.ok(data.neurons.every(Boolean));
+    const vals = buildSubnetValidators([ROW, null], 7);
+    assert.equal(vals.validators.length, 1);
+    assert.equal(vals.validator_count, 1);
+  });
+
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
+  });
+});
+
+describe("metagraph-neurons loaders", () => {
+  // A d1 runner that filters by validator_permit and APPLIES the SQL's ORDER BY
+  // (parsing the real clause), so a missing tie-break would actually reorder the
+  // result — not a circular check that passes regardless.
+  function orderingD1(rows) {
+    return async (sql) => {
+      let r = rows.filter((x) => x.validator_permit === 1);
+      const order = /ORDER BY (.+?)(?:$|\bLIMIT\b)/.exec(sql);
+      if (order) {
+        const keys = order[1]
+          .split(",")
+          .map((part) => part.trim().split(/\s+/));
+        r = [...r].sort((a, b) => {
+          for (const [col, dir] of keys) {
+            const delta = (a[col] - b[col]) * (dir === "DESC" ? -1 : 1);
+            if (delta !== 0) return delta;
+          }
+          return 0;
+        });
+      }
+      return r;
+    };
+  }
+
+  test("loadSubnetValidators ranks by stake, breaking equal-stake ties by uid", async () => {
+    const d1 = orderingD1([
+      { uid: 9, validator_permit: 1, stake_tao: 100 },
+      { uid: 2, validator_permit: 1, stake_tao: 100 }, // tie with uid 9
+      { uid: 5, validator_permit: 1, stake_tao: 250 },
+      { uid: 4, validator_permit: 0, stake_tao: 999 }, // not a validator
+    ]);
+    const data = await loadSubnetValidators(d1, 7);
+    // 250 first; the two 100-stake validators tie → uid ascending (2 before 9).
+    assert.deepEqual(
+      data.validators.map((v) => v.uid),
+      [5, 2, 9],
+    );
+    assert.equal(data.validator_count, 3); // the miner is excluded
   });
 });
 
@@ -149,6 +204,93 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     );
     assert.equal(body.data.neurons.length, 1);
     assert.equal(body.data.neurons[0].uid, 0);
+  });
+
+  test("GET /subnets/{n}/concentration computes per-UID, entity, and validator metrics", async () => {
+    const { res, body } = await getJson("/api/v1/subnets/7/concentration", env);
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.stake.holders, 2); // 2 UIDs
+    assert.equal(body.data.emission.holders, 2);
+    // ROW + MINER share coldkey "5Co1" → one controlling entity.
+    assert.equal(body.data.entity_count, 1);
+    assert.equal(body.data.uids_per_entity, 2);
+    assert.equal(body.data.entity_stake.holders, 1);
+    // Only ROW carries a validator permit.
+    assert.equal(body.data.validator_stake.holders, 1);
+    assert.equal(typeof body.data.stake.gini, "number");
+    assert.equal(typeof body.data.stake.nakamoto_coefficient, "number");
+  });
+
+  test("GET /subnets/{n}/concentration/history routes to the trend handler", async () => {
+    const dailyEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { snapshot_date: "2026-06-27", stake_tao: 100, emission_tao: 5 },
+        { snapshot_date: "2026-06-27", stake_tao: 1, emission_tao: 1 },
+      ]),
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/concentration/history?window=7d",
+      dailyEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "7d");
+    assert.equal(Array.isArray(body.data.points), true);
+    assert.equal(body.data.point_count, 1); // both rows share one snapshot_date
+  });
+
+  test("GET /subnets/{n}/turnover routes to the turnover handler", async () => {
+    // Two-query handler: a MIN/MAX boundary probe, then the boundary rows.
+    const turnoverEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/MIN\(snapshot_date\)/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        { start_date: "2026-05-28", end_date: "2026-06-27" },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({
+                    results: [
+                      {
+                        snapshot_date: "2026-05-28",
+                        uid: 0,
+                        hotkey: "V1",
+                        validator_permit: 1,
+                      },
+                      {
+                        snapshot_date: "2026-06-27",
+                        uid: 0,
+                        hotkey: "V1",
+                        validator_permit: 1,
+                      },
+                    ],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/turnover?window=30d",
+      turnoverEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.comparable, true);
+    assert.equal(body.data.validators_start, 1);
   });
 
   test("GET /subnets/{n}/validators returns only validators", async () => {

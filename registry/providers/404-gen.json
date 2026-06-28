@@ -1,0 +1,13 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/404-Repo/404-gen-subnet",
+  "id": "404-gen",
+  "kind": "subnet-team",
+  "name": "404-GEN",
+  "public_notes": "Subnet 17 (404-GEN) team profile — decentralized 3D content generation. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo); X handle from taostats. Review input only (authority: community).",
+  "schema_version": 1,
+  "social": {
+    "x": "https://x.com/404gen_"
+  },
+  "website_url": "https://www.404.xyz/"
+}

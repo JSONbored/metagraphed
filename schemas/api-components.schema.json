@@ -4,10 +4,220 @@
   "additionalProperties": false,
   "components": {
     "schemas": {
+      "AccountActivity": {
+        "additionalProperties": false,
+        "description": "Signing activity for one account (#1847) from the extrinsics tier, matched by signer. Aggregates are bounded to the newest retained signer rows, not all-time. tx_count is the count of sampled extrinsics this account signed; modules_called is the top call_modules by frequency within that bounded sample.",
+        "properties": {
+          "last_tx_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_tx_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "modules_called": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "call_module": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "call_module",
+                "count"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_fee_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tx_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tx_count",
+          "modules_called"
+        ],
+        "type": "object"
+      },
+      "AccountBalanceArtifact": {
+        "additionalProperties": true,
+        "description": "Live TAO balance for an account (ss58), queried from the finney RPC at request time and cached for 60s. balance_tao is null on RPC failure.",
+        "properties": {
+          "balance_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "queried_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58"
+        ],
+        "type": "object"
+      },
+      "AccountCounterpartiesArtifact": {
+        "additionalProperties": true,
+        "description": "Per-counterparty fund-flow rollup for one account, aggregated from the account_events Transfer tier — its transfers grouped by counterparty into sent/received/net + count, ranked by total volume (the address relationship view). Served live at /api/v1/accounts/{ss58}/counterparties (no static file).",
+        "properties": {
+          "counterparties": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "last_block": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "net_tao": {
+                  "type": "number"
+                },
+                "received_tao": {
+                  "type": "number"
+                },
+                "sent_tao": {
+                  "type": "number"
+                },
+                "transfer_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "address"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "counterparty_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scan_capped": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_received_tao": {
+            "type": "number"
+          },
+          "total_sent_tao": {
+            "type": "number"
+          },
+          "transfers_scanned": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "counterparty_count",
+          "counterparties"
+        ],
+        "type": "object"
+      },
+      "AccountDay": {
+        "additionalProperties": true,
+        "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "event_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "type": "object"
+      },
       "AccountEvent": {
         "additionalProperties": false,
-        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); observed_at is the block time.",
+        "description": "One decoded chain event attributed to an account (#1347), from the first-party account_events D1 tier. amount_tao is a TAO float where applicable (stake events); alpha_amount (#1856) is the alpha leg of a stake swap in TAO units (StakeAdded/StakeRemoved only, else null); observed_at is the block time; extrinsic_index (#1849) is the 0-based index of the emitting extrinsic in the block (null for Initialization/Finalization events and pre-migration rows).",
         "properties": {
+          "alpha_amount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "amount_tao": {
             "type": [
               "number",
@@ -35,6 +245,12 @@
           "event_kind": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
               "null"
             ]
           },
@@ -105,6 +321,12 @@
           "limit": {
             "type": "integer"
           },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "offset": {
             "type": "integer"
           },
@@ -120,6 +342,82 @@
           "ss58",
           "event_count",
           "events"
+        ],
+        "type": "object"
+      },
+      "AccountExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
+      "AccountHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Durable per-day activity series for one account (#1854), newest day first, from the hotkey-keyed account_events_daily rollup. NOTE: the rollup writes only hotkey-attributed rows, so an ss58 with no hotkey activity returns zero days even when /events (which matches the hotkey or coldkey) shows activity. ?netuid / ?from / ?to narrow the series. Served live at /api/v1/accounts/{ss58}/history (no static file).",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/AccountDay"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "day_count",
+          "days"
         ],
         "type": "object"
       },
@@ -188,6 +486,9 @@
         "additionalProperties": true,
         "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
         "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/AccountActivity"
+          },
           "event_count": {
             "minimum": 0,
             "type": "integer"
@@ -252,6 +553,103 @@
           "ss58",
           "event_count",
           "registrations"
+        ],
+        "type": "object"
+      },
+      "AccountTransfersArtifact": {
+        "additionalProperties": true,
+        "description": "The native-TAO Balances.Transfer feed for one account (#1850), newest first, from the account_events D1 tier (event_kind='Transfer'). Each row is a directional {from, to, amount_tao, direction} transfer; direction is 'sent' or 'received' relative to the queried ss58. This is the native-TAO transfer feed only, NOT a full balance ledger. Served live at /api/v1/accounts/{ss58}/transfers (no static file).",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "transfers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "amount_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "block_number": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "direction": {
+                  "enum": [
+                    "sent",
+                    "received",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "event_index": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "from": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "observed_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "from",
+                "to"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "transfer_count",
+          "transfers"
         ],
         "type": "object"
       },
@@ -994,6 +1392,9 @@
       "ApiQueryParameter": {
         "additionalProperties": false,
         "properties": {
+          "description": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -1220,6 +1621,266 @@
           "test",
           "local"
         ]
+      },
+      "Block": {
+        "additionalProperties": false,
+        "description": "One finalized block header from the first-party blocks D1 tier (#1345 block explorer). author/parent_hash are best-effort (nullable); spec_version is the runtime version at the block (nullable); observed_at is the block time.",
+        "properties": {
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "block_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "spec_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number"
+        ],
+        "type": "object"
+      },
+      "BlockChainEventsArtifact": {
+        "additionalProperties": true,
+        "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{block_number}/chain-events. Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "block_number",
+          "count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "BlockDetailArtifact": {
+        "additionalProperties": true,
+        "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks/{ref}; block is null when the ref is unknown or the store is cold (no static file). prev_block_number/next_block_number (#1853) are the nearest STORED neighbors for chain-walk navigation (skip pruned gaps; null at the window edges or when block is null).",
+        "properties": {
+          "block": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Block"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "prev_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "block"
+        ],
+        "type": "object"
+      },
+      "BlockEventsArtifact": {
+        "additionalProperties": true,
+        "description": "The decoded chain events in one block (#1852), in natural order (event_index ascending), from the first-party account_events D1 tier filtered by block_number. Served live at /api/v1/blocks/{ref}/events; block_number is null and events is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "BlockExtrinsicsArtifact": {
+        "additionalProperties": true,
+        "description": "The extrinsics in one block (#1845), in natural order (extrinsic_index ascending), from the first-party extrinsics D1 tier. Served live at /api/v1/blocks/{ref}/extrinsics; block_number is null and extrinsics is empty when the ref is unknown or the store is cold (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ref",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
+      "BlocksFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent-block feed (newest first) for the block explorer (#1345), from the first-party blocks D1 tier. Served live at /api/v1/blocks (no static file).",
+        "properties": {
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/Block"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "block_count",
+          "blocks"
+        ],
+        "type": "object"
       },
       "BuildSummaryArtifact": {
         "allOf": [
@@ -1656,6 +2317,497 @@
         ],
         "type": "object"
       },
+      "ChainActivityArtifact": {
+        "additionalProperties": true,
+        "description": "Daily network-activity aggregates over the first-party chain D1 tiers (#1987): per-UTC-day extrinsic/event/block counts, success rate, and unique signers, newest day first. Served live at /api/v1/chain/activity over a 7d or 30d window (no static file); day_count is 0 and days is empty when the store is cold.",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ChainActivityDay"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "days"
+        ],
+        "type": "object"
+      },
+      "ChainActivityDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of network activity. success_rate is successful/total extrinsics, null when the day recorded zero extrinsics.",
+        "properties": {
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "day": {
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "success_rate": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "successful_extrinsics": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unique_signers": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "block_count",
+          "extrinsic_count",
+          "event_count",
+          "successful_extrinsics",
+          "success_rate",
+          "unique_signers"
+        ],
+        "type": "object"
+      },
+      "ChainCallEntry": {
+        "additionalProperties": false,
+        "description": "One call-mix bucket. call_function is null unless group_by=module_function. share is count / total_extrinsics (full-window), null when the window is empty.",
+        "properties": {
+          "call_function": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "call_module": {
+            "type": "string"
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "share": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "call_module",
+          "call_function",
+          "count",
+          "share"
+        ],
+        "type": "object"
+      },
+      "ChainCallsArtifact": {
+        "additionalProperties": true,
+        "description": "Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold.",
+        "properties": {
+          "call_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/ChainCallEntry"
+            },
+            "type": "array"
+          },
+          "group_by": {
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_extrinsics": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "group_by",
+          "total_extrinsics",
+          "call_count",
+          "calls"
+        ],
+        "type": "object"
+      },
+      "ChainEvent": {
+        "additionalProperties": false,
+        "description": "One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer.",
+        "properties": {
+          "args": {
+            "type": [
+              "object",
+              "array",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number",
+          "event_index",
+          "pallet",
+          "method"
+        ],
+        "type": "object"
+      },
+      "ChainEventEntry": {
+        "additionalProperties": false,
+        "description": "One pallet.method event-distribution bucket: the count of that event over the recent-blocks window.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pallet",
+          "method",
+          "count"
+        ],
+        "type": "object"
+      },
+      "ChainEventsFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). next_before is the cursor for the next page (null when the page was not full). Empty (count:0, events:[]) before the all-events backfill runs.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          },
+          "next_before": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "ChainEventsStatsArtifact": {
+        "additionalProperties": true,
+        "description": "Chain-activity aggregate: the pallet.method event distribution over the most recent N blocks from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats and consumed by the get_chain_activity MCP tool. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Empty (groups:0, activity:[]) before the all-events backfill runs.",
+        "properties": {
+          "activity": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEventEntry"
+            },
+            "type": "array"
+          },
+          "groups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_blocks": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_blocks",
+          "groups",
+          "activity"
+        ],
+        "type": "object"
+      },
+      "ChainFeeDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of fee/tip totals + averages. avg_*_tao is null when the day recorded zero extrinsics.",
+        "properties": {
+          "avg_fee_tao": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "avg_tip_tao": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "day": {
+            "type": "string"
+          },
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_fee_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_tip_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "extrinsic_count",
+          "total_fee_tao",
+          "avg_fee_tao",
+          "total_tip_tao",
+          "avg_tip_tao"
+        ],
+        "type": "object"
+      },
+      "ChainFeePayer": {
+        "additionalProperties": false,
+        "description": "One top-fee-payer: an account with its total windowed fees/tips and extrinsic count.",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "signer": {
+            "type": "string"
+          },
+          "total_fee_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_tip_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "signer",
+          "total_fee_tao",
+          "total_tip_tao",
+          "extrinsic_count"
+        ],
+        "type": "object"
+      },
+      "ChainFeesArtifact": {
+        "additionalProperties": true,
+        "description": "Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals + averages; exact median is a follow-up) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold.",
+        "properties": {
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/ChainFeeDay"
+            },
+            "type": "array"
+          },
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "top_fee_payers": {
+            "items": {
+              "$ref": "#/components/schemas/ChainFeePayer"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "daily",
+          "top_fee_payers"
+        ],
+        "type": "object"
+      },
+      "ChainSignerEntry": {
+        "additionalProperties": false,
+        "description": "One leaderboard row: an account (extrinsic signer) with its windowed activity.",
+        "properties": {
+          "last_tx_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "signer": {
+            "type": "string"
+          },
+          "total_fee_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_tip_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "tx_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "signer",
+          "tx_count",
+          "total_fee_tao",
+          "total_tip_tao",
+          "last_tx_block"
+        ],
+        "type": "object"
+      },
+      "ChainSignersArtifact": {
+        "additionalProperties": true,
+        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "signer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "signers": {
+            "items": {
+              "$ref": "#/components/schemas/ChainSignerEntry"
+            },
+            "type": "array"
+          },
+          "window": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "signer_count",
+          "signers"
+        ],
+        "type": "object"
+      },
       "ChangelogArtifact": {
         "allOf": [
           {
@@ -1807,6 +2959,181 @@
           "wrong-chain",
           "unknown"
         ]
+      },
+      "CompareArtifact": {
+        "additionalProperties": true,
+        "properties": {
+          "dimensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requested_netuids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/CompareSubnetEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "CompareSubnetEntry": {
+        "additionalProperties": false,
+        "description": "One subnet's side-by-side entry in GET /api/v1/compare (composeCompareData). structure/economics/health are present only when their dimension is requested, and each is null when the subnet is not found or that tier has no row.",
+        "properties": {
+          "economics": {
+            "additionalProperties": false,
+            "properties": {
+              "alpha_price_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "emission_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "miner_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_readiness": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "open_slots": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "registration_allowed": {
+                "type": "boolean"
+              },
+              "registration_cost_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_stake_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validator_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "health": {
+            "additionalProperties": false,
+            "properties": {
+              "avg_latency_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ok_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "structure": {
+            "additionalProperties": false,
+            "properties": {
+              "completeness_score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "operational_interface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "found"
+        ],
+        "type": "object"
       },
       "ContractsArtifact": {
         "allOf": [
@@ -2558,10 +3885,11 @@
         "type": "object"
       },
       "CurationLevel": {
-        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
+        "description": "Trust tier of a subnet's surface data, low→high: native (chain only) · candidate-discovered (auto-found, unverified) · community-seeded (contributor seeded) · machine-verified (probed live) · maintainer-reviewed (human-approved) · adapter-backed (first-party adapter).",
         "enum": [
           "native",
           "candidate-discovered",
+          "community-seeded",
           "machine-verified",
           "maintainer-reviewed",
           "adapter-backed"
@@ -2678,6 +4006,92 @@
             "type": "object"
           }
         ]
+      },
+      "EconomicsTrendsArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup — the same source the per-subnet /api/v1/subnets/{netuid}/trajectory reads. Each day rolls up total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share. Served live at /api/v1/economics/trends over a 7d|30d|90d|1y|all window (no static file); day_count is 0 and days is empty when the rollup is cold.",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/EconomicsTrendsDay"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "days"
+        ],
+        "type": "object"
+      },
+      "EconomicsTrendsDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of network-wide economics aggregated across every subnet that has a snapshot that day. subnet_count is how many subnets contributed; total_stake_tao / validator_count / miner_count are sums; alpha_price_tao_weighted is the stake-weighted mean alpha price; alpha_price_tao_median is the unweighted median; mean_emission_share is the mean per-subnet emission share. Sums are null only when no subnet reported a value that day.",
+        "properties": {
+          "alpha_price_tao_median": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_tao_weighted": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_emission_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "snapshot_date": {
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "snapshot_date",
+          "subnet_count"
+        ],
+        "type": "object"
       },
       "EndpointIncident": {
         "additionalProperties": false,
@@ -3385,6 +4799,164 @@
           }
         ]
       },
+      "Extrinsic": {
+        "additionalProperties": false,
+        "description": "One decoded extrinsic (transaction) from the first-party extrinsics D1 tier (#1345 block explorer). signer is the ss58 of a signed extrinsic (null for inherents); extrinsic_hash/call_module/call_function are best-effort (nullable); call_args is the decoded call arguments (a list of {name,value} descriptors, or an object, or null); fee_tao is the paid inclusion fee in TAO (nullable); tip_tao is the priority tip in TAO (#1855, separate from fee_tao; nullable, commonly 0); success is true/false from the block's ExtrinsicSuccess/Failed event (null when undeterminable); observed_at is the block time.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "call_args": {
+            "type": [
+              "object",
+              "array",
+              "null"
+            ]
+          },
+          "call_function": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "call_module": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "extrinsic_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "fee_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "success": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "tip_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number",
+          "extrinsic_index"
+        ],
+        "type": "object"
+      },
+      "ExtrinsicDetailArtifact": {
+        "additionalProperties": true,
+        "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), from the first-party extrinsics D1 tier. The composite id is the guaranteed-present identifier since the hash is best-effort/nullable. events (#1849) are the indexed account_events this extrinsic emitted (bounded to 50; empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store). Served live at /api/v1/extrinsics/{hash}; extrinsic is null when the ref is unknown/malformed or the store is cold (no static file).",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "extrinsic": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Extrinsic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "extrinsic"
+        ],
+        "type": "object"
+      },
+      "ExtrinsicsFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent-extrinsic feed (newest first) for the block explorer (#1345), from the first-party extrinsics D1 tier. Served live at /api/v1/extrinsics (no static file).",
+        "properties": {
+          "extrinsic_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "extrinsics": {
+            "items": {
+              "$ref": "#/components/schemas/Extrinsic"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "extrinsic_count",
+          "extrinsics"
+        ],
+        "type": "object"
+      },
       "FixturesIndexArtifact": {
         "allOf": [
           {
@@ -3788,6 +5360,19 @@
           },
           "curation_level": {
             "$ref": "#/components/schemas/CurationLevel"
+          },
+          "gap_priority": {
+            "description": "0-100 enrichment priority (#1757) — the same reviewPriorityScore the review/gap-priorities artifact exposes, surfaced here so /api/v1/gaps consumers rank gaps with the backend's weighted model rather than re-deriving.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "gap_severity": {
+            "description": "Resolved severity of this subnet's interface gaps (#1757), derived from the backend's existing high-value/core missing-kind weighting (the same kinds reviewPriorityScore ranks): critical when a core callable interface (openapi/subnet-api) is missing alongside 3+ high-value kinds, warning at 2+ high-value kinds, else info. Replaces the consumer-invented core>=1/missing>=3 scale.",
+            "enum": [
+              "critical",
+              "warning",
+              "info"
+            ]
           },
           "gaps": {
             "$ref": "#/components/schemas/Gaps"
@@ -5715,10 +7300,6 @@
       "R2ManifestEntry": {
         "additionalProperties": false,
         "properties": {
-          "content_sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
           "content_type": {
             "type": "string"
           },
@@ -8645,6 +10226,85 @@
         ],
         "type": "object"
       },
+      "SearchIndexArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "document_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "documents": {
+                "items": {
+                  "$ref": "#/components/schemas/SearchIndexDocument"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "documents"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "SearchIndexDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_path": {
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "service_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "artifact_path"
+        ],
+        "type": "object"
+      },
       "SourceHealthArtifact": {
         "allOf": [
           {
@@ -8873,6 +10533,528 @@
       },
       "SubnetCandidatesArtifact": {
         "$ref": "#/components/schemas/CandidatesArtifact"
+      },
+      "SubnetConcentrationArtifact": {
+        "additionalProperties": true,
+        "description": "Stake & emission concentration / decentralization metrics for one subnet, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed so an operator's many hotkeys count as one holder, the true control distribution), and validator-only consensus power (validator_stake).",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entity_emission": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "entity_stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "uids_per_entity": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_stake": {
+            "additionalProperties": true,
+            "properties": {
+              "entropy": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "entropy_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gini": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hhi_normalized": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "holders": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "nakamoto_coefficient": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "top_10pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_1pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_20pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "top_5pct_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "entity_count",
+          "stake",
+          "emission"
+        ],
+        "type": "object"
+      },
+      "SubnetConcentrationHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "point_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "emission_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "emission_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "emission_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "neuron_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "snapshot_date": {
+                  "type": "string"
+                },
+                "stake_gini": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stake_nakamoto_coefficient": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "stake_top_10pct_share": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "snapshot_date"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "point_count",
+          "points"
+        ],
+        "type": "object"
       },
       "SubnetDetail": {
         "additionalProperties": false,
@@ -9337,6 +11519,47 @@
             "type": "object"
           }
         ]
+      },
+      "SubnetEventsArtifact": {
+        "additionalProperties": true,
+        "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
+        "properties": {
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "netuid": {
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "event_count",
+          "events"
+        ],
+        "type": "object"
       },
       "SubnetEvidenceArtifact": {
         "$ref": "#/components/schemas/EvidenceLedgerArtifact"
@@ -10814,6 +13037,92 @@
         ],
         "type": "object"
       },
+      "SubnetTurnoverArtifact": {
+        "additionalProperties": true,
+        "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "neurons_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_score": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "start_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uids_deregistered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_retention": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validators_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_entered": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_exited": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "comparable"
+        ],
+        "type": "object"
+      },
       "SubnetType": {
         "enum": [
           "root",
@@ -10953,6 +13262,14 @@
           "classification": {
             "$ref": "#/components/schemas/Classification"
           },
+          "curation_level": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurationLevel"
+              }
+            ],
+            "description": "Resolved trust tier for this surface (#1757), derived once at the source from the provider `authority` and verification freshness so consumers no longer conflate the Authority and CurationLevel enums. A stale verification demotes the tier; an official, freshly-verified surface inherits the subnet's maintainer-reviewed / adapter-backed ceiling."
+          },
           "id": {
             "type": "string"
           },
@@ -11063,6 +13380,39 @@
           },
           "rate_limit_notes": {
             "type": "string"
+          },
+          "review": {
+            "additionalProperties": false,
+            "description": "Per-surface HUMAN review/governance state (single-file contribution model): a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". This is the human-governance axis ONLY — machine verification + freshness (is the surface live or stale) is the separate probe-derived overlay (health, last_verified_at, incidents), and subnet-level curation has its own curation.review_state.",
+            "properties": {
+              "confidence": {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "review_notes": {
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "community-submitted",
+                  "maintainer-reviewed",
+                  "rejected"
+                ]
+              },
+              "submitted_at": {
+                "type": "string"
+              },
+              "submitted_by": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "type": "object"
           },
           "schema_status": {
             "enum": [

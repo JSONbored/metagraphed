@@ -8,6 +8,11 @@
 //   metric=readiness   integration readiness 0–100 (default)
 //   metric=uptime      window uptime %, colored by the A–F reliability grade
 //                      (alias: reliability), from the live uptime rollup in D1
+//   metric=grade       the A–F reliability grade letter itself (e.g. "A") —
+//                      same uptime data + color band as uptime, one-glyph message
+//   metric=apis        count of callable API surfaces the subnet exposes
+//                      (subnet-api / openapi / sse / data-artifact); informational
+//                      blue, gray for 0; for a provider, the sum across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
 //   label=…            override the left "metagraphed" segment text
 //
@@ -22,14 +27,27 @@ const NA_MESSAGE = "n/a";
 const UNKNOWN_COLOR = "#9f9f9f";
 const NA_CONTENT = { message: NA_MESSAGE, color: UNKNOWN_COLOR };
 
-// metric query value → internal metric ("uptime"/"reliability" are aliases).
+// metric query value → internal metric ("uptime"/"reliability" are aliases;
+// "grade" shares the reliability data but renders the letter grade as the message).
 const BADGE_METRICS = {
   readiness: "readiness",
   uptime: "reliability",
   reliability: "reliability",
+  grade: "grade",
+  apis: "apis",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square"]);
+// shields.io "informational" blue, used for plain-count metrics (e.g. apis).
+const INFO_COLOR = "#007ec6";
+// Surface kinds that are callable machine interfaces (mirrors the build's
+// callable-service set); these are what `metric=apis` counts.
+const CALLABLE_SURFACE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
 // A–F grade → color band (gray for unknown); bands match reliability.mjs.
 const GRADE_COLOR = {
   A: "#2ea44f",
@@ -48,14 +66,42 @@ function escapeXml(value) {
     .replace(/'/g, "&apos;");
 }
 
+// East Asian Wide / Fullwidth and astral (emoji) code points render about one em
+// wide — far wider than the 6.5px lowercase default they would otherwise fall
+// through to. Treating them as full-width keeps textWidth a safe overestimate so
+// a CJK or emoji label can't clip its own segment (#1650).
+function isWideCodePoint(cp) {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+    (cp >= 0x2e80 && cp <= 0x303e) || // CJK radicals, Kangxi
+    (cp >= 0x3041 && cp <= 0x33ff) || // Hiragana/Katakana .. CJK symbols
+    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Ext A
+    (cp >= 0x4e00 && cp <= 0x9fff) || // CJK Unified Ideographs
+    (cp >= 0xa000 && cp <= 0xa4cf) || // Yi
+    (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul Syllables
+    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+    (cp >= 0xfe30 && cp <= 0xfe4f) || // CJK Compatibility Forms
+    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Forms
+    (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth signs
+    cp >= 0x1f000 // emoji + astral CJK extensions
+  );
+}
+
 // Approximate px width of text in the 11px sans the badge renders with. Per-char
 // widths are a safe overestimate so text never overflows its segment.
 function textWidth(text) {
   let w = 0;
   for (const ch of String(text)) {
-    if (/[ilj.,:'!|]/.test(ch)) w += 3;
-    else if (/[A-Z0-9mw%@]/.test(ch)) w += 8;
-    else w += 6.5;
+    const cp = ch.codePointAt(0);
+    if (cp <= 0x7f) {
+      if (/[ilj.,:'!|]/.test(ch)) w += 3;
+      else if (/[A-Z0-9mw%@]/.test(ch)) w += 8;
+      else w += 6.5;
+    } else if (isWideCodePoint(cp)) {
+      w += 11; // ~1em: safe overestimate for full-width / emoji glyphs
+    } else {
+      w += 8; // other non-ASCII (e.g. accented Latin): at least capital width
+    }
   }
   return Math.ceil(w);
 }
@@ -143,8 +189,16 @@ function averageReadiness(netuids, subnetsIndex) {
 }
 
 // uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%".
-function formatUptimePercent(ratio) {
-  const pct = Math.round((Number(ratio) || 0) * 10000) / 100;
+export function formatUptimePercent(ratio) {
+  const value = Number(ratio) || 0;
+  let pct = Math.round(value * 10000) / 100;
+  // Only an exact full ratio reads as "100%". A sub-1 ratio in [0.99995, 1)
+  // rounds up to 100, which would render a perfect-uptime badge for a service
+  // that is not actually at 100%; clamp it down to the largest 2-decimal value
+  // below 100 so the badge never overstates reliability.
+  if (pct >= 100 && value < 1) {
+    pct = 99.99;
+  }
   return `${pct}%`;
 }
 
@@ -210,13 +264,15 @@ async function readinessContent({ target, readArtifact, env }) {
 }
 
 // Reliability: the subnet's netuid, or all of a provider's netuids, scored from
-// the live uptime rollup in one aggregate query. Message is the window uptime %.
+// the live uptime rollup in one aggregate query, colored by the A–F grade band.
+// The message is the window uptime % — or, for metric=grade, the grade letter.
 async function reliabilityContent({
   target,
   readArtifact,
   env,
   db,
   loadReliability,
+  metric,
 }) {
   let netuids = [];
   if (target.kind === "subnet") {
@@ -233,10 +289,56 @@ async function reliabilityContent({
   const rel = netuids.length ? await loadReliability({ db, netuids }) : null;
   return rel
     ? {
-        message: formatUptimePercent(rel.uptime_ratio),
+        message:
+          metric === "grade"
+            ? rel.grade
+            : formatUptimePercent(rel.uptime_ratio),
         color: gradeColor(rel.grade),
       }
     : NA_CONTENT;
+}
+
+// Count a subnet's callable API surfaces from its per-subnet surfaces artifact.
+// Returns null when the artifact is missing/malformed (so the badge renders
+// "n/a" rather than a misleading 0).
+async function callableApiCount(readArtifact, env, netuid) {
+  const data = await readData(
+    readArtifact,
+    env,
+    `/metagraph/surfaces/${netuid}.json`,
+  );
+  if (!Array.isArray(data?.surfaces)) return null;
+  return data.surfaces.filter((s) => CALLABLE_SURFACE_KINDS.has(s?.kind))
+    .length;
+}
+
+// APIs: the subnet's callable API-surface count, or the sum across a provider's
+// subnets. Informational blue for >0, gray for 0; "n/a" when there is no data.
+async function apisContent({ target, readArtifact, env }) {
+  let count = null;
+  if (target.kind === "subnet") {
+    count = await callableApiCount(readArtifact, env, target.netuid);
+  } else {
+    const providers = await readData(
+      readArtifact,
+      env,
+      "/metagraph/providers.json",
+    );
+    const netuids = findProvider(providers, target.slug)?.netuids || [];
+    if (netuids.length) {
+      const counts = (
+        await Promise.all(
+          netuids.map((n) => callableApiCount(readArtifact, env, n)),
+        )
+      ).filter((c) => typeof c === "number");
+      if (counts.length) count = counts.reduce((a, b) => a + b, 0);
+    }
+  }
+  if (count == null) return NA_CONTENT;
+  return {
+    message: `${count} ${count === 1 ? "api" : "apis"}`,
+    color: count > 0 ? INFO_COLOR : UNKNOWN_COLOR,
+  };
 }
 
 function badgeHeaders() {
@@ -263,10 +365,13 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
 
   let content = NA_CONTENT;
   if (target && typeof readArtifact === "function") {
-    content =
-      metric === "reliability"
-        ? await reliabilityContent(ctx)
-        : await readinessContent(ctx);
+    if (metric === "apis") {
+      content = await apisContent(ctx);
+    } else if (metric === "reliability" || metric === "grade") {
+      content = await reliabilityContent({ ...ctx, metric });
+    } else {
+      content = await readinessContent(ctx);
+    }
   }
 
   const svg = renderBadge(content.message, content.color, { label, style });

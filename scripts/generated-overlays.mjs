@@ -22,7 +22,7 @@ import {
   ownerTokensMatch,
   providerIdentityTokens,
   urlOwnerTokens,
-} from "./submission-policy.mjs";
+} from "./registry-identity.mjs";
 
 export const generatedOverlayDirectory = path.join(
   repoRoot,

@@ -7,8 +7,15 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
-import { computeReliability, scoreFromStats } from "./reliability.mjs";
-import { rollupSubnetStatus } from "./health-probe-core.mjs";
+import {
+  computeReliability,
+  scoreFromStats,
+  displayUptimeRatio,
+} from "./reliability.mjs";
+import {
+  rollupSubnetStatus,
+  normalizeProbeStatus,
+} from "./health-probe-core.mjs";
 import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
 
@@ -107,7 +114,7 @@ export function summarizeRows(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   const latencies = [];
   for (const row of rows) {
-    counts[row.status] = (counts[row.status] || 0) + 1;
+    counts[normalizeProbeStatus(row.status)] += 1;
     if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
   }
   return {
@@ -219,7 +226,11 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
       archive_support: live.archive_support ?? endpoint.archive_support,
       health_source: "probe-derived",
       health_stale: false,
-      observed_at: live.last_ok || liveRpcPool.last_run_at,
+      // observed_at is when this status was observed, i.e. the sweep time. rpc-pool
+      // rows carry only last_ok (last SUCCESS), so a failing/degraded endpoint's
+      // last_ok is a stale prior-success time — using it would label a fresh
+      // failed observation with an hours-old timestamp. Prefer the run time.
+      observed_at: liveRpcPool.last_run_at || live.last_ok || null,
     };
   });
   return {
@@ -314,7 +325,7 @@ export function formatTrends({ netuid, observedAt, windows }) {
       perSurface.push({
         surface_id: row.surface_id,
         samples: rowTotal,
-        uptime_ratio: rowTotal ? Number((rowOk / rowTotal).toFixed(4)) : null,
+        uptime_ratio: rowTotal ? displayUptimeRatio(rowOk / rowTotal) : null,
         avg_latency_ms: roundInt(row.avg_latency_ms),
         latency_sample_count: latencySamples,
         latency_ms: {
@@ -327,7 +338,7 @@ export function formatTrends({ netuid, observedAt, windows }) {
     perSurface.sort((a, b) => a.surface_id.localeCompare(b.surface_id));
     return {
       samples: total,
-      uptime_ratio: total ? Number((okCount / total).toFixed(4)) : null,
+      uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
       latency_sample_count: latencySampleTotal,
       surfaces: perSurface,
     };
@@ -398,7 +409,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
       entry.points.push({
         date,
         samples,
-        uptime_ratio: samples ? round4(okCount / samples) : null,
+        uptime_ratio: samples ? displayUptimeRatio(okCount / samples) : null,
         avg_latency_ms: avgLatency,
         latency_sample_count: latencyCount,
       });
@@ -409,7 +420,7 @@ export function formatBulkTrends({ observedAt, windows, windowDays = {} }) {
         netuid: entry.netuid,
         samples: entry.samples,
         uptime_ratio: entry.samples
-          ? round4(entry.okCount / entry.samples)
+          ? displayUptimeRatio(entry.okCount / entry.samples)
           : null,
         avg_latency_ms: entry.latencySamples
           ? Math.round(entry.latencyTotal / entry.latencySamples)
@@ -579,8 +590,8 @@ export function formatRpcUsage({
 // SLA + downtime incidents per surface. `slaRows`: [{ surface_id, surface_key?,
 // total, ok_count }]. `incidentRows`: [{ surface_id, surface_key?, started_at, ended_at,
 // failed_samples }] — one row PER INCIDENT (gap-islands grouped in SQL).
-// `maxIncidents` is a defensive API cap so flapping endpoints cannot force the
-// formatter to materialize unbounded incident arrays.
+// `maxIncidents` is a per-surface defensive API cap so one flapping endpoint
+// cannot monopolize the budget and starve sibling surfaces on the same subnet.
 export function formatIncidents({
   netuid,
   window,
@@ -593,12 +604,14 @@ export function formatIncidents({
     ? Math.max(0, maxIncidents)
     : Infinity;
   const incidentsBySurface = new Map();
-  let acceptedIncidents = 0;
+  const acceptedBySurface = new Map();
   for (const row of incidentRows || []) {
-    if (acceptedIncidents >= incidentLimit) {
-      break;
-    }
     const key = surfaceLookupKey(row);
+    if (!key) continue;
+    const accepted = acceptedBySurface.get(key) || 0;
+    if (accepted >= incidentLimit) {
+      continue;
+    }
     const list = incidentsBySurface.get(key) || [];
     const startedAt = Number(row.started_at);
     const endedAt = Number(row.ended_at);
@@ -608,7 +621,7 @@ export function formatIncidents({
       duration_ms: endedAt - startedAt,
       failed_samples: Number(row.failed_samples) || 0,
     });
-    acceptedIncidents += 1;
+    acceptedBySurface.set(key, accepted + 1);
     incidentsBySurface.set(key, list);
   }
 
@@ -621,7 +634,7 @@ export function formatIncidents({
       return {
         surface_id: row.surface_id,
         samples: total,
-        uptime_ratio: total ? round4(okCount / total) : null,
+        uptime_ratio: total ? displayUptimeRatio(okCount / total) : null,
         incident_count: incidents.length,
         downtime_ms: downtimeMs,
         incidents,
@@ -796,6 +809,7 @@ export const LEADERBOARD_BOARDS = [
   "most-complete",
   "most-enriched",
   "fastest-growing",
+  "most-reliable",
   ...ECONOMIC_LEADERBOARD_BOARDS,
 ];
 
@@ -846,6 +860,7 @@ export function formatLeaderboards({
   rpcRows,
   mostComplete,
   growthRows,
+  reliabilityRows,
   economicsRows,
   subnetMeta,
 }) {
@@ -859,7 +874,7 @@ export function formatLeaderboards({
       return {
         netuid: row.netuid,
         ...metaFor(row.netuid),
-        uptime_ratio: total ? round4(ok / total) : null,
+        uptime_ratio: total ? displayUptimeRatio(ok / total) : null,
         surfaces_ok: ok,
         surfaces_total: total,
         avg_latency_ms: roundInt(row.avg_latency_ms),
@@ -926,6 +941,31 @@ export function formatLeaderboards({
     .sort((a, b) => b.completeness_delta - a.completeness_delta)
     .slice(0, cap);
 
+  // Durable reliability ranking: the windowed score (uptime ratio minus a
+  // latency penalty, A–F graded) computed from surface_uptime_daily, ranked
+  // across subnets. Distinct from `healthiest`, which ranks the instantaneous
+  // snapshot uptime rather than the window-based grade. Null-safe: a subnet with
+  // no samples in the window scores null and is dropped.
+  const mostReliable = (reliabilityRows || [])
+    .map((row) => {
+      const score = scoreFromStats({
+        samples: Number(row.samples) || 0,
+        okCount: Number(row.ok_count) || 0,
+        avgLatencyMs:
+          row.avg_latency_ms == null ? null : Number(row.avg_latency_ms),
+        latencySamples: Number(row.latency_samples) || 0,
+      });
+      return score && { netuid: row.netuid, ...metaFor(row.netuid), ...score };
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity) ||
+        a.netuid - b.netuid,
+    )
+    .slice(0, cap);
+
   const economicBoards = {};
   for (const spec of ECONOMIC_BOARD_SPECS) {
     economicBoards[spec.key] = economicBoard(economicsRows, metaFor, cap, spec);
@@ -937,6 +977,7 @@ export function formatLeaderboards({
     "most-complete": completeBoard,
     "most-enriched": enrichedBoard,
     "fastest-growing": fastestGrowing,
+    "most-reliable": mostReliable,
     ...economicBoards,
   };
   const boards = board ? { [board]: allBoards[board] || [] } : allBoards;
@@ -1047,11 +1088,10 @@ export function formatUptime({
   rows,
   now = null,
 }) {
-  const reliabilityRows = (rows || []).map((row) => ({
-    ...row,
-    surface_id: surfaceLookupKey(row),
-  }));
-  const reliability = computeReliability(reliabilityRows, {
+  // computeReliability keys per-surface aggregation on the stable surface_key
+  // itself (falling back to surface_id), so renamed rows already collapse into
+  // one bucket — no need to pre-rewrite surface_id here.
+  const reliability = computeReliability(rows || [], {
     window: window || null,
     now,
   });
@@ -1068,7 +1108,10 @@ export function formatUptime({
       day: row.day,
       samples: Number(row.samples) || 0,
       ok_count: Number(row.ok_count) || 0,
-      uptime_ratio: row.uptime_ratio == null ? null : Number(row.uptime_ratio),
+      uptime_ratio:
+        Number(row.samples) > 0
+          ? displayUptimeRatio(Number(row.ok_count) / Number(row.samples))
+          : null,
       avg_latency_ms: roundInt(row.avg_latency_ms),
       latency_sample_count: Number(row.latency_samples) || 0,
       latency_ms: {
@@ -1090,7 +1133,7 @@ export function formatUptime({
         surface_id: entry.surface_id || surfaceKey,
         day_count: days.length,
         samples,
-        uptime_ratio: samples ? Number((okCount / samples).toFixed(4)) : null,
+        uptime_ratio: samples ? displayUptimeRatio(okCount / samples) : null,
         reliability: reliability.surfaces[surfaceKey] || null,
         // Per-day series without the internal ok_count (uptime_ratio covers it).
         days: days.map((d) => ({
@@ -1244,7 +1287,7 @@ function liveFromD1Rows(rows) {
   const lastRun = latestIso(surfaces.map((s) => s.last_checked));
   const statusCounts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   for (const row of surfaces) {
-    statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+    statusCounts[normalizeProbeStatus(row.status)] += 1;
   }
   return {
     schema_version: 1,
@@ -1518,7 +1561,7 @@ function overlayEndpointHealth(endpoint, liveRow) {
   }
   return withPoolEligibility({
     ...endpoint,
-    status: liveRow.status,
+    status: normalizeProbeStatus(liveRow.status),
     classification:
       liveRow.classification ?? endpoint.classification ?? "unknown",
     latency_ms: Number.isFinite(liveRow.latency_ms) ? liveRow.latency_ms : null,
@@ -1534,7 +1577,8 @@ function overlayEndpointHealth(endpoint, liveRow) {
 function countEndpointStatuses(endpoints) {
   const counts = {};
   for (const endpoint of endpoints) {
-    counts[endpoint.status] = (counts[endpoint.status] || 0) + 1;
+    const bucket = normalizeProbeStatus(endpoint.status);
+    counts[bucket] = (counts[bucket] || 0) + 1;
   }
   return counts;
 }

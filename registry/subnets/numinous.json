@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 6,
-  "name": "Numinous",
-  "slug": "numinous",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "forecasting",
@@ -13,97 +8,88 @@
     "openapi",
     "subnet-api"
   ],
-  "website_url": "https://numinouslabs.io/",
-  "docs_url": "https://api.numinouslabs.io/api/docs",
-  "dashboard_url": null,
-  "source_repo": "https://github.com/numinouslabs/numinous",
-  "notes": "Reviewed overlay for SN6 Numinous. The public API exposes Swagger UI, a machine-readable OpenAPI 3.1 schema, and a read-only health endpoint.",
+  "contact": "marc@infinitemech.io",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T15:45:00.000Z",
-    "verified_at": "2026-06-08T15:45:00.000Z",
-    "source_count": 8,
     "gap_notes": [
       "Official website, source repository, Swagger UI, OpenAPI schema, and health endpoint are verified live.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:45:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T15:45:00.000Z"
   },
+  "dashboard_url": null,
+  "docs_url": "https://api.numinouslabs.io/api/docs",
+  "name": "Numinous",
+  "netuid": 6,
+  "notes": "Reviewed overlay for SN6 Numinous. The public API exposes Swagger UI, a machine-readable OpenAPI 3.1 schema, and a read-only health endpoint.",
+  "schema_version": 1,
+  "slug": "numinous",
+  "social": {
+    "x": "https://x.com/numinous_ai"
+  },
+  "source_repo": "https://github.com/numinouslabs/numinous",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-6-numinous-website",
-      "name": "Numinous website",
-      "kind": "website",
-      "url": "https://numinouslabs.io/",
-      "provider": "numinous",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-6-numinous-website",
+      "kind": "website",
+      "name": "Numinous website",
+      "notes": "Official Numinous website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
       "public_safe": true,
       "source_urls": [
         "https://numinouslabs.io/",
         "https://github.com/numinouslabs/numinous"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Numinous website."
+      "url": "https://numinouslabs.io/"
     },
     {
-      "id": "sn-6-numinous-source-repo",
-      "name": "Numinous source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/numinouslabs/numinous",
-      "provider": "numinous",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-6-numinous-source-repo",
+      "kind": "source-repo",
+      "name": "Numinous source repository",
+      "notes": "Public source repository for the Numinous forecasting agent competition.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
       "public_safe": true,
       "source_urls": [
         "https://github.com/numinouslabs/numinous",
         "https://numinouslabs.io/"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public source repository for the Numinous forecasting agent competition."
+      "url": "https://github.com/numinouslabs/numinous"
     },
     {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-6-numinous-swagger",
+      "kind": "openapi",
       "name": "Numinous Swagger UI",
-      "kind": "openapi",
-      "url": "https://api.numinouslabs.io/api/docs",
-      "provider": "numinous",
-      "auth_required": false,
-      "authority": "official",
-      "public_safe": true,
-      "schema_status": "machine-readable",
-      "schema_url": "https://api.numinouslabs.io/api/openapi.json",
-      "source_urls": [
-        "https://api.numinouslabs.io/api/docs",
-        "https://api.numinouslabs.io/api/openapi.json"
-      ],
+      "notes": "Swagger UI for the public Numinous API. The page links to the machine-readable OpenAPI schema.",
       "probe": {
         "enabled": true,
-        "method": "GET",
         "expect": "html",
+        "method": "GET",
         "timeout_ms": 10000
       },
-      "notes": "Swagger UI for the public Numinous API. The page links to the machine-readable OpenAPI schema."
-    },
-    {
-      "id": "sn-6-numinous-openapi-schema",
-      "name": "Numinous OpenAPI schema",
-      "kind": "openapi",
-      "url": "https://api.numinouslabs.io/api/openapi.json",
       "provider": "numinous",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "schema_status": "machine-readable",
       "schema_url": "https://api.numinouslabs.io/api/openapi.json",
@@ -111,59 +97,95 @@
         "https://api.numinouslabs.io/api/docs",
         "https://api.numinouslabs.io/api/openapi.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
-      },
-      "notes": "Machine-readable OpenAPI 3.1 schema for the public Numinous API."
+      "url": "https://api.numinouslabs.io/api/docs"
     },
     {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-6-numinous-openapi-schema",
+      "kind": "openapi",
+      "name": "Numinous OpenAPI schema",
+      "notes": "Machine-readable OpenAPI 3.1 schema for the public Numinous API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.numinouslabs.io/api/openapi.json",
+      "source_urls": [
+        "https://api.numinouslabs.io/api/docs",
+        "https://api.numinouslabs.io/api/openapi.json"
+      ],
+      "url": "https://api.numinouslabs.io/api/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-6-numinous-api-health",
-      "name": "Numinous API health",
       "kind": "subnet-api",
-      "url": "https://api.numinouslabs.io/api/health",
+      "name": "Numinous API health",
+      "notes": "Safe read-only health endpoint for the Numinous API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
       "provider": "numinous",
-      "auth_required": false,
-      "authority": "official",
       "public_safe": true,
       "source_urls": [
         "https://api.numinouslabs.io/api/docs",
         "https://api.numinouslabs.io/api/openapi.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "json",
-        "timeout_ms": 10000
-      },
-      "notes": "Safe read-only health endpoint for the Numinous API."
+      "url": "https://api.numinouslabs.io/api/health"
     },
     {
-      "id": "sn-6-numinous-leaderboard",
-      "name": "Numinous leaderboard API",
-      "kind": "subnet-api",
-      "url": "https://api.numinouslabs.io/api/v1/leaderboard",
-      "provider": "numinous",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-6-numinous-leaderboard",
+      "kind": "subnet-api",
+      "name": "Numinous leaderboard API",
+      "notes": "Read-only leaderboard endpoint documented by the Numinous OpenAPI schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "numinous",
       "public_safe": true,
       "source_urls": [
         "https://api.numinouslabs.io/api/docs",
         "https://api.numinouslabs.io/api/openapi.json"
       ],
+      "url": "https://api.numinouslabs.io/api/v1/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-6-numinous-data-artifact",
+      "kind": "data-artifact",
+      "name": "Numinous community data-artifact",
       "probe": {
         "enabled": true,
-        "method": "GET",
-        "expect": "json",
+        "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Read-only leaderboard endpoint documented by the Numinous OpenAPI schema."
+      "provider": "numinous",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.numinouslabs.io/api/openapi.json"],
+      "url": "https://api.numinouslabs.io/api/v1/benchmarks/baseline"
     }
   ],
-  "social": {
-    "x": "https://x.com/numinous_ai"
-  },
-  "contact": "marc@infinitemech.io"
+  "website_url": "https://numinouslabs.io/"
 }

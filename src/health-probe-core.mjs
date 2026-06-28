@@ -62,7 +62,9 @@ const UNSAFE_HOST_PATTERNS = [
   /^0\./,
   /^::1$/,
   /^::$/,
-  /^fe80:/i,
+  // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879) — the whole
+  // fe80::–feff: reserved range, mirroring the webhook guard (issue #1538).
+  /^fe[89a-f][0-9a-f]:/i,
   /^fc00:/i,
   /^fd/i,
 ];
@@ -317,6 +319,21 @@ export function contentMismatch(probe, surface) {
       .includes("text/event-stream");
   }
   return false;
+}
+
+// Canonical probe status values — every surface row should use one of these.
+// Callers that aggregate rows into rollupSubnetStatus must normalize through
+// normalizeProbeStatus first so unrecognized / forward-compat strings cannot
+// bypass the four buckets and roll up to a false "ok".
+export const PROBE_STATUS_VALUES = Object.freeze([
+  "ok",
+  "degraded",
+  "failed",
+  "unknown",
+]);
+
+export function normalizeProbeStatus(status) {
+  return PROBE_STATUS_VALUES.includes(status) ? status : "unknown";
 }
 
 // Canonical subnet operational-status rollup — the SINGLE source of the

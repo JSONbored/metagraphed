@@ -1,6 +1,6 @@
 # ADR 0003 — AI-native layer (agent catalog, llms.txt, remote MCP server)
 
-- **Status:** Accepted — implementing. AI-1 (agent catalog + llms.txt), AI-2 (MCP server), and AI-3 (semantic search + `/ask`) shipped.
+- **Status:** Accepted — implemented. AI-1 (agent catalog + llms.txt), AI-2 (MCP server), and AI-3 (semantic search + `/ask`) all shipped; the remote MCP server is now listed in the canonical MCP Registry, Smithery, and mcp.so. Later AI-native phases are tracked in issues, not this ADR.
 - **Date:** 2026-06-10
 - **Relates to:** ADR 0001 (R2-only data artifacts), ADR 0002 (live operational health).
 

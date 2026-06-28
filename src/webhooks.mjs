@@ -574,15 +574,23 @@ export async function deliverChangeEvent({
 // Bounded-concurrency map: drains `items` through at most `concurrency` in-flight
 // `fn` calls. Shared by the fresh fan-out and the redelivery sweep.
 async function mapBounded(items, concurrency, fn) {
-  const queue = [...(items || [])];
-  const results = [];
+  const list = [...(items || [])];
+  // Place each result at its INPUT index, not in completion order — workers
+  // resolve concurrently (and the per-item work does real async I/O: crypto
+  // signing + fetch), so a push-on-complete would return results in a
+  // nondeterministic order. Order-preserving output is what every caller relies
+  // on (the redelivery sweep's per-subscription budget + redelivered sequence).
+  const results = new Array(list.length);
+  let cursor = 0;
   const worker = async () => {
-    while (queue.length > 0) {
-      results.push(await fn(queue.shift()));
+    while (cursor < list.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fn(list[index]);
     }
   };
   const workers = Array.from(
-    { length: Math.max(1, Math.min(concurrency, queue.length)) },
+    { length: Math.max(1, Math.min(concurrency, list.length)) },
     () => worker(),
   );
   await Promise.all(workers);
@@ -786,12 +794,15 @@ export async function dispatchWithRedelivery({
       if (result.status === "delivered") {
         if (wasParked) await safeDelete(key); // recovered → clear the prior park
       } else if (result.status === "failed" && result.retryable) {
-        await park(
-          key,
-          wasParked ? await safeGet(key) : null,
-          result,
-          freshBody,
-        );
+        // Read the prior record straight from KV, not via `wasParked`: the parked
+        // snapshot is capped at `redeliveryListLimit` and KV lists
+        // lexicographically, so a still-parked key sorting past the cap is absent
+        // from the snapshot. Trusting `wasParked` there would re-park it as a
+        // brand-new record (round reset to 1, backoff + first_failed_at reset), so
+        // a chronically-failing endpoint with a large backlog never reaches the
+        // dead-letter cap. safeGet returns null on a genuine miss, so the healthy
+        // "nothing parked yet" path still parks at round 1.
+        await park(key, await safeGet(key), result, freshBody);
       }
     }
   }
@@ -801,8 +812,12 @@ export async function dispatchWithRedelivery({
   // re-attempted this run. Independent keys → concurrent sweep.
   const due = [];
   const dueBySubscription = new Map();
+  // Sweep the parked backlog in a STABLE lexicographic key order — the order KV
+  // itself lists in — so the shared per-run / per-subscription budget always
+  // selects the same records for the same inputs, independent of the injected
+  // store's iteration order or the concurrent get-completion order.
   for (const candidate of (
-    await mapBounded([...parked], concurrency, async (key) => {
+    await mapBounded([...parked].sort(), concurrency, async (key) => {
       const record = await safeGet(key);
       return record &&
         record.state === "pending" &&

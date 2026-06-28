@@ -85,6 +85,7 @@ test("economics backfill upserts valid rows + filters invalid (200, parameterize
     row({ netuid: 11, alpha_price_tao: "0.1" }), // non-numeric price → filtered
     row({ netuid: -1 }), // negative netuid → filtered
     row({ netuid: 12, alpha_price_tao: Number.NaN }), // NaN price → filtered
+    row({ netuid: 13, alpha_price_tao: -0.5 }), // negative price → filtered
   ];
   const res = await handleEconomicsBackfill(
     post(rows, { secret: SECRET }),
@@ -93,7 +94,7 @@ test("economics backfill upserts valid rows + filters invalid (200, parameterize
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.ok, true);
-  assert.equal(body.received, 7);
+  assert.equal(body.received, 8);
   assert.equal(body.inserted, 2);
   assert.equal(captured.length, 1); // one batch
   assert.equal(captured[0].length, 2); // of the 2 valid rows
@@ -152,6 +153,20 @@ test("economics backfill rejects too many rows (413)", async () => {
   assert.equal(res.status, 413);
 });
 
+test("economics backfill sizes the body by UTF-8 bytes, not UTF-16 code units (413)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: dbCapture([]),
+  };
+  // 400k three-byte chars: 400_000 UTF-16 code units (under the 1 MiB byte cap)
+  // but ~1.2 MB of UTF-8 (over it). A code-unit check would wrongly admit it.
+  const res = await handleEconomicsBackfill(
+    post("あ".repeat(400000), { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 413);
+});
+
 test("economics backfill returns 503 when the history store is unavailable", async () => {
   const env = { METAGRAPH_EVENTS_INGEST_SECRET: SECRET }; // authed but no DB
   const res = await handleEconomicsBackfill(
@@ -167,6 +182,91 @@ test("handleRequest routes POST /api/v1/internal/backfill-economics", async () =
   assert.equal(res.status, 503);
 });
 
+// ---- Writer failure-path coverage (D1 batch) -------------------------------
+// The backfill writer is economicsSnapshotUpsertStatements + db.batch. The
+// handler runs the batch WITHOUT a try/catch, so a D1 failure during the upsert
+// must surface (reject) — never be swallowed into a false 200. These harden that
+// path plus the all-invalid no-batch short-circuit.
+
+test("economics backfill surfaces a D1 batch failure instead of a false 200", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch() {
+        throw new Error("D1_ERROR: database is locked");
+      },
+    },
+  };
+  // One valid row → the writer reaches db.batch, which rejects; the handler
+  // does not catch it, so the rejection propagates to the caller (the runtime
+  // turns it into a 500), proving no swallow-to-200.
+  await assert.rejects(
+    handleEconomicsBackfill(post([row()], { secret: SECRET }), env),
+    /database is locked/,
+  );
+});
+
+test("economics backfill issues no batch when every row is invalid (no D1 call)", async () => {
+  let batched = 0;
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch() {
+        batched += 1;
+      },
+    },
+  };
+  // All rows fail validEconomicsBackfillRows → rows.length === 0 → no db.batch.
+  const res = await handleEconomicsBackfill(
+    post([{ netuid: -1 }, { snapshot_date: "bad" }], { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.received, 2);
+  assert.equal(body.inserted, 0);
+  assert.equal(batched, 0); // short-circuited before touching D1
+});
+
+test("economicsSnapshotUpsertStatements emits one bound statement per valid row", () => {
+  // Writer-shape contract: N valid rows → N parameterized statements, each with
+  // exactly 4 bound values (no interpolation), so a batch is sized to the input.
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  const valid = validEconomicsBackfillRows([
+    row(),
+    row({ netuid: 9, snapshot_date: "2025-12-02", alpha_price_tao: 0.5 }),
+  ]);
+  const stmts = economicsSnapshotUpsertStatements(db, valid);
+  assert.equal(stmts.length, 2);
+  for (const s of stmts) assert.equal(s.v.length, 4);
+});
+
+test("economicsSnapshotUpsertStatements no-ops on an empty row set", () => {
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  assert.deepEqual(economicsSnapshotUpsertStatements(db, []), []);
+});
+
+test("economicsSnapshotUpsertStatements treats a NaN captured_at as missing", () => {
+  // A non-finite captured_at must fall back to the snapshot day's UTC midnight,
+  // not bind NaN into the row (which would poison the time column).
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  const stmts = economicsSnapshotUpsertStatements(db, [
+    {
+      netuid: 8,
+      snapshot_date: "2025-12-01",
+      alpha_price_tao: 0.1,
+      captured_at: Number.NaN,
+    },
+  ]);
+  assert.equal(stmts[0].v[3], Date.parse("2025-12-01T00:00:00Z"));
+});
+
 test("validEconomicsBackfillRows + upsert: captured_at falls back to the snapshot day", () => {
   const valid = validEconomicsBackfillRows([
     { netuid: 8, snapshot_date: "2025-12-01", alpha_price_tao: 0.1 }, // no captured_at
@@ -180,4 +280,10 @@ test("validEconomicsBackfillRows + upsert: captured_at falls back to the snapsho
   // netuid 0 and alpha_price_tao 0 are preserved (not treated as falsy-invalid).
   assert.equal(stmts[1].v[0], 0);
   assert.equal(stmts[1].v[2], 0);
+  assert.equal(
+    validEconomicsBackfillRows([
+      { netuid: 8, snapshot_date: "2025-12-01", alpha_price_tao: -0.5 },
+    ]).length,
+    0,
+  );
 });

@@ -28,8 +28,15 @@ export const EMBED_MANIFEST_KEY = [
 
 export const SEMANTIC_DEFAULT_LIMIT = 10;
 export const SEMANTIC_MAX_LIMIT = 20;
+// Record kinds the registry embeds; the semantic + ask paths can scope to a
+// subset. Single source of truth for the tool schemas and the validator.
+export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
+// `returnMetadata: "all"` caps Vectorize at topK 20. A scoped query over-fetches
+// to this cap, then post-filters and slices, so `limit` holds after filtering.
+const FILTERED_RETRIEVE_TOPK = SEMANTIC_MAX_LIMIT;
 export const ASK_CONTEXT_COUNT = 6;
 export const ASK_MAX_QUESTION_LENGTH = 1000;
+export const SEMANTIC_MAX_QUERY_LENGTH = 1000;
 export const ASK_MAX_TOKENS = 512;
 const EMBED_BATCH_SIZE = 100;
 const VECTOR_ID_MAX_BYTES = 64;
@@ -100,12 +107,32 @@ function contentHash(text) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
+const EMBED_TEXT_MAX_CODE_POINTS = 1500;
+
+// Cap a string to at most `max` Unicode code points. A plain `.slice()` counts
+// UTF-16 code units, so a non-BMP character (e.g. an emoji) straddling the
+// boundary is severed into a lone high surrogate, leaving a string that is not
+// well-formed UTF-16 — which UTF-8-encodes to a U+FFFD replacement. Iterating
+// the string yields whole code points, so the cap never splits an astral char.
+function truncateByCodePoints(value, max) {
+  // .length is an upper bound on the code-point count, so this fast path is safe.
+  if (value.length <= max) return value;
+  let out = "";
+  let count = 0;
+  for (const cp of value) {
+    if (count >= max) break;
+    out += cp;
+    count += 1;
+  }
+  return out;
+}
+
 export function embeddingText(doc) {
   // Capability facets (what a subnet IS + what it EXPOSES) are appended after the
   // free-text tokens so they explicitly bias the embedding toward capability —
   // "inference api", "sse stream", "data-artifact" queries rank on what a subnet
   // can do, not just its prose. Non-subnet docs simply omit these (empty).
-  return [
+  const joined = [
     doc.title,
     doc.subtitle,
     ...(Array.isArray(doc.tokens) ? doc.tokens : []),
@@ -113,8 +140,8 @@ export function embeddingText(doc) {
     ...(Array.isArray(doc.service_kinds) ? doc.service_kinds : []),
   ]
     .filter(Boolean)
-    .join(" ")
-    .slice(0, 1500);
+    .join(" ");
+  return truncateByCodePoints(joined, EMBED_TEXT_MAX_CODE_POINTS);
 }
 
 // Vectorize ids are capped at 64 bytes; long surface ids are folded to a stable
@@ -162,6 +189,18 @@ async function readManifest(env) {
   }
 }
 
+// A valid embedding is an array of exactly EMBED_DIMENSIONS finite numbers.
+// Workers AI batch embedding can return fewer rows than requested, an
+// error-shaped body (so `data` is `[]`), or a malformed row — none of which may
+// be upserted into Vectorize or recorded as "embedded" in the manifest.
+function isValidEmbeddingVector(values) {
+  return (
+    Array.isArray(values) &&
+    values.length === EMBED_DIMENSIONS &&
+    values.every((n) => typeof n === "number" && Number.isFinite(n))
+  );
+}
+
 // Embedding-sync cron: diff the search index against a deployment-scoped
 // content-hash manifest in KV, (re)embed only the deltas, upsert to Vectorize,
 // drop removed ids. Runs in
@@ -178,28 +217,59 @@ export async function runEmbeddingSync(env, deps = {}) {
   const previous = await readManifest(env);
   const next = {};
   const pending = [];
+  const currentIds = new Set();
   for (const doc of docs) {
     if (!doc?.id) continue;
     const id = vectorId(doc.id);
     const hash = contentHash(embeddingText(doc));
-    next[id] = hash;
-    if (previous[id] !== hash) pending.push({ id, doc });
+    currentIds.add(id);
+    if (previous[id] === hash) {
+      // Already embedded under this exact content — carry the hash forward so it
+      // is neither re-embedded nor treated as removed.
+      next[id] = hash;
+    } else {
+      // New or changed: (re)embed. Recorded into `next` ONLY after a valid
+      // vector is actually upserted (below), so a failed embed is retried next
+      // run instead of being permanently marked done.
+      pending.push({ id, doc, hash });
+    }
   }
-  const removed = Object.keys(previous).filter((id) => !(id in next));
+  // Removed = ids that left the index entirely, derived from the CURRENT doc set
+  // (not `next`). A doc whose embedding fails this run is absent from `next` but
+  // still present in `currentIds`, so it keeps its existing vector (stale beats
+  // missing) and is retried — never wrongly deleted.
+  const removed = Object.keys(previous).filter((id) => !currentIds.has(id));
 
   let embedded = 0;
   for (const batch of chunk(pending, EMBED_BATCH_SIZE)) {
     const response = await env.AI.run(EMBED_MODEL, {
       text: batch.map((entry) => embeddingText(entry.doc)),
     });
-    const data = response?.data || [];
-    const vectors = batch.map((entry, i) => ({
-      id: entry.id,
-      values: data[i],
-      metadata: embeddingMetadata(entry.doc),
-    }));
-    await env.VECTORIZE.upsert(vectors);
-    embedded += vectors.length;
+    const data = Array.isArray(response?.data) ? response.data : [];
+    // Upsert (and record the new hash for) ONLY entries that produced a valid
+    // vector. If Workers AI returns fewer/empty/malformed rows, keep any
+    // existing manifest hash so a later removal still deletes the stale vector,
+    // while the changed content remains a delta and is retried next run. New
+    // docs with no previous vector stay absent from the manifest until they
+    // embed successfully.
+    const valid = [];
+    for (let i = 0; i < batch.length; i += 1) {
+      if (isValidEmbeddingVector(data[i])) {
+        valid.push({ entry: batch[i], values: data[i] });
+      } else if (Object.prototype.hasOwnProperty.call(previous, batch[i].id)) {
+        next[batch[i].id] = previous[batch[i].id];
+      }
+    }
+    if (valid.length === 0) continue;
+    await env.VECTORIZE.upsert(
+      valid.map(({ entry, values }) => ({
+        id: entry.id,
+        values,
+        metadata: embeddingMetadata(entry.doc),
+      })),
+    );
+    for (const { entry } of valid) next[entry.id] = entry.hash;
+    embedded += valid.length;
   }
   if (removed.length && typeof env.VECTORIZE.deleteByIds === "function") {
     await env.VECTORIZE.deleteByIds(removed);
@@ -241,23 +311,80 @@ function mapMatch(match) {
   };
 }
 
-// Semantic search: embed the query, query Vectorize, project metadata. Throws
-// aiInputError for a blank query.
+// Normalize the optional type scope to a deduped allow-list, or null for "all"
+// (also when the list is empty). Throws aiInputError on any unknown type.
+export function normalizeSemanticTypes(type) {
+  if (type == null) return null;
+  const list = Array.isArray(type) ? type : [type];
+  const allow = [];
+  for (const raw of list) {
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (!SEMANTIC_TYPES.includes(value)) {
+      throw aiInputError(
+        `Unknown type \`${String(raw)}\`. Valid types: ${SEMANTIC_TYPES.join(", ")}.`,
+      );
+    }
+    if (!allow.includes(value)) allow.push(value);
+  }
+  return allow.length ? allow : null;
+}
+
+// Vectorize metadata filter for a non-empty type allow-list: equality for one,
+// `$in` for many. Honored server-side only when a metadata index exists on `type`.
+function typeMetadataFilter(types) {
+  return { type: types.length === 1 ? types[0] : { $in: types } };
+}
+
+async function queryVectorize(env, vector, topK, filter) {
+  const result = await env.VECTORIZE.query(vector, {
+    topK,
+    returnMetadata: "all",
+    returnValues: false,
+    ...(filter ? { filter } : {}),
+  });
+  return result?.matches || [];
+}
+
+// Shared retrieval for semanticSearch + askQuestion. Unscoped: a plain top-`limit`
+// query. Scoped: try the server-side filter, but since Vectorize rejects a filter
+// on a non-indexed field, fall back to an unfiltered fetch; the post-filter scopes
+// either way. Over-fetches to the cap so `limit` survives the filter.
+async function retrieveMatches(env, vector, limit, types) {
+  if (!types) return queryVectorize(env, vector, limit);
+  const filter = typeMetadataFilter(types);
+  let matches;
+  try {
+    matches = await queryVectorize(env, vector, FILTERED_RETRIEVE_TOPK, filter);
+  } catch {
+    // Filter rejected (no metadata index): refetch unscoped and lean on the
+    // post-filter. A genuine outage re-throws here and propagates.
+    matches = await queryVectorize(env, vector, FILTERED_RETRIEVE_TOPK);
+  }
+  const allow = new Set(types);
+  return matches
+    .filter((match) => allow.has(match?.metadata?.type))
+    .slice(0, limit);
+}
+
+// Semantic search: embed the query, query Vectorize, project metadata. Optionally
+// scopes results to one or more record kinds (`options.type`). Throws aiInputError
+// for a blank query or an unknown type.
 export async function semanticSearch(env, query, options = {}) {
   const q = typeof query === "string" ? query.trim() : "";
   if (!q) throw aiInputError("Query parameter `q` is required.");
+  if (q.length > SEMANTIC_MAX_QUERY_LENGTH)
+    throw aiInputError(
+      `Field \`q\` must be at most ${SEMANTIC_MAX_QUERY_LENGTH} characters.`,
+    );
   const limit = clampLimit(
     options.limit,
     SEMANTIC_DEFAULT_LIMIT,
     SEMANTIC_MAX_LIMIT,
   );
+  const types = normalizeSemanticTypes(options.type);
   const vector = await embedQuery(env, q);
-  const result = await env.VECTORIZE.query(vector, {
-    topK: limit,
-    returnMetadata: "all",
-    returnValues: false,
-  });
-  const results = (result?.matches || []).map(mapMatch);
+  const matches = await retrieveMatches(env, vector, limit, types);
+  const results = matches.map(mapMatch);
   return { query: q, count: results.length, results, model: EMBED_MODEL };
 }
 
@@ -339,13 +466,9 @@ export async function askQuestion(env, question, options = {}, deps = {}) {
     );
   }
   const topK = clampLimit(options.topK, ASK_CONTEXT_COUNT, ASK_CONTEXT_COUNT);
+  const types = normalizeSemanticTypes(options.type);
   const vector = await embedQuery(env, q);
-  const result = await env.VECTORIZE.query(vector, {
-    topK,
-    returnMetadata: "all",
-    returnValues: false,
-  });
-  const matches = result?.matches || [];
+  const matches = await retrieveMatches(env, vector, topK, types);
   const citations = matches.map((match, i) => {
     const metadata = match?.metadata || {};
     return {

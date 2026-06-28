@@ -3,6 +3,7 @@ import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import worker, { handleRequest } from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
 const env = createLocalArtifactEnv();
 
@@ -32,6 +33,103 @@ describe("Worker runtime", () => {
     );
     assert.equal(response.status, 200);
     assert.equal((await response.json()).ok, true);
+  });
+
+  test("applies a dedicated rate limiter before forwarding chain-events to DATA_API", async () => {
+    let dataCalls = 0;
+    let rateCalls = 0;
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        headers: { "cf-connecting-ip": "203.0.113.9" },
+      }),
+      {
+        ...env,
+        DATA_RATE_LIMITER: {
+          limit({ key }) {
+            rateCalls += 1;
+            assert.equal(key, "data:203.0.113.9");
+            return Promise.resolve({ success: false });
+          },
+        },
+        DATA_API: {
+          fetch() {
+            dataCalls += 1;
+            return new Response(JSON.stringify({ ok: true }), { status: 200 });
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 429);
+    assert.equal((await response.json()).error.code, "data_rate_limited");
+    assert.equal(response.headers.get("x-ratelimit-limit"), "60");
+    assert.equal(rateCalls, 1);
+    assert.equal(dataCalls, 0);
+  });
+
+  test("rewraps the DATA_API chain-events body in the canonical envelope", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events/stats?blocks=500"),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            // The data Worker returns a BARE body (no envelope).
+            return new Response(
+              JSON.stringify({
+                window_blocks: 500,
+                groups: 1,
+                activity: [{ pallet: "System", method: "Event", count: 3 }],
+              }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    assert.ok(response.headers.get("etag"));
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.schema_version, 1);
+    assert.equal(body.data.window_blocks, 500);
+    assert.equal(body.data.activity[0].pallet, "System");
+    assert.equal(body.meta.source, "data-worker-postgres");
+  });
+
+  test("maps a DATA_API upstream error to a clean error envelope", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events"),
+      {
+        ...env,
+        DATA_API: {
+          fetch() {
+            return new Response(
+              JSON.stringify({ error: "data query failed" }),
+              {
+                status: 502,
+                headers: { "content-type": "application/json" },
+              },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error.code, "data_query_failed");
+  });
+
+  test("returns a 503 error envelope when the DATA_API binding is absent", async () => {
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events"),
+      env,
+      {},
+    );
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error.code, "data_tier_unavailable");
   });
 
   test("serves API envelopes with cache and CORS headers", async () => {
@@ -1252,6 +1350,11 @@ describe("Worker runtime", () => {
       assert.equal(response.status, 200);
       assert.equal(called, true);
       assert.ok(response.headers.get("x-metagraph-rpc-provider"));
+      // The proxy's rate-limit and x-metagraph-rpc-* headers must be CORS-readable.
+      assert.equal(
+        response.headers.get("access-control-expose-headers"),
+        EXPOSED_RESPONSE_HEADERS_VALUE,
+      );
 
       // The /wss route targets WebSocket-only endpoints that cannot be
       // HTTP-POSTed, so it is rejected with a clean 400 rather than proxied.

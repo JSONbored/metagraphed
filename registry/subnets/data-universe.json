@@ -1,9 +1,4 @@
 {
-  "schema_version": 1,
-  "netuid": 13,
-  "name": "Data Universe",
-  "slug": "sn-13",
-  "status": "active",
   "categories": [
     "baseline-curated",
     "data",
@@ -13,185 +8,256 @@
     "official-source-repo",
     "official-website"
   ],
-  "docs_url": "https://docs.macrocosmos.ai/product-and-services/gravity",
-  "source_repo": "https://github.com/macrocosm-os/data-universe",
-  "website_url": "https://datauniverse.macrocosmos.ai/",
-  "notes": "Reviewed overlay for SN13 using the official Macrocosmos Data Universe source repository, product site, Gravity docs, Macrocosmos MCP docs, and scraper repository. Stale generated candidates for the old SN13 API docs and sn13-dashboard API host are intentionally not promoted.",
+  "contact": "support@macrocosmos.ai",
   "curation": {
-    "level": "maintainer-reviewed",
-    "review_state": "maintainer-reviewed",
-    "reviewed_at": "2026-06-08T08:35:00.000Z",
-    "verified_at": "2026-06-08T08:35:00.000Z",
-    "source_count": 8,
     "gap_notes": [
       "No verified machine-readable OpenAPI/Swagger schema yet.",
       "No verified safe public subnet API endpoint yet.",
       "No verified SSE/event stream yet.",
       "No verified standalone static data artifact yet."
-    ]
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T08:35:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T08:35:00.000Z"
   },
+  "docs_url": "https://docs.macrocosmos.ai/product-and-services/gravity",
+  "name": "Data Universe",
+  "netuid": 13,
+  "notes": "Reviewed overlay for SN13 using the official Macrocosmos Data Universe source repository, product site, Gravity docs, Macrocosmos MCP docs, and scraper repository. Stale generated candidates for the old SN13 API docs and sn13-dashboard API host are intentionally not promoted.",
+  "schema_version": 1,
+  "slug": "sn-13",
+  "social": {
+    "x": "https://x.com/macrocosmosai"
+  },
+  "source_repo": "https://github.com/macrocosm-os/data-universe",
+  "status": "active",
   "surfaces": [
     {
-      "id": "sn-13-data-universe-website",
-      "name": "Data Universe website",
-      "kind": "website",
-      "url": "https://datauniverse.macrocosmos.ai/",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-13-data-universe-website",
+      "kind": "website",
+      "name": "Data Universe website",
+      "notes": "Official Data Universe product website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe",
         "https://www.macrocosmos.ai/gravity"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Official Data Universe product website."
+      "url": "https://datauniverse.macrocosmos.ai/"
     },
     {
-      "id": "sn-13-data-universe-source",
-      "name": "Data Universe source repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/data-universe",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-13-data-universe-source",
+      "kind": "source-repo",
+      "name": "Data Universe source repository",
+      "notes": "Official SN13 Data Universe source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": ["https://github.com/macrocosm-os/data-universe"],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Official SN13 Data Universe source repository."
+      "url": "https://github.com/macrocosm-os/data-universe"
     },
     {
-      "id": "sn-13-data-universe-gravity-docs",
-      "name": "Gravity docs",
-      "kind": "docs",
-      "url": "https://docs.macrocosmos.ai/product-and-services/gravity",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-13-data-universe-gravity-docs",
+      "kind": "docs",
+      "name": "Gravity docs",
+      "notes": "Macrocosmos Gravity product docs referenced by the Data Universe README.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe",
         "https://docs.macrocosmos.ai/product-and-services/gravity"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Macrocosmos Gravity product docs referenced by the Data Universe README."
+      "url": "https://docs.macrocosmos.ai/product-and-services/gravity"
     },
     {
-      "id": "sn-13-data-universe-mcp-docs",
-      "name": "Macrocosmos MCP docs",
-      "kind": "docs",
-      "url": "https://docs.macrocosmos.ai/subnets/subnet-13-data-universe/macrocosmos-mcp",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-13-data-universe-mcp-docs",
+      "kind": "docs",
+      "name": "Macrocosmos MCP docs",
+      "notes": "Public Macrocosmos MCP docs for SN13 Data Universe data access.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe",
         "https://docs.macrocosmos.ai/subnets/subnet-13-data-universe/macrocosmos-mcp"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "html",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Macrocosmos MCP docs for SN13 Data Universe data access."
+      "url": "https://docs.macrocosmos.ai/subnets/subnet-13-data-universe/macrocosmos-mcp"
     },
     {
-      "id": "sn-13-macrocosmos-scrapers-source",
-      "name": "Macrocosmos scrapers repository",
-      "kind": "source-repo",
-      "url": "https://github.com/macrocosm-os/scrapers",
-      "provider": "macrocosmos",
       "auth_required": false,
       "authority": "official",
+      "id": "sn-13-macrocosmos-scrapers-source",
+      "kind": "source-repo",
+      "name": "Macrocosmos scrapers repository",
+      "notes": "Public Macrocosmos scraper repository referenced by the Data Universe project.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
       "public_safe": true,
       "source_urls": [
         "https://github.com/macrocosm-os/data-universe",
         "https://github.com/macrocosm-os/scrapers"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Public Macrocosmos scraper repository referenced by the Data Universe project."
+      "url": "https://github.com/macrocosm-os/scrapers"
     },
     {
-      "id": "sn-13-taopedia-article",
-      "name": "Data Universe Taopedia article",
-      "kind": "docs",
-      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx",
-      "provider": "taopedia-articles",
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-13-taopedia-article",
+      "kind": "docs",
+      "name": "Data Universe Taopedia article",
+      "notes": "Discovered from the public Taopedia article repository. Not protocol authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "taopedia-articles",
       "public_safe": true,
       "source_urls": [
         "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Discovered from the public Taopedia article repository. Not protocol authority."
+      "url": "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_13/index.mdx"
     },
     {
-      "id": "sn-13-tensorplex-docs",
-      "name": "Data Universe Tensorplex subnet docs",
-      "kind": "docs",
-      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/13",
-      "provider": "tensorplex-subnet-docs",
       "auth_required": false,
       "authority": "registry-observed",
+      "id": "sn-13-tensorplex-docs",
+      "kind": "docs",
+      "name": "Data Universe Tensorplex subnet docs",
+      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "tensorplex-subnet-docs",
       "public_safe": true,
       "source_urls": [
         "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/13/subnet.json"
       ],
-      "probe": {
-        "enabled": true,
-        "method": "HEAD",
-        "expect": "any",
-        "timeout_ms": 10000
-      },
-      "notes": "Discovered from Tensorplex subnet-docs. Useful as documentation enrichment, not verified operational authority."
+      "url": "https://github.com/tensorplex-labs/subnet-docs/tree/main/data/13"
     },
     {
-      "id": "sn-13-taomarketcap-dashboard",
-      "name": "Data Universe TaoMarketCap dashboard",
-      "kind": "dashboard",
-      "url": "https://taomarketcap.com/subnets/13",
-      "provider": "taomarketcap",
       "auth_required": false,
       "authority": "registry-observed",
-      "public_safe": true,
-      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/13"],
+      "id": "sn-13-taomarketcap-dashboard",
+      "kind": "dashboard",
+      "name": "Data Universe TaoMarketCap dashboard",
+      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority.",
       "probe": {
         "enabled": true,
-        "method": "HEAD",
         "expect": "any",
+        "method": "HEAD",
         "timeout_ms": 10000
       },
-      "notes": "Universal TaoMarketCap subnet dashboard candidate. Third-party enrichment, not protocol authority."
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "source_urls": ["https://api.taomarketcap.com/public/v1/subnets/13"],
+      "url": "https://taomarketcap.com/subnets/13"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-example",
+      "kind": "example",
+      "name": "Data Universe community example",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/macrocosm-os/data-universe"],
+      "url": "https://github.com/macrocosm-os/macrocosmos-py/blob/main/examples/sn13_on_demand_data.py"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-sdk",
+      "kind": "sdk",
+      "name": "Macrocosmos Python SDK",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://github.com/macrocosm-os/data-universe"],
+      "url": "https://github.com/macrocosm-os/macrocosmos-py"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-subnet-api",
+      "kind": "subnet-api",
+      "name": "Data Universe on-demand data API (Constellation)",
+      "notes": "SN13 Data Universe real-time on-demand data query (X/Reddit/YouTube) via the Macrocosmos Constellation API (Sn13Service.OnDemandData); requires a Bearer API key (macrocosmos SDK Sn13Client/GravityClient).",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dexterity104"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/macrocosmos-py/blob/main/protos/sn13/v1/sn13_validator.proto",
+        "https://github.com/macrocosm-os/macrocosmos-py/blob/main/src/macrocosmos/resources/_client.py",
+        "https://github.com/macrocosm-os/macrocosmos-py"
+      ],
+      "url": "https://constellation.api.cloud.macrocosmos.ai/sn13.v1.Sn13Service/OnDemandData"
     }
   ],
-  "social": { "x": "https://x.com/macrocosmosai" },
-  "contact": "support@macrocosmos.ai"
+  "website_url": "https://datauniverse.macrocosmos.ai/"
 }

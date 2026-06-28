@@ -30,6 +30,10 @@ describe("serve-time contract staleness (#1001)", () => {
     expect(res.headers.get("x-metagraph-stale-contract")).toBe(
       body.meta.stale_contract.built_under,
     );
+    // Cross-origin JS can read the header only when it's named in the expose list.
+    expect(res.headers.get("access-control-expose-headers")).toMatch(
+      /\bx-metagraph-stale-contract\b/,
+    );
   });
 
   it("omits stale_contract when the artifact matches the live contract", async () => {

@@ -195,6 +195,19 @@ describe("apiDocsSubdomainOrigins (#1004)", () => {
     }
   });
 
+  test("returns [] for a bare multi-label public suffix with no registrable domain", () => {
+    // A host that is *exactly* a multi-label public suffix (co.uk, com.au) has
+    // no project-owned registrable domain, so clusterSuffixDomain returns null
+    // and no api./docs. origin can be derived.
+    for (const origin of [
+      "https://co.uk",
+      "https://com.au",
+      "https://org.nz",
+    ]) {
+      assert.deepEqual(apiDocsSubdomainOrigins(origin), [], origin);
+    }
+  });
+
   test("returns [] for IP literals, bare hosts, and unparseable input", () => {
     for (const origin of [
       "https://127.0.0.1",

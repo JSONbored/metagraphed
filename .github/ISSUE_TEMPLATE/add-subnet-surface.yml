@@ -1,0 +1,103 @@
+name: Add or update a subnet surface
+description: Suggest a public subnet surface (API, OpenAPI, docs, dashboard, repo, SDK, data artifact, …) to add to its subnet file.
+title: "surface: "
+labels:
+  - surface-submission
+  - metagraphed-under-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Surfaces live in **one file per subnet** — `registry/subnets/<slug>.json`. The fastest path is a direct PR: run `npm run surface:add` and open a PR that changes **only that one file** (see `CONTRIBUTING.md` → Community submissions). It lands with `authority: community` and `review.state: community-submitted`, and the build's prober owns verification/health.
+
+        Use this issue only to **request** a surface if you can't open a PR. Issue submissions do not auto-publish — they are a request a maintainer or contributor turns into a PR.
+  - type: input
+    id: netuid
+    attributes:
+      label: Netuid
+      description: Bittensor subnet netuid for this surface.
+      placeholder: "7"
+    validations:
+      required: true
+  - type: input
+    id: subnet_name
+    attributes:
+      label: Subnet name
+      placeholder: Allways
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Surface kind
+      description: "Application/operational surfaces only. Base-layer chain endpoints (RPC/WSS/archive) are maintainer-curated network infrastructure served via the endpoint lane (/api/v1/rpc, the /rpc proxy) — they are not contributor surfaces."
+      options:
+        - docs
+        - website
+        - source-repo
+        - openapi
+        - subnet-api
+        - dashboard
+        - data-artifact
+        - sdk
+        - example
+        - sse
+        - repo-registry
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Public URL
+      description: The exact public surface URL to list or update.
+      placeholder: https://example.com/api
+    validations:
+      required: true
+  - type: textarea
+    id: source_urls
+    attributes:
+      label: Source URLs
+      description: |
+        One or more public URLs that independently prove the subnet publishes this surface (docs, repo, or announcement).
+        Enter one URL per line, for example:
+        https://docs.example.com/api
+        https://github.com/example/repo/blob/main/README.md
+      placeholder: |
+        https://docs.example.com/api
+        https://github.com/example/repo/blob/main/README.md
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider slug
+      description: The registered provider for the team/operator behind this surface — see `npm run providers:list`. A debut provider is registered in the same PR.
+      placeholder: example-team
+    validations:
+      required: true
+  - type: dropdown
+    id: auth_required
+    attributes:
+      label: Does this surface require authentication?
+      options:
+        - "no"
+        - "yes"
+        - "unknown"
+    validations:
+      required: true
+  - type: textarea
+    id: rate_limits
+    attributes:
+      label: Rate limits or access notes
+      description: Public rate-limit notes, API-key requirements, or known access constraints.
+  - type: checkboxes
+    id: public_safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: This submission does not include secrets, credentialed flows, private dashboards, or validator-sensitive data.
+          required: true
+        - label: The submitted URL can be checked with read-only probes.
+          required: true
+        - label: I understand issue submissions are requests and do not directly publish registry data.
+          required: true

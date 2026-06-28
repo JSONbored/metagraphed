@@ -163,6 +163,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "search-index",
+      "path": "/metagraph/search-index.json",
+      "schema_ref": "#/components/schemas/SearchIndexArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
@@ -180,6 +187,13 @@
       "id": "economics",
       "path": "/metagraph/economics.json",
       "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "economics-trends",
+      "path": "/metagraph/economics/trends.json",
+      "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -352,6 +366,27 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-concentration",
+      "path": "/metagraph/subnets/{netuid}/concentration.json",
+      "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-concentration-history",
+      "path": "/metagraph/subnets/{netuid}/concentration/history.json",
+      "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-turnover",
+      "path": "/metagraph/subnets/{netuid}/turnover.json",
+      "schema_ref": "#/components/schemas/SubnetTurnoverArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -369,6 +404,13 @@
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
       "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -401,9 +443,135 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-counterparties",
+      "path": "/metagraph/accounts/{ss58}/counterparties.json",
+      "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-events-feed",
+      "path": "/metagraph/chain-events.json",
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-chain-events",
+      "path": "/metagraph/blocks/{ref}/chain-events.json",
+      "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-events-stats",
+      "path": "/metagraph/chain-events/stats.json",
+      "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-activity",
+      "path": "/metagraph/chain/activity.json",
+      "schema_ref": "#/components/schemas/ChainActivityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-calls",
+      "path": "/metagraph/chain/calls.json",
+      "schema_ref": "#/components/schemas/ChainCallsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-signers",
+      "path": "/metagraph/chain/signers.json",
+      "schema_ref": "#/components/schemas/ChainSignersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-fees",
+      "path": "/metagraph/chain/fees.json",
+      "schema_ref": "#/components/schemas/ChainFeesArtifact",
       "storage_tier": "r2"
     },
     {
@@ -425,6 +593,13 @@
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "compare",
+      "path": "/metagraph/compare.json",
+      "schema_ref": "#/components/schemas/CompareArtifact",
       "storage_tier": "r2"
     },
     {
@@ -670,6 +845,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -720,6 +896,96 @@
           }
         },
         {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "min_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_block",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_candidate_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_mechanism_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_participant_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_probed_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_surface_count",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_tempo",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -742,6 +1008,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -763,6 +1030,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -826,6 +1094,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -892,6 +1161,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -910,6 +1180,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1041,6 +1312,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1054,6 +1326,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1129,6 +1402,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1142,6 +1416,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1277,6 +1552,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1295,6 +1571,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1422,6 +1699,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1440,6 +1718,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1538,6 +1817,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1553,6 +1833,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1643,6 +1924,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1658,6 +1940,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1737,6 +2020,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1749,6 +2033,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1889,6 +2174,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1907,6 +2193,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2020,6 +2307,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2035,6 +2323,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2048,7 +2337,7 @@
     {
       "artifact_path": "/metagraph/economics.json",
       "cache": "standard",
-      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
       "id": "economics",
       "method": "GET",
       "path": "/api/v1/economics",
@@ -2105,6 +2394,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2127,12 +2417,39 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
               "asc",
               "desc"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/economics/trends.json",
+      "cache": "short",
+      "description": "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+      "id": "economics-trends",
+      "method": "GET",
+      "path": "/api/v1/economics/trends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -2240,6 +2557,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2252,6 +2570,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2301,6 +2620,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2331,6 +2651,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2344,6 +2665,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2382,6 +2704,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2418,6 +2741,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2434,6 +2758,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2464,6 +2789,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2500,6 +2826,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2516,6 +2843,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2643,6 +2971,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2665,6 +2994,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2706,6 +3036,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -2798,6 +3129,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2815,6 +3147,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2854,6 +3187,7 @@
             "enum": [
               "native",
               "candidate-discovered",
+              "community-seeded",
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
@@ -3015,6 +3349,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3041,6 +3376,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3175,6 +3511,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3188,6 +3525,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3420,6 +3758,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3441,6 +3780,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3507,6 +3847,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3526,6 +3867,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3642,6 +3984,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3661,6 +4004,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3769,6 +4113,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3788,6 +4133,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3881,6 +4227,68 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/concentration.json",
+      "cache": "short",
+      "description": "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+      "id": "subnet-concentration",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/concentration",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/concentration/history.json",
+      "cache": "short",
+      "description": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
+      "id": "subnet-concentration-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/concentration/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/turnover.json",
+      "cache": "short",
+      "description": "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+      "id": "subnet-turnover",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/turnover",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
       "cache": "short",
       "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
@@ -3925,6 +4333,40 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/events.json",
+      "cache": "short",
+      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "id": "subnet-events",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
@@ -3993,7 +4435,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/events.json",
       "cache": "short",
-      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
       "id": "account-events",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/events",
@@ -4021,6 +4463,149 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/history.json",
+      "cache": "short",
+      "description": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+      "id": "account-history",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. ?limit (<=1000) / ?offset.",
+      "id": "account-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/transfers.json",
+      "cache": "short",
+      "description": "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset.",
+      "id": "account-transfers",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/transfers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "all",
+              "sent",
+              "received"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/counterparties.json",
+      "cache": "short",
+      "description": "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+      "id": "account-counterparties",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/counterparties",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
         }
       ]
     },
@@ -4035,6 +4620,513 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/balance.json",
+      "cache": "short",
+      "description": "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
+      "id": "account-balance",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/balance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/blocks.json",
+      "cache": "short",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+      "id": "blocks-feed",
+      "method": "GET",
+      "path": "/api/v1/blocks",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "author",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "spec_version",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_extrinsics",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "min_events",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}.json",
+      "cache": "short",
+      "description": "Fetch per-block detail by numeric block_number or 0x block_hash. Computed live from the first-party blocks D1 tier (#1345); 200 with block:null when cold/unknown.",
+      "id": "block-detail",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+      "id": "block-extrinsics",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/events.json",
+      "cache": "short",
+      "description": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+      "id": "block-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain-events.json",
+      "cache": "short",
+      "description": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+      "id": "chain-events-feed",
+      "method": "GET",
+      "path": "/api/v1/chain-events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "pallet",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "name": "method",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "extrinsic",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "before",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain-events/stats.json",
+      "cache": "short",
+      "description": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+      "id": "chain-events-stats",
+      "method": "GET",
+      "path": "/api/v1/chain-events/stats",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "blocks",
+          "schema": {
+            "maximum": 5000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/chain-events.json",
+      "cache": "short",
+      "description": "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+      "id": "block-chain-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/chain-events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics.json",
+      "cache": "short",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+      "id": "extrinsics-feed",
+      "method": "GET",
+      "path": "/api/v1/extrinsics",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "signer",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "call_function",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "success",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "from",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "to",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/extrinsics/{hash}.json",
+      "cache": "short",
+      "description": "Fetch per-extrinsic detail by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id (the guaranteed-present identifier, since the hash is best-effort/nullable). Computed live from the first-party extrinsics D1 tier (#1345/#1848); 200 with extrinsic:null when cold/unknown/malformed.",
+      "id": "extrinsic-detail",
+      "method": "GET",
+      "path": "/api/v1/extrinsics/{hash}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/activity.json",
+      "cache": "short",
+      "description": "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
+      "id": "chain-activity",
+      "method": "GET",
+      "path": "/api/v1/chain/activity",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/calls.json",
+      "cache": "short",
+      "description": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+      "id": "chain-calls",
+      "method": "GET",
+      "path": "/api/v1/chain/calls",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "group_by",
+          "schema": {
+            "enum": [
+              "module",
+              "module_function"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/signers.json",
+      "cache": "short",
+      "description": "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+      "id": "chain-signers",
+      "method": "GET",
+      "path": "/api/v1/chain/signers",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/fees.json",
+      "cache": "short",
+      "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+      "id": "chain-fees",
+      "method": "GET",
+      "path": "/api/v1/chain/fees",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "call_module",
+          "schema": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",
@@ -4062,7 +5154,7 @@
     {
       "artifact_path": "/metagraph/registry/leaderboards.json",
       "cache": "standard",
-      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
+      "description": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
       "id": "registry-leaderboards",
       "method": "GET",
       "path": "/api/v1/registry/leaderboards",
@@ -4079,6 +5171,7 @@
               "most-complete",
               "most-enriched",
               "fastest-growing",
+              "most-reliable",
               "open-slots",
               "cheapest-registration",
               "highest-emission",
@@ -4093,6 +5186,33 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/compare.json",
+      "cache": "standard",
+      "description": "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
+      "id": "compare",
+      "method": "GET",
+      "path": "/api/v1/compare",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "netuids",
+          "schema": {
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "dimensions",
+          "schema": {
+            "type": "string"
           }
         }
       ]
@@ -4184,6 +5304,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4196,6 +5317,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4246,6 +5368,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4258,6 +5381,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4320,6 +5444,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4332,6 +5457,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4467,6 +5593,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4485,6 +5612,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4561,6 +5689,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4573,6 +5702,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4692,6 +5822,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4709,6 +5840,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4806,6 +5938,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4818,6 +5951,71 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/search-index.json",
+      "cache": "standard",
+      "description": "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
+      "id": "search-index",
+      "method": "GET",
+      "path": "/api/v1/search-index",
+      "public": true,
+      "query_collection": "documents",
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "q",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "kind",
+              "netuid",
+              "slug",
+              "title"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [

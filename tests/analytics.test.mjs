@@ -126,6 +126,35 @@ describe("formatIncidents", () => {
     assert.equal(out.surfaces[0].incident_count, 2);
     assert.equal(out.surfaces[0].incidents.length, 2);
   });
+  test("caps incidents per surface independently (regression: global cap starvation)", () => {
+    const t = 1_000_000_000_000;
+    const out = formatIncidents({
+      netuid: 1,
+      slaRows: [
+        { surface_id: "a", total: 10, ok_count: 5 },
+        { surface_id: "z", total: 10, ok_count: 5 },
+      ],
+      incidentRows: [
+        ...Array.from({ length: 3 }, (_, i) => ({
+          surface_id: "a",
+          started_at: t + i * 60_000,
+          ended_at: t + i * 60_000 + 1_000,
+          failed_samples: 1,
+        })),
+        ...Array.from({ length: 2 }, (_, i) => ({
+          surface_id: "z",
+          started_at: t + 100_000 + i * 60_000,
+          ended_at: t + 100_000 + i * 60_000 + 1_000,
+          failed_samples: 1,
+        })),
+      ],
+      maxIncidents: 2,
+    });
+    const a = out.surfaces.find((surface) => surface.surface_id === "a");
+    const z = out.surfaces.find((surface) => surface.surface_id === "z");
+    assert.equal(a.incident_count, 2);
+    assert.equal(z.incident_count, 2);
+  });
 });
 
 describe("formatLeaderboards", () => {
@@ -168,6 +197,30 @@ describe("formatLeaderboards", () => {
       { netuid: 2, delta: -2 },
       { netuid: 3, delta: 0 },
     ],
+    reliabilityRows: [
+      {
+        netuid: 1,
+        samples: 100,
+        ok_count: 100,
+        avg_latency_ms: 50,
+        latency_samples: 100,
+      },
+      {
+        netuid: 2,
+        samples: 100,
+        ok_count: 80,
+        avg_latency_ms: 50,
+        latency_samples: 100,
+      },
+      // Zero samples → scoreFromStats returns null → dropped from the board.
+      {
+        netuid: 3,
+        samples: 0,
+        ok_count: 0,
+        avg_latency_ms: null,
+        latency_samples: 0,
+      },
+    ],
   };
 
   test("assembles all boards when no board filter", () => {
@@ -184,6 +237,54 @@ describe("formatLeaderboards", () => {
     assert.equal(out.boards["most-enriched"][0].surface_count, 12);
     assert.equal(out.boards["fastest-growing"][0].netuid, 1); // +5 only positive
     assert.equal(out.boards["fastest-growing"].length, 1);
+    assert.equal(out.boards["most-reliable"][0].netuid, 1); // 100% uptime ranks first
+  });
+  test("most-reliable ranks by windowed score and drops zero-sample subnets", () => {
+    const out = formatLeaderboards({ ...inputs, board: "most-reliable" });
+    const board = out.boards["most-reliable"];
+    // netuid 3 has no samples in the window → null score → excluded.
+    assert.equal(board.length, 2);
+    assert.equal(board[0].netuid, 1); // 100% uptime outranks 80%
+    assert.equal(board[1].netuid, 2);
+    assert.ok(board[0].score >= board[1].score);
+    assert.equal(typeof board[0].grade, "string");
+    assert.equal(board[0].name, "One"); // subnet meta merged in
+  });
+  test("most-reliable breaks score ties by latency then netuid", () => {
+    const out = formatLeaderboards({
+      ...inputs,
+      // All 100% uptime with latency <= the no-penalty threshold → identical
+      // score, so the tiebreakers decide: lower latency first, then lower netuid.
+      reliabilityRows: [
+        {
+          netuid: 7,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 300,
+          latency_samples: 100,
+        },
+        {
+          netuid: 4,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+          latency_samples: 100,
+        },
+        {
+          netuid: 9,
+          samples: 100,
+          ok_count: 100,
+          avg_latency_ms: 100,
+          latency_samples: 100,
+        },
+      ],
+      board: "most-reliable",
+    });
+    // 4 and 9 (latency 100) outrank 7 (latency 300); 4 before 9 on netuid.
+    assert.deepEqual(
+      out.boards["most-reliable"].map((e) => e.netuid),
+      [4, 9, 7],
+    );
   });
   test("most-enriched excludes zero-surface subnets", () => {
     const out = formatLeaderboards({
@@ -993,9 +1094,10 @@ describe("analytics routes (fake D1 with data)", () => {
       queries[1].sql,
       /SUM\(CASE WHEN ok = 1 OR gap IS NULL OR gap > \?/,
     );
-    assert.match(queries[1].sql, /FROM grouped\n {7}WHERE ok = 0/);
+    assert.match(queries[1].sql, /incidents AS \(/);
+    assert.match(queries[1].sql, /FROM grouped\n {9}WHERE ok = 0/);
   });
-  test("incidents SQL uses a hard incident row cap", async () => {
+  test("incidents SQL caps rows per surface_key", async () => {
     const queries = [];
     const { status } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents",
@@ -1005,7 +1107,8 @@ describe("analytics routes (fake D1 with data)", () => {
     const incidentQuery = queries.find((query) =>
       query.sql.includes("WITH checks"),
     );
-    assert.ok(incidentQuery.sql.includes("LIMIT ?"));
+    assert.ok(incidentQuery.sql.includes("ROW_NUMBER()"));
+    assert.ok(incidentQuery.sql.includes("WHERE rn <= ?"));
     assert.equal(incidentQuery.params.at(-1), 1000);
     // Single-probe blips are excluded: an incident needs >= 2 consecutive fails.
     assert.ok(incidentQuery.sql.includes("HAVING COUNT(*) >= ?"));
@@ -1200,5 +1303,48 @@ describe("hourly cron writes a daily snapshot", () => {
     const result = await handleScheduled({ cron: "0 * * * *" }, env, {});
     assert.equal(result.pruned, true);
     assert.ok(captured[0] > 0, "snapshot batch should write rows");
+  });
+});
+
+describe("d1All graceful degradation (#1715)", () => {
+  test("a D1 read failure degrades to an empty response and is logged, not silent", async () => {
+    // A throwing D1 read used to be swallowed to [] with no signal (this is what
+    // dark-served the uptime tier for days). The route must still degrade
+    // gracefully (200 + empty), but the error must now be surfaced.
+    const throwingDb = {
+      prepare: () => ({
+        bind: () => ({
+          async all() {
+            throw new Error("D1 read failed");
+          },
+        }),
+      }),
+    };
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: throwingDb,
+    };
+    const errors = [];
+    const originalError = console.error;
+    console.error = (...args) => errors.push(args.map(String).join(" "));
+    try {
+      const res = await handleRequest(
+        new Request("https://api.metagraph.sh/api/v1/rpc/usage"),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.ok, true);
+      // d1All caught the throw → [] fallback → empty-but-valid usage envelope.
+      assert.equal(body.data.summary.total_requests, 0);
+      assert.deepEqual(body.data.endpoints, []);
+    } finally {
+      console.error = originalError;
+    }
+    assert.ok(
+      errors.some((line) => line.includes("[d1All]")),
+      "d1All should log the swallowed read failure",
+    );
   });
 });

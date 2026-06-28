@@ -152,6 +152,21 @@ test("loadStagedEvents drops rows lacking the (block, index) key", async () => {
   assert.deepEqual(m.deleted, ["events/account-events-pending.json"]);
 });
 
+test("loadStagedEvents drops rows with negative PK components", async () => {
+  const valid = eventRow(1000, 0);
+  const m = mockEnv({
+    rows: signedEventEnvelope([
+      { ...valid, block_number: -1 },
+      { ...valid, event_index: -2 },
+      { ...valid, event_index: 2 },
+    ]),
+  });
+  const r = await loadStagedEvents(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.rows, 1);
+  assert.deepEqual(m.batches, [1]);
+});
+
 test("loadStagedEvents drops rows missing required insert fields", async () => {
   const valid = eventRow(1000, 0);
   const m = mockEnv({

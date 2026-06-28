@@ -40,7 +40,7 @@
       "uniqueItems": true
     },
     "docs_url": {
-      "type": "string",
+      "type": ["string", "null"],
       "format": "uri"
     },
     "source_repo": {
@@ -206,6 +206,29 @@
         "verification": {
           "$ref": "#/$defs/verification"
         },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state"],
+          "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY — machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
+          "properties": {
+            "state": {
+              "enum": ["community-submitted", "maintainer-reviewed", "rejected"]
+            },
+            "submitted_by": {
+              "type": "string"
+            },
+            "submitted_at": {
+              "type": "string"
+            },
+            "confidence": {
+              "enum": ["low", "medium", "high"]
+            },
+            "review_notes": {
+              "type": "string"
+            }
+          }
+        },
         "quality_signals": {
           "type": "object",
           "additionalProperties": true
@@ -323,6 +346,7 @@
           "enum": [
             "native",
             "candidate-discovered",
+            "community-seeded",
             "machine-verified",
             "maintainer-reviewed",
             "adapter-backed"

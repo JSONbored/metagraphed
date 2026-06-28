@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
@@ -10,8 +10,45 @@ import {
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
-const { registryItems, incidentItems, jsonFeed, rssFeed, atomFeed, escapeXml } =
-  __test;
+let originalCaches;
+beforeEach(() => {
+  originalCaches = globalThis.caches;
+});
+
+afterEach(() => {
+  if (originalCaches === undefined) {
+    delete globalThis.caches;
+  } else {
+    globalThis.caches = originalCaches;
+  }
+});
+
+function installMockCache() {
+  const store = new Map();
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        const cached = store.get(request.url);
+        return cached ? cached.clone() : undefined;
+      },
+      async put(request, response) {
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+}
+
+const {
+  registryItems,
+  incidentItems,
+  jsonFeed,
+  rssFeed,
+  atomFeed,
+  escapeXml,
+  filterByTag,
+  filterSince,
+  parseSinceParam,
+} = __test;
 
 const CHANGELOG = {
   generated_at: "2026-06-15T00:00:00.000Z",
@@ -69,20 +106,36 @@ function makeReadArtifact(fixtures) {
     );
 }
 
-async function feed(pathname, { accept, deps, method = "GET" } = {}) {
+async function feed(
+  pathname,
+  { accept, deps, method = "GET", ifNoneMatch } = {},
+) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
-  const request = new Request(url, {
-    method,
-    headers: accept ? { accept } : {},
+  const headers = {};
+  if (accept) headers.accept = accept;
+  if (ifNoneMatch) headers["if-none-match"] = ifNoneMatch;
+  const request = new Request(url, { method, headers });
+  const defaultReadArtifact = makeReadArtifact({
+    "/metagraph/changelog.json": CHANGELOG,
+    "/metagraph/incidents.json": INCIDENTS,
+    "/metagraph/health/incidents/7.json": INCIDENTS,
   });
-  const readArtifact =
-    deps ||
-    makeReadArtifact({
-      "/metagraph/changelog.json": CHANGELOG,
-      "/metagraph/incidents.json": INCIDENTS,
-      "/metagraph/health/incidents/7.json": INCIDENTS,
-    });
-  const res = await handleFeedRequest(request, {}, url, { readArtifact });
+  let handlerDeps;
+  if (typeof deps === "function") {
+    handlerDeps = {
+      readArtifact: deps,
+      loadLiveIncidents: async (env) => {
+        const result = await deps(env, "/metagraph/incidents.json");
+        return result?.ok ? result.data : null;
+      },
+    };
+  } else {
+    handlerDeps = {
+      readArtifact: deps?.readArtifact ?? defaultReadArtifact,
+      loadLiveIncidents: deps?.loadLiveIncidents ?? (async () => INCIDENTS),
+    };
+  }
+  const res = await handleFeedRequest(request, {}, url, handlerDeps);
   return { res, text: await res.text() };
 }
 
@@ -216,6 +269,138 @@ describe("feeds — item builders", () => {
   });
 });
 
+describe("feeds — filterByTag", () => {
+  const items = [
+    { id: "a", tags: ["registry", "subnet", "added"] },
+    { id: "b", tags: ["registry", "coverage"] },
+    { id: "c", tags: ["incident", "sn7", "ongoing"] },
+  ];
+
+  test("a null/empty tag is a no-op (returns the input)", () => {
+    assert.equal(filterByTag(items, null), items);
+    assert.equal(filterByTag(items, ""), items);
+    assert.equal(filterByTag(items, undefined), items);
+  });
+
+  test("keeps only items carrying the tag", () => {
+    assert.deepEqual(
+      filterByTag(items, "incident").map((i) => i.id),
+      ["c"],
+    );
+    assert.deepEqual(
+      filterByTag(items, "registry").map((i) => i.id),
+      ["a", "b"],
+    );
+  });
+
+  test("an unknown tag yields an empty list", () => {
+    assert.deepEqual(filterByTag(items, "nope"), []);
+  });
+
+  test("an item with no tags array is safely skipped", () => {
+    assert.deepEqual(filterByTag([{ id: "x" }], "incident"), []);
+  });
+});
+
+describe("feeds — parseSinceParam", () => {
+  test("accepts strict ISO dates and date-times", () => {
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01")).toISOString(),
+      "2026-06-01T00:00:00.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03Z")).toISOString(),
+      "2026-06-01T01:02:03.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03.123+02:30")).toISOString(),
+      "2026-05-31T22:32:03.123Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03-02:30")).toISOString(),
+      "2026-06-01T03:32:03.000Z",
+    );
+  });
+
+  test("rejects Date.parse-permissive malformed or non-ISO values", () => {
+    for (const value of [
+      "1",
+      "2026-02-31",
+      "2026-06-01T24:00:00Z",
+      "2026-06-01T00:60:00Z",
+      "2026-06-01T00:00:60Z",
+      "2026-06-01T00:00:00+24:00",
+      "2026-06-01T00:00:00+02:60",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+      "2026-06-01T00:00:00",
+    ]) {
+      assert.ok(Number.isNaN(parseSinceParam(value)), value);
+    }
+  });
+});
+
+describe("feeds — filterSince", () => {
+  const items = [
+    { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
+    { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
+    { id: "bad", timestamp: "not-a-date" },
+  ];
+
+  test("a null bound is a no-op (returns the input)", () => {
+    assert.equal(filterSince(items, null), items);
+  });
+
+  test("keeps items at or after the bound; drops unparseable timestamps", () => {
+    const kept = filterSince(items, Date.parse("2026-06-15T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+
+  test("is inclusive of the exact bound", () => {
+    const kept = filterSince(items, Date.parse("2026-06-20T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+});
+
+describe("feeds — ?since= filter", () => {
+  test("a future since yields an empty but valid feed (200)", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2030-01-01",
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("a past since keeps items and composes with ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2000-01-01&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.ok(items.length > 0);
+    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+  });
+
+  test("a malformed since is rejected with 400", async () => {
+    for (const value of [
+      "notadate",
+      "1",
+      "2026-02-31",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+    ]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?since=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
+  });
+});
+
 describe("feeds — serializers", () => {
   const meta = {
     title: "t",
@@ -337,14 +522,197 @@ describe("feeds — handleFeedRequest", () => {
   });
 
   test("a feed with no underlying data still serializes validly (empty)", async () => {
-    const empty = makeReadArtifact({});
     const { res, text } = await feed("/api/v1/feeds/incidents", {
-      deps: empty,
+      deps: {
+        readArtifact: makeReadArtifact({}),
+        loadLiveIncidents: async () => null,
+      },
     });
     assert.equal(res.status, 200);
     const parsed = JSON.parse(text);
     assert.equal(parsed.items.length, 0);
     assert.ok(parsed.title && parsed.feed_url);
+  });
+
+  test("incidents feed reads the live D1 ledger, not a static artifact", async () => {
+    let liveCalled = false;
+    const { res, text } = await feed("/api/v1/feeds/incidents", {
+      deps: {
+        readArtifact: makeReadArtifact({
+          "/metagraph/changelog.json": CHANGELOG,
+        }),
+        loadLiveIncidents: async () => {
+          liveCalled = true;
+          return INCIDENTS;
+        },
+      },
+    });
+    assert.ok(liveCalled);
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.items.length, 2);
+  });
+
+  test("incidents feed returns empty when loadLiveIncidents throws", async () => {
+    const { res, text } = await feed("/api/v1/feeds/incidents", {
+      deps: {
+        readArtifact: makeReadArtifact({}),
+        loadLiveIncidents: async () => {
+          throw new Error("D1 unavailable");
+        },
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(text).items.length, 0);
+  });
+
+  test("incidents feed falls back to static artifact when loadLiveIncidents is absent", async () => {
+    const url = new URL("https://api.metagraph.sh/api/v1/feeds/incidents");
+    const res = await handleFeedRequest(new Request(url), {}, url, {
+      readArtifact: makeReadArtifact({
+        "/metagraph/incidents.json": INCIDENTS,
+      }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(await res.text()).items.length, 2);
+  });
+
+  test("?tag= narrows the registry feed to matching items", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry?tag=coverage");
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.items.length > 0);
+    assert.ok(parsed.items.every((i) => i.id.startsWith("registry:coverage")));
+  });
+
+  test("?tag= on a per-subnet feed keeps only that tag across both sources", async () => {
+    const { text } = await feed("/api/v1/feeds/subnets/7?tag=incident");
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.items.length > 0);
+    assert.ok(parsed.items.every((i) => i.id.startsWith("incident:")));
+  });
+
+  test("an unknown ?tag= yields a valid but empty feed", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry?tag=does-not-exist",
+    );
+    assert.equal(res.status, 200);
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.items.length, 0);
+    assert.ok(parsed.title && parsed.feed_url);
+  });
+
+  test("no ?tag= returns the full feed (filter is a no-op)", async () => {
+    const all = await feed("/api/v1/feeds/registry");
+    const tagged = await feed("/api/v1/feeds/registry?tag=registry");
+    const allItems = JSON.parse(all.text).items.length;
+    const taggedItems = JSON.parse(tagged.text).items.length;
+    // Every registry item carries the "registry" tag, so the two match.
+    assert.equal(taggedItems, allItems);
+  });
+});
+
+describe("feeds — ETag + conditional requests", () => {
+  // Every feed kind × format emits a weak ETag and honors a matching
+  // If-None-Match with a bodyless 304 carrying the same validators.
+  for (const kind of ["registry", "incidents", "subnets/7"]) {
+    for (const ext of ["", ".rss", ".atom", ".json"]) {
+      test(`${kind}${ext} emits an ETag and 304s on a matching If-None-Match`, async () => {
+        const path = `/api/v1/feeds/${kind}${ext}`;
+        const first = await feed(path);
+        assert.equal(first.res.status, 200);
+        const etag = first.res.headers.get("etag");
+        assert.match(etag, /^W\/"[0-9a-f]+"$/, "a weak ETag is emitted");
+
+        const second = await feed(path, { ifNoneMatch: etag });
+        assert.equal(second.res.status, 304);
+        assert.equal(second.text, "", "a 304 carries no body");
+        assert.equal(
+          second.res.headers.get("etag"),
+          etag,
+          "the 304 echoes the validator",
+        );
+        assert.match(
+          second.res.headers.get("cache-control"),
+          /max-age=600/,
+          "the 304 carries the same cache-control",
+        );
+      });
+    }
+  }
+
+  test("the ETag is stable across identical requests", async () => {
+    const a = await feed("/api/v1/feeds/registry");
+    const b = await feed("/api/v1/feeds/registry");
+    assert.equal(a.res.headers.get("etag"), b.res.headers.get("etag"));
+  });
+
+  test("the ETag differs across formats and feed kinds", async () => {
+    const rss = await feed("/api/v1/feeds/registry.rss");
+    const atom = await feed("/api/v1/feeds/registry.atom");
+    const incidents = await feed("/api/v1/feeds/incidents.rss");
+    assert.notEqual(
+      rss.res.headers.get("etag"),
+      atom.res.headers.get("etag"),
+      "rss and atom render differently → different ETag",
+    );
+    assert.notEqual(
+      rss.res.headers.get("etag"),
+      incidents.res.headers.get("etag"),
+      "different feed kinds → different ETag",
+    );
+  });
+
+  test("a stale If-None-Match still gets a full 200 body", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry", {
+      ifNoneMatch: 'W/"stale"',
+    });
+    assert.equal(res.status, 200);
+    assert.ok(text.length > 0);
+    assert.ok(res.headers.get("etag"));
+  });
+
+  test("a tag-filtered feed has its own ETag and 304s on a match", async () => {
+    const path = "/api/v1/feeds/registry?tag=coverage";
+    const unfiltered = await feed("/api/v1/feeds/registry");
+    const filtered = await feed(path);
+    assert.notEqual(
+      filtered.res.headers.get("etag"),
+      unfiltered.res.headers.get("etag"),
+      "the tag filter changes the body → a distinct ETag",
+    );
+    const revalidate = await feed(path, {
+      ifNoneMatch: filtered.res.headers.get("etag"),
+    });
+    assert.equal(revalidate.res.status, 304);
+  });
+
+  test("HEAD emits the ETag and honors a conditional 304", async () => {
+    const head = await feed("/api/v1/feeds/registry", { method: "HEAD" });
+    assert.equal(head.res.status, 200);
+    const etag = head.res.headers.get("etag");
+    assert.ok(etag);
+    const revalidate = await feed("/api/v1/feeds/registry", {
+      method: "HEAD",
+      ifNoneMatch: etag,
+    });
+    assert.equal(revalidate.res.status, 304);
+    assert.equal(revalidate.text, "");
+  });
+
+  test("If-None-Match: * always 304s a present feed", async () => {
+    const { res } = await feed("/api/v1/feeds/registry", { ifNoneMatch: "*" });
+    assert.equal(res.status, 304);
+  });
+
+  test("weak/strong validators compare equal (RFC 7232 weak comparison)", async () => {
+    const { res } = await feed("/api/v1/feeds/registry");
+    const weak = res.headers.get("etag"); // W/"…"
+    const strong = weak.replace(/^W\//, ""); // "…"
+    const revalidate = await feed("/api/v1/feeds/registry", {
+      ifNoneMatch: strong,
+    });
+    assert.equal(revalidate.res.status, 304);
   });
 });
 
@@ -359,6 +727,172 @@ describe("feeds — Worker dispatch integration", () => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type"), /application\/rss\+xml/);
     assert.match(await res.text(), /<rss version="2\.0"/);
+  });
+
+  test("handleRequest caches live incidents feed aggregations at the edge", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      ctx,
+    );
+    assert.equal(first.status, 200);
+    assert.ok((await first.json()).items[0].id.startsWith("incident:"));
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    assert.equal(recentChecksQueries, 1);
+
+    const cached = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?cachebust=1",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(cached.status, 200);
+    assert.equal(recentChecksQueries, 1);
+
+    const head = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
+    assert.equal(recentChecksQueries, 1);
+
+    const conditionalHead = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(conditionalHead.status, 304);
+    assert.equal(await conditionalHead.text(), "");
+    assert.equal(recentChecksQueries, 1);
+  });
+
+  test("handleRequest keys edge-cached feeds by since", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+
+    const future = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=2099-01-01",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(future.status, 200);
+    assert.deepEqual((await future.json()).items, []);
+    assert.equal(recentChecksQueries, 1);
+
+    const unfiltered = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      ctx,
+    );
+    assert.equal(unfiltered.status, 200);
+    assert.ok((await unfiltered.json()).items.length > 0);
+    assert.equal(recentChecksQueries, 2);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=notadate",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_since",
+    );
   });
 
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {

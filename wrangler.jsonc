@@ -107,6 +107,10 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Postgres-backed serving (ADR 0013): the dedicated data Worker (wrangler.data.jsonc)
+  // owns the postgres.js driver + Hyperdrive binding; this Worker routes the
+  // chain_events / deep-history paths to it, keeping this bundle lean.
+  "services": [{ "binding": "DATA_API", "service": "metagraphed-data-api" }],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
   // (served live); the hourly trigger prunes the D1 time-series. 15 min (96
   // checks/day/surface) is ample for a registry's uptime + incident signal and
@@ -157,6 +161,18 @@
       "namespace_id": "1002",
       "simple": {
         "limit": 20,
+        "period": 60,
+      },
+    },
+    // Per-client abuse control for Postgres-backed data API routes. 60
+    // requests / 60s per client IP, paired with strict query validation and DB
+    // statement timeouts in the data Worker. Skipped when the binding is absent
+    // (local dev/CI).
+    {
+      "name": "DATA_RATE_LIMITER",
+      "namespace_id": "1004",
+      "simple": {
+        "limit": 60,
         "period": 60,
       },
     },

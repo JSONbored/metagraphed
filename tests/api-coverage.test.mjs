@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
@@ -8,6 +10,9 @@ import {
   weightedPickEndpoint,
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
+import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
+import * as workerConfig from "../workers/config.mjs";
 
 const req = (path, init) =>
   new Request(`https://api.metagraph.sh${path}`, init);
@@ -235,6 +240,9 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 503);
     assert.equal(res.headers.get("x-metagraph-health"), "degraded");
+    // A transient degraded 503 must not be edge-cached (it would pin the outage
+    // for up to max-age + stale-while-revalidate after recovery).
+    assert.equal(res.headers.get("cache-control"), "no-store");
     const body = await res.json();
     assert.equal(body.status, "degraded");
     assert.equal(body.freshness.stale, true);
@@ -250,6 +258,8 @@ describe("/health readiness", () => {
     const res = await handleRequest(req("/health"), env, {});
     assert.equal(res.status, 200);
     assert.equal((await res.json()).status, "ok");
+    // The healthy path stays edge-cacheable (short profile) for load relief.
+    assert.match(res.headers.get("cache-control"), /max-age=/);
   });
 
   test("reports chain-event index freshness (#1361)", async () => {
@@ -736,6 +746,166 @@ describe("invalid query handling", () => {
     const names = (await res.json()).data.subnets.map((s) => String(s.name));
     const sorted = [...names].sort((a, b) => b.localeCompare(a));
     assert.deepEqual(names, sorted);
+  });
+});
+
+// --- RFC 8288 pagination Link header (#1686) ----------------------------------
+// /api/v1/subnets is the only end-to-end list fixture; the header is built once
+// for every cursor-paginated collection in workers/list-query.mjs, so proving it
+// here proves the wiring for all of them. The fixture sorts to a stable netuid
+// run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
+describe("pagination Link header", () => {
+  const parseLink = (value) => {
+    const links = {};
+    for (const part of String(value || "").split(",")) {
+      const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
+      if (match) {
+        links[match[2]] = new URL(match[1]);
+      }
+    }
+    return links;
+  };
+  const page = async (querySuffix, init) => {
+    const res = await handleRequest(
+      req(`/api/v1/subnets?sort=netuid&${querySuffix}`, init),
+      createLocalArtifactEnv(),
+      {},
+    );
+    return { res, links: parseLink(res.headers.get("link")) };
+  };
+
+  test("first page advertises next + last, never prev/first", async () => {
+    const { res, links } = await page("limit=50&cursor=0");
+    assert.equal(res.status, 200);
+    assert.deepEqual(Object.keys(links).sort(), ["last", "next"]);
+    assert.equal(links.next.origin, "https://api.metagraph.sh");
+    assert.equal(links.next.searchParams.get("cursor"), "50");
+    assert.equal(links.next.searchParams.get("limit"), "50");
+    assert.equal(links.next.searchParams.get("sort"), "netuid");
+    assert.equal(links.last.searchParams.get("cursor"), "100");
+    // The Link header must be readable cross-origin (exposed via CORS), or a
+    // browser link-follower could not walk the pages.
+    assert.match(res.headers.get("access-control-expose-headers"), /\blink\b/);
+  });
+
+  test("page links drop ignored/tracker query params end-to-end (#1932 cache-key safety)", async () => {
+    // Drive the canonicalization through the real Worker: tracker/attacker params
+    // the edge cache key ignores must not ride along in the cacheable Link header,
+    // while the body-affecting sort/cursor/limit are preserved.
+    const { res, links } = await page(
+      "limit=50&cursor=0&utm_campaign=evil&token=SECRET123",
+    );
+    assert.equal(res.status, 200);
+    assert.equal(links.next.searchParams.has("utm_campaign"), false);
+    assert.equal(links.next.searchParams.has("token"), false);
+    assert.equal(links.next.searchParams.get("sort"), "netuid");
+    assert.equal(links.next.searchParams.get("cursor"), "50");
+    assert.equal(links.next.searchParams.get("limit"), "50");
+  });
+
+  test("middle page advertises all four relations", async () => {
+    const { links } = await page("limit=50&cursor=50");
+    assert.deepEqual(Object.keys(links).sort(), [
+      "first",
+      "last",
+      "next",
+      "prev",
+    ]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "0");
+    assert.equal(links.next.searchParams.get("cursor"), "100");
+    assert.equal(links.last.searchParams.get("cursor"), "100");
+  });
+
+  test("last page advertises first + prev, never next/last", async () => {
+    const { links } = await page("limit=50&cursor=100");
+    assert.deepEqual(Object.keys(links).sort(), ["first", "prev"]);
+    assert.equal(links.first.searchParams.get("cursor"), "0");
+    assert.equal(links.prev.searchParams.get("cursor"), "50");
+  });
+
+  test("last targets the final page, not past it, when total divides evenly", async () => {
+    // 129 subnets / limit 43 = exactly 3 pages, so `last` must be 86 (page 3
+    // start), not 129 — guarding the `(total - 1)` correction in the offset.
+    const { links } = await page("limit=43&cursor=0");
+    assert.equal(links.last.searchParams.get("cursor"), "86");
+  });
+
+  test("empty result set carries no Link header", async () => {
+    const { res } = await page("netuid=999999&limit=50");
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).meta.pagination.total, 0);
+    assert.equal(res.headers.get("link"), null);
+  });
+
+  test("an unpaged request (no limit/cursor) carries no Link header", async () => {
+    const { res } = await page("order=asc");
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("link"), null);
+  });
+
+  test("a HEAD request still carries the walkable Link header", async () => {
+    const { res, links } = await page("limit=50&cursor=0", { method: "HEAD" });
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "");
+    assert.equal(links.next.searchParams.get("cursor"), "50");
+  });
+
+  test("a 304 conditional response preserves the Link header", async () => {
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/api/v1/subnets?sort=netuid&limit=50&cursor=0"),
+      env,
+      {},
+    );
+    const res = await handleRequest(
+      req("/api/v1/subnets?sort=netuid&limit=50&cursor=0", {
+        headers: { "if-none-match": first.headers.get("etag") },
+      }),
+      env,
+      {},
+    );
+    assert.equal(res.status, 304);
+    assert.match(res.headers.get("link"), /rel="next"/);
+  });
+});
+
+// --- slim search index route --------------------------------------------------
+describe("/api/v1/search-index slim route", () => {
+  test("serves the slim index without per-document token blobs", async () => {
+    const res = await handleRequest(
+      req("/api/v1/search-index?limit=5"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.ok(body.data.documents.length > 0);
+    assert.equal(
+      body.data.documents.every((document) => !("tokens" in document)),
+      true,
+      "slim route documents must omit the heavy tokens field",
+    );
+  });
+
+  test("supports field projection and keyword search", async () => {
+    const res = await handleRequest(
+      req("/api/v1/search-index?fields=id,title,type&limit=3"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.meta.projection.fields, ["id", "title", "type"]);
+    assert.equal(
+      body.data.documents.every((document) =>
+        Object.keys(document).every((key) =>
+          ["id", "title", "type"].includes(key),
+        ),
+      ),
+      true,
+    );
   });
 });
 
@@ -1279,6 +1449,19 @@ describe("weightedPickEndpoint", () => {
     assert.equal(picked.id, "b");
   });
 
+  test("returns the final endpoint when randomFn lands exactly on the total (cursor never < 0)", () => {
+    // randomFn() === 1 → cursor = total; subtracting each weight leaves cursor at
+    // exactly 0 after the last endpoint, never < 0, so the loop never returns and
+    // the post-loop fallthrough (return endpoints[len-1]) is taken.
+    const endpoints = [
+      { id: "a", score: 1 },
+      { id: "b", score: 1 },
+      { id: "c", score: 1 },
+    ];
+    const picked = weightedPickEndpoint(endpoints, () => 1);
+    assert.equal(picked.id, "c");
+  });
+
   test("single-endpoint shortcut", () => {
     assert.equal(weightedPickEndpoint([{ id: "solo" }]).id, "solo");
   });
@@ -1389,4 +1572,155 @@ describe("semantic-search HEAD probe", () => {
     assert.equal(res.headers.get("cache-control"), "no-store");
     assert.equal(await res.text(), "");
   });
+});
+
+// --- Access-Control-Expose-Headers --------------------------------------------
+// Cross-origin scripts can only read the Fetch safelist unless the server names
+// the rest in Access-Control-Expose-Headers. Assert the canonical list rides on
+// each CORS-open surface: the standard builder (list), the error path (ask), and
+// the hand-rolled SSE headers. RPC and MCP are covered in their own suites.
+describe("Access-Control-Expose-Headers", () => {
+  const expose = (res) => res.headers.get("access-control-expose-headers");
+
+  test("list endpoint exposes the canonical custom-header list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the ask error path exposes the list", async () => {
+    // AI is disabled locally, so this is the 503 path through the shared builder.
+    const res = await handleRequest(
+      req("/api/v1/ask", { method: "POST", body: "{}" }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+
+  test("the SSE event surface exposes the list", async () => {
+    const res = await handleRequest(
+      req("/api/v1/events"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.match(res.headers.get("content-type"), /text\/event-stream/);
+    assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
+  });
+});
+
+// --- inverse contract coverage ------------------------------------------------
+// The FORWARD direction (every contract route is reachable + serves a 200) is
+// covered by validate-api.mjs + smoke-route-substitution. This is the INVERSE: a
+// /api/v1 path dispatched by workers/api.mjs that has NO matching API_ROUTES entry
+// in contracts.mjs is invisible to OpenAPI/types/SDK. That gap let the chain-events
+// routes ship dispatched-but-uncontracted; this guard fails CI on any new one.
+//
+// Two complementary checks: (A) every literal `=== "/api/v1/…"` dispatch in the
+// source either resolves to a contract route or is on the explicit non-contract
+// allowlist; (B) every config `*_PATH_PATTERN` anchoring /api/v1 backs at least one
+// contract route. A representative path for each contract route is built by
+// substituting the path placeholders with the same sample ids the live smoke uses.
+describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
+  const apiSource = readFileSync(
+    fileURLToPath(new URL("../workers/api.mjs", import.meta.url)),
+    "utf8",
+  );
+
+  // Paths workers/api.mjs dispatches that are intentionally NOT contract routes:
+  // POST/internal/special-protocol surfaces (no GET artifact envelope), the
+  // network-prefix rewrite, and the SSE/icon/feeds operational endpoints. Each is
+  // listed with the reason it is excluded from the OpenAPI contract.
+  const NON_CONTRACT_PATHS = new Set([
+    "/api/v1/ask", // grounded-RAG POST, degrades to 503; not a GET artifact
+    "/api/v1/events", // SSE change feed (text/event-stream)
+    "/api/v1/feeds/", // SSE/webhook feed prefix
+    "/api/v1/graphql", // GraphQL POST layer over the same artifacts
+    "/api/v1/icon", // image proxy (binary), not a JSON artifact
+    "/api/v1/search/semantic", // AI-gated semantic search, mainnet-only special
+    "/api/v1/testnet/subnets", // network-prefix rewrite, not its own route
+  ]);
+  const NON_CONTRACT_PREFIXES = [
+    "/api/v1/internal/", // secret-gated ingest write paths
+    "/api/v1/webhooks/", // subscription management (POST/DELETE/GET)
+  ];
+
+  function buildSamplePath(routePath) {
+    return routePath
+      .replace("{netuid}", "7")
+      .replace("{slug}", "allways")
+      .replace("{date}", "2026-06-24")
+      .replace("{uid}", "0")
+      .replace("{hash}", `0x${"0".repeat(64)}`)
+      .replace("{ref}", "0")
+      .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+  }
+
+  // One concrete sample pathname per contract route (placeholders substituted).
+  const contractSamplePaths = API_ROUTES.map((route) =>
+    buildSamplePath(route.path),
+  );
+
+  function pathIsContracted(pathname) {
+    return API_ROUTES.some((route) =>
+      compileRoutePattern(route.path).test(pathname),
+    );
+  }
+
+  // (A) Extract every literal `=== "/api/v1/…"` equality dispatch from the source.
+  const literalDispatchPaths = [
+    ...apiSource.matchAll(/===\s*"(\/api\/v1\/[^"]*)"/g),
+  ].map((match) => match[1]);
+
+  test("source has literal /api/v1 dispatches to assert over", () => {
+    // Guard the regex itself: if the dispatch style changes and this finds nothing,
+    // the per-path assertions below would vacuously pass.
+    assert.ok(
+      literalDispatchPaths.length >= 5,
+      `expected several literal /api/v1 dispatches, found ${literalDispatchPaths.length}`,
+    );
+  });
+
+  for (const dispatched of [...new Set(literalDispatchPaths)]) {
+    test(`dispatched literal ${dispatched} is contracted or allowlisted`, () => {
+      if (
+        NON_CONTRACT_PATHS.has(dispatched) ||
+        NON_CONTRACT_PREFIXES.some((prefix) => dispatched.startsWith(prefix))
+      ) {
+        return;
+      }
+      assert.ok(
+        pathIsContracted(dispatched),
+        `workers/api.mjs dispatches ${dispatched} but no API_ROUTES entry in src/contracts.mjs matches it — add a route() so it is visible to OpenAPI/types/SDK (or add it to NON_CONTRACT_PATHS with a reason if it is intentionally uncontracted).`,
+      );
+    });
+  }
+
+  // (B) Every config path-pattern that anchors /api/v1 must back a contract route.
+  const apiPathPatterns = Object.entries(workerConfig).filter(
+    ([name, value]) =>
+      name.endsWith("_PATH_PATTERN") &&
+      value instanceof RegExp &&
+      value.source.includes("\\/api\\/v1\\/"),
+  );
+
+  test("config exposes /api/v1 path patterns to assert over", () => {
+    assert.ok(
+      apiPathPatterns.length >= 10,
+      `expected the block-explorer/analytics path patterns, found ${apiPathPatterns.length}`,
+    );
+  });
+
+  for (const [name, pattern] of apiPathPatterns) {
+    test(`config ${name} backs a contract route`, () => {
+      assert.ok(
+        contractSamplePaths.some((sample) => pattern.test(sample)),
+        `workers/config.mjs ${name} dispatches a /api/v1 path that no API_ROUTES entry covers — add the matching route() in src/contracts.mjs.`,
+      );
+    });
+  }
 });
