@@ -76,7 +76,7 @@ function toIso(ms) {
 function toBlockNumber(value) {
   if (value == null) return null;
   const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+  return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 // One D1 account_events row → a clean API event object (#1347 consumes this).

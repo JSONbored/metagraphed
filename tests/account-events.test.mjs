@@ -381,13 +381,13 @@ test("account builders null invalid block heights and indices", () => {
   assert.equal(nullTransfers.transfers[0].block_number, null);
   assert.equal(nullTransfers.transfers[0].event_index, null);
 
-  // Fractional values are truncated toward zero, not rounded.
+  // Fractional values are non-integer and therefore treated as malformed (null).
   const fracTransfers = buildAccountTransfers(
     [{ block_number: 3.7, event_index: 1.9, hotkey: "5A", coldkey: "5B" }],
     "5A",
   );
-  assert.equal(fracTransfers.transfers[0].block_number, 3);
-  assert.equal(fracTransfers.transfers[0].event_index, 1);
+  assert.equal(fracTransfers.transfers[0].block_number, null);
+  assert.equal(fracTransfers.transfers[0].event_index, null);
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
