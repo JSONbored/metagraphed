@@ -333,6 +333,20 @@ async function loadSubnetEconomics(ctx, netuid) {
 // A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
 // upstream response surfaces as a clean tool error, never an exception.
 async function loadChainActivity(ctx, blocks) {
+  // Optional in previews/local runs; production binds this beside DATA_API so
+  // MCP calls pay the same data-tier rate limit as REST proxy calls.
+  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
+    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+      key: `data:${ctx.clientIp}`,
+    });
+    if (!success) {
+      throw toolError(
+        "data_rate_limited",
+        "Too many data API requests from this client; slow down.",
+      );
+    }
+  }
+
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
     throw toolError(

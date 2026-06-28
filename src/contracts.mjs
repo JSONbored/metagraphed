@@ -931,6 +931,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConcentrationHistoryArtifact",
   ),
   artifact(
+    "subnet-turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
+    "SubnetTurnoverArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -1719,6 +1725,22 @@ export const API_ROUTES = [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-turnover",
+    "GET",
+    "/api/v1/subnets/{netuid}/turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],

@@ -24,6 +24,8 @@ export const SAFE_RPC_METHODS = new Set([
 ]);
 // Read-only WebSocket subscriptions — WSS-ONLY (no HTTP equivalent). KEEP IN SYNC
 // with workers/config.mjs (tests/wss-lb-rpc-policy-sync.test.mjs guards drift).
+// Deliberately excludes persistent storage subscriptions, which can create
+// unbounded upstream watcher state for arbitrary keys.
 export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_subscribeNewHeads",
   "chain_subscribeNewHead",
@@ -34,8 +36,6 @@ export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_unsubscribeFinalisedHeads",
   "chain_subscribeAllHeads",
   "chain_unsubscribeAllHeads",
-  "state_subscribeStorage",
-  "state_unsubscribeStorage",
   "state_subscribeRuntimeVersion",
   "state_unsubscribeRuntimeVersion",
 ]);

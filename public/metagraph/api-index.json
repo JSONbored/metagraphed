@@ -380,6 +380,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-turnover",
+      "path": "/metagraph/subnets/{netuid}/turnover.json",
+      "schema_ref": "#/components/schemas/SubnetTurnoverArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -4249,6 +4256,32 @@
               "7d",
               "30d",
               "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/turnover.json",
+      "cache": "short",
+      "description": "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+      "id": "subnet-turnover",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/turnover",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
             ],
             "type": "string"
           }

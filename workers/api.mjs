@@ -68,6 +68,7 @@ import {
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   canonicalSubnetConcentrationHistoryCachePath,
+  handleSubnetTurnover,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -179,7 +180,7 @@ import {
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { handleFeedRequest } from "../src/feeds.mjs";
+import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
@@ -234,6 +235,7 @@ import {
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
+  SUBNET_TURNOVER_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -990,14 +992,40 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // method gate); `/api/*` is run_worker_first so these never fall through to
   // the static assets. Read-only, content-negotiated, edge-cached.
   if (url.pathname.startsWith("/api/v1/feeds/")) {
-    return handleFeedRequest(request, env, url, {
-      readArtifact,
-      errorResponse,
-      loadLiveIncidents: async (feedEnv) => {
-        const { data } = await loadGlobalIncidentsLedger(feedEnv);
-        return data;
-      },
-    });
+    const feedCacheParams = [
+      `format=${encodeURIComponent(
+        resolveFeedFormat(url.pathname, request.headers.get("accept")),
+      )}`,
+    ];
+    const tag = url.searchParams.get("tag");
+    if (tag != null) feedCacheParams.push(`tag=${encodeURIComponent(tag)}`);
+    const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
+    const feedRequest =
+      request.method === "HEAD"
+        ? new Request(request.url, { method: "GET", headers: request.headers })
+        : request;
+    const response = await withEdgeCache(
+      feedRequest,
+      ctx,
+      env,
+      "feeds",
+      () =>
+        handleFeedRequest(feedRequest, env, url, {
+          readArtifact,
+          errorResponse,
+          loadLiveIncidents: async (feedEnv) => {
+            const { data } = await loadGlobalIncidentsLedger(feedEnv);
+            return data;
+          },
+        }),
+      feedCachePath,
+    );
+    return request.method === "HEAD"
+      ? new Response(null, {
+          status: response.status,
+          headers: response.headers,
+        })
+      : response;
   }
 
   // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/
@@ -1213,6 +1241,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
           request,
           env,
           Number(concentrationMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
+    const turnoverMatch = SUBNET_TURNOVER_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (turnoverMatch) {
+      // Boundary-snapshot diff over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(request, ctx, env, "subnet-turnover", () =>
+        handleSubnetTurnover(
+          request,
+          env,
+          Number(turnoverMatch[1]),
           resolved.url,
         ),
       );
