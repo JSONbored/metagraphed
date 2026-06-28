@@ -246,6 +246,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+      "id": "economics-trends",
+      "path": "/metagraph/economics/trends.json",
+      "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
@@ -628,6 +637,33 @@
       "id": "block-events",
       "path": "/metagraph/blocks/{ref}/events.json",
       "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
+      "id": "chain-events-feed",
+      "path": "/metagraph/chain-events.json",
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
+      "id": "block-chain-events",
+      "path": "/metagraph/blocks/{ref}/chain-events.json",
+      "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats (no static file) and consumed by the get_chain_activity MCP tool.",
+      "id": "chain-events-stats",
+      "path": "/metagraph/chain-events/stats.json",
+      "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
       "storage_tier": "r2"
     },
     {

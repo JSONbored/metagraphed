@@ -769,6 +769,12 @@ export const PUBLIC_ARTIFACTS = [
     "EconomicsArtifact",
   ),
   artifact(
+    "economics-trends",
+    "/metagraph/economics/trends.json",
+    "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
+    "EconomicsTrendsArtifact",
+  ),
+  artifact(
     "registry-summary",
     "/metagraph/registry-summary.json",
     "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
@@ -1025,6 +1031,24 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/blocks/{ref}/events.json",
     "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
     "BlockEventsArtifact",
+  ),
+  artifact(
+    "chain-events-feed",
+    "/metagraph/chain-events.json",
+    "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
+    "ChainEventsFeedArtifact",
+  ),
+  artifact(
+    "block-chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
+    "BlockChainEventsArtifact",
+  ),
+  artifact(
+    "chain-events-stats",
+    "/metagraph/chain-events/stats.json",
+    "Chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats (no static file) and consumed by the get_chain_activity MCP tool.",
+    "ChainEventsStatsArtifact",
   ),
   artifact(
     "extrinsics-feed",
@@ -1428,10 +1452,26 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
+  ),
+  route(
+    "economics-trends",
+    "GET",
+    "/api/v1/economics/trends",
+    "/metagraph/economics/trends.json",
+    "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [],
   ),
   route(
     "registry-summary",
@@ -1921,6 +1961,51 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
+    [{ name: "ref", schema: { type: "string" } }],
+  ),
+  route(
+    "chain-events-feed",
+    "GET",
+    "/api/v1/chain-events",
+    "/metagraph/chain-events.json",
+    "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "pallet", schema: { type: "string", maxLength: 64 } },
+      { name: "method", schema: { type: "string", maxLength: 64 } },
+      { name: "block", schema: { type: "integer", minimum: 0 } },
+      { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
+      { name: "before", schema: { type: "integer", minimum: 0 } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-events-stats",
+    "GET",
+    "/api/v1/chain-events/stats",
+    "/metagraph/chain-events/stats.json",
+    "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+    "short",
+    ["chain", "analytics"],
+    [
+      {
+        name: "blocks",
+        schema: { type: "integer", minimum: 1, maximum: 5000 },
+      },
+    ],
+    [],
+  ),
+  route(
+    "block-chain-events",
+    "GET",
+    "/api/v1/blocks/{ref}/chain-events",
+    "/metagraph/blocks/{ref}/chain-events.json",
+    "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+    "short",
+    ["blocks", "chain", "analytics"],
+    [],
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -2635,10 +2720,14 @@ function listQuery(collection, options = {}) {
       },
       {
         name: "sort",
+        description:
+          "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
         schema: { type: "string", enum: config.sort_fields },
       },
       {
         name: "order",
+        description:
+          "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
         schema: { enum: ["asc", "desc"] },
       },
     ],

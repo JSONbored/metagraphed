@@ -191,6 +191,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "economics-trends",
+      "path": "/metagraph/economics/trends.json",
+      "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
       "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
@@ -488,6 +495,27 @@
       "id": "block-events",
       "path": "/metagraph/blocks/{ref}/events.json",
       "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-events-feed",
+      "path": "/metagraph/chain-events.json",
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "block-chain-events",
+      "path": "/metagraph/blocks/{ref}/chain-events.json",
+      "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "chain-events-stats",
+      "path": "/metagraph/chain-events/stats.json",
+      "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
       "storage_tier": "r2"
     },
     {
@@ -966,6 +994,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -987,6 +1016,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1117,6 +1147,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1135,6 +1166,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1266,6 +1298,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1279,6 +1312,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1354,6 +1388,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1367,6 +1402,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1502,6 +1538,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1520,6 +1557,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1647,6 +1685,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1665,6 +1704,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1763,6 +1803,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1778,6 +1819,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1868,6 +1910,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1883,6 +1926,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -1962,6 +2006,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -1974,6 +2019,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2114,6 +2160,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2132,6 +2179,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2245,6 +2293,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2260,6 +2309,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2273,7 +2323,7 @@
     {
       "artifact_path": "/metagraph/economics.json",
       "cache": "standard",
-      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
       "id": "economics",
       "method": "GET",
       "path": "/api/v1/economics",
@@ -2330,6 +2380,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2352,12 +2403,39 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
               "asc",
               "desc"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/economics/trends.json",
+      "cache": "short",
+      "description": "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+      "id": "economics-trends",
+      "method": "GET",
+      "path": "/api/v1/economics/trends",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -2465,6 +2543,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2477,6 +2556,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2557,6 +2637,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2570,6 +2651,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2645,6 +2727,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2661,6 +2744,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2728,6 +2812,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2744,6 +2829,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -2871,6 +2957,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -2893,6 +2980,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3027,6 +3115,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3044,6 +3133,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3245,6 +3335,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3271,6 +3362,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3405,6 +3497,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3418,6 +3511,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3650,6 +3744,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3671,6 +3766,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3737,6 +3833,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3756,6 +3853,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3872,6 +3970,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -3891,6 +3990,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -3999,6 +4099,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4018,6 +4119,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4628,6 +4730,95 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/chain-events.json",
+      "cache": "short",
+      "description": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+      "id": "chain-events-feed",
+      "method": "GET",
+      "path": "/api/v1/chain-events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "pallet",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "name": "method",
+          "schema": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        {
+          "name": "block",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "extrinsic",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "before",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain-events/stats.json",
+      "cache": "short",
+      "description": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+      "id": "chain-events-stats",
+      "method": "GET",
+      "path": "/api/v1/chain-events/stats",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "blocks",
+          "schema": {
+            "maximum": 5000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/{ref}/chain-events.json",
+      "cache": "short",
+      "description": "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+      "id": "block-chain-events",
+      "method": "GET",
+      "path": "/api/v1/blocks/{ref}/chain-events",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/extrinsics.json",
       "cache": "short",
       "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
@@ -5052,6 +5243,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5064,6 +5256,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5114,6 +5307,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5126,6 +5320,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5188,6 +5383,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5200,6 +5396,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5335,6 +5532,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5353,6 +5551,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5429,6 +5628,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5441,6 +5641,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5560,6 +5761,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5577,6 +5779,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5674,6 +5877,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5686,6 +5890,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [
@@ -5736,6 +5941,7 @@
           }
         },
         {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -5748,6 +5954,7 @@
           }
         },
         {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
           "schema": {
             "enum": [

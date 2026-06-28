@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
@@ -9,6 +11,8 @@ import {
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
+import * as workerConfig from "../workers/config.mjs";
 
 const req = (path, init) =>
   new Request(`https://api.metagraph.sh${path}`, init);
@@ -1607,4 +1611,116 @@ describe("Access-Control-Expose-Headers", () => {
     assert.match(res.headers.get("content-type"), /text\/event-stream/);
     assert.equal(expose(res), EXPOSED_RESPONSE_HEADERS_VALUE);
   });
+});
+
+// --- inverse contract coverage ------------------------------------------------
+// The FORWARD direction (every contract route is reachable + serves a 200) is
+// covered by validate-api.mjs + smoke-route-substitution. This is the INVERSE: a
+// /api/v1 path dispatched by workers/api.mjs that has NO matching API_ROUTES entry
+// in contracts.mjs is invisible to OpenAPI/types/SDK. That gap let the chain-events
+// routes ship dispatched-but-uncontracted; this guard fails CI on any new one.
+//
+// Two complementary checks: (A) every literal `=== "/api/v1/…"` dispatch in the
+// source either resolves to a contract route or is on the explicit non-contract
+// allowlist; (B) every config `*_PATH_PATTERN` anchoring /api/v1 backs at least one
+// contract route. A representative path for each contract route is built by
+// substituting the path placeholders with the same sample ids the live smoke uses.
+describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
+  const apiSource = readFileSync(
+    fileURLToPath(new URL("../workers/api.mjs", import.meta.url)),
+    "utf8",
+  );
+
+  // Paths workers/api.mjs dispatches that are intentionally NOT contract routes:
+  // POST/internal/special-protocol surfaces (no GET artifact envelope), the
+  // network-prefix rewrite, and the SSE/icon/feeds operational endpoints. Each is
+  // listed with the reason it is excluded from the OpenAPI contract.
+  const NON_CONTRACT_PATHS = new Set([
+    "/api/v1/ask", // grounded-RAG POST, degrades to 503; not a GET artifact
+    "/api/v1/events", // SSE change feed (text/event-stream)
+    "/api/v1/feeds/", // SSE/webhook feed prefix
+    "/api/v1/graphql", // GraphQL POST layer over the same artifacts
+    "/api/v1/icon", // image proxy (binary), not a JSON artifact
+    "/api/v1/search/semantic", // AI-gated semantic search, mainnet-only special
+    "/api/v1/testnet/subnets", // network-prefix rewrite, not its own route
+  ]);
+  const NON_CONTRACT_PREFIXES = [
+    "/api/v1/internal/", // secret-gated ingest write paths
+    "/api/v1/webhooks/", // subscription management (POST/DELETE/GET)
+  ];
+
+  function buildSamplePath(routePath) {
+    return routePath
+      .replace("{netuid}", "7")
+      .replace("{slug}", "allways")
+      .replace("{date}", "2026-06-24")
+      .replace("{uid}", "0")
+      .replace("{hash}", `0x${"0".repeat(64)}`)
+      .replace("{ref}", "0")
+      .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+  }
+
+  // One concrete sample pathname per contract route (placeholders substituted).
+  const contractSamplePaths = API_ROUTES.map((route) =>
+    buildSamplePath(route.path),
+  );
+
+  function pathIsContracted(pathname) {
+    return API_ROUTES.some((route) =>
+      compileRoutePattern(route.path).test(pathname),
+    );
+  }
+
+  // (A) Extract every literal `=== "/api/v1/…"` equality dispatch from the source.
+  const literalDispatchPaths = [
+    ...apiSource.matchAll(/===\s*"(\/api\/v1\/[^"]*)"/g),
+  ].map((match) => match[1]);
+
+  test("source has literal /api/v1 dispatches to assert over", () => {
+    // Guard the regex itself: if the dispatch style changes and this finds nothing,
+    // the per-path assertions below would vacuously pass.
+    assert.ok(
+      literalDispatchPaths.length >= 5,
+      `expected several literal /api/v1 dispatches, found ${literalDispatchPaths.length}`,
+    );
+  });
+
+  for (const dispatched of [...new Set(literalDispatchPaths)]) {
+    test(`dispatched literal ${dispatched} is contracted or allowlisted`, () => {
+      if (
+        NON_CONTRACT_PATHS.has(dispatched) ||
+        NON_CONTRACT_PREFIXES.some((prefix) => dispatched.startsWith(prefix))
+      ) {
+        return;
+      }
+      assert.ok(
+        pathIsContracted(dispatched),
+        `workers/api.mjs dispatches ${dispatched} but no API_ROUTES entry in src/contracts.mjs matches it — add a route() so it is visible to OpenAPI/types/SDK (or add it to NON_CONTRACT_PATHS with a reason if it is intentionally uncontracted).`,
+      );
+    });
+  }
+
+  // (B) Every config path-pattern that anchors /api/v1 must back a contract route.
+  const apiPathPatterns = Object.entries(workerConfig).filter(
+    ([name, value]) =>
+      name.endsWith("_PATH_PATTERN") &&
+      value instanceof RegExp &&
+      value.source.includes("\\/api\\/v1\\/"),
+  );
+
+  test("config exposes /api/v1 path patterns to assert over", () => {
+    assert.ok(
+      apiPathPatterns.length >= 10,
+      `expected the block-explorer/analytics path patterns, found ${apiPathPatterns.length}`,
+    );
+  });
+
+  for (const [name, pattern] of apiPathPatterns) {
+    test(`config ${name} backs a contract route`, () => {
+      assert.ok(
+        contractSamplePaths.some((sample) => pattern.test(sample)),
+        `workers/config.mjs ${name} dispatches a /api/v1 path that no API_ROUTES entry covers — add the matching route() in src/contracts.mjs.`,
+      );
+    });
+  }
 });
