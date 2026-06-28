@@ -39,7 +39,7 @@ function clampLimit(raw) {
 function clampStatsBlocks(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 1000;
-  return Math.min(Math.floor(n), 5000);
+  return Math.min(Math.max(Math.floor(n), 1), 5000);
 }
 
 // postgres.js returns BIGINT columns as strings; the D1-backed routes return them
