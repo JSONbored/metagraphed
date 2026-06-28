@@ -131,3 +131,17 @@ test("GET /blocks/{number}/events resolves an unknown numeric ref to block_numbe
   assert.equal(body.data.event_count, 0);
   assert.equal(Array.isArray(body.data.events), true);
 });
+
+test("GET /blocks/{number}/events ignores orphaned account_events when block is absent", async () => {
+  const env = dbWith({ events: [ROW], blockNumber: null });
+  const res = await handleRequest(
+    req("/api/v1/blocks/1000000/events"),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.block_number, null);
+  assert.equal(body.data.event_count, 0);
+  assert.deepEqual(body.data.events, []);
+});

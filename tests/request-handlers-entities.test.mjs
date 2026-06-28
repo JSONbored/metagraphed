@@ -1775,6 +1775,7 @@ describe("handleBlockEvents", () => {
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/events`),
     );
+    assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
   });
@@ -1826,6 +1827,34 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
+  });
+
+  test("orphaned account_events rows do not bypass blocks existence check", async () => {
+    const { env } = dbWith({ blockEvents: [accountEventRow()] });
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+  });
+
+  test("unknown hash ref yields block_number:null + empty events", async () => {
+    const unknown = `0x${"d".repeat(64)}`;
+    const body = await assertColdSchema(
+      handleBlockEvents,
+      req(`/api/v1/blocks/${unknown}/events`),
+      emptyEnv(),
+      unknown,
+      url(`/api/v1/blocks/${unknown}/events`),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.event_count, 0);
   });
 
   test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
