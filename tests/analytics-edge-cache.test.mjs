@@ -287,6 +287,40 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("turnover: explicit ?window=30d populates cache; omitted window is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // Explicit ?window=30d is the canonical form — cache MISS, populates.
+    const first = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Omitted window resolves to the same 30d key — must be a HIT (no D1).
+    const hit = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "omitted window must reuse the ?window=30d cache slot (no D1 queries)",
+    );
+    assert.equal(cache.store.size, 1);
+  });
+
   test("HIT: a pre-populated cache serves the cached body WITHOUT touching D1", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
