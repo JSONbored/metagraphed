@@ -17,6 +17,7 @@ import http from "node:http";
 
 import { WebSocketServer } from "ws";
 
+import { MAX_RPC_BODY_BYTES } from "./rpc-policy.mjs";
 import { proxy } from "./proxy.mjs";
 import { selectWssUpstreams } from "./select.mjs";
 
@@ -77,13 +78,10 @@ const server = http.createServer((req, res) => {
       NETWORKS.map((n) => [n, poolFor(n).length]),
     );
     const stale = !lastRefresh || Date.now() - lastRefresh > REFRESH_MS * 3;
-    // Always 200 once the process is listening — the platform healthcheck verifies
-    // the server is UP, not that the upstream pool is warm. A cold start (the first
-    // pool refresh not yet complete) or a transient API blip would otherwise 503
-    // and fail the deploy even though the proxy is fine (this failed Railway
-    // deploys). `stale`/`ok` report pool freshness as a non-fatal field; a wss
-    // upgrade still 503s on its own when its network has zero eligible upstreams.
-    res.writeHead(200, { "content-type": "application/json" });
+    // Railway keys health on the HTTP status, so keep the readiness signal in the
+    // status code: a stale or uninitialized pool would also reject configured WSS
+    // upgrades with 503 because there are no eligible upstreams.
+    res.writeHead(stale ? 503 : 200, { "content-type": "application/json" });
     res.end(
       JSON.stringify({
         ok: !stale,
@@ -98,7 +96,34 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 
-const wss = new WebSocketServer({ noServer: true });
+// maxPayload caps inbound client frames at the protocol layer; the app-level
+// MAX_RPC_BODY_BYTES check in proxy.mjs only fires AFTER ws buffers the full frame.
+const wss = new WebSocketServer({
+  noServer: true,
+  maxPayload: MAX_RPC_BODY_BYTES,
+});
+
+// Heartbeat: WS over the public internet (behind Cloudflare) accumulates half-open
+// sockets that never emit 'close' (NAT/idle timeouts, silent peer death). Each sweep
+// terminates any client that hasn't ponged since the last one; proxy.mjs's client
+// 'close' handler then tears down that client's upstream socket too.
+const HEARTBEAT_MS = envInt("HEARTBEAT_MS", 30000);
+const heartbeat = setInterval(() => {
+  for (const client of wss.clients) {
+    if (client.isAlive === false) {
+      client.terminate();
+      continue;
+    }
+    client.isAlive = false;
+    try {
+      client.ping();
+    } catch {
+      /* socket already closing */
+    }
+  }
+}, HEARTBEAT_MS);
+heartbeat.unref?.();
+
 server.on("upgrade", (req, socket, head) => {
   const network = (req.url || "/")
     .replace(/^\/+/, "")
@@ -115,9 +140,13 @@ server.on("upgrade", (req, socket, head) => {
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(req, socket, head, (client) =>
-    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS }),
-  );
+  wss.handleUpgrade(req, socket, head, (client) => {
+    client.isAlive = true;
+    client.on("pong", () => {
+      client.isAlive = true;
+    });
+    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
+  });
 });
 
 await refresh();

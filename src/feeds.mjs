@@ -350,6 +350,17 @@ async function readData(readArtifact, env, path) {
   }
 }
 
+async function loadIncidentsData(deps, env) {
+  if (typeof deps.loadLiveIncidents === "function") {
+    try {
+      return await deps.loadLiveIncidents(env);
+    } catch {
+      return null;
+    }
+  }
+  return readData(deps.readArtifact, env, "/metagraph/incidents.json");
+}
+
 export async function handleFeedRequest(request, env, url, deps = {}) {
   const readArtifact = deps.readArtifact;
   // Feed errors go through the shared canonical envelope (workers/http.mjs
@@ -386,11 +397,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
       "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry.";
     updatedSource = changelog?.generated_at;
   } else if (target.kind === "incidents") {
-    const incidents = await readData(
-      readArtifact,
-      env,
-      "/metagraph/incidents.json",
-    );
+    const incidents = await loadIncidentsData(deps, env);
     items = incidentItems(incidents);
     title = "metagraphed — surface incidents";
     description =
@@ -399,7 +406,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
-      readData(readArtifact, env, "/metagraph/incidents.json"),
+      loadIncidentsData(deps, env),
     ]);
     items = [
       ...registryItems(changelog, target.netuid),

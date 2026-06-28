@@ -1,0 +1,35 @@
+{
+  // Dedicated Postgres-serving Worker (ADR 0013). Deployed separately from the main
+  // api.mjs Worker so the postgres.js driver + growing read surface don't eat the
+  // main Worker's bundle budget. Reached only via the main Worker's DATA_API service
+  // binding (no public routes of its own). Deploy: wrangler deploy -c wrangler.data.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metagraphed-data-api",
+  "main": "workers/data-api.mjs",
+  "compatibility_date": "2026-06-06",
+  "compatibility_flags": ["nodejs_compat"],
+  // Smart placement: run the Worker close to the Hyperdrive origin (Railway Postgres)
+  // to minimize the per-request DB round-trip, not at the nearest edge to the client.
+  "placement": { "mode": "smart" },
+  // Full observability — logs AND traces (matches the main Worker).
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "d8c62acb5520402b82d039ec482f7cc3",
+      "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
+    },
+  ],
+}

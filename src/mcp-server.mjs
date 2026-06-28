@@ -96,7 +96,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.4.0";
+export const MCP_SERVER_VERSION = "1.5.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -304,6 +304,48 @@ async function loadSubnetEconomics(ctx, netuid) {
   };
 }
 
+// Chain-activity aggregate (pallet.method event distribution) over the most
+// recent N blocks, from the Postgres-backed all-events tier. That tier lives in
+// the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
+// this Worker's bundle; MCP handlers reach it through the DATA_API service
+// binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
+// A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
+// upstream response surfaces as a clean tool error, never an exception.
+async function loadChainActivity(ctx, blocks) {
+  const dataApi = ctx.env?.DATA_API;
+  if (!dataApi?.fetch) {
+    throw toolError(
+      "tier_unavailable",
+      "The chain activity tier is unavailable (the all-events data Worker is " +
+        "not bound to this deployment). Try again against the production endpoint.",
+    );
+  }
+  let response;
+  try {
+    response = await dataApi.fetch(
+      new Request(`https://d/api/v1/chain-events/stats?blocks=${blocks}`),
+    );
+  } catch {
+    throw toolError(
+      "tier_unavailable",
+      "The chain activity tier could not be reached. Try again shortly.",
+    );
+  }
+  if (!response.ok) {
+    throw toolError(
+      "tier_unavailable",
+      `The chain activity tier returned an error (status ${response.status}). ` +
+        "Try again shortly.",
+    );
+  }
+  const data = await response.json();
+  return {
+    window_blocks: data?.window_blocks ?? blocks,
+    groups: data?.groups ?? 0,
+    activity: Array.isArray(data?.activity) ? data.activity : [],
+  };
+}
+
 async function mcpObservedAt(ctx) {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
@@ -502,6 +544,22 @@ function requireSs58(args) {
 // The ss58 inputSchema `pattern` (advisory; runtime validation is requireSs58),
 // derived from the single pattern source so it can't drift.
 const SS58_PATTERN_SOURCE = SS58_ADDRESS_PATTERN.source;
+
+// The optional `blocks` window for get_chain_activity: a missing value defaults
+// to 1000; a provided value must be a positive integer and is clamped to the
+// data Worker's 1-5000 bound so a stray large value is silently capped (the data
+// Worker clamps too, but capping here keeps the request URL honest).
+function optionalBlocksWindow(args) {
+  const value = args?.blocks;
+  if (value === undefined || value === null) return 1000;
+  if (!Number.isInteger(value) || value < 1) {
+    throw toolError(
+      "invalid_params",
+      "Argument `blocks` must be a positive integer.",
+    );
+  }
+  return Math.min(value, 5000);
+}
 
 function clampLimit(value, fallback, max) {
   // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
@@ -1765,6 +1823,36 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_activity",
+    title: "Get recent chain-activity aggregate",
+    description:
+      "Fetch the chain-activity aggregate from the all-events tier: the " +
+      "pallet.method event distribution (each with its count, busiest first) " +
+      "over the most recent `blocks` blocks. Use it to see what the chain has " +
+      "been doing lately — which pallets and calls dominate recent traffic — " +
+      "before drilling into specific blocks (get_block) or extrinsics " +
+      "(list_extrinsics). Mirrors GET /api/v1/chain-events/stats.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        blocks: {
+          type: "integer",
+          description:
+            "How many of the most recent blocks to aggregate over (1-5000, " +
+            "default 1000).",
+          minimum: 1,
+          maximum: 5000,
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const blocks = optionalBlocksWindow(args);
+      return loadChainActivity(ctx, blocks);
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -2940,6 +3028,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
+    },
+  },
+  get_chain_activity: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window_blocks", "groups", "activity"],
+    properties: {
+      window_blocks: { type: "integer" },
+      groups: { type: "integer" },
+      activity: objectItems({
+        pallet: NULLABLE_STRING,
+        method: NULLABLE_STRING,
+        count: NULLABLE_INT,
+      }),
     },
   },
   list_subnet_apis: {

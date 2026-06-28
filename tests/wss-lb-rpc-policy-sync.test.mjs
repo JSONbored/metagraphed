@@ -16,4 +16,8 @@ test("wss-lb RPC policy matches workers/config.mjs (no drift)", () => {
     [...wsslb.SAFE_RPC_METHODS].sort(),
     [...worker.SAFE_RPC_METHODS].sort(),
   );
+  assert.deepEqual(
+    [...wsslb.SAFE_RPC_SUBSCRIPTIONS].sort(),
+    [...worker.SAFE_RPC_SUBSCRIPTIONS].sort(),
+  );
 });

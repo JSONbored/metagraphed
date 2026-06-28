@@ -76,6 +76,12 @@ EVENT_COLS = (
     "hotkey", "coldkey", "netuid", "uid",
     "amount_tao", "alpha_amount", "observed_at",
 )
+# Generic all-events tier: EVERY decoded event (all pallets/methods), not just the
+# curated account_events. `args` is JSONB (parsed from its compact JSON string).
+CHAIN_EVENT_COLS = (
+    "block_number", "event_index", "pallet", "method",
+    "args", "phase", "extrinsic_index", "observed_at",
+)
 
 
 def _json_obj(value):
@@ -145,7 +151,18 @@ def rows_from_decoded(decoded):
         }
         if _has_ts(row):
             events.append(row)
-    return {"blocks": blocks, "extrinsics": extrinsics, "account_events": events}
+    chain_events = []
+    for ce in decoded.get("chain_events") or []:
+        row = {c: ce.get(c) for c in CHAIN_EVENT_COLS}
+        row["args"] = _json_obj(row["args"])  # JSON string -> JSONB object
+        if _has_ts(row):
+            chain_events.append(row)
+    return {
+        "blocks": blocks,
+        "extrinsics": extrinsics,
+        "account_events": events,
+        "chain_events": chain_events,
+    }
 
 
 def backfill_start(cursor, head, start_block_env):
@@ -198,7 +215,7 @@ def _upsert(conn, table, cols, dict_rows, conflict):
         row = []
         for c in cols:
             v = r.get(c)
-            if c == "call_args" and v is not None:
+            if c in ("call_args", "args") and v is not None:
                 v = Json(v)
             row.append(v)
         tuples.append(tuple(row))
@@ -241,6 +258,7 @@ def process_block(decode_head, s, conn, redis_client, bn):
     _upsert(conn, "blocks", BLOCK_COLS, rows["blocks"], "block_number")
     _upsert(conn, "extrinsics", EXTRINSIC_COLS, rows["extrinsics"], "block_number, extrinsic_index")
     _upsert(conn, "account_events", EVENT_COLS, rows["account_events"], "block_number, event_index")
+    _upsert(conn, "chain_events", CHAIN_EVENT_COLS, rows["chain_events"], "block_number, event_index")
     write_cursor(conn, redis_client, bn)
     conn.commit()
     return len(rows["account_events"]), len(rows["extrinsics"])

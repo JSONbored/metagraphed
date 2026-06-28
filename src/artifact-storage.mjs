@@ -36,6 +36,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.
   /^subnets\/(?:\d+|\{netuid\})\/concentration\.json$/,
+  // Per-day concentration history: computed live from the neuron_daily rollup.
+  /^subnets\/(?:\d+|\{netuid\})\/concentration\/history\.json$/,
   // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
   // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
   // never written as files.

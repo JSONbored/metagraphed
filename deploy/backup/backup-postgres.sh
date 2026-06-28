@@ -26,7 +26,38 @@ KEY="${PREFIX}/metagraphed-${TS}.sql.gz"
 
 echo "backup: pg_dump | gzip -> s3://${R2_BUCKET}/${KEY}"
 # Stream straight through — never lands the full dump on the container disk.
-pg_dump --no-owner --no-privileges "$DATABASE_URL" \
-  | gzip -9 \
-  | aws s3 cp - "s3://${R2_BUCKET}/${KEY}" --endpoint-url "$R2_ENDPOINT"
+# Use explicit FIFOs/process waits instead of a shell pipeline: POSIX sh reports
+# only the last command's status for pipelines, which can hide pg_dump failures.
+TMPDIR="$(mktemp -d)"
+RAW_FIFO="${TMPDIR}/dump.sql"
+GZ_FIFO="${TMPDIR}/dump.sql.gz"
+cleanup() {
+  rm -rf "$TMPDIR"
+}
+trap cleanup EXIT HUP INT TERM
+mkfifo "$RAW_FIFO" "$GZ_FIFO"
+
+aws s3 cp "$GZ_FIFO" "s3://${R2_BUCKET}/${KEY}" --endpoint-url "$R2_ENDPOINT" &
+AWS_PID=$!
+gzip -9 <"$RAW_FIFO" >"$GZ_FIFO" &
+GZIP_PID=$!
+pg_dump --no-owner --no-privileges "$DATABASE_URL" >"$RAW_FIFO" &
+PG_DUMP_PID=$!
+
+STATUS=0
+if ! wait "$PG_DUMP_PID"; then
+  echo "backup failed: pg_dump exited nonzero" >&2
+  STATUS=1
+fi
+if ! wait "$GZIP_PID"; then
+  echo "backup failed: gzip exited nonzero" >&2
+  STATUS=1
+fi
+if ! wait "$AWS_PID"; then
+  echo "backup failed: aws upload exited nonzero" >&2
+  STATUS=1
+fi
+if [ "$STATUS" -ne 0 ]; then
+  exit "$STATUS"
+fi
 echo "backup complete: s3://${R2_BUCKET}/${KEY}"
