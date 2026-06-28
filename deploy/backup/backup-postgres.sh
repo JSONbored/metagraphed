@@ -26,6 +26,8 @@ KEY="${PREFIX}/metagraphed-${TS}.sql.gz"
 
 echo "backup: pg_dump | gzip -> s3://${R2_BUCKET}/${KEY}"
 # Stream pg_dump through gzip without landing the raw dump on container disk.
+# The compressed dump does land in TMPDIR before upload; size the service's
+# ephemeral disk for the compressed backup, not the raw database dump.
 # Keep the upload as a separate step so early aws CLI/config failures cannot
 # deadlock the dump/gzip FIFO chain before the script observes them.
 # Use explicit process waits instead of a shell pipeline: POSIX sh reports

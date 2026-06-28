@@ -82,11 +82,7 @@ exit 42
 test("backup script fails promptly when aws exits before upload", () => {
   const { result, temporaryDirectory, uploadPath } = runBackupWithMocks(
     `#!/usr/bin/env sh
-python3 - <<'PY'
-import sys
-for _ in range(1024):
-    sys.stdout.write("x" * 1024)
-PY
+dd if=/dev/zero bs=1024 count=1024 2>/dev/null
 `,
     `#!/usr/bin/env sh
 echo 'aws mock: immediate CLI/config failure' >&2
