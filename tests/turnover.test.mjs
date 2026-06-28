@@ -196,8 +196,10 @@ describe("buildTurnover", () => {
 });
 
 describe("turnover loaders", () => {
-  function d1(rowsBySql = {}) {
-    return async (sql, _params) => {
+  function d1(rowsBySql = {}, captures = { sql: [], params: [] }) {
+    return async (sql, params) => {
+      captures.sql.push(sql);
+      captures.params.push(params);
       for (const [pattern, rows] of Object.entries(rowsBySql)) {
         if (new RegExp(pattern).test(sql)) return rows;
       }
@@ -272,6 +274,46 @@ describe("turnover loaders", () => {
     assert.equal(data.validators_exited, 1);
     assert.equal(data.uids_deregistered, 1);
     assert.equal(data.stability_score, 42);
+  });
+
+  test("loadSubnetTurnover omits the date cutoff for the all window", async () => {
+    const captures = { sql: [], params: [] };
+    await loadSubnetTurnover(
+      d1(
+        {
+          "MIN\\(snapshot_date\\)": [
+            { start_date: "2026-06-01", end_date: "2026-06-30" },
+          ],
+          "snapshot_date IN": [],
+        },
+        captures,
+      ),
+      9,
+      { windowLabel: "all", windowDays: null },
+    );
+    assert.match(captures.sql[0], /MIN\(snapshot_date\)/);
+    assert.deepEqual(captures.params[0], [9]);
+    assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
+  });
+
+  test("loadSubnetTurnover binds netuid, cutoff, and boundary dates", async () => {
+    const captures = { sql: [], params: [] };
+    await loadSubnetTurnover(
+      d1(
+        {
+          "MIN\\(snapshot_date\\)": [
+            { start_date: "2026-06-01", end_date: "2026-06-30" },
+          ],
+          "snapshot_date IN": [],
+        },
+        captures,
+      ),
+      9,
+      { windowLabel: "30d", windowDays: 30 },
+    );
+    assert.equal(captures.params[0][0], 9);
+    assert.equal(captures.params[0].length, 2);
+    assert.deepEqual(captures.params[1], [9, "2026-06-01", "2026-06-30"]);
   });
 });
 

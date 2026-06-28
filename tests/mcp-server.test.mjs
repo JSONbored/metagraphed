@@ -3611,6 +3611,40 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window must be one of/);
   });
 
+  test("get_subnet_turnover accepts the all window without a date cutoff", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "all" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "all");
+    assert.equal(out.comparable, true);
+    assert.equal(out.validator_retention, 1);
+  });
+
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
     const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
     assert.equal(meta.body.result.isError, false);

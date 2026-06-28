@@ -169,7 +169,7 @@ export async function loadSubnetTurnover(
     startDate == null || endDate == null
       ? []
       : await d1(
-          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
+          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?) ORDER BY snapshot_date ASC, uid ASC`,
           [netuid, startDate, endDate],
         );
   return buildTurnover(rows, netuid, {
