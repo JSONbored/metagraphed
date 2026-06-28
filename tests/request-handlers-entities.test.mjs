@@ -30,6 +30,7 @@ import {
   handleBlockEvents,
   handleExtrinsics,
   handleExtrinsic,
+  canonicalSubnetTurnoverCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -1072,6 +1073,44 @@ describe("handleSubnetTurnover", () => {
     );
     assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], NETUID);
+  });
+
+  describe("canonicalSubnetTurnoverCachePath", () => {
+    test("omitted window and explicit ?window=30d produce the same cache key", () => {
+      const noWindow = canonicalSubnetTurnoverCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/1/turnover"),
+      );
+      const explicit30d = canonicalSubnetTurnoverCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/turnover?window=30d",
+        ),
+      );
+      assert.equal(noWindow, explicit30d);
+      assert.equal(noWindow, "/api/v1/subnets/1/turnover?window=30d");
+    });
+
+    test("preserves a non-default valid window label", () => {
+      const key = canonicalSubnetTurnoverCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/1/turnover?window=7d"),
+      );
+      assert.equal(key, "/api/v1/subnets/1/turnover?window=7d");
+    });
+
+    test("returns raw search on an invalid window value", () => {
+      const raw = "/api/v1/subnets/1/turnover?window=bogus";
+      const key = canonicalSubnetTurnoverCachePath(
+        new URL(`https://api.metagraph.sh${raw}`),
+      );
+      assert.equal(key, raw);
+    });
+
+    test("returns raw search on an unsupported query parameter", () => {
+      const raw = "/api/v1/subnets/1/turnover?unknown=1";
+      const key = canonicalSubnetTurnoverCachePath(
+        new URL(`https://api.metagraph.sh${raw}`),
+      );
+      assert.equal(key, raw);
+    });
   });
 });
 
