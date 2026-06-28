@@ -128,11 +128,17 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
         return true;
       }
       const expected = params.get(key);
-      // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid).
+      // CSV membership filter (e.g. ?netuids=1,7,74 -> match row.netuid). Numeric
+      // vocabulary — left case-sensitive (the issue scopes netuids out).
       const csvField = csvFilters[key];
       if (csvField) {
         return csvWantedByKey.get(key)?.has(String(row[csvField])) ?? false;
       }
+      // Enum/string filters match case-insensitively (#2073): the configured
+      // vocabularies and stored values are lowercase, so lowercasing the input
+      // restores parity with the MCP list_subnets tool (?domain=Inference,
+      // ?status=Active) without touching the stored row value.
+      const expectedCi = expected.toLowerCase();
       // Array-membership filter over the UNION of one or more array fields
       // (e.g. ?domain=inference -> match row.categories or row.derived_categories).
       const arrayFields = arrayFilters[key];
@@ -140,14 +146,14 @@ function filterRows(rows, params, keys, csvFilters = {}, arrayFilters = {}) {
         return arrayFields.some(
           (field) =>
             Array.isArray(row[field]) &&
-            row[field].map(String).includes(expected),
+            row[field].map((v) => String(v).toLowerCase()).includes(expectedCi),
         );
       }
       const value = row[key];
       if (Array.isArray(value)) {
-        return value.map(String).includes(expected);
+        return value.map((v) => String(v).toLowerCase()).includes(expectedCi);
       }
-      return String(value) === expected;
+      return String(value).toLowerCase() === expectedCi;
     }),
   );
 }
@@ -362,7 +368,11 @@ function validateListQuery(params, config) {
         message: `${key} must be a non-negative integer.`,
       };
     }
-    if (schema.enum && !schema.enum.includes(value)) {
+    // Enum membership is case-insensitive (#2073): the configured vocabularies are
+    // all lowercase, so ?status=Active matches like the MCP list_subnets tool
+    // (which lowercases its args) instead of returning a 400 the equivalent MCP
+    // call would not. A genuinely invalid value still fails after lowercasing.
+    if (schema.enum && !schema.enum.includes(value.toLowerCase())) {
       return {
         parameter: key,
         message: `${key} is not supported for this route.`,
