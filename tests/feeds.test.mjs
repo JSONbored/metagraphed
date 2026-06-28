@@ -316,12 +316,21 @@ describe("feeds — parseSinceParam", () => {
       new Date(parseSinceParam("2026-06-01T01:02:03.123+02:30")).toISOString(),
       "2026-05-31T22:32:03.123Z",
     );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03-02:30")).toISOString(),
+      "2026-06-01T03:32:03.000Z",
+    );
   });
 
   test("rejects Date.parse-permissive malformed or non-ISO values", () => {
     for (const value of [
       "1",
       "2026-02-31",
+      "2026-06-01T24:00:00Z",
+      "2026-06-01T00:60:00Z",
+      "2026-06-01T00:00:60Z",
+      "2026-06-01T00:00:00+24:00",
+      "2026-06-01T00:00:00+02:60",
       "Tue, 01 Jun 2026 00:00:00 GMT",
       "2026-06-01T00:00:00",
     ]) {

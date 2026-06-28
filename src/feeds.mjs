@@ -393,8 +393,10 @@ function parseSinceParam(value) {
           const sign = zone[0] === "-" ? -1 : 1;
           const hours = Number(zone.slice(1, 3));
           const minutes = Number(zone.slice(4, 6));
+          if (hours > 23 || minutes > 59) return Number.NaN;
           return sign * (hours * 60 + minutes) * 60_000;
         })();
+  if (Number.isNaN(offsetMs)) return Number.NaN;
 
   return utcMs - offsetMs;
 }
