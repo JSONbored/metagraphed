@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { buildOpenApiArtifact, CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
   composeProviderReport,
   parseProviderReportDimensions,
@@ -195,6 +195,28 @@ describe("handleProviderReport", () => {
     readEconomicsCurrentKv: async () => null,
   };
 
+  const providerArchive = {
+    "providers/datura.json": {
+      provider: { ...sampleProvider, netuids: [1] },
+    },
+    "profiles.json": {
+      profiles: [{ netuid: 1, slug: "apex", name: "Apex" }],
+    },
+  };
+
+  test("400 invalid_slug when slug has invalid characters", async () => {
+    const res = await handleProviderReport(
+      req("/api/v1/providers/bad_slug/report"),
+      createLocalArtifactEnv(),
+      "bad_slug",
+      url("/api/v1/providers/bad_slug/report"),
+      stubDeps,
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_slug");
+  });
+
   test("404 when provider artifact is missing", async () => {
     const res = await handleProviderReport(
       req("/api/v1/providers/missing/report"),
@@ -265,6 +287,69 @@ describe("handleProviderReport", () => {
     assert.equal(body.data.subnets.length, 1);
     assert.equal(body.data.subnets[0].surfaces.count, 1);
     assert.equal(body.data.subnets[0].health.ok_count, 1);
+  });
+
+  test("economics from live KV when economics:current is fresh", async () => {
+    const liveEconomicsBlob = {
+      contract_version: CONTRACT_VERSION,
+      captured_at: new Date().toISOString(),
+      schema_version: 1,
+      summary: { with_economics_count: 1 },
+      subnets: [
+        {
+          netuid: 1,
+          registration_allowed: true,
+          validator_count: 4,
+          miner_count: 12,
+          emission_share: 1,
+        },
+      ],
+    };
+    const env = createLocalArtifactEnv({
+      ...archiveEnv(providerArchive),
+    });
+    const res = await handleProviderReport(
+      req("/api/v1/providers/datura/report?dimensions=economics"),
+      env,
+      "datura",
+      url("/api/v1/providers/datura/report?dimensions=economics"),
+      {
+        readHealthMetaKv: stubDeps.readHealthMetaKv,
+        readEconomicsCurrentKv: async () => liveEconomicsBlob,
+      },
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnets[0].economics.validator_count, 4);
+  });
+
+  test("economics falls back to committed economics.json when KV is cold", async () => {
+    const env = createLocalArtifactEnv({
+      ...archiveEnv({
+        ...providerArchive,
+        "economics.json": {
+          subnets: [
+            {
+              netuid: 1,
+              registration_allowed: false,
+              validator_count: 9,
+              miner_count: 20,
+              emission_share: 1,
+            },
+          ],
+        },
+      }),
+    });
+    const res = await handleProviderReport(
+      req("/api/v1/providers/datura/report?dimensions=economics"),
+      env,
+      "datura",
+      url("/api/v1/providers/datura/report?dimensions=economics"),
+      stubDeps,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnets[0].economics.validator_count, 9);
   });
 });
 
