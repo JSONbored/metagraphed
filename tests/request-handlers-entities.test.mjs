@@ -2232,17 +2232,24 @@ describe("handleExtrinsics", () => {
     assert.ok(/observed_at >= \?/.test(sql));
   });
 
-  test("ignores malformed time filters instead of broadening them", async () => {
+  test("rejects a malformed time filter with 400 instead of silently dropping it (#2086)", async () => {
+    // Previously a non-numeric ?from was coerced/dropped (parseTimeBound -> null),
+    // silently broadening the query and returning a 200 with no signal. It now
+    // fails fast with 400 invalid_param, and never reaches D1.
     const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
+    const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
       env,
       url("/api/v1/extrinsics?from=abc"),
     );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(!/INDEXED BY/.test(sql));
-    assert.ok(!/observed_at >= \?/.test(sql));
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_param");
+    assert.match(body.error.message, /from must be a non-negative integer/);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+      "a malformed filter must be rejected before any D1 read",
+    );
   });
 
   test("short-circuits impossible future time filters before D1", async () => {
