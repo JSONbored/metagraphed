@@ -181,8 +181,9 @@ export const SAFE_RPC_METHODS = new Set([
 // alone (subscriptions need a persistent connection, so they make no sense over HTTP);
 // the wss-lb additionally allows these. Their notifications stream upstream→client.
 // Deliberately excludes persistent storage subscriptions, which can create
-// unbounded upstream watcher state for arbitrary keys. All allowed entries are
-// read-only — author_submitAndWatchExtrinsic stays blocked by the author_ prefix.
+// unbounded upstream watcher state for arbitrary keys.
+// All allowed entries are read-only; author_submitAndWatchExtrinsic stays blocked
+// by the author_ prefix.
 export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_subscribeNewHeads",
   "chain_subscribeNewHead",
