@@ -95,6 +95,11 @@ import {
   handleUptime,
 } from "./request-handlers/analytics-routes.mjs";
 import {
+  canonicalProviderReportCachePath,
+  handleProviderReport,
+  PROVIDER_REPORT_PATH_PATTERN,
+} from "./request-handlers/provider-report.mjs";
+import {
   classifyUpstreamAttempt,
   configureRpcProxy,
   graphqlRateLimited,
@@ -1128,6 +1133,22 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  const providerReportMatch = PROVIDER_REPORT_PATH_PATTERN.exec(url.pathname);
+  if (providerReportMatch) {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "provider-report",
+      () =>
+        handleProviderReport(request, env, providerReportMatch[1], url, {
+          readHealthMetaKv,
+          readEconomicsCurrentKv,
+        }),
+      canonicalProviderReportCachePath(url),
+    );
+  }
+
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
   if (url.pathname === "/api/v1/rpc/usage") {
     return handleRpcUsage(request, env, url);
@@ -1538,6 +1559,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    PROVIDER_REPORT_PATH_PATTERN.test(pathname) ||
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||
     pathname === "/api/v1/rpc/usage" ||

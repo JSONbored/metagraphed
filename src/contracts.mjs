@@ -631,6 +631,12 @@ export const PUBLIC_ARTIFACTS = [
     "ProviderEndpointsArtifact",
   ),
   artifact(
+    "provider-report",
+    "/metagraph/providers/{slug}/report.json",
+    "Live cross-subnet performance report for one provider — identity, per-subnet surface-kind breakdown, live probe health, and economics — composed live from the provider detail artifact, registry profiles, the economics tier, and D1 surface_status at /api/v1/providers/{slug}/report (no static file).",
+    "ProviderReportArtifact",
+  ),
+  artifact(
     "api-index",
     "/metagraph/api-index.json",
     "Clean API route index for metagraph.sh consumers.",
@@ -1438,6 +1444,17 @@ export const API_ROUTES = [
     "short",
     ["providers", "endpoints"],
     listQuery("endpoints", { exclude: ["provider"] }),
+    [{ name: "slug", schema: { type: "string", pattern: "^[a-z0-9-]+$" } }],
+  ),
+  route(
+    "provider-report",
+    "GET",
+    "/api/v1/providers/{slug}/report",
+    "/metagraph/providers/{slug}/report.json",
+    "Fetch a live cross-subnet performance report for one provider: identity summary, per-subnet surface-kind breakdown with live probe health, and economics rows for every subnet the provider serves. `dimensions` selects a subset of identity,surfaces,health,economics (default all). Composed live (no static file); the provider-axis complement to GET /api/v1/compare.",
+    "standard",
+    ["providers", "analytics"],
+    [{ name: "dimensions", schema: { type: "string" } }],
     [{ name: "slug", schema: { type: "string", pattern: "^[a-z0-9-]+$" } }],
   ),
   route(

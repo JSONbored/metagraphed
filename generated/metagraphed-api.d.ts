@@ -905,6 +905,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/providers/{slug}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch a live cross-subnet performance report for one provider: identity summary, per-subnet surface-kind breakdown with live probe health, and economics rows for every subnet the provider serves. `dimensions` selects a subset of identity,surfaces,health,economics (default all). Composed live (no static file); the provider-axis complement to GET /api/v1/compare. */
+        get: operations["providerReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/registry/leaderboards": {
         parameters: {
             query?: never;
@@ -3459,6 +3476,67 @@ export interface components {
         });
         /** @enum {unknown} */
         ProviderKind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
+        /** @description Live cross-subnet performance report for one provider — identity, per-subnet surface-kind breakdown, live probe health, and economics — composed at GET /api/v1/providers/{slug}/report (no static file). */
+        ProviderReportArtifact: {
+            dimensions: ("identity" | "surfaces" | "health" | "economics")[];
+            found: boolean;
+            identity?: {
+                authority?: string | null;
+                endpoint_count?: number;
+                id?: string;
+                kind?: string | null;
+                name?: string | null;
+                netuids?: number[];
+                subnet_count?: number;
+                surface_count?: number;
+                website_url?: string | null;
+            } | null;
+            observed_at?: string | null;
+            provider: string;
+            schema_version: number;
+            source: string;
+            subnets: components["schemas"]["ProviderReportSubnetEntry"][];
+            totals: components["schemas"]["ProviderReportTotals"];
+        };
+        ProviderReportKindCell: {
+            avg_latency_ms?: number | null;
+            count: number;
+            ok_count: number;
+        };
+        /** @description One subnet's slice of a provider report. Optional dimension blocks are present only when requested; each is null when the subnet is unknown to the registry projection. */
+        ProviderReportSubnetEntry: {
+            economics?: {
+                alpha_price_tao?: number | null;
+                emission_share?: number | null;
+                miner_count?: number;
+                miner_readiness?: number | null;
+                open_slots?: number | null;
+                registration_allowed?: boolean;
+                registration_cost_tao?: number | null;
+                total_stake_tao?: number | null;
+                validator_count?: number;
+            } | null;
+            found: boolean;
+            health?: {
+                avg_latency_ms?: number | null;
+                ok_count?: number;
+                surface_count?: number;
+            } | null;
+            name: string | null;
+            netuid: number;
+            slug: string | null;
+            surfaces?: {
+                count?: number;
+                kinds?: {
+                    [key: string]: components["schemas"]["ProviderReportKindCell"];
+                };
+            } | null;
+        };
+        ProviderReportTotals: {
+            health_ok_ratio: number | null;
+            subnet_count: number;
+            surface_count: number;
+        };
         ProvidersArtifact: components["schemas"]["ArtifactBase"] & ({
             providers: components["schemas"]["Provider"][];
         } & {
@@ -11922,6 +12000,142 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ProviderEndpointsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    providerReport: {
+        parameters: {
+            query?: {
+                dimensions?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "dimensions": [
+                     *           "identity"
+                     *         ],
+                     *         "found": false,
+                     *         "identity": {
+                     *           "authority": "example",
+                     *           "endpoint_count": 1,
+                     *           "id": "example",
+                     *           "kind": "example",
+                     *           "name": "Example Subnet",
+                     *           "netuids": [
+                     *             7
+                     *           ],
+                     *           "subnet_count": 1,
+                     *           "surface_count": 1,
+                     *           "website_url": "https://api.metagraph.sh/example"
+                     *         },
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "provider": "example-provider",
+                     *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
+                     *         "subnets": [
+                     *           {
+                     *             "found": false,
+                     *             "name": "Example Subnet",
+                     *             "netuid": 7,
+                     *             "slug": "example-subnet"
+                     *           }
+                     *         ],
+                     *         "totals": {
+                     *           "health_ok_ratio": 0.9966,
+                     *           "subnet_count": 1,
+                     *           "surface_count": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ProviderReportArtifact"];
                     };
                 };
             };
