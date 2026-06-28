@@ -1451,6 +1451,22 @@ describe("handleAccountCounterparties", () => {
     await errorJson(res);
   });
 
+  test("rejects malformed and out-of-range limits before D1 work", async () => {
+    for (const limit of ["random_nonce", "Infinity", "0", "101", "10.5"]) {
+      const captures = { sql: [], params: [] };
+      const { env } = dbWith({ captures, transfers: [transferEventRow()] });
+      const res = await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(captures.sql.length, 0);
+    }
+  });
+
   test("returns schema-stable empty rollup on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountCounterparties,

@@ -85,6 +85,29 @@ import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
+function parseBoundedIntParam(url, parameter, { def, min, max }) {
+  const raw = url.searchParams.get(parameter);
+  if (raw == null || raw === "") return { value: def };
+  if (!/^\d+$/.test(raw)) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be an integer from ${min} to ${max}.`,
+      },
+    };
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be an integer from ${min} to ${max}.`,
+      },
+    };
+  }
+  return { value };
+}
+
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
 // (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
 // unbound/cold D1 returns a schema-stable empty payload, like the other
@@ -658,7 +681,13 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 export async function handleAccountCounterparties(request, env, ss58, url) {
   const validationError = validateQueryParams(url, ["limit"]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 20, 1, 100);
+  const parsedLimit = parseBoundedIntParam(url, "limit", {
+    def: 20,
+    min: 1,
+    max: 100,
+  });
+  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  const limit = parsedLimit.value;
   const rows = await d1All(
     env,
     `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
