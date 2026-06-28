@@ -11,13 +11,24 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import {
-  clampInt,
   DAY_MS,
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
+// different contract from the shared pagination-profile clamp used here.
+import {
+  FEED_PAGINATION,
+  clampLimit as clampPageLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import {
+  loadSubnetConcentration,
+  loadSubnetConcentrationHistory,
+  parseConcentrationHistoryWindow,
+} from "./concentration.mjs";
 import {
   loadCompareSubnets,
   loadGlobalIncidents,
@@ -173,7 +184,10 @@ export const MCP_INSTRUCTIONS =
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
-  "long-term surface uptime history, get_registry_leaderboards the live " +
+  "long-term surface uptime history, get_subnet_concentration stake and " +
+  "emission decentralization metrics (Gini, HHI, Nakamoto), " +
+  "get_subnet_concentration_history the decentralization trend over time, " +
+  "get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_subnet_metagraph the " +
@@ -469,8 +483,8 @@ async function loadSubnetConcentrationHistory(ctx, netuid, args) {
 // deprecated fallback. Cold D1 → event_count:0.
 async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
   const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampInt(limit, 100, 1, 1000);
-  const resolvedOffset = clampInt(offset, 0, 0, 1_000_000);
+  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
+  const resolvedOffset = clampOffset(offset);
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const params = [netuid];
@@ -1329,6 +1343,62 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_concentration",
+    title: "Get subnet stake/emission concentration",
+    description:
+      "Fetch one subnet's live stake and emission decentralization scorecard: " +
+      "Gini, HHI, Nakamoto coefficient, top-percentile shares, and entropy over " +
+      "per-UID, per-entity (coldkey-collapsed), and validator-only distributions. " +
+      "Use it to see whether a subnet is broadly distributed or captured by a few " +
+      "large holders. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_concentration_history",
+    title: "Get subnet concentration history",
+    description:
+      "Fetch one subnet's per-day stake and emission concentration trend " +
+      "(Gini, Nakamoto coefficient, top-10% share) from the neuron_daily rollup " +
+      "over the requested window (7d, 30d, or 90d). Use it to see whether a " +
+      "subnet is centralizing or decentralizing over time. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/concentration/history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const parsed = parseConcentrationHistoryWindow(args?.window);
+      if (parsed.error) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      return loadSubnetConcentrationHistory(mcpD1Runner(ctx), netuid, {
+        windowLabel: parsed.label,
+        windowDays: parsed.days,
+      });
     },
   },
   {
@@ -3240,6 +3310,36 @@ const TOOL_OUTPUT_SCHEMAS = {
       point_count: { type: "integer" },
       points: { type: "array", items: { type: "object" } },
       deltas: { type: "object" },
+    },
+  },
+  get_subnet_concentration: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      neuron_count: { type: "integer" },
+      entity_count: { type: "integer" },
+      uids_per_entity: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      stake: { type: ["object", "null"] },
+      emission: { type: ["object", "null"] },
+      entity_stake: { type: ["object", "null"] },
+      entity_emission: { type: ["object", "null"] },
+      validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_concentration_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_uptime: {
