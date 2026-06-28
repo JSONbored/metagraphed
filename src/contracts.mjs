@@ -931,6 +931,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConcentrationHistoryArtifact",
   ),
   artifact(
+    "subnet-turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
+    "SubnetTurnoverArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -995,6 +1001,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/transfers.json",
     "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
     "AccountTransfersArtifact",
+  ),
+  artifact(
+    "account-counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
+    "AccountCounterpartiesArtifact",
   ),
   artifact(
     "account-subnets",
@@ -1718,6 +1730,22 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-turnover",
+    "GET",
+    "/api/v1/subnets/{netuid}/turnover",
+    "/metagraph/subnets/{netuid}/turnover.json",
+    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-metagraph",
     "GET",
     "/api/v1/subnets/{netuid}/metagraph",
@@ -1877,6 +1905,17 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-counterparties",
+    "GET",
+    "/api/v1/accounts/{ss58}/counterparties",
+    "/metagraph/accounts/{ss58}/counterparties.json",
+    "Fetch the per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume (the address relationship view) — computed live from the account_events D1 tier. ?limit (<=100).",
+    "short",
+    ["accounts", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(

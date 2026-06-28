@@ -128,6 +128,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/turnover?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.comparable, "boolean");
+      assert.equal(typeof body.data.validators_entered, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -213,6 +221,13 @@ const checks = [
     (body) => {
       assert.equal(Array.isArray(body.data.transfers), true);
       assert.equal(typeof body.data.transfer_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties",
+    (body) => {
+      assert.equal(Array.isArray(body.data.counterparties), true);
+      assert.equal(typeof body.data.counterparty_count, "number");
     },
   ],
   [

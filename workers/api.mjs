@@ -68,12 +68,14 @@ import {
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   canonicalSubnetConcentrationHistoryCachePath,
+  handleSubnetTurnover,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
   handleAccountEvents,
   handleAccountExtrinsics,
   handleAccountTransfers,
+  handleAccountCounterparties,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
@@ -178,7 +180,7 @@ import {
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
-import { handleFeedRequest } from "../src/feeds.mjs";
+import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
 import { handleOgImage } from "../src/og-image.mjs";
 import { handleIconProxy } from "../src/icon-proxy.mjs";
@@ -196,6 +198,7 @@ import {
   ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_TRANSFERS_PATH_PATTERN,
+  ACCOUNT_COUNTERPARTIES_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
@@ -232,6 +235,7 @@ import {
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
+  SUBNET_TURNOVER_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -988,14 +992,40 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // method gate); `/api/*` is run_worker_first so these never fall through to
   // the static assets. Read-only, content-negotiated, edge-cached.
   if (url.pathname.startsWith("/api/v1/feeds/")) {
-    return handleFeedRequest(request, env, url, {
-      readArtifact,
-      errorResponse,
-      loadLiveIncidents: async (feedEnv) => {
-        const { data } = await loadGlobalIncidentsLedger(feedEnv);
-        return data;
-      },
-    });
+    const feedCacheParams = [
+      `format=${encodeURIComponent(
+        resolveFeedFormat(url.pathname, request.headers.get("accept")),
+      )}`,
+    ];
+    const tag = url.searchParams.get("tag");
+    if (tag != null) feedCacheParams.push(`tag=${encodeURIComponent(tag)}`);
+    const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
+    const feedRequest =
+      request.method === "HEAD"
+        ? new Request(request.url, { method: "GET", headers: request.headers })
+        : request;
+    const response = await withEdgeCache(
+      feedRequest,
+      ctx,
+      env,
+      "feeds",
+      () =>
+        handleFeedRequest(feedRequest, env, url, {
+          readArtifact,
+          errorResponse,
+          loadLiveIncidents: async (feedEnv) => {
+            const { data } = await loadGlobalIncidentsLedger(feedEnv);
+            return data;
+          },
+        }),
+      feedCachePath,
+    );
+    return request.method === "HEAD"
+      ? new Response(null, {
+          status: response.status,
+          headers: response.headers,
+        })
+      : response;
   }
 
   // Embeddable SVG badges at /api/v1/{subnets/{netuid}|providers/{slug}}/
@@ -1215,6 +1245,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    const turnoverMatch = SUBNET_TURNOVER_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (turnoverMatch) {
+      // Boundary-snapshot diff over the neuron_daily rollup, deterministic per
+      // cron snapshot — edge-cache like the sibling history routes.
+      return withEdgeCache(request, ctx, env, "subnet-turnover", () =>
+        handleSubnetTurnover(
+          request,
+          env,
+          Number(turnoverMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1347,6 +1392,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         request,
         env,
         accountTransfersMatch[1],
+        resolved.url,
+      );
+    }
+    const accountCounterpartiesMatch = ACCOUNT_COUNTERPARTIES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountCounterpartiesMatch) {
+      return handleAccountCounterparties(
+        request,
+        env,
+        accountCounterpartiesMatch[1],
         resolved.url,
       );
     }
@@ -1489,6 +1545,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_SUBNETS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||

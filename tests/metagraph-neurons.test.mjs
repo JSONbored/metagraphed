@@ -242,6 +242,57 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.point_count, 1); // both rows share one snapshot_date
   });
 
+  test("GET /subnets/{n}/turnover routes to the turnover handler", async () => {
+    // Two-query handler: a MIN/MAX boundary probe, then the boundary rows.
+    const turnoverEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/MIN\(snapshot_date\)/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        { start_date: "2026-05-28", end_date: "2026-06-27" },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({
+                    results: [
+                      {
+                        snapshot_date: "2026-05-28",
+                        uid: 0,
+                        hotkey: "V1",
+                        validator_permit: 1,
+                      },
+                      {
+                        snapshot_date: "2026-06-27",
+                        uid: 0,
+                        hotkey: "V1",
+                        validator_permit: 1,
+                      },
+                    ],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/turnover?window=30d",
+      turnoverEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.comparable, true);
+    assert.equal(body.data.validators_start, 1);
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);

@@ -14,11 +14,13 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  handleSubnetTurnover,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
   handleAccountExtrinsics,
   handleAccountTransfers,
+  handleAccountCounterparties,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -186,6 +188,8 @@ function dbWith({
   neuronDailyUid,
   neuronDailySubnet,
   neuronDailyHistory,
+  turnoverBounds,
+  turnoverRows,
   agg,
   kinds,
   registrations,
@@ -238,6 +242,19 @@ function dbWith({
                     /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
                   ) {
                     return { results: neuronDailyUid || [] };
+                  }
+                  // Turnover: MIN/MAX boundary-date probe (checked before the
+                  // generic `snapshot_date >=` history match below).
+                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    return { results: turnoverBounds || [] };
+                  }
+                  // Turnover: the two boundary snapshots' rows.
+                  if (
+                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: turnoverRows || [] };
                   }
                   // Raw per-day neuron_daily rows (concentration history).
                   if (
@@ -979,6 +996,85 @@ describe("handleSubnetConcentrationHistory", () => {
   });
 });
 
+describe("handleSubnetTurnover", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetTurnover(
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty turnover on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetTurnover,
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.comparable, false);
+    assert.equal(body.data.validator_retention, null);
+  });
+
+  test("happy path computes validator churn between the two boundary snapshots", async () => {
+    const { env, captures } = dbWith({
+      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+      turnoverRows: [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "V2",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "V3",
+          validator_permit: 1,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetTurnover(
+        req(`/api/v1/subnets/${NETUID}/turnover`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/turnover?window=30d`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.comparable, true);
+    assert.equal(body.data.start_date, "2026-06-01");
+    assert.equal(body.data.end_date, "2026-06-30");
+    assert.equal(body.data.validators_entered, 1); // V3 joined
+    assert.equal(body.data.validators_exited, 1); // V2 left
+    assert.equal(body.data.uids_deregistered, 1); // uid1: V2 → V3
+    // Bound to the netuid; reads the two boundary snapshots.
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
 describe("handleAccount", () => {
   test("returns schema-stable zero summary on cold/unbound D1", async () => {
     const body = await assertColdSchema(
@@ -1341,6 +1437,59 @@ describe("handleAccountTransfers", () => {
     const sql = captures.sql.find((s) => /Transfer/.test(s));
     assert.ok(/OFFSET/.test(sql));
     assert.ok(!/block_number, event_index\) </.test(sql));
+  });
+});
+
+describe("handleAccountCounterparties", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountCounterparties(
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty rollup on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountCounterparties,
+      req(`/api/v1/accounts/${SS58}/counterparties`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/counterparties`),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 0);
+    assert.deepEqual(body.data.counterparties, []);
+  });
+
+  test("aggregates the account's transfers by counterparty", async () => {
+    const { env, captures } = dbWith({
+      transfers: [
+        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
+        { hotkey: "A", coldkey: SS58, amount_tao: 30, block_number: 8 },
+        { hotkey: "B", coldkey: SS58, amount_tao: 200, block_number: 7 },
+      ],
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=10`),
+      ),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty_count, 2); // A, B
+    assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
+    // Read is a Transfer scan bound to the account on both sides.
+    const idx = captures.sql.findIndex((s) =>
+      /event_kind = 'Transfer' AND \(hotkey = \? OR coldkey = \?\)/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], SS58);
   });
 });
 
