@@ -397,6 +397,75 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issue-details",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounty details",
+      "notes": "Detail record for a single Gittensor issue bounty: GitHub URL, bounty amount, status, and linked repository. The `1` path segment is an example issue ID; any valid Gittensor issue ID returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/1/details"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issue-submissions",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounty PR submissions",
+      "notes": "Pull request submissions made against a Gittensor issue bounty: PR number, title, author login, repository, and merge status. The `1` path segment is an example issue ID; any valid Gittensor issue ID returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/1/submissions"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repo-miners",
+      "kind": "data-artifact",
+      "name": "Gittensor per-repository miner evaluations",
+      "notes": "Miner evaluations scoped to a single whitelisted repository: UID, credibility score, GitHub username, and any failed-reason flags. The `entrius%2Fgittensor` path segment is an example; any whitelisted repository slug returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/entrius%2Fgittensor/miners"
     }
   ],
   "website_url": "https://gittensor.io/"
