@@ -384,7 +384,11 @@ export function apiRouteUrl(routePath, date) {
     .replace("{uid}", "0")
     .replace("{hash}", `0x${"0".repeat(64)}`)
     .replace("{ref}", "0")
-    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+    .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+    .replace(
+      "{counterparty}",
+      "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+    );
   // Guard against the recurring #1682 class: any leftover `{` means a route
   // placeholder was never substituted, which silently 404s against a live URL
   // that matches no route. Fail fast with the offending path.

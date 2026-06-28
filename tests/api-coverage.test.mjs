@@ -1657,7 +1657,11 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
       .replace("{uid}", "0")
       .replace("{hash}", `0x${"0".repeat(64)}`)
       .replace("{ref}", "0")
-      .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
+      .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+      .replace(
+        "{counterparty}",
+        "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+      );
   }
 
   // One concrete sample pathname per contract route (placeholders substituted).

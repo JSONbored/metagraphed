@@ -70,6 +70,7 @@ import {
   handleSubnetConcentrationHistory,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
+  handleSubnetTurnoverChanges,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -77,6 +78,7 @@ import {
   handleAccountExtrinsics,
   handleAccountTransfers,
   handleAccountCounterparties,
+  handleAccountCounterparty,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
@@ -200,6 +202,7 @@ import {
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_TRANSFERS_PATH_PATTERN,
   ACCOUNT_COUNTERPARTIES_PATH_PATTERN,
+  ACCOUNT_COUNTERPARTY_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
@@ -237,6 +240,7 @@ import {
   SUBNET_CONCENTRATION_PATH_PATTERN,
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
+  SUBNET_TURNOVER_CHANGES_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1267,6 +1271,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         ),
       );
     }
+    const turnoverChangesMatch = SUBNET_TURNOVER_CHANGES_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (turnoverChangesMatch) {
+      return withEdgeCache(request, ctx, env, "subnet-turnover-changes", () =>
+        handleSubnetTurnoverChanges(
+          request,
+          env,
+          Number(turnoverChangesMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1409,6 +1426,18 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         request,
         env,
         accountTransfersMatch[1],
+        resolved.url,
+      );
+    }
+    const accountCounterpartyMatch = ACCOUNT_COUNTERPARTY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountCounterpartyMatch) {
+      return handleAccountCounterparty(
+        request,
+        env,
+        accountCounterpartyMatch[1],
+        accountCounterpartyMatch[2],
         resolved.url,
       );
     }
@@ -1556,6 +1585,8 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
     SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
+    SUBNET_TURNOVER_CHANGES_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -1563,6 +1594,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_COUNTERPARTY_PATH_PATTERN.test(pathname) ||
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||

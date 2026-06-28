@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildTurnover } from "../src/turnover.mjs";
+import { buildTurnover, buildTurnoverChanges } from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
   test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
@@ -235,6 +235,103 @@ describe("buildTurnover — invariants", () => {
     assert.equal(
       data.validators_start - data.validators_exited,
       data.validators_end - data.validators_entered,
+    );
+  });
+});
+
+describe("buildTurnoverChanges", () => {
+  test("cold / empty / non-array rows yield a schema-stable empty detail block", () => {
+    for (const rows of [[], null, undefined]) {
+      const data = buildTurnoverChanges(rows, 7, { window: "30d" });
+      assert.equal(data.netuid, 7);
+      assert.equal(data.window, "30d");
+      assert.equal(data.comparable, false);
+      assert.equal(data.validators_entered_count, 0);
+      assert.equal(data.validators_exited_count, 0);
+      assert.equal(data.uid_reassignment_count, 0);
+      assert.deepEqual(data.validators_entered, []);
+      assert.deepEqual(data.validators_exited, []);
+      assert.deepEqual(data.uid_reassignments, []);
+    }
+  });
+
+  test("lists validator entries/exits and UID reassignments between snapshots", () => {
+    const rows = [
+      {
+        snapshot_date: "2026-06-01",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 1,
+        hotkey: "V2",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        uid: 2,
+        hotkey: "M1",
+        validator_permit: 0,
+      },
+      {
+        snapshot_date: "2026-06-30",
+        uid: 0,
+        hotkey: "V1",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-30",
+        uid: 1,
+        hotkey: "V3",
+        validator_permit: 1,
+      },
+      {
+        snapshot_date: "2026-06-30",
+        uid: 2,
+        hotkey: "M1",
+        validator_permit: 0,
+      },
+    ];
+    const data = buildTurnoverChanges(rows, 9, {
+      window: "30d",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+    });
+    assert.equal(data.comparable, true);
+    assert.equal(data.validators_start, 2);
+    assert.equal(data.validators_end, 2);
+    assert.deepEqual(data.validators_entered, [{ hotkey: "V3", uid: 1 }]);
+    assert.deepEqual(data.validators_exited, [{ hotkey: "V2", uid: 1 }]);
+    assert.deepEqual(data.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
+  });
+
+  test("sorts detail arrays deterministically", () => {
+    const rows = [
+      { snapshot_date: "2026-06-01", uid: 0, hotkey: "Z", validator_permit: 1 },
+      { snapshot_date: "2026-06-01", uid: 3, hotkey: "C", validator_permit: 1 },
+      { snapshot_date: "2026-06-30", uid: 0, hotkey: "B", validator_permit: 1 },
+      { snapshot_date: "2026-06-30", uid: 2, hotkey: "A", validator_permit: 1 },
+      { snapshot_date: "2026-06-30", uid: 3, hotkey: "D", validator_permit: 1 },
+    ];
+    const data = buildTurnoverChanges(rows, 1, {
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+    });
+    assert.deepEqual(
+      data.validators_entered.map((v) => v.hotkey),
+      ["A", "B", "D"],
+    );
+    assert.deepEqual(
+      data.validators_exited.map((v) => v.hotkey),
+      ["C", "Z"],
+    );
+    assert.deepEqual(
+      data.uid_reassignments.map((r) => r.uid),
+      [0, 3],
     );
   });
 });

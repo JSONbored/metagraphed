@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildCounterparties,
+  buildCounterpartyRelationship,
   COUNTERPARTIES_SCAN_CAP,
+  COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
 } from "../src/counterparties.mjs";
 
 const ME = "ME";
@@ -101,6 +103,91 @@ describe("buildCounterparties", () => {
     assert.equal(data.scan_capped, true);
     assert.equal(data.counterparty_count, COUNTERPARTIES_SCAN_CAP);
     assert.equal(data.counterparties.length, 10);
+  });
+});
+
+describe("buildCounterpartyRelationship", () => {
+  test("cold / empty / non-array rows yield a schema-stable empty relationship", () => {
+    for (const rows of [[], null, undefined]) {
+      const data = buildCounterpartyRelationship(rows, ME, "A", {});
+      assert.equal(data.ss58, ME);
+      assert.equal(data.counterparty, "A");
+      assert.equal(data.transfer_count, 0);
+      assert.equal(data.transfers_scanned, 0);
+      assert.equal(data.scan_capped, false);
+      assert.equal(data.total_sent_tao, 0);
+      assert.equal(data.total_received_tao, 0);
+      assert.equal(data.net_tao, 0);
+      assert.equal(data.first_block, null);
+      assert.equal(data.last_block, null);
+      assert.deepEqual(data.transfers, []);
+    }
+  });
+
+  test("summarizes one pair and preserves newest-first transfer evidence", () => {
+    const data = buildCounterpartyRelationship(
+      [
+        {
+          block_number: 12,
+          event_index: 2,
+          hotkey: "A",
+          coldkey: "ME",
+          netuid: 7,
+          amount_tao: 30,
+          observed_at: Date.UTC(2026, 5, 3),
+        },
+        {
+          block_number: 10,
+          event_index: 1,
+          hotkey: "ME",
+          coldkey: "A",
+          netuid: null,
+          amount_tao: 100,
+          observed_at: Date.UTC(2026, 5, 1),
+        },
+        {
+          block_number: 9,
+          event_index: 1,
+          hotkey: "ME",
+          coldkey: "B",
+          amount_tao: 5,
+        },
+      ],
+      ME,
+      "A",
+      { limit: 10 },
+    );
+    assert.equal(data.transfer_count, 2);
+    assert.equal(data.transfers_scanned, 3);
+    assert.equal(data.total_sent_tao, 100);
+    assert.equal(data.total_received_tao, 30);
+    assert.equal(data.net_tao, -70);
+    assert.equal(data.first_block, 10);
+    assert.equal(data.last_block, 12);
+    assert.equal(data.first_seen_at, "2026-06-01T00:00:00.000Z");
+    assert.equal(data.last_seen_at, "2026-06-03T00:00:00.000Z");
+    assert.equal(data.transfers[0].direction, "received");
+    assert.equal(data.transfers[0].from, "A");
+    assert.equal(data.transfers[0].to, ME);
+    assert.equal(data.transfers[1].direction, "sent");
+  });
+
+  test("limits evidence rows while summary counts the full bounded scan", () => {
+    const rows = Array.from(
+      { length: COUNTERPARTY_RELATIONSHIP_SCAN_CAP },
+      (_, i) => ({
+        block_number: i,
+        event_index: 0,
+        hotkey: "ME",
+        coldkey: "A",
+        amount_tao: 1,
+      }),
+    );
+    const data = buildCounterpartyRelationship(rows, ME, "A", { limit: 2 });
+    assert.equal(data.transfer_count, COUNTERPARTY_RELATIONSHIP_SCAN_CAP);
+    assert.equal(data.scan_capped, true);
+    assert.equal(data.total_sent_tao, COUNTERPARTY_RELATIONSHIP_SCAN_CAP);
+    assert.equal(data.transfers.length, 2);
   });
 });
 

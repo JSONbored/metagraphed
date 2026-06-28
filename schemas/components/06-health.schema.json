@@ -862,6 +862,71 @@
         },
         "additionalProperties": true
       },
+      "SubnetTurnoverChangesArtifact": {
+        "type": "object",
+        "description": "Detailed validator-set turnover changes for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
+        "required": [
+          "schema_version",
+          "netuid",
+          "comparable",
+          "validators_entered",
+          "validators_exited",
+          "uid_reassignments"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "window": { "type": ["string", "null"] },
+          "start_date": { "type": ["string", "null"] },
+          "end_date": { "type": ["string", "null"] },
+          "comparable": { "type": "boolean" },
+          "validators_start": { "type": "integer", "minimum": 0 },
+          "validators_end": { "type": "integer", "minimum": 0 },
+          "validators_entered_count": { "type": "integer", "minimum": 0 },
+          "validators_exited_count": { "type": "integer", "minimum": 0 },
+          "neurons_start": { "type": "integer", "minimum": 0 },
+          "neurons_end": { "type": "integer", "minimum": 0 },
+          "uid_reassignment_count": { "type": "integer", "minimum": 0 },
+          "validators_entered": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["hotkey", "uid"],
+              "properties": {
+                "hotkey": { "type": "string" },
+                "uid": { "type": ["integer", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "validators_exited": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["hotkey", "uid"],
+              "properties": {
+                "hotkey": { "type": "string" },
+                "uid": { "type": ["integer", "null"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "uid_reassignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["uid", "from_hotkey", "to_hotkey"],
+              "properties": {
+                "uid": { "type": "integer", "minimum": 0 },
+                "from_hotkey": { "type": "string" },
+                "to_hotkey": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": true
+      },
       "GlobalIncidentsArtifact": {
         "type": "object",
         "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",

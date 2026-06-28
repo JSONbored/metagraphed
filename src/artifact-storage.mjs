@@ -40,6 +40,7 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/concentration\/history\.json$/,
   // Validator-set / registration turnover: computed live from neuron_daily.
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/turnover\/changes\.json$/,
   // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
   // tier at /api/v1/subnets/{netuid}/metagraph, /neurons/{uid}, /validators —
   // never written as files.
@@ -59,6 +60,7 @@ export const R2_ONLY_PATTERNS = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/extrinsics\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/transfers\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/counterparties\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/counterparties\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{counterparty\})\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
   // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,

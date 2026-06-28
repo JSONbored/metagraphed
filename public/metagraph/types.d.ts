@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/counterparties/{counterparty}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch pair-level fund-flow detail for one account/counterparty relationship — summary totals plus recent native-TAO transfer evidence — computed live from the account_events D1 tier. ?limit (<=100). */
+        get: operations["accountCounterparty"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/events": {
         parameters: {
             query?: never;
@@ -1551,6 +1568,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/turnover/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch validator-set turnover change detail for one subnet — validator hotkeys entered/exited and UID slots reassigned between a window's boundary snapshots (computed live from the neuron_daily D1 rollup). */
+        get: operations["subnetTurnoverChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/uptime": {
         parameters: {
             query?: never;
@@ -1646,6 +1680,39 @@ export interface components {
             ss58: string;
             total_received_tao?: number;
             total_sent_tao?: number;
+            transfers_scanned?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Pair-level account/counterparty fund-flow detail: bounded native-TAO Transfer scan summarized into sent/received/net totals plus recent transfer evidence. Served live at /api/v1/accounts/{ss58}/counterparties/{counterparty} (no static file). */
+        AccountCounterpartyRelationshipArtifact: {
+            counterparty: string;
+            first_block?: number | null;
+            /** Format: date-time */
+            first_seen_at?: string | null;
+            last_block?: number | null;
+            /** Format: date-time */
+            last_seen_at?: string | null;
+            limit?: number;
+            net_tao?: number;
+            scan_capped?: boolean;
+            schema_version: number;
+            ss58: string;
+            total_received_tao?: number;
+            total_sent_tao?: number;
+            transfer_count: number;
+            transfers: {
+                amount_tao?: number | null;
+                block_number: number | null;
+                /** @enum {string|null} */
+                direction?: "sent" | "received" | null;
+                event_index?: number | null;
+                from: string | null;
+                netuid?: number | null;
+                /** Format: date-time */
+                observed_at?: string | null;
+                to: string | null;
+            }[];
             transfers_scanned?: number;
         } & {
             [key: string]: unknown;
@@ -4834,6 +4901,37 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Detailed validator-set turnover changes for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. */
+        SubnetTurnoverChangesArtifact: {
+            comparable: boolean;
+            end_date?: string | null;
+            netuid: number;
+            neurons_end?: number;
+            neurons_start?: number;
+            schema_version: number;
+            start_date?: string | null;
+            uid_reassignment_count?: number;
+            uid_reassignments: {
+                from_hotkey: string;
+                to_hotkey: string;
+                uid: number;
+            }[];
+            validators_end?: number;
+            validators_entered: {
+                hotkey: string;
+                uid: number | null;
+            }[];
+            validators_entered_count?: number;
+            validators_exited: {
+                hotkey: string;
+                uid: number | null;
+            }[];
+            validators_exited_count?: number;
+            validators_start?: number;
+            window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** @enum {unknown} */
         SubnetType: "root" | "application";
         /** @description Validators (validator_permit) of one subnet ranked by stake (#1305), served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file). */
@@ -5572,6 +5670,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountCounterpartiesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountCounterparty: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ss58: string;
+                counterparty: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "counterparty": "example",
+                     *         "first_block": 5000000,
+                     *         "first_seen_at": "2026-06-01T00:00:00.000Z",
+                     *         "last_block": 5000000,
+                     *         "last_seen_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "net_tao": 0.5,
+                     *         "scan_capped": false,
+                     *         "schema_version": 1,
+                     *         "ss58": "example",
+                     *         "total_received_tao": 0.5,
+                     *         "total_sent_tao": 0.5,
+                     *         "transfer_count": 1,
+                     *         "transfers": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "from": "example",
+                     *             "to": "example"
+                     *           }
+                     *         ],
+                     *         "transfers_scanned": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountCounterpartyRelationshipArtifact"];
                     };
                 };
             };
@@ -17714,6 +17936,140 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetTurnoverArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetTurnoverChanges: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d" | "1y" | "all";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "comparable": false,
+                     *         "end_date": "example",
+                     *         "netuid": 7,
+                     *         "neurons_end": 1,
+                     *         "neurons_start": 1,
+                     *         "schema_version": 1,
+                     *         "start_date": "example",
+                     *         "uid_reassignment_count": 1,
+                     *         "uid_reassignments": [
+                     *           {
+                     *             "from_hotkey": "example",
+                     *             "to_hotkey": "example",
+                     *             "uid": 1
+                     *           }
+                     *         ],
+                     *         "validators_end": 1,
+                     *         "validators_entered": [
+                     *           {
+                     *             "hotkey": "example",
+                     *             "uid": 1
+                     *           }
+                     *         ],
+                     *         "validators_entered_count": 1,
+                     *         "validators_exited": [
+                     *           {
+                     *             "hotkey": "example",
+                     *             "uid": 1
+                     *           }
+                     *         ],
+                     *         "validators_exited_count": 1,
+                     *         "validators_start": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-06.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetTurnoverChangesArtifact"];
                     };
                 };
             };

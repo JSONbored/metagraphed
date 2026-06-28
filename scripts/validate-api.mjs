@@ -136,6 +136,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/turnover/changes?window=30d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.comparable, "boolean");
+      assert.equal(Array.isArray(body.data.validators_entered), true);
+      assert.equal(Array.isArray(body.data.uid_reassignments), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -228,6 +237,14 @@ const checks = [
     (body) => {
       assert.equal(Array.isArray(body.data.counterparties), true);
       assert.equal(typeof body.data.counterparty_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties/5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+    (body) => {
+      assert.equal(Array.isArray(body.data.transfers), true);
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(typeof body.data.net_tao, "number");
     },
   ],
   [

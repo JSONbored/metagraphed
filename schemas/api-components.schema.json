@@ -161,6 +161,148 @@
         ],
         "type": "object"
       },
+      "AccountCounterpartyRelationshipArtifact": {
+        "additionalProperties": true,
+        "description": "Pair-level account/counterparty fund-flow detail: bounded native-TAO Transfer scan summarized into sent/received/net totals plus recent transfer evidence. Served live at /api/v1/accounts/{ss58}/counterparties/{counterparty} (no static file).",
+        "properties": {
+          "counterparty": {
+            "type": "string"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "net_tao": {
+            "type": "number"
+          },
+          "scan_capped": {
+            "type": "boolean"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "ss58": {
+            "type": "string"
+          },
+          "total_received_tao": {
+            "type": "number"
+          },
+          "total_sent_tao": {
+            "type": "number"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "transfers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "amount_tao": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "block_number": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "direction": {
+                  "enum": [
+                    "sent",
+                    "received",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "event_index": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "from": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "netuid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "observed_at": {
+                  "format": "date-time",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "block_number",
+                "from",
+                "to"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "transfers_scanned": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "ss58",
+          "counterparty",
+          "transfer_count",
+          "transfers"
+        ],
+        "type": "object"
+      },
       "AccountDay": {
         "additionalProperties": true,
         "description": "One day's rolled-up activity for an account on one subnet (#1854), from the account_events_daily tier. event_kinds is the distinct set of SubtensorModule event ids seen that day.",
@@ -13120,6 +13262,145 @@
           "schema_version",
           "netuid",
           "comparable"
+        ],
+        "type": "object"
+      },
+      "SubnetTurnoverChangesArtifact": {
+        "additionalProperties": true,
+        "description": "Detailed validator-set turnover changes for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "start_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uid_reassignment_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uid_reassignments": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "from_hotkey": {
+                  "type": "string"
+                },
+                "to_hotkey": {
+                  "type": "string"
+                },
+                "uid": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "uid",
+                "from_hotkey",
+                "to_hotkey"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "validators_end": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_entered": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "hotkey": {
+                  "type": "string"
+                },
+                "uid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "hotkey",
+                "uid"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "validators_entered_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_exited": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "hotkey": {
+                  "type": "string"
+                },
+                "uid": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "hotkey",
+                "uid"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "validators_exited_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators_start": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "comparable",
+          "validators_entered",
+          "validators_exited",
+          "uid_reassignments"
         ],
         "type": "object"
       },

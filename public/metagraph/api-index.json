@@ -387,6 +387,13 @@
     },
     {
       "contract_version": "2026-06-06.1",
+      "id": "subnet-turnover-changes",
+      "path": "/metagraph/subnets/{netuid}/turnover/changes.json",
+      "schema_ref": "#/components/schemas/SubnetTurnoverChangesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -467,6 +474,13 @@
       "id": "account-counterparties",
       "path": "/metagraph/accounts/{ss58}/counterparties.json",
       "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-06.1",
+      "id": "account-counterparty",
+      "path": "/metagraph/accounts/{ss58}/counterparties/{counterparty}.json",
+      "schema_ref": "#/components/schemas/AccountCounterpartyRelationshipArtifact",
       "storage_tier": "r2"
     },
     {
@@ -4289,6 +4303,32 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/turnover/changes.json",
+      "cache": "short",
+      "description": "Fetch validator-set turnover change detail for one subnet — validator hotkeys entered/exited and UID slots reassigned between a window's boundary snapshots (computed live from the neuron_daily D1 rollup).",
+      "id": "subnet-turnover-changes",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/turnover/changes",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/metagraph.json",
       "cache": "short",
       "description": "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
@@ -4595,6 +4635,27 @@
       "id": "account-counterparties",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/counterparties",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/accounts/{ss58}/counterparties/{counterparty}.json",
+      "cache": "short",
+      "description": "Fetch pair-level fund-flow detail for one account/counterparty relationship — summary totals plus recent native-TAO transfer evidence — computed live from the account_events D1 tier. ?limit (<=100).",
+      "id": "account-counterparty",
+      "method": "GET",
+      "path": "/api/v1/accounts/{ss58}/counterparties/{counterparty}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

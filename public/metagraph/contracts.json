@@ -498,6 +498,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-06.1",
+      "description": "Validator-set turnover change detail for one subnet — validator hotkeys entered/exited and UID slots reassigned between a window's boundary snapshots — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover/changes (no static file).",
+      "id": "subnet-turnover-changes",
+      "path": "/metagraph/subnets/{netuid}/turnover/changes.json",
+      "schema_ref": "#/components/schemas/SubnetTurnoverChangesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
       "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
@@ -601,6 +610,15 @@
       "id": "account-counterparties",
       "path": "/metagraph/accounts/{ss58}/counterparties.json",
       "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-06.1",
+      "description": "Pair-level account/counterparty fund-flow detail — bounded native-TAO transfer summary plus recent transfer evidence — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties/{counterparty} (no static file).",
+      "id": "account-counterparty",
+      "path": "/metagraph/accounts/{ss58}/counterparties/{counterparty}.json",
+      "schema_ref": "#/components/schemas/AccountCounterpartyRelationshipArtifact",
       "storage_tier": "r2"
     },
     {

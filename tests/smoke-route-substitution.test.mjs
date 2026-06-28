@@ -4,7 +4,7 @@ import { API_ROUTES } from "../src/contracts.mjs";
 import { apiRouteUrl } from "../scripts/smoke-live-api.mjs";
 
 // PR-time guard for the recurring #1682 class: the live smoke substitutes path
-// placeholders ({netuid}/{slug}/{date}/{uid}/{hash}/{ref}/{ss58}) before
+// placeholders ({netuid}/{slug}/{date}/{uid}/{hash}/{ref}/{ss58}/...) before
 // fetching. A route that grows a new placeholder without a matching
 // substitution would otherwise only blow up at publish time. Assert that
 // apiRouteUrl yields a fully-substituted URL for every registered route.

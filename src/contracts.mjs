@@ -937,6 +937,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetTurnoverArtifact",
   ),
   artifact(
+    "subnet-turnover-changes",
+    "/metagraph/subnets/{netuid}/turnover/changes.json",
+    "Validator-set turnover change detail for one subnet — validator hotkeys entered/exited and UID slots reassigned between a window's boundary snapshots — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover/changes (no static file).",
+    "SubnetTurnoverChangesArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -1007,6 +1013,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/counterparties.json",
     "Per-counterparty fund-flow rollup for one account — its native-TAO transfers aggregated by counterparty into sent/received/net + count, ranked by total volume — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
     "AccountCounterpartiesArtifact",
+  ),
+  artifact(
+    "account-counterparty",
+    "/metagraph/accounts/{ss58}/counterparties/{counterparty}.json",
+    "Pair-level account/counterparty fund-flow detail — bounded native-TAO transfer summary plus recent transfer evidence — served live from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties/{counterparty} (no static file).",
+    "AccountCounterpartyRelationshipArtifact",
   ),
   artifact(
     "account-subnets",
@@ -1746,6 +1758,22 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-turnover-changes",
+    "GET",
+    "/api/v1/subnets/{netuid}/turnover/changes",
+    "/metagraph/subnets/{netuid}/turnover/changes.json",
+    "Fetch validator-set turnover change detail for one subnet — validator hotkeys entered/exited and UID slots reassigned between a window's boundary snapshots (computed live from the neuron_daily D1 rollup).",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-metagraph",
     "GET",
     "/api/v1/subnets/{netuid}/metagraph",
@@ -1917,6 +1945,20 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
     [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-counterparty",
+    "GET",
+    "/api/v1/accounts/{ss58}/counterparties/{counterparty}",
+    "/metagraph/accounts/{ss58}/counterparties/{counterparty}.json",
+    "Fetch pair-level fund-flow detail for one account/counterparty relationship — summary totals plus recent native-TAO transfer evidence — computed live from the account_events D1 tier. ?limit (<=100).",
+    "short",
+    ["accounts", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
+    [
+      { name: "ss58", schema: { type: "string" } },
+      { name: "counterparty", schema: { type: "string" } },
+    ],
   ),
   route(
     "account-subnets",
@@ -2619,6 +2661,7 @@ export function artifactPathFromTemplate(template, params = {}) {
     .replace("{netuid}", String(params.netuid ?? ""))
     .replace("{uid}", String(params.uid ?? ""))
     .replace("{ss58}", String(params.ss58 ?? ""))
+    .replace("{counterparty}", String(params.counterparty ?? ""))
     .replace("{slug}", String(params.slug ?? ""))
     .replace("{date}", String(params.date ?? ""))
     .replace("{surface_id}", String(params.surface_id ?? ""))
@@ -2631,6 +2674,7 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/\{netuid\}/g, "__METAGRAPH_NETUID__")
     .replace(/\{uid\}/g, "__METAGRAPH_UID__")
     .replace(/\{ss58\}/g, "__METAGRAPH_SS58__")
+    .replace(/\{counterparty\}/g, "__METAGRAPH_COUNTERPARTY__")
     .replace(/\{slug\}/g, "__METAGRAPH_SLUG__")
     .replace(/\{date\}/g, "__METAGRAPH_DATE__")
     .replace(/\{surface_id\}/g, "__METAGRAPH_SURFACE_ID__")
@@ -2644,6 +2688,10 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
     .replace(/__METAGRAPH_UID__/g, "(?<uid>\\d+)")
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
+    .replace(
+      /__METAGRAPH_COUNTERPARTY__/g,
+      "(?<counterparty>[1-9A-HJ-NP-Za-km-z]{47,48})",
+    )
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
     .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")

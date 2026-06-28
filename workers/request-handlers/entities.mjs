@@ -79,9 +79,16 @@ import {
 import {
   COUNTERPARTIES_READ_COLUMNS,
   COUNTERPARTIES_SCAN_CAP,
+  COUNTERPARTY_RELATIONSHIP_READ_COLUMNS,
+  COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+  buildCounterpartyRelationship,
   buildCounterparties,
 } from "../../src/counterparties.mjs";
-import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
+import {
+  TURNOVER_READ_COLUMNS,
+  buildTurnover,
+  buildTurnoverChanges,
+} from "../../src/turnover.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -369,6 +376,57 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/turnover.json`,
+        endDate,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/turnover/changes?window=7d|30d|90d|1y|all:
+// detailed companion to the turnover scorecard. Lists validator hotkeys that
+// entered/exited the set and UID slots reassigned to a different hotkey between
+// the same two boundary snapshots.
+export async function handleSubnetTurnoverChanges(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  let boundsSql =
+    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
+  const boundsParams = [netuid];
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    boundsSql += " AND snapshot_date >= ?";
+    boundsParams.push(cutoff);
+  }
+  const bounds = await d1All(env, boundsSql, boundsParams);
+  const startDate = bounds[0]?.start_date ?? null;
+  const endDate = bounds[0]?.end_date ?? null;
+  const rows =
+    startDate == null || endDate == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
+          [netuid, startDate, endDate],
+        );
+  const data = buildTurnoverChanges(rows, netuid, {
+    window: label,
+    startDate,
+    endDate,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/turnover/changes.json`,
         endDate,
       ),
     },
@@ -673,6 +731,48 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
         env,
         `/metagraph/accounts/${ss58}/counterparties.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/accounts/{ss58}/counterparties/{counterparty}?limit=N: pair-level
+// fund-flow summary and recent transfer evidence for one account/counterparty
+// relationship. Bounded newest-first scan; cold/absent store returns an empty,
+// schema-stable relationship object.
+export async function handleAccountCounterparty(
+  request,
+  env,
+  ss58,
+  counterparty,
+  url,
+) {
+  const validationError = validateQueryParams(url, ["limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
+  const rows = await d1All(
+    env,
+    `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ((hotkey = ? AND coldkey = ?) OR (hotkey = ? AND coldkey = ?)) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
+    [
+      ss58,
+      counterparty,
+      counterparty,
+      ss58,
+      COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+    ],
+  );
+  const data = buildCounterpartyRelationship(rows, ss58, counterparty, {
+    limit,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/counterparties/${counterparty}.json`,
+        data.last_seen_at,
       ),
     },
     "short",

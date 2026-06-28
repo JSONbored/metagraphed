@@ -15,12 +15,14 @@ import {
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
+  handleSubnetTurnoverChanges,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
   handleAccountExtrinsics,
   handleAccountTransfers,
   handleAccountCounterparties,
+  handleAccountCounterparty,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -33,6 +35,7 @@ import {
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const COUNTERPARTY = "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
 const HASH = `0x${"a".repeat(64)}`;
 const NETUID = 7;
 const UID = 3;
@@ -196,6 +199,7 @@ function dbWith({
   accountEvents,
   accountEventsDaily,
   transfers,
+  relationshipTransfers,
   subnetEvents,
   blockEvents,
   extrinsicEvents,
@@ -296,6 +300,15 @@ function dbWith({
                     )
                   ) {
                     return { results: blockEvents || [] };
+                  }
+                  // Account/counterparty pair detail: bounded Transfer scan for
+                  // both directions between two specific SS58 addresses.
+                  if (
+                    /event_kind = 'Transfer' AND \(\(hotkey = \? AND coldkey = \?\) OR \(hotkey = \? AND coldkey = \?\)\)/.test(
+                      sql,
+                    )
+                  ) {
+                    return { results: relationshipTransfers || [] };
                   }
                   // Native transfer feed.
                   if (/event_kind = 'Transfer'/.test(sql)) {
@@ -1135,6 +1148,83 @@ describe("handleAccount", () => {
   });
 });
 
+describe("handleSubnetTurnoverChanges", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetTurnoverChanges(
+      req(`/api/v1/subnets/${NETUID}/turnover/changes`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover/changes?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty change detail on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetTurnoverChanges,
+      req(`/api/v1/subnets/${NETUID}/turnover/changes`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover/changes`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.comparable, false);
+    assert.deepEqual(body.data.validators_entered, []);
+    assert.deepEqual(body.data.uid_reassignments, []);
+  });
+
+  test("returns validator change detail between the two boundary snapshots", async () => {
+    const { env, captures } = dbWith({
+      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+      turnoverRows: [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "V2",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "V3",
+          validator_permit: 1,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetTurnoverChanges(
+        req(`/api/v1/subnets/${NETUID}/turnover/changes`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/turnover/changes?window=30d`),
+      ),
+    );
+    assert.equal(body.data.validators_entered_count, 1);
+    assert.deepEqual(body.data.validators_entered, [{ hotkey: "V3", uid: 1 }]);
+    assert.deepEqual(body.data.validators_exited, [{ hotkey: "V2", uid: 1 }]);
+    assert.deepEqual(body.data.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], NETUID);
+  });
+});
+
 describe("handleAccountEvents", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleAccountEvents(
@@ -1490,6 +1580,84 @@ describe("handleAccountCounterparties", () => {
     assert.ok(idx !== -1);
     assert.equal(captures.params[idx][0], SS58);
     assert.equal(captures.params[idx][1], SS58);
+  });
+});
+
+describe("handleAccountCounterparty", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountCounterparty(
+      req(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}`),
+      emptyEnv(),
+      SS58,
+      COUNTERPARTY,
+      url(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty pair detail on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountCounterparty,
+      req(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}`),
+      emptyEnv(),
+      SS58,
+      COUNTERPARTY,
+      url(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}`),
+    );
+    assert.equal(body.data.ss58, SS58);
+    assert.equal(body.data.counterparty, COUNTERPARTY);
+    assert.equal(body.data.transfer_count, 0);
+    assert.deepEqual(body.data.transfers, []);
+  });
+
+  test("returns pair-level fund-flow detail and recent transfer evidence", async () => {
+    const { env, captures } = dbWith({
+      relationshipTransfers: [
+        transferEventRow({
+          block_number: 20,
+          event_index: 2,
+          hotkey: COUNTERPARTY,
+          coldkey: SS58,
+          amount_tao: 4,
+          observed_at: Date.UTC(2026, 5, 2),
+        }),
+        transferEventRow({
+          block_number: 10,
+          event_index: 1,
+          hotkey: SS58,
+          coldkey: COUNTERPARTY,
+          amount_tao: 10,
+          observed_at: Date.UTC(2026, 5, 1),
+        }),
+      ],
+    });
+    const body = await json(
+      await handleAccountCounterparty(
+        req(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}`),
+        env,
+        SS58,
+        COUNTERPARTY,
+        url(`/api/v1/accounts/${SS58}/counterparties/${COUNTERPARTY}?limit=1`),
+      ),
+    );
+    assert.equal(body.data.transfer_count, 2);
+    assert.equal(body.data.total_sent_tao, 10);
+    assert.equal(body.data.total_received_tao, 4);
+    assert.equal(body.data.net_tao, -6);
+    assert.equal(body.data.transfers.length, 1);
+    assert.equal(body.data.transfers[0].direction, "received");
+    const idx = captures.sql.findIndex((s) =>
+      /\(\(hotkey = \? AND coldkey = \?\) OR \(hotkey = \? AND coldkey = \?\)\)/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.deepEqual(captures.params[idx].slice(0, 4), [
+      SS58,
+      COUNTERPARTY,
+      COUNTERPARTY,
+      SS58,
+    ]);
   });
 });
 

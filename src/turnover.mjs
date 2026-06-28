@@ -58,6 +58,49 @@ function uidHotkeyMap(rows) {
   return map;
 }
 
+function normalizedUid(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+}
+
+function validatorDetailMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const hotkey = row?.hotkey;
+    if (
+      Number(row?.validator_permit) === 1 &&
+      typeof hotkey === "string" &&
+      hotkey.length > 0
+    ) {
+      map.set(hotkey, { hotkey, uid: normalizedUid(row.uid) });
+    }
+  }
+  return map;
+}
+
+function uidHotkeyDetailMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const uid = normalizedUid(row?.uid);
+    const hotkey = row?.hotkey;
+    if (uid != null && typeof hotkey === "string" && hotkey.length > 0) {
+      map.set(uid, hotkey);
+    }
+  }
+  return map;
+}
+
+function sortValidatorDetails(values) {
+  return [...values].sort((a, b) => {
+    const hotkeyDelta = a.hotkey.localeCompare(b.hotkey);
+    if (hotkeyDelta !== 0) return hotkeyDelta;
+    return (
+      (a.uid ?? Number.MAX_SAFE_INTEGER) - (b.uid ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
+}
+
 const EMPTY_TURNOVER = {
   comparable: false,
   validators_start: 0,
@@ -139,5 +182,84 @@ export function buildTurnover(
     stability_score: Math.round(
       ((validatorRetention + neuronRetention) / 2) * 100,
     ),
+  };
+}
+
+const EMPTY_TURNOVER_CHANGES = {
+  comparable: false,
+  validators_start: 0,
+  validators_end: 0,
+  validators_entered_count: 0,
+  validators_exited_count: 0,
+  neurons_start: 0,
+  neurons_end: 0,
+  uid_reassignment_count: 0,
+  validators_entered: [],
+  validators_exited: [],
+  uid_reassignments: [],
+};
+
+// Detail view for the turnover scorecard: lists which validator hotkeys entered
+// and exited, plus UID slots whose hotkey changed between the boundary snapshots.
+export function buildTurnoverChanges(
+  rows,
+  netuid,
+  { window, startDate, endDate } = {},
+) {
+  const list = Array.isArray(rows) ? rows : [];
+  const base = {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    start_date: startDate ?? null,
+    end_date: endDate ?? null,
+  };
+  if (startDate == null || endDate == null || list.length === 0) {
+    return { ...base, ...EMPTY_TURNOVER_CHANGES };
+  }
+
+  const startRows = list.filter((row) => row?.snapshot_date === startDate);
+  const endRows = list.filter((row) => row?.snapshot_date === endDate);
+  const startValidators = validatorDetailMap(startRows);
+  const endValidators = validatorDetailMap(endRows);
+  const entered = sortValidatorDetails(
+    [...endValidators]
+      .filter(([hotkey]) => !startValidators.has(hotkey))
+      .map(([, value]) => value),
+  );
+  const exited = sortValidatorDetails(
+    [...startValidators]
+      .filter(([hotkey]) => !endValidators.has(hotkey))
+      .map(([, value]) => value),
+  );
+
+  const startMap = uidHotkeyDetailMap(startRows);
+  const endMap = uidHotkeyDetailMap(endRows);
+  const reassignments = [];
+  for (const [uid, fromHotkey] of startMap) {
+    const toHotkey = endMap.get(uid);
+    if (toHotkey != null && toHotkey !== fromHotkey) {
+      reassignments.push({
+        uid,
+        from_hotkey: fromHotkey,
+        to_hotkey: toHotkey,
+      });
+    }
+  }
+  reassignments.sort((a, b) => a.uid - b.uid);
+
+  return {
+    ...base,
+    comparable: startDate !== endDate,
+    validators_start: startValidators.size,
+    validators_end: endValidators.size,
+    validators_entered_count: entered.length,
+    validators_exited_count: exited.length,
+    neurons_start: startMap.size,
+    neurons_end: endMap.size,
+    uid_reassignment_count: reassignments.length,
+    validators_entered: entered,
+    validators_exited: exited,
+    uid_reassignments: reassignments,
   };
 }
