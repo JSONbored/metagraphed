@@ -93,7 +93,7 @@ export function formatAccountEvent(row) {
     amount_tao: row.amount_tao ?? null,
     alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
-    extrinsic_index: row.extrinsic_index ?? null,
+    extrinsic_index: toBlockNumber(row.extrinsic_index),
   };
 }
 
@@ -407,8 +407,8 @@ export function buildAccountTransfers(
   const transfers = (rows || [])
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
-      block_number: r.block_number ?? null,
-      event_index: r.event_index ?? null,
+      block_number: toBlockNumber(r.block_number),
+      event_index: toBlockNumber(r.event_index),
       from: r.hotkey ?? null,
       to: r.coldkey ?? null,
       amount_tao: r.amount_tao ?? null,

@@ -21,6 +21,7 @@ import {
   rollupAccountEventsDaily,
   pruneAccountEvents,
   validEventRows,
+  buildAccountTransfers,
 } from "../src/account-events.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 
@@ -310,11 +311,13 @@ test("account builders null invalid block heights and indices", () => {
   const event = formatAccountEvent({
     block_number: -1,
     event_index: -2,
+    extrinsic_index: -3,
     event_kind: "StakeAdded",
     observed_at: 1,
   });
   assert.equal(event.block_number, null);
   assert.equal(event.event_index, null);
+  assert.equal(event.extrinsic_index, null);
 
   const summary = buildAccountSummary("5Hk", {
     agg: { fb: -5, lb: "nope" },
@@ -331,6 +334,22 @@ test("account builders null invalid block heights and indices", () => {
   });
   assert.equal(day.first_block, null);
   assert.equal(day.last_block, 100);
+
+  const transfers = buildAccountTransfers(
+    [
+      {
+        block_number: -5,
+        event_index: -1,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: 1,
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(transfers.transfers[0].block_number, null);
+  assert.equal(transfers.transfers[0].event_index, null);
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
