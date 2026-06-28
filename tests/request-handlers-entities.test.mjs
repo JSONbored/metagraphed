@@ -1096,6 +1096,13 @@ describe("handleSubnetTurnover", () => {
       assert.equal(key, "/api/v1/subnets/1/turnover?window=7d");
     });
 
+    test("accepts 1y window (parseHistoryWindow-only value, rejected by concentration parser)", () => {
+      const key = canonicalSubnetTurnoverCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/1/turnover?window=1y"),
+      );
+      assert.equal(key, "/api/v1/subnets/1/turnover?window=1y");
+    });
+
     test("returns raw search on an invalid window value", () => {
       const raw = "/api/v1/subnets/1/turnover?window=bogus";
       const key = canonicalSubnetTurnoverCachePath(
