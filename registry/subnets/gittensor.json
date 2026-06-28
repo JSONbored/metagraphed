@@ -397,6 +397,167 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-prices",
+      "kind": "data-artifact",
+      "name": "Gittensor TAO and Alpha token prices",
+      "notes": "Live TAO and Alpha token price feed including market cap, 24h volume, and percent change. Sourced from CoinMarketCap via the Gittensor API.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/prices"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-prices-history",
+      "kind": "data-artifact",
+      "name": "Gittensor historical TAO and Alpha token prices",
+      "notes": "Time-series price history for TAO and Alpha tokens. Each entry includes price, market cap, 24h volume, and percent change at that timestamp. Configurable via ?days= query parameter.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/prices/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-commits",
+      "kind": "data-artifact",
+      "name": "Gittensor PR commit log",
+      "notes": "Paginated log of merged pull requests including PR number, title, miner hotkey, additions, deletions, commit count, label, repository, and merge timestamp. Useful for auditing contribution history.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/commits"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-lines-total",
+      "kind": "data-artifact",
+      "name": "Gittensor total lines committed",
+      "notes": "Single-value aggregate of total lines committed across all whitelisted repositories on the network. Supports optional time-window filtering via query parameters.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/lines/total"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-lines-trend",
+      "kind": "data-artifact",
+      "name": "Gittensor historical lines committed trend",
+      "notes": "Daily time-series of total lines committed to whitelisted repositories. Each entry has a date and linesCommitted count. Useful for visualising network contribution growth over time.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/lines/hist-trend"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repos-commits",
+      "kind": "data-artifact",
+      "name": "Gittensor top repositories by commit activity",
+      "notes": "Ranked list of whitelisted repositories with their emission share, commit count, total additions, deletions, and lines changed. Useful for identifying the most active repositories on the network.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/dash/repos/commits"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-config",
+      "kind": "data-artifact",
+      "name": "Gittensor validator scoring configuration",
+      "notes": "Machine-readable export of the active validator scoring constants: language file scoring weights, PR base score, contribution bonus cap, unique PR boost, and time-decay parameters. Complements the static weight JSON files in the source repo.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/configurations/general"
     }
   ],
   "website_url": "https://gittensor.io/"
