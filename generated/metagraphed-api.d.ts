@@ -14334,6 +14334,8 @@ export interface operations {
                 max_block?: number;
                 min_candidate_count?: number;
                 max_candidate_count?: number;
+                min_integration_readiness?: number;
+                max_integration_readiness?: number;
                 min_mechanism_count?: number;
                 max_mechanism_count?: number;
                 min_participant_count?: number;
@@ -14348,7 +14350,7 @@ export interface operations {
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
+                sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };

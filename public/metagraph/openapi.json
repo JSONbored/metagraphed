@@ -28135,6 +28135,22 @@
           },
           {
             "in": "query",
+            "name": "min_integration_readiness",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_integration_readiness",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
             "name": "min_mechanism_count",
             "required": false,
             "schema": {
@@ -28252,6 +28268,7 @@
                 "candidate_count",
                 "coverage_level",
                 "curation_level",
+                "integration_readiness",
                 "mechanism_count",
                 "name",
                 "netuid",
