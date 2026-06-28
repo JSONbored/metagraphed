@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildTurnover } from "../src/turnover.mjs";
+import { buildTurnover, loadSubnetTurnover } from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
   test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
@@ -192,6 +192,86 @@ describe("buildTurnover", () => {
     assert.equal(data.validators_end, 1); // V1
     assert.equal(data.neurons_start, 0);
     assert.equal(data.neurons_end, 1);
+  });
+});
+
+describe("turnover loaders", () => {
+  function d1(rowsBySql = {}) {
+    return async (sql, _params) => {
+      for (const [pattern, rows] of Object.entries(rowsBySql)) {
+        if (new RegExp(pattern).test(sql)) return rows;
+      }
+      return [];
+    };
+  }
+
+  test("loadSubnetTurnover returns schema-stable empty on cold D1", async () => {
+    const data = await loadSubnetTurnover(d1(), 7, {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "30d");
+    assert.equal(data.comparable, false);
+    assert.equal(data.validator_retention, null);
+    assert.equal(data.stability_score, null);
+  });
+
+  test("loadSubnetTurnover computes churn between boundary snapshots", async () => {
+    const data = await loadSubnetTurnover(
+      d1({
+        "MIN\\(snapshot_date\\)": [
+          { start_date: "2026-06-01", end_date: "2026-06-30" },
+        ],
+        "snapshot_date IN": [
+          {
+            snapshot_date: "2026-06-01",
+            uid: 0,
+            hotkey: "V1",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-01",
+            uid: 1,
+            hotkey: "V2",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-01",
+            uid: 2,
+            hotkey: "M1",
+            validator_permit: 0,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 0,
+            hotkey: "V1",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 1,
+            hotkey: "V3",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 2,
+            hotkey: "M1",
+            validator_permit: 0,
+          },
+        ],
+      }),
+      9,
+      { windowLabel: "30d", windowDays: 30 },
+    );
+    assert.equal(data.comparable, true);
+    assert.equal(data.start_date, "2026-06-01");
+    assert.equal(data.end_date, "2026-06-30");
+    assert.equal(data.validators_entered, 1);
+    assert.equal(data.validators_exited, 1);
+    assert.equal(data.uids_deregistered, 1);
+    assert.equal(data.stability_score, 42);
   });
 });
 

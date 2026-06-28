@@ -11,6 +11,8 @@
 export const TURNOVER_READ_COLUMNS =
   "snapshot_date, uid, hotkey, validator_permit";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 // Round a retention ratio (always a finite 0..1 jaccard result) to a stable
 // precision.
 function round(value, dp = 4) {
@@ -140,4 +142,39 @@ export function buildTurnover(
       ((validatorRetention + neuronRetention) / 2) * 100,
     ),
   };
+}
+
+// One subnet's validator-set & registration churn — mirrors handleSubnetTurnover:
+// MIN/MAX the window's boundary snapshot_dates on neuron_daily, read exactly
+// those two days' rows, shape with buildTurnover. Cold D1 → comparable:false.
+export async function loadSubnetTurnover(
+  d1,
+  netuid,
+  { windowLabel, windowDays },
+) {
+  let boundsSql =
+    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
+  const boundsParams = [netuid];
+  if (windowDays != null) {
+    const cutoff = new Date(Date.now() - windowDays * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    boundsSql += " AND snapshot_date >= ?";
+    boundsParams.push(cutoff);
+  }
+  const bounds = await d1(boundsSql, boundsParams);
+  const startDate = bounds[0]?.start_date ?? null;
+  const endDate = bounds[0]?.end_date ?? null;
+  const rows =
+    startDate == null || endDate == null
+      ? []
+      : await d1(
+          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
+          [netuid, startDate, endDate],
+        );
+  return buildTurnover(rows, netuid, {
+    window: windowLabel,
+    startDate,
+    endDate,
+  });
 }

@@ -89,11 +89,7 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
-import {
-  buildConcentrationHistory,
-  CONCENTRATION_HISTORY_ROW_CAP,
-  parseConcentrationHistoryWindow,
-} from "./concentration.mjs";
+import { loadSubnetTurnover } from "./turnover.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -128,7 +124,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.6.0";
+export const MCP_SERVER_VERSION = "1.7.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -187,7 +183,8 @@ export const MCP_INSTRUCTIONS =
   "long-term surface uptime history, get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
-  "get_registry_leaderboards the live " +
+  "get_subnet_turnover validator-set and registration churn between two " +
+  "boundary snapshots, get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_subnet_metagraph the " +
@@ -455,26 +452,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's per-day concentration trend — mirrors
-// handleSubnetConcentrationHistory: the raw per-UID neuron_daily distribution
-// (each day re-computed into Gini/Nakamoto/top-10%), bounded by the row cap and
-// shaped by buildConcentrationHistory. Window is the smaller 7d|30d|90d set.
-async function loadSubnetConcentrationHistory(ctx, netuid, args) {
-  const { label, days, error } = parseConcentrationHistoryWindow(args?.window);
-  if (error) {
-    throw toolError("invalid_params", error.message);
-  }
-  const run = mcpD1Runner(ctx);
-  const rows = await run(
-    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
-    [netuid, historyCutoff(days), CONCENTRATION_HISTORY_ROW_CAP],
-  );
-  return buildConcentrationHistory(rows, netuid, {
-    window: label,
-    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
-  });
 }
 
 // One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
@@ -1402,6 +1379,38 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_turnover",
+    title: "Get subnet validator turnover",
+    description:
+      "Fetch one subnet's validator-set and registration churn between the " +
+      "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
+      "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
+      "retention for validators and neurons, UID deregistrations, and a 0–100 " +
+      "stability score. Use it to see how stable a subnet's participation base " +
+      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const { label, days } = requireHistoryWindow(args);
+      return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
+        windowLabel: label,
+        windowDays: days,
+      });
+    },
+  },
+  {
     name: "get_subnet_uptime",
     title: "Get subnet uptime history",
     description:
@@ -1664,34 +1673,6 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
-    },
-  },
-  {
-    name: "get_subnet_concentration_history",
-    title: "Get a subnet's concentration history",
-    description:
-      "Fetch one subnet's per-day stake & emission concentration trend from the " +
-      "dated neuron_daily distribution: Gini, Nakamoto coefficient, and top-10% " +
-      "share for both stake and emission per snapshot_date, newest first. Choose " +
-      "the window (7d, 30d, 90d; default 30d). Use it to answer 'is this subnet " +
-      "centralizing over time?'. Mirrors " +
-      "GET /api/v1/subnets/{netuid}/concentration/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["7d", "30d", "90d"],
-          description: "History window (default 30d).",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args, ctx) {
-      const netuid = requireNetuid(args);
-      return loadSubnetConcentrationHistory(ctx, netuid, args);
     },
   },
   {
@@ -3330,16 +3311,27 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_stake: { type: ["object", "null"] },
     },
   },
-  get_subnet_concentration_history: {
+  get_subnet_turnover: {
     type: "object",
     additionalProperties: true,
-    required: ["netuid", "point_count", "points"],
+    required: ["netuid", "comparable"],
     properties: {
       schema_version: { type: "integer" },
       netuid: { type: "integer" },
       window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: { type: "array", items: { type: "object" } },
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      comparable: { type: "boolean" },
+      validators_start: { type: "integer" },
+      validators_end: { type: "integer" },
+      validators_entered: { type: "integer" },
+      validators_exited: { type: "integer" },
+      validator_retention: { type: ["number", "null"] },
+      neurons_start: { type: "integer" },
+      neurons_end: { type: "integer" },
+      uids_deregistered: { type: "integer" },
+      neuron_retention: { type: ["number", "null"] },
+      stability_score: { type: ["integer", "null"] },
     },
   },
   get_subnet_uptime: {

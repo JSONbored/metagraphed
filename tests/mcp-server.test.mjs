@@ -3280,6 +3280,8 @@ describe("MCP economics + metagraph data tools", () => {
     growthSamples = [],
     rpcRows = [],
     neuronDaily = [],
+    turnoverBounds = [],
+    turnoverRows = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -3304,6 +3306,12 @@ describe("MCP economics + metagraph data tools", () => {
                   return Promise.resolve({ results: snapshots });
                 }
                 if (sql.includes("FROM neuron_daily")) {
+                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    return Promise.resolve({ results: turnoverBounds });
+                  }
+                  if (/snapshot_date IN/.test(sql)) {
+                    return Promise.resolve({ results: turnoverRows });
+                  }
                   return Promise.resolve({ results: neuronDaily });
                 }
                 if (sql.includes("FROM surface_uptime_daily")) {
@@ -3517,6 +3525,87 @@ describe("MCP economics + metagraph data tools", () => {
     const res = await callTool("get_subnet_concentration_history", {
       netuid: 7,
       window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_turnover returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_subnet_turnover", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.comparable, false);
+    assert.equal(out.validator_retention, null);
+    assert.equal(out.stability_score, null);
+  });
+
+  test("get_subnet_turnover computes validator churn between boundary snapshots", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "30d" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-01",
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-01",
+                uid: 2,
+                hotkey: "M1",
+                validator_permit: 0,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 0,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 2,
+                hotkey: "M1",
+                validator_permit: 0,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.comparable, true);
+    assert.equal(out.start_date, "2026-06-01");
+    assert.equal(out.end_date, "2026-06-30");
+    assert.equal(out.validators_entered, 1);
+    assert.equal(out.validators_exited, 1);
+    assert.equal(out.uids_deregistered, 1);
+    assert.equal(out.stability_score, 42);
+  });
+
+  test("get_subnet_turnover rejects an invalid window", async () => {
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 7,
+      window: "400d",
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
