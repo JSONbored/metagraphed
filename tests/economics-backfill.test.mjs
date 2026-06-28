@@ -182,6 +182,91 @@ test("handleRequest routes POST /api/v1/internal/backfill-economics", async () =
   assert.equal(res.status, 503);
 });
 
+// ---- Writer failure-path coverage (D1 batch) -------------------------------
+// The backfill writer is economicsSnapshotUpsertStatements + db.batch. The
+// handler runs the batch WITHOUT a try/catch, so a D1 failure during the upsert
+// must surface (reject) — never be swallowed into a false 200. These harden that
+// path plus the all-invalid no-batch short-circuit.
+
+test("economics backfill surfaces a D1 batch failure instead of a false 200", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch() {
+        throw new Error("D1_ERROR: database is locked");
+      },
+    },
+  };
+  // One valid row → the writer reaches db.batch, which rejects; the handler
+  // does not catch it, so the rejection propagates to the caller (the runtime
+  // turns it into a 500), proving no swallow-to-200.
+  await assert.rejects(
+    handleEconomicsBackfill(post([row()], { secret: SECRET }), env),
+    /database is locked/,
+  );
+});
+
+test("economics backfill issues no batch when every row is invalid (no D1 call)", async () => {
+  let batched = 0;
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch() {
+        batched += 1;
+      },
+    },
+  };
+  // All rows fail validEconomicsBackfillRows → rows.length === 0 → no db.batch.
+  const res = await handleEconomicsBackfill(
+    post([{ netuid: -1 }, { snapshot_date: "bad" }], { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.received, 2);
+  assert.equal(body.inserted, 0);
+  assert.equal(batched, 0); // short-circuited before touching D1
+});
+
+test("economicsSnapshotUpsertStatements emits one bound statement per valid row", () => {
+  // Writer-shape contract: N valid rows → N parameterized statements, each with
+  // exactly 4 bound values (no interpolation), so a batch is sized to the input.
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  const valid = validEconomicsBackfillRows([
+    row(),
+    row({ netuid: 9, snapshot_date: "2025-12-02", alpha_price_tao: 0.5 }),
+  ]);
+  const stmts = economicsSnapshotUpsertStatements(db, valid);
+  assert.equal(stmts.length, 2);
+  for (const s of stmts) assert.equal(s.v.length, 4);
+});
+
+test("economicsSnapshotUpsertStatements no-ops on an empty row set", () => {
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  assert.deepEqual(economicsSnapshotUpsertStatements(db, []), []);
+});
+
+test("economicsSnapshotUpsertStatements treats a NaN captured_at as missing", () => {
+  // A non-finite captured_at must fall back to the snapshot day's UTC midnight,
+  // not bind NaN into the row (which would poison the time column).
+  const db = { prepare: (sql) => ({ bind: (...v) => ({ sql, v }) }) };
+  const stmts = economicsSnapshotUpsertStatements(db, [
+    {
+      netuid: 8,
+      snapshot_date: "2025-12-01",
+      alpha_price_tao: 0.1,
+      captured_at: Number.NaN,
+    },
+  ]);
+  assert.equal(stmts[0].v[3], Date.parse("2025-12-01T00:00:00Z"));
+});
+
 test("validEconomicsBackfillRows + upsert: captured_at falls back to the snapshot day", () => {
   const valid = validEconomicsBackfillRows([
     { netuid: 8, snapshot_date: "2025-12-01", alpha_price_tao: 0.1 }, // no captured_at

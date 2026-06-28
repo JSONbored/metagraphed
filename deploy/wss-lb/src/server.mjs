@@ -17,6 +17,7 @@ import http from "node:http";
 
 import { WebSocketServer } from "ws";
 
+import { MAX_RPC_BODY_BYTES } from "./rpc-policy.mjs";
 import { proxy } from "./proxy.mjs";
 import { selectWssUpstreams } from "./select.mjs";
 
@@ -95,7 +96,34 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 
-const wss = new WebSocketServer({ noServer: true });
+// maxPayload caps inbound client frames at the protocol layer; the app-level
+// MAX_RPC_BODY_BYTES check in proxy.mjs only fires AFTER ws buffers the full frame.
+const wss = new WebSocketServer({
+  noServer: true,
+  maxPayload: MAX_RPC_BODY_BYTES,
+});
+
+// Heartbeat: WS over the public internet (behind Cloudflare) accumulates half-open
+// sockets that never emit 'close' (NAT/idle timeouts, silent peer death). Each sweep
+// terminates any client that hasn't ponged since the last one; proxy.mjs's client
+// 'close' handler then tears down that client's upstream socket too.
+const HEARTBEAT_MS = envInt("HEARTBEAT_MS", 30000);
+const heartbeat = setInterval(() => {
+  for (const client of wss.clients) {
+    if (client.isAlive === false) {
+      client.terminate();
+      continue;
+    }
+    client.isAlive = false;
+    try {
+      client.ping();
+    } catch {
+      /* socket already closing */
+    }
+  }
+}, HEARTBEAT_MS);
+heartbeat.unref?.();
+
 server.on("upgrade", (req, socket, head) => {
   const network = (req.url || "/")
     .replace(/^\/+/, "")
@@ -112,9 +140,13 @@ server.on("upgrade", (req, socket, head) => {
     socket.destroy();
     return;
   }
-  wss.handleUpgrade(req, socket, head, (client) =>
-    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS }),
-  );
+  wss.handleUpgrade(req, socket, head, (client) => {
+    client.isAlive = true;
+    client.on("pong", () => {
+      client.isAlive = true;
+    });
+    proxy(client, upstreams, { handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
+  });
 });
 
 await refresh();

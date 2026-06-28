@@ -1131,6 +1131,57 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(res.body.result.content[0].text.includes("invalid"));
   });
 
+  test("get_api_schema and get_fixture resolve deprecated surface_id aliases", async () => {
+    const aliasDeps = makeDeps({
+      "/metagraph/operational-surfaces.json": {
+        surfaces: [
+          {
+            surface_id: "7:subnet-api:new",
+            surface_key: "srf-renamed",
+            netuid: 7,
+            kind: "subnet-api",
+            url: "https://api.example/new",
+          },
+        ],
+      },
+      "/metagraph/surface-aliases.json": {
+        aliases: [
+          {
+            deprecated_id: "7:subnet-api:old",
+            surface_key: "srf-renamed",
+            current_id: "7:subnet-api:new",
+            netuid: 7,
+            kind: "subnet-api",
+          },
+        ],
+      },
+      "/metagraph/schemas/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        openapi: "3.1.0",
+        paths: { "/v1": {} },
+      },
+      "/metagraph/fixtures/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        response: { status: 200, body: { renamed: true } },
+      },
+    });
+    const schema = await callTool(
+      "get_api_schema",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.equal(schema.body.result.structuredContent.openapi, "3.1.0");
+
+    const fixture = await callTool(
+      "get_fixture",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.deepEqual(fixture.body.result.structuredContent.response.body, {
+      renamed: true,
+    });
+  });
+
   test("get_agent_catalog returns the global catalog with no netuid", async () => {
     const res = await callTool("get_agent_catalog", {}, { deps });
     assert.ok(Array.isArray(res.body.result.structuredContent.subnets));
@@ -1359,6 +1410,116 @@ describe("MCP tools (injected deps)", () => {
       { deps: makeDeps({ "/metagraph/economics.json": {} }) },
     );
     assert.equal(res.body.result.structuredContent.observed_at, null);
+  });
+});
+
+// get_chain_activity reaches the Postgres-backed all-events tier through the
+// DATA_API service binding (the same binding the REST /chain-events/stats proxy
+// uses), so its tests mock that binding via env rather than the injected deps.
+describe("MCP get_chain_activity (DATA_API binding)", () => {
+  // A stub DATA_API binding: records the requested URL and returns the supplied
+  // stats payload (or a non-OK response when `status` is given).
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("returns the pallet.method aggregate from the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        window_blocks: 1000,
+        groups: 2,
+        activity: [
+          { pallet: "SubtensorModule", method: "set_weights", count: 42 },
+          { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_chain_activity",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window_blocks, 1000);
+    assert.equal(out.groups, 2);
+    assert.equal(out.activity.length, 2);
+    assert.equal(out.activity[0].pallet, "SubtensorModule");
+    // Default window is 1000 blocks when `blocks` is omitted.
+    assert.equal(
+      dataApi.calls[0].searchParams.get("blocks"),
+      "1000",
+      "omitted blocks must default to 1000",
+    );
+  });
+
+  test("passes an explicit blocks window through to the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 250, groups: 0, activity: [] },
+    });
+    const res = await callTool(
+      "get_chain_activity",
+      { blocks: 250 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "250");
+  });
+
+  test("clamps an over-cap blocks window to 5000", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 5000, groups: 0, activity: [] },
+    });
+    await callTool(
+      "get_chain_activity",
+      { blocks: 99999 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "5000");
+  });
+
+  test("rejects a non-positive / non-integer blocks argument", async () => {
+    for (const blocks of [0, -5, 1.5]) {
+      const res = await callTool(
+        "get_chain_activity",
+        { blocks },
+        { env: { DATA_API: makeDataApi() } },
+      );
+      assert.equal(res.body.result.isError, true, `blocks=${blocks}`);
+      assert.ok(res.body.result.content[0].text.includes("blocks"));
+    }
+  });
+
+  test("errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool("get_chain_activity", {}, { env: {} });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(
+      res.body.result.content[0].text.includes("chain activity tier"),
+      "must surface a clear tier-unavailable message",
+    );
+  });
+
+  test("errors cleanly when the data Worker returns a non-OK response", async () => {
+    const dataApi = makeDataApi({ status: 502 });
+    const res = await callTool(
+      "get_chain_activity",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("502"));
   });
 });
 
@@ -4354,5 +4515,441 @@ describe("MCP tool-input validation — typed errors, never a throw (#742)", () 
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.error.code, -32601);
+  });
+});
+
+// MCP↔REST parity tools (#393): per-subnet history/concentration-history, per-UID
+// neuron history, the subnet chain-event stream, the provider detail, and the
+// discovery-bundle artifact reads. Each mirrors its existing REST route's
+// data-access (mcpD1Runner over the same SQL, or loadArtifactData over the same
+// artifact) so an agent reaches the same data through MCP.
+describe("MCP parity tools — subnet history / events (D1-backed)", () => {
+  // A neuron_daily row shaped like NEURON_DAILY_READ_COLUMNS (snapshot_date +
+  // the live NEURON_COLUMNS) so buildNeuronHistory/buildSubnetHistory consume it.
+  function neuronDailyRow(date, uid, overrides = {}) {
+    return {
+      snapshot_date: date,
+      uid,
+      hotkey: `hk-${uid}`,
+      coldkey: `ck-${uid}`,
+      active: 1,
+      validator_permit: uid === 0 ? 1 : 0,
+      rank: 0.5,
+      trust: 0.5,
+      validator_trust: 0.5,
+      consensus: 0.5,
+      incentive: 0.4,
+      dividends: 0.1,
+      emission_tao: 1.25,
+      stake_tao: 1000,
+      registered_at_block: 100,
+      is_immunity_period: 0,
+      axon: null,
+      block_number: 8454388,
+      captured_at: 1750000000000,
+      ...overrides,
+    };
+  }
+
+  // A D1 binding routing by SQL shape over neuron_daily + account_events, so the
+  // parity loaders' WHERE/GROUP-BY clauses get realistic rows. `capture` records
+  // each bound (sql, params) so a test can assert what reached the query.
+  function parityD1(
+    { dailyAgg, dailyRows, concentrationRows, events } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  if (/FROM neuron_daily/.test(sql)) {
+                    if (/GROUP BY snapshot_date/.test(sql))
+                      return Promise.resolve({ results: dailyAgg || [] });
+                    if (
+                      /SELECT snapshot_date, stake_tao, emission_tao/.test(sql)
+                    )
+                      return Promise.resolve({
+                        results: concentrationRows || [],
+                      });
+                    return Promise.resolve({ results: dailyRows || [] });
+                  }
+                  if (/FROM account_events/.test(sql))
+                    return Promise.resolve({ results: events || [] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_history returns the per-day aggregate series newest-first", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        dailyAgg: [
+          {
+            snapshot_date: "2026-06-26",
+            neuron_count: 256,
+            validator_count: 9,
+            total_stake_tao: 2_500_000,
+            total_emission_tao: 81,
+          },
+          {
+            snapshot_date: "2026-06-25",
+            neuron_count: 255,
+            validator_count: 9,
+            total_stake_tao: 2_400_000,
+            total_emission_tao: 80,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_history",
+      { netuid: 1, window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 1);
+    assert.equal(out.window, "7d");
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-26");
+    assert.equal(out.points[0].neuron_count, 256);
+    // The window cutoff reached the SQL as a bound YYYY-MM-DD param.
+    const q = capture.find((c) => /GROUP BY snapshot_date/.test(c.sql));
+    assert.ok(q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
+  });
+
+  test("get_subnet_history (all) omits the date cutoff bind", async () => {
+    const capture = [];
+    const env = parityD1({ dailyAgg: [] }, capture);
+    const res = await callTool(
+      "get_subnet_history",
+      { netuid: 1, window: "all" },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.window, "all");
+    const q = capture.find((c) => /GROUP BY snapshot_date/.test(c.sql));
+    // Only netuid + MAX_HISTORY_POINTS limit are bound, no date cutoff.
+    assert.equal(q.params.length, 2);
+    assert.ok(!q.params.some((p) => /^\d{4}-\d{2}-\d{2}$/.test(p)));
+  });
+
+  test("get_subnet_history defaults to the 30d window when omitted", async () => {
+    const env = parityD1({ dailyAgg: [] });
+    const res = await callTool("get_subnet_history", { netuid: 1 }, { env });
+    assert.equal(res.body.result.structuredContent.window, "30d");
+  });
+
+  test("get_subnet_history rejects an unknown window", async () => {
+    const res = await callTool("get_subnet_history", {
+      netuid: 1,
+      window: "5d",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_neuron_history returns one UID's per-day series", async () => {
+    const env = parityD1({
+      dailyRows: [
+        neuronDailyRow("2026-06-26", 3, { stake_tao: 1200, rank: 0.9 }),
+        neuronDailyRow("2026-06-25", 3, { stake_tao: 1100, rank: 0.8 }),
+      ],
+    });
+    const res = await callTool(
+      "get_neuron_history",
+      { netuid: 1, uid: 3, window: "30d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 1);
+    assert.equal(out.uid, 3);
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-26");
+    assert.equal(out.points[0].stake_tao, 1200);
+  });
+
+  test("get_neuron_history requires a non-negative uid", async () => {
+    const res = await callTool("get_neuron_history", { netuid: 1 });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /uid/);
+  });
+
+  test("get_subnet_concentration_history builds the per-day trend", async () => {
+    const env = parityD1({
+      concentrationRows: [
+        { snapshot_date: "2026-06-26", stake_tao: 100, emission_tao: 10 },
+        { snapshot_date: "2026-06-26", stake_tao: 50, emission_tao: 5 },
+        { snapshot_date: "2026-06-25", stake_tao: 80, emission_tao: 8 },
+        { snapshot_date: "2026-06-25", stake_tao: 40, emission_tao: 4 },
+      ],
+    });
+    const res = await callTool(
+      "get_subnet_concentration_history",
+      { netuid: 1, window: "30d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 1);
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-26");
+    assert.equal(out.points[0].neuron_count, 2);
+    assert.equal(typeof out.points[0].stake_gini, "number");
+  });
+
+  test("get_subnet_concentration_history rejects the 1y window (smaller set)", async () => {
+    const res = await callTool("get_subnet_concentration_history", {
+      netuid: 1,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_subnet_events filters by kind and paginates with a cursor", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        events: [
+          {
+            block_number: 8502402,
+            event_index: 1,
+            event_kind: "WeightsSet",
+            hotkey: null,
+            coldkey: null,
+            netuid: 1,
+            uid: 226,
+            amount_tao: null,
+            alpha_amount: null,
+            observed_at: 1751081952000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, kind: "WeightsSet", limit: 1 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 1);
+    assert.equal(out.event_count, 1);
+    assert.equal(out.limit, 1);
+    assert.equal(out.events[0].event_kind, "WeightsSet");
+    // A full page yields a non-null keyset cursor.
+    assert.equal(typeof out.next_cursor, "string");
+    // The kind filter reaches the SQL as a bound param (never interpolated).
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/AND event_kind = \?/.test(q.sql));
+    assert.ok(q.params.includes("WeightsSet"));
+  });
+
+  test("get_subnet_events clamps an over-range limit like the REST route", async () => {
+    const capture = [];
+    const env = parityD1({ events: [] }, capture);
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, limit: 5000 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.limit, 1000);
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(q.params.includes(1000));
+  });
+
+  test("the parity history/events tools degrade to empty payloads on cold D1", async () => {
+    const history = await callTool("get_subnet_history", { netuid: 1 });
+    assert.equal(history.body.result.isError, false);
+    assert.equal(history.body.result.structuredContent.point_count, 0);
+
+    const neuronHistory = await callTool("get_neuron_history", {
+      netuid: 1,
+      uid: 0,
+    });
+    assert.equal(neuronHistory.body.result.structuredContent.point_count, 0);
+
+    const concentration = await callTool("get_subnet_concentration_history", {
+      netuid: 1,
+    });
+    assert.equal(concentration.body.result.structuredContent.point_count, 0);
+
+    const events = await callTool("get_subnet_events", { netuid: 1 });
+    assert.equal(events.body.result.structuredContent.event_count, 0);
+    assert.equal(events.body.result.structuredContent.next_cursor, null);
+  });
+
+  test("the parity history/events tools reject a negative netuid", async () => {
+    for (const name of [
+      "get_subnet_history",
+      "get_subnet_concentration_history",
+      "get_subnet_events",
+    ]) {
+      const res = await callTool(name, { netuid: -1 });
+      assert.equal(res.body.result.isError, true, `${name} must reject -1`);
+    }
+  });
+});
+
+describe("MCP parity tools — provider + discovery bundle (artifact-backed)", () => {
+  test("get_provider_detail returns the provider artifact (no endpoints by default)", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers/datura.json": {
+        id: "datura",
+        slug: "datura",
+        name: "Datura",
+        authority: "official",
+      },
+    });
+    const res = await callTool(
+      "get_provider_detail",
+      { slug: "datura" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.slug, "datura");
+    assert.equal(out.name, "Datura");
+    // No endpoints wrapper unless include_endpoints was set.
+    assert.equal("provider" in out, false);
+  });
+
+  test("get_provider_detail attaches endpoints when include_endpoints is set", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers/datura.json": { slug: "datura", name: "Datura" },
+      "/metagraph/providers/datura/endpoints.json": {
+        endpoints: [{ surface_id: "datura-api", url: "https://x" }],
+      },
+    });
+    const res = await callTool(
+      "get_provider_detail",
+      { slug: "datura", include_endpoints: true },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.provider.slug, "datura");
+    assert.equal(out.endpoints.endpoints[0].surface_id, "datura-api");
+  });
+
+  test("get_provider_detail null-fills endpoints when the artifact is absent", async () => {
+    const deps = makeDeps({
+      "/metagraph/providers/lonely.json": { slug: "lonely" },
+    });
+    const res = await callTool(
+      "get_provider_detail",
+      { slug: "lonely", include_endpoints: true },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.provider.slug, "lonely");
+    assert.equal(out.endpoints, null);
+  });
+
+  test("get_provider_detail is not_found when the provider artifact is missing", async () => {
+    const res = await callTool("get_provider_detail", { slug: "ghost" });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_provider_detail rejects a slug that could escape the namespace", async () => {
+    const res = await callTool("get_provider_detail", { slug: "../secrets" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid characters/);
+  });
+
+  test("list_fixtures returns the fixtures index artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/fixtures.json": {
+        candidate_count: 2,
+        coverage: [{ surface_id: "a", status: "captured" }],
+      },
+    });
+    const res = await callTool("list_fixtures", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.candidate_count, 2);
+    assert.equal(out.coverage[0].surface_id, "a");
+  });
+
+  test("list_schemas returns the schemas index artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/schemas/index.json": {
+        schemas: [{ netuid: 6, drift_status: "new" }],
+      },
+    });
+    const res = await callTool("list_schemas", {}, { deps });
+    assert.equal(
+      res.body.result.structuredContent.schemas[0].drift_status,
+      "new",
+    );
+  });
+
+  test("get_lineage returns the lineage artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/lineage.json": {
+        link_count: 1,
+        graduated_subnet_count: 1,
+        broken_link_count: 0,
+        links: [{ mainnet_netuid: 1, testnet_netuid: 1 }],
+        broken_links: [],
+      },
+    });
+    const res = await callTool("get_lineage", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.link_count, 1);
+    assert.equal(out.links[0].mainnet_netuid, 1);
+  });
+
+  test("get_source_health returns the source-health artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/source-health.json": {
+        providers: [{ id: "datura", status: "ok", endpoint_count: 3 }],
+      },
+    });
+    const res = await callTool("get_source_health", {}, { deps });
+    assert.equal(res.body.result.structuredContent.providers[0].status, "ok");
+  });
+
+  test("get_freshness overlays the live prober run onto surface-health", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/freshness.json": {
+          schema_version: 1,
+          sources: [
+            { id: "surface-health", status: "stale", timestamp: "old" },
+            { id: "adapter-snapshots", status: "captured" },
+          ],
+          summary: {},
+        },
+      },
+      { "health:meta": { last_run_at: FRESH_RUN } },
+    );
+    const res = await callTool("get_freshness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    const surfaceHealth = out.sources.find((s) => s.id === "surface-health");
+    assert.equal(surfaceHealth.status, "current");
+    assert.equal(surfaceHealth.timestamp, FRESH_RUN);
+    assert.equal(out.summary.health_probe_as_of, FRESH_RUN);
+  });
+
+  test("get_freshness passes the committed artifact through with no live meta", async () => {
+    const deps = makeDeps({
+      "/metagraph/freshness.json": {
+        schema_version: 1,
+        sources: [{ id: "surface-health", status: "stale" }],
+      },
+    });
+    const res = await callTool("get_freshness", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sources[0].status, "stale");
   });
 });

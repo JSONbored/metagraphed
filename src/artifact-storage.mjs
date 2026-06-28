@@ -83,6 +83,17 @@ export const R2_ONLY_PATTERNS = [
   /^chain\/calls\.json$/,
   /^chain\/signers\.json$/,
   /^chain\/fees\.json$/,
+  // Postgres-backed all-events tier (ADR 0013): the recent-events feed, the
+  // per-block all-events list, and the activity-stats aggregate are served live
+  // by the dedicated data Worker at /api/v1/chain-events* — never written as
+  // files. R2-only so the contract maps a schema without the build expecting a
+  // committed/staged artifact (mirrors the sibling live D1 routes).
+  /^chain-events\.json$/,
+  /^chain-events\/stats\.json$/,
+  /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\/chain-events\.json$/,
+  // Network-wide economics time series (#1307): aggregated live per UTC day from
+  // the subnet_snapshots D1 rollup at /api/v1/economics/trends — never a file.
+  /^economics\/trends\.json$/,
   /^registry\/leaderboards\.json$/,
   // Cross-subnet comparison (#1664), composed live from registry projections +
   // the economics tier + D1 at /api/v1/compare — never written as a file. R2-only

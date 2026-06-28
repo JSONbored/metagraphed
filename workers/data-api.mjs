@@ -36,6 +36,22 @@ function clampLimit(raw) {
   return Math.min(Math.floor(n), MAX_LIMIT);
 }
 
+// postgres.js returns BIGINT columns as strings; the D1-backed routes return them
+// as numbers. block_number and observed_at are both < 2^53, so Number(...) is
+// lossless — coerce them per event row for a consistent numeric API shape.
+function numberOrNull(v) {
+  return v == null ? null : Number(v);
+}
+function coerceEvent(row) {
+  return {
+    ...row,
+    ...(row.block_number !== undefined
+      ? { block_number: numberOrNull(row.block_number) }
+      : {}),
+    observed_at: numberOrNull(row.observed_at),
+  };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -69,7 +85,11 @@ export default {
           FROM chain_events
           WHERE block_number = ${bn}
           ORDER BY event_index ASC`;
-        return json({ block_number: bn, count: rows.length, events: rows });
+        return json({
+          block_number: bn,
+          count: rows.length,
+          events: rows.map(coerceEvent),
+        });
       }
 
       // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&before=&limit=
@@ -118,8 +138,36 @@ export default {
           ORDER BY block_number DESC, event_index DESC
           LIMIT ${limit}`;
         const next =
-          rows.length === limit ? rows[rows.length - 1].block_number : null;
-        return json({ count: rows.length, next_before: next, events: rows });
+          rows.length === limit
+            ? numberOrNull(rows[rows.length - 1].block_number)
+            : null;
+        return json({
+          count: rows.length,
+          next_before: next,
+          events: rows.map(coerceEvent),
+        });
+      }
+
+      // GET /api/v1/chain-events/stats?blocks=N — chain-activity aggregate: the
+      // pallet.method event distribution over the most recent N blocks (default
+      // 1000, capped 5000). Bounded window + capped output keep it index-cheap.
+      if (url.pathname === "/api/v1/chain-events/stats") {
+        const blocks = Math.min(
+          Math.max(Number(url.searchParams.get("blocks")) || 1000, 1),
+          5000,
+        );
+        const rows = await sql`
+          SELECT pallet, method, count(*)::int AS count
+          FROM chain_events
+          WHERE block_number > (SELECT max(block_number) FROM chain_events) - ${blocks}
+          GROUP BY pallet, method
+          ORDER BY count DESC
+          LIMIT 100`;
+        return json({
+          window_blocks: blocks,
+          groups: rows.length,
+          activity: rows,
+        });
       }
 
       return json({ error: "not found" }, 404);

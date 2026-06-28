@@ -10,6 +10,9 @@
 //                      (alias: reliability), from the live uptime rollup in D1
 //   metric=grade       the A–F reliability grade letter itself (e.g. "A") —
 //                      same uptime data + color band as uptime, one-glyph message
+//   metric=apis        count of callable API surfaces the subnet exposes
+//                      (subnet-api / openapi / sse / data-artifact); informational
+//                      blue, gray for 0; for a provider, the sum across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
 //   label=…            override the left "metagraphed" segment text
 //
@@ -31,9 +34,20 @@ const BADGE_METRICS = {
   uptime: "reliability",
   reliability: "reliability",
   grade: "grade",
+  apis: "apis",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square"]);
+// shields.io "informational" blue, used for plain-count metrics (e.g. apis).
+const INFO_COLOR = "#007ec6";
+// Surface kinds that are callable machine interfaces (mirrors the build's
+// callable-service set); these are what `metric=apis` counts.
+const CALLABLE_SURFACE_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
 // A–F grade → color band (gray for unknown); bands match reliability.mjs.
 const GRADE_COLOR = {
   A: "#2ea44f",
@@ -284,6 +298,49 @@ async function reliabilityContent({
     : NA_CONTENT;
 }
 
+// Count a subnet's callable API surfaces from its per-subnet surfaces artifact.
+// Returns null when the artifact is missing/malformed (so the badge renders
+// "n/a" rather than a misleading 0).
+async function callableApiCount(readArtifact, env, netuid) {
+  const data = await readData(
+    readArtifact,
+    env,
+    `/metagraph/surfaces/${netuid}.json`,
+  );
+  if (!Array.isArray(data?.surfaces)) return null;
+  return data.surfaces.filter((s) => CALLABLE_SURFACE_KINDS.has(s?.kind))
+    .length;
+}
+
+// APIs: the subnet's callable API-surface count, or the sum across a provider's
+// subnets. Informational blue for >0, gray for 0; "n/a" when there is no data.
+async function apisContent({ target, readArtifact, env }) {
+  let count = null;
+  if (target.kind === "subnet") {
+    count = await callableApiCount(readArtifact, env, target.netuid);
+  } else {
+    const providers = await readData(
+      readArtifact,
+      env,
+      "/metagraph/providers.json",
+    );
+    const netuids = findProvider(providers, target.slug)?.netuids || [];
+    if (netuids.length) {
+      const counts = (
+        await Promise.all(
+          netuids.map((n) => callableApiCount(readArtifact, env, n)),
+        )
+      ).filter((c) => typeof c === "number");
+      if (counts.length) count = counts.reduce((a, b) => a + b, 0);
+    }
+  }
+  if (count == null) return NA_CONTENT;
+  return {
+    message: `${count} ${count === 1 ? "api" : "apis"}`,
+    color: count > 0 ? INFO_COLOR : UNKNOWN_COLOR,
+  };
+}
+
 function badgeHeaders() {
   return {
     "content-type": "image/svg+xml; charset=utf-8",
@@ -308,10 +365,13 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
 
   let content = NA_CONTENT;
   if (target && typeof readArtifact === "function") {
-    content =
-      metric === "reliability" || metric === "grade"
-        ? await reliabilityContent({ ...ctx, metric })
-        : await readinessContent(ctx);
+    if (metric === "apis") {
+      content = await apisContent(ctx);
+    } else if (metric === "reliability" || metric === "grade") {
+      content = await reliabilityContent({ ...ctx, metric });
+    } else {
+      content = await readinessContent(ctx);
+    }
   }
 
   const svg = renderBadge(content.message, content.color, { label, style });

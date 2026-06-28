@@ -1406,6 +1406,9 @@
       "ApiQueryParameter": {
         "additionalProperties": false,
         "properties": {
+          "description": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
@@ -1689,6 +1692,34 @@
         },
         "required": [
           "block_number"
+        ],
+        "type": "object"
+      },
+      "BlockChainEventsArtifact": {
+        "additionalProperties": true,
+        "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{block_number}/chain-events. Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "block_number",
+          "count",
+          "events"
         ],
         "type": "object"
       },
@@ -2459,6 +2490,149 @@
           "total_extrinsics",
           "call_count",
           "calls"
+        ],
+        "type": "object"
+      },
+      "ChainEvent": {
+        "additionalProperties": false,
+        "description": "One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer.",
+        "properties": {
+          "args": {
+            "type": [
+              "object",
+              "array",
+              "null"
+            ]
+          },
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "extrinsic_index": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block_number",
+          "event_index",
+          "pallet",
+          "method"
+        ],
+        "type": "object"
+      },
+      "ChainEventEntry": {
+        "additionalProperties": false,
+        "description": "One pallet.method event-distribution bucket: the count of that event over the recent-blocks window.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pallet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "pallet",
+          "method",
+          "count"
+        ],
+        "type": "object"
+      },
+      "ChainEventsFeedArtifact": {
+        "additionalProperties": true,
+        "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). next_before is the cursor for the next page (null when the page was not full). Empty (count:0, events:[]) before the all-events backfill runs.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEvent"
+            },
+            "type": "array"
+          },
+          "next_before": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "events"
+        ],
+        "type": "object"
+      },
+      "ChainEventsStatsArtifact": {
+        "additionalProperties": true,
+        "description": "Chain-activity aggregate: the pallet.method event distribution over the most recent N blocks from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats and consumed by the get_chain_activity MCP tool. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Empty (groups:0, activity:[]) before the all-events backfill runs.",
+        "properties": {
+          "activity": {
+            "items": {
+              "$ref": "#/components/schemas/ChainEventEntry"
+            },
+            "type": "array"
+          },
+          "groups": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_blocks": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_blocks",
+          "groups",
+          "activity"
         ],
         "type": "object"
       },
@@ -3846,6 +4020,92 @@
             "type": "object"
           }
         ]
+      },
+      "EconomicsTrendsArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup — the same source the per-subnet /api/v1/subnets/{netuid}/trajectory reads. Each day rolls up total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share. Served live at /api/v1/economics/trends over a 7d|30d|90d|1y|all window (no static file); day_count is 0 and days is empty when the rollup is cold.",
+        "properties": {
+          "day_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/EconomicsTrendsDay"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "day_count",
+          "days"
+        ],
+        "type": "object"
+      },
+      "EconomicsTrendsDay": {
+        "additionalProperties": false,
+        "description": "One UTC day of network-wide economics aggregated across every subnet that has a snapshot that day. subnet_count is how many subnets contributed; total_stake_tao / validator_count / miner_count are sums; alpha_price_tao_weighted is the stake-weighted mean alpha price; alpha_price_tao_median is the unweighted median; mean_emission_share is the mean per-subnet emission share. Sums are null only when no subnet reported a value that day.",
+        "properties": {
+          "alpha_price_tao_median": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "alpha_price_tao_weighted": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_emission_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "snapshot_date": {
+            "type": "string"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_stake_tao": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_count": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "snapshot_date",
+          "subnet_count"
+        ],
+        "type": "object"
       },
       "EndpointIncident": {
         "additionalProperties": false,
@@ -16185,6 +16445,143 @@
         ]
       }
     },
+    "/api/v1/blocks/{ref}/chain-events": {
+      "get": {
+        "operationId": "blockChainEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "count": 1,
+                    "events": [
+                      {
+                        "block_number": 5000000,
+                        "event_index": 1,
+                        "method": "GET",
+                        "pallet": "example"
+                      }
+                    ]
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BlockChainEventsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "tags": [
+          "blocks",
+          "chain",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/blocks/{ref}/events": {
       "get": {
         "operationId": "blockEvents",
@@ -16725,6 +17122,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -16742,6 +17140,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -16881,6 +17280,326 @@
         "summary": "List unpromoted candidate surfaces.",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/chain-events": {
+      "get": {
+        "operationId": "chainEventsFeed",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "pallet",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "block",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "extrinsic",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "count": 1,
+                    "events": [
+                      {
+                        "block_number": 5000000,
+                        "event_index": 1,
+                        "method": "GET",
+                        "pallet": "example"
+                      }
+                    ],
+                    "next_before": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsFeedArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain-events/stats": {
+      "get": {
+        "operationId": "chainEventsStats",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "blocks",
+            "required": false,
+            "schema": {
+              "maximum": 5000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "activity": [
+                      {
+                        "count": 1,
+                        "method": "GET",
+                        "pallet": "example"
+                      }
+                    ],
+                    "groups": 1,
+                    "window_blocks": 5000000
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsStatsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+        "tags": [
+          "chain",
+          "analytics"
         ]
       }
     },
@@ -18217,6 +18936,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -18234,6 +18954,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -18500,6 +19221,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -18514,6 +19236,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -18728,6 +19451,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -18752,6 +19476,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -18906,9 +19631,151 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share), ordered by emission share. Filter by netuid/registration_allowed, search by name/slug, and sort by any economic metric.",
+        "summary": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
         "tags": [
           "subnets"
+        ]
+      }
+    },
+    "/api/v1/economics/trends": {
+      "get": {
+        "operationId": "economicsTrends",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "day_count": 1,
+                    "days": [
+                      {
+                        "snapshot_date": "example",
+                        "subnet_count": 1
+                      }
+                    ],
+                    "schema_version": 1,
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-06.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/EconomicsTrendsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
+        "tags": [
+          "subnets",
+          "analytics"
         ]
       }
     },
@@ -19025,6 +19892,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -19044,6 +19912,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -19262,6 +20131,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -19276,6 +20146,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -19591,6 +20462,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -19611,6 +20483,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -19819,6 +20692,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -19833,6 +20707,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -20722,6 +21597,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -20737,6 +21613,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -20940,6 +21817,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -20961,6 +21839,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -21220,6 +22099,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -21241,6 +22121,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -22067,6 +22948,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -22087,6 +22969,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -22425,6 +23308,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -22439,6 +23323,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -22860,6 +23745,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -22880,6 +23766,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -23481,6 +24368,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -23500,6 +24388,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -23796,6 +24685,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -23811,6 +24701,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -24185,6 +25076,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -24213,6 +25105,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -24663,6 +25556,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -24686,6 +25580,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -24978,6 +25873,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -24996,6 +25892,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -25262,6 +26159,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -25286,6 +26184,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -25626,6 +26525,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -25646,6 +26546,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -26313,6 +27214,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -26327,6 +27229,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -26507,6 +27410,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -26521,6 +27425,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -26841,6 +27746,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -26855,6 +27761,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -27249,6 +28156,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -27272,6 +28180,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -27815,6 +28724,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -27832,6 +28742,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -28457,6 +29368,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -28477,6 +29389,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -28864,6 +29777,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -28878,6 +29792,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -29084,6 +29999,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -29102,6 +30018,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -29432,6 +30349,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -29453,6 +30371,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -31487,6 +32406,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -31502,6 +32422,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -32167,6 +33088,7 @@
             }
           },
           {
+            "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -32182,6 +33104,7 @@
             }
           },
           {
+            "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
             "in": "query",
             "name": "order",
             "required": false,

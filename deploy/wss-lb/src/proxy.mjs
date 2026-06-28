@@ -4,12 +4,13 @@ import { WebSocket } from "ws";
 import {
   MAX_RPC_BODY_BYTES,
   SAFE_RPC_METHODS,
+  SAFE_RPC_SUBSCRIPTIONS,
   DENIED_RPC_PREFIXES,
 } from "./rpc-policy.mjs";
 
 function isSafeRpcMethod(method) {
   return (
-    SAFE_RPC_METHODS.has(method) &&
+    (SAFE_RPC_METHODS.has(method) || SAFE_RPC_SUBSCRIPTIONS.has(method)) &&
     !DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
   );
 }

@@ -207,3 +207,60 @@ test("security: nested non-scalar RPC ids are not reflected in errors", async ()
   await lb.close();
   await good.close();
 });
+
+test("subscriptions: read-only subscribe frames are relayed to upstream", async () => {
+  const upstreamMethods = [];
+  const http = createServer();
+  const wss = new WebSocketServer({ server: http });
+  wss.on("connection", (ws) => {
+    ws.on("message", (d) => {
+      upstreamMethods.push(JSON.parse(d.toString()).method);
+      // emulate the subscription handshake + a notification (two upstream frames)
+      ws.send(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0xSUBID" }));
+      ws.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          method: "chain_newHead",
+          params: { subscription: "0xSUBID", result: { number: "0x1" } },
+        }),
+      );
+    });
+  });
+  const upstream = await new Promise((resolve) =>
+    http.listen(0, "127.0.0.1", () =>
+      resolve(`ws://127.0.0.1:${http.address().port}`),
+    ),
+  );
+  const lb = await lbServer([upstream]);
+
+  const frames = await new Promise((resolve, reject) => {
+    const seen = [];
+    const c = new WebSocket(lb.url);
+    c.on("open", () =>
+      c.send(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "chain_subscribeNewHeads",
+        }),
+      ),
+    );
+    c.on("message", (d) => {
+      seen.push(JSON.parse(d.toString()));
+      if (seen.length === 2) {
+        c.close();
+        resolve(seen);
+      }
+    });
+    c.on("error", reject);
+    setTimeout(() => reject(new Error("timeout")), 8000);
+  });
+
+  // relayed (not rejected with -32601), and the notification streamed back through
+  assert.deepEqual(upstreamMethods, ["chain_subscribeNewHeads"]);
+  assert.equal(frames[0].result, "0xSUBID");
+  assert.equal(frames[1].method, "chain_newHead");
+
+  await lb.close();
+  await new Promise((resolve) => http.close(resolve));
+});
