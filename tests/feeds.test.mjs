@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
@@ -11,12 +11,19 @@ import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
 let originalCaches;
+beforeEach(() => {
+  originalCaches = globalThis.caches;
+});
+
 afterEach(() => {
-  globalThis.caches = originalCaches;
+  if (originalCaches === undefined) {
+    delete globalThis.caches;
+  } else {
+    globalThis.caches = originalCaches;
+  }
 });
 
 function installMockCache() {
-  originalCaches = globalThis.caches;
   const store = new Map();
   globalThis.caches = {
     default: {
@@ -671,6 +678,8 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(first.status, 200);
     assert.ok((await first.json()).items[0].id.startsWith("incident:"));
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
     assert.equal(recentChecksQueries, 1);
 
     const cached = await handleRequest(
@@ -692,6 +701,18 @@ describe("feeds — Worker dispatch integration", () => {
     );
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
+    assert.equal(recentChecksQueries, 1);
+
+    const conditionalHead = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(conditionalHead.status, 304);
+    assert.equal(await conditionalHead.text(), "");
     assert.equal(recentChecksQueries, 1);
   });
 
