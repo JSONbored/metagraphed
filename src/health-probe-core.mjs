@@ -391,31 +391,39 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
   let statusCode = null;
   let contentType = null;
   let genesisHash = null;
+
+  // All five RPC calls are result-independent, so dispatch them concurrently.
+  // Total probe latency collapses from the sum of all call latencies to the
+  // slowest single call. Individual per-call results are preserved as before.
+  const responses = await Promise.all(
+    SUBTENSOR_PROBE_CALLS.map((call, index) =>
+      jsonRpcHttp(url, call.method, call.params, index + 1, timeoutMs, {
+        fetchImpl,
+        isUnsafeUrl,
+      }),
+    ),
+  );
+
   for (const [index, call] of SUBTENSOR_PROBE_CALLS.entries()) {
-    const response = await jsonRpcHttp(
-      url,
-      call.method,
-      call.params,
-      index + 1,
-      timeoutMs,
-      { fetchImpl, isUnsafeUrl },
-    );
+    const response = responses[index];
     statusCode = response.status_code || statusCode;
     contentType = response.content_type || contentType;
     if (call.key === "genesis" && typeof response.result === "string") {
       genesisHash = response.result;
     }
     methodResults[call.key] = normalizeJsonRpcResult(response);
-    if (response.transport_error) {
-      return {
-        ...response,
-        content_type: contentType,
-        latency_ms: Math.round(performance.now() - started),
-        method_results: methodResults,
-        status_code: statusCode,
-        verified_at: new Date().toISOString(),
-      };
-    }
+  }
+
+  const firstTransportError = responses.find((r) => r.transport_error);
+  if (firstTransportError) {
+    return {
+      ...firstTransportError,
+      content_type: contentType,
+      latency_ms: Math.round(performance.now() - started),
+      method_results: methodResults,
+      status_code: statusCode,
+      verified_at: new Date().toISOString(),
+    };
   }
 
   // chain_verified: true on a matching genesis, false on an explicit mismatch
