@@ -1,0 +1,11 @@
+# keep the build context tiny AND keep secrets out of the image / Railway builder
+target/
+*.log
+progress*.json
+.pgurl
+onf.env
+run*.sh
+diff.py
+gen_truth.py
+.git/
+.railway/

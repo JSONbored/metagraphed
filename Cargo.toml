@@ -1,0 +1,21 @@
+[package]
+name = "backfill-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 0.50.x = block-first rewrite with automatic per-block (cross-runtime) metadata.
+subxt = { version = "0.50", features = ["reconnecting-rpc-client"] }
+scale-value = "0.18"
+tokio = { version = "1", features = ["full"] }
+tokio-postgres = "0.7"
+futures = "0.3"
+hex = "0.4"
+anyhow = "1"
+blake2 = "0.10"      # extrinsic_hash = blake2_256(extrinsic bytes)
+serde_json = "1"
+bytes = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
