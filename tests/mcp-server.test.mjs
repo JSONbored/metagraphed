@@ -1478,6 +1478,70 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(dataApi.calls[0].searchParams.get("blocks"), "250");
   });
 
+  test("applies the data API limiter before fetching chain activity", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 1000, groups: 0, activity: [] },
+    });
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_activity",
+      {},
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: false };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(dataApi.calls.length, 0);
+  });
+
+  test("charges the data API limiter for each batched chain activity call", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 1000, groups: 0, activity: [] },
+    });
+    const limiterKeys = [];
+    const res = await rpc(
+      [
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "get_chain_activity", arguments: {} },
+        },
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "get_chain_activity", arguments: {} },
+        },
+      ],
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.deepEqual(limiterKeys, ["data:anonymous", "data:anonymous"]);
+    assert.equal(dataApi.calls.length, 2);
+  });
+
   test("clamps an over-cap blocks window to 5000", async () => {
     const dataApi = makeDataApi({
       payload: { window_blocks: 5000, groups: 0, activity: [] },

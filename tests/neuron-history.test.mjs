@@ -293,6 +293,38 @@ describe("history builders", () => {
     assert.deepEqual(out.days, []);
     assert.equal(out.window, null);
   });
+
+  test("buildNeuronHistory drops malformed rows and the count tracks the array (#1793)", () => {
+    // A null/non-object row can't become a Neuron point, so it must not leak into
+    // the array — and the count tracks the array (point_count === points.length),
+    // mirroring the blocks/extrinsics/metagraph builders' .filter(Boolean). A
+    // non-object element must also degrade gracefully, never throw.
+    const out = buildNeuronHistory(
+      [dailyRow(), null, dailyRow({ uid: 9 }), undefined, 0],
+      7,
+      3,
+    );
+    assert.equal(out.points.length, 2);
+    assert.equal(out.point_count, 2);
+    assert.ok(out.points.every(Boolean));
+    assert.deepEqual(
+      out.points.map((p) => p.uid),
+      [3, 9],
+    );
+    // A null/undefined rows argument is tolerated (empty series, never throws).
+    assert.deepEqual(buildNeuronHistory(null, 7, 3).points, []);
+  });
+
+  test("buildSubnetHistory drops malformed rows and the count tracks the array (#1793)", () => {
+    const out = buildSubnetHistory(
+      [{ snapshot_date: "2026-06-20", neuron_count: 256 }, null, undefined],
+      7,
+    );
+    assert.equal(out.points.length, 1);
+    assert.equal(out.point_count, 1);
+    assert.equal(out.points[0].neuron_count, 256);
+    assert.deepEqual(buildSubnetHistory(undefined, 7).points, []);
+  });
 });
 
 describe("rollupNeuronDaily idempotency invariant (#1345)", () => {

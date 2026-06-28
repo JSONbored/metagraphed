@@ -45,6 +45,7 @@ import {
 } from "../../src/neuron-history.mjs";
 import {
   ACCOUNT_EVENT_COLUMNS,
+  INGESTED_EVENT_KINDS,
   buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
@@ -75,8 +76,37 @@ import {
   buildConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import {
+  COUNTERPARTIES_READ_COLUMNS,
+  COUNTERPARTIES_SCAN_CAP,
+  buildCounterparties,
+} from "../../src/counterparties.mjs";
+import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
+
+function parseBoundedIntParam(url, parameter, { def, min, max }) {
+  const raw = url.searchParams.get(parameter);
+  if (raw == null || raw === "") return { value: def };
+  if (!/^\d+$/.test(raw)) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be an integer from ${min} to ${max}.`,
+      },
+    };
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be an integer from ${min} to ${max}.`,
+      },
+    };
+  }
+  return { value };
+}
 
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
 // (migration 0007, populated by the refresh-metagraph cron). Null-safe: an
@@ -310,6 +340,59 @@ export async function handleSubnetConcentrationHistory(
         env,
         `/metagraph/subnets/${netuid}/concentration/history.json`,
         data.points[0]?.snapshot_date ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/turnover?window=7d|30d|90d|1y|all: validator-set &
+// registration churn between the window's start and end neuron_daily snapshots —
+// validators entered/exited + Jaccard retention, UID deregistrations, and a 0–100
+// stability score. Reads only the two boundary snapshot_dates (a MIN/MAX bounds
+// query then their rows). Cold/absent store or a single snapshot → 200 with
+// comparable:false + zeroed metrics (schema-stable, never 404).
+export async function handleSubnetTurnover(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { label, days, error } = parseHistoryWindow(
+    url.searchParams.get("window"),
+  );
+  if (error) return analyticsQueryError(error);
+  let boundsSql =
+    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
+  const boundsParams = [netuid];
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    boundsSql += " AND snapshot_date >= ?";
+    boundsParams.push(cutoff);
+  }
+  const bounds = await d1All(env, boundsSql, boundsParams);
+  const startDate = bounds[0]?.start_date ?? null;
+  const endDate = bounds[0]?.end_date ?? null;
+  const rows =
+    startDate == null || endDate == null
+      ? []
+      : await d1All(
+          env,
+          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
+          [netuid, startDate, endDate],
+        );
+  const data = buildTurnover(rows, netuid, {
+    window: label,
+    startDate,
+    endDate,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/turnover.json`,
+        endDate,
       ),
     },
     "short",
@@ -589,6 +672,42 @@ export async function handleAccountTransfers(request, env, ss58, url) {
   );
 }
 
+// GET /api/v1/accounts/{ss58}/counterparties?limit=N: who this account transacts
+// with — the account's recent account_events Transfers aggregated per counterparty
+// into sent / received / net flow + count, ranked by total volume (the address
+// "relationship" view). The transfer scan is bounded (newest-first); the summary
+// flags truncation. Cold/absent store → 200 with counterparties:[] (schema-stable,
+// never 404), mirroring the sibling account routes.
+export async function handleAccountCounterparties(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const parsedLimit = parseBoundedIntParam(url, "limit", {
+    def: 20,
+    min: 1,
+    max: 100,
+  });
+  if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
+  const limit = parsedLimit.value;
+  const rows = await d1All(
+    env,
+    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
+    [ss58, ss58, COUNTERPARTIES_SCAN_CAP],
+  );
+  const data = buildCounterparties(rows, ss58, { limit });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/counterparties.json`,
+        null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/accounts/{ss58}/subnets: the subnets where this hotkey is currently
 // registered (the cross-subnet footprint), from the neurons tier.
 export async function handleAccountSubnets(request, env, ss58) {
@@ -623,6 +742,16 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
   const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
   const kind = url.searchParams.get("kind");
+  // Reject an unknown ?kind= up front, validated against the FULL ingested set
+  // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
+  // etc.). A typo/nonexistent kind otherwise matches nothing and forces a full
+  // index walk on this public, ~60s-cached route (#2081).
+  if (kind != null && !INGESTED_EVENT_KINDS.includes(kind)) {
+    return analyticsQueryError({
+      parameter: "kind",
+      message: `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
+    });
+  }
   // Keyset (cursor) pagination on (block_number, event_index), mirroring
   // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
   const cur = decodeCursor(url.searchParams.get("cursor"), 2);

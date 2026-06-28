@@ -36,6 +36,12 @@ function clampLimit(raw) {
   return Math.min(Math.floor(n), MAX_LIMIT);
 }
 
+function clampStatsBlocks(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 1000;
+  return Math.min(Math.max(Math.floor(n), 1), 5000);
+}
+
 // postgres.js returns BIGINT columns as strings; the D1-backed routes return them
 // as numbers. block_number and observed_at are both < 2^53, so Number(...) is
 // lossless — coerce them per event row for a consistent numeric API shape.
@@ -152,10 +158,7 @@ export default {
       // pallet.method event distribution over the most recent N blocks (default
       // 1000, capped 5000). Bounded window + capped output keep it index-cheap.
       if (url.pathname === "/api/v1/chain-events/stats") {
-        const blocks = Math.min(
-          Math.max(Number(url.searchParams.get("blocks")) || 1000, 1),
-          5000,
-        );
+        const blocks = clampStatsBlocks(url.searchParams.get("blocks"));
         const rows = await sql`
           SELECT pallet, method, count(*)::int AS count
           FROM chain_events

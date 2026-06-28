@@ -1781,6 +1781,28 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.equal(stmts[1].binds[0], Date.UTC(2026, 5, 12));
   });
 
+  test("clamps a sub-perfect day's stored uptime_ratio below 1 (#1799)", async () => {
+    // The stored uptime_ratio is served verbatim in the per-day series, so a
+    // sub-perfect day must never round up to a perfect 1.0 (SQLite
+    // ROUND(0.99996, 4) === 1.0). Only SUM(ok) = COUNT(*) may store 1; any other
+    // day that rounds to 1 is clamped to 0.9999, mirroring displayUptimeRatio —
+    // and so the stored ratio never contradicts the co-computed degraded status.
+    const db = makeDb();
+    await rollupDailyUptime(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
+    );
+    const { sql } = db.calls.batches[0][0];
+    assert.match(sql, /WHEN SUM\(ok\) = COUNT\(\*\) THEN 1/);
+    assert.match(sql, /THEN 0\.9999/);
+    // The naive bare-round form (which collapses 0.99996 -> 1) must be gone as
+    // the standalone column expression.
+    assert.doesNotMatch(
+      sql,
+      /ROUND\(CAST\(SUM\(ok\) AS REAL\) \/ COUNT\(\*\), 4\) AS uptime_ratio/,
+    );
+  });
+
   test("no-ops without a D1 binding", async () => {
     assert.deepEqual(await rollupDailyUptime({}), { rolled: false });
   });

@@ -39,7 +39,10 @@ import {
   analyticsWindow,
   d1All,
 } from "./analytics.mjs";
-import { findSurface, verifySurface } from "../../src/surface-verify.mjs";
+import {
+  findSurface,
+  verifySurfaceWithCache,
+} from "../../src/surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "../../src/surface-aliases.mjs";
 import {
   KV_HEALTH_RPC_POOL,
@@ -311,41 +314,21 @@ export async function handleSurfaceVerify(request, env, surfaceId, ctx = {}) {
     );
   }
 
-  const canonicalSurfaceId = surface.surface_key || surface.surface_id;
-  const cache = globalThis.caches?.default || null;
-  const cacheKey = cache
-    ? new Request(
-        `https://verify.metagraph.sh/${encodeURIComponent(canonicalSurfaceId)}`,
-      )
-    : null;
-  if (cache) {
-    const hit = await cache.match(cacheKey);
-    if (hit) {
-      const cached = await hit.json();
-      return envelopeResponse(
-        request,
-        { data: { ...cached, from_cache: true }, meta: await verifyMeta(env) },
-        "short",
-      );
-    }
-  }
-
-  const result = await verifySurface(surface, {
-    isUnsafeUrl: workerResolvedUrlSafetyGuard({ fetchImpl: globalThis.fetch }),
-    connect: workerWebSocketConnector(globalThis.fetch),
-  });
-  if (cache) {
-    const stored = new Response(JSON.stringify(result), {
-      headers: {
-        "content-type": "application/json",
-        "cache-control": "public, s-maxage=60",
-      },
-    });
-    ctx?.waitUntil?.(cache.put(cacheKey, stored));
-  }
+  const result = await verifySurfaceWithCache(
+    surface,
+    {
+      isUnsafeUrl: workerResolvedUrlSafetyGuard({
+        fetchImpl: globalThis.fetch,
+      }),
+      connect: workerWebSocketConnector(globalThis.fetch),
+    },
+    {
+      waitUntil: (promise) => ctx?.waitUntil?.(promise),
+    },
+  );
   return envelopeResponse(
     request,
-    { data: { ...result, from_cache: false }, meta: await verifyMeta(env) },
+    { data: result, meta: await verifyMeta(env) },
     "short",
   );
 }

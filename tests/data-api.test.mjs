@@ -116,6 +116,24 @@ test("chain-events/stats returns the activity aggregate with a clamped window", 
   ).toBe(1000);
 });
 
+test("chain-events/stats floors fractional blocks before binding", async () => {
+  const res = await req("/api/v1/chain-events/stats?blocks=1.5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window_blocks).toBe(1);
+  expect(sqlCalls.at(-1).values).toContain(1);
+  expect(sqlCalls.at(-1).values).not.toContain(1.5);
+});
+
+test("chain-events/stats preserves minimum block window after flooring", async () => {
+  const res = await req("/api/v1/chain-events/stats?blocks=0.5");
+  expect(res.status).toBe(200);
+  const body = await res.json();
+  expect(body.window_blocks).toBe(1);
+  expect(sqlCalls.at(-1).values).toContain(1);
+  expect(sqlCalls.at(-1).values).not.toContain(0);
+});
+
 test("chain-events rejects overlong or non-enumerable pallet/method filters", async () => {
   const res = await req(`/api/v1/chain-events?pallet=${"A".repeat(65)}`);
   expect(res.status).toBe(400);

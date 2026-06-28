@@ -56,10 +56,18 @@ export default defineConfig({
       // the floors below. If their coverage is ever wanted, add targeted unit
       // tests of their pure helpers (imported in-process) rather than the
       // execFileSync entrypoint.
+      //
+      // The `scripts/lib/` modules below are the PURE helpers already extracted
+      // out of those build scripts. They are exercised in-process (imported by
+      // their own dedicated tests/<module>.test.mjs unit suites), so they are
+      // listed file-by-file here rather than via `scripts/lib/**/*.mjs`: a future
+      // module dropped into that directory without a dedicated test would
+      // otherwise be auto-measured and trip the floors below.
       include: [
         "src/**/*.mjs",
         "workers/**/*.mjs",
         "scripts/{artifact-budgets,lib,openapi-components,registry-identity}.mjs",
+        "scripts/lib/{build-readiness,economics-artifacts,endpoint-artifacts,enrichment-queue-artifacts,formatting,readme-links}.mjs",
       ],
       // BACKSTOP floors only — NOT the primary gate. The real PR coverage gate is
       // Codecov (delta-based project + patch coverage, see codecov.yml). That

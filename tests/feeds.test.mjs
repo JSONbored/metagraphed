@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test } from "vitest";
 import {
   handleFeedRequest,
   parseFeedPath,
@@ -10,6 +10,34 @@ import {
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
+let originalCaches;
+beforeEach(() => {
+  originalCaches = globalThis.caches;
+});
+
+afterEach(() => {
+  if (originalCaches === undefined) {
+    delete globalThis.caches;
+  } else {
+    globalThis.caches = originalCaches;
+  }
+});
+
+function installMockCache() {
+  const store = new Map();
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        const cached = store.get(request.url);
+        return cached ? cached.clone() : undefined;
+      },
+      async put(request, response) {
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+}
+
 const {
   registryItems,
   incidentItems,
@@ -18,6 +46,8 @@ const {
   atomFeed,
   escapeXml,
   filterByTag,
+  filterSince,
+  parseSinceParam,
 } = __test;
 
 const CHANGELOG = {
@@ -269,6 +299,105 @@ describe("feeds — filterByTag", () => {
 
   test("an item with no tags array is safely skipped", () => {
     assert.deepEqual(filterByTag([{ id: "x" }], "incident"), []);
+  });
+});
+
+describe("feeds — parseSinceParam", () => {
+  test("accepts strict ISO dates and date-times", () => {
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01")).toISOString(),
+      "2026-06-01T00:00:00.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03Z")).toISOString(),
+      "2026-06-01T01:02:03.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03.123+02:30")).toISOString(),
+      "2026-05-31T22:32:03.123Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03-02:30")).toISOString(),
+      "2026-06-01T03:32:03.000Z",
+    );
+  });
+
+  test("rejects Date.parse-permissive malformed or non-ISO values", () => {
+    for (const value of [
+      "1",
+      "2026-02-31",
+      "2026-06-01T24:00:00Z",
+      "2026-06-01T00:60:00Z",
+      "2026-06-01T00:00:60Z",
+      "2026-06-01T00:00:00+24:00",
+      "2026-06-01T00:00:00+02:60",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+      "2026-06-01T00:00:00",
+    ]) {
+      assert.ok(Number.isNaN(parseSinceParam(value)), value);
+    }
+  });
+});
+
+describe("feeds — filterSince", () => {
+  const items = [
+    { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
+    { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
+    { id: "bad", timestamp: "not-a-date" },
+  ];
+
+  test("a null bound is a no-op (returns the input)", () => {
+    assert.equal(filterSince(items, null), items);
+  });
+
+  test("keeps items at or after the bound; drops unparseable timestamps", () => {
+    const kept = filterSince(items, Date.parse("2026-06-15T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+
+  test("is inclusive of the exact bound", () => {
+    const kept = filterSince(items, Date.parse("2026-06-20T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["new"],
+    );
+  });
+});
+
+describe("feeds — ?since= filter", () => {
+  test("a future since yields an empty but valid feed (200)", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2030-01-01",
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("a past since keeps items and composes with ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2000-01-01&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.ok(items.length > 0);
+    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+  });
+
+  test("a malformed since is rejected with 400", async () => {
+    for (const value of [
+      "notadate",
+      "1",
+      "2026-02-31",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+    ]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?since=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
   });
 });
 
@@ -600,7 +729,9 @@ describe("feeds — Worker dispatch integration", () => {
     assert.match(await res.text(), /<rss version="2\.0"/);
   });
 
-  test("handleRequest wires incidents feed to loadGlobalIncidentsLedger", async () => {
+  test("handleRequest caches live incidents feed aggregations at the edge", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
@@ -608,21 +739,24 @@ describe("feeds — Worker dispatch integration", () => {
           return {
             bind() {
               return {
-                all: () =>
-                  sql.includes("recent_checks")
-                    ? Promise.resolve({
-                        results: [
-                          {
-                            netuid: 7,
-                            surface_id: "allways-api",
-                            surface_key: "allways-api",
-                            started_at: 1781266255266,
-                            ended_at: 1781499480737,
-                            failed_samples: 1945,
-                          },
-                        ],
-                      })
-                    : Promise.resolve({ results: [] }),
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
               };
             },
           };
@@ -637,15 +771,128 @@ describe("feeds — Worker dispatch integration", () => {
         },
       },
     };
-    const res = await handleRequest(
+    const ctx = { waitUntil: (promise) => promise };
+    const first = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
       env,
-      {},
+      ctx,
     );
-    assert.equal(res.status, 200);
-    const parsed = await res.json();
-    assert.ok(parsed.items.length >= 1);
-    assert.ok(parsed.items[0].id.startsWith("incident:"));
+    assert.equal(first.status, 200);
+    assert.ok((await first.json()).items[0].id.startsWith("incident:"));
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    assert.equal(recentChecksQueries, 1);
+
+    const cached = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?cachebust=1",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(cached.status, 200);
+    assert.equal(recentChecksQueries, 1);
+
+    const head = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
+    assert.equal(recentChecksQueries, 1);
+
+    const conditionalHead = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json", {
+        method: "HEAD",
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      ctx,
+    );
+    assert.equal(conditionalHead.status, 304);
+    assert.equal(await conditionalHead.text(), "");
+    assert.equal(recentChecksQueries, 1);
+  });
+
+  test("handleRequest keys edge-cached feeds by since", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+
+    const future = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=2099-01-01",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(future.status, 200);
+    assert.deepEqual((await future.json()).items, []);
+    assert.equal(recentChecksQueries, 1);
+
+    const unfiltered = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      ctx,
+    );
+    assert.equal(unfiltered.status, 200);
+    assert.ok((await unfiltered.json()).items.length > 0);
+    assert.equal(recentChecksQueries, 2);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=notadate",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_since",
+    );
   });
 
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {

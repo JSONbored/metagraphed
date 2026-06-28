@@ -45,6 +45,10 @@ export const SUBNET_CONCENTRATION_PATH_PATTERN =
 // rollup, no static file.
 export const SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/concentration\/history$/;
+// Validator-set & registration turnover (churn) from the neuron_daily rollup,
+// no static file.
+export const SUBNET_TURNOVER_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/turnover$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
@@ -86,6 +90,10 @@ export const ACCOUNT_EXTRINSICS_PATH_PATTERN =
 // account, from account_events (event_kind='Transfer'); ?direction=all|sent|received.
 export const ACCOUNT_TRANSFERS_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/transfers$/;
+// Per-account counterparty / fund-flow rollup: aggregates the account's
+// account_events Transfers into per-counterparty sent/received/net.
+export const ACCOUNT_COUNTERPARTIES_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/counterparties$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =
@@ -180,7 +188,10 @@ export const SAFE_RPC_METHODS = new Set([
 // Read-only WebSocket subscriptions — WSS-ONLY. The HTTP proxy uses SAFE_RPC_METHODS
 // alone (subscriptions need a persistent connection, so they make no sense over HTTP);
 // the wss-lb additionally allows these. Their notifications stream upstream→client.
-// All read-only — author_submitAndWatchExtrinsic stays blocked by the author_ prefix.
+// Deliberately excludes persistent storage subscriptions, which can create
+// unbounded upstream watcher state for arbitrary keys.
+// All allowed entries are read-only; author_submitAndWatchExtrinsic stays blocked
+// by the author_ prefix.
 export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_subscribeNewHeads",
   "chain_subscribeNewHead",
@@ -191,8 +202,6 @@ export const SAFE_RPC_SUBSCRIPTIONS = new Set([
   "chain_unsubscribeFinalisedHeads",
   "chain_subscribeAllHeads",
   "chain_unsubscribeAllHeads",
-  "state_subscribeStorage",
-  "state_unsubscribeStorage",
   "state_subscribeRuntimeVersion",
   "state_unsubscribeRuntimeVersion",
 ]);
