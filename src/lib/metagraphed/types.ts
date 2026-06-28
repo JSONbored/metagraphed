@@ -1536,7 +1536,6 @@ export interface AgentCatalogService {
   eligibility?: { callable?: boolean; live_status?: string; reasons?: string[] };
   schema_url?: string | null;
   surface_id?: string;
-  snippets?: { curl?: string; python?: string; typescript?: string };
   [key: string]: unknown;
 }
 

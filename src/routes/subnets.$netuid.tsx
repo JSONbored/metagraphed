@@ -24,7 +24,7 @@ import { SurfaceFixture } from "@/components/metagraphed/surface-fixture";
 import { VerifySurfaceButton } from "@/components/metagraphed/verify-surface-button";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
-import { EndpointSnippet } from "@/components/metagraphed/endpoint-snippet";
+import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
@@ -541,13 +541,13 @@ function ActivityTableLoader({ netuid }: { netuid: number }) {
 
 // #9: the agent-catalog capability view for this subnet — every callable service
 // (subnet-api / openapi / sse / data-artifact) with its kind, base URL, auth,
-// live probe health, and copy-paste snippets. Fed by /api/v1/agent-catalog/{netuid}.
+// live probe health, and locally generated copy-paste snippets. Fed by /api/v1/agent-catalog/{netuid}.
 function CallableServicesPanel({ netuid }: { netuid: number }) {
   return (
     <SectionAnchor
       id="services"
       title="Callable services"
-      subtitle="Public-safe, agent-callable interfaces with live health and ready-to-run snippets."
+      subtitle="Public-safe, agent-callable interfaces with live health and safely generated snippets."
       info="GET /api/v1/agent-catalog/{netuid}. Only public-safe callable surfaces (subnet-api, OpenAPI, SSE, data-artifact) appear here; health is probe-derived."
     >
       <QueryErrorBoundary>
@@ -675,7 +675,6 @@ function AgentReadinessCard({
 
 function ServiceCard({ service }: { service: AgentCatalogService }) {
   const callable = service.eligibility?.callable;
-  const snippets = service.snippets;
   return (
     <li className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -724,28 +723,27 @@ function ServiceCard({ service }: { service: AgentCatalogService }) {
         ) : null}
       </div>
 
-      {snippets && (snippets.curl || snippets.python || snippets.typescript) ? (
+      {service.base_url ? (
         <div className="mt-3 space-y-1.5 border-t border-border pt-3">
           <div className="mg-label mb-1">Call it</div>
-          {snippets.curl ? (
-            <CopyableCode label="curl" value={snippets.curl} truncate={false} className="w-full" />
-          ) : null}
-          {snippets.python ? (
-            <CopyableCode
-              label="python"
-              value={snippets.python}
-              truncate={false}
-              className="w-full"
-            />
-          ) : null}
-          {snippets.typescript ? (
-            <CopyableCode
-              label="ts"
-              value={snippets.typescript}
-              truncate={false}
-              className="w-full"
-            />
-          ) : null}
+          <CopyableCode
+            label="curl"
+            value={apiSnippet("curl", service.base_url)}
+            truncate={false}
+            className="w-full"
+          />
+          <CopyableCode
+            label="python"
+            value={apiSnippet("python", service.base_url)}
+            truncate={false}
+            className="w-full"
+          />
+          <CopyableCode
+            label="ts"
+            value={apiSnippet("js", service.base_url)}
+            truncate={false}
+            className="w-full"
+          />
         </div>
       ) : null}
     </li>

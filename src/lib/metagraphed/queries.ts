@@ -1261,7 +1261,6 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
   if (!isPlainRecord(raw)) return null;
   const healthRaw = isPlainRecord(raw.health) ? raw.health : undefined;
   const eligRaw = isPlainRecord(raw.eligibility) ? raw.eligibility : undefined;
-  const snipRaw = isPlainRecord(raw.snippets) ? raw.snippets : undefined;
   return {
     kind: coerceString(raw.kind),
     capability: coerceString(raw.capability),
@@ -1291,17 +1290,10 @@ function normalizeAgentCatalogService(raw: unknown): AgentCatalogService | null 
       : undefined,
     schema_url: coerceString(raw.schema_url) ?? null,
     surface_id: coerceString(raw.surface_id),
-    snippets: snipRaw
-      ? {
-          curl: coerceString(snipRaw.curl),
-          python: coerceString(snipRaw.python),
-          typescript: coerceString(snipRaw.typescript),
-        }
-      : undefined,
   };
 }
 
-function normalizeAgentCatalogDetail(raw: unknown, netuid: number): AgentCatalogDetail {
+export function normalizeAgentCatalogDetail(raw: unknown, netuid: number): AgentCatalogDetail {
   const base = normalizeAgentCatalogSummary(raw) ?? { netuid };
   const d = isPlainRecord(raw) ? raw : {};
   const services = Array.isArray(d.services)

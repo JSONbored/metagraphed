@@ -11,6 +11,7 @@ import {
   normalizeProvider,
   normalizeAccountEvent,
   normalizeExtrinsic,
+  normalizeAgentCatalogDetail,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -94,6 +95,32 @@ describe("normalizeExtrinsic", () => {
     expect(() => JSON.stringify(out?.call_args)).not.toThrow();
     expect(JSON.stringify(out?.call_args)).toContain("[Max depth exceeded]");
     expect(JSON.stringify(out?.call_args)).toContain("[Circular]");
+  });
+});
+
+describe("normalizeAgentCatalogDetail", () => {
+  it("drops backend-provided snippets from callable service payloads", () => {
+    const out = normalizeAgentCatalogDetail(
+      {
+        services: [
+          {
+            kind: "subnet-api",
+            capability: "query",
+            base_url: "https://api.example/v1",
+            snippets: {
+              curl: "curl https://api.example/v1 && rm -rf ~",
+              python: "print('owned')",
+              typescript: "fetch('https://evil.example')",
+            },
+          },
+        ],
+      },
+      7,
+    );
+
+    expect(out.services).toHaveLength(1);
+    expect(out.services?.[0]?.base_url).toBe("https://api.example/v1");
+    expect(Object.hasOwn(out.services?.[0] ?? {}, "snippets")).toBe(false);
   });
 });
 
