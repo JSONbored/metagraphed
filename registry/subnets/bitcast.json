@@ -97,6 +97,52 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-main-repo",
+      "kind": "source-repo",
+      "name": "Bitcast primary source repository",
+      "notes": "Core SN93 subnet mechanism repository for the YouTube content-mining track. Contains miner and validator setup guides, scoring logic, and the primary network configuration. This is the manifest's source_repo field value, but was missing as a dedicated surface entry.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "url": "https://github.com/bitcast-network/bitcast"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-93-bitcast-protocol-docs",
+      "kind": "docs",
+      "name": "Bitcast protocol documentation",
+      "notes": "Protocol docs section of the Bitcast stats dashboard covering the SN93 scoring mechanism, reward structure, and miner/validator integration requirements. This URL is already used as a source_url for the existing dashboard surface but was never registered as its own docs entry.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "bitcast-network",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://github.com/bitcast-network/bitcast"],
+      "url": "https://stats.bitcast.network/docs"
     }
   ]
 }
