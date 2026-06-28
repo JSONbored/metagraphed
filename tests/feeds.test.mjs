@@ -770,6 +770,84 @@ describe("feeds — Worker dispatch integration", () => {
     assert.equal(recentChecksQueries, 1);
   });
 
+  test("handleRequest keys edge-cached feeds by since", async () => {
+    installMockCache();
+    let recentChecksQueries = 0;
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    recentChecksQueries += 1;
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+
+    const future = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=2099-01-01",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(future.status, 200);
+    assert.deepEqual((await future.json()).items, []);
+    assert.equal(recentChecksQueries, 1);
+
+    const unfiltered = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      ctx,
+    );
+    assert.equal(unfiltered.status, 200);
+    assert.ok((await unfiltered.json()).items.length > 0);
+    assert.equal(recentChecksQueries, 2);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?since=notadate",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_since",
+    );
+  });
+
   test("an unknown feed path is a 404 with the canonical error envelope", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(

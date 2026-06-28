@@ -997,6 +997,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     ];
     const tag = url.searchParams.get("tag");
     if (tag != null) feedCacheParams.push(`tag=${encodeURIComponent(tag)}`);
+    const since = url.searchParams.get("since");
+    if (since != null) {
+      feedCacheParams.push(`since=${encodeURIComponent(since)}`);
+    }
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
       request.method === "HEAD"
