@@ -177,7 +177,7 @@
       "id": "gittensory-mcp",
       "kind": "subnet-api",
       "name": "Gittensory MCP (contribution interface)",
-      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor's own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login.",
+      "notes": "Streamable-HTTP MCP server exposing deterministic, gittensor-native contribution signals (decision pack, check-before-start, preflight, notifications) to a contributor\u0027s own agent harness. POST-only JSON-RPC, so recurring read probes are intentionally disabled. Contributor tools are scoped to the authenticated GitHub login.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -397,6 +397,75 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-issue-record",
+      "kind": "data-artifact",
+      "name": "Gittensor issue bounty full record",
+      "notes": "Full record for a single Gittensor issue bounty: GitHub URL, bounty amount, target bounty, status, winning PR number, solver SS58 address, and lifecycle timestamps. The `1` path segment is an example issue ID; any valid Gittensor issue ID returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/1"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repo-issue-summary",
+      "kind": "data-artifact",
+      "name": "Gittensor per-repository bounty summary",
+      "notes": "Aggregate bounty statistics scoped to a single whitelisted repository: total, active, and completed bounty counts plus total TAO available and paid out. The `entrius%2Fgittensor` path segment is an example; any whitelisted repository slug returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/issues/repo/entrius%2Fgittensor/summary"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-repo-config",
+      "kind": "data-artifact",
+      "name": "Gittensor repository scoring configuration",
+      "notes": "Scoring configuration for a single whitelisted repository: emission share, maintainer cut, label multipliers (bug, feature, enhancement, refactor), and issue discovery share. These values directly affect how PR contributions to this repository are weighted by validators. The `entrius%2Fgittensor` path segment is an example; any whitelisted repository slug returns the same schema.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "high",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger-json"],
+      "url": "https://api.gittensor.io/repos/entrius%2Fgittensor"
     }
   ],
   "website_url": "https://gittensor.io/"
