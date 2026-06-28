@@ -37,7 +37,7 @@ import {
 import {
   findSurface,
   primarySurfaceForNetuid,
-  verifySurface,
+  verifySurfaceWithCache,
   SURFACE_ID_PATTERN,
 } from "./surface-verify.mjs";
 import { SURFACE_ALIASES_PATH } from "./surface-aliases.mjs";
@@ -3015,7 +3015,7 @@ export const MCP_TOOLS = [
           "Provide either surface_id or netuid.",
         );
       }
-      return await verifySurface(surface, {
+      return await verifySurfaceWithCache(surface, {
         isUnsafeUrl: workerResolvedUrlSafetyGuard({
           fetchImpl: globalThis.fetch,
         }),
@@ -3857,6 +3857,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       status_code: NULLABLE_INT,
       error: NULLABLE_STRING,
       probed_at: NULLABLE_STRING,
+      from_cache: { type: "boolean" },
     },
   },
 };
