@@ -861,12 +861,46 @@ describe("nodeWebSocketConnector", () => {
     assert.equal(socket.closed, true);
   });
 
-  test("error event rejects the connection", async () => {
+  test("error event rejects the connection AND closes the socket (#2074)", async () => {
     const connect = nodeWebSocketConnector(FakeSocket);
     const promise = connect("wss://rpc.dev", calls, 5000);
     const socket = FakeSocket.last;
     socket.fire("error", {});
     await assert.rejects(() => promise, /WebSocket RPC connection failed/);
+    // The error path previously cleared the timer but never closed the socket,
+    // leaking a half-open fd. Every terminal path must now close.
+    assert.equal(socket.closed, true);
+  });
+
+  test("close before all responses rejects promptly instead of hanging (#2074)", async () => {
+    const connect = nodeWebSocketConnector(FakeSocket);
+    const promise = connect("wss://rpc.dev", calls, 5000);
+    const socket = FakeSocket.last;
+    socket.fire("open");
+    // Only one of the two ids arrives, then the server closes the socket.
+    socket.fire("message", {
+      data: JSON.stringify({ id: 1, result: { number: "0x1" } }),
+    });
+    socket.fire("close", {});
+    await assert.rejects(() => promise, /closed before all responses/);
+  });
+
+  test("close AFTER all responses is a no-op (settled guard, #2074)", async () => {
+    const connect = nodeWebSocketConnector(FakeSocket);
+    const promise = connect("wss://rpc.dev", calls, 5000);
+    const socket = FakeSocket.last;
+    socket.fire("open");
+    socket.fire("message", {
+      data: JSON.stringify({ id: 1, result: { number: "0x1" } }),
+    });
+    socket.fire("message", {
+      data: JSON.stringify({ id: 2, result: { peers: 1 } }),
+    });
+    // A trailing close after the set completed must not flip the resolved
+    // promise into a rejection (first terminal event wins).
+    socket.fire("close", {});
+    const results = await promise;
+    assert.equal(results.size, 2);
   });
 
   test("timeout rejects with a TimeoutError and closes the socket", async () => {
