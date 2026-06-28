@@ -1131,6 +1131,57 @@ describe("MCP tools (injected deps)", () => {
     assert.ok(res.body.result.content[0].text.includes("invalid"));
   });
 
+  test("get_api_schema and get_fixture resolve deprecated surface_id aliases", async () => {
+    const aliasDeps = makeDeps({
+      "/metagraph/operational-surfaces.json": {
+        surfaces: [
+          {
+            surface_id: "7:subnet-api:new",
+            surface_key: "srf-renamed",
+            netuid: 7,
+            kind: "subnet-api",
+            url: "https://api.example/new",
+          },
+        ],
+      },
+      "/metagraph/surface-aliases.json": {
+        aliases: [
+          {
+            deprecated_id: "7:subnet-api:old",
+            surface_key: "srf-renamed",
+            current_id: "7:subnet-api:new",
+            netuid: 7,
+            kind: "subnet-api",
+          },
+        ],
+      },
+      "/metagraph/schemas/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        openapi: "3.1.0",
+        paths: { "/v1": {} },
+      },
+      "/metagraph/fixtures/7:subnet-api:new.json": {
+        surface_id: "7:subnet-api:new",
+        response: { status: 200, body: { renamed: true } },
+      },
+    });
+    const schema = await callTool(
+      "get_api_schema",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.equal(schema.body.result.structuredContent.openapi, "3.1.0");
+
+    const fixture = await callTool(
+      "get_fixture",
+      { surface_id: "7:subnet-api:old" },
+      { deps: aliasDeps },
+    );
+    assert.deepEqual(fixture.body.result.structuredContent.response.body, {
+      renamed: true,
+    });
+  });
+
   test("get_agent_catalog returns the global catalog with no netuid", async () => {
     const res = await callTool("get_agent_catalog", {}, { deps });
     assert.ok(Array.isArray(res.body.result.structuredContent.subnets));
@@ -1359,6 +1410,116 @@ describe("MCP tools (injected deps)", () => {
       { deps: makeDeps({ "/metagraph/economics.json": {} }) },
     );
     assert.equal(res.body.result.structuredContent.observed_at, null);
+  });
+});
+
+// get_chain_activity reaches the Postgres-backed all-events tier through the
+// DATA_API service binding (the same binding the REST /chain-events/stats proxy
+// uses), so its tests mock that binding via env rather than the injected deps.
+describe("MCP get_chain_activity (DATA_API binding)", () => {
+  // A stub DATA_API binding: records the requested URL and returns the supplied
+  // stats payload (or a non-OK response when `status` is given).
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("returns the pallet.method aggregate from the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        window_blocks: 1000,
+        groups: 2,
+        activity: [
+          { pallet: "SubtensorModule", method: "set_weights", count: 42 },
+          { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_chain_activity",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window_blocks, 1000);
+    assert.equal(out.groups, 2);
+    assert.equal(out.activity.length, 2);
+    assert.equal(out.activity[0].pallet, "SubtensorModule");
+    // Default window is 1000 blocks when `blocks` is omitted.
+    assert.equal(
+      dataApi.calls[0].searchParams.get("blocks"),
+      "1000",
+      "omitted blocks must default to 1000",
+    );
+  });
+
+  test("passes an explicit blocks window through to the data Worker", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 250, groups: 0, activity: [] },
+    });
+    const res = await callTool(
+      "get_chain_activity",
+      { blocks: 250 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "250");
+  });
+
+  test("clamps an over-cap blocks window to 5000", async () => {
+    const dataApi = makeDataApi({
+      payload: { window_blocks: 5000, groups: 0, activity: [] },
+    });
+    await callTool(
+      "get_chain_activity",
+      { blocks: 99999 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "5000");
+  });
+
+  test("rejects a non-positive / non-integer blocks argument", async () => {
+    for (const blocks of [0, -5, 1.5]) {
+      const res = await callTool(
+        "get_chain_activity",
+        { blocks },
+        { env: { DATA_API: makeDataApi() } },
+      );
+      assert.equal(res.body.result.isError, true, `blocks=${blocks}`);
+      assert.ok(res.body.result.content[0].text.includes("blocks"));
+    }
+  });
+
+  test("errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool("get_chain_activity", {}, { env: {} });
+    assert.equal(res.body.result.isError, true);
+    assert.ok(
+      res.body.result.content[0].text.includes("chain activity tier"),
+      "must surface a clear tier-unavailable message",
+    );
+  });
+
+  test("errors cleanly when the data Worker returns a non-OK response", async () => {
+    const dataApi = makeDataApi({ status: 502 });
+    const res = await callTool(
+      "get_chain_activity",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.ok(res.body.result.content[0].text.includes("502"));
   });
 });
 

@@ -8,7 +8,6 @@ import {
   parseBadgePath,
   parseBadgeOptions,
   formatUptimePercent,
-  countCallableApiSurfaces,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -51,39 +50,30 @@ const RELIABILITY = {
   "7,12": { score: 88, grade: "D", uptime_ratio: 0.88 }, // provider datura
 };
 
-const SURFACES_7 = {
-  surfaces: [
-    { kind: "subnet-api", public_safe: true },
-    { kind: "openapi", public_safe: true },
-    { kind: "docs", public_safe: true },
-    { kind: "sse", public_safe: false },
-  ],
-};
-const SURFACES_12 = {
-  surfaces: [{ kind: "data-artifact", public_safe: true }],
+// Per-subnet surfaces artifacts for the apis metric. Callable kinds are
+// subnet-api / openapi / sse / data-artifact; docs/website/etc. don't count.
+const SURFACES = {
+  "/metagraph/surfaces/7.json": {
+    surfaces: [
+      { kind: "subnet-api" },
+      { kind: "openapi" },
+      { kind: "docs" },
+      { kind: "website" },
+    ],
+  }, // 2 callable
+  "/metagraph/surfaces/12.json": { surfaces: [{ kind: "sse" }] }, // 1 callable
+  "/metagraph/surfaces/3.json": { surfaces: [{ kind: "docs" }] }, // 0 callable
+  // netuid 9 has no surfaces artifact → n/a
 };
 
-async function badgeWithSurfaces(pathname, fixtures = {}) {
-  const url = new URL(`https://api.metagraph.sh${pathname}`);
-  const res = await handleBadgeRequest(new Request(url), {}, url, {
-    readArtifact: makeReadArtifact({
-      "/metagraph/subnets.json": SUBNETS,
-      "/metagraph/providers.json": PROVIDERS,
-      "/metagraph/surfaces/7.json": SURFACES_7,
-      "/metagraph/surfaces/12.json": SURFACES_12,
-      ...fixtures,
-    }),
-    loadReliability: makeLoadReliability(RELIABILITY),
-  });
-  return { res, text: await res.text() };
-}
-
-async function badge(pathname, { method = "GET" } = {}) {
+async function badge(pathname, { method = "GET", fixtures = {} } = {}) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
   const res = await handleBadgeRequest(new Request(url, { method }), {}, url, {
     readArtifact: makeReadArtifact({
       "/metagraph/subnets.json": SUBNETS,
       "/metagraph/providers.json": PROVIDERS,
+      ...SURFACES,
+      ...fixtures,
     }),
     loadReliability: makeLoadReliability(RELIABILITY),
   });
@@ -348,54 +338,46 @@ describe("badge — grade metric", () => {
 });
 
 describe("badge — apis metric", () => {
-  test("countCallableApiSurfaces counts only public-safe machine-integration kinds", () => {
-    assert.equal(countCallableApiSurfaces(SURFACES_7.surfaces), 2);
-    assert.equal(countCallableApiSurfaces([]), 0);
-    assert.equal(
-      countCallableApiSurfaces([
-        { kind: "openapi", public_safe: false },
-        { kind: "website", public_safe: true },
-      ]),
-      0,
-    );
-  });
-
-  test("subnet apis renders the callable count in informational blue", async () => {
-    const { text } = await badgeWithSurfaces(
-      "/api/v1/subnets/7/badge.svg?metric=apis",
-    );
+  test("subnet apis counts only callable surface kinds, informational blue", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=apis");
+    // surfaces/7 = subnet-api + openapi (callable) + docs + website (not) → 2
     assert.match(text, /aria-label="metagraphed: 2 apis"/);
-    assert.match(text, /#007ec6/);
+    assert.match(text, /#007ec6/); // informational blue for >0
+    assert.ok(!text.includes("/100")); // not the readiness rendering
   });
 
-  test("subnet with zero callable apis is gray (still 200)", async () => {
-    const { res, text } = await badgeWithSurfaces(
-      "/api/v1/subnets/3/badge.svg?metric=apis",
-      { "/metagraph/surfaces/3.json": { surfaces: [] } },
-    );
-    assert.equal(res.status, 200);
-    assert.match(text, /aria-label="metagraphed: 0 apis"/);
-    assert.match(text, /#9f9f9f/);
-  });
-
-  test("singular message for exactly one callable api", async () => {
-    const { text } = await badgeWithSurfaces(
-      "/api/v1/subnets/12/badge.svg?metric=apis",
-    );
+  test("singular 'api' when exactly one callable surface", async () => {
+    const { text } = await badge("/api/v1/subnets/12/badge.svg?metric=apis");
     assert.match(text, /aria-label="metagraphed: 1 api"/);
     assert.match(text, /#007ec6/);
   });
 
-  test("provider apis sums across its subnets", async () => {
-    const { text } = await badgeWithSurfaces(
+  test("zero callable surfaces renders '0 apis' in gray", async () => {
+    const { text } = await badge("/api/v1/subnets/3/badge.svg?metric=apis");
+    assert.match(text, /aria-label="metagraphed: 0 apis"/);
+    assert.match(text, /#9f9f9f/); // gray for none
+  });
+
+  test("provider apis sums callable surfaces across its subnets", async () => {
+    const { text } = await badge(
       "/api/v1/providers/datura/badge.svg?metric=apis",
     );
+    // datura = netuids [7, 12] → 2 + 1 = 3
     assert.match(text, /aria-label="metagraphed: 3 apis"/);
     assert.match(text, /#007ec6/);
   });
 
+  test("a subnet with no surfaces artifact degrades to n/a (still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/9/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+
   test("unknown subnet apis degrades to n/a (gray, still 200)", async () => {
-    const { res, text } = await badgeWithSurfaces(
+    const { res, text } = await badge(
       "/api/v1/subnets/999/badge.svg?metric=apis",
     );
     assert.equal(res.status, 200);
@@ -404,7 +386,7 @@ describe("badge — apis metric", () => {
   });
 
   test("unknown provider apis degrades to n/a", async () => {
-    const { res, text } = await badgeWithSurfaces(
+    const { res, text } = await badge(
       "/api/v1/providers/nobody/badge.svg?metric=apis",
     );
     assert.equal(res.status, 200);
@@ -412,11 +394,13 @@ describe("badge — apis metric", () => {
   });
 
   test("provider with empty netuids is n/a", async () => {
-    const { text } = await badgeWithSurfaces(
+    const { text } = await badge(
       "/api/v1/providers/empty/badge.svg?metric=apis",
       {
-        "/metagraph/providers.json": {
-          providers: [{ slug: "empty", netuids: [] }],
+        fixtures: {
+          "/metagraph/providers.json": {
+            providers: [{ slug: "empty", netuids: [] }],
+          },
         },
       },
     );
@@ -424,17 +408,10 @@ describe("badge — apis metric", () => {
   });
 
   test("provider with no surfaces artifacts is n/a", async () => {
-    const { text } = await badgeWithSurfaces(
+    const { text } = await badge(
       "/api/v1/providers/byid/badge.svg?metric=apis",
     );
     assert.match(text, /n\/a/);
-  });
-
-  test("countCallableApiSurfaces skips null surface rows", () => {
-    assert.equal(
-      countCallableApiSurfaces([null, { kind: "openapi", public_safe: true }]),
-      1,
-    );
   });
 
   test("apis metric survives a readArtifact throw (readData catch)", async () => {
