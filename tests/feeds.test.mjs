@@ -47,6 +47,7 @@ const {
   escapeXml,
   filterByTag,
   filterSince,
+  parseSinceParam,
 } = __test;
 
 const CHANGELOG = {
@@ -301,6 +302,34 @@ describe("feeds — filterByTag", () => {
   });
 });
 
+describe("feeds — parseSinceParam", () => {
+  test("accepts strict ISO dates and date-times", () => {
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01")).toISOString(),
+      "2026-06-01T00:00:00.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03Z")).toISOString(),
+      "2026-06-01T01:02:03.000Z",
+    );
+    assert.equal(
+      new Date(parseSinceParam("2026-06-01T01:02:03.123+02:30")).toISOString(),
+      "2026-05-31T22:32:03.123Z",
+    );
+  });
+
+  test("rejects Date.parse-permissive malformed or non-ISO values", () => {
+    for (const value of [
+      "1",
+      "2026-02-31",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+      "2026-06-01T00:00:00",
+    ]) {
+      assert.ok(Number.isNaN(parseSinceParam(value)), value);
+    }
+  });
+});
+
 describe("feeds — filterSince", () => {
   const items = [
     { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
@@ -349,8 +378,17 @@ describe("feeds — ?since= filter", () => {
   });
 
   test("a malformed since is rejected with 400", async () => {
-    const { res } = await feed("/api/v1/feeds/registry.json?since=notadate");
-    assert.equal(res.status, 400);
+    for (const value of [
+      "notadate",
+      "1",
+      "2026-02-31",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+    ]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?since=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
   });
 });
 

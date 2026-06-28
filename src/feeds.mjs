@@ -349,6 +349,56 @@ export function parseFeedPath(pathname) {
   return null;
 }
 
+// Strictly parse the public `?since=` contract instead of delegating validation
+// to Date.parse(), which accepts implementation-defined inputs and normalizes
+// overflow dates. Accepted forms are an ISO calendar date (UTC midnight) or an
+// ISO date-time with an explicit UTC/offset designator.
+function parseSinceParam(value) {
+  const raw = String(value);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    const ms = Date.UTC(Number(year), Number(month) - 1, Number(day));
+    return new Date(ms).toISOString().slice(0, 10) === raw ? ms : Number.NaN;
+  }
+
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(
+      raw,
+    );
+  if (!match) return Number.NaN;
+
+  const [, year, month, day, hour, minute, second, fraction = "", zone] = match;
+  const date = `${year}-${month}-${day}`;
+  const dateMs = Date.UTC(Number(year), Number(month) - 1, Number(day));
+  if (new Date(dateMs).toISOString().slice(0, 10) !== date) return Number.NaN;
+
+  const hourNumber = Number(hour);
+  const minuteNumber = Number(minute);
+  const secondNumber = Number(second);
+  if (hourNumber > 23 || minuteNumber > 59 || secondNumber > 59) {
+    return Number.NaN;
+  }
+
+  const normalizedFraction = fraction
+    ? fraction.slice(0, 4).padEnd(4, "0")
+    : ".000";
+  const utcMs = Date.parse(
+    `${date}T${hour}:${minute}:${second}${normalizedFraction}Z`,
+  );
+  const offsetMs =
+    zone === "Z"
+      ? 0
+      : (() => {
+          const sign = zone[0] === "-" ? -1 : 1;
+          const hours = Number(zone.slice(1, 3));
+          const minutes = Number(zone.slice(4, 6));
+          return sign * (hours * 60 + minutes) * 60_000;
+        })();
+
+  return utcMs - offsetMs;
+}
+
 function feedError(code, message, status) {
   return new Response(JSON.stringify({ ok: false, error: { code, message } }), {
     status,
@@ -399,7 +449,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   let sinceMs = null;
   const sinceParam = url.searchParams.get("since");
   if (sinceParam != null) {
-    sinceMs = Date.parse(sinceParam);
+    sinceMs = parseSinceParam(sinceParam);
     if (Number.isNaN(sinceMs)) {
       return fail(
         "invalid_since",
@@ -504,4 +554,5 @@ export const __test = {
   escapeXml,
   filterByTag,
   filterSince,
+  parseSinceParam,
 };
