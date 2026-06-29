@@ -738,7 +738,7 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
     }
     const rows = await d1All(
       env,
-      `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ((hotkey = ? AND coldkey = ?) OR (hotkey = ? AND coldkey = ?)) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
+      `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM (SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ? UNION ALL SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ?) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
       [
         ss58,
         counterparty,
