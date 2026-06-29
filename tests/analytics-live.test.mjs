@@ -8,6 +8,7 @@ import {
   loadCompareSubnets,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
+  loadSubnetHealthTrends,
   loadSubnetUptime,
   parseAnalyticsWindow,
   parseCompareDimensionList,
@@ -171,6 +172,43 @@ describe("analytics-live loaders", () => {
     assert.equal(data.surfaces.length, 1);
     assert.equal(data.surfaces[0].samples, 50);
     assert.equal(data.surfaces[0].days[0].uptime_ratio, 0.9);
+  });
+
+  test("loadSubnetHealthTrends returns schema-stable empty surfaces on cold D1", async () => {
+    const data = await loadSubnetHealthTrends(d1(), NETUID, {
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.netuid, NETUID);
+    assert.equal(data.observed_at, OBSERVED_AT);
+    assert.deepEqual(data.windows["7d"].surfaces, []);
+    assert.deepEqual(data.windows["30d"].surfaces, []);
+  });
+
+  test("loadSubnetHealthTrends aggregates ranked-CTE rows into both windows", async () => {
+    const data = await loadSubnetHealthTrends(
+      d1({
+        "FROM ranked": [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            total: 100,
+            ok_count: 95,
+            latency_samples: 95,
+            avg_latency_ms: 90,
+            p50: 80,
+            p95: 110,
+            p99: 130,
+          },
+        ],
+      }),
+      NETUID,
+      { observedAt: OBSERVED_AT },
+    );
+    for (const label of ["7d", "30d"]) {
+      assert.equal(data.windows[label].surfaces[0].surface_id, "api-root");
+      assert.equal(data.windows[label].surfaces[0].uptime_ratio, 0.95);
+      assert.equal(data.windows[label].surfaces[0].latency_ms.p95, 110);
+    }
   });
 
   test("loadRegistryLeaderboards returns all boards object", async () => {

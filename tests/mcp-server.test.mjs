@@ -3773,6 +3773,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.surfaces, []);
   });
 
+  test("get_subnet_health_trends returns schema-stable empty windows on cold D1", async () => {
+    const res = await callTool("get_subnet_health_trends", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.deepEqual(out.windows["7d"].surfaces, []);
+    assert.deepEqual(out.windows["30d"].surfaces, []);
+  });
+
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
     const res = await callTool(
       "get_registry_leaderboards",
@@ -3866,6 +3874,38 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.observed_at, FRESH_RUN);
     assert.equal(out.surfaces.length, 1);
     assert.equal(out.surfaces[0].samples, 100);
+  });
+
+  test("get_subnet_health_trends aggregates ranked-CTE rows into both windows", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        incidentRows: [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            total: 100,
+            ok_count: 95,
+            latency_samples: 95,
+            avg_latency_ms: 90,
+            p50: 80,
+            p95: 110,
+            p99: 130,
+          },
+        ],
+      }),
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_subnet_health_trends",
+      { netuid: 7 },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.observed_at, FRESH_RUN);
+    for (const label of ["7d", "30d"]) {
+      assert.equal(out.windows[label].surfaces[0].surface_id, "api-root");
+      assert.equal(out.windows[label].surfaces[0].uptime_ratio, 0.95);
+    }
   });
 
   test("get_registry_leaderboards can filter to one board", async () => {

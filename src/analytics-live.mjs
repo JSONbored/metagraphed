@@ -4,10 +4,15 @@
 // workers/request-handlers/analytics-routes.mjs (#1919); MCP tools call these
 // loaders so agents get REST parity without duplicating SQL paths.
 
-import { dailyLatencyColumns } from "./health-sql.mjs";
+import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "./health-sql.mjs";
 import {
   formatGlobalIncidents,
   formatLeaderboards,
+  formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
@@ -15,6 +20,7 @@ import {
 import {
   ANALYTICS_WINDOWS,
   DAY_MS,
+  HEALTH_TREND_WINDOWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
@@ -158,6 +164,39 @@ export async function loadSubnetUptime(
     rows,
     now: now || new Date().toISOString(),
   });
+}
+
+// One subnet's 7d/30d uptime + latency trend per operational surface, over the
+// ranked-dedup CTE shared with the percentiles/incidents routes. The windows are
+// independent reads, so they run in parallel rather than serializing an
+// await-in-loop — same shape as REST's handleHealthTrends, which this mirrors.
+export async function loadSubnetHealthTrends(
+  d1,
+  netuid,
+  { observedAt = null } = {},
+) {
+  const nowMs = Date.now();
+  const windowRows = await Promise.all(
+    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+      const rows = await d1(
+        `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+           SELECT MAX(surface_id) AS surface_id,
+                  surface_key,
+                  COUNT(*) AS total,
+                  SUM(ok) AS ok_count,
+                  ${latencyStatColumns({ includeMinMax: false })}
+           FROM ranked
+           GROUP BY surface_key`,
+        [netuid, nowMs - days * DAY_MS],
+      );
+      return [label, rows];
+    }),
+  );
+  const windows = {};
+  for (const [label, rows] of windowRows) {
+    windows[label] = rows;
+  }
+  return formatTrends({ netuid, observedAt, windows });
 }
 
 export async function loadGlobalIncidents(

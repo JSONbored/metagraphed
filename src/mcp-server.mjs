@@ -33,6 +33,7 @@ import {
   loadCompareSubnets,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
+  loadSubnetHealthTrends,
   loadSubnetUptime,
   parseAnalyticsWindow,
   parseCompareDimensionList,
@@ -124,7 +125,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.7.0";
+export const MCP_SERVER_VERSION = "1.8.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -1334,6 +1335,31 @@ export const MCP_TOOLS = [
         reliability,
         surfaces: [],
       };
+    },
+  },
+  {
+    name: "get_subnet_health_trends",
+    title: "Get subnet health trends",
+    description:
+      "Fetch one subnet's 7d/30d uptime + latency trend per operational " +
+      "surface, aggregated from the live health-probe history (probed every " +
+      "~15 minutes). Returns sample counts, uptime ratio, and avg/p50/p95/p99 " +
+      "latency per surface for each window. Use it to see whether a surface is " +
+      "regressing or recovering, where get_subnet_health only gives current " +
+      "status. Mirrors GET /api/v1/subnets/{netuid}/health/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetHealthTrends(mcpD1Runner(ctx), netuid, {
+        observedAt: await mcpObservedAt(ctx),
+      });
     },
   },
   {
@@ -3326,6 +3352,18 @@ const TOOL_OUTPUT_SCHEMAS = {
         last_checked: NULLABLE_STRING,
         last_ok: NULLABLE_STRING,
       }),
+    },
+  },
+  get_subnet_health_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "windows"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      observed_at: NULLABLE_STRING,
+      source: NULLABLE_STRING,
+      windows: { type: "object" },
     },
   },
   get_subnet_economics: {
