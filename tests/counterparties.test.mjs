@@ -51,6 +51,24 @@ describe("buildCounterparties", () => {
     assert.equal(data.counterparties[2].address, "B");
   });
 
+  test("breaks equal-volume ties by newest last_block, then by ascending address", () => {
+    // Three counterparties with the SAME total volume (100 each), so the
+    // comparator falls through to its last_block then address tie-breaks — the
+    // branches the volume-ranked test above never exercises.
+    const rows = [
+      { hotkey: "ME", coldkey: "P", amount_tao: 100, block_number: 20 },
+      { hotkey: "ME", coldkey: "Q", amount_tao: 100, block_number: 20 },
+      { hotkey: "ME", coldkey: "R", amount_tao: 100, block_number: 10 },
+    ];
+    const data = buildCounterparties(rows, ME, { limit: 20 });
+    // Equal volume → newer last_block first (P/Q at 20 before R at 10); P and Q
+    // tie on volume AND block → ascending address ("P" < "Q").
+    assert.deepEqual(
+      data.counterparties.map((c) => c.address),
+      ["P", "Q", "R"],
+    );
+  });
+
   test("skips self-transfers (account on both sides)", () => {
     const data = buildCounterparties(
       [
