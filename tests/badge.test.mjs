@@ -26,6 +26,14 @@ const PROVIDERS = {
     { id: "byid", netuids: [9] }, // only a scoreless subnet → n/a
   ],
 };
+const PROFILES = {
+  profiles: [
+    { netuid: 7, completeness_score: 85 },
+    { netuid: 12, completeness_score: 55 },
+    { netuid: 3, completeness_score: 20 },
+    // netuid 9 omitted → n/a
+  ],
+};
 
 function makeReadArtifact(fixtures) {
   return (_env, path) =>
@@ -72,6 +80,7 @@ async function badge(pathname, { method = "GET", fixtures = {} } = {}) {
     readArtifact: makeReadArtifact({
       "/metagraph/subnets.json": SUBNETS,
       "/metagraph/providers.json": PROVIDERS,
+      "/metagraph/profiles.json": PROFILES,
       ...SURFACES,
       ...fixtures,
     }),
@@ -169,6 +178,14 @@ describe("badge — rendering", () => {
     );
     assert.equal(parseBadgeOptions(sp("metric=GRADE")).metric, "grade");
     assert.equal(parseBadgeOptions(sp("metric=APIS")).metric, "apis");
+    assert.equal(
+      parseBadgeOptions(sp("metric=COMPLETENESS")).metric,
+      "completeness",
+    );
+    assert.equal(
+      parseBadgeOptions(sp("metric=coverage")).metric,
+      "completeness",
+    );
     assert.equal(parseBadgeOptions(sp("metric=bogus")).metric, "readiness");
     // style: flat default; flat-square allowed; anything else → flat.
     assert.equal(parseBadgeOptions(sp("")).style, "flat");
@@ -425,6 +442,61 @@ describe("badge — apis metric", () => {
     });
     assert.equal(res.status, 200);
     assert.match(await res.text(), /n\/a/);
+  });
+});
+
+describe("badge — completeness metric", () => {
+  test("subnet completeness renders the profile score + score color", async () => {
+    const { text } = await badge(
+      "/api/v1/subnets/7/badge.svg?metric=completeness",
+    );
+    assert.match(text, /85\/100/);
+    assert.match(text, /#2ea44f/); // green (>= 80)
+    assert.ok(!text.includes("92/100")); // not the readiness rendering
+  });
+
+  test("metric=coverage is an alias for completeness", async () => {
+    const { text } = await badge("/api/v1/subnets/7/badge.svg?metric=coverage");
+    assert.match(text, /85\/100/);
+  });
+
+  test("a low completeness score gets the red color", async () => {
+    const { text } = await badge(
+      "/api/v1/subnets/3/badge.svg?metric=completeness",
+    );
+    assert.match(text, /20\/100/);
+    assert.match(text, /#e05d44/);
+  });
+
+  test("provider completeness is the mean across its subnets", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/datura/badge.svg?metric=completeness",
+    );
+    assert.match(text, /70\/100/); // round(mean(85, 55))
+    assert.match(text, /#dfb317/); // amber (50..79)
+  });
+
+  test("unknown subnet completeness degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/999/badge.svg?metric=completeness",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+
+  test("a subnet with no profile row is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/subnets/9/badge.svg?metric=completeness",
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with only scoreless subnets is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/byid/badge.svg?metric=completeness",
+    );
+    assert.match(text, /n\/a/);
   });
 });
 

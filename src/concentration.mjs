@@ -24,6 +24,18 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
+// Round a 0..1 concentration ratio (gini, hhi, normalized variants, top-K share)
+// WITHOUT letting a sub-perfect value round up to an exact 1 — a near-monopoly
+// that holds 99.99996% must not display as a perfect 1.0 ("total concentration"),
+// the same anti-overstatement guard the turnover/chain-activity ratios apply. A
+// genuine ratio of exactly 1 (e.g. a single holder's 100% share) keeps 1.0.
+function roundRatio(value, dp = 6) {
+  if (value == null || !Number.isFinite(value)) return null;
+  const factor = 10 ** dp;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
+}
+
 function captureStamp(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return { ms: value, value: new Date(value).toISOString() };
@@ -105,7 +117,7 @@ function topShares(descending, total) {
   const out = {};
   for (const p of TOP_PERCENTILES) {
     const k = Math.max(1, Math.ceil((n * p) / 100));
-    out[`top_${p}pct_share`] = round(prefix[k - 1] / total);
+    out[`top_${p}pct_share`] = roundRatio(prefix[k - 1] / total);
   }
   return out;
 }
@@ -137,13 +149,13 @@ export function computeConcentration(values) {
   return {
     holders,
     total: round(total, 4),
-    gini: round(gini(ascending, total)),
-    hhi: round(h),
-    hhi_normalized: round(hhiNormalized(h, holders)),
+    gini: roundRatio(gini(ascending, total)),
+    hhi: roundRatio(h),
+    hhi_normalized: roundRatio(hhiNormalized(h, holders)),
     nakamoto_coefficient: nakamoto(descending, total),
     ...topShares(descending, total),
     entropy: round(bits),
-    entropy_normalized: round(normalized),
+    entropy_normalized: roundRatio(normalized),
   };
 }
 

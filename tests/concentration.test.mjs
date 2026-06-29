@@ -80,6 +80,26 @@ describe("computeConcentration", () => {
     assert.equal(c.nakamoto_coefficient, 1);
     assert.ok(c.entropy_normalized < 0.2);
   });
+
+  test("a sub-perfect top share does not round up to a perfect 1.0", () => {
+    // Two holders, one with 99.99999% — top_1pct_share is 0.9999999, which would
+    // round to a misleading 1.0 ("total concentration"). It must clamp just below
+    // 1 instead, like the turnover/chain-activity ratio guards.
+    const c = computeConcentration([9_999_999, 1]);
+    assert.ok(
+      c.top_1pct_share < 1,
+      `top_1pct_share must stay below 1, got ${c.top_1pct_share}`,
+    );
+    assert.equal(c.top_1pct_share, 0.999999);
+  });
+
+  test("a genuine 100% share (single holder) still reports exactly 1.0", () => {
+    // The clamp must only catch sub-perfect values — a true monopoly is 1.0.
+    const c = computeConcentration([500]);
+    assert.equal(c.top_1pct_share, 1);
+    assert.equal(c.hhi, 1);
+    assert.equal(c.hhi_normalized, 1);
+  });
 });
 
 describe("buildConcentration", () => {

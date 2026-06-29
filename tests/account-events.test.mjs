@@ -561,6 +561,22 @@ test("loadAccountEvents applies the ?kind filter as a bound param", async () => 
   assert.deepEqual(captured.params, ["5Hk", "5Hk", "StakeAdded", 100, 0]);
 });
 
+test("loadAccountEvents applies the block_start/block_end range as bound params", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { blockStart: 100, blockEnd: 900 },
+  );
+  assert.ok(/AND block_number >= \?/.test(captured.sql));
+  assert.ok(/AND block_number <= \?/.test(captured.sql));
+  // [ss58, ss58, blockStart, blockEnd, limit(default 100), offset(default 0)]
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", 100, 900, 100, 0]);
+});
+
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {
   // A full page (rows.length === limit) → keyset cursor off the last row.
   const full = await loadAccountEvents(
