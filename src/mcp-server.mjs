@@ -89,6 +89,7 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
+import { loadSubnetTurnover } from "./turnover.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -123,7 +124,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.6.0";
+export const MCP_SERVER_VERSION = "1.7.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -182,7 +183,8 @@ export const MCP_INSTRUCTIONS =
   "long-term surface uptime history, get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
-  "get_registry_leaderboards the live " +
+  "get_subnet_turnover validator-set and registration churn between two " +
+  "boundary snapshots, get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_subnet_metagraph the " +
@@ -1432,6 +1434,38 @@ export const MCP_TOOLS = [
       return loadSubnetConcentrationHistory(mcpD1Runner(ctx), netuid, {
         windowLabel: parsed.label,
         windowDays: parsed.days,
+      });
+    },
+  },
+  {
+    name: "get_subnet_turnover",
+    title: "Get subnet validator turnover",
+    description:
+      "Fetch one subnet's validator-set and registration churn between the " +
+      "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
+      "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
+      "retention for validators and neurons, UID deregistrations, and a 0–100 " +
+      "stability score. Use it to see how stable a subnet's participation base " +
+      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const { label, days } = requireHistoryWindow(args);
+      return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
+        windowLabel: label,
+        windowDays: days,
       });
     },
   },
@@ -3355,6 +3389,39 @@ const TOOL_OUTPUT_SCHEMAS = {
         emission_nakamoto_coefficient: ANY,
         emission_top_10pct_share: ANY,
       }),
+    },
+  },
+  get_subnet_turnover: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "comparable",
+      "validators_start",
+      "validators_end",
+      "validators_entered",
+      "validators_exited",
+      "neurons_start",
+      "neurons_end",
+      "uids_deregistered",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      comparable: { type: "boolean" },
+      validators_start: { type: "integer" },
+      validators_end: { type: "integer" },
+      validators_entered: { type: "integer" },
+      validators_exited: { type: "integer" },
+      validator_retention: { type: ["number", "null"] },
+      neurons_start: { type: "integer" },
+      neurons_end: { type: "integer" },
+      uids_deregistered: { type: "integer" },
+      neuron_retention: { type: ["number", "null"] },
+      stability_score: { type: ["integer", "null"] },
     },
   },
   get_subnet_uptime: {
