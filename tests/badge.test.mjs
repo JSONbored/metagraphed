@@ -138,6 +138,37 @@ describe("badge — rendering", () => {
     assert.ok((square.match(/<text /g) || []).length === 4);
   });
 
+  test("renderBadge style=for-the-badge: taller, uppercase, bold, square, matte", () => {
+    const svg = renderBadge("ok", "#2ea44f", {
+      label: "metagraphed",
+      style: "for-the-badge",
+    });
+    assert.match(svg, /height="28"/); // taller than the 20px default
+    assert.match(svg, /rx="0"/); // square corners
+    assert.ok(!svg.includes("linearGradient")); // matte, no gradient
+    assert.match(svg, /font-weight="bold"/);
+    assert.match(svg, /letter-spacing="1.25"/);
+    assert.match(svg, /font-size="10"/);
+    // Text is uppercased (both label and message).
+    assert.match(svg, /aria-label="METAGRAPHED: OK"/);
+    assert.ok(
+      svg.includes(">METAGRAPHED</text>") && svg.includes(">OK</text>"),
+    );
+    assert.ok((svg.match(/<text /g) || []).length === 4);
+  });
+
+  test("flat / flat-square output is unchanged by the for-the-badge refactor", () => {
+    const svg = renderBadge("92/100", "#2ea44f");
+    assert.match(svg, /height="20"/);
+    assert.match(svg, /rx="3"/);
+    assert.match(svg, /font-size="11"/);
+    assert.ok(!svg.includes("font-weight"));
+    assert.ok(!svg.includes("letter-spacing"));
+    assert.match(svg, /linearGradient/);
+    assert.match(svg, / y="14"/);
+    assert.match(svg, / y="15"/);
+  });
+
   test("scoreColor thresholds (green / amber / red / gray)", () => {
     assert.equal(scoreColor(92), "#2ea44f");
     assert.equal(scoreColor(80), "#2ea44f");
@@ -175,6 +206,10 @@ describe("badge — rendering", () => {
     assert.equal(
       parseBadgeOptions(sp("style=flat-square")).style,
       "flat-square",
+    );
+    assert.equal(
+      parseBadgeOptions(sp("style=for-the-badge")).style,
+      "for-the-badge",
     );
     assert.equal(parseBadgeOptions(sp("style=plastic")).style, "flat");
     // label: default brand; override kept; control chars stripped; capped; blank→brand.

@@ -14,6 +14,8 @@
 //                      (subnet-api / openapi / sse / data-artifact); informational
 //                      blue, gray for 0; for a provider, the sum across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
+//   style=for-the-badge  the shields.io all-caps style: taller, bold, letter-
+//                      spaced, uppercase, square + matte
 //   label=…            override the left "metagraphed" segment text
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
@@ -37,7 +39,7 @@ const BADGE_METRICS = {
   apis: "apis",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
-const BADGE_STYLES = new Set(["flat", "flat-square"]);
+const BADGE_STYLES = new Set(["flat", "flat-square", "for-the-badge"]);
 // shields.io "informational" blue, used for plain-count metrics (e.g. apis).
 const INFO_COLOR = "#007ec6";
 // Surface kinds that are callable machine interfaces (mirrors the build's
@@ -120,36 +122,54 @@ export function gradeColor(grade) {
 }
 
 // Render a two-segment badge: gray label + colored message. `style` is "flat"
-// (rounded + glossy gradient) or "flat-square" (square, matte).
+// (rounded + glossy gradient), "flat-square" (square, matte), or "for-the-badge"
+// (shields.io's taller, bold, uppercase, letter-spaced style — square + matte).
 export function renderBadge(message, color, options = {}) {
   const { label = BADGE_LABEL, style = "flat" } = options;
-  const eLabel = escapeXml(label);
-  const eMsg = escapeXml(message);
-  const pad = 12;
-  const labelW = textWidth(label) + pad;
-  const msgW = textWidth(message) + pad;
+  const forTheBadge = style === "for-the-badge";
+  // for-the-badge uppercases the text; the other styles render it verbatim.
+  const labelText = forTheBadge ? String(label).toUpperCase() : String(label);
+  const msgText = forTheBadge ? String(message).toUpperCase() : String(message);
+  const eLabel = escapeXml(labelText);
+  const eMsg = escapeXml(msgText);
+  const height = forTheBadge ? 28 : 20;
+  const pad = forTheBadge ? 18 : 12;
+  const spacing = forTheBadge ? 1.25 : 0;
+  // Segment width: glyph estimate + letter-spacing (applied after every glyph) +
+  // padding — all safe overestimates, so the text never clips its segment. With
+  // spacing 0 + pad 12 this is exactly the original flat/flat-square geometry.
+  const segWidth = (t) => textWidth(t) + spacing * [...t].length + pad;
+  const labelW = segWidth(labelText);
+  const msgW = segWidth(msgText);
   const total = labelW + msgW;
   const labelMid = labelW / 2;
   const msgMid = labelW + msgW / 2;
-  const square = style === "flat-square";
+  const square = forTheBadge || style === "flat-square";
   const rx = square ? 0 : 3;
+  const mainY = forTheBadge ? 18 : 14;
+  const shadowY = mainY + 1;
+  const textAttrs = forTheBadge
+    ? ` font-size="10" font-weight="bold" letter-spacing="${spacing}"`
+    : ` font-size="11"`;
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="20" role="img" aria-label="${eLabel}: ${eMsg}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${height}" role="img" aria-label="${eLabel}: ${eMsg}">`,
     `<title>${eLabel}: ${eMsg}</title>`,
     square
       ? null
       : `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>`,
-    `<clipPath id="r"><rect width="${total}" height="20" rx="${rx}" fill="#fff"/></clipPath>`,
+    `<clipPath id="r"><rect width="${total}" height="${height}" rx="${rx}" fill="#fff"/></clipPath>`,
     `<g clip-path="url(#r)">`,
-    `<rect width="${labelW}" height="20" fill="#555"/>`,
-    `<rect x="${labelW}" width="${msgW}" height="20" fill="${color}"/>`,
-    square ? null : `<rect width="${total}" height="20" fill="url(#s)"/>`,
+    `<rect width="${labelW}" height="${height}" fill="#555"/>`,
+    `<rect x="${labelW}" width="${msgW}" height="${height}" fill="${color}"/>`,
+    square
+      ? null
+      : `<rect width="${total}" height="${height}" fill="url(#s)"/>`,
     `</g>`,
-    `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">`,
-    `<text x="${labelMid}" y="15" fill="#010101" fill-opacity=".3">${eLabel}</text>`,
-    `<text x="${labelMid}" y="14">${eLabel}</text>`,
-    `<text x="${msgMid}" y="15" fill="#010101" fill-opacity=".3">${eMsg}</text>`,
-    `<text x="${msgMid}" y="14">${eMsg}</text>`,
+    `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif"${textAttrs}>`,
+    `<text x="${labelMid}" y="${shadowY}" fill="#010101" fill-opacity=".3">${eLabel}</text>`,
+    `<text x="${labelMid}" y="${mainY}">${eLabel}</text>`,
+    `<text x="${msgMid}" y="${shadowY}" fill="#010101" fill-opacity=".3">${eMsg}</text>`,
+    `<text x="${msgMid}" y="${mainY}">${eMsg}</text>`,
     `</g>`,
     `</svg>`,
     ``,
