@@ -1678,6 +1678,45 @@ describe("MCP get_chain_signers", () => {
     assert.match(res.body.result.content[0].text, /window/i);
   });
 
+  test("rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_signers",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("scopes the leaderboard by call_module", async () => {
+    let boundModule;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              boundModule = params[1];
+              return {
+                async all() {
+                  assert.match(sql, /call_module = \?/);
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_signers",
+      { window: "30d", call_module: "Balances", limit: 10 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(boundModule, "Balances");
+  });
+
   test("returns an empty leaderboard on a cold D1 store", async () => {
     const res = await callTool("get_chain_signers", {}, {});
     const out = res.body.result.structuredContent;
