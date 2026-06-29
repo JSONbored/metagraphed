@@ -47,6 +47,11 @@ test("decodeCursor rejects parts above MAX_SAFE_INTEGER (no silent Number() roun
   assert.equal(decodeCursor(unsafe, 1), null);
   assert.equal(decodeCursor(`1.${unsafe}`, 2), null);
   assert.equal(decodeCursor(`${unsafe}.2`, 2), null);
+  // The exact first unsafe integer (2^53 = MAX_SAFE_INTEGER + 1) is also rejected.
+  // It IS exactly representable in IEEE-754 but fails Number.isSafeInteger, so
+  // the gate rejects it just as decisively as a visibly-rounded value.
+  const firstUnsafe = String(Number.MAX_SAFE_INTEGER + 1); // "9007199254740992"
+  assert.equal(decodeCursor(firstUnsafe, 1), null);
   // The exact MAX_SAFE_INTEGER boundary is still a valid, representable cursor.
   const safe = String(Number.MAX_SAFE_INTEGER); // "9007199254740991"
   assert.deepEqual(decodeCursor(safe, 1), [Number.MAX_SAFE_INTEGER]);
