@@ -313,17 +313,30 @@ describe("buildTurnover — regressions", () => {
     // The round() guard must intercept it and return 0.9999 (not 1).
     const rows = [];
     for (let uid = 0; uid < 20000; uid++) {
-      rows.push({ snapshot_date: "2026-05-01", uid, hotkey: `M${uid}`, validator_permit: 0 });
+      rows.push({
+        snapshot_date: "2026-05-01",
+        uid,
+        hotkey: `M${uid}`,
+        validator_permit: 0,
+      });
     }
     for (let uid = 0; uid < 19999; uid++) {
-      rows.push({ snapshot_date: "2026-06-01", uid, hotkey: `M${uid}`, validator_permit: 0 });
+      rows.push({
+        snapshot_date: "2026-06-01",
+        uid,
+        hotkey: `M${uid}`,
+        validator_permit: 0,
+      });
     }
     const data = buildTurnover(rows, 1, {
       window: "30d",
       startDate: "2026-05-01",
       endDate: "2026-06-01",
     });
-    assert.ok(data.neuron_retention < 1, "sub-perfect retention must not round up to 1");
+    assert.ok(
+      data.neuron_retention < 1,
+      "sub-perfect retention must not round up to 1",
+    );
     assert.equal(data.neuron_retention, 0.9999); // clamped; naïve Math.round gives 1
   });
 
