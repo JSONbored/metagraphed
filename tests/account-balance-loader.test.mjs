@@ -20,6 +20,13 @@ describe("isFinneySs58Address", () => {
       false,
     );
   });
+
+  test("rejects a finney-shaped address with a bad SS58 checksum", () => {
+    // Same prefix/length as SS58 but last base58 digit flipped → checksum mismatch.
+    const badChecksum = `${SS58.slice(0, -1)}4`;
+    assert.notEqual(badChecksum, SS58);
+    assert.equal(isFinneySs58Address(badChecksum), false);
+  });
 });
 
 describe("loadAccountBalance", () => {

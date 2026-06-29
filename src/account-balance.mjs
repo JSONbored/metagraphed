@@ -1,6 +1,8 @@
 // Live finney account TAO balance (free + reserved) via RPC (#1818).
 // Shared by GET /api/v1/accounts/{ss58}/balance and MCP get_account_balance.
 
+import { createHash } from "node:crypto";
+
 const SS58_BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const SS58_BASE58_INDEX = new Map(
@@ -10,6 +12,8 @@ const FINNEY_SS58_PREFIX = 42;
 const FINNEY_SS58_MIN_LENGTH = 47;
 const FINNEY_SS58_MAX_LENGTH = 48;
 const FINNEY_SS58_DECODED_LENGTH = 35;
+const FINNEY_SS58_CHECKSUM_LENGTH = 2; // prefix < 64 → 2-byte SS58 checksum
+const SS58_PREIMAGE = new TextEncoder().encode("SS58PRE");
 export const BALANCE_KV_TTL = 60; // seconds
 export const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
 export const BALANCE_RPC_TIMEOUT_MS = 5000;
@@ -38,6 +42,21 @@ function decodeBase58(value) {
   return Uint8Array.from(bytes.reverse());
 }
 
+function verifyFinneySs58Checksum(decoded) {
+  if (decoded.length !== FINNEY_SS58_DECODED_LENGTH) return false;
+  const body = decoded.subarray(
+    0,
+    decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
+  );
+  const checksum = decoded.subarray(
+    decoded.length - FINNEY_SS58_CHECKSUM_LENGTH,
+  );
+  const hash = createHash("blake2b512")
+    .update(Buffer.concat([Buffer.from(SS58_PREIMAGE), Buffer.from(body)]))
+    .digest();
+  return hash[0] === checksum[0] && hash[1] === checksum[1];
+}
+
 export function isFinneySs58Address(value) {
   if (
     value.length < FINNEY_SS58_MIN_LENGTH ||
@@ -49,7 +68,8 @@ export function isFinneySs58Address(value) {
   const decoded = decodeBase58(value);
   return (
     decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
-    decoded[0] === FINNEY_SS58_PREFIX
+    decoded[0] === FINNEY_SS58_PREFIX &&
+    verifyFinneySs58Checksum(decoded)
   );
 }
 
