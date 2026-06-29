@@ -13,6 +13,12 @@ import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 const ARTIFACT_ROUTE = "https://metagraph.sh/api/v1/subnets";
 
 describe("serve-time contract staleness (#1001)", () => {
+  function parseExposeHeader(response) {
+    return new Set(
+      (response.headers.get("access-control-expose-headers") || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean),
+    );
+  }
+
   it("surfaces stale_contract on meta + header when the artifact lags the live contract", async () => {
     const env = {
       ...createLocalArtifactEnv(),
@@ -30,10 +36,15 @@ describe("serve-time contract staleness (#1001)", () => {
     expect(res.headers.get("x-metagraph-stale-contract")).toBe(
       body.meta.stale_contract.built_under,
     );
-    // Cross-origin JS can read the header only when it's named in the expose list.
-    expect(res.headers.get("access-control-expose-headers")).toMatch(
-      /\bx-metagraph-stale-contract\b/,
-    );
+    const exposedHeaders = parseExposeHeader(res);
+    const emittedMetagraphHeaders = [...res.headers.entries()]
+      .map(([name]) => name.toLowerCase())
+      .filter((name) => name.startsWith("x-metagraph-"));
+
+    expect(emittedMetagraphHeaders.length).toBeGreaterThan(0);
+    for (const name of emittedMetagraphHeaders) {
+      expect(exposedHeaders.has(name)).toBe(true);
+    }
   });
 
   it("omits stale_contract when the artifact matches the live contract", async () => {
