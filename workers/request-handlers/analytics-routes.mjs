@@ -212,6 +212,17 @@ export function canonicalUptimeCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
+// Normalises the economics-trends URL so that a bare ?-free request and an explicit
+// ?window=30d request both resolve to the same edge-cache entry — mirrors
+// canonicalSubnetHistoryCachePath in entities.mjs.
+export function canonicalEconomicsTrendsCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
+  if (error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 async function leaderboardProfilesProjection(env, now = Date.now()) {
   if (
     leaderboardProfilesCache &&

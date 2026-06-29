@@ -187,6 +187,8 @@ CREATE TABLE IF NOT EXISTS account_events_daily (
 );
 CREATE INDEX IF NOT EXISTS idx_account_events_daily_netuid_day
   ON account_events_daily (netuid, day);
+CREATE INDEX IF NOT EXISTS idx_account_events_daily_hotkey_day
+  ON account_events_daily (hotkey, day);
 
 -- ---------------------------------------------------------------------------
 -- Indexer coordination

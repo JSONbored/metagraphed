@@ -411,6 +411,26 @@ test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async
   assert.equal(bad.status, 400);
 });
 
+test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async () => {
+  const env = dbWith({ feed: [] });
+  for (const query of [
+    "block=abc",
+    "from=foo",
+    "to=foo",
+    "block_start=abc",
+    "block_end=abc",
+  ]) {
+    const res = await handleRequest(
+      req(`/api/v1/extrinsics?${query}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, query);
+    const body = await res.json();
+    assert.equal(body.ok, false);
+  }
+});
+
 test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () => {
   let boundSql;
   const env = {

@@ -21,7 +21,11 @@
 // (e.g. ?since=2026-06-01 or ?since=2026-06-01T00:00:00Z), for incremental
 // polling; it composes with `?tag=`. A malformed `since` is a 400.
 
-import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.mjs";
+import {
+  EXPOSED_RESPONSE_HEADERS_VALUE,
+  ifNoneMatchSatisfied,
+  weakEtag,
+} from "../workers/http.mjs";
 
 const SITE_URL = "https://metagraph.sh";
 const API_URL = "https://api.metagraph.sh";
@@ -404,7 +408,12 @@ function parseSinceParam(value) {
 function feedError(code, message, status) {
   return new Response(JSON.stringify({ ok: false, error: { code, message } }), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      // Public feeds are a cross-origin surface (browser feed readers / agents),
+      // so errors must be CORS-readable like every sibling response (#2078).
+      "access-control-allow-origin": "*",
+    },
   });
 }
 
@@ -521,6 +530,12 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     vary: "Accept",
     "x-content-type-options": "nosniff",
     etag,
+    // Feeds are meant for cross-origin consumption (JSON Feed in browser JS, the
+    // discovery Link header on /api/v1/subnets). Without CORS, cross-origin
+    // clients can't read the body or the etag for conditional polling. Mirror the
+    // canonical apiHeaders CORS pair so the 200/304/HEAD paths are readable.
+    "access-control-allow-origin": "*",
+    "access-control-expose-headers": EXPOSED_RESPONSE_HEADERS_VALUE,
   };
   // Unchanged poll → cheap 304, same validators, no body.
   if (ifNoneMatchSatisfied(request, etag)) {

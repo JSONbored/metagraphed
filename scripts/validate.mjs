@@ -934,6 +934,12 @@ async function validateGeneratedArtifacts(
     endpointsArtifact.endpoints || [],
     (endpoint) => endpoint.netuid,
   );
+  // Group surfaces by netuid once (mirrors activeCandidatesByNetuid /
+  // endpointsByNetuid above) instead of re-filtering the full flat list every
+  // subnet iteration — the lone O(netuids x surfaces) scan among pre-grouped
+  // reads (#2097). Map.groupBy preserves order, so the byte-equality assertion
+  // below holds; the `|| []` fallback covers zero-surface overlays.
+  const surfacesByNetuid = Map.groupBy(surfaces, (surface) => surface.netuid);
   const expectedSubnetsByNetuid = new Map(
     nativeSnapshot.subnets.map((nativeSubnet) => [
       nativeSubnet.netuid,
@@ -964,9 +970,7 @@ async function validateGeneratedArtifacts(
       const detailArtifact = await readJson(detailPath);
       const subnetCandidates =
         activeCandidatesByNetuid.get(subnet.netuid) || [];
-      const subnetSurfaces = surfaces.filter(
-        (surface) => surface.netuid === subnet.netuid,
-      );
+      const subnetSurfaces = surfacesByNetuid.get(subnet.netuid) || [];
       const subnetEndpoints = endpointsByNetuid.get(subnet.netuid) || [];
       const expectedDetailArtifact = {
         schema_version: 1,

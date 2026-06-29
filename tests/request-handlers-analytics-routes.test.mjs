@@ -7,6 +7,7 @@ import { describe, test, beforeEach } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
   canonicalCompareCachePath,
+  canonicalEconomicsTrendsCachePath,
   canonicalUptimeCachePath,
   composeCompareData,
   configureAnalyticsRoutes,
@@ -478,6 +479,43 @@ describe("canonicalUptimeCachePath", () => {
   test("falls back to raw search on invalid window value", () => {
     const raw = "/api/v1/subnets/7/uptime?window=7d";
     assert.equal(canonicalUptimeCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalEconomicsTrendsCachePath", () => {
+  test("normalizes bare path to explicit default window", () => {
+    assert.equal(
+      canonicalEconomicsTrendsCachePath(url("/api/v1/economics/trends")),
+      "/api/v1/economics/trends?window=30d",
+    );
+  });
+
+  test("explicit ?window=30d collapses to same key as bare path", () => {
+    assert.equal(
+      canonicalEconomicsTrendsCachePath(
+        url("/api/v1/economics/trends?window=30d"),
+      ),
+      "/api/v1/economics/trends?window=30d",
+    );
+  });
+
+  test("preserves valid non-default window", () => {
+    assert.equal(
+      canonicalEconomicsTrendsCachePath(
+        url("/api/v1/economics/trends?window=7d"),
+      ),
+      "/api/v1/economics/trends?window=7d",
+    );
+  });
+
+  test("falls back to raw search on unknown query param", () => {
+    const raw = "/api/v1/economics/trends?unknown=x";
+    assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on invalid window value", () => {
+    const raw = "/api/v1/economics/trends?window=bogus";
+    assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
   });
 });
 
