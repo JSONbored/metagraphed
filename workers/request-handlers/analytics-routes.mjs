@@ -200,6 +200,18 @@ export async function handleUptime(request, env, netuid, url) {
   );
 }
 
+// Normalises the uptime URL so that a bare ?-free request and an explicit
+// ?window=90d request both resolve to the same edge-cache entry — mirrors
+// canonicalSubnetConcentrationHistoryCachePath in entities.mjs.
+export function canonicalUptimeCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam = url.searchParams.get("window") || "90d";
+  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam))
+    return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+}
+
 async function leaderboardProfilesProjection(env, now = Date.now()) {
   if (
     leaderboardProfilesCache &&

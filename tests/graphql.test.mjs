@@ -562,6 +562,53 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
   });
 });
 
+describe("handleGraphQLRequest — error envelope is never cacheable", () => {
+  const post = (env) =>
+    handleGraphQLRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: "{ subnets { items { netuid } total } }",
+        }),
+      }),
+      env,
+    );
+
+  test("a clean POST keeps the success cache directive", async () => {
+    const res = await post(emptyEnv);
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      res.headers.get("cache-control"),
+      "public, max-age=60, stale-while-revalidate=300",
+    );
+  });
+
+  // A thrown artifact read surfaces in result.errors while execute() stays 200:
+  // readR2 parses the body outside its try/catch, so the rejection propagates.
+  test("a populated result.errors switches to no-store", async () => {
+    const env = {
+      METAGRAPH_R2_LATEST_PREFIX: "latest/",
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            async json() {
+              throw new Error("corrupt artifact body");
+            },
+          };
+        },
+      },
+    };
+    const res = await post(env);
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.ok(body.errors?.length > 0);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+  });
+});
+
 describe("maxDepthRule / maxComplexityRule exports", () => {
   test("GRAPHQL_MAX_DEPTH is a positive integer", () => {
     assert.ok(Number.isInteger(GRAPHQL_MAX_DEPTH) && GRAPHQL_MAX_DEPTH > 0);
