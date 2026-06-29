@@ -1,6 +1,6 @@
-// Shared chain D1 query loaders for REST + MCP parity (#1990 signers, #1989 calls,
-// #1988 fees). Pure orchestration over extrinsics-tier rows + chain-analytics
-// builders; REST handlers keep edge-cache + envelope wiring.
+// Shared chain-signers D1 loader for REST + MCP parity (#1990). Pure
+// orchestration over extrinsics-tier rows + buildChainSigners; REST handlers keep
+// edge-cache + envelope wiring.
 
 import { DAY_MS } from "../workers/config.mjs";
 import { buildChainSigners } from "./chain-analytics.mjs";
@@ -23,7 +23,7 @@ export async function loadChainSigners(
      FROM extrinsics
      WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
      GROUP BY signer
-     ORDER BY tx_count DESC
+     ORDER BY tx_count DESC, signer ASC
      LIMIT ?`,
     params,
   );

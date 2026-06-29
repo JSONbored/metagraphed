@@ -2342,13 +2342,11 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      if (
-        args?.window !== undefined &&
-        parseAnalyticsWindow(args.window) === null
-      ) {
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (args?.window !== undefined && parsed === null) {
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
-      const { label, days } = parseAnalyticsWindow(args?.window ?? "7d");
+      const { label, days } = parsed;
       const limit = clampLimit(args?.limit, 50, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
