@@ -25,6 +25,23 @@
       },
       "source_urls": ["https://bitsota.ai/docs/autoresearch-backend-routes"],
       "url": "https://autoresearch.bitsota.com/api/v1/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-alveus-labs-openapi",
+      "kind": "openapi",
+      "name": "Bitsota autoresearch-bittensor coordinator",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jeffrey701"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://autoresearch.bitsota.com/openapi.json",
+      "source_urls": ["https://bitsota.com/"],
+      "url": "https://autoresearch.bitsota.com/openapi.json"
     }
   ]
 }
