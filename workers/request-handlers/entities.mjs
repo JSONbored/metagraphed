@@ -17,12 +17,7 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import {
-  DAY_MS,
-  SS58_ADDRESS_PATTERN,
-  clampInt,
-  resolveClientIp,
-} from "../config.mjs";
+import { DAY_MS, SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.mjs";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -1084,17 +1079,33 @@ export async function handleBlocks(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
-  const MAX = Number.MAX_SAFE_INTEGER;
-  const intParam = (name) => clampInt(sp.get(name), 0, 0, MAX);
-  const blockStart =
-    sp.get("block_start") != null ? intParam("block_start") : null;
-  const blockEnd = sp.get("block_end") != null ? intParam("block_end") : null;
-  const from = sp.get("from") != null ? intParam("from") : null;
-  const to = sp.get("to") != null ? intParam("to") : null;
-  const minExtrinsics =
-    sp.get("min_extrinsics") != null ? intParam("min_extrinsics") : null;
-  const minEvents =
-    sp.get("min_events") != null ? intParam("min_events") : null;
+  // Reject non-integer numeric filters with a 400 (mirrors handleExtrinsics /
+  // #2274) instead of silently coercing garbage to the clampInt default: a
+  // ?block_end=abc used to fall back to 0 and serve a wrong (block_number <= 0)
+  // result set rather than an error, and ?block_start=12.9 was silently
+  // truncated.
+  const numericFilters = {};
+  for (const param of [
+    "block_start",
+    "block_end",
+    "from",
+    "to",
+    "min_extrinsics",
+    "min_events",
+    "spec_version",
+  ]) {
+    const raw = sp.get(param);
+    if (raw === null) continue;
+    const parsed = parseNonNegativeIntParam(raw, param);
+    if (parsed.error) return analyticsQueryError(parsed.error);
+    numericFilters[param] = parsed.value;
+  }
+  const blockStart = numericFilters.block_start ?? null;
+  const blockEnd = numericFilters.block_end ?? null;
+  const from = numericFilters.from ?? null;
+  const to = numericFilters.to ?? null;
+  const minExtrinsics = numericFilters.min_extrinsics ?? null;
+  const minEvents = numericFilters.min_events ?? null;
 
   // Inverted indexed ranges and astronomically high per-block count floors are
   // deterministic no-match cases. Short-circuit them before D1 so public callers
@@ -1125,9 +1136,9 @@ export async function handleBlocks(request, env, url) {
     conds.push("author = ?");
     params.push(sp.get("author"));
   }
-  if (sp.get("spec_version") != null) {
+  if (numericFilters.spec_version != null) {
     conds.push("spec_version = ?");
-    params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
+    params.push(numericFilters.spec_version);
   }
   if (blockStart != null) {
     conds.push("block_number >= ?");

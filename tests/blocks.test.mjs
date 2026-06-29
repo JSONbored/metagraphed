@@ -309,6 +309,24 @@ test("GET /blocks clamps limit to <=100 + rejects unsupported params", async () 
   assert.equal(bad.status, 400);
 });
 
+test("GET /blocks rejects non-integer numeric filters with 400 (#2310)", async () => {
+  const env = dbWith({ feed: [] });
+  for (const query of [
+    "block_start=abc",
+    "block_end=abc",
+    "from=foo",
+    "to=foo",
+    "min_extrinsics=1.5",
+    "min_events=-1",
+    "spec_version=foo",
+  ]) {
+    const res = await handleRequest(req(`/api/v1/blocks?${query}`), env, {});
+    assert.equal(res.status, 400, query);
+    const body = await res.json();
+    assert.equal(body.ok, false, query);
+  }
+});
+
 test("GET /blocks?cursor= seeks by keyset + emits next_cursor (#1851)", async () => {
   let boundSql;
   let boundParams;
