@@ -1749,7 +1749,10 @@
         ],
         "properties": {
           "schema_version": { "type": "integer" },
-          "ss58": { "type": "string" },
+          "ss58": {
+            "type": "string",
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+          },
           "counterparty_count": { "type": "integer", "minimum": 0 },
           "transfers_scanned": { "type": "integer", "minimum": 0 },
           "scan_capped": { "type": "boolean" },
@@ -1762,12 +1765,118 @@
               "additionalProperties": true,
               "required": ["address"],
               "properties": {
-                "address": { "type": "string" },
+                "address": {
+                  "type": "string",
+                  "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+                },
                 "sent_tao": { "type": "number" },
                 "received_tao": { "type": "number" },
                 "net_tao": { "type": "number" },
                 "transfer_count": { "type": "integer", "minimum": 0 },
                 "last_block": { "type": ["integer", "null"] }
+              }
+            }
+          },
+          "relationship": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Present only when ?counterparty=<ss58> is supplied. Pair-level transfer evidence for the requested account/counterparty relationship; summary fields cover every matching row in the bounded scan, while transfers is limited by the request limit.",
+            "required": [
+              "schema_version",
+              "ss58",
+              "counterparty",
+              "transfer_count",
+              "transfers_scanned",
+              "scan_capped",
+              "total_sent_tao",
+              "total_received_tao",
+              "net_tao",
+              "first_block",
+              "last_block",
+              "first_seen_at",
+              "last_seen_at",
+              "limit",
+              "transfers"
+            ],
+            "properties": {
+              "schema_version": { "type": "integer" },
+              "ss58": {
+                "type": "string",
+                "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+              },
+              "counterparty": {
+                "type": "string",
+                "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+              },
+              "transfer_count": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Count of all matching account/counterparty transfer rows in the bounded scan, before the evidence list is sliced by limit."
+              },
+              "transfers_scanned": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Raw bounded D1 pair rows inspected before malformed rows are skipped."
+              },
+              "scan_capped": { "type": "boolean" },
+              "total_sent_tao": { "type": "number" },
+              "total_received_tao": { "type": "number" },
+              "net_tao": { "type": "number" },
+              "first_block": { "type": ["integer", "null"] },
+              "last_block": { "type": ["integer", "null"] },
+              "first_seen_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "last_seen_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100,
+                "description": "Maximum number of recent transfer evidence rows returned in transfers."
+              },
+              "transfers": {
+                "type": "array",
+                "description": "Recent pair transfer evidence rows, sliced to limit. Summary counts and totals may cover more rows than this array contains.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "block_number",
+                    "event_index",
+                    "netuid",
+                    "from",
+                    "to",
+                    "amount_tao",
+                    "direction",
+                    "observed_at"
+                  ],
+                  "properties": {
+                    "block_number": { "type": ["integer", "null"] },
+                    "event_index": { "type": ["integer", "null"] },
+                    "netuid": { "type": ["integer", "null"] },
+                    "from": {
+                      "type": "string",
+                      "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+                    },
+                    "to": {
+                      "type": "string",
+                      "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$"
+                    },
+                    "amount_tao": { "type": ["number", "null"] },
+                    "direction": {
+                      "type": "string",
+                      "enum": ["sent", "received"]
+                    },
+                    "observed_at": {
+                      "type": ["string", "null"],
+                      "format": "date-time"
+                    }
+                  }
+                }
               }
             }
           }

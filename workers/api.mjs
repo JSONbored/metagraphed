@@ -731,23 +731,24 @@ export async function handleScheduled(controller, env = {}, ctx = {}) {
   // the cross-cron concurrency entirely. Each loader stays isolated (`.catch`) so a
   // load failure never affects the early-return below.
   if (cron === EVENTS_LOAD_CRON) {
-    // Token-free per-UID metagraph load (#1303): pick up any R2-staged neuron
-    // snapshot and load it via the D1 binding; it then self-deletes.
-    await loadStagedNeurons(env).catch(() => {});
-    // Token-free chain-event load (#1346): pick up any R2-staged event batch from
-    // the first-party poller and load it via the binding.
-    await loadStagedEvents(env).catch(() => {});
-    // Block-explorer hot window (#1345): pick up any R2-staged `blocks` sidecar
-    // (same poller, same staging key convention) and load it via the binding. In
-    // the SAME cron so the staged-R2 drain stays gated to one cron (no cross-cron
-    // clobber); .catch-isolated so a block-load failure never affects the others.
-    await loadStagedBlocks(env).catch(() => {});
-    // Block-explorer extrinsic slice (#1345): pick up any R2-staged `extrinsics`
-    // sidecar (same poller, same staging key convention) and load it via the
-    // binding. In the SAME cron so the staged-R2 drain stays gated to one cron (no
-    // cross-cron clobber); .catch-isolated so an extrinsic-load failure never
-    // affects the others.
-    await loadStagedExtrinsics(env).catch(() => {});
+    // Drain the four R2-staged batches concurrently (#2092). Each loader is
+    // independent and I/O-bound (R2 GET + chunked db.batch() + delete/put) over a
+    // distinct R2 key + D1 table with no shared mutable state, so overlapping
+    // their I/O cuts the */3 tick's wall-clock from the sum of all four to the
+    // slowest single loader. allSettled preserves the per-loader isolation the
+    // serial `.catch(() => {})` gave: one rejection never stops the others or
+    // changes the marker. The cross-cron clobber rationale above is unaffected —
+    // the drain stays gated to THIS single owning cron, so there is still exactly
+    // one writer per staged key.
+    //   - loadStagedNeurons: token-free per-UID metagraph load (#1303)
+    //   - loadStagedEvents:  token-free chain-event load (#1346)
+    //   - loadStagedBlocks / loadStagedExtrinsics: block-explorer hot window (#1345)
+    await Promise.allSettled([
+      loadStagedNeurons(env),
+      loadStagedEvents(env),
+      loadStagedBlocks(env),
+      loadStagedExtrinsics(env),
+    ]);
     return { ok: true, fast_load: true };
   }
   if (cron === HEALTH_PRUNE_CRON) {

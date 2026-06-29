@@ -28,6 +28,7 @@ import {
   registrySurfaceKey,
   isSurfaceStale,
 } from "../scripts/lib.mjs";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 
 // The committed digests the forged-build tests snapshot + restore (so a forged
@@ -2414,7 +2415,7 @@ test("Worker API serves public artifact envelopes", async () => {
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
   assert.equal(
     response.headers.get("x-metagraph-contract-version"),
-    "2026-06-06.1",
+    CONTRACT_VERSION,
   );
   const body = await response.json();
   assert.equal(body.ok, true);

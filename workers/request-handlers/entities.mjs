@@ -17,7 +17,12 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
+import {
+  DAY_MS,
+  SS58_ADDRESS_PATTERN,
+  clampInt,
+  resolveClientIp,
+} from "../config.mjs";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -86,6 +91,9 @@ import {
 import {
   COUNTERPARTIES_READ_COLUMNS,
   COUNTERPARTIES_SCAN_CAP,
+  COUNTERPARTY_RELATIONSHIP_READ_COLUMNS,
+  COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+  buildCounterpartyRelationship,
   buildCounterparties,
 } from "../../src/counterparties.mjs";
 import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
@@ -113,6 +121,20 @@ function parseBoundedIntParam(url, parameter, { def, min, max }) {
     };
   }
   return { value };
+}
+
+// Strict path-ref parsers: Number()/split("-") coerce a malformed ref (hex,
+// 1e3, empty/extra halves) into a wrong-but-valid lookup; require bare decimal
+// segments + Number.isSafeInteger (same convention as parseBoundedIntParam).
+const STRICT_UINT_RE = /^\d+$/;
+const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
+
+// A strict non-negative block_number, or null for a non-decimal ref (so the
+// caller skips the lookup and serves the schema-stable miss).
+function strictBlockNumber(ref) {
+  if (!STRICT_UINT_RE.test(ref)) return null;
+  const value = Number(ref);
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 // --- Per-UID metagraph (#1304/#1305): served live from the neurons D1 tier ---
@@ -678,21 +700,87 @@ export async function handleAccountTransfers(request, env, ss58, url) {
 }
 
 // GET /api/v1/accounts/{ss58}/counterparties?limit=N: who this account transacts
-// with — the account's recent account_events Transfers aggregated per counterparty
-// into sent / received / net flow + count, ranked by total volume (the address
-// "relationship" view). The transfer scan is bounded (newest-first); the summary
-// flags truncation. Cold/absent store → 200 with counterparties:[] (schema-stable,
-// never 404), mirroring the sibling account routes.
+// with. Add ?counterparty=<ss58> to return a focused relationship drilldown on
+// the same route without expanding the public path surface.
 export async function handleAccountCounterparties(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["limit"]);
+  const validationError = validateQueryParams(url, ["counterparty", "limit"]);
   if (validationError) return analyticsQueryError(validationError);
+  const counterparty = url.searchParams.get("counterparty");
   const parsedLimit = parseBoundedIntParam(url, "limit", {
-    def: 20,
+    def: counterparty == null ? 20 : 50,
     min: 1,
     max: 100,
   });
   if (parsedLimit.error) return analyticsQueryError(parsedLimit.error);
   const limit = parsedLimit.value;
+  if (counterparty != null) {
+    if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+      return analyticsQueryError({
+        parameter: "counterparty",
+        message: "counterparty must be a valid SS58 account address.",
+      });
+    }
+    if (ss58 === counterparty) {
+      return analyticsQueryError({
+        parameter: "counterparty",
+        message: "counterparty must differ from ss58.",
+      });
+    }
+    const rows = await d1All(
+      env,
+      `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ((hotkey = ? AND coldkey = ?) OR (hotkey = ? AND coldkey = ?)) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
+      [
+        ss58,
+        counterparty,
+        counterparty,
+        ss58,
+        COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+      ],
+    );
+    const relationship = buildCounterpartyRelationship(
+      rows,
+      ss58,
+      counterparty,
+      {
+        limit,
+      },
+    );
+    const counterpartyRow =
+      relationship.transfer_count === 0
+        ? []
+        : [
+            {
+              address: counterparty,
+              sent_tao: relationship.total_sent_tao,
+              received_tao: relationship.total_received_tao,
+              net_tao: relationship.net_tao,
+              transfer_count: relationship.transfer_count,
+              last_block: relationship.last_block,
+            },
+          ];
+    return envelopeResponse(
+      request,
+      {
+        data: {
+          schema_version: 1,
+          ss58,
+          counterparty_count: counterpartyRow.length,
+          transfers_scanned: relationship.transfers_scanned,
+          scan_capped: relationship.scan_capped,
+          total_sent_tao: relationship.total_sent_tao,
+          total_received_tao: relationship.total_received_tao,
+          counterparties: counterpartyRow,
+          relationship,
+        },
+        meta: await accountMeta(
+          env,
+          `/metagraph/accounts/${ss58}/counterparties.json`,
+          relationship.last_seen_at,
+        ),
+      },
+      "short",
+    );
+  }
   const rows = await d1All(
     env,
     `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
@@ -1108,6 +1196,9 @@ export async function handleBlocks(request, env, url) {
 // neuron detail route — NEVER 404/throw).
 export async function handleBlock(request, env, ref) {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
+  // A non-hash ref must be a strict decimal block_number; anything else (0x-short,
+  // 1e3, signs, empty) is a guaranteed miss, never a Number()-coerced wrong row.
+  const blockNumber = isHash ? null : strictBlockNumber(ref);
   const sql = isHash
     ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
@@ -1115,8 +1206,10 @@ export async function handleBlock(request, env, ref) {
   // and D1 text columns are BINARY-collated, so a mixed/upper-case 0x ref would
   // miss. Normalize the hash ref to lowercase before binding (same for the block-
   // extrinsics, block-events, and extrinsic handlers below).
-  const param = isHash ? ref.toLowerCase() : Number(ref);
-  const rows = await d1All(env, sql, [param]);
+  const rows =
+    isHash || blockNumber !== null
+      ? await d1All(env, sql, [isHash ? ref.toLowerCase() : blockNumber])
+      : [];
   // prev/next chain-walk neighbors (#1853): indexed scalar lookups for the
   // nearest STORED block numbers around the resolved height (skips pruned gaps;
   // null at the window edges). Derived from the resolved row's number (works for
@@ -1161,13 +1254,17 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  const blockRows = await d1All(
-    env,
-    isHash
-      ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
-      : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref.toLowerCase() : Number(ref)],
-  );
+  const refBlockNumber = isHash ? null : strictBlockNumber(ref);
+  const blockRows =
+    isHash || refBlockNumber !== null
+      ? await d1All(
+          env,
+          isHash
+            ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
+            : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
+          [isHash ? ref.toLowerCase() : refBlockNumber],
+        )
+      : [];
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
     blockNumber == null
@@ -1203,13 +1300,17 @@ export async function handleBlockEvents(request, env, ref, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  const blockRows = await d1All(
-    env,
-    isHash
-      ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
-      : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-    [isHash ? ref.toLowerCase() : Number(ref)],
-  );
+  const refBlockNumber = isHash ? null : strictBlockNumber(ref);
+  const blockRows =
+    isHash || refBlockNumber !== null
+      ? await d1All(
+          env,
+          isHash
+            ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
+            : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
+          [isHash ? ref.toLowerCase() : refBlockNumber],
+        )
+      : [];
   const blockNumber = blockRows[0]?.block_number ?? null;
   const rows =
     blockNumber == null
@@ -1403,13 +1504,16 @@ export async function handleExtrinsic(request, env, ref) {
       [ref.toLowerCase()],
     );
   } else {
-    // Composite "<block>-<index>": coerce both halves; a non-finite half is a
-    // miss (extrinsic:null), never a bad bind.
-    const [b, i] = ref.split("-");
-    const blockNumber = Number(b);
-    const extrinsicIndex = Number(i);
+    // Composite "<block>-<index>": exactly two strict decimal halves, so a
+    // malformed ref (extra segment, empty half, hex, sci-notation) is a clean
+    // miss (extrinsic:null) rather than a coerced wrong-but-valid row.
+    const composite = COMPOSITE_REF_RE.exec(ref);
+    const blockNumber = composite ? Number(composite[1]) : NaN;
+    const extrinsicIndex = composite ? Number(composite[2]) : NaN;
     rows =
-      Number.isInteger(blockNumber) && Number.isInteger(extrinsicIndex)
+      composite &&
+      Number.isSafeInteger(blockNumber) &&
+      Number.isSafeInteger(extrinsicIndex)
         ? await d1All(
             env,
             `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
