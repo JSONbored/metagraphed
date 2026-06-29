@@ -12,10 +12,15 @@ export const TURNOVER_READ_COLUMNS =
   "snapshot_date, uid, hotkey, validator_permit";
 
 // Round a retention ratio (always a finite 0..1 jaccard result) to a stable
-// precision.
+// precision WITHOUT letting a sub-perfect ratio round up to an exact 1 — the same
+// invariant `displayUptimeRatio` enforces for uptime (#1799) and `formatUptimePercent`
+// for the badge (#1796): a set that actually churned must never report a flawless
+// `retention: 1`. Only a genuine ratio of exactly 1 (nothing rotated) keeps the
+// perfect value; any sub-1 ratio clamps to the largest dp-decimal value below 1.
 function round(value, dp = 4) {
   const factor = 10 ** dp;
-  return Math.round(value * factor) / factor;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
 // Jaccard similarity |A∩B| / |A∪B| — the retained fraction across two sets. Two
@@ -121,6 +126,16 @@ export function buildTurnover(
   const endIds = new Set([...endMap].map(([uid, hk]) => `${uid}:${hk}`));
   const neuronRetention = jaccard(startIds, endIds);
 
+  // 0–100 composite: the mean of validator-set and neuron retention. Apply the
+  // same anti-overstatement guard as the retention ratios — a sub-perfect mean must
+  // not round up to a perfect 100. A fully-retained validator set plus ~1% neuron
+  // churn yields a mean of ~0.995, and `Math.round(99.5) === 100` would report
+  // flawless stability for a subnet that demonstrably rotated; clamp it to 99. Only
+  // a genuine mean of exactly 1 (nothing rotated) keeps the perfect 100.
+  const meanRetention = (validatorRetention + neuronRetention) / 2;
+  let stabilityScore = Math.round(meanRetention * 100);
+  if (stabilityScore >= 100 && meanRetention < 1) stabilityScore = 99;
+
   return {
     ...base,
     // A single snapshot (start === end) can't show change — flag it so a caller
@@ -135,9 +150,6 @@ export function buildTurnover(
     neurons_end: endMap.size,
     uids_deregistered: deregistered,
     neuron_retention: round(neuronRetention),
-    // 0–100 composite: the mean of validator-set and neuron retention.
-    stability_score: Math.round(
-      ((validatorRetention + neuronRetention) / 2) * 100,
-    ),
+    stability_score: stabilityScore,
   };
 }
