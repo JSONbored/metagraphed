@@ -89,6 +89,30 @@ export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 // blank bound means "no bound" (normalized to null); a present-but-malformed bound
 // returns { error } with the shared message. On success returns { from, to } ready
 // to bind into a `day >= ?` / `day <= ?` range.
+// Validate an optional non-negative integer query value. Absent/blank → { value:
+// null }; present-but-non-numeric → { error } for the caller to surface as 400.
+export function parseNonNegativeIntParam(raw, parameter) {
+  if (raw === null || raw === "") return { value: null };
+  if (!/^\d+$/.test(raw)) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be a non-negative integer.`,
+      },
+    };
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be a non-negative integer.`,
+      },
+    };
+  }
+  return { value };
+}
+
 export function parseDateRange(url) {
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");

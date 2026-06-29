@@ -408,31 +408,39 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
   let statusCode = null;
   let contentType = null;
   let genesisHash = null;
+
+  // All five RPC calls are result-independent, so dispatch them concurrently.
+  // Total probe latency collapses from the sum of all call latencies to the
+  // slowest single call. Individual per-call results are preserved as before.
+  const responses = await Promise.all(
+    SUBTENSOR_PROBE_CALLS.map((call, index) =>
+      jsonRpcHttp(url, call.method, call.params, index + 1, timeoutMs, {
+        fetchImpl,
+        isUnsafeUrl,
+      }),
+    ),
+  );
+
   for (const [index, call] of SUBTENSOR_PROBE_CALLS.entries()) {
-    const response = await jsonRpcHttp(
-      url,
-      call.method,
-      call.params,
-      index + 1,
-      timeoutMs,
-      { fetchImpl, isUnsafeUrl },
-    );
+    const response = responses[index];
     statusCode = response.status_code || statusCode;
     contentType = response.content_type || contentType;
     if (call.key === "genesis" && typeof response.result === "string") {
       genesisHash = response.result;
     }
     methodResults[call.key] = normalizeJsonRpcResult(response);
-    if (response.transport_error) {
-      return {
-        ...response,
-        content_type: contentType,
-        latency_ms: Math.round(performance.now() - started),
-        method_results: methodResults,
-        status_code: statusCode,
-        verified_at: new Date().toISOString(),
-      };
-    }
+  }
+
+  const firstTransportError = responses.find((r) => r.transport_error);
+  if (firstTransportError) {
+    return {
+      ...firstTransportError,
+      content_type: contentType,
+      latency_ms: Math.round(performance.now() - started),
+      method_results: methodResults,
+      status_code: statusCode,
+      verified_at: new Date().toISOString(),
+    };
   }
 
   // chain_verified: true on a matching genesis, false on an explicit mismatch
@@ -592,16 +600,36 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
       const socket = new WebSocketImpl(url);
       const byId = new Map(calls.map((call, index) => [index + 1, call.key]));
       const results = new Map();
-      const timer = setTimeout(() => {
+      let settled = false;
+      const timer = setTimeout(
+        () =>
+          finish(new Error("WebSocket RPC probe timed out"), "TimeoutError"),
+        timeoutMs,
+      );
+
+      // Every terminal path (success, timeout, error, parse-error, premature
+      // close) funnels through finish() so the first event wins, the timer is
+      // always cleared, and the socket is ALWAYS closed — mirroring the Worker
+      // connector's finish() in src/health-prober.mjs (#2074). Before this, the
+      // error path cleared the timer but never closed the socket (leaking a
+      // half-open fd), and there was no close handler, so a server that closed
+      // before all responses arrived hung the probe until the full timeout.
+      function finish(error, name) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         try {
           socket.close();
         } catch {
-          // Ignore close failures after timeout.
+          // Ignore close failures on a terminal path.
         }
-        const error = new Error("WebSocket RPC probe timed out");
-        error.name = "TimeoutError";
-        reject(error);
-      }, timeoutMs);
+        if (error) {
+          if (name) error.name = name;
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      }
 
       socket.addEventListener("open", () => {
         calls.forEach((call, index) => {
@@ -629,24 +657,23 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
             rpc_error: body.error || null,
           });
           if (results.size === calls.length) {
-            clearTimeout(timer);
-            socket.close();
-            resolve(results);
+            finish(null);
           }
         } catch (error) {
-          clearTimeout(timer);
-          try {
-            socket.close();
-          } catch {
-            // Ignore close failures after parse failure.
-          }
-          reject(error);
+          finish(error);
         }
       });
 
       socket.addEventListener("error", () => {
-        clearTimeout(timer);
-        reject(new Error("WebSocket RPC connection failed"));
+        finish(new Error("WebSocket RPC connection failed"));
+      });
+
+      // A server that accepts then closes before all responses arrive must
+      // reject promptly instead of hanging until the timeout.
+      socket.addEventListener("close", () => {
+        if (results.size < calls.length) {
+          finish(new Error("WebSocket closed before all responses"));
+        }
       });
     });
 }
