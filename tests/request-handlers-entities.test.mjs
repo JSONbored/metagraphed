@@ -1537,9 +1537,21 @@ describe("handleAccountTransfers", () => {
         ),
       ),
     );
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    const idx = captures.sql.findIndex((s) => /Transfer/.test(s));
+    assert.ok(idx !== -1);
+    const sql = captures.sql[idx];
     assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
     assert.ok(!/OFFSET/.test(sql));
+    assert.deepEqual(captures.params[idx], [
+      SS58,
+      200,
+      1,
+      SS58,
+      SS58,
+      200,
+      1,
+      1,
+    ]);
     assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
   });
 
