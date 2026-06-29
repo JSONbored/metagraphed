@@ -307,6 +307,29 @@ test("buildAccountSummary threads the signing activity sub-object (#1847)", () =
   assert.equal(out.activity.modules_called[0].call_module, "SubtensorModule");
 });
 
+test("buildAccountSummary rounds activity.total_fee_tao to rao precision (#2351)", () => {
+  // A D1 SUM(fee_tao) over many REAL cells accumulates float noise; the activity
+  // shaper must round it to 9 dp (rao) like toTao does for /chain/signers +
+  // /chain/fees, instead of leaking the long fractional tail.
+  const noisy = 0.1 + 0.2; // 0.30000000000000004
+  const out = buildAccountSummary("5Hk", {
+    activity: { tx_count: 2, total_fee_tao: noisy },
+  });
+  assert.equal(out.activity.total_fee_tao, 0.3);
+
+  // A sub-rao tail is rounded away, not preserved verbatim.
+  const out2 = buildAccountSummary("5Hk", {
+    activity: { tx_count: 1, total_fee_tao: 0.0123456789012 },
+  });
+  assert.equal(out2.activity.total_fee_tao, 0.012345679);
+
+  // Absent aggregate stays null (cold store), never coerced to 0.
+  const cold = buildAccountSummary("5Hk", {
+    activity: { tx_count: 0, total_fee_tao: null },
+  });
+  assert.equal(cold.activity.total_fee_tao, null);
+});
+
 test("account builders null invalid block heights and indices", () => {
   const event = formatAccountEvent({
     block_number: -1,

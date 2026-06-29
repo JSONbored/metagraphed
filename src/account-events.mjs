@@ -83,6 +83,17 @@ function toBlockNumber(value) {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+// Round a TAO sum to rao precision (9 dp), preserving null — so a D1 SUM(fee_tao)
+// never leaks accumulated IEEE-754 float noise into the payload. Mirrors `toTao`
+// in src/chain-analytics.mjs (which rounds the SAME signer-total-fee value for
+// /chain/signers + /chain/fees); kept null-preserving here because the activity
+// aggregate is null on a cold store, not 0.
+function toTaoOrNull(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
+}
+
 // One D1 account_events row → a clean API event object (#1347 consumes this).
 export function formatAccountEvent(row) {
   if (!row || typeof row !== "object") return null;
@@ -253,7 +264,7 @@ export function formatAccountActivity(agg, modules) {
     tx_count: a.tx_count ?? 0,
     last_tx_block: toBlockNumber(a.last_tx_block),
     last_tx_at: toIso(a.last_tx_at),
-    total_fee_tao: a.total_fee_tao ?? null,
+    total_fee_tao: toTaoOrNull(a.total_fee_tao),
     modules_called: (modules || [])
       .filter((m) => m && m.call_module)
       .map((m) => ({ call_module: m.call_module, count: m.count ?? 0 })),
