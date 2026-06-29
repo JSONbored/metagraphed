@@ -186,6 +186,10 @@ function gitShow(ref) {
   return execFileSync("git", ["show", ref], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    // Generated artifacts (e.g. openapi.json) can exceed Node's 1 MiB default
+    // stdout cap; without a larger buffer git show throws ENOBUFS and the
+    // committed artifact reads as "unreadable".
+    maxBuffer: 256 * 1024 * 1024,
   });
 }
 

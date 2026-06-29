@@ -53,6 +53,9 @@ function listQueryParamNames(queryCollection, queryFilterNames = []) {
   ]);
   const csvNames = Object.keys(config.csv_filters || {});
   const arrayNames = Object.keys(config.array_filters || {});
+  // Every equality filter F also accepts its `not_F` exclusion variant, so the
+  // canonical cache key must distinguish them.
+  const negationNames = filterNames.map((name) => `not_${name}`);
   return [
     "q",
     "fields",
@@ -64,6 +67,7 @@ function listQueryParamNames(queryCollection, queryFilterNames = []) {
     ...csvNames,
     ...arrayNames,
     ...rangeNames,
+    ...negationNames,
   ];
 }
 
@@ -180,6 +184,54 @@ function rangeFilterRows(rows, params, rangeFields) {
   );
 }
 
+// Exclusion (negation) filter: for each configured filter field F, `?not_F=v`
+// drops exactly the rows that the inclusion filter `?F=v` would keep — the
+// logical complement of filterRows, field for field (CSV-membership,
+// array-membership, and scalar/array equality all mirrored). A row that does
+// not match v is kept. Validation has already confirmed each present not_F value
+// satisfies F's schema.
+function excludeFilterRows(
+  rows,
+  params,
+  keys,
+  csvFilters = {},
+  arrayFilters = {},
+) {
+  const csvUnwantedByKey = new Map(
+    keys
+      .filter((key) => csvFilters[key] && params.has(`not_${key}`))
+      .map((key) => [key, new Set(params.get(`not_${key}`).split(","))]),
+  );
+  const exclusions = keys.filter((key) => params.has(`not_${key}`));
+  if (exclusions.length === 0) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    exclusions.every((key) => {
+      const expected = params.get(`not_${key}`);
+      // CSV-membership negation: drop a row whose mapped field is in the set.
+      const csvField = csvFilters[key];
+      if (csvField) {
+        return !csvUnwantedByKey.get(key).has(String(row[csvField]));
+      }
+      // Array-membership negation over the UNION of one or more array fields.
+      const arrayFields = arrayFilters[key];
+      if (arrayFields) {
+        return !arrayFields.some(
+          (field) =>
+            Array.isArray(row[field]) &&
+            row[field].map(String).includes(expected),
+        );
+      }
+      const value = row[key];
+      if (Array.isArray(value)) {
+        return !value.map(String).includes(expected);
+      }
+      return String(value) !== expected;
+    }),
+  );
+}
+
 function applyListTransform(data, params, config) {
   const queryError = validateListQuery(params, config);
   if (queryError) {
@@ -191,16 +243,22 @@ function applyListTransform(data, params, config) {
     return { error: projection.error };
   }
   const filterKeys = Object.keys(config.filters);
-  const filtered = rangeFilterRows(
-    filterRows(
-      searchRows(data[key], params, config.search_keys),
+  const filtered = excludeFilterRows(
+    rangeFilterRows(
+      filterRows(
+        searchRows(data[key], params, config.search_keys),
+        params,
+        filterKeys,
+        config.csv_filters,
+        config.array_filters,
+      ),
       params,
-      filterKeys,
-      config.csv_filters,
-      config.array_filters,
+      config.range_filters,
     ),
     params,
-    config.range_filters,
+    filterKeys,
+    config.csv_filters,
+    config.array_filters,
   );
   const sorted = sortRows(filtered, params);
   const paginated = paginateRows(sorted, params);
@@ -313,6 +371,37 @@ function paginateRows(rows, params) {
   };
 }
 
+// Validate one equality-filter value against its field schema. `parameter` is
+// the actual query-param name (the field `F` or its negation `not_F`) so the
+// error message names the param the client sent. Returns an error object or null.
+function validateFilterValue(parameter, value, schema) {
+  if (schema.type === "integer" && integerParam(value) === null) {
+    return {
+      parameter,
+      message: `${parameter} must be a non-negative integer.`,
+    };
+  }
+  if (schema.enum && !schema.enum.includes(value)) {
+    return {
+      parameter,
+      message: `${parameter} is not supported for this route.`,
+    };
+  }
+  if (schema.maxLength && value.length > schema.maxLength) {
+    return {
+      parameter,
+      message: `${parameter} is too long.`,
+    };
+  }
+  if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
+    return {
+      parameter,
+      message: `${parameter} is not in the expected format.`,
+    };
+  }
+  return null;
+}
+
 function validateListQuery(params, config) {
   const limit = params.get("limit");
   if (
@@ -355,34 +444,21 @@ function validateListQuery(params, config) {
     };
   }
 
+  // Each equality filter field validates its inclusion param (`F`) and its
+  // exclusion param (`not_F`) against the same schema.
   for (const [key, schema] of Object.entries(config.filters)) {
-    if (!params.has(key)) {
-      continue;
-    }
-    const value = params.get(key);
-    if (schema.type === "integer" && integerParam(value) === null) {
-      return {
-        parameter: key,
-        message: `${key} must be a non-negative integer.`,
-      };
-    }
-    if (schema.enum && !schema.enum.includes(value)) {
-      return {
-        parameter: key,
-        message: `${key} is not supported for this route.`,
-      };
-    }
-    if (schema.maxLength && value.length > schema.maxLength) {
-      return {
-        parameter: key,
-        message: `${key} is too long.`,
-      };
-    }
-    if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
-      return {
-        parameter: key,
-        message: `${key} is not in the expected format.`,
-      };
+    for (const parameter of [key, `not_${key}`]) {
+      if (!params.has(parameter)) {
+        continue;
+      }
+      const error = validateFilterValue(
+        parameter,
+        params.get(parameter),
+        schema,
+      );
+      if (error) {
+        return error;
+      }
     }
   }
 

@@ -633,3 +633,169 @@ describe("list-query paginationLinkHeader canonicalization", () => {
     assert.equal(next.searchParams.get("sort"), "netuid");
   });
 });
+
+describe("list-query negation (exclusion) filters", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        status: "active",
+        subnet_type: "application",
+        categories: ["agents"],
+      },
+      {
+        netuid: 2,
+        status: "inactive",
+        subnet_type: "application",
+        derived_categories: ["compute"],
+      },
+      {
+        netuid: 3,
+        status: "active",
+        subnet_type: "root",
+        categories: ["data", "agents"],
+      },
+      { netuid: 4 }, // none of the filter fields present
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("not_<scalar> drops rows matching the value (complement of equality)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=active"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("a row missing the field is never excluded", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_subnet_type=application"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [3, 4]);
+  });
+
+  test("multiple not_ params AND together", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=active&not_subnet_type=application"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [4]);
+  });
+
+  test("not_<csv-membership> drops rows whose mapped field is in the set", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuids=1,3"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("not_<array-membership> drops rows whose array union contains the value", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_domain=agents"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("not_F is the exact complement of F (the two partition the rows)", () => {
+    const included = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=active"),
+      "subnets",
+    );
+    const excluded = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=active"),
+      "subnets",
+    );
+    assert.deepEqual(
+      [...netuids(included), ...netuids(excluded)].sort(),
+      [1, 2, 3, 4],
+    );
+  });
+
+  test("not_ composes with sort and order", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_subnet_type=root&sort=netuid&order=desc"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [4, 2, 1]);
+  });
+
+  test("an array-valued field excludes when the value is a member of the array", () => {
+    const arrayData = {
+      subnets: [
+        { netuid: 1, subnet_type: ["application", "root"] },
+        { netuid: 2, subnet_type: "application" },
+      ],
+    };
+    const result = applyQueryFilters(
+      arrayData,
+      query("/api/v1/subnets?not_subnet_type=root"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [2],
+    );
+  });
+
+  test("no not_ param is a no-op (every row passes)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=netuid"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 2, 3, 4]);
+  });
+
+  test("an invalid not_<enum> value is a query error naming the not_ param", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=bogus"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_status");
+    assert.match(bad.error.message, /not supported for this route/);
+  });
+
+  test("an invalid not_<integer> value is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuid=-1"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuid");
+    assert.match(bad.error.message, /must be a non-negative integer/);
+  });
+
+  test("a malformed not_<pattern> value is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuids=abc"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuids");
+    assert.match(bad.error.message, /not in the expected format/);
+  });
+
+  test("an over-length not_<maxLength> value is a query error", () => {
+    const tooLong = `1${",1".repeat(400)}`;
+    const bad = applyQueryFilters(
+      data,
+      query(`/api/v1/subnets?not_netuids=${tooLong}`),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuids");
+    assert.match(bad.error.message, /too long/);
+  });
+});
