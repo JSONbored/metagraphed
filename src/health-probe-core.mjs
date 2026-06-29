@@ -600,16 +600,36 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
       const socket = new WebSocketImpl(url);
       const byId = new Map(calls.map((call, index) => [index + 1, call.key]));
       const results = new Map();
-      const timer = setTimeout(() => {
+      let settled = false;
+      const timer = setTimeout(
+        () =>
+          finish(new Error("WebSocket RPC probe timed out"), "TimeoutError"),
+        timeoutMs,
+      );
+
+      // Every terminal path (success, timeout, error, parse-error, premature
+      // close) funnels through finish() so the first event wins, the timer is
+      // always cleared, and the socket is ALWAYS closed — mirroring the Worker
+      // connector's finish() in src/health-prober.mjs (#2074). Before this, the
+      // error path cleared the timer but never closed the socket (leaking a
+      // half-open fd), and there was no close handler, so a server that closed
+      // before all responses arrived hung the probe until the full timeout.
+      function finish(error, name) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         try {
           socket.close();
         } catch {
-          // Ignore close failures after timeout.
+          // Ignore close failures on a terminal path.
         }
-        const error = new Error("WebSocket RPC probe timed out");
-        error.name = "TimeoutError";
-        reject(error);
-      }, timeoutMs);
+        if (error) {
+          if (name) error.name = name;
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      }
 
       socket.addEventListener("open", () => {
         calls.forEach((call, index) => {
@@ -637,24 +657,23 @@ export function nodeWebSocketConnector(WebSocketImpl = globalThis.WebSocket) {
             rpc_error: body.error || null,
           });
           if (results.size === calls.length) {
-            clearTimeout(timer);
-            socket.close();
-            resolve(results);
+            finish(null);
           }
         } catch (error) {
-          clearTimeout(timer);
-          try {
-            socket.close();
-          } catch {
-            // Ignore close failures after parse failure.
-          }
-          reject(error);
+          finish(error);
         }
       });
 
       socket.addEventListener("error", () => {
-        clearTimeout(timer);
-        reject(new Error("WebSocket RPC connection failed"));
+        finish(new Error("WebSocket RPC connection failed"));
+      });
+
+      // A server that accepts then closes before all responses arrive must
+      // reject promptly instead of hanging until the timeout.
+      socket.addEventListener("close", () => {
+        if (results.size < calls.length) {
+          finish(new Error("WebSocket closed before all responses"));
+        }
       });
     });
 }

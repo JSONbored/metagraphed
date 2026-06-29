@@ -22,6 +22,52 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
+// Register the OpenAPI components block ONCE under an absolute id (mirroring
+// validate-schemas.mjs), instead of re-inlining all ~198 schemas into every
+// per-route compile. Per-route schemas then resolve their `#/components/...`
+// references against this single registered schema via an absolute `$ref`.
+const COMPONENTS_ID = "https://metagraph.sh/openapi-components.schema.json";
+ajv.addSchema(
+  { $id: COMPONENTS_ID, components: openapi.components },
+  COMPONENTS_ID,
+);
+
+// Rewrite every internal `#/components/...` reference to its absolute form so it
+// resolves against the registered components schema. Pure structural transform —
+// validation behaviour and error text are unchanged.
+function absolutizeComponentRefs(node) {
+  if (Array.isArray(node)) {
+    return node.map(absolutizeComponentRefs);
+  }
+  if (node && typeof node === "object") {
+    const out = {};
+    for (const [key, value] of Object.entries(node)) {
+      out[key] =
+        key === "$ref" &&
+        typeof value === "string" &&
+        value.startsWith("#/components/")
+          ? `${COMPONENTS_ID}${value}`
+          : absolutizeComponentRefs(value);
+    }
+    return out;
+  }
+  return node;
+}
+
+// Memoize compiled validators by their (rewritten) schema, so routes that share
+// a response schema reuse one compiled function.
+const validatorCache = new Map();
+function compileResponseValidator(responseSchema) {
+  const rewritten = absolutizeComponentRefs(responseSchema);
+  const key = JSON.stringify(rewritten);
+  let validator = validatorCache.get(key);
+  if (!validator) {
+    validator = ajv.compile(rewritten);
+    validatorCache.set(key, validator);
+  }
+  return validator;
+}
+
 const errors = [];
 let validated = 0;
 
@@ -40,10 +86,7 @@ for (const route of API_ROUTES) {
     );
     continue;
   }
-  const validator = ajv.compile({
-    components: openapi.components,
-    ...responseSchema,
-  });
+  const validator = compileResponseValidator(responseSchema);
   if (!validator(example)) {
     errors.push(
       `${route.path}: response example failed schema validation: ${ajv.errorsText(

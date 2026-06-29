@@ -223,6 +223,29 @@ export function canonicalEconomicsTrendsCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
+// Normalises the leaderboards URL so that a bare ?-free request and an explicit
+// ?limit=20 request both resolve to the same edge-cache entry — mirrors
+// canonicalCompareCachePath and canonicalUptimeCachePath.
+export function canonicalLeaderboardsCachePath(url) {
+  const validationError = validateQueryParams(url, ["board", "limit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const limit = url.searchParams.get("limit");
+  if (
+    limit !== null &&
+    (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100)
+  ) {
+    return `${url.pathname}${url.search}`;
+  }
+  const board = url.searchParams.get("board");
+  if (board && !LEADERBOARD_BOARDS.includes(board)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const cap = Math.max(1, Math.min(100, Number(limit) || 20));
+  const params = [`limit=${cap}`];
+  if (board) params.unshift(`board=${encodeURIComponent(board)}`);
+  return `${url.pathname}?${params.join("&")}`;
+}
+
 async function leaderboardProfilesProjection(env, now = Date.now()) {
   if (
     leaderboardProfilesCache &&
