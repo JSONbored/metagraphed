@@ -6,7 +6,7 @@
 #   - Leave Root Directory unset → build context is the repo root, so these COPYs
 #     are written relative to it.
 # Local:  docker build -f deploy/wss-lb/Dockerfile -t metagraphed-wss-lb .
-FROM node:22-alpine
+FROM node:22.23.1-alpine
 WORKDIR /app
 COPY deploy/wss-lb/package.json deploy/wss-lb/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
