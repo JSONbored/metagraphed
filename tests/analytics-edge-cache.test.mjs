@@ -699,7 +699,7 @@ describe("analytics edge cache", () => {
       {
         keyParts: "leaderboards",
         path: "/api/v1/registry/leaderboards",
-        search: "",
+        search: "?limit=20",
       },
       {
         keyParts: "global-incidents",
