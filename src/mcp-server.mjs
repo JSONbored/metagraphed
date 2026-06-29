@@ -11,11 +11,17 @@
 // this module is pure and unit-testable, and so it reuses the exact same
 // R2/ASSETS resolution the REST routes use.
 import {
-  clampInt,
   DAY_MS,
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
+// different contract from the shared pagination-profile clamp used here.
+import {
+  FEED_PAGINATION,
+  clampLimit as clampPageLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
@@ -452,8 +458,8 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
 // deprecated fallback. Cold D1 → event_count:0.
 async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
   const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampInt(limit, 100, 1, 1000);
-  const resolvedOffset = clampInt(offset, 0, 0, 1_000_000);
+  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
+  const resolvedOffset = clampOffset(offset);
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const params = [netuid];
@@ -3271,6 +3277,27 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_stake: { type: ["object", "null"] },
     },
   },
+  get_subnet_concentration_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "point_count", "points"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      point_count: { type: "integer" },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        neuron_count: NULLABLE_INT,
+        stake_gini: ANY,
+        stake_nakamoto_coefficient: ANY,
+        stake_top_10pct_share: ANY,
+        emission_gini: ANY,
+        emission_nakamoto_coefficient: ANY,
+        emission_top_10pct_share: ANY,
+      }),
+    },
+  },
   get_subnet_uptime: {
     type: "object",
     additionalProperties: true,
@@ -3372,27 +3399,6 @@ const TOOL_OUTPUT_SCHEMAS = {
         validator_count: NULLABLE_INT,
         total_stake_tao: ANY,
         total_emission_tao: ANY,
-      }),
-    },
-  },
-  get_subnet_concentration_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: objectItems({
-        snapshot_date: NULLABLE_STRING,
-        neuron_count: NULLABLE_INT,
-        stake_gini: ANY,
-        stake_nakamoto_coefficient: ANY,
-        stake_top_10pct_share: ANY,
-        emission_gini: ANY,
-        emission_nakamoto_coefficient: ANY,
-        emission_top_10pct_share: ANY,
       }),
     },
   },

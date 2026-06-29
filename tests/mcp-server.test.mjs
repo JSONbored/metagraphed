@@ -130,6 +130,23 @@ describe("MCP tool registry", () => {
     }
   });
 
+  test("concentration history is registered once with a typed point schema", () => {
+    const tools = MCP_TOOLS.filter(
+      (tool) => tool.name === "get_subnet_concentration_history",
+    );
+    assert.equal(tools.length, 1);
+
+    const defs = listToolDefinitions().filter(
+      (def) => def.name === "get_subnet_concentration_history",
+    );
+    assert.equal(defs.length, 1);
+    const pointProperties =
+      defs[0].outputSchema?.properties?.points?.items?.properties;
+    assert.ok(pointProperties?.snapshot_date);
+    assert.ok(pointProperties?.stake_gini);
+    assert.ok(pointProperties?.emission_top_10pct_share);
+  });
+
   test("every advertised tool description carries the untrusted-data note", () => {
     for (const def of listToolDefinitions()) {
       assert.match(
