@@ -90,6 +90,7 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
+import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -192,6 +193,7 @@ export const MCP_INSTRUCTIONS =
   "list_subnet_validators its validators ranked by stake, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
+  "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered. All data is public and " +
   "read-only. Subnet names, descriptions, and identity text come from " +
@@ -1850,6 +1852,50 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       return loadAccountSummary(mcpD1Runner(ctx), ss58);
+    },
+  },
+  {
+    name: "get_account_balance",
+    title: "Get an account's live TAO balance",
+    description:
+      "Fetch the live native-TAO balance (free + reserved, in TAO) for one account " +
+      "by its SS58 address, queried from the finney RPC at request time with a 60s KV " +
+      "cache. balance_tao is null on RPC failure (schema-stable, not an error). Use " +
+      "it alongside get_account when an agent needs the wallet's current holdings. " +
+      "Mirrors GET /api/v1/accounts/{ss58}/balance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (finney network), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      if (!isFinneySs58Address(ss58)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `ss58` must be a valid finney SS58 account address.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `balance:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live balance requests from this client; slow down.",
+          );
+        }
+      }
+      return loadAccountBalance(ctx.env, ss58);
     },
   },
   {
@@ -3582,6 +3628,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       registrations: objectItems(ACCOUNT_REGISTRATION_ITEM),
       recent_events: objectItems(ACCOUNT_EVENT_ITEM),
       activity: { type: "object", additionalProperties: true },
+    },
+  },
+  get_account_balance: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "balance_tao", "queried_at"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      balance_tao: { type: ["number", "null"] },
+      queried_at: NULLABLE_STRING,
     },
   },
   get_account_events: {

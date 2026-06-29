@@ -63,6 +63,10 @@ import {
   loadAccountEvents,
   loadAccountSubnets,
 } from "../../src/account-events.mjs";
+import {
+  isFinneySs58Address,
+  loadAccountBalance,
+} from "../../src/account-balance.mjs";
 import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
@@ -882,63 +886,7 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   );
 }
 
-// Bittensor/finney account addresses are SS58-encoded values with network
-// prefix 42, a 32-byte account id, and a checksum suffix. The balance route is
-// a live RPC fan-out, so reject malformed path captures before any cache/limit
-// work. This decoder enforces the base58 alphabet and fixed finney payload
-// shape; the RPC limiter below remains the upstream abuse boundary.
-const SS58_BASE58_ALPHABET =
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const SS58_BASE58_INDEX = new Map(
-  [...SS58_BASE58_ALPHABET].map((char, index) => [char, index]),
-);
-const FINNEY_SS58_PREFIX = 42;
-const FINNEY_SS58_MIN_LENGTH = 47;
-const FINNEY_SS58_MAX_LENGTH = 48;
-const FINNEY_SS58_DECODED_LENGTH = 35;
-const BALANCE_KV_TTL = 60; // seconds
-const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
-const BALANCE_RPC_TIMEOUT_MS = 5000;
-const BALANCE_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
-
-function decodeBase58(value) {
-  const bytes = [0];
-  for (const char of value) {
-    const carryStart = SS58_BASE58_INDEX.get(char);
-    if (carryStart == null) return null;
-    let carry = carryStart;
-    for (let index = 0; index < bytes.length; index += 1) {
-      carry += bytes[index] * 58;
-      bytes[index] = carry & 0xff;
-      carry >>= 8;
-    }
-    while (carry > 0) {
-      bytes.push(carry & 0xff);
-      carry >>= 8;
-    }
-  }
-  for (const char of value) {
-    if (char !== "1") break;
-    bytes.push(0);
-  }
-  return Uint8Array.from(bytes.reverse());
-}
-
-function isFinneySs58Address(value) {
-  if (
-    value.length < FINNEY_SS58_MIN_LENGTH ||
-    value.length > FINNEY_SS58_MAX_LENGTH
-  ) {
-    return false;
-  }
-
-  const decoded = decodeBase58(value);
-  return (
-    decoded?.length === FINNEY_SS58_DECODED_LENGTH &&
-    decoded[0] === FINNEY_SS58_PREFIX
-  );
-}
+export const BALANCE_RATE_LIMIT = { limit: 100, windowSeconds: 60 };
 
 // GET /api/v1/accounts/{ss58}/balance (#1818): live TAO balance (free+reserved)
 // for one account, queried from the finney RPC at request time. 60s KV cache via
@@ -976,90 +924,12 @@ export async function handleAccountBalance(request, env, ss58) {
     }
   }
 
-  const cacheKey = `balance:${ss58}`;
-  const kv = env.METAGRAPH_CONTROL;
-
-  const respond = (data) =>
-    envelopeResponse(
-      request,
-      { data, meta: { contract_version: contractVersion(env) } },
-      "short",
-    );
-
-  // KV cache hit — return immediately without touching the RPC.
-  if (kv?.get) {
-    try {
-      const cached = await kv.get(cacheKey, { type: "json" });
-      if (cached) return respond(cached);
-    } catch {
-      // KV read failure is non-fatal — fall through to the live RPC.
-    }
-  }
-
-  const queriedAt = new Date().toISOString();
-  let balanceTao = null;
-  let rpcOk = false;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BALANCE_RPC_TIMEOUT_MS);
-  try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "system_account",
-        params: [ss58],
-      }),
-    });
-    if (rpcResp.ok) {
-      const rpcBody = await rpcResp.json();
-      const data = rpcBody?.result?.data;
-      if (data && typeof data.free !== "undefined") {
-        // free + reserved are hex-encoded u128 rao values (1 TAO = 1e9 rao).
-        // Sum in BigInt space and split the whole / fractional TAO only at the
-        // end, so a balance above Number.MAX_SAFE_INTEGER rao (~9.007M TAO) keeps
-        // its low-order rao digits — a direct Number(BigInt(...)) cast would
-        // collapse them to the nearest double *before* the 1e9 scale. A malformed
-        // hex `free` still throws here (BigInt parse) and is caught below →
-        // balance_tao:null, 200 (unchanged error path).
-        const toRao = (v) =>
-          typeof v === "string"
-            ? BigInt(v)
-            : BigInt(Math.trunc(Number(v ?? 0)));
-        const totalRao = toRao(data.free) + toRao(data.reserved);
-        balanceTao =
-          Number(totalRao / 1_000_000_000n) +
-          Number(totalRao % 1_000_000_000n) / 1e9;
-        rpcOk = true;
-      }
-    }
-  } catch {
-    // RPC fetch failed — balance_tao stays null, return 200 below.
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  const data = {
-    schema_version: 1,
-    ss58,
-    balance_tao: balanceTao,
-    queried_at: queriedAt,
-  };
-
-  if (kv?.put) {
-    try {
-      await kv.put(cacheKey, JSON.stringify(data), {
-        expirationTtl: rpcOk ? BALANCE_KV_TTL : BALANCE_NEGATIVE_KV_TTL,
-      });
-    } catch {
-      // KV write failure is non-fatal.
-    }
-  }
-
-  return respond(data);
+  const data = await loadAccountBalance(env, ss58);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
 }
 // GET /api/v1/blocks: the recent-block feed (newest first), served live from the
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
