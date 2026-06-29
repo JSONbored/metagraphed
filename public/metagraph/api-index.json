@@ -29,7 +29,7 @@
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.1",
+      "contract_version": "2026-06-29.2",
       "id": "provider-report",
       "path": "/metagraph/providers/{slug}/report.json",
       "schema_ref": "#/components/schemas/ProviderReportArtifact",

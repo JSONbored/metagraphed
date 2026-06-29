@@ -38,7 +38,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-29.1",
+      "contract_version": "2026-06-29.2",
       "description": "Live cross-subnet performance report for one provider — identity, per-subnet surface-kind breakdown, live probe health, and economics — composed live from the provider detail artifact, registry profiles, the economics tier, and D1 surface_status at /api/v1/providers/{slug}/report (no static file).",
       "id": "provider-report",
       "path": "/metagraph/providers/{slug}/report.json",
