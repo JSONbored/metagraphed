@@ -4244,6 +4244,42 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     }
   });
 
+  test("get_account_balance applies the RPC rate limiter before finney fetch", async () => {
+    let limiterKey;
+    let fetchCalled = false;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => {
+      fetchCalled = true;
+      throw new Error("should not fetch");
+    };
+    const env = {
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      RPC_RATE_LIMITER: {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: false };
+        },
+      },
+    };
+    try {
+      const res = await callTool(
+        "get_account_balance",
+        { ss58: SS58 },
+        { env },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /rate_limited/);
+      assert.equal(limiterKey, "balance:mcp:anonymous");
+      assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("get_account_events filters by kind and echoes the limit", async () => {
     const capture = [];
     const env = accountD1(

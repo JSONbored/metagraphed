@@ -90,6 +90,8 @@ export async function loadAccountBalance(env, ss58) {
       const rpcBody = await rpcResp.json();
       const data = rpcBody?.result?.data;
       if (data && typeof data.free !== "undefined") {
+        // Sum in BigInt rao space, then divide once — avoids float precision loss
+        // on large on-chain balances before converting the remainder to TAO.
         const toRao = (v) =>
           typeof v === "string"
             ? BigInt(v)

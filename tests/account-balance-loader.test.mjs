@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  BALANCE_NEGATIVE_KV_TTL,
   isFinneySs58Address,
   loadAccountBalance,
 } from "../src/account-balance.mjs";
@@ -41,6 +42,24 @@ describe("loadAccountBalance", () => {
     }
   });
 
+  test("decodes numeric rao balances from finney RPC", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        jsonrpc: "2.0",
+        id: 1,
+        result: { data: { free: 2_000_000_000, reserved: 500_000_000 } },
+      }),
+    });
+    try {
+      const data = await loadAccountBalance({}, SS58);
+      assert.equal(data.balance_tao, 2.5);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("serves from KV cache when present", async () => {
     const cached = {
       schema_version: 1,
@@ -65,6 +84,35 @@ describe("loadAccountBalance", () => {
       const data = await loadAccountBalance(env, SS58);
       assert.deepEqual(data, cached);
       assert.equal(fetchCalled, false);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("negative-caches RPC failures with the short TTL", async () => {
+    let putKey;
+    let putValue;
+    let putOptions;
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get() {
+          return null;
+        },
+        async put(key, value, options) {
+          putKey = key;
+          putValue = JSON.parse(value);
+          putOptions = options;
+        },
+      },
+    };
+    const orig = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: false });
+    try {
+      const data = await loadAccountBalance(env, SS58);
+      assert.equal(data.balance_tao, null);
+      assert.equal(putKey, `balance:${SS58}`);
+      assert.equal(putValue.balance_tao, null);
+      assert.equal(putOptions.expirationTtl, BALANCE_NEGATIVE_KV_TTL);
     } finally {
       globalThis.fetch = orig;
     }
