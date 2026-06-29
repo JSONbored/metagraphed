@@ -97,7 +97,7 @@ import {
   buildCounterpartyRelationship,
   buildCounterparties,
 } from "../../src/counterparties.mjs";
-import { TURNOVER_READ_COLUMNS, buildTurnover } from "../../src/turnover.mjs";
+import { loadSubnetTurnover } from "../../src/turnover.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -418,31 +418,9 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
     url.searchParams.get("window"),
   );
   if (error) return analyticsQueryError(error);
-  let boundsSql =
-    "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
-  const boundsParams = [netuid];
-  if (days != null) {
-    const cutoff = new Date(Date.now() - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    boundsSql += " AND snapshot_date >= ?";
-    boundsParams.push(cutoff);
-  }
-  const bounds = await d1All(env, boundsSql, boundsParams);
-  const startDate = bounds[0]?.start_date ?? null;
-  const endDate = bounds[0]?.end_date ?? null;
-  const rows =
-    startDate == null || endDate == null
-      ? []
-      : await d1All(
-          env,
-          `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?)`,
-          [netuid, startDate, endDate],
-        );
-  const data = buildTurnover(rows, netuid, {
-    window: label,
-    startDate,
-    endDate,
+  const data = await loadSubnetTurnover(d1Runner(env), netuid, {
+    windowLabel: label,
+    windowDays: days,
   });
   return envelopeResponse(
     request,
@@ -451,7 +429,7 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/turnover.json`,
-        endDate,
+        data.end_date,
       ),
     },
     "short",

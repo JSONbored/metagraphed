@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
-import { buildTurnover } from "../src/turnover.mjs";
+import { describe, test, vi } from "vitest";
+import { buildTurnover, loadSubnetTurnover } from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
   test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
@@ -195,6 +195,135 @@ describe("buildTurnover", () => {
   });
 });
 
+describe("turnover loaders", () => {
+  function d1(rowsBySql = {}, captures = { sql: [], params: [] }) {
+    return async (sql, params) => {
+      captures.sql.push(sql);
+      captures.params.push(params);
+      for (const [pattern, rows] of Object.entries(rowsBySql)) {
+        if (new RegExp(pattern).test(sql)) return rows;
+      }
+      return [];
+    };
+  }
+
+  test("loadSubnetTurnover returns schema-stable empty on cold D1", async () => {
+    const data = await loadSubnetTurnover(d1(), 7, {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "30d");
+    assert.equal(data.comparable, false);
+    assert.equal(data.validator_retention, null);
+    assert.equal(data.stability_score, null);
+  });
+
+  test("loadSubnetTurnover computes churn between boundary snapshots", async () => {
+    const data = await loadSubnetTurnover(
+      d1({
+        "MIN\\(snapshot_date\\)": [
+          { start_date: "2026-06-01", end_date: "2026-06-30" },
+        ],
+        "snapshot_date IN": [
+          {
+            snapshot_date: "2026-06-01",
+            uid: 0,
+            hotkey: "V1",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-01",
+            uid: 1,
+            hotkey: "V2",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-01",
+            uid: 2,
+            hotkey: "M1",
+            validator_permit: 0,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 0,
+            hotkey: "V1",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 1,
+            hotkey: "V3",
+            validator_permit: 1,
+          },
+          {
+            snapshot_date: "2026-06-30",
+            uid: 2,
+            hotkey: "M1",
+            validator_permit: 0,
+          },
+        ],
+      }),
+      9,
+      { windowLabel: "30d", windowDays: 30 },
+    );
+    assert.equal(data.comparable, true);
+    assert.equal(data.start_date, "2026-06-01");
+    assert.equal(data.end_date, "2026-06-30");
+    assert.equal(data.validators_entered, 1);
+    assert.equal(data.validators_exited, 1);
+    assert.equal(data.uids_deregistered, 1);
+    assert.equal(data.stability_score, 42);
+  });
+
+  test("loadSubnetTurnover omits the date cutoff for the all window", async () => {
+    const captures = { sql: [], params: [] };
+    await loadSubnetTurnover(
+      d1(
+        {
+          "MIN\\(snapshot_date\\)": [
+            { start_date: "2026-06-01", end_date: "2026-06-30" },
+          ],
+          "snapshot_date IN": [],
+        },
+        captures,
+      ),
+      9,
+      { windowLabel: "all", windowDays: null },
+    );
+    assert.match(captures.sql[0], /MIN\(snapshot_date\)/);
+    assert.deepEqual(captures.params[0], [9]);
+    assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
+  });
+
+  test("loadSubnetTurnover binds the exact 30d cutoff date", async () => {
+    const fixedNow = new Date("2026-06-30T12:00:00.000Z");
+    const captures = { sql: [], params: [] };
+    try {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+      await loadSubnetTurnover(
+        d1(
+          {
+            "MIN\\(snapshot_date\\)": [
+              { start_date: "2026-05-31", end_date: "2026-06-30" },
+            ],
+            "snapshot_date IN": [],
+          },
+          captures,
+        ),
+        9,
+        { windowLabel: "30d", windowDays: 30 },
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+    assert.equal(captures.params[0][0], 9);
+    assert.equal(captures.params[0][1], "2026-05-31");
+    assert.deepEqual(captures.params[1], [9, "2026-05-31", "2026-06-30"]);
+  });
+});
+
 describe("buildTurnover — invariants", () => {
   test("retentions are in [0,1], stability in [0,100], and entered/exited stay consistent with the set sizes", () => {
     const rows = [
@@ -266,6 +395,78 @@ describe("buildTurnover — regressions", () => {
     // The UID→hotkey identity changed (uid 0 → uid 7), so the neuron set churned.
     assert.equal(data.uids_deregistered, 0); // no UID present at both with a new key
     assert.equal(data.neuron_retention, 0);
+  });
+
+  test("a sub-perfect retention mean must not round stability_score up to a perfect 100", () => {
+    // A fully-retained validator set (retention 1.0) plus ~1% neuron churn yields a
+    // mean of ~0.995, which a bare Math.round lifts to 100 — reporting flawless
+    // stability for a subnet that demonstrably rotated. Build 100 retained neurons
+    // (one of them a retained validator) and one brand-new neuron at the end:
+    // neuron_retention = 100/101 ≈ 0.9901, mean ≈ 0.99505 → must clamp to 99.
+    const rows = [];
+    for (let uid = 0; uid < 100; uid += 1) {
+      const validator_permit = uid === 0 ? 1 : 0;
+      rows.push({
+        snapshot_date: "2026-05-01",
+        uid,
+        hotkey: `H${uid}`,
+        validator_permit,
+      });
+      rows.push({
+        snapshot_date: "2026-06-01",
+        uid,
+        hotkey: `H${uid}`,
+        validator_permit,
+      });
+    }
+    // A new neuron appears only at the end → union 101, intersection 100.
+    rows.push({
+      snapshot_date: "2026-06-01",
+      uid: 100,
+      hotkey: "Hnew",
+      validator_permit: 0,
+    });
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-06-01",
+    });
+    assert.equal(data.validator_retention, 1); // the lone validator is retained
+    assert.equal(data.neuron_retention, 0.9901); // 100/101, churned
+    assert.equal(data.stability_score, 99); // clamped, never an overstated 100
+  });
+
+  test("neuron_retention rounds to < 1 when sub-perfect jaccard would otherwise round up to 1 (round() clamp path)", () => {
+    // 20000 neurons at start, 19999 at end (1 exits): jaccard = 19999/20000 = 0.99995,
+    // which Math.round(0.99995 * 10000) = 10000 / 10000 = 1 without the clamp.
+    // The round() guard must intercept it and return 0.9999 (not 1).
+    const rows = [];
+    for (let uid = 0; uid < 20000; uid++) {
+      rows.push({
+        snapshot_date: "2026-05-01",
+        uid,
+        hotkey: `M${uid}`,
+        validator_permit: 0,
+      });
+    }
+    for (let uid = 0; uid < 19999; uid++) {
+      rows.push({
+        snapshot_date: "2026-06-01",
+        uid,
+        hotkey: `M${uid}`,
+        validator_permit: 0,
+      });
+    }
+    const data = buildTurnover(rows, 1, {
+      window: "30d",
+      startDate: "2026-05-01",
+      endDate: "2026-06-01",
+    });
+    assert.ok(
+      data.neuron_retention < 1,
+      "sub-perfect retention must not round up to 1",
+    );
+    assert.equal(data.neuron_retention, 0.9999); // clamped; naïve Math.round gives 1
   });
 
   test("a validator that loses its permit counts as exited; its neuron stays retained", () => {
