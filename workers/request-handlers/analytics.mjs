@@ -139,6 +139,17 @@ function analyticsWindow(url, extraParams = []) {
   return { label, days: ANALYTICS_WINDOWS[label] };
 }
 
+// Normalizes per-subnet health analytics URLs so a bare ?-free request and an
+// explicit ?window=7d request both resolve to the same edge-cache entry — mirrors
+// canonicalEconomicsTrendsCachePath in analytics-routes.mjs.
+export function canonicalHealthWindowCachePath(url) {
+  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = analyticsWindow(url);
+  if (error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 function analyticsQueryError(error) {
   return errorResponse("invalid_query", error.message, 400, {
     parameter: error.parameter,
@@ -420,22 +431,19 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async () => {
-    const db = env.METAGRAPH_HEALTH_DB;
     const nowMs = Date.now();
     const windows = {};
     // The per-window aggregations are independent — run them in parallel (one D1
     // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
-    // serializing the two with an await-in-loop.
+    // serializing the two with an await-in-loop. Read through the shared d1All so a
+    // failure is logged + marked as a D1 fallback (the dark-serve log contract) —
+    // the inline bare catch this replaced swallowed errors silently, the exact
+    // failure mode the [d1All] logging exists to prevent.
     const windowRows = await Promise.all(
       Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-        if (!db?.prepare) {
-          return [label, markD1FallbackRows([])];
-        }
-        try {
-          const result = await withTimeout(
-            db
-              .prepare(
-                `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+        const rows = await d1All(
+          env,
+          `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
              SELECT MAX(surface_id) AS surface_id,
                     surface_key,
                     COUNT(*) AS total,
@@ -443,15 +451,9 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
                     ${latencyStatColumns({ includeMinMax: false })}
              FROM ranked
              GROUP BY surface_key`,
-              )
-              .bind(netuid, nowMs - days * DAY_MS)
-              .all(),
-            d1TimeoutMs(env),
-          );
-          return [label, result?.results || []];
-        } catch {
-          return [label, markD1FallbackRows([])];
-        }
+          [netuid, nowMs - days * DAY_MS],
+        );
+        return [label, rows];
       }),
     );
     for (const [label, rows] of windowRows) {
@@ -494,41 +496,48 @@ export async function handleHealthPercentiles(
 ) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  return withEdgeCache(request, ctx, env, "percentiles", async () => {
-    const rows = await d1All(
-      env,
-      `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "percentiles",
+    async () => {
+      const rows = await d1All(
+        env,
+        `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
      SELECT MAX(surface_id) AS surface_id,
             surface_key,
             ${latencyStatColumns()}
      FROM ranked
      GROUP BY surface_key
      HAVING MAX(lat_cnt) > 0`,
-      [netuid, Date.now() - days * DAY_MS],
-    );
-    const meta = await readHealthMetaKv(env);
-    const data = formatPercentiles({
-      netuid,
-      window: label,
-      observedAt: meta?.last_run_at || null,
-      rows,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          `/metagraph/health/percentiles/${netuid}.json`,
-          data.observed_at,
-        ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(rows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+        [netuid, Date.now() - days * DAY_MS],
+      );
+      const meta = await readHealthMetaKv(env);
+      const data = formatPercentiles({
+        netuid,
+        window: label,
+        observedAt: meta?.last_run_at || null,
+        rows,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            `/metagraph/health/percentiles/${netuid}.json`,
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(rows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    canonicalHealthWindowCachePath(url),
+  );
 }
 
 // SLA + reconstructed downtime incidents per surface.
@@ -541,26 +550,31 @@ export async function handleHealthIncidents(
 ) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  return withEdgeCache(request, ctx, env, "incidents", async () => {
-    const since = Date.now() - days * DAY_MS;
-    const [slaRows, incidentRows] = await Promise.all([
-      d1All(
-        env,
-        `SELECT MAX(surface_id) AS surface_id,
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "incidents",
+    async () => {
+      const since = Date.now() - days * DAY_MS;
+      const [slaRows, incidentRows] = await Promise.all([
+        d1All(
+          env,
+          `SELECT MAX(surface_id) AS surface_id,
               COALESCE(surface_key, surface_id) AS surface_key,
               COUNT(*) AS total,
               SUM(ok) AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
        GROUP BY COALESCE(surface_key, surface_id)`,
-        [netuid, since],
-      ),
-      // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-      // incident threshold) into one incident row, then cap per surface_key so
-      // one flappy endpoint cannot starve sibling surfaces in the same subnet.
-      d1All(
-        env,
-        `WITH checks AS (
+          [netuid, since],
+        ),
+        // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+        // incident threshold) into one incident row, then cap per surface_key so
+        // one flappy endpoint cannot starve sibling surfaces in the same subnet.
+        d1All(
+          env,
+          `WITH checks AS (
          SELECT COALESCE(surface_key, surface_id) AS surface_key,
                 surface_id,
                 checked_at,
@@ -609,40 +623,42 @@ export async function handleHealthIncidents(
        ) ranked
        WHERE rn <= ?
        ORDER BY surface_id, started_at`,
-        [
-          netuid,
-          since,
-          INCIDENT_GAP_MS,
-          MIN_INCIDENT_SAMPLES,
-          MAX_INCIDENT_ROWS,
-        ],
-      ),
-    ]);
-    const meta = await readHealthMetaKv(env);
-    const data = formatIncidents({
-      netuid,
-      window: label,
-      observedAt: meta?.last_run_at || null,
-      slaRows,
-      incidentRows,
-      maxIncidents: MAX_INCIDENT_ROWS,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          `/metagraph/health/incidents/${netuid}.json`,
-          data.observed_at,
+          [
+            netuid,
+            since,
+            INCIDENT_GAP_MS,
+            MIN_INCIDENT_SAMPLES,
+            MAX_INCIDENT_ROWS,
+          ],
         ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(slaRows, incidentRows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+      ]);
+      const meta = await readHealthMetaKv(env);
+      const data = formatIncidents({
+        netuid,
+        window: label,
+        observedAt: meta?.last_run_at || null,
+        slaRows,
+        incidentRows,
+        maxIncidents: MAX_INCIDENT_ROWS,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            `/metagraph/health/incidents/${netuid}.json`,
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(slaRows, incidentRows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    canonicalHealthWindowCachePath(url),
+  );
 }
 
 // Global, cross-subnet incident ledger — the same gap-island grouping as the

@@ -1374,6 +1374,47 @@ describe("health trends D1 error handling", () => {
     assert.equal(body.data.windows["7d"].uptime_ratio, null);
   });
 
+  test("logs the swallowed D1 error via the [d1All] dark-serve contract (#2076)", async () => {
+    // Regression: handleHealthTrends previously inlined db.prepare().bind().all()
+    // with a BARE catch that returned [] silently — re-introducing the dark-serve
+    // failure the [d1All] logging exists to catch. Reading through d1All now logs
+    // every swallowed failure, so a prod schema drift is diagnosable.
+    const env = createLocalArtifactEnv({
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  throw new Error("no such column: surface_key");
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const calls = [];
+    const original = console.error;
+    console.error = (...args) => calls.push(args);
+    try {
+      const res = await handleRequest(
+        req("/api/v1/subnets/0/health/trends"),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200);
+    } finally {
+      console.error = original;
+    }
+    const logged = calls.find((args) => args[0] === "[d1All]");
+    assert.ok(
+      logged,
+      "the swallowed trends D1 error must be logged with the [d1All] prefix",
+    );
+    assert.match(String(logged[1]), /no such column/);
+  });
+
   test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: {
