@@ -179,9 +179,9 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, stake, emission split and validator/miner counts, " +
-  "get_economics_trends the network-wide daily stake, price, and emission " +
-  "rollup across all subnets, get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
+  "open slots, stake, emission split and validator/miner counts. " +
+  "get_economics_trends returns the network-wide daily stake, price, and emission " +
+  "rollup across all subnets. get_subnet_trajectory returns its week-over-week trend; get_subnet_uptime its " +
   "long-term surface uptime history, get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
@@ -1383,10 +1383,9 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      const { label, days } = requireHistoryWindow(args);
+      const { label } = requireHistoryWindow(args);
       const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
+        window: label,
       });
       return data;
     },
@@ -3380,6 +3379,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       window: NULLABLE_STRING,
       day_count: { type: "integer" },
+      rows_capped: { type: "boolean" },
       days: objectItems({
         snapshot_date: NULLABLE_STRING,
         subnet_count: NULLABLE_INT,

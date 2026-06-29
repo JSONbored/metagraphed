@@ -305,6 +305,11 @@ assert.ok(
   econ.economics && Number.isInteger(econ.economics.netuid),
   "get_subnet_economics must return the per-subnet economics row",
 );
+const econTrends = await callOk("get_economics_trends", {});
+assert.ok(
+  Number.isInteger(econTrends.day_count) && Array.isArray(econTrends.days),
+  "get_economics_trends must return the schema-stable economics trends payload",
+);
 
 // The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
 // has no neurons DB, so each tool must degrade to its schema-stable empty

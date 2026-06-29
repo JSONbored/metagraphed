@@ -99,13 +99,10 @@ export async function handleTrajectory(request, env, netuid, url) {
 export async function handleEconomicsTrends(request, env, url) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
-  const { label, days, error } = parseHistoryWindow(
-    url.searchParams.get("window"),
-  );
+  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
   if (error) return analyticsQueryError(error);
   const { data, rows } = await loadEconomicsTrends(d1Runner(env), {
-    windowLabel: label,
-    windowDays: days,
+    window: label,
   });
   return envelopeWithD1Fallback(
     request,

@@ -341,14 +341,12 @@ describe("economics trends loaders", () => {
   }
 
   test("loadEconomicsTrends returns schema-stable empty on cold D1", async () => {
-    const { data, rows } = await loadEconomicsTrends(d1(), {
-      windowLabel: "30d",
-      windowDays: 30,
-    });
+    const { data, rows } = await loadEconomicsTrends(d1(), { window: "30d" });
     assert.deepEqual(rows, []);
     assert.equal(data.window, "30d");
     assert.equal(data.day_count, 0);
     assert.deepEqual(data.days, []);
+    assert.equal(data.rows_capped, undefined);
   });
 
   test("loadEconomicsTrends aggregates subnet_snapshots rows", async () => {
@@ -373,7 +371,7 @@ describe("economics trends loaders", () => {
           },
         ],
       }),
-      { windowLabel: "7d", windowDays: 7 },
+      { window: "7d" },
     );
     assert.equal(data.day_count, 1);
     assert.equal(data.days[0].subnet_count, 2);
@@ -384,12 +382,27 @@ describe("economics trends loaders", () => {
   test("loadEconomicsTrends omits the date cutoff for the all window", async () => {
     const captures = { sql: [], params: [] };
     await loadEconomicsTrends(d1({ "FROM subnet_snapshots": [] }, captures), {
-      windowLabel: "all",
-      windowDays: null,
+      window: "all",
     });
     assert.match(captures.sql[0], /FROM subnet_snapshots/);
     assert.deepEqual(captures.params[0], [60000]);
     assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
+  });
+
+  test("loadEconomicsTrends sets rows_capped when the row cap is hit", async () => {
+    const rows = Array.from({ length: 60000 }, (_, i) => ({
+      snapshot_date: "2026-01-01",
+      total_stake_tao: i,
+      alpha_price_tao: 0.01,
+      validator_count: 1,
+      miner_count: 1,
+      emission_share: 0.01,
+    }));
+    const { data } = await loadEconomicsTrends(
+      d1({ "FROM subnet_snapshots": rows }),
+      { window: "all" },
+    );
+    assert.equal(data.rows_capped, true);
   });
 
   test("loadEconomicsTrends binds the exact 30d cutoff date", async () => {
@@ -399,8 +412,7 @@ describe("economics trends loaders", () => {
       vi.useFakeTimers();
       vi.setSystemTime(fixedNow);
       await loadEconomicsTrends(d1({ "FROM subnet_snapshots": [] }, captures), {
-        windowLabel: "30d",
-        windowDays: 30,
+        window: "30d",
       });
     } finally {
       vi.useRealTimers();

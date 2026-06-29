@@ -411,12 +411,18 @@ export function buildEconomicsTrends(rows, { window } = {}) {
 // Network-wide economics time series — shared by the REST route and MCP tool:
 // read raw per-subnet subnet_snapshots rows (newest first, bounded), roll up
 // with buildEconomicsTrends. Returns {data, rows} so REST can pass rows into
-// the D1-fallback WeakSet contract. Cold D1 → day_count:0.
-export async function loadEconomicsTrends(d1, { windowLabel, windowDays }) {
+// the D1-fallback WeakSet contract. Cold D1 → day_count:0. The `all` window
+// is bounded by ECONOMICS_TRENDS_ROW_CAP (~129 subnets × 365 days ≈ 47k rows
+// today); when the cap is hit, data.rows_capped is true.
+export async function loadEconomicsTrends(
+  d1,
+  { window = DEFAULT_HISTORY_WINDOW } = {},
+) {
+  const { label, days } = parseHistoryWindow(window);
   const params = [];
   let sql = `SELECT ${ECONOMICS_TRENDS_READ_COLUMNS} FROM subnet_snapshots WHERE TRUE`;
-  if (windowDays != null) {
-    const cutoff = new Date(Date.now() - windowDays * DAY_MS)
+  if (days != null) {
+    const cutoff = new Date(Date.now() - days * DAY_MS)
       .toISOString()
       .slice(0, 10);
     sql += " AND snapshot_date >= ?";
@@ -425,7 +431,10 @@ export async function loadEconomicsTrends(d1, { windowLabel, windowDays }) {
   sql += " ORDER BY snapshot_date DESC LIMIT ?";
   params.push(ECONOMICS_TRENDS_ROW_CAP);
   const rows = await d1(sql, params);
-  const data = buildEconomicsTrends(rows, { window: windowLabel });
+  const data = buildEconomicsTrends(rows, { window: label });
+  if (rows.length >= ECONOMICS_TRENDS_ROW_CAP) {
+    data.rows_capped = true;
+  }
   return { data, rows };
 }
 
