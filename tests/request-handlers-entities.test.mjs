@@ -2448,17 +2448,18 @@ describe("handleExtrinsics", () => {
     assert.ok(/observed_at >= \?/.test(sql));
   });
 
-  test("ignores malformed time filters instead of broadening them", async () => {
+  test("rejects malformed time filters with 400 (#2086)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
-    await handleExtrinsics(
+    const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
       env,
       url("/api/v1/extrinsics?from=abc"),
     );
-    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
-    assert.ok(sql);
-    assert.ok(!/INDEXED BY/.test(sql));
-    assert.ok(!/observed_at >= \?/.test(sql));
+    await errorJson(res);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
   });
 
   test("short-circuits impossible future time filters before D1", async () => {

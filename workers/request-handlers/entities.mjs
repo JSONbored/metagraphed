@@ -28,6 +28,7 @@ import {
   DAY_PATTERN,
   FEED_PAGINATION,
   parseDateRange,
+  parseNonNegativeIntParam,
   parsePagination,
 } from "../request-params.mjs";
 
@@ -1370,15 +1371,16 @@ export async function handleExtrinsics(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
-  const MAX = Number.MAX_SAFE_INTEGER;
-  const parseTimeBound = (raw) => {
-    if (raw == null || raw === "") return null;
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return null;
-    return Math.max(0, Math.min(MAX, Math.trunc(n)));
-  };
-  const fromMs = parseTimeBound(sp.get("from"));
-  const toMs = parseTimeBound(sp.get("to"));
+  const numericFilters = {};
+  for (const param of ["block", "block_start", "block_end", "from", "to"]) {
+    const raw = sp.get(param);
+    if (raw === null) continue;
+    const parsed = parseNonNegativeIntParam(raw, param);
+    if (parsed.error) return analyticsQueryError(parsed.error);
+    numericFilters[param] = parsed.value;
+  }
+  const fromMs = numericFilters.from ?? null;
+  const toMs = numericFilters.to ?? null;
   const nowMs = Date.now();
   const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
   // The extrinsics tier is a retained hot window of block timestamps. Reject
@@ -1405,10 +1407,10 @@ export async function handleExtrinsics(request, env, url) {
     conds.push(`${col} = ?`);
     params.push(val);
   };
-  const hasBlockFilter = sp.get("block") != null;
+  const hasBlockFilter = numericFilters.block != null;
   const hasEqualityFilter =
     sp.get("signer") || sp.get("call_module") || sp.get("call_function");
-  if (hasBlockFilter) eq("block_number", clampInt(sp.get("block"), 0, 0, MAX));
+  if (hasBlockFilter) eq("block_number", numericFilters.block);
   if (sp.get("signer")) eq("signer", sp.get("signer"));
   if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
   if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
@@ -1419,14 +1421,14 @@ export async function handleExtrinsics(request, env, url) {
   if (successRaw === "true") eq("success", 1);
   else if (successRaw === "false") eq("success", 0);
   const hasBlockRangeFilter =
-    sp.get("block_start") != null || sp.get("block_end") != null;
-  if (sp.get("block_start") != null) {
+    numericFilters.block_start != null || numericFilters.block_end != null;
+  if (numericFilters.block_start != null) {
     conds.push("block_number >= ?");
-    params.push(clampInt(sp.get("block_start"), 0, 0, MAX));
+    params.push(numericFilters.block_start);
   }
-  if (sp.get("block_end") != null) {
+  if (numericFilters.block_end != null) {
     conds.push("block_number <= ?");
-    params.push(clampInt(sp.get("block_end"), 0, 0, MAX));
+    params.push(numericFilters.block_end);
   }
   if (fromMs != null) {
     conds.push("observed_at >= ?");
