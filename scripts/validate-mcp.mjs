@@ -396,6 +396,14 @@ assert.equal(
   true,
   "get_chain_activity must isError without the DATA_API binding",
 );
+const signersCold = await callOk("get_chain_signers", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(signersCold.signers) && signersCold.window === "7d",
+  "get_chain_signers must return window + signers[] on cold D1",
+);
 
 // --- Negative paths --------------------------------------------------------
 

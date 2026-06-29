@@ -29,6 +29,7 @@ import {
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
+import { loadChainSigners } from "./chain-query-loaders.mjs";
 import {
   loadCompareSubnets,
   loadGlobalIncidents,
@@ -188,7 +189,8 @@ export const MCP_INSTRUCTIONS =
   "boundary snapshots, get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
-  "probe failures, get_subnet_metagraph the " +
+  "probe failures, get_chain_signers the windowed most-active-account " +
+  "leaderboard (extrinsic counts + fees), get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
   "list_subnet_validators its validators ranked by stake, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
@@ -2310,6 +2312,62 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_signers",
+    title: "Get the most-active account signers",
+    description:
+      "Fetch the windowed most-active-account leaderboard: signers ranked by " +
+      "extrinsic count over the requested window (7d or 30d), with total fees, " +
+      "tips, and last signed block. Optionally scope to one pallet via " +
+      "call_module. Mirrors GET /api/v1/chain/signers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Lookback window (default 7d).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max signers to return (1-100, default 50).",
+          minimum: 1,
+          maximum: 100,
+        },
+        call_module: {
+          type: "string",
+          description:
+            "Optional pallet filter (e.g. Balances); omit for all modules.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      if (
+        args?.window !== undefined &&
+        parseAnalyticsWindow(args.window) === null
+      ) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label, days } = parseAnalyticsWindow(args?.window ?? "7d");
+      const limit = clampLimit(args?.limit, 50, 100);
+      const callModule = optionalString(args, "call_module");
+      if (callModule != null && callModule.length > 100) {
+        throw toolError(
+          "invalid_params",
+          "call_module must be at most 100 characters.",
+        );
+      }
+      const { data } = await loadChainSigners(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: await mcpObservedAt(ctx),
+        limit,
+        callModule,
+      });
+      return data;
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -3760,6 +3818,24 @@ const TOOL_OUTPUT_SCHEMAS = {
         pallet: NULLABLE_STRING,
         method: NULLABLE_STRING,
         count: NULLABLE_INT,
+      }),
+    },
+  },
+  get_chain_signers: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "signer_count", "signers"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: { type: "string" },
+      observed_at: NULLABLE_STRING,
+      signer_count: { type: "integer" },
+      signers: objectItems({
+        signer: NULLABLE_STRING,
+        tx_count: NULLABLE_INT,
+        total_fee_tao: { type: ["number", "null"] },
+        total_tip_tao: { type: ["number", "null"] },
+        last_tx_block: NULLABLE_INT,
       }),
     },
   },
