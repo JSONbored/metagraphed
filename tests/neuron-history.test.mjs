@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import {
   parseHistoryWindow,
   rollupNeuronDaily,
@@ -14,6 +14,7 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
   buildEconomicsTrends,
+  loadEconomicsTrends,
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
@@ -324,6 +325,88 @@ describe("history builders", () => {
     assert.equal(out.point_count, 1);
     assert.equal(out.points[0].neuron_count, 256);
     assert.deepEqual(buildSubnetHistory(undefined, 7).points, []);
+  });
+});
+
+describe("economics trends loaders", () => {
+  function d1(rowsBySql = {}, captures = { sql: [], params: [] }) {
+    return async (sql, params) => {
+      captures.sql.push(sql);
+      captures.params.push(params);
+      for (const [pattern, rows] of Object.entries(rowsBySql)) {
+        if (new RegExp(pattern).test(sql)) return rows;
+      }
+      return [];
+    };
+  }
+
+  test("loadEconomicsTrends returns schema-stable empty on cold D1", async () => {
+    const { data, rows } = await loadEconomicsTrends(d1(), {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.deepEqual(rows, []);
+    assert.equal(data.window, "30d");
+    assert.equal(data.day_count, 0);
+    assert.deepEqual(data.days, []);
+  });
+
+  test("loadEconomicsTrends aggregates subnet_snapshots rows", async () => {
+    const { data } = await loadEconomicsTrends(
+      d1({
+        "FROM subnet_snapshots": [
+          {
+            snapshot_date: "2026-06-02",
+            total_stake_tao: 300,
+            alpha_price_tao: 0.02,
+            validator_count: 8,
+            miner_count: 50,
+            emission_share: 0.04,
+          },
+          {
+            snapshot_date: "2026-06-02",
+            total_stake_tao: 100,
+            alpha_price_tao: 0.06,
+            validator_count: 2,
+            miner_count: 10,
+            emission_share: 0.02,
+          },
+        ],
+      }),
+      { windowLabel: "7d", windowDays: 7 },
+    );
+    assert.equal(data.day_count, 1);
+    assert.equal(data.days[0].subnet_count, 2);
+    assert.equal(data.days[0].total_stake_tao, 400);
+    assert.equal(data.days[0].alpha_price_tao_weighted, 0.03);
+  });
+
+  test("loadEconomicsTrends omits the date cutoff for the all window", async () => {
+    const captures = { sql: [], params: [] };
+    await loadEconomicsTrends(
+      d1({ "FROM subnet_snapshots": [] }, captures),
+      { windowLabel: "all", windowDays: null },
+    );
+    assert.match(captures.sql[0], /FROM subnet_snapshots/);
+    assert.deepEqual(captures.params[0], [60000]);
+    assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
+  });
+
+  test("loadEconomicsTrends binds the exact 30d cutoff date", async () => {
+    const fixedNow = new Date("2026-06-30T12:00:00.000Z");
+    const captures = { sql: [], params: [] };
+    try {
+      vi.useFakeTimers();
+      vi.setSystemTime(fixedNow);
+      await loadEconomicsTrends(
+        d1({ "FROM subnet_snapshots": [] }, captures),
+        { windowLabel: "30d", windowDays: 30 },
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+    assert.equal(captures.params[0][0], "2026-05-31");
+    assert.equal(captures.params[0][1], 60000);
   });
 });
 

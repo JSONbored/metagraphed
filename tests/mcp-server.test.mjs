@@ -3554,6 +3554,84 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /uid/);
   });
 
+  test("get_economics_trends returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_economics_trends", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
+  });
+
+  test("get_economics_trends aggregates subnet_snapshots rows", async () => {
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "7d" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            growthSamples: [
+              {
+                snapshot_date: "2026-06-02",
+                total_stake_tao: 300,
+                alpha_price_tao: 0.02,
+                validator_count: 8,
+                miner_count: 50,
+                emission_share: 0.04,
+              },
+              {
+                snapshot_date: "2026-06-02",
+                total_stake_tao: 100,
+                alpha_price_tao: 0.06,
+                validator_count: 2,
+                miner_count: 10,
+                emission_share: 0.02,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].subnet_count, 2);
+    assert.equal(out.days[0].total_stake_tao, 400);
+    assert.equal(out.days[0].alpha_price_tao_weighted, 0.03);
+  });
+
+  test("get_economics_trends rejects an invalid window", async () => {
+    const res = await callTool("get_economics_trends", { window: "400d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_economics_trends accepts the all window without a date cutoff", async () => {
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "all" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            snapshots: [
+              {
+                snapshot_date: "2026-06-01",
+                total_stake_tao: 100,
+                alpha_price_tao: 0.01,
+                validator_count: 4,
+                miner_count: 20,
+                emission_share: 0.03,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "all");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].total_stake_tao, 100);
+  });
+
   test("get_subnet_trajectory computes the time series + deltas (sorted ascending)", async () => {
     const res = await callTool(
       "get_subnet_trajectory",

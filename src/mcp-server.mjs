@@ -85,6 +85,7 @@ import {
 import {
   buildNeuronHistory,
   buildSubnetHistory,
+  loadEconomicsTrends,
   MAX_HISTORY_POINTS,
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
@@ -124,7 +125,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.7.0";
+export const MCP_SERVER_VERSION = "1.8.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -179,7 +180,8 @@ export const MCP_INSTRUCTIONS =
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
-  "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
+  "get_economics_trends the network-wide daily stake, price, and emission " +
+  "rollup across all subnets, get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
@@ -1357,6 +1359,36 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
+    },
+  },
+  {
+    name: "get_economics_trends",
+    title: "Get network-wide economics trends",
+    description:
+      "Fetch the network-wide daily economics time series aggregated across all " +
+      "subnets from the subnet_snapshots rollup: total stake, stake-weighted and " +
+      "median alpha price, total validator and miner counts, and mean emission " +
+      "share per UTC day, newest first. Choose the window (7d, 30d, 90d, 1y, " +
+      "all; default 30d). Use it to chart how the whole network's economics are " +
+      "moving over time. Mirrors GET /api/v1/economics/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "History window (default 30d).",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const { label, days } = requireHistoryWindow(args);
+      const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+      });
+      return data;
     },
   },
   {
@@ -3338,6 +3370,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       summary: { type: ["object", "null"] },
       economics: { type: ["object", "null"] },
+    },
+  },
+  get_economics_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["day_count", "days"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      day_count: { type: "integer" },
+      days: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        alpha_price_tao_weighted: ANY,
+        alpha_price_tao_median: ANY,
+        validator_count: NULLABLE_INT,
+        miner_count: NULLABLE_INT,
+        mean_emission_share: ANY,
+      }),
     },
   },
   get_subnet_trajectory: {
