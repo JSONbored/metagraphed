@@ -1362,7 +1362,6 @@ export async function handleExtrinsics(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
-  const MAX = Number.MAX_SAFE_INTEGER;
   const numericFilters = {};
   for (const param of ["block", "block_start", "block_end", "from", "to"]) {
     const raw = sp.get(param);

@@ -420,7 +420,11 @@ test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async
     "block_start=abc",
     "block_end=abc",
   ]) {
-    const res = await handleRequest(req(`/api/v1/extrinsics?${query}`), env, {});
+    const res = await handleRequest(
+      req(`/api/v1/extrinsics?${query}`),
+      env,
+      {},
+    );
     assert.equal(res.status, 400, query);
     const body = await res.json();
     assert.equal(body.ok, false);
