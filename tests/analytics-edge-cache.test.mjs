@@ -546,6 +546,47 @@ describe("analytics edge cache", () => {
     assert.equal(cachedBody, uncachedBody);
   });
 
+  test("subnet-history ?window variants share a single cache entry (canonical key)", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/history";
+
+    // First request with explicit default window — caches under ?window=30d.
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=30d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    // Trailing-amp variant must be a cache HIT (same canonical key).
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=30d&`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "?window=30d& hits cache of ?window=30d",
+    );
+
+    // Omitting window entirely defaults to 30d — also a cache HIT.
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "no ?window hits cache of ?window=30d",
+    );
+  });
+
   test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
     // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
     // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation

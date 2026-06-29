@@ -917,7 +917,11 @@ export async function handleGraphQLRequest(request, env) {
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: graphqlHeaders({
-      "cache-control": "public, max-age=60, stale-while-revalidate=300",
+      // A GraphQL error is a 200 with a populated `errors` array; never advertise
+      // it as cacheable, or a fronting cache could pin a transient backend failure.
+      "cache-control": result.errors?.length
+        ? "no-store"
+        : "public, max-age=60, stale-while-revalidate=300",
       vary: "Accept-Encoding",
     }),
   });

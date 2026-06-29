@@ -18,6 +18,13 @@
 // handlers back and dispatches them from the router.
 
 import { DAY_MS, clampInt, resolveClientIp } from "../config.mjs";
+import {
+  BLOCK_PAGINATION,
+  DAY_PATTERN,
+  FEED_PAGINATION,
+  parseDateRange,
+  parsePagination,
+} from "../request-params.mjs";
 
 import { errorResponse } from "../http.mjs";
 import {
@@ -292,6 +299,14 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
   );
 }
 
+export function canonicalSubnetHistoryCachePath(url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
+  if (error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+}
+
 export function canonicalSubnetConcentrationHistoryCachePath(url) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return `${url.pathname}${url.search}`;
@@ -474,7 +489,6 @@ export async function handleAccountEvents(request, env, ss58, url) {
 // description spells out the contrast with /events in full).
 const ACCOUNT_DAY_COLUMNS =
   "day, netuid, event_count, event_kinds, first_block, last_block";
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function handleAccountHistory(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
@@ -486,17 +500,10 @@ export async function handleAccountHistory(request, env, ss58, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const from = url.searchParams.get("from");
-  const to = url.searchParams.get("to");
-  if ((from && !DAY_RE.test(from)) || (to && !DAY_RE.test(to))) {
-    return errorResponse(
-      "invalid_param",
-      "from/to must be YYYY-MM-DD dates.",
-      400,
-    );
-  }
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const range = parseDateRange(url);
+  if (range.error) return errorResponse("invalid_param", range.error, 400);
+  const { from, to } = range;
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   const netuid = url.searchParams.get("netuid");
   if (netuid != null && !/^\d+$/.test(netuid)) {
     return errorResponse(
@@ -516,11 +523,11 @@ export async function handleAccountHistory(request, env, ss58, url) {
   // changed) page order. offset stays as a deprecated fallback; cursor wins. A
   // cursor that does not decode to a valid YYYYMMDD day is ignored (falls back to
   // the first page), preserving the never-throw contract.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const cur = decodeCursor(cursor, 2);
   const cursorDay = cur
     ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
     : null;
-  const useCursor = Boolean(cursorDay && DAY_RE.test(cursorDay));
+  const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
   if (netuid != null) {
@@ -548,7 +555,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
   const rows = await d1All(env, sql, params);
   const last = rows.length === limit ? rows[rows.length - 1] : null;
   const nextCursor =
-    last && typeof last.day === "string" && DAY_RE.test(last.day)
+    last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
       ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
       : null;
   const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
@@ -574,8 +581,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
 export async function handleAccountExtrinsics(request, env, ss58, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const rows = await d1All(
     env,
     `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
@@ -622,8 +628,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
       message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
     });
   }
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   // sent => this account is the sender (hotkey=from); received => recipient
   // (coldkey=to); default/all => either side.
   let sideClause = "(hotkey = ? OR coldkey = ?)";
@@ -638,7 +643,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
   // Keyset (cursor) pagination mirrors loadAccountEvents/handleExtrinsicsFeed: a
   // (block_number, event_index) row-value seek, stable + O(limit) at depth on the
   // large account_events tier. offset stays as a deprecated fallback; cursor wins.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const params = [...sideParams];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause}`;
@@ -739,8 +744,7 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -754,7 +758,7 @@ export async function handleSubnetEvents(request, env, netuid, url) {
   }
   // Keyset (cursor) pagination on (block_number, event_index), mirroring
   // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 2);
+  const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const params = [netuid];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
@@ -990,8 +994,7 @@ export async function handleBlocks(request, env, url) {
     "min_events",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
   const intParam = (name) => clampInt(sp.get(name), 0, 0, MAX);
@@ -1066,7 +1069,7 @@ export async function handleBlocks(request, env, url) {
   // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
   // head inserts). A malformed cursor decodes to null → ignored (falls back to
   // offset), preserving never-throw.
-  const cur = decodeCursor(url.searchParams.get("cursor"), 1);
+  const cur = decodeCursor(cursor, 1);
   const useCursor = Boolean(cur);
   if (useCursor) {
     conds.push("block_number < ?");
@@ -1156,8 +1159,7 @@ export async function handleBlock(request, env, ref) {
 export async function handleBlockExtrinsics(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
   const blockRows = await d1All(
     env,
@@ -1199,8 +1201,7 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
 export async function handleBlockEvents(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 100, 1, 1000);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
   const blockRows = await d1All(
     env,
@@ -1257,8 +1258,7 @@ export async function handleExtrinsics(request, env, url) {
     "to",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
-  const offset = clampInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
+  const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
   const MAX = Number.MAX_SAFE_INTEGER;
   const parseTimeBound = (raw) => {
@@ -1329,7 +1329,7 @@ export async function handleExtrinsics(request, env, url) {
   // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
   // PK, ANDed with any active filters. Takes precedence over offset; a malformed
   // cursor decodes to null → ignored. SQLite row-value comparison is PK-covered.
-  const cur = decodeCursor(sp.get("cursor"), 2);
+  const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   if (useCursor) {
     conds.push("(block_number, extrinsic_index) < (?, ?)");
