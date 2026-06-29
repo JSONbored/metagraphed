@@ -513,6 +513,34 @@ describe("feeds — handleFeedRequest", () => {
     assert.equal(bad.status, 404);
   });
 
+  test("feeds are CORS-readable on success, 304, and error paths", async () => {
+    // Public feeds are a cross-origin surface (browser JSON Feed readers / agents
+    // discovering them via the Link header), so every path must carry
+    // access-control-allow-origin like the sibling responses — it was omitted.
+    const ok = await feed("/api/v1/feeds/registry.json");
+    assert.equal(ok.res.status, 200);
+    assert.equal(ok.res.headers.get("access-control-allow-origin"), "*");
+    // The etag must be exposed so cross-origin clients can poll conditionally.
+    assert.match(
+      ok.res.headers.get("access-control-expose-headers") || "",
+      /etag/,
+    );
+
+    const etag = ok.res.headers.get("etag");
+    const notModified = await feed("/api/v1/feeds/registry.json", {
+      ifNoneMatch: etag,
+    });
+    assert.equal(notModified.res.status, 304);
+    assert.equal(
+      notModified.res.headers.get("access-control-allow-origin"),
+      "*",
+    );
+
+    const { res: err } = await feed("/api/v1/feeds/nope");
+    assert.equal(err.status, 404);
+    assert.equal(err.headers.get("access-control-allow-origin"), "*");
+  });
+
   test("HEAD returns headers with no body", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry", {
       method: "HEAD",

@@ -582,6 +582,7 @@ export const API_QUERY_COLLECTIONS = {
       "candidate_count",
       "coverage_level",
       "curation_level",
+      "integration_readiness",
       "mechanism_count",
       "name",
       "netuid",
@@ -593,9 +594,12 @@ export const API_QUERY_COLLECTIONS = {
       "tempo",
     ],
     // Inclusive numeric range filters: ?min_surface_count=5&max_tempo=360, etc.
+    // integration_readiness generalizes the one-off min_readiness the MCP
+    // list_subnets tool exposes, so REST can rank/threshold by the same field.
     rangeFilters: [
       "block",
       "candidate_count",
+      "integration_readiness",
       "mechanism_count",
       "participant_count",
       "probed_surface_count",

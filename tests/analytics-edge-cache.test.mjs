@@ -245,6 +245,82 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("turnover canonicalizes omitted and explicit default window to the same cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // No ?window — should resolve to the 30d default and cache at ?window=30d.
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Explicit ?window=30d is the canonical form — must be a cache HIT (no new D1).
+    const hit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=30d must be a cache HIT (no D1 queries)",
+    );
+
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-turnover",
+        "/api/v1/subnets/7/turnover",
+        "?window=30d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
+  test("turnover: explicit ?window=30d populates cache; omitted window is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // Explicit ?window=30d is the canonical form — cache MISS, populates.
+    const first = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/turnover?window=30d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Omitted window resolves to the same 30d key — must be a HIT (no D1).
+    const hit = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/turnover"),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "omitted window must reuse the ?window=30d cache slot (no D1 queries)",
+    );
+    assert.equal(cache.store.size, 1);
+  });
+
   test("HIT: a pre-populated cache serves the cached body WITHOUT touching D1", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();
@@ -575,6 +651,33 @@ describe("analytics edge cache", () => {
     );
 
     // Omitting window entirely defaults to 30d — also a cache HIT.
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "no ?window hits cache of ?window=30d",
+    );
+  });
+
+  test("economics-trends ?window variants share a single cache entry (canonical key)", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/economics/trends";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=30d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
     await handleRequest(
       new Request(`https://api.metagraph.sh${base}`),
       env,

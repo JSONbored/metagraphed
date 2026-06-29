@@ -71,6 +71,7 @@ import {
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
+  canonicalSubnetTurnoverCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -88,6 +89,7 @@ import {
 } from "./request-handlers/entities.mjs";
 import {
   canonicalCompareCachePath,
+  canonicalEconomicsTrendsCachePath,
   canonicalUptimeCachePath,
   configureAnalyticsRoutes,
   handleCompare,
@@ -1296,13 +1298,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (turnoverMatch) {
       // Boundary-snapshot diff over the neuron_daily rollup, deterministic per
       // cron snapshot — edge-cache like the sibling history routes.
-      return withEdgeCache(request, ctx, env, "subnet-turnover", () =>
-        handleSubnetTurnover(
-          request,
-          env,
-          Number(turnoverMatch[1]),
-          resolved.url,
-        ),
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-turnover",
+        () =>
+          handleSubnetTurnover(
+            request,
+            env,
+            Number(turnoverMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetTurnoverCachePath(resolved.url),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -1538,8 +1546,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
     if (resolved.url.pathname === "/api/v1/economics/trends") {
-      return withEdgeCache(request, ctx, env, "economics-trends", () =>
-        handleEconomicsTrends(request, env, resolved.url),
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "economics-trends",
+        () => handleEconomicsTrends(request, env, resolved.url),
+        canonicalEconomicsTrendsCachePath(resolved.url),
       );
     }
     return handleApiRequest(request, env, resolved.url, DEFAULT_NETWORK, ctx);

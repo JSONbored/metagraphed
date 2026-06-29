@@ -933,6 +933,18 @@
           }
         },
         {
+          "name": "min_integration_readiness",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_integration_readiness",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "min_mechanism_count",
           "schema": {
             "type": "number"
@@ -1023,6 +1035,7 @@
               "candidate_count",
               "coverage_level",
               "curation_level",
+              "integration_readiness",
               "mechanism_count",
               "name",
               "netuid",
