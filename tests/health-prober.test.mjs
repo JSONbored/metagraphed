@@ -610,6 +610,65 @@ describe("runHealthProber", () => {
     assert.equal(rpcUpsert.binds[12], 3);
   });
 
+  test("a degraded subtensor-wss run accrues toward pool eviction", async () => {
+    // Regression for #2072: subtensor-wss is base-layer RPC (proxy-routable,
+    // pooled) exactly like subtensor-rpc, so a persistently-degraded WSS endpoint
+    // must accrue toward the sustained-down breaker. Before the fix the breaker
+    // matched only subtensor-rpc, so a degraded WSS run reset the streak to 0 and
+    // the endpoint stayed pool_eligible forever.
+    const wssSurface = {
+      surface_id: "opentensor-finney-wss",
+      surface_key: "srf-rootwsskey00000",
+      netuid: 0,
+      kind: "subtensor-wss",
+      url: "wss://entrypoint-finney.opentensor.ai",
+      provider: "opentensor",
+      authority: "official",
+      auth_required: false,
+      public_safe: true,
+      subnet_slug: "root",
+      subnet_name: "root",
+      probe: { method: "JSON-RPC", expect: "json" },
+    };
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "opentensor-finney-wss",
+          surface_key: "srf-rootwsskey00000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    // The WSS endpoint probes `degraded` (e.g. rate-limited), not failed.
+    const degradedWssProbe = async () => ({
+      status: "degraded",
+      classification: "rate-limited",
+      latency_ms: null,
+      status_code: 429,
+    });
+
+    await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv: makeKv(),
+        loadSurfaces: async () => [wssSurface],
+        probeSurface: degradedWssProbe,
+        probeOptions: {},
+      },
+    );
+
+    const wssUpsert = db.calls.batches[0]
+      .filter((s) => /INSERT INTO surface_status/.test(s.sql))
+      .find((s) => s.binds[0] === "opentensor-finney-wss");
+    // binds[12] = consecutive_failures: a degraded base-layer WSS run must bump
+    // 2 -> 3 so the sustained-down breaker can eventually evict it.
+    assert.equal(wssUpsert.binds[12], 3);
+  });
+
   test("no-ops cleanly when there are no operational surfaces", async () => {
     const result = await runHealthProber(
       {},
@@ -726,10 +785,11 @@ describe("handleScheduled dispatch", () => {
     }
   });
 
-  test("fast-load cron drains BOTH staged files then returns the marker (audit #9)", async () => {
-    // REGRESSION: the EVENTS_LOAD_CRON tick must still run both loaders (one R2 .get
-    // per staged key) AND early-return the fast-load marker without falling through
-    // to the prober/prune.
+  test("fast-load cron drains ALL FOUR staged files then returns the marker (audit #9)", async () => {
+    // REGRESSION: the EVENTS_LOAD_CRON tick must still run all four loaders (one R2
+    // .get per staged key) AND early-return the fast-load marker without falling
+    // through to the prober/prune. The loaders run concurrently (#2092) but the
+    // observable contract is unchanged: every staged key is read on this tick.
     const getKeys = [];
     const env = {
       METAGRAPH_HEALTH_DB: makeDb(),
@@ -743,14 +803,51 @@ describe("handleScheduled dispatch", () => {
     };
     const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
     assert.deepEqual(result, { ok: true, fast_load: true });
-    assert.ok(
-      getKeys.includes("metagraph/neurons-pending.json"),
-      "loadStagedNeurons read its staged key on the fast-load tick",
-    );
-    assert.ok(
-      getKeys.includes("events/account-events-pending.json"),
-      "loadStagedEvents read its staged key on the fast-load tick",
-    );
+    for (const stagedKey of [
+      "metagraph/neurons-pending.json", // loadStagedNeurons (#1303)
+      "events/account-events-pending.json", // loadStagedEvents (#1346)
+      "events/blocks-pending.json", // loadStagedBlocks (#1345)
+      "events/extrinsics-pending.json", // loadStagedExtrinsics (#1345)
+    ]) {
+      assert.ok(
+        getKeys.includes(stagedKey),
+        `the fast-load tick read staged key ${stagedKey}`,
+      );
+    }
+  });
+
+  test("fast-load cron isolates a single staged-loader failure (#2092)", async () => {
+    // The concurrent drain uses Promise.allSettled, so one loader rejecting (here
+    // the blocks loader's R2 .get throws) must NOT stop the other three or change
+    // the fast-load marker — the same isolation the serial `.catch(() => {})` gave.
+    const getKeys = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: makeDb(),
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          getKeys.push(key);
+          if (key === "events/blocks-pending.json") {
+            throw new Error("R2 unavailable for blocks");
+          }
+          return null;
+        },
+      },
+      METAGRAPH_STAGING_SIGNING_KEY: "test-secret",
+    };
+    const result = await handleScheduled({ cron: EVENTS_LOAD_CRON }, env, {});
+    // Marker unchanged despite the rejection.
+    assert.deepEqual(result, { ok: true, fast_load: true });
+    // The three healthy loaders still read their staged keys.
+    for (const stagedKey of [
+      "metagraph/neurons-pending.json",
+      "events/account-events-pending.json",
+      "events/extrinsics-pending.json",
+    ]) {
+      assert.ok(
+        getKeys.includes(stagedKey),
+        `loader for ${stagedKey} still ran despite the blocks-loader failure`,
+      );
+    }
   });
 });
 

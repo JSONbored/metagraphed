@@ -10,10 +10,16 @@ const generatedOutputPath = path.join(
 const publicOutputPath = path.join(repoRoot, "public/metagraph/types.d.ts");
 const openapiTypescriptCli = path.join(
   repoRoot,
-  "node_modules",
-  "openapi-typescript",
-  "bin",
-  "cli.js",
+  "node_modules/openapi-typescript/bin/cli.js",
+);
+const result = spawnSync(
+  process.execPath,
+  [openapiTypescriptCli, "public/metagraph/openapi.json"],
+  {
+    cwd: repoRoot,
+    encoding: "utf8",
+    stdio: "pipe",
+  },
 );
 const result = spawnSync(process.execPath, [openapiTypescriptCli, "public/metagraph/openapi.json"], {
   cwd: repoRoot,

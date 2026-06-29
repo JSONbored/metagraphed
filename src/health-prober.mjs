@@ -456,14 +456,19 @@ export async function runHealthProber(env, ctx, overrides = {}) {
     const prior = priorStatus.get(stableLookupKey);
     const lastOkMs = ok ? runAt : (prior?.last_ok ?? null);
     // The sustained-down breaker protects the public RPC pool from repeatedly
-    // routing to unusable endpoints. For RPC surfaces, any non-ok prober run
-    // counts toward that eviction threshold because `degraded` includes
-    // auth-required, rate-limited, transient, and timeout outcomes that are not
-    // necessarily usable by the proxy. Non-RPC degraded runs remain soft signals
-    // and reset the hard-failure streak.
+    // routing to unusable endpoints. For base-layer RPC surfaces, any non-ok
+    // prober run counts toward that eviction threshold because `degraded`
+    // includes auth-required, rate-limited, transient, and timeout outcomes that
+    // are not necessarily usable by the proxy. Both base-layer kinds — HTTP
+    // (`subtensor-rpc`) and WebSocket (`subtensor-wss`) — are proxy-routable and
+    // pooled, so both must count; only matching `subtensor-rpc` let a
+    // persistently-degraded WSS endpoint reset its streak every run and stay
+    // pool_eligible forever. Non-RPC degraded runs remain soft signals and reset
+    // the hard-failure streak.
+    const isBaseLayerRpc =
+      surface.kind === "subtensor-rpc" || surface.kind === "subtensor-wss";
     const countsTowardBreaker =
-      base.status === "failed" ||
-      (surface.kind === "subtensor-rpc" && base.status !== "ok");
+      base.status === "failed" || (isBaseLayerRpc && base.status !== "ok");
     const consecutiveFailures = countsTowardBreaker
       ? (prior?.consecutive_failures ?? 0) + 1
       : 0;

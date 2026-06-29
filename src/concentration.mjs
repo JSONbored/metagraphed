@@ -5,6 +5,8 @@
 // distribution yields a schema-stable `null` block (never throws), matching the
 // live metagraph tiers the entity handlers already own.
 
+import { DAY_MS } from "../workers/config.mjs";
+
 // The neurons-tier columns the concentration handler reads — the D1 read contract
 // for buildConcentration (mirrors BLOCK_READ_COLUMNS / EXTRINSIC_READ_COLUMNS). Kept
 // here next to its consumer so the Worker handler stays a thin SELECT.
@@ -297,4 +299,32 @@ export function buildConcentrationHistory(
     point_count: points.length,
     points,
   };
+}
+
+// Shared D1 loaders for MCP tools — mirror handleSubnetConcentration and
+// handleSubnetConcentrationHistory in workers/request-handlers/entities.mjs.
+export async function loadSubnetConcentration(d1, netuid) {
+  const rows = await d1(
+    `SELECT ${CONCENTRATION_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  return buildConcentration(rows, netuid);
+}
+
+export async function loadSubnetConcentrationHistory(
+  d1,
+  netuid,
+  { windowLabel, windowDays },
+) {
+  const cutoff = new Date(Date.now() - windowDays * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const rows = await d1(
+    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+    [netuid, cutoff, CONCENTRATION_HISTORY_ROW_CAP],
+  );
+  return buildConcentrationHistory(rows, netuid, {
+    window: windowLabel,
+    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
+  });
 }
