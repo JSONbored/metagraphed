@@ -383,10 +383,10 @@ describe("economics trends loaders", () => {
 
   test("loadEconomicsTrends omits the date cutoff for the all window", async () => {
     const captures = { sql: [], params: [] };
-    await loadEconomicsTrends(
-      d1({ "FROM subnet_snapshots": [] }, captures),
-      { windowLabel: "all", windowDays: null },
-    );
+    await loadEconomicsTrends(d1({ "FROM subnet_snapshots": [] }, captures), {
+      windowLabel: "all",
+      windowDays: null,
+    });
     assert.match(captures.sql[0], /FROM subnet_snapshots/);
     assert.deepEqual(captures.params[0], [60000]);
     assert.doesNotMatch(captures.sql[0], /snapshot_date >=/);
@@ -398,10 +398,10 @@ describe("economics trends loaders", () => {
     try {
       vi.useFakeTimers();
       vi.setSystemTime(fixedNow);
-      await loadEconomicsTrends(
-        d1({ "FROM subnet_snapshots": [] }, captures),
-        { windowLabel: "30d", windowDays: 30 },
-      );
+      await loadEconomicsTrends(d1({ "FROM subnet_snapshots": [] }, captures), {
+        windowLabel: "30d",
+        windowDays: 30,
+      });
     } finally {
       vi.useRealTimers();
     }
