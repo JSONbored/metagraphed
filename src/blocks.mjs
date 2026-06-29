@@ -199,7 +199,11 @@ export async function loadBlock(d1, ref) {
   const sql = isHash
     ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  const param = isHash ? String(ref) : blockNumber;
+  // The poller stores hashes lowercase and D1 TEXT columns are BINARY-collated,
+  // so a mixed/upper-case 0x ref would miss. Lowercase the hash before binding —
+  // parity with the REST handleBlock route (#1955); this shared MCP get_block
+  // loader was the missed sibling (the strict-ref guard #2314 left it case-naive).
+  const param = isHash ? String(ref).toLowerCase() : blockNumber;
   const rows = await d1(sql, [param]);
   let prev = null;
   let next = null;

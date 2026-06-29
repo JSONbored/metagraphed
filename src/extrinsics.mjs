@@ -269,9 +269,14 @@ export async function loadExtrinsic(d1, ref) {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
   let rows;
   if (isHash) {
+    // The poller stores hashes lowercase and D1 TEXT columns are BINARY-collated,
+    // so a mixed/upper-case 0x ref would miss. Lowercase the hash before binding —
+    // parity with the REST handleExtrinsic route (#1955); this shared MCP
+    // get_extrinsic loader was the missed sibling (the composite-ref guard #2316
+    // left it case-naive).
     rows = await d1(
       `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-      [String(ref)],
+      [String(ref).toLowerCase()],
     );
   } else {
     const composite = COMPOSITE_REF_RE.exec(String(ref));
