@@ -409,22 +409,19 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async () => {
-    const db = env.METAGRAPH_HEALTH_DB;
     const nowMs = Date.now();
     const windows = {};
     // The per-window aggregations are independent — run them in parallel (one D1
     // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
-    // serializing the two with an await-in-loop.
+    // serializing the two with an await-in-loop. Read through the shared d1All so a
+    // failure is logged + marked as a D1 fallback (the dark-serve log contract) —
+    // the inline bare catch this replaced swallowed errors silently, the exact
+    // failure mode the [d1All] logging exists to prevent.
     const windowRows = await Promise.all(
       Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-        if (!db?.prepare) {
-          return [label, markD1FallbackRows([])];
-        }
-        try {
-          const result = await withTimeout(
-            db
-              .prepare(
-                `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+        const rows = await d1All(
+          env,
+          `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
              SELECT MAX(surface_id) AS surface_id,
                     surface_key,
                     COUNT(*) AS total,
@@ -432,15 +429,9 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
                     ${latencyStatColumns({ includeMinMax: false })}
              FROM ranked
              GROUP BY surface_key`,
-              )
-              .bind(netuid, nowMs - days * DAY_MS)
-              .all(),
-            d1TimeoutMs(env),
-          );
-          return [label, result?.results || []];
-        } catch {
-          return [label, markD1FallbackRows([])];
-        }
+          [netuid, nowMs - days * DAY_MS],
+        );
+        return [label, rows];
       }),
     );
     for (const [label, rows] of windowRows) {
