@@ -175,6 +175,55 @@ describe("surface-verify core (#358)", () => {
     assert.equal(second.from_cache, true);
     assert.equal(probes, 1);
   });
+
+  test("verifySurfaceWithCache coalesces concurrent cache misses for one surface", async () => {
+    let probes = 0;
+    let releaseProbe;
+    const store = new Map();
+    const cache = {
+      async match(key) {
+        return store.get(key.url);
+      },
+      async put(key, res) {
+        store.set(key.url, res);
+      },
+    };
+    const prober = async () => {
+      probes += 1;
+      await new Promise((resolve) => {
+        releaseProbe = resolve;
+      });
+      return {
+        status: "ok",
+        classification: "live",
+        latency_ms: 12,
+        status_code: 200,
+        last_checked: "2026-06-16T00:00:00.000Z",
+      };
+    };
+
+    const first = verifySurfaceWithCache(surfaces[0], {}, { cache, prober });
+    const second = verifySurfaceWithCache(surfaces[0], {}, { cache, prober });
+    const third = verifySurfaceWithCache(surfaces[0], {}, { cache, prober });
+    await Promise.resolve();
+    assert.equal(probes, 1);
+
+    releaseProbe();
+    const results = await Promise.all([first, second, third]);
+    assert.deepEqual(
+      results.map((result) => result.from_cache),
+      [false, false, false],
+    );
+    assert.equal(probes, 1);
+
+    const cached = await verifySurfaceWithCache(
+      surfaces[0],
+      {},
+      { cache, prober },
+    );
+    assert.equal(cached.from_cache, true);
+    assert.equal(probes, 1);
+  });
 });
 
 // --- worker endpoint: GET /api/v1/surfaces/{surface_id}/verify ----------------

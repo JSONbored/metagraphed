@@ -87,6 +87,12 @@ export function verifyCacheRequest(surface) {
   );
 }
 
+const verifyInFlight = new Map();
+
+function verifyInFlightKey(cacheKey, probeOptions) {
+  return `${cacheKey.url}:${JSON.stringify(probeOptions ?? {})}`;
+}
+
 // Shared 60s Cache-API layer for REST verify and MCP verify_integration (#358).
 export async function verifySurfaceWithCache(
   surface,
@@ -94,6 +100,9 @@ export async function verifySurfaceWithCache(
   { cache = globalThis.caches?.default ?? null, waitUntil = null, prober } = {},
 ) {
   const cacheKey = cache ? verifyCacheRequest(surface) : null;
+  const inFlightKey = cacheKey
+    ? verifyInFlightKey(cacheKey, probeOptions)
+    : null;
   if (cache && cacheKey) {
     const hit = await cache.match(cacheKey);
     if (hit) {
@@ -102,20 +111,52 @@ export async function verifySurfaceWithCache(
     }
   }
 
-  const result = await verifySurface(surface, probeOptions, prober);
-  if (cache && cacheKey) {
-    const stored = new Response(JSON.stringify(result), {
-      headers: {
-        "content-type": "application/json",
-        "cache-control": `public, s-maxage=${VERIFY_CACHE_TTL_SECONDS}`,
-      },
-    });
-    const put = cache.put(cacheKey, stored);
-    if (typeof waitUntil === "function") {
-      waitUntil(put);
-    } else {
-      await put;
+  if (inFlightKey) {
+    const pending = verifyInFlight.get(inFlightKey);
+    if (pending) {
+      return await pending;
     }
   }
-  return { ...result, from_cache: false };
+
+  let put = null;
+  const verification = (async () => {
+    const result = await verifySurface(surface, probeOptions, prober);
+    if (cache && cacheKey) {
+      const stored = new Response(JSON.stringify(result), {
+        headers: {
+          "content-type": "application/json",
+          "cache-control": `public, s-maxage=${VERIFY_CACHE_TTL_SECONDS}`,
+        },
+      });
+      put = cache.put(cacheKey, stored);
+      if (typeof waitUntil === "function") {
+        waitUntil(put);
+      } else {
+        await put;
+      }
+    }
+    return { ...result, from_cache: false };
+  })();
+
+  if (inFlightKey) {
+    verifyInFlight.set(inFlightKey, verification);
+  }
+
+  try {
+    return await verification;
+  } finally {
+    if (inFlightKey && verifyInFlight.get(inFlightKey) === verification) {
+      if (put && typeof waitUntil === "function") {
+        put
+          .catch(() => {})
+          .finally(() => {
+            if (verifyInFlight.get(inFlightKey) === verification) {
+              verifyInFlight.delete(inFlightKey);
+            }
+          });
+      } else {
+        verifyInFlight.delete(inFlightKey);
+      }
+    }
+  }
 }
