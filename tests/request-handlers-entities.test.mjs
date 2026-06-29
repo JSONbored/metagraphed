@@ -1476,7 +1476,7 @@ describe("handleAccountTransfers", () => {
   });
 
   test("happy path reshapes Transfer rows (all direction)", async () => {
-    const { env } = dbWith({ transfers: [transferEventRow()] });
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
     const body = await json(
       await handleAccountTransfers(
         req(`/api/v1/accounts/${SS58}/transfers`),
@@ -1488,6 +1488,11 @@ describe("handleAccountTransfers", () => {
     assert.equal(body.data.transfer_count, 1);
     assert.equal(body.data.transfers[0].from, SS58);
     assert.equal(body.data.transfers[0].amount_tao, 4.2);
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/UNION ALL/.test(sql));
+    assert.ok(/hotkey = \?/.test(sql));
+    assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
+    assert.equal(sql.includes(" OR "), false);
   });
 
   test("direction=sent binds hotkey-only clause", async () => {
@@ -1611,13 +1616,13 @@ describe("handleAccountCounterparties", () => {
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.counterparty_count, 2); // A, B
     assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
-    // Read is a Transfer scan bound to the account on both sides.
-    const idx = captures.sql.findIndex((s) =>
-      /event_kind = 'Transfer' AND \(hotkey = \? OR coldkey = \?\)/.test(s),
+    // Read is two Transfer side seeks bound to the account, not a hotkey/coldkey OR.
+    const idx = captures.sql.findIndex(
+      (s) => /UNION ALL/.test(s) && /coldkey = \? AND hotkey <> \?/.test(s),
     );
     assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], SS58);
-    assert.equal(captures.params[idx][1], SS58);
+    assert.equal(captures.sql[idx].includes(" OR "), false);
+    assert.deepEqual(captures.params[idx].slice(0, 3), [SS58, SS58, SS58]);
   });
 });
 
