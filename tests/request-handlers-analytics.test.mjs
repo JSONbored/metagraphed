@@ -21,6 +21,7 @@ import {
   markD1FallbackResponse,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
+  canonicalHealthWindowCachePath,
 } from "../workers/request-handlers/analytics.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import { CONTRACT_VERSION } from "../src/contracts.mjs";
@@ -345,6 +346,48 @@ describe("canonicalAnalyticsCacheRoute", () => {
       canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module"]),
       canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
     );
+  });
+
+  test("injects default window=7d when window param is omitted", () => {
+    assert.equal(
+      canonicalAnalyticsCacheRoute(url("/api/v1/chain/activity")),
+      "/api/v1/chain/activity?window=7d",
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(
+        url("/api/v1/chain/activity?window=7d"),
+      ),
+      "/api/v1/chain/activity?window=7d",
+    );
+  });
+
+  test("falls back to raw search on invalid window value", () => {
+    const raw = "/api/v1/chain/fees?window=bogus&limit=10";
+    assert.equal(
+      canonicalAnalyticsCacheRoute(url(raw), ["limit", "call_module"]),
+      raw,
+    );
+  });
+});
+
+describe("canonicalHealthWindowCachePath", () => {
+  test("normalizes bare path to explicit default window", () => {
+    assert.equal(
+      canonicalHealthWindowCachePath(url("/api/v1/incidents")),
+      "/api/v1/incidents?window=7d",
+    );
+  });
+
+  test("explicit ?window=7d collapses to same key as bare path", () => {
+    assert.equal(
+      canonicalHealthWindowCachePath(url("/api/v1/incidents?window=7d")),
+      "/api/v1/incidents?window=7d",
+    );
+  });
+
+  test("falls back to raw search on invalid window value", () => {
+    const raw = "/api/v1/incidents?window=bogus";
+    assert.equal(canonicalHealthWindowCachePath(url(raw)), raw);
   });
 });
 

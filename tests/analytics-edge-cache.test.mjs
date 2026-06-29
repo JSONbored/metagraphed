@@ -587,6 +587,52 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("chain activity ?window variants share a single cache entry (canonical key)", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/chain/activity";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    await handleRequest(new Request(`https://api.metagraph.sh${base}`), env, ctx);
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "no ?window hits cache of ?window=7d",
+    );
+  });
+
+  test("global incidents ?window variants share a single cache entry (canonical key)", async () => {
+    const queries = [];
+    const cache = mockCaches();
+    cache.install();
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/incidents";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    await handleRequest(new Request(`https://api.metagraph.sh${base}`), env, ctx);
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "no ?window hits cache of ?window=7d",
+    );
+  });
+
   test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
     // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
     // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation

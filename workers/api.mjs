@@ -50,6 +50,7 @@ import {
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
+  canonicalHealthWindowCachePath,
   withEdgeCache,
   withNeuronsEdgeCache,
 } from "./request-handlers/analytics.mjs";
@@ -1492,8 +1493,13 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleExtrinsics(request, env, resolved.url);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
-      return withEdgeCache(request, ctx, env, "global-incidents", () =>
-        handleGlobalIncidents(request, env, resolved.url),
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "global-incidents",
+        () => handleGlobalIncidents(request, env, resolved.url),
+        canonicalHealthWindowCachePath(resolved.url),
       );
     }
     if (resolved.url.pathname === "/api/v1/chain/activity") {

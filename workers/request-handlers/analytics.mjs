@@ -98,13 +98,34 @@ function validateQueryParams(url, allowedParams) {
 }
 
 function canonicalAnalyticsCacheRoute(url, params = []) {
+  const validationError = validateQueryParams(url, [
+    ANALYTICS_WINDOW_PARAM,
+    ...params,
+  ]);
+  if (validationError) return `${url.pathname}${url.search}`;
+
+  const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
+  if (requested !== null && !ANALYTICS_WINDOWS[requested]) {
+    return `${url.pathname}${url.search}`;
+  }
+
   const search = new URL("https://cache-key.invalid/").searchParams;
-  for (const param of [ANALYTICS_WINDOW_PARAM, ...params]) {
+  search.set(ANALYTICS_WINDOW_PARAM, requested || "7d");
+  for (const param of params) {
     const value = url.searchParams.get(param);
     if (value !== null) search.set(param, value);
   }
   const query = search.toString();
   return `${url.pathname}${query ? `?${query}` : ""}`;
+}
+
+// Normalises windowed analytics URLs with no extra query params (global incidents).
+export function canonicalHealthWindowCachePath(url) {
+  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = analyticsWindow(url);
+  if (error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
 function analyticsWindow(url, extraParams = []) {
@@ -744,7 +765,12 @@ export async function handleGlobalIncidents(request, env, url) {
 export async function handleChainActivity(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  return withEdgeCache(request, ctx, env, "chain-activity", async () => {
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-activity",
+    async () => {
     const cutoff = Date.now() - days * DAY_MS;
     // observed_at is epoch-ms; `/ 1000` (SQLite integer division) → unix seconds
     // for strftime's 'unixepoch' UTC bucketer. Values are always bound.
@@ -793,7 +819,9 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     return hasD1FallbackRows(extrinsicRows, blockRows)
       ? markD1FallbackResponse(response)
       : response;
-  });
+    },
+    canonicalAnalyticsCacheRoute(url),
+  );
 }
 
 // Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
@@ -813,7 +841,12 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  return withEdgeCache(request, ctx, env, "chain-calls", async () => {
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-calls",
+    async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const groupCols =
       groupBy === "module_function"
@@ -863,7 +896,9 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     return hasD1FallbackRows(rows, totalRows)
       ? markD1FallbackResponse(response)
       : response;
-  });
+    },
+    canonicalAnalyticsCacheRoute(url, ["group_by", "limit"]),
+  );
 }
 
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
