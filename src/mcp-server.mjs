@@ -878,6 +878,54 @@ function rangeFilterSubnets(rows, args) {
   );
 }
 
+// Categorical args list_subnets filters on, each available as inclusion (`arg`)
+// and exclusion (`not_arg`).
+const LIST_SUBNETS_CATEGORICAL = ["status", "subnet_type", "domain"];
+
+// Does `subnet` match categorical filter `field` = `value` (already lowercased)?
+// `domain` tests the union of curated + derived categories; the rest are scalar.
+// Shared by inclusion and exclusion so `status=` and `not_status=` stay exact
+// complements.
+function subnetCategoricalMatch(subnet, field, value) {
+  if (field === "domain") {
+    const tags = [
+      ...(Array.isArray(subnet.categories) ? subnet.categories : []),
+      ...(Array.isArray(subnet.derived_categories)
+        ? subnet.derived_categories
+        : []),
+    ].map((tag) => String(tag).toLowerCase());
+    return tags.includes(value);
+  }
+  return String(subnet[field] || "").toLowerCase() === value;
+}
+
+// Apply the categorical filters: keep rows matching every `field=v` and matching
+// none of the `not_field=v` exclusions (case-insensitive). A row missing the
+// field never matches, so it survives an exclusion but fails an inclusion.
+function categoricalFilterSubnets(rows, args) {
+  const includes = [];
+  const excludes = [];
+  for (const arg of LIST_SUBNETS_CATEGORICAL) {
+    const inc = typeof args?.[arg] === "string" ? args[arg].trim() : "";
+    if (inc) includes.push({ field: arg, value: inc.toLowerCase() });
+    const exc =
+      typeof args?.[`not_${arg}`] === "string" ? args[`not_${arg}`].trim() : "";
+    if (exc) excludes.push({ field: arg, value: exc.toLowerCase() });
+  }
+  if (includes.length === 0 && excludes.length === 0) {
+    return rows;
+  }
+  return rows.filter(
+    (subnet) =>
+      includes.every(({ field, value }) =>
+        subnetCategoricalMatch(subnet, field, value),
+      ) &&
+      excludes.every(
+        ({ field, value }) => !subnetCategoricalMatch(subnet, field, value),
+      ),
+  );
+}
+
 // A search.json document → keywordScore shape: title/slug are identity; subtitle
 // and tokens (which already fold in categories/service kinds) are recall-only.
 function scoreDocument(doc, terms) {
@@ -1067,6 +1115,18 @@ export const MCP_TOOLS = [
           description:
             "Filter to subnets tagged with this domain/category, e.g. 'inference'.",
         },
+        not_status: {
+          type: "string",
+          description: "Exclude subnets with this lifecycle status.",
+        },
+        not_subnet_type: {
+          type: "string",
+          description: "Exclude subnets of this type (e.g. 'root').",
+        },
+        not_domain: {
+          type: "string",
+          description: "Exclude subnets tagged with this domain/category.",
+        },
         min_readiness: {
           type: "integer",
           description:
@@ -1121,43 +1181,9 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
       const all = Array.isArray(index.subnets) ? index.subnets : [];
-      const status =
-        typeof args?.status === "string"
-          ? args.status.trim().toLowerCase()
-          : null;
-      const subnetType =
-        typeof args?.subnet_type === "string"
-          ? args.subnet_type.trim().toLowerCase()
-          : null;
-      const domain =
-        typeof args?.domain === "string"
-          ? args.domain.trim().toLowerCase()
-          : null;
-      const categorical = all.filter((subnet) => {
-        if (status && String(subnet.status || "").toLowerCase() !== status) {
-          return false;
-        }
-        if (
-          subnetType &&
-          String(subnet.subnet_type || "").toLowerCase() !== subnetType
-        ) {
-          return false;
-        }
-        if (domain) {
-          const tags = [
-            ...(Array.isArray(subnet.categories) ? subnet.categories : []),
-            ...(Array.isArray(subnet.derived_categories)
-              ? subnet.derived_categories
-              : []),
-          ].map((tag) => String(tag).toLowerCase());
-          if (!tags.includes(domain)) {
-            return false;
-          }
-        }
-        return true;
-      });
-      // Apply the inclusive numeric range bounds (min_/max_) after the
-      // categorical filters, mirroring the REST list endpoint's filter order.
+      // Categorical inclusion (status/subnet_type/domain) and exclusion
+      // (not_status/not_subnet_type/not_domain), then the numeric range bounds.
+      const categorical = categoricalFilterSubnets(all, args);
       const filtered = rangeFilterSubnets(categorical, args);
       // Sort the filtered list before paging; unscored subnets sort last and
       // equal values tie-break by netuid for a stable page (sortSubnets).

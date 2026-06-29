@@ -2969,6 +2969,46 @@ describe("list_subnets", () => {
   const rangeNetuids = (out) =>
     out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
 
+  // Fixture: 0=root/active, 7=application/active/inference, 8=application/deprecated/data.
+  test("not_status / not_subnet_type / not_domain exclude matching subnets", async () => {
+    const notActive = (
+      await callTool("list_subnets", { not_status: "active" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notActive), [8]); // only the deprecated one
+
+    const notApp = (
+      await callTool(
+        "list_subnets",
+        { not_subnet_type: "application" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notApp), [0]); // only the root one
+
+    const notInference = (
+      await callTool("list_subnets", { not_domain: "inference" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notInference), [0, 8]); // 7 (inference) dropped
+  });
+
+  test("not_<categorical> is case-insensitive (matches the inclusion form)", async () => {
+    const out = (
+      await callTool("list_subnets", { not_status: "ACTIVE" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [8]);
+  });
+
+  test("inclusion and exclusion compose (status=active AND not_subnet_type=root)", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { status: "active", not_subnet_type: "root" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [7]); // active {0,7} minus root {0}
+  });
+
   test("max_readiness keeps rows <= the bound (complement of min_readiness)", async () => {
     const out = (
       await callTool("list_subnets", { max_readiness: 50 }, { deps })
