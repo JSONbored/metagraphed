@@ -89,11 +89,6 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
-import {
-  buildConcentrationHistory,
-  CONCENTRATION_HISTORY_ROW_CAP,
-  parseConcentrationHistoryWindow,
-} from "./concentration.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -455,26 +450,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's per-day concentration trend — mirrors
-// handleSubnetConcentrationHistory: the raw per-UID neuron_daily distribution
-// (each day re-computed into Gini/Nakamoto/top-10%), bounded by the row cap and
-// shaped by buildConcentrationHistory. Window is the smaller 7d|30d|90d set.
-async function loadSubnetConcentrationHistory(ctx, netuid, args) {
-  const { label, days, error } = parseConcentrationHistoryWindow(args?.window);
-  if (error) {
-    throw toolError("invalid_params", error.message);
-  }
-  const run = mcpD1Runner(ctx);
-  const rows = await run(
-    "SELECT snapshot_date, stake_tao, emission_tao FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
-    [netuid, historyCutoff(days), CONCENTRATION_HISTORY_ROW_CAP],
-  );
-  return buildConcentrationHistory(rows, netuid, {
-    window: label,
-    capped: rows.length >= CONCENTRATION_HISTORY_ROW_CAP,
-  });
 }
 
 // One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
@@ -1664,34 +1639,6 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
-    },
-  },
-  {
-    name: "get_subnet_concentration_history",
-    title: "Get a subnet's concentration history",
-    description:
-      "Fetch one subnet's per-day stake & emission concentration trend from the " +
-      "dated neuron_daily distribution: Gini, Nakamoto coefficient, and top-10% " +
-      "share for both stake and emission per snapshot_date, newest first. Choose " +
-      "the window (7d, 30d, 90d; default 30d). Use it to answer 'is this subnet " +
-      "centralizing over time?'. Mirrors " +
-      "GET /api/v1/subnets/{netuid}/concentration/history.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
-        window: {
-          type: "string",
-          enum: ["7d", "30d", "90d"],
-          description: "History window (default 30d).",
-        },
-      },
-      required: ["netuid"],
-      additionalProperties: false,
-    },
-    async handler(args, ctx) {
-      const netuid = requireNetuid(args);
-      return loadSubnetConcentrationHistory(ctx, netuid, args);
     },
   },
   {
@@ -3339,7 +3286,16 @@ const TOOL_OUTPUT_SCHEMAS = {
       netuid: { type: "integer" },
       window: NULLABLE_STRING,
       point_count: { type: "integer" },
-      points: { type: "array", items: { type: "object" } },
+      points: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        neuron_count: NULLABLE_INT,
+        stake_gini: ANY,
+        stake_nakamoto_coefficient: ANY,
+        stake_top_10pct_share: ANY,
+        emission_gini: ANY,
+        emission_nakamoto_coefficient: ANY,
+        emission_top_10pct_share: ANY,
+      }),
     },
   },
   get_subnet_uptime: {
@@ -3443,27 +3399,6 @@ const TOOL_OUTPUT_SCHEMAS = {
         validator_count: NULLABLE_INT,
         total_stake_tao: ANY,
         total_emission_tao: ANY,
-      }),
-    },
-  },
-  get_subnet_concentration_history: {
-    type: "object",
-    additionalProperties: true,
-    required: ["netuid", "point_count", "points"],
-    properties: {
-      schema_version: { type: "integer" },
-      netuid: { type: "integer" },
-      window: NULLABLE_STRING,
-      point_count: { type: "integer" },
-      points: objectItems({
-        snapshot_date: NULLABLE_STRING,
-        neuron_count: NULLABLE_INT,
-        stake_gini: ANY,
-        stake_nakamoto_coefficient: ANY,
-        stake_top_10pct_share: ANY,
-        emission_gini: ANY,
-        emission_nakamoto_coefficient: ANY,
-        emission_top_10pct_share: ANY,
       }),
     },
   },
