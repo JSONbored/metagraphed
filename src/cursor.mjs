@@ -12,11 +12,13 @@
 // over D1. Callers should treat the token as opaque. Exposed as `?cursor=` + a
 // `next_cursor` body field.
 
-// Encode an array of non-negative integers into a cursor token. Returns null for
-// an empty/invalid input (the caller then emits no next_cursor).
+// Encode an array of non-negative SAFE integers into a cursor token. Returns null
+// for an empty/invalid input (the caller then emits no next_cursor). Parts must be
+// safe integers — a value above Number.MAX_SAFE_INTEGER can't survive the
+// Number()/round-trip the decoder performs, so it is not a representable cursor.
 export function encodeCursor(parts) {
   if (!Array.isArray(parts) || parts.length === 0) return null;
-  if (parts.some((p) => !Number.isInteger(p) || p < 0)) return null;
+  if (parts.some((p) => !Number.isSafeInteger(p) || p < 0)) return null;
   return parts.join(".");
 }
 
@@ -31,7 +33,13 @@ export function decodeCursor(raw, arity) {
   for (const s of segs) {
     if (!/^\d+$/.test(s)) return null;
     const n = Number(s);
-    if (!Number.isInteger(n) || n < 0) return null;
+    // Reject parts outside the SAFE integer range — `/^\d+$/` admits arbitrarily
+    // long digit strings, and `Number()` silently rounds anything above
+    // MAX_SAFE_INTEGER (e.g. "9007199254740993" -> 9007199254740992), which
+    // `Number.isInteger` would still accept and hand back as a corrupted seek key.
+    // Mirror the offset-pagination sibling `integerParam` (workers/list-query.mjs),
+    // which gates on `Number.isSafeInteger`, so an out-of-range cursor is ignored.
+    if (!Number.isSafeInteger(n) || n < 0) return null;
     parts.push(n);
   }
   return parts;

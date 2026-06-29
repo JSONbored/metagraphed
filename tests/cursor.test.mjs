@@ -38,3 +38,31 @@ test("decodeCursor returns null on malformed/garbage/arity-mismatch", () => {
   assert.equal(decodeCursor(encodeCursor([1, 2]), 1), null); // 2-part token as 1
   assert.equal(decodeCursor("-1.2", 2), null); // negative
 });
+
+test("decodeCursor rejects parts above MAX_SAFE_INTEGER (no silent Number() rounding)", () => {
+  // `/^\d+$/` admits arbitrarily long digit strings; Number() rounds anything past
+  // MAX_SAFE_INTEGER (2^53 - 1), so "9007199254740993" parses to 9007199254740992 —
+  // a corrupted seek key. It must be rejected, not silently rounded and accepted.
+  const unsafe = "9007199254740993"; // MAX_SAFE_INTEGER + 2, not exactly representable
+  assert.equal(decodeCursor(unsafe, 1), null);
+  assert.equal(decodeCursor(`1.${unsafe}`, 2), null);
+  assert.equal(decodeCursor(`${unsafe}.2`, 2), null);
+  // The exact first unsafe integer (2^53 = MAX_SAFE_INTEGER + 1) is also rejected.
+  // It IS exactly representable in IEEE-754 but fails Number.isSafeInteger, so
+  // the gate rejects it just as decisively as a visibly-rounded value.
+  const firstUnsafe = String(Number.MAX_SAFE_INTEGER + 1); // "9007199254740992"
+  assert.equal(decodeCursor(firstUnsafe, 1), null);
+  // The exact MAX_SAFE_INTEGER boundary is still a valid, representable cursor.
+  const safe = String(Number.MAX_SAFE_INTEGER); // "9007199254740991"
+  assert.deepEqual(decodeCursor(safe, 1), [Number.MAX_SAFE_INTEGER]);
+});
+
+test("encodeCursor rejects a part above MAX_SAFE_INTEGER", () => {
+  assert.equal(encodeCursor([2 ** 53]), null); // 9007199254740992, unsafe
+  assert.equal(encodeCursor([1, 2 ** 53]), null);
+  // The boundary value itself still round-trips.
+  assert.equal(
+    encodeCursor([Number.MAX_SAFE_INTEGER]),
+    String(Number.MAX_SAFE_INTEGER),
+  );
+});
