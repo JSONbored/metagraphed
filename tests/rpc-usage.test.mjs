@@ -110,6 +110,32 @@ describe("formatRpcUsage", () => {
     ]);
   });
 
+  test("a sub-perfect rate does not round up to a misleading 1.0", () => {
+    // 999_996 of 1_000_000 cache hits = 0.999996, which toFixed(4) would round to
+    // a perfect 1.0 ("100% cache hit") even though 4 requests missed. It must
+    // clamp just below 1, like the uptime/turnover ratio guards.
+    const out = formatRpcUsage({
+      totals: {
+        total: 1_000_000,
+        ok_count: 999_996,
+        cache_hits: 999_996,
+      },
+    });
+    assert.equal(out.summary.cache_hit_rate, 0.9999);
+    assert.ok(out.summary.cache_hit_rate < 1);
+    // error_rate = 4/1_000_000 = 0.000004 → rounds to 0 (well below 1, unaffected).
+    assert.equal(out.summary.error_rate, 0);
+  });
+
+  test("a genuinely perfect rate still reports exactly 1.0", () => {
+    // Every request errored (ok_count 0) → error_rate is a true 1.0, not clamped.
+    const out = formatRpcUsage({
+      totals: { total: 500, ok_count: 0, cache_hits: 500 },
+    });
+    assert.equal(out.summary.error_rate, 1);
+    assert.equal(out.summary.cache_hit_rate, 1);
+  });
+
   test("a zero-request endpoint/network row reports a null rate (no divide-by-zero)", () => {
     const out = formatRpcUsage({
       totals: { total: 0, ok_count: 0 },

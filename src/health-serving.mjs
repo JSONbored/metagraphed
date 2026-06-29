@@ -468,7 +468,13 @@ export const INCIDENT_GAP_MS = 30 * 60 * 1000;
 export const MIN_INCIDENT_SAMPLES = 2;
 
 function round4(value) {
-  return value == null ? null : Number(Number(value).toFixed(4));
+  if (value == null) return null;
+  const rounded = Number(Number(value).toFixed(4));
+  // A sub-perfect rate (e.g. a 0.99996 cache-hit ratio) must not round up to a
+  // misleading 1.0 ("100%") — clamp it just below 1, the same anti-overstatement
+  // guard the uptime/turnover/chain-activity ratios apply. A genuine rate of
+  // exactly 1 (all requests hit / errored) keeps 1.0 since value is not < 1.
+  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
 }
 function roundInt(value) {
   return value == null ? null : Math.round(Number(value));
