@@ -690,6 +690,128 @@ describe("analytics edge cache", () => {
     );
   });
 
+  test("health percentiles: bare path populates cache; explicit ?window=7d is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/health/percentiles";
+
+    const miss = await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(miss.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    const hit = await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=7d must be a cache HIT after bare request",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("percentiles", base, "?window=7d"),
+    ]);
+  });
+
+  test("health percentiles: explicit ?window=7d populates cache; bare path is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/health/percentiles";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "bare path must be a cache HIT after explicit ?window=7d",
+    );
+  });
+
+  test("health incidents: bare path populates cache; explicit ?window=7d is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/health/incidents";
+
+    const miss = await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(miss.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    const hit = await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=7d must be a cache HIT after bare request",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("incidents", base, "?window=7d"),
+    ]);
+  });
+
+  test("health incidents: explicit ?window=7d populates cache; bare path is a HIT", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/subnets/7/health/incidents";
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}?window=7d`),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    const queriesAfterFirst = queries.length;
+
+    await handleRequest(
+      new Request(`https://api.metagraph.sh${base}`),
+      env,
+      ctx,
+    );
+    assert.equal(
+      queries.length,
+      queriesAfterFirst,
+      "bare path must be a cache HIT after explicit ?window=7d",
+    );
+  });
+
   test("the 4 additional deterministic routes are now edge-cached (MISS→put under their key, HIT→no D1)", async () => {
     // These routes (global incidents, per-subnet trajectory, per-subnet uptime,
     // registry leaderboards) were edgeCache=0 — they re-ran their D1 aggregation
@@ -699,7 +821,7 @@ describe("analytics edge cache", () => {
       {
         keyParts: "leaderboards",
         path: "/api/v1/registry/leaderboards",
-        search: "",
+        search: "?limit=20",
       },
       {
         keyParts: "global-incidents",

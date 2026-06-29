@@ -8,6 +8,7 @@ import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,
+  canonicalLeaderboardsCachePath,
   canonicalUptimeCachePath,
   composeCompareData,
   configureAnalyticsRoutes,
@@ -516,6 +517,43 @@ describe("canonicalEconomicsTrendsCachePath", () => {
   test("falls back to raw search on invalid window value", () => {
     const raw = "/api/v1/economics/trends?window=bogus";
     assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalLeaderboardsCachePath", () => {
+  test("normalizes bare path to explicit default limit", () => {
+    assert.equal(
+      canonicalLeaderboardsCachePath(url("/api/v1/registry/leaderboards")),
+      "/api/v1/registry/leaderboards?limit=20",
+    );
+  });
+
+  test("explicit ?limit=20 collapses to same key as bare path", () => {
+    assert.equal(
+      canonicalLeaderboardsCachePath(
+        url("/api/v1/registry/leaderboards?limit=20"),
+      ),
+      "/api/v1/registry/leaderboards?limit=20",
+    );
+  });
+
+  test("preserves valid board + non-default limit", () => {
+    assert.equal(
+      canonicalLeaderboardsCachePath(
+        url("/api/v1/registry/leaderboards?board=healthiest&limit=10"),
+      ),
+      "/api/v1/registry/leaderboards?board=healthiest&limit=10",
+    );
+  });
+
+  test("falls back to raw search on invalid limit", () => {
+    const raw = "/api/v1/registry/leaderboards?limit=0";
+    assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on unknown board", () => {
+    const raw = "/api/v1/registry/leaderboards?board=not-a-board";
+    assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
   });
 });
 
