@@ -348,6 +348,18 @@ export function canonicalSubnetTurnoverCachePath(url) {
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
+// Canonical edge-cache key for the subnet-metagraph route. Only
+// ?validator_permit=true changes the response; omission and =false both serve
+// the full metagraph and must share one cache slot.
+export function canonicalSubnetMetagraphCachePath(url) {
+  const validationError = validateQueryParams(url, ["validator_permit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const validatorsOnly = url.searchParams.get("validator_permit") === "true";
+  return validatorsOnly
+    ? `${url.pathname}?validator_permit=true`
+    : url.pathname;
+}
+
 // GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day
 // stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share)
 // from the dated neuron_daily rollup — "is this subnet centralizing over time?".

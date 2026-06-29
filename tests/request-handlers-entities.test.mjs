@@ -36,6 +36,7 @@ import {
   handleExtrinsic,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
+  canonicalSubnetMetagraphCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -1146,6 +1147,38 @@ describe("handleSubnetTurnover", () => {
     test("returns raw search on an unsupported query parameter", () => {
       const raw = "/api/v1/subnets/1/turnover?unknown=1";
       const key = canonicalSubnetTurnoverCachePath(
+        new URL(`https://api.metagraph.sh${raw}`),
+      );
+      assert.equal(key, raw);
+    });
+  });
+
+  describe("canonicalSubnetMetagraphCachePath", () => {
+    test("omitted validator_permit and explicit =false produce the same cache key", () => {
+      const bare = canonicalSubnetMetagraphCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/1/metagraph"),
+      );
+      const explicitFalse = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?validator_permit=false",
+        ),
+      );
+      assert.equal(bare, explicitFalse);
+      assert.equal(bare, "/api/v1/subnets/1/metagraph");
+    });
+
+    test("preserves validator_permit=true filter in the cache key", () => {
+      const key = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?validator_permit=true",
+        ),
+      );
+      assert.equal(key, "/api/v1/subnets/1/metagraph?validator_permit=true");
+    });
+
+    test("returns raw search on an unsupported query parameter", () => {
+      const raw = "/api/v1/subnets/1/metagraph?unknown=1";
+      const key = canonicalSubnetMetagraphCachePath(
         new URL(`https://api.metagraph.sh${raw}`),
       );
       assert.equal(key, raw);

@@ -72,6 +72,7 @@ import {
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
   canonicalSubnetTurnoverCachePath,
+  canonicalSubnetMetagraphCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -1340,6 +1341,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(metagraphMatch[1]),
             resolved.url,
           ),
+        canonicalSubnetMetagraphCachePath(resolved.url),
       );
     }
     const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
