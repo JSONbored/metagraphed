@@ -761,56 +761,67 @@ export async function handleGlobalIncidents(request, env, url) {
 export async function handleChainActivity(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  return withEdgeCache(request, ctx, env, "chain-activity", async () => {
-    const cutoff = Date.now() - days * DAY_MS;
-    // observed_at is epoch-ms; `/ 1000` (SQLite integer division) → unix seconds
-    // for strftime's 'unixepoch' UTC bucketer. Values are always bound.
-    const [extrinsicRows, blockRows] = await Promise.all([
-      d1All(
-        env,
-        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-activity",
+    async () => {
+      const cutoff = Date.now() - days * DAY_MS;
+      // observed_at is epoch-ms; `/ 1000` (SQLite integer division) → unix seconds
+      // for strftime's 'unixepoch' UTC bucketer. Values are always bound.
+      const [extrinsicRows, blockRows] = await Promise.all([
+        d1All(
+          env,
+          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
                 COUNT(*) AS extrinsic_count,
                 SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successful_extrinsics,
                 COUNT(DISTINCT signer) AS unique_signers
          FROM extrinsics
          WHERE observed_at >= ?
          GROUP BY day`,
-        [cutoff],
-      ),
-      d1All(
-        env,
-        `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+          [cutoff],
+        ),
+        d1All(
+          env,
+          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
                 COUNT(*) AS block_count,
                 SUM(event_count) AS event_count
          FROM blocks
          WHERE observed_at >= ?
          GROUP BY day`,
-        [cutoff],
-      ),
-    ]);
-    const meta = await readHealthMetaKv(env);
-    const data = buildChainActivity({
-      window: label,
-      observedAt: meta?.last_run_at || null,
-      extrinsicRows,
-      blockRows,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          "/metagraph/chain/activity.json",
-          data.observed_at,
+          [cutoff],
         ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(extrinsicRows, blockRows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+      ]);
+      const meta = await readHealthMetaKv(env);
+      const data = buildChainActivity({
+        window: label,
+        observedAt: meta?.last_run_at || null,
+        extrinsicRows,
+        blockRows,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/activity.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(extrinsicRows, blockRows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    // Canonicalize the cache key on the RESOLVED window so the bare path, an
+    // explicit ?window=<default>, and reordered/duplicate variants all share one
+    // entry instead of fragmenting the cache (mirrors the percentiles/incidents/
+    // economics-trends windowed routes). `label` is the validated window.
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
 // Extrinsic call-mix breakdown (#1989): counts + share per call_module (or

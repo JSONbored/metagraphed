@@ -287,6 +287,63 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("chain-activity canonicalizes omitted and explicit default window to the same cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // No ?window — resolves to the 7d default and caches at ?window=7d.
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/activity"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Explicit ?window=7d is the canonical form — must be a cache HIT (no new D1).
+    const hit = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/activity?window=7d"),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=7d must be a cache HIT (no D1 queries)",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("chain-activity", "/api/v1/chain/activity", "?window=7d"),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
+  test("chain-activity keys distinct windows separately (7d vs 30d)", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    for (const url of [
+      "https://api.metagraph.sh/api/v1/chain/activity?window=7d",
+      "https://api.metagraph.sh/api/v1/chain/activity?window=30d",
+    ]) {
+      await handleRequest(new Request(url), env, ctx);
+      await Promise.resolve();
+    }
+    // Distinct windows remain distinct entries (canonical key preserves window).
+    assert.equal(cache.store.size, 2);
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("chain-activity", "/api/v1/chain/activity", "?window=7d"),
+      expectedKey("chain-activity", "/api/v1/chain/activity", "?window=30d"),
+    ]);
+  });
+
   test("turnover: explicit ?window=30d populates cache; omitted window is a HIT", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

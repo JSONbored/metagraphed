@@ -13,6 +13,8 @@
 //   metric=apis        count of callable API surfaces the subnet exposes
 //                      (subnet-api / openapi / sse / data-artifact); informational
 //                      blue, gray for 0; for a provider, the sum across its subnets
+//   metric=completeness  coverage completeness 0–100 from profiles.json
+//                        (alias: coverage); provider = mean across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
 //   label=…            override the left "metagraphed" segment text
 //
@@ -35,6 +37,8 @@ const BADGE_METRICS = {
   reliability: "reliability",
   grade: "grade",
   apis: "apis",
+  completeness: "completeness",
+  coverage: "completeness",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square"]);
@@ -188,6 +192,22 @@ function averageReadiness(netuids, subnetsIndex) {
   return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
+// Mean completeness_score across a provider's subnets, rounded; null when
+// none of them resolve to a numeric score.
+function averageCompleteness(netuids, profilesArtifact) {
+  const byNetuid = new Map(
+    (profilesArtifact?.profiles || []).map((p) => [
+      p.netuid,
+      p.completeness_score,
+    ]),
+  );
+  const scores = (netuids || [])
+    .map((n) => byNetuid.get(n))
+    .filter((v) => typeof v === "number");
+  if (!scores.length) return null;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
 // uptime_ratio (0–1) → trimmed percent: 0.9983 → "99.83%", 1 → "100%".
 export function formatUptimePercent(ratio) {
   const value = Number(ratio) || 0;
@@ -238,6 +258,35 @@ export function parseBadgeOptions(searchParams) {
   const rawLabel = searchParams.get("label");
   const label = rawLabel == null ? BADGE_LABEL : sanitizeLabel(rawLabel);
   return { metric, style, label };
+}
+
+// Completeness: the subnet's coverage completeness_score, or a provider's mean.
+async function completenessContent({ target, readArtifact, env }) {
+  let score = null;
+  if (target.kind === "subnet") {
+    const profiles = await readData(
+      readArtifact,
+      env,
+      "/metagraph/profiles.json",
+    );
+    const row = (profiles?.profiles || []).find(
+      (p) => p.netuid === target.netuid,
+    );
+    if (row && typeof row.completeness_score === "number") {
+      score = row.completeness_score;
+    }
+  } else {
+    const [providers, profiles] = await Promise.all([
+      readData(readArtifact, env, "/metagraph/providers.json"),
+      readData(readArtifact, env, "/metagraph/profiles.json"),
+    ]);
+    const provider = findProvider(providers, target.slug);
+    if (provider) score = averageCompleteness(provider.netuids, profiles);
+  }
+  return {
+    message: typeof score === "number" ? `${score}/100` : NA_MESSAGE,
+    color: scoreColor(score),
+  };
 }
 
 // Readiness: the subnet's own integration_readiness, or a provider's mean.
@@ -369,6 +418,8 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
       content = await apisContent(ctx);
     } else if (metric === "reliability" || metric === "grade") {
       content = await reliabilityContent({ ...ctx, metric });
+    } else if (metric === "completeness") {
+      content = await completenessContent(ctx);
     } else {
       content = await readinessContent(ctx);
     }

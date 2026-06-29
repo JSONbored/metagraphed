@@ -494,7 +494,7 @@ export async function loadAccountSummary(d1, ss58) {
 export async function loadAccountEvents(
   d1,
   ss58,
-  { limit, offset, kind, cursor } = {},
+  { limit, offset, kind, cursor, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -503,6 +503,17 @@ export async function loadAccountEvents(
   if (kind) {
     sql += " AND event_kind = ?";
     params.push(kind);
+  }
+  // Block-height range filter, parity with the extrinsics and chain-events
+  // feeds: the per-branch hotkey/coldkey indexes both lead block_number, so a
+  // bounded range stays index-satisfiable.
+  if (blockStart != null) {
+    sql += " AND block_number >= ?";
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    sql += " AND block_number <= ?";
+    params.push(blockEnd);
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
@@ -601,18 +612,20 @@ export async function loadAccountTransfers(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  let sideClause = "(hotkey = ? OR coldkey = ?)";
-  let sideParams = [ss58, ss58];
+  let sql;
+  let params;
   if (direction === "sent") {
-    sideClause = "hotkey = ?";
-    sideParams = [ss58];
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?`;
+    params = [ss58];
   } else if (direction === "received") {
-    sideClause = "coldkey = ?";
-    sideParams = [ss58];
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?`;
+    params = [ss58];
+  } else {
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?)`;
+    params = [ss58, ss58, ss58];
   }
-  const rows = await d1(
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause} ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?`,
-    [...sideParams, lim, off],
-  );
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
+  params.push(lim, off);
+  const rows = await d1(sql, params);
   return buildAccountTransfers(rows, ss58, { limit: lim, offset: off });
 }

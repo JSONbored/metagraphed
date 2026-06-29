@@ -10,6 +10,8 @@ import { JSON_CONTENT_TYPE } from "./config.mjs";
 // The Fetch spec hides every non-safelisted header unless the server names it in
 // Access-Control-Expose-Headers, so this canonical list is exposed on every
 // CORS-open response. Keep in sync as new client-facing headers are added.
+const X_METAGRAPH_STALE_CONTRACT_HEADER = "x-metagraph-stale-contract";
+
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
@@ -20,7 +22,7 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-ratelimit-policy",
   // x-metagraph-* diagnostics
   "x-metagraph-contract-version",
-  "x-metagraph-stale-contract",
+  X_METAGRAPH_STALE_CONTRACT_HEADER,
   "x-metagraph-published-at",
   "x-metagraph-events",
   "x-metagraph-health",

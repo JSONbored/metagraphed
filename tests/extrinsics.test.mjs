@@ -10,6 +10,7 @@ import {
   buildExtrinsicFeed,
   extrinsicInsertStatements,
   formatExtrinsic,
+  loadExtrinsic,
   pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
@@ -713,4 +714,97 @@ test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () =>
   const body = await res.json();
   assert.equal(body.data.extrinsic_count, 0);
   assert.equal(Array.isArray(body.data.extrinsics), true);
+});
+
+// ---- loadExtrinsic strict ref (MCP get_extrinsic) --------------------------
+// The shared loader behind the MCP get_extrinsic tool must mirror the REST
+// route's COMPOSITE_REF_RE guard: a non-hash ref must be exactly two strict,
+// safe-integer decimal halves — a malformed composite is a clean miss, never a
+// Number()-coerced wrong-but-valid lookup.
+
+// A d1 runner that records every query and answers the composite SELECT with the
+// row whose (block, index) is bound — so a coercion bug surfaces as a
+// wrong-but-valid hit instead of the expected miss.
+function recordingExtrinsicDb(known = new Set()) {
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/block_number = \? AND extrinsic_index = \?/.test(sql)) {
+      const key = `${params[0]}-${params[1]}`;
+      return known.has(key)
+        ? [{ block_number: params[0], extrinsic_index: params[1] }]
+        : [];
+    }
+    return [];
+  };
+  return { d1, calls };
+}
+
+test("loadExtrinsic treats a malformed composite ref as a clean miss (#2316)", async () => {
+  // Each would coerce to a stored (block, index) under the old loose split path
+  // (1e3-0 -> 1000,0; 0x10-0 -> 16,0; 5-0-0 -> 5,0; 5.0-0 -> 5,0); the strict
+  // COMPOSITE_REF_RE guard must reject them.
+  const bad = [
+    "1e3-0",
+    "0x10-0",
+    " 5-0",
+    "5-0-0",
+    "5.0-0",
+    "5-",
+    "-3",
+    "5",
+    "99999999999999999999-0",
+  ];
+  for (const ref of bad) {
+    const { d1, calls } = recordingExtrinsicDb(
+      new Set(["1000-0", "16-0", "5-0", "1234-3"]),
+    );
+    const out = await loadExtrinsic(d1, ref);
+    assert.equal(out.extrinsic, null, `ref ${ref} must miss`);
+    assert.equal(out.ref, ref);
+    assert.equal(
+      calls.some((c) =>
+        /block_number = \? AND extrinsic_index = \?/.test(c.sql),
+      ),
+      false,
+      `ref ${ref} must skip the composite lookup`,
+    );
+  }
+});
+
+test("loadExtrinsic still resolves a canonical composite ref (#2316)", async () => {
+  const { d1, calls } = recordingExtrinsicDb(new Set(["1234-3"]));
+  const out = await loadExtrinsic(d1, "1234-3");
+  assert.equal(out.extrinsic.block_number, 1234);
+  assert.equal(out.extrinsic.extrinsic_index, 3);
+  assert.equal(
+    calls.some(
+      (c) =>
+        /block_number = \? AND extrinsic_index = \?/.test(c.sql) &&
+        c.params[0] === 1234 &&
+        c.params[1] === 3,
+    ),
+    true,
+  );
+});
+
+test("loadExtrinsic still resolves a 64-hex extrinsic_hash ref (#2316)", async () => {
+  const hash = `0x${"b".repeat(64)}`;
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/WHERE extrinsic_hash = \?/.test(sql)) {
+      return [{ block_number: 7, extrinsic_index: 2, extrinsic_hash: hash }];
+    }
+    return [];
+  };
+  const out = await loadExtrinsic(d1, hash);
+  assert.equal(out.extrinsic.block_number, 7);
+  assert.equal(out.extrinsic.extrinsic_index, 2);
+  assert.equal(
+    calls.some(
+      (c) => /WHERE extrinsic_hash = \?/.test(c.sql) && c.params[0] === hash,
+    ),
+    true,
+  );
 });
