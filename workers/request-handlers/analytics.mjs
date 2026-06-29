@@ -29,12 +29,12 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DAY_MS,
-  clampInt,
   HEALTH_TREND_WINDOWS,
   MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
 } from "../config.mjs";
+import { parseLimitParam } from "../request-params.mjs";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
 import {
   contractVersion,
@@ -142,19 +142,6 @@ function validateEnumParam(url, parameter, allowedValues) {
     parameter,
     message: `${parameter} must be one of: ${allowedValues.join(", ")}.`,
   };
-}
-
-function validateIntegerParam(url, parameter, min, max) {
-  const raw = url.searchParams.get(parameter);
-  if (raw === null) return null;
-  const value = Number(raw);
-  if (!/^[1-9]\d*$/.test(raw) || value < min || value > max) {
-    return {
-      parameter,
-      message: `${parameter} must be an integer between ${min} and ${max}.`,
-    };
-  }
-  return null;
 }
 
 // Bound an optional free-text filter so an oversized value never reaches D1.
@@ -811,10 +798,12 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "module_function",
   ]);
   if (groupByError) return analyticsQueryError(groupByError);
-  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 50,
+    maxLimit: 100,
+  });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   return withEdgeCache(request, ctx, env, "chain-calls", async () => {
     const cutoff = Date.now() - days * DAY_MS;
     const groupCols =
@@ -874,9 +863,11 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 export async function handleChainSigners(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
-  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 50,
+    maxLimit: 100,
+  });
   if (limitError) return analyticsQueryError(limitError);
-  const limit = clampInt(url.searchParams.get("limit"), 50, 1, 100);
   // Optional pallet scope, backed by idx_extrinsics_call_module_order.
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
@@ -935,9 +926,11 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 export async function handleChainFees(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
-  const limitError = validateIntegerParam(url, "limit", 1, 100);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
   if (limitError) return analyticsQueryError(limitError);
-  const limit = clampInt(url.searchParams.get("limit"), 25, 1, 100);
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_call_module_order.
   const callModule = url.searchParams.get("call_module");

@@ -66,13 +66,14 @@ const SURFACES = {
   // netuid 9 has no surfaces artifact → n/a
 };
 
-async function badge(pathname, { method = "GET" } = {}) {
+async function badge(pathname, { method = "GET", fixtures = {} } = {}) {
   const url = new URL(`https://api.metagraph.sh${pathname}`);
   const res = await handleBadgeRequest(new Request(url, { method }), {}, url, {
     readArtifact: makeReadArtifact({
       "/metagraph/subnets.json": SUBNETS,
       "/metagraph/providers.json": PROVIDERS,
       ...SURFACES,
+      ...fixtures,
     }),
     loadReliability: makeLoadReliability(RELIABILITY),
   });
@@ -373,6 +374,57 @@ describe("badge — apis metric", () => {
     assert.equal(res.status, 200);
     assert.match(text, /n\/a/);
     assert.match(text, /#9f9f9f/);
+  });
+
+  test("unknown subnet apis degrades to n/a (gray, still 200)", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/999/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+    assert.match(text, /#9f9f9f/);
+  });
+
+  test("unknown provider apis degrades to n/a", async () => {
+    const { res, text } = await badge(
+      "/api/v1/providers/nobody/badge.svg?metric=apis",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with empty netuids is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/empty/badge.svg?metric=apis",
+      {
+        fixtures: {
+          "/metagraph/providers.json": {
+            providers: [{ slug: "empty", netuids: [] }],
+          },
+        },
+      },
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("provider with no surfaces artifacts is n/a", async () => {
+    const { text } = await badge(
+      "/api/v1/providers/byid/badge.svg?metric=apis",
+    );
+    assert.match(text, /n\/a/);
+  });
+
+  test("apis metric survives a readArtifact throw (readData catch)", async () => {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/subnets/7/badge.svg?metric=apis",
+    );
+    const res = await handleBadgeRequest(new Request(url), {}, url, {
+      readArtifact: () => {
+        throw new Error("artifact read failed");
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /n\/a/);
   });
 });
 

@@ -30,6 +30,7 @@ import {
   handleBlockEvents,
   handleExtrinsics,
   handleExtrinsic,
+  canonicalSubnetHistoryCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -2093,6 +2094,7 @@ describe("handleBlockEvents", () => {
       String(BLOCK_NUM),
       url(`/api/v1/blocks/${BLOCK_NUM}/events`),
     );
+    assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
   });
@@ -2144,6 +2146,34 @@ describe("handleBlockEvents", () => {
     assert.equal(body.data.block_number, null);
     assert.equal(body.data.event_count, 0);
     assert.deepEqual(body.data.events, []);
+  });
+
+  test("orphaned account_events rows do not bypass blocks existence check", async () => {
+    const { env } = dbWith({ blockEvents: [accountEventRow()] });
+    const body = await json(
+      await handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_NUM}/events`),
+        env,
+        String(BLOCK_NUM),
+        url(`/api/v1/blocks/${BLOCK_NUM}/events`),
+      ),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+  });
+
+  test("unknown hash ref yields block_number:null + empty events", async () => {
+    const unknown = `0x${"d".repeat(64)}`;
+    const body = await assertColdSchema(
+      handleBlockEvents,
+      req(`/api/v1/blocks/${unknown}/events`),
+      emptyEnv(),
+      unknown,
+      url(`/api/v1/blocks/${unknown}/events`),
+    );
+    assert.equal(body.data.block_number, null);
+    assert.equal(body.data.event_count, 0);
   });
 
   test("normalizes an uppercase 0x block_hash to lowercase before D1 lookup", async () => {
@@ -2981,6 +3011,27 @@ describe("envelope + meta contracts (#1900)", () => {
 async function resHasEtag(res) {
   return Boolean(res.headers.get("etag"));
 }
+
+describe("canonicalSubnetHistoryCachePath", () => {
+  test("returns canonical key for valid window param", () => {
+    assert.equal(
+      canonicalSubnetHistoryCachePath(
+        url("/api/v1/subnets/7/history?window=30d"),
+      ),
+      "/api/v1/subnets/7/history?window=30d",
+    );
+  });
+
+  test("falls back to raw url when unknown query param is present", () => {
+    const raw = "/api/v1/subnets/7/history?window=30d&extra=junk";
+    assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw url when window value is invalid", () => {
+    const raw = "/api/v1/subnets/7/history?window=invalid";
+    assert.equal(canonicalSubnetHistoryCachePath(url(raw)), raw);
+  });
+});
 
 // Fixture documentation: each factory above mirrors the D1 column contracts used
 // by workers/request-handlers/entities.mjs. When adding a new handler test,

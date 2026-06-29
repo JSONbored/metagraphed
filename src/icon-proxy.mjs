@@ -212,7 +212,10 @@ function notFound(cacheControl = NEGATIVE_CACHE_STABLE) {
 
 export async function handleIconProxy(request, env, url, options = {}) {
   if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response("method not allowed", { status: 405 });
+    return new Response("method not allowed", {
+      status: 405,
+      headers: { "access-control-allow-origin": "*" },
+    });
   }
   const isHead = request.method === "HEAD";
   const host = normalizeHost(url.searchParams.get("host"));
@@ -234,7 +237,11 @@ export async function handleIconProxy(request, env, url, options = {}) {
   if ((request.headers.get("if-none-match") || "") === etag) {
     return new Response(null, {
       status: 304,
-      headers: { etag, "cache-control": CACHE_CONTROL },
+      headers: {
+        etag,
+        "cache-control": CACHE_CONTROL,
+        "access-control-allow-origin": "*",
+      },
     });
   }
 

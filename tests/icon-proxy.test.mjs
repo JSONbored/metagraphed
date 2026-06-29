@@ -130,6 +130,8 @@ test("304 on matching If-None-Match (no fetch, no R2)", async () => {
     headers: { "if-none-match": '"icon-example.com-64"' },
   });
   assert.equal(res.status, 304);
+  // A bodyless 304 still needs ACAO or the browser drops the revalidation.
+  assert.equal(res.headers.get("access-control-allow-origin"), "*");
 });
 
 test("non-GET is 405", async () => {
@@ -140,6 +142,8 @@ test("non-GET is 405", async () => {
     url,
   );
   assert.equal(res.status, 405);
+  // Served cross-origin, so it needs ACAO like the other branches.
+  assert.equal(res.headers.get("access-control-allow-origin"), "*");
 });
 
 test("404 for syntactically valid but non-allowlisted hosts", async () => {

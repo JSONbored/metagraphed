@@ -6,14 +6,15 @@ import assert from "node:assert/strict";
 import { describe, test, beforeEach } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 import {
+  canonicalCompareCachePath,
+  canonicalUptimeCachePath,
+  composeCompareData,
   configureAnalyticsRoutes,
   handleCompare,
   handleEconomicsTrends,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
-  composeCompareData,
-  canonicalCompareCachePath,
 } from "../workers/request-handlers/analytics-routes.mjs";
 
 const NETUID = 7;
@@ -444,6 +445,39 @@ describe("canonicalCompareCachePath", () => {
       canonicalCompareCachePath(url("/api/v1/compare?netuids=not-valid")),
       null,
     );
+  });
+});
+
+describe("canonicalUptimeCachePath", () => {
+  test("normalizes bare path to explicit default window", () => {
+    assert.equal(
+      canonicalUptimeCachePath(url("/api/v1/subnets/7/uptime")),
+      "/api/v1/subnets/7/uptime?window=90d",
+    );
+  });
+
+  test("explicit ?window=90d collapses to same key as bare path", () => {
+    assert.equal(
+      canonicalUptimeCachePath(url("/api/v1/subnets/7/uptime?window=90d")),
+      "/api/v1/subnets/7/uptime?window=90d",
+    );
+  });
+
+  test("preserves valid non-default window", () => {
+    assert.equal(
+      canonicalUptimeCachePath(url("/api/v1/subnets/7/uptime?window=1y")),
+      "/api/v1/subnets/7/uptime?window=1y",
+    );
+  });
+
+  test("falls back to raw search on unknown query param", () => {
+    const raw = "/api/v1/subnets/7/uptime?unknown=x";
+    assert.equal(canonicalUptimeCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on invalid window value", () => {
+    const raw = "/api/v1/subnets/7/uptime?window=7d";
+    assert.equal(canonicalUptimeCachePath(url(raw)), raw);
   });
 });
 
