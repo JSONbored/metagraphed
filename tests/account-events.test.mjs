@@ -419,8 +419,12 @@ test("buildAccountTransfers labels a self-transfer by the requested side (#2362)
   // No side filter (both/all/omitted) keeps the per-row hotkey-first derivation.
   const both = buildAccountTransfers([selfRow], "5SELF");
   assert.equal(both.transfers[0].direction, "sent");
-  const all = buildAccountTransfers([selfRow], "5SELF", { direction: "all" });
-  assert.equal(all.transfers[0].direction, "sent");
+  // Only the exact strings "sent"/"received" force a label; every other value
+  // ("all", "both", junk) falls back to the per-row hotkey-first derivation.
+  for (const value of ["all", "both", "BOTH", "", "weird"]) {
+    const out = buildAccountTransfers([selfRow], "5SELF", { direction: value });
+    assert.equal(out.transfers[0].direction, "sent");
+  }
 });
 
 test("buildAccountTransfers explicit side never flips a normal row (#2362)", () => {
