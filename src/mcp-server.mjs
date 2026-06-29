@@ -126,7 +126,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.8.0";
+export const MCP_SERVER_VERSION = "1.9.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",

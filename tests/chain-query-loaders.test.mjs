@@ -35,6 +35,23 @@ describe("loadChainSigners", () => {
 
   test("omits the module clause when callModule is null", async () => {
     let sql = "";
+    let params;
+    await loadChainSigners(
+      async (query, bound) => {
+        sql = query;
+        params = bound;
+        return [];
+      },
+      { windowLabel: "7d", windowDays: 7, limit: 5 },
+    );
+    assert.doesNotMatch(sql, /call_module/);
+    assert.equal(params.length, 2);
+    assert.equal(params[1], 5);
+    assert.equal(typeof params[0], "number");
+  });
+
+  test("orders equal tx_count rows by signer ASC in SQL", async () => {
+    let sql = "";
     await loadChainSigners(
       async (query) => {
         sql = query;
@@ -42,6 +59,6 @@ describe("loadChainSigners", () => {
       },
       { windowLabel: "7d", windowDays: 7, limit: 5 },
     );
-    assert.doesNotMatch(sql, /call_module/);
+    assert.match(sql, /ORDER BY tx_count DESC, signer ASC/);
   });
 });

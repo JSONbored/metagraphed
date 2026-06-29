@@ -1,12 +1,13 @@
-// Shared chain-signers D1 loader for REST + MCP parity (#1990). Pure
+// Shared chain-signers D1 loader for REST + MCP parity (#2342). Pure
 // orchestration over extrinsics-tier rows + buildChainSigners; REST handlers keep
 // edge-cache + envelope wiring.
 
 import { DAY_MS } from "../workers/config.mjs";
 import { buildChainSigners } from "./chain-analytics.mjs";
 
-// Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
-// count over the window. Optional call_module scopes to one pallet.
+// Windowed most-active-account leaderboard (#2342): signers ranked by extrinsic
+// count over the window (ties broken by signer ASC for stable ordering).
+// Optional call_module scopes to one pallet.
 export async function loadChainSigners(
   d1Runner,
   { windowLabel, windowDays, observedAt = null, limit = 50, callModule = null },
