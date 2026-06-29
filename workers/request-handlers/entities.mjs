@@ -108,20 +108,14 @@ function parseBoundedIntParam(url, parameter, { def, min, max }) {
   return { value };
 }
 
-// Strict path-ref parsers (#2063). Entity refs (block number/hash, extrinsic
-// hash, composite `<block>-<index>`) are user-supplied path segments. Parsing
-// them with Number()/parseInt is too lenient: `Number("0x1")`, `Number("1e3")`,
-// `Number("")`, and `"123-45".split("-")` on extra/empty halves all coerce a
-// malformed ref into a wrong-but-VALID row instead of a clean miss — the same
-// failure class fixed for the netuid/artifact/transfer refs in #1949/#1950/#1953.
-// Match the strict `/^\d+$/` + Number.isSafeInteger convention used by
-// parseBoundedIntParam above and DAY_RE below: reject hex, scientific notation,
-// signs, whitespace, empty halves, and extra segments at the source.
+// Strict path-ref parsers: Number()/split("-") coerce a malformed ref (hex,
+// 1e3, empty/extra halves) into a wrong-but-valid lookup; require bare decimal
+// segments + Number.isSafeInteger (same convention as parseBoundedIntParam).
 const STRICT_UINT_RE = /^\d+$/;
 const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 
-// A strict non-negative block_number, or null when the ref is not a clean
-// decimal integer (so callers skip the lookup and serve the schema-stable miss).
+// A strict non-negative block_number, or null for a non-decimal ref (so the
+// caller skips the lookup and serves the schema-stable miss).
 function strictBlockNumber(ref) {
   if (!STRICT_UINT_RE.test(ref)) return null;
   const value = Number(ref);
@@ -1436,11 +1430,9 @@ export async function handleExtrinsic(request, env, ref) {
       [ref.toLowerCase()],
     );
   } else {
-    // Composite "<block>-<index>": exactly two strict decimal halves. The old
-    // split("-") + Number() accepted "123-45-67" (extra segment dropped), "123-"
-    // / "-45" (Number("")===0), "0x1-2" (hex), and "1e3-2" (sci notation),
-    // resolving each to a wrong-but-valid row; the strict matcher makes all of
-    // them a clean miss (extrinsic:null), never a bad bind.
+    // Composite "<block>-<index>": exactly two strict decimal halves, so a
+    // malformed ref (extra segment, empty half, hex, sci-notation) is a clean
+    // miss (extrinsic:null) rather than a coerced wrong-but-valid row.
     const composite = COMPOSITE_REF_RE.exec(ref);
     const blockNumber = composite ? Number(composite[1]) : NaN;
     const extrinsicIndex = composite ? Number(composite[2]) : NaN;
