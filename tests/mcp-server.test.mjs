@@ -619,6 +619,32 @@ describe("MCP transport handling", () => {
     assert.equal(res.status, 202);
   });
 
+  test("a concurrently-dispatched mixed batch correlates responses by id, not position (#2060)", async () => {
+    // Requests interleaved with notifications. The batch is now dispatched
+    // concurrently (Promise.all), so correctness must hold via the JSON-RPC `id`
+    // correlation regardless of completion order: every request id appears
+    // exactly once and the notifications are dropped.
+    const res = await rpc([
+      { jsonrpc: "2.0", id: 10, method: "tools/list" },
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { jsonrpc: "2.0", id: 20, method: "ping" },
+      { jsonrpc: "2.0", method: "notifications/cancelled" },
+      { jsonrpc: "2.0", id: 30, method: "ping" },
+    ]);
+    assert.ok(Array.isArray(res.body));
+    assert.equal(res.body.length, 3, "three requests → three responses");
+    assert.deepEqual(
+      res.body.map((r) => r.id).sort((a, b) => a - b),
+      [10, 20, 30],
+      "every request id is present exactly once",
+    );
+    // Each response is correlated to its own request by id (not by array slot).
+    const byId = new Map(res.body.map((r) => [r.id, r]));
+    assert.ok(Array.isArray(byId.get(10).result.tools), "id 10 → tools/list");
+    assert.deepEqual(byId.get(20).result, {}, "id 20 → ping result");
+    assert.deepEqual(byId.get(30).result, {}, "id 30 → ping result");
+  });
+
   test("an empty batch is an invalid request", async () => {
     const res = await rpc([]);
     assert.equal(res.status, 400);
@@ -2842,6 +2868,67 @@ describe("list_subnets", () => {
     ).body.result.structuredContent;
     assert.equal(byDomain.total, 1);
     assert.equal(byDomain.subnets[0].netuid, 8);
+  });
+
+  // Fixture readiness: {0:15, 7:90, 8:0}; surface_count: {0:17, 7:4, 8:0}.
+  const rangeNetuids = (out) =>
+    out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
+
+  test("max_readiness keeps rows <= the bound (complement of min_readiness)", async () => {
+    const out = (
+      await callTool("list_subnets", { max_readiness: 50 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [0, 8]); // 15 and 0 pass; 90 drops
+  });
+
+  test("min_readiness + max_readiness form an inclusive range", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { min_readiness: 10, max_readiness: 50 },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [0]); // only readiness 15 is in [10,50]
+  });
+
+  test("min_/max_surface_count bound the callable-surface count", async () => {
+    const atLeast5 = (
+      await callTool("list_subnets", { min_surface_count: 5 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atLeast5), [0]); // only 17 >= 5
+
+    const atMost4 = (
+      await callTool("list_subnets", { max_surface_count: 4 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(atMost4), [7, 8]); // 4 and 0
+  });
+
+  test("min_/max_netuid bound the id range", async () => {
+    const out = (
+      await callTool("list_subnets", { min_netuid: 1, max_netuid: 7 }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [7]); // 0 below, 8 above
+  });
+
+  test("a row whose bounded field is absent or non-numeric is excluded", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, slug: "a", name: "A", surface_count: 6 },
+          { netuid: 2, slug: "b", name: "B" }, // surface_count absent
+          { netuid: 3, slug: "c", name: "C", surface_count: "lots" }, // non-numeric
+        ],
+      },
+    });
+    const out = (
+      await callTool(
+        "list_subnets",
+        { min_surface_count: 0 },
+        { deps: localDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [1]); // 2 (absent) and 3 (non-numeric) drop even at min 0
   });
 
   test("sort by integration_readiness desc returns the most ready first + echoes order", async () => {

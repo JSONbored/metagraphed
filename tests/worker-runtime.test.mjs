@@ -594,7 +594,7 @@ describe("Worker runtime", () => {
     const r2KeysRequested = [];
     const schemaSnapshot = {
       schema_version: 1,
-      contract_version: "2026-06-06.1",
+      contract_version: CONTRACT_VERSION,
       generated_at: "1970-01-01T00:00:00.000Z",
       observed_at: "2999-01-01T00:00:00.000Z",
       surface_id: "example-openapi",
@@ -874,7 +874,7 @@ describe("Worker runtime", () => {
               async json() {
                 return {
                   schema_version: 1,
-                  contract_version: "2026-06-06.1",
+                  contract_version: CONTRACT_VERSION,
                   generated_at: "1970-01-01T00:00:00.000Z",
                   source: "generated-artifact-diff",
                 };
@@ -1282,7 +1282,7 @@ describe("Worker runtime", () => {
     try {
       const rpcPoolArtifact = {
         schema_version: 1,
-        contract_version: "2026-06-06.1",
+        contract_version: CONTRACT_VERSION,
         generated_at: "1970-01-01T00:00:00.000Z",
         pools: [
           {
@@ -1688,7 +1688,7 @@ describe("Worker runtime", () => {
       );
       assert.equal(store.size, 1, "ignored query params share one cache entry");
       assert.deepEqual(cachePutKeys, [
-        "https://edge-cache.metagraph.sh/overlay/mainnet/2026-06-06.1/2026-06-18T00%3A00%3A00.000Z/api/v1/endpoints",
+        `https://edge-cache.metagraph.sh/overlay/mainnet/${CONTRACT_VERSION}/2026-06-18T00%3A00%3A00.000Z/api/v1/endpoints`,
       ]);
     } finally {
       globalThis.caches = originalCaches;

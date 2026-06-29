@@ -21,6 +21,7 @@ import {
   rollupAccountEventsDaily,
   pruneAccountEvents,
   validEventRows,
+  buildAccountTransfers,
 } from "../src/account-events.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 
@@ -310,11 +311,13 @@ test("account builders null invalid block heights and indices", () => {
   const event = formatAccountEvent({
     block_number: -1,
     event_index: -2,
+    extrinsic_index: -3,
     event_kind: "StakeAdded",
     observed_at: 1,
   });
   assert.equal(event.block_number, null);
   assert.equal(event.event_index, null);
+  assert.equal(event.extrinsic_index, null);
 
   const summary = buildAccountSummary("5Hk", {
     agg: { fb: -5, lb: "nope" },
@@ -331,6 +334,60 @@ test("account builders null invalid block heights and indices", () => {
   });
   assert.equal(day.first_block, null);
   assert.equal(day.last_block, 100);
+
+  const transfers = buildAccountTransfers(
+    [
+      {
+        block_number: -5,
+        event_index: -1,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: 1,
+        observed_at: null,
+      },
+      {
+        block_number: Infinity,
+        event_index: NaN,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: 2,
+        observed_at: null,
+      },
+      {
+        block_number: 10,
+        event_index: 2,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: 3,
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(transfers.transfers[0].block_number, null);
+  assert.equal(transfers.transfers[0].event_index, null);
+  assert.equal(transfers.transfers[1].block_number, null);
+  assert.equal(transfers.transfers[1].event_index, null);
+  assert.equal(transfers.transfers[2].block_number, 10);
+  assert.equal(transfers.transfers[2].event_index, 2);
+  assert.equal(transfers.transfers[2].amount_tao, 3);
+  assert.equal(transfers.transfers[2].direction, "sent");
+
+  // Null block_number and event_index are preserved as null in the output.
+  const nullTransfers = buildAccountTransfers(
+    [{ block_number: null, event_index: null, hotkey: "5A", coldkey: "5B" }],
+    "5A",
+  );
+  assert.equal(nullTransfers.transfers[0].block_number, null);
+  assert.equal(nullTransfers.transfers[0].event_index, null);
+
+  // Fractional values are non-integer and therefore treated as malformed (null).
+  const fracTransfers = buildAccountTransfers(
+    [{ block_number: 3.7, event_index: 1.9, hotkey: "5A", coldkey: "5B" }],
+    "5A",
+  );
+  assert.equal(fracTransfers.transfers[0].block_number, null);
+  assert.equal(fracTransfers.transfers[0].event_index, null);
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {

@@ -100,6 +100,22 @@
         "submitted_by": "minion1227"
       },
       "notes": "Official Nodexo (SN106) miner/validator/CLI source repo under the github.com/nodexo-ai org linked from the project website."
+    },
+    {
+      "id": "sn-106-nodexo-subnet-api",
+      "name": "Nodexo inventory API",
+      "kind": "subnet-api",
+      "url": "https://nodexo.ai/api/inventory",
+      "provider": "nodexo",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://nodexo.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "seekmistar01"
+      },
+      "notes": "Public Nodexo (SN106) GPU marketplace inventory API. Returns live JSON offers with GPU model, VRAM, pricing (USDC/hour), availability, and reliability metrics. No auth required."
     }
   ]
 }

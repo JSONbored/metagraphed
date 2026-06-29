@@ -14,11 +14,19 @@ const OPTIONAL_DEPTH = 3;
 const MAX_DEPTH = 8;
 const ISO = "2026-06-01T00:00:00.000Z";
 const HEX64 = "a3f1".repeat(16); // 64 hex chars, matches ^[a-f0-9]{64}$
+const SAMPLE_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const SAMPLE_COUNTERPARTY_SS58 =
+  "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
 
-function valueForPattern(pattern) {
+function valueForPattern(pattern, name = "") {
+  const n = String(name || "").toLowerCase();
   switch (pattern) {
     case "^[a-f0-9]{64}$":
       return HEX64;
+    case "^[1-9A-HJ-NP-Za-km-z]{47,48}$":
+      return /counterparty|^to$|address/.test(n)
+        ? SAMPLE_COUNTERPARTY_SS58
+        : SAMPLE_SS58;
     case "^\\d{4}-\\d{2}-\\d{2}$":
       return "2026-06-01";
     case "^[a-z0-9][a-z0-9-]*$":
@@ -52,13 +60,15 @@ function seededString(name) {
   }
   if (/(^day$|^date$)/.test(n)) return "2026-06-01";
   if (/window/.test(n)) return "30d";
+  if (n === "ss58" || n === "from") return SAMPLE_SS58;
+  if (n === "counterparty" || n === "to") return SAMPLE_COUNTERPARTY_SS58;
   if (/slug/.test(n)) return "example-subnet";
   if (/(^name$|title|subnet_name|display_name)/.test(n))
     return "Example Subnet";
   if (/(description|^notes$|instructions|summary$)/.test(n)) {
     return "Example description.";
   }
-  if (/version/.test(n)) return "2026-06-06.1";
+  if (/version/.test(n)) return "2026-06-29.1";
   if (/(provider|operator)/.test(n)) return "example-provider";
   if (/(content_hash|_hash$|^hash$)/.test(n)) return HEX64;
   if (/health_source/.test(n)) return "probe-derived";
@@ -97,6 +107,88 @@ function seededBoolean(name) {
   return /(required|^enabled$|public_safe|^ok$|supported)/.test(
     String(name || "").toLowerCase(),
   );
+}
+
+function sampleAmount(value) {
+  const amount = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function normalizeCounterpartyRelationshipSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !Array.isArray(out.transfers) ||
+    !("counterparty" in out) ||
+    !("total_sent_tao" in out) ||
+    !("total_received_tao" in out) ||
+    !("net_tao" in out)
+  ) {
+    return out;
+  }
+
+  let totalSent = 0;
+  let totalReceived = 0;
+  let transferCount = 0;
+  for (const transfer of out.transfers) {
+    if (!transfer || typeof transfer !== "object") continue;
+    const amount = sampleAmount(transfer.amount_tao);
+    if (transfer.direction === "sent") {
+      totalSent += amount;
+      transferCount += 1;
+    } else if (transfer.direction === "received") {
+      totalReceived += amount;
+      transferCount += 1;
+    }
+  }
+
+  out.total_sent_tao = totalSent;
+  out.total_received_tao = totalReceived;
+  out.net_tao = totalReceived - totalSent;
+  out.transfer_count = transferCount;
+  return out;
+}
+
+function normalizeAccountCounterpartiesSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !out.relationship ||
+    typeof out.relationship !== "object" ||
+    !Array.isArray(out.counterparties)
+  ) {
+    return out;
+  }
+
+  const relationship = normalizeCounterpartyRelationshipSample(
+    out.relationship,
+  );
+  out.relationship = relationship;
+  out.total_sent_tao = relationship.total_sent_tao;
+  out.total_received_tao = relationship.total_received_tao;
+  out.transfers_scanned = relationship.transfers_scanned;
+  out.scan_capped = relationship.scan_capped;
+  out.counterparties =
+    relationship.transfer_count === 0
+      ? []
+      : [
+          {
+            address: relationship.counterparty,
+            sent_tao: relationship.total_sent_tao,
+            received_tao: relationship.total_received_tao,
+            net_tao: relationship.net_tao,
+            transfer_count: relationship.transfer_count,
+            last_block: relationship.last_block,
+          },
+        ];
+  out.counterparty_count = out.counterparties.length;
+  return out;
+}
+
+function normalizeObjectSample(out) {
+  normalizeCounterpartyRelationshipSample(out);
+  normalizeAccountCounterpartiesSample(out);
+  return out;
 }
 
 function pickType(type) {
@@ -221,7 +313,7 @@ export function sampleFromSchema(
         activeRefs,
       );
     }
-    return out;
+    return normalizeObjectSample(out);
   }
 
   if (type === "array") {
@@ -238,7 +330,7 @@ export function sampleFromSchema(
   }
 
   if (type === "string") {
-    if (schema.pattern) return valueForPattern(schema.pattern);
+    if (schema.pattern) return valueForPattern(schema.pattern, name);
     if (schema.format === "uri") return "https://api.metagraph.sh/example";
     if (schema.format === "date-time") return ISO;
     return seededString(name);

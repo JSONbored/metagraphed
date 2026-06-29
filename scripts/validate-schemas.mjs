@@ -16,6 +16,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForPath,
 } from "../src/artifact-storage.mjs";
+import { createComponentValidatorCompiler } from "./lib/component-validator.mjs";
 
 // Artifacts whose schema describes a live-computed API response with no static
 // file on disk (served from D1/KV). Their schema is exercised by validate-api's
@@ -113,6 +114,8 @@ ajv.addSchema(
   },
   "https://metagraph.sh/openapi-components.schema.json",
 );
+
+const compileComponentValidator = createComponentValidatorCompiler(ajv);
 
 const validators = {
   provider: ajv.getSchema(providerSchema.$id),
@@ -249,13 +252,6 @@ function slugArtifactDirectories() {
     "provider-detail": "providers",
     "provider-endpoints": "providers",
   };
-}
-
-function compileComponentValidator(schemaRef) {
-  const schemaName = schemaRef.replace("#/components/schemas/", "");
-  return ajv.compile({
-    $ref: `https://metagraph.sh/openapi-components.schema.json#/components/schemas/${schemaName}`,
-  });
 }
 
 function validate(validator, value, label) {
