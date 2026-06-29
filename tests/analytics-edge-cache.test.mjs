@@ -287,6 +287,41 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("global-incidents canonicalizes omitted and explicit default window to the same cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // No ?window — resolves to the 7d default and caches at ?window=7d.
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/incidents"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Explicit ?window=7d is the canonical form — must be a cache HIT (no new D1).
+    const hit = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/incidents?window=7d"),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=7d must be a cache HIT (no D1 queries)",
+    );
+    assert.deepEqual(cache.putKeys, [
+      expectedKey("global-incidents", "/api/v1/incidents", "?window=7d"),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
   test("turnover: explicit ?window=30d populates cache; omitted window is a HIT", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

@@ -38,6 +38,7 @@ import {
   handleBadgeSvgRequest,
 } from "./request-handlers/discovery.mjs";
 import {
+  canonicalHealthWindowCachePath,
   configureAnalytics,
   d1All,
   handleBulkHealthTrends,
@@ -1508,8 +1509,16 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       return handleExtrinsics(request, env, resolved.url);
     }
     if (resolved.url.pathname === "/api/v1/incidents") {
-      return withEdgeCache(request, ctx, env, "global-incidents", () =>
-        handleGlobalIncidents(request, env, resolved.url),
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "global-incidents",
+        () => handleGlobalIncidents(request, env, resolved.url),
+        // Canonicalize on the resolved window so the bare path and an explicit
+        // ?window=<default> share one entry instead of fragmenting the cache
+        // (mirrors the per-subnet health-incidents route).
+        canonicalHealthWindowCachePath(resolved.url),
       );
     }
     if (resolved.url.pathname === "/api/v1/chain/activity") {
