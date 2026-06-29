@@ -7,6 +7,7 @@
 // Routes (all GET, content-negotiated):
 //   /api/v1/feeds/registry[.rss|.atom|.json]
 //   /api/v1/feeds/incidents[.rss|.atom|.json]
+//   /api/v1/feeds/gaps[.rss|.atom|.json]
 //   /api/v1/feeds/subnets/{netuid}[.rss|.atom|.json]
 // Format precedence: explicit .rss/.atom/.json suffix > Accept header > JSON Feed.
 //
@@ -15,7 +16,9 @@
 // ?tag=artifact). Item tags: registry items carry "registry" + one of
 // "subnet"/"artifact"/"coverage" + the change verb (added/removed/renamed/
 // modified); incident items carry "incident", "sn<netuid>", and
-// "ongoing"/"resolved". An unknown tag yields an empty (but valid) feed.
+// "ongoing"/"resolved"; gap items carry "gaps", the queue lane, "sn<netuid>",
+// and each missing/direct-submission kind. An unknown tag yields an empty
+// (but valid) feed.
 //
 // Optional `?since=<ISO-8601>` returns only items at or after that instant
 // (e.g. ?since=2026-06-01 or ?since=2026-06-01T00:00:00Z), for incremental
@@ -175,6 +178,59 @@ function registryItems(changelog, netuid) {
     }
   }
 
+  return items;
+}
+
+// Gaps feed: ranked enrichment targets from the served enrichment queue.
+function gapsItems(enrichmentQueue) {
+  const at = toIso(enrichmentQueue?.generated_at) || new Date().toISOString();
+  const items = [];
+  for (const entry of enrichmentQueue?.queue || []) {
+    const netuid = entry?.netuid;
+    if (typeof netuid !== "number") continue;
+    const name = entry?.name ? clamp(entry.name, 80) : `Subnet ${netuid}`;
+    const missing = Array.isArray(entry.missing_kinds)
+      ? entry.missing_kinds.filter(Boolean)
+      : [];
+    const targets = Array.isArray(entry.direct_submission_kinds)
+      ? entry.direct_submission_kinds.filter(Boolean)
+      : [];
+    const lane = entry?.lane || "unknown";
+    const priority =
+      typeof entry?.priority_score === "number" ? entry.priority_score : null;
+    const completeness =
+      typeof entry?.completeness_score === "number"
+        ? entry.completeness_score
+        : null;
+    const action = entry?.recommended_action
+      ? clamp(entry.recommended_action, 120)
+      : "Review enrichment opportunities";
+    const summaryParts = [`Lane: ${lane}.`];
+    if (priority != null) summaryParts.push(`Priority ${priority}.`);
+    if (missing.length) {
+      summaryParts.push(`Missing: ${missing.join(", ")}.`);
+    }
+    if (targets.length) {
+      summaryParts.push(`Target kinds: ${targets.join(", ")}.`);
+    }
+    if (completeness != null) {
+      summaryParts.push(`Completeness ${completeness}/100.`);
+    }
+    items.push({
+      id: `gaps:sn${netuid}:${at}`,
+      url: `${SITE_URL}/subnets/${netuid}`,
+      title: `SN${netuid} ${name} — ${action}`,
+      summary: clamp(summaryParts.join(" ")),
+      timestamp: at,
+      tags: [
+        "gaps",
+        lane,
+        `sn${netuid}`,
+        ...missing,
+        ...targets.filter((kind) => !missing.includes(kind)),
+      ],
+    });
+  }
   return items;
 }
 
@@ -348,6 +404,7 @@ export function parseFeedPath(pathname) {
     .replace(/\/$/, "");
   if (rest === "registry") return { kind: "registry" };
   if (rest === "incidents") return { kind: "incidents" };
+  if (rest === "gaps") return { kind: "gaps" };
   const subnet = /^subnets\/(\d+)$/.exec(rest);
   if (subnet) return { kind: "subnet", netuid: Number(subnet[1]) };
   return null;
@@ -449,7 +506,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   if (!target || typeof readArtifact !== "function") {
     return fail(
       "feed_not_found",
-      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/subnets/{netuid} (each as .rss/.atom/.json or via Accept).",
+      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/subnets/{netuid} (each as .rss/.atom/.json or via Accept).",
       404,
     );
   }
@@ -494,6 +551,18 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     description =
       "Operational incidents across Bittensor subnet surfaces (probe-detected downtime).";
     updatedSource = incidents?.observed_at;
+  } else if (target.kind === "gaps") {
+    const enrichmentQueue = await readData(
+      readArtifact,
+      env,
+      "/metagraph/review/enrichment-queue.json",
+    );
+    items = gapsItems(enrichmentQueue);
+    title = "metagraphed — coverage gaps";
+    description =
+      "Ranked Bittensor subnet enrichment targets: missing surfaces, contributor lanes, and recommended next actions from the metagraphed registry.";
+    homeUrl = `${SITE_URL}/gaps`;
+    updatedSource = enrichmentQueue?.generated_at;
   } else {
     const [changelog, incidents] = await Promise.all([
       readData(readArtifact, env, "/metagraph/changelog.json"),
@@ -565,6 +634,7 @@ export function feedLinkHeader(originUrl, netuid) {
 export const __test = {
   registryItems,
   incidentItems,
+  gapsItems,
   jsonFeed,
   rssFeed,
   atomFeed,

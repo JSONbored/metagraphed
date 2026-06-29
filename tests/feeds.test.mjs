@@ -41,6 +41,7 @@ function installMockCache() {
 const {
   registryItems,
   incidentItems,
+  gapsItems,
   jsonFeed,
   rssFeed,
   atomFeed,
@@ -97,6 +98,33 @@ const INCIDENTS = {
   ],
 };
 
+const ENRICHMENT_QUEUE = {
+  generated_at: "2026-06-15T00:00:00.000Z",
+  queue: [
+    {
+      netuid: 7,
+      name: "Allways",
+      lane: "direct-submission",
+      priority_score: 88,
+      completeness_score: 45,
+      missing_kinds: ["openapi"],
+      direct_submission_kinds: ["openapi", "subnet-api"],
+      recommended_action: "Submit openapi evidence",
+    },
+    {
+      netuid: 12,
+      name: "Compute",
+      lane: "maintainer-review",
+      priority_score: 60,
+      completeness_score: 72,
+      missing_kinds: [],
+      direct_submission_kinds: [],
+      recommended_action: "Review machine-verified surfaces",
+    },
+    { netuid: 999 },
+  ],
+};
+
 function makeReadArtifact(fixtures) {
   return (_env, path) =>
     Promise.resolve(
@@ -119,6 +147,7 @@ async function feed(
     "/metagraph/changelog.json": CHANGELOG,
     "/metagraph/incidents.json": INCIDENTS,
     "/metagraph/health/incidents/7.json": INCIDENTS,
+    "/metagraph/review/enrichment-queue.json": ENRICHMENT_QUEUE,
   });
   let handlerDeps;
   if (typeof deps === "function") {
@@ -140,12 +169,15 @@ async function feed(
 }
 
 describe("feeds — path + format parsing", () => {
-  test("parseFeedPath resolves the three feed kinds + rejects unknown", () => {
+  test("parseFeedPath resolves the four feed kinds + rejects unknown", () => {
     assert.deepEqual(parseFeedPath("/api/v1/feeds/registry"), {
       kind: "registry",
     });
     assert.deepEqual(parseFeedPath("/api/v1/feeds/incidents.rss"), {
       kind: "incidents",
+    });
+    assert.deepEqual(parseFeedPath("/api/v1/feeds/gaps.json"), {
+      kind: "gaps",
     });
     assert.deepEqual(parseFeedPath("/api/v1/feeds/subnets/7.atom"), {
       kind: "subnet",
@@ -266,6 +298,36 @@ describe("feeds — item builders", () => {
     const onlySn7 = incidentItems(INCIDENTS, 7);
     assert.equal(onlySn7.length, 1);
     assert.equal(incidentItems(null).length, 0);
+  });
+
+  test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
+    const items = gapsItems(ENRICHMENT_QUEUE);
+    assert.equal(items.length, 3);
+    const top = items[0];
+    assert.equal(top.id, "gaps:sn7:2026-06-15T00:00:00.000Z");
+    assert.equal(top.url, "https://metagraph.sh/subnets/7");
+    assert.match(top.title, /^SN7 Allways — Submit openapi evidence$/);
+    assert.match(top.summary, /Lane: direct-submission\. Priority 88\./);
+    assert.match(top.summary, /Missing: openapi\./);
+    assert.match(top.summary, /Target kinds: openapi, subnet-api\./);
+    assert.match(top.summary, /Completeness 45\/100\./);
+    assert.ok(top.tags.includes("gaps"));
+    assert.ok(top.tags.includes("direct-submission"));
+    assert.ok(top.tags.includes("sn7"));
+    assert.ok(top.tags.includes("openapi"));
+    assert.ok(top.tags.includes("subnet-api"));
+    const review = items[1];
+    assert.match(
+      review.title,
+      /^SN12 Compute — Review machine-verified surfaces$/,
+    );
+    assert.ok(review.tags.includes("maintainer-review"));
+    assert.ok(review.tags.includes("sn12"));
+  });
+
+  test("gapsItems tolerates empty/missing enrichment queue", () => {
+    assert.deepEqual(gapsItems(null), []);
+    assert.deepEqual(gapsItems({}), []);
   });
 });
 
@@ -605,6 +667,38 @@ describe("feeds — handleFeedRequest", () => {
     assert.equal(JSON.parse(await res.text()).items.length, 2);
   });
 
+  test("gaps feed serves ranked enrichment targets as JSON Feed", async () => {
+    const { res, text } = await feed("/api/v1/feeds/gaps");
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/feed\+json/);
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.feed_url, "https://api.metagraph.sh/api/v1/feeds/gaps");
+    assert.equal(parsed.home_page_url, "https://metagraph.sh/gaps");
+    assert.ok(parsed.items.some((i) => i.id.startsWith("gaps:sn7:")));
+    assert.ok(parsed.items.every((i) => i.tags.includes("gaps")));
+  });
+
+  test("gaps feed supports .rss and ?tag= lane filtering", async () => {
+    const rss = await feed("/api/v1/feeds/gaps.rss");
+    assert.match(rss.res.headers.get("content-type"), /application\/rss\+xml/);
+    assert.match(rss.text, /SN7 Allways — Submit openapi evidence/);
+    const filtered = await feed("/api/v1/feeds/gaps?tag=direct-submission");
+    const parsed = JSON.parse(filtered.text);
+    assert.ok(parsed.items.length > 0);
+    assert.ok(parsed.items.every((i) => i.tags.includes("direct-submission")));
+    assert.ok(parsed.items.every((i) => !i.tags.includes("maintainer-review")));
+  });
+
+  test("gaps feed with no enrichment artifact is a valid empty feed", async () => {
+    const { res, text } = await feed("/api/v1/feeds/gaps", {
+      deps: {
+        readArtifact: makeReadArtifact({}),
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(text).items.length, 0);
+  });
+
   test("?tag= narrows the registry feed to matching items", async () => {
     const { res, text } = await feed("/api/v1/feeds/registry?tag=coverage");
     assert.equal(res.status, 200);
@@ -643,7 +737,7 @@ describe("feeds — handleFeedRequest", () => {
 describe("feeds — ETag + conditional requests", () => {
   // Every feed kind × format emits a weak ETag and honors a matching
   // If-None-Match with a bodyless 304 carrying the same validators.
-  for (const kind of ["registry", "incidents", "subnets/7"]) {
+  for (const kind of ["registry", "incidents", "gaps", "subnets/7"]) {
     for (const ext of ["", ".rss", ".atom", ".json"]) {
       test(`${kind}${ext} emits an ETag and 304s on a matching If-None-Match`, async () => {
         const path = `/api/v1/feeds/${kind}${ext}`;

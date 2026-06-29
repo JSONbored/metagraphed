@@ -1791,7 +1791,7 @@ const llmsHeader = [
   `- [Agent workflows](${llmsApiBase}/agent-workflows.md): task-oriented REST, MCP, npm, and Python examples for finding and calling subnets`,
   `- [MCP server](${llmsApiBase}/mcp): Model Context Protocol endpoint — agents query the registry as tools. Install: \`claude mcp add --transport http metagraphed ${llmsApiBase}/mcp\``,
   `- [MCP server card](${llmsApiBase}/.well-known/mcp/server-card.json): machine-readable server descriptor (tools, transport, protocol versions)`,
-  `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}). Content-negotiated via Accept, or append .rss/.atom/.json.`,
+  `- [Content feeds](${llmsApiBase}/api/v1/feeds/registry): RSS 2.0 / Atom 1.0 / JSON Feed 1.1 of registry changes + incidents (per-subnet at /api/v1/feeds/subnets/{netuid}; ranked coverage gaps at /api/v1/feeds/gaps). Content-negotiated via Accept, or append .rss/.atom/.json.`,
   `- Embeddable badges: \`${llmsApiBase}/api/v1/subnets/{netuid}/badge.svg\` and \`/api/v1/providers/{slug}/badge.svg\` — SVG badges for READMEs (\`?metric=readiness\` default, \`?metric=completeness\` for coverage score, \`?metric=uptime\` for reliability).`,
   `- [Bittensor skill](${llmsApiBase}/skills/bittensor/SKILL.md): drop-in agent skill for "what subnet does X, is it up, how do I call it"`,
   `- [Semantic search](${llmsApiBase}/api/v1/search/semantic?q=): natural-language vector search over subnets/surfaces`,
