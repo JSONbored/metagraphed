@@ -4,6 +4,8 @@ import {
   computeConcentration,
   buildConcentration,
   buildConcentrationHistory,
+  loadSubnetConcentration,
+  loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "../src/concentration.mjs";
 
@@ -264,5 +266,79 @@ describe("buildConcentrationHistory", () => {
       assert.equal(empty.point_count, 0);
       assert.deepEqual(empty.points, []);
     }
+  });
+});
+
+describe("concentration loaders", () => {
+  function d1(rowsBySql = {}) {
+    return async (sql, _params) => {
+      for (const [pattern, rows] of Object.entries(rowsBySql)) {
+        if (new RegExp(pattern).test(sql)) return rows;
+      }
+      return [];
+    };
+  }
+
+  test("loadSubnetConcentration returns schema-stable null on cold D1", async () => {
+    const data = await loadSubnetConcentration(d1(), 7);
+    assert.equal(data.netuid, 7);
+    assert.equal(data.neuron_count, 0);
+    assert.equal(data.stake, null);
+    assert.equal(data.emission, null);
+  });
+
+  test("loadSubnetConcentration builds scorecards from neurons rows", async () => {
+    const data = await loadSubnetConcentration(
+      d1({
+        "FROM neurons": [
+          {
+            stake_tao: 100,
+            emission_tao: 2,
+            coldkey: "ck-a",
+            validator_permit: 1,
+            captured_at: "2026-06-27T00:00:00Z",
+          },
+          {
+            stake_tao: 50,
+            emission_tao: 1,
+            coldkey: "ck-a",
+            validator_permit: 0,
+            captured_at: "2026-06-27T00:00:00Z",
+          },
+        ],
+      }),
+      7,
+    );
+    assert.equal(data.neuron_count, 2);
+    assert.equal(data.entity_count, 1);
+    assert.equal(data.stake.holders, 2);
+    assert.equal(data.entity_stake.total, 150);
+  });
+
+  test("loadSubnetConcentrationHistory returns empty points on cold D1", async () => {
+    const data = await loadSubnetConcentrationHistory(d1(), 7, {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.netuid, 7);
+    assert.equal(data.window, "30d");
+    assert.equal(data.point_count, 0);
+    assert.deepEqual(data.points, []);
+  });
+
+  test("loadSubnetConcentrationHistory aggregates neuron_daily rows", async () => {
+    const data = await loadSubnetConcentrationHistory(
+      d1({
+        "FROM neuron_daily": [
+          { snapshot_date: "2026-06-02", stake_tao: 20, emission_tao: 2 },
+          { snapshot_date: "2026-06-01", stake_tao: 10, emission_tao: 1 },
+        ],
+      }),
+      7,
+      { windowLabel: "7d", windowDays: 7 },
+    );
+    assert.equal(data.point_count, 2);
+    assert.equal(data.points[0].snapshot_date, "2026-06-02");
+    assert.ok(typeof data.points[0].stake_gini === "number");
   });
 });

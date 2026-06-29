@@ -3,7 +3,11 @@
 // (substrate System.Events), NOT Taostats. This module holds the load contract,
 // the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
 // for tests; the Worker runs the D1 I/O.
-import { clampInt } from "../workers/config.mjs";
+import {
+  FEED_PAGINATION,
+  clampLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
@@ -76,7 +80,7 @@ function toIso(ms) {
 function toBlockNumber(value) {
   if (value == null) return null;
   const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+  return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 // One D1 account_events row → a clean API event object (#1347 consumes this).
@@ -93,7 +97,7 @@ export function formatAccountEvent(row) {
     amount_tao: row.amount_tao ?? null,
     alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
-    extrinsic_index: row.extrinsic_index ?? null,
+    extrinsic_index: toBlockNumber(row.extrinsic_index),
   };
 }
 
@@ -407,8 +411,8 @@ export function buildAccountTransfers(
   const transfers = (rows || [])
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
-      block_number: r.block_number ?? null,
-      event_index: r.event_index ?? null,
+      block_number: toBlockNumber(r.block_number),
+      event_index: toBlockNumber(r.event_index),
       from: r.hotkey ?? null,
       to: r.coldkey ?? null,
       amount_tao: r.amount_tao ?? null,
@@ -492,8 +496,8 @@ export async function loadAccountEvents(
   ss58,
   { limit, offset, kind, cursor } = {},
 ) {
-  const lim = clampInt(limit, 100, 1, 1000);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
   const params = [ss58, ss58];
   let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (${ACCOUNT_EVENT_MATCH})`;
   if (kind) {
@@ -552,8 +556,8 @@ export async function loadAccountHistory(
   ss58,
   { netuid, from, to, limit, offset } = {},
 ) {
-  const lim = clampInt(limit, 100, 1, 1000);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
   if (netuid != null && Number.isInteger(netuid)) {
@@ -578,8 +582,8 @@ export async function loadAccountHistory(
 // SIGNER only (not hotkey/coldkey union) — `extrinsics` carries a single
 // `signer` column. Clamps limit to 1-1000 (default 100); clamps offset.
 export async function loadAccountExtrinsics(d1, ss58, { limit, offset } = {}) {
-  const lim = clampInt(limit, 100, 1, 1000);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
   const rows = await d1(
     `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?`,
     [ss58, lim, off],
@@ -595,8 +599,8 @@ export async function loadAccountTransfers(
   ss58,
   { direction, limit, offset } = {},
 ) {
-  const lim = clampInt(limit, 100, 1, 1000);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
   let sideClause = "(hotkey = ? OR coldkey = ?)";
   let sideParams = [ss58, ss58];
   if (direction === "sent") {

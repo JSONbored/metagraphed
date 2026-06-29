@@ -4,7 +4,11 @@
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
 // shaping, and the retention prune. Pure + exported for tests; the Worker runs
 // the D1 I/O.
-import { clampInt } from "../workers/config.mjs";
+import {
+  BLOCK_PAGINATION,
+  clampLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
@@ -211,8 +215,8 @@ export async function loadExtrinsics(
   d1,
   { signer, callModule, callFunction, limit, offset, cursor } = {},
 ) {
-  const lim = clampInt(limit, 50, 1, 100);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, BLOCK_PAGINATION);
+  const off = clampOffset(offset);
   const conds = [];
   const params = [];
   if (signer) {

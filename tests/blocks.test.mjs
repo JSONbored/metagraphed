@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
 import {
+  handleBlock,
+  handleBlockEvents,
+  handleBlockExtrinsics,
+} from "../workers/request-handlers/entities.mjs";
+import {
   BLOCK_INSERT_COLUMNS,
   BLOCK_READ_COLUMNS,
   BLOCK_RETENTION_MS,
@@ -428,6 +433,80 @@ test("GET /blocks is schema-stable when D1 is cold (never 404)", async () => {
   const body = await res.json();
   assert.equal(body.data.block_count, 0);
   assert.equal(Array.isArray(body.data.blocks), true);
+});
+
+// #2063: a non-hash block ref must be a strict decimal block_number. The route
+// regex (/^...(\d+|0x...)$/) gates these at the router, so this hardens the three
+// block HANDLERS themselves (defense in depth) — the layer the issue verifies —
+// by calling each directly with a malformed ref. The mock returns the SAME detail
+// row for any block WHERE (matched by SQL shape, not bind values), so a malformed
+// ref that still issued the query would surface that row; the strict matcher must
+// instead skip the query.
+const BAD_BLOCK_REFS = [
+  "0x1", // short hex (old Number("0x1") === 1, resolved block 1)
+  "1e3", // scientific notation (old Number("1e3") === 1000)
+  "12-3", // composite-shaped (old Number("12-3") === NaN, but never a clean guard)
+  " 5", // leading whitespace (old Number(" 5") === 5)
+  "99999999999999999999", // all-digits but overflows MAX_SAFE_INTEGER → 1e20
+];
+
+for (const badRef of BAD_BLOCK_REFS) {
+  test(`handleBlock("${badRef}") is a clean miss, not a coerced row (#2063)`, async () => {
+    const env = dbWith({
+      detail: { block_number: 1, block_hash: "0xabc", observed_at: 5 },
+    });
+    const res = await handleBlock(req(`/api/v1/blocks/${badRef}`), env, badRef);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(
+      body.data.block,
+      null,
+      `block ref "${badRef}" must not resolve`,
+    );
+  });
+
+  test(`handleBlockExtrinsics("${badRef}") is a clean miss (#2063)`, async () => {
+    const env = dbWith({
+      detail: { block_number: 1 },
+      feed: [{ block_number: 1, extrinsic_index: 0, observed_at: 5 }],
+    });
+    const res = await handleBlockExtrinsics(
+      req(`/api/v1/blocks/${badRef}/extrinsics`),
+      env,
+      badRef,
+      new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/extrinsics`),
+    );
+    const body = await res.json();
+    assert.equal(body.data.block_number, null);
+    assert.deepEqual(body.data.extrinsics, []);
+  });
+
+  test(`handleBlockEvents("${badRef}") is a clean miss (#2063)`, async () => {
+    const env = dbWith({
+      detail: { block_number: 1 },
+      feed: [{ block_number: 1, event_index: 0, observed_at: 5 }],
+    });
+    const res = await handleBlockEvents(
+      req(`/api/v1/blocks/${badRef}/events`),
+      env,
+      badRef,
+      new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/events`),
+    );
+    const body = await res.json();
+    assert.equal(body.data.block_number, null);
+    assert.deepEqual(body.data.events, []);
+  });
+}
+
+// A well-formed numeric ref still resolves (the strict matcher must not
+// over-reject the canonical decimal form).
+test("handleBlock resolves a well-formed numeric ref (#2063 regression guard)", async () => {
+  const env = dbWith({
+    detail: { block_number: 1234, block_hash: "0xabc", observed_at: 5 },
+  });
+  const res = await handleBlock(req("/api/v1/blocks/1234"), env, "1234");
+  const body = await res.json();
+  assert.equal(body.data.block.block_number, 1234);
 });
 
 test("GET /blocks/{number}/extrinsics returns the block's extrinsics (#1845)", async () => {
