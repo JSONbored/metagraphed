@@ -3,7 +3,11 @@
 // chain-direct poller (scripts/fetch-events.py) that fills account_events, NOT
 // Taostats. This module holds the load contract, the row→API shaping, and the
 // retention prune. Pure + exported for tests; the Worker runs the D1 I/O.
-import { clampInt } from "../workers/config.mjs";
+import {
+  BLOCK_PAGINATION,
+  clampLimit,
+  clampOffset,
+} from "../workers/request-params.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 
 // D1 safety-valve: 365-day retention prevents unbounded growth before the
@@ -148,8 +152,8 @@ export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
 // Recent-block feed (newest first) with keyset cursor support (#1851). A cursor
 // takes precedence over offset when present (WHERE block_number < ?).
 export async function loadBlocks(d1, { limit, offset, cursor } = {}) {
-  const lim = clampInt(limit, 50, 1, 100);
-  const off = clampInt(offset, 0, 0, 1_000_000);
+  const lim = clampLimit(limit, BLOCK_PAGINATION);
+  const off = clampOffset(offset);
   const cur = decodeCursor(cursor, 1);
   let rows;
   if (cur) {
