@@ -2534,6 +2534,52 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
+  test("forces module-index for a module-only feed path (#2082)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?call_module=Balances&limit=10"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(
+      /INDEXED BY idx_extrinsics_module_block/.test(sql),
+      `expected module-filter call to use idx_extrinsics_module_block, got: ${sql}`,
+    );
+  });
+
+  test("uses idx_extrinsics_module_block for module feed query plan", () => {
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number INTEGER NOT NULL,
+        extrinsic_index INTEGER NOT NULL,
+        extrinsic_hash TEXT NOT NULL,
+        signer TEXT,
+        call_module TEXT,
+        call_function TEXT,
+        call_args TEXT,
+        fee_tao REAL,
+        success INTEGER,
+        observed_at INTEGER,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX IF NOT EXISTS idx_extrinsics_module_block
+        ON extrinsics (call_module, block_number DESC, extrinsic_index DESC);
+    `);
+    const plan = db.prepare(
+      "EXPLAIN QUERY PLAN " +
+        "SELECT * FROM extrinsics WHERE call_module = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?",
+    ).all("Balances", 10);
+
+    assert.equal(plan.length, 1);
+    assert.equal(
+      plan[0].detail,
+      "SEARCH extrinsics USING INDEX idx_extrinsics_module_block (call_module=?)",
+    );
+  });
+
   test("keeps broad standalone time filters planner-selected", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(

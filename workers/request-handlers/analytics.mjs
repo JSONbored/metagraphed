@@ -894,7 +894,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
-  // Optional pallet scope, backed by idx_extrinsics_call_module_order.
+  // Optional pallet scope, backed by idx_extrinsics_module_block.
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
@@ -958,7 +958,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   });
   if (limitError) return analyticsQueryError(limitError);
   // Optional pallet scope (applies to both the daily series and the payer list),
-  // backed by idx_extrinsics_call_module_order.
+  // backed by idx_extrinsics_module_block.
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);

@@ -1408,12 +1408,15 @@ export async function handleExtrinsics(request, env, url) {
     params.push(val);
   };
   const hasBlockFilter = numericFilters.block != null;
+  const hasSignerFilter = Boolean(sp.get("signer"));
+  const hasCallModuleFilter = Boolean(sp.get("call_module"));
+  const hasCallFunctionFilter = Boolean(sp.get("call_function"));
   const hasEqualityFilter =
-    sp.get("signer") || sp.get("call_module") || sp.get("call_function");
+    hasSignerFilter || hasCallModuleFilter || hasCallFunctionFilter;
   if (hasBlockFilter) eq("block_number", numericFilters.block);
-  if (sp.get("signer")) eq("signer", sp.get("signer"));
-  if (sp.get("call_module")) eq("call_module", sp.get("call_module"));
-  if (sp.get("call_function")) eq("call_function", sp.get("call_function"));
+  if (hasSignerFilter) eq("signer", sp.get("signer"));
+  if (hasCallModuleFilter) eq("call_module", sp.get("call_module"));
+  if (hasCallFunctionFilter) eq("call_function", sp.get("call_function"));
   // success is stored 1/0/NULL; bind the literal so success=false never leaks
   // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
@@ -1464,9 +1467,19 @@ export async function handleExtrinsics(request, env, url) {
     !hasSuccessFilter &&
     !hasBlockRangeFilter &&
     !useCursor;
+  // For module-scoped feed scans, force the composite module index so SQLite/D1
+  // seeks on the equality predicate instead of a PK-desc walk.
+  const forceModuleIndex =
+    hasCallModuleFilter &&
+    !forceObservedOrderIndex &&
+    !hasBlockFilter &&
+    !hasBlockRangeFilter &&
+    !hasSignerFilter &&
+    !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
   if (forceObservedOrderIndex)
     sql += " INDEXED BY idx_extrinsics_observed_order";
+  else if (forceModuleIndex) sql += " INDEXED BY idx_extrinsics_module_block";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(limit);
