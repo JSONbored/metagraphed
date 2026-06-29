@@ -415,9 +415,9 @@ export async function loadAccountSummary(d1, ss58) {
       ),
       // Signing activity from the extrinsics tier, matched by signer and
       // explicitly bounded to the newest rows before aggregation. The inner
-      // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_order
-      // (migration 0021_extrinsics_filter_indexes), so the bound is an indexed
-      // LIMIT, not a sort-then-truncate over the signer's full retained history.
+      // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_block,
+      // so the bound is an indexed LIMIT, not a sort-then-truncate over the
+      // signer's full retained history.
       d1(
         `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
         [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
