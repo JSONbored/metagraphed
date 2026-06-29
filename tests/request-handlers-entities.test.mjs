@@ -2568,10 +2568,12 @@ describe("handleExtrinsics", () => {
       CREATE INDEX IF NOT EXISTS idx_extrinsics_module_block
         ON extrinsics (call_module, block_number DESC, extrinsic_index DESC);
     `);
-    const plan = db.prepare(
-      "EXPLAIN QUERY PLAN " +
-        "SELECT * FROM extrinsics WHERE call_module = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?",
-    ).all("Balances", 10);
+    const plan = db
+      .prepare(
+        "EXPLAIN QUERY PLAN " +
+          "SELECT * FROM extrinsics WHERE call_module = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?",
+      )
+      .all("Balances", 10);
 
     assert.equal(plan.length, 1);
     assert.equal(
