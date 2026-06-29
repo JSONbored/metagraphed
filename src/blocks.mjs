@@ -172,16 +172,34 @@ export async function loadBlocks(d1, { limit, offset, cursor } = {}) {
   return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
 }
 
+// A strict non-negative block_number, or null for a non-decimal ref — so a
+// malformed ref (0x-short, 1e3, signs, leading space, oversized digits) is a
+// clean miss rather than a Number()-coerced wrong-but-valid lookup. Mirrors the
+// REST route's strictBlockNumber guard (#2063/#2241); this shared MCP get_block
+// loader was the missed sibling. Kept local because src/ is a leaf and must not
+// import the worker request handler.
+function strictBlockNumber(ref) {
+  if (!/^\d+$/.test(String(ref))) return null;
+  const value = Number(ref);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
 // Per-block detail by numeric block_number or 0x block_hash. Includes nearest
 // stored neighbors (prev_block_number, next_block_number) for chain-walk nav
 // (#1853). Returns block:null when the ref is unknown or the store is cold —
 // never throws (schema-stable zero, mirrors the REST route).
 export async function loadBlock(d1, ref) {
   const isHash = /^0x[0-9a-fA-F]{64}$/.test(String(ref));
+  const blockNumber = isHash ? null : strictBlockNumber(ref);
+  // A non-hash ref that isn't a strict, safe-integer block_number can never match
+  // a stored row — skip the lookup and serve the schema-stable miss.
+  if (!isHash && blockNumber === null) {
+    return buildBlock(undefined, ref);
+  }
   const sql = isHash
     ? `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_hash = ? LIMIT 1`
     : `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number = ? LIMIT 1`;
-  const param = isHash ? String(ref) : Number(ref);
+  const param = isHash ? String(ref) : blockNumber;
   const rows = await d1(sql, [param]);
   let prev = null;
   let next = null;

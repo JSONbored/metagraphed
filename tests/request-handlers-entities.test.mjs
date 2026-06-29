@@ -4,6 +4,7 @@
 // through workers/api.mjs.
 
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -768,6 +769,55 @@ describe("handleSubnetHistory", () => {
     assert.equal(body.data.points[0].total_stake_tao, 900);
   });
 
+  test("uses the covering index for the aggregate history query plan", () => {
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE neuron_daily (
+        netuid INTEGER NOT NULL,
+        uid INTEGER NOT NULL,
+        snapshot_date TEXT NOT NULL,
+        hotkey TEXT,
+        coldkey TEXT,
+        active INTEGER,
+        validator_permit INTEGER,
+        rank REAL,
+        trust REAL,
+        validator_trust REAL,
+        consensus REAL,
+        incentive REAL,
+        dividends REAL,
+        emission_tao REAL,
+        stake_tao REAL,
+        registered_at_block INTEGER,
+        is_immunity_period INTEGER,
+        axon TEXT,
+        block_number INTEGER,
+        captured_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (netuid, uid, snapshot_date)
+      );
+      CREATE INDEX idx_neuron_daily_netuid_date_agg
+        ON neuron_daily (netuid, snapshot_date, validator_permit, stake_tao, emission_tao);
+    `);
+
+    const sql =
+      "SELECT snapshot_date, COUNT(*) AS neuron_count, " +
+      "SUM(validator_permit) AS validator_count, " +
+      "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
+      "FROM neuron_daily WHERE netuid = ? GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ?";
+    const plan = db.prepare("EXPLAIN QUERY PLAN " + sql).all(NETUID, 400);
+
+    assert.equal(plan.length, 1);
+    assert.equal(
+      plan[0].detail,
+      "SEARCH neuron_daily USING COVERING INDEX idx_neuron_daily_netuid_date_agg (netuid=?)",
+    );
+    assert.equal(
+      plan.some(({ detail }) => /TEMP B-TREE/.test(detail)),
+      false,
+    );
+  });
+
   test("invalid window returns 400", async () => {
     const res = await handleSubnetHistory(
       req(`/api/v1/subnets/${NETUID}/history`),
@@ -1476,7 +1526,7 @@ describe("handleAccountTransfers", () => {
   });
 
   test("happy path reshapes Transfer rows (all direction)", async () => {
-    const { env } = dbWith({ transfers: [transferEventRow()] });
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
     const body = await json(
       await handleAccountTransfers(
         req(`/api/v1/accounts/${SS58}/transfers`),
@@ -1488,6 +1538,11 @@ describe("handleAccountTransfers", () => {
     assert.equal(body.data.transfer_count, 1);
     assert.equal(body.data.transfers[0].from, SS58);
     assert.equal(body.data.transfers[0].amount_tao, 4.2);
+    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    assert.ok(/UNION ALL/.test(sql));
+    assert.ok(/hotkey = \?/.test(sql));
+    assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
+    assert.equal(sql.includes(" OR "), false);
   });
 
   test("direction=sent binds hotkey-only clause", async () => {
@@ -1532,9 +1587,21 @@ describe("handleAccountTransfers", () => {
         ),
       ),
     );
-    const sql = captures.sql.find((s) => /Transfer/.test(s));
+    const idx = captures.sql.findIndex((s) => /Transfer/.test(s));
+    assert.ok(idx !== -1);
+    const sql = captures.sql[idx];
     assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(sql));
     assert.ok(!/OFFSET/.test(sql));
+    assert.deepEqual(captures.params[idx], [
+      SS58,
+      200,
+      1,
+      SS58,
+      SS58,
+      200,
+      1,
+      1,
+    ]);
     assert.equal(body.data.next_cursor, encodeCursor([150, 2]));
   });
 
@@ -1611,13 +1678,13 @@ describe("handleAccountCounterparties", () => {
     assert.equal(body.data.ss58, SS58);
     assert.equal(body.data.counterparty_count, 2); // A, B
     assert.equal(body.data.counterparties[0].address, "B"); // highest volume (200)
-    // Read is a Transfer scan bound to the account on both sides.
-    const idx = captures.sql.findIndex((s) =>
-      /event_kind = 'Transfer' AND \(hotkey = \? OR coldkey = \?\)/.test(s),
+    // Read is two Transfer side seeks bound to the account, not a hotkey/coldkey OR.
+    const idx = captures.sql.findIndex(
+      (s) => /UNION ALL/.test(s) && /coldkey = \? AND hotkey <> \?/.test(s),
     );
     assert.ok(idx !== -1);
-    assert.equal(captures.params[idx][0], SS58);
-    assert.equal(captures.params[idx][1], SS58);
+    assert.equal(captures.sql[idx].includes(" OR "), false);
+    assert.deepEqual(captures.params[idx].slice(0, 3), [SS58, SS58, SS58]);
   });
 });
 

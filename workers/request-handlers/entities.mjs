@@ -17,12 +17,7 @@
 // imported straight from the src/* leaf modules + config. api.mjs imports the
 // handlers back and dispatches them from the router.
 
-import {
-  DAY_MS,
-  SS58_ADDRESS_PATTERN,
-  clampInt,
-  resolveClientIp,
-} from "../config.mjs";
+import { DAY_MS, SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.mjs";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -652,27 +647,30 @@ export async function handleAccountTransfers(request, env, ss58, url) {
   }
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   // sent => this account is the sender (hotkey=from); received => recipient
-  // (coldkey=to); default/all => either side.
-  let sideClause = "(hotkey = ? OR coldkey = ?)";
-  let sideParams = [ss58, ss58];
-  if (direction === "sent") {
-    sideClause = "hotkey = ?";
-    sideParams = [ss58];
-  } else if (direction === "received") {
-    sideClause = "coldkey = ?";
-    sideParams = [ss58];
-  }
-  // Keyset (cursor) pagination mirrors loadAccountEvents/handleExtrinsicsFeed: a
-  // (block_number, event_index) row-value seek, stable + O(limit) at depth on the
-  // large account_events tier. offset stays as a deprecated fallback; cursor wins.
+  // (coldkey=to); default/all => either side. Keep the default read as two
+  // side-specific seeks rather than an OR predicate so D1 cannot satisfy only
+  // event_kind='Transfer' from the pair index and then filter all Transfer rows.
+  // Self-transfers are returned once, matching the old OR semantics.
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
-  const params = [...sideParams];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND ${sideClause}`;
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
+  const cursorClause = useCursor
+    ? " AND (block_number, event_index) < (?, ?)"
+    : "";
+  let params;
+  let sql;
+  if (direction === "sent") {
+    params = [ss58];
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${cursorClause}`;
+  } else if (direction === "received") {
+    params = [ss58];
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${cursorClause}`;
+  } else {
+    params = [ss58];
+    if (useCursor) params.push(cur[0], cur[1]);
+    params.push(ss58, ss58);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${cursorClause})`;
   }
+  if (useCursor) params.push(cur[0], cur[1]);
   sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
   params.push(limit);
   if (!useCursor) {
@@ -783,8 +781,8 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
   }
   const rows = await d1All(
     env,
-    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND (hotkey = ? OR coldkey = ?) ORDER BY block_number DESC LIMIT ?`,
-    [ss58, ss58, COUNTERPARTIES_SCAN_CAP],
+    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM (SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?) ORDER BY block_number DESC LIMIT ?`,
+    [ss58, ss58, ss58, COUNTERPARTIES_SCAN_CAP],
   );
   const data = buildCounterparties(rows, ss58, { limit });
   return envelopeResponse(
@@ -1108,17 +1106,29 @@ export async function handleBlocks(request, env, url) {
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset, cursor } = parsePagination(url, BLOCK_PAGINATION);
   const sp = url.searchParams;
-  const MAX = Number.MAX_SAFE_INTEGER;
-  const intParam = (name) => clampInt(sp.get(name), 0, 0, MAX);
-  const blockStart =
-    sp.get("block_start") != null ? intParam("block_start") : null;
-  const blockEnd = sp.get("block_end") != null ? intParam("block_end") : null;
-  const from = sp.get("from") != null ? intParam("from") : null;
-  const to = sp.get("to") != null ? intParam("to") : null;
-  const minExtrinsics =
-    sp.get("min_extrinsics") != null ? intParam("min_extrinsics") : null;
-  const minEvents =
-    sp.get("min_events") != null ? intParam("min_events") : null;
+  // Reject non-integer numeric filters with 400 (mirrors handleExtrinsics / #2274).
+  const numericFilters = {};
+  for (const param of [
+    "block_start",
+    "block_end",
+    "from",
+    "to",
+    "min_extrinsics",
+    "min_events",
+    "spec_version",
+  ]) {
+    const raw = sp.get(param);
+    if (raw === null) continue;
+    const parsed = parseNonNegativeIntParam(raw, param);
+    if (parsed.error) return analyticsQueryError(parsed.error);
+    numericFilters[param] = parsed.value;
+  }
+  const blockStart = numericFilters.block_start ?? null;
+  const blockEnd = numericFilters.block_end ?? null;
+  const from = numericFilters.from ?? null;
+  const to = numericFilters.to ?? null;
+  const minExtrinsics = numericFilters.min_extrinsics ?? null;
+  const minEvents = numericFilters.min_events ?? null;
 
   // Inverted indexed ranges and astronomically high per-block count floors are
   // deterministic no-match cases. Short-circuit them before D1 so public callers
@@ -1149,9 +1159,9 @@ export async function handleBlocks(request, env, url) {
     conds.push("author = ?");
     params.push(sp.get("author"));
   }
-  if (sp.get("spec_version") != null) {
+  if (numericFilters.spec_version != null) {
     conds.push("spec_version = ?");
-    params.push(clampInt(sp.get("spec_version"), 0, 0, MAX));
+    params.push(numericFilters.spec_version);
   }
   if (blockStart != null) {
     conds.push("block_number >= ?");

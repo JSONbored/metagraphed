@@ -14,6 +14,7 @@ import {
   buildBlock,
   buildBlockFeed,
   formatBlock,
+  loadBlock,
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
@@ -309,6 +310,26 @@ test("GET /blocks clamps limit to <=100 + rejects unsupported params", async () 
   assert.equal(bad.status, 400);
 });
 
+test("GET /blocks rejects non-integer numeric filters with 400 (#2310)", async () => {
+  const env = dbWith({ feed: [] });
+  for (const query of [
+    "block_start=abc",
+    "block_end=abc",
+    "block_start=12.9",
+    "from=foo",
+    "to=foo",
+    "min_extrinsics=1.5",
+    "min_events=-1",
+    "spec_version=foo",
+  ]) {
+    const res = await handleRequest(req(`/api/v1/blocks?${query}`), env, {});
+    assert.equal(res.status, 400, query);
+    const body = await res.json();
+    assert.equal(body.ok, false, query);
+    assert.equal(body.error.code, "invalid_query", query);
+  }
+});
+
 test("GET /blocks?cursor= seeks by keyset + emits next_cursor (#1851)", async () => {
   let boundSql;
   let boundParams;
@@ -599,4 +620,84 @@ test("GET /blocks/{ref}/extrinsics rejects an unsupported query param (#1845)", 
     {},
   );
   assert.equal(res.status, 400);
+});
+
+// ---- loadBlock strict ref (MCP get_block) ----------------------------------
+// The shared loader behind the MCP get_block tool must mirror the REST route's
+// strictBlockNumber guard: a non-hash ref that isn't a strict, safe-integer
+// block_number is a clean miss, never a Number()-coerced wrong-but-valid lookup.
+
+// A d1 runner that records every query and answers the block_number SELECT with
+// the row whose number is bound — so a coercion bug surfaces as a wrong-but-valid
+// hit instead of the expected miss.
+function recordingDb(known = new Set()) {
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/WHERE block_number = \?/.test(sql)) {
+      const n = params[0];
+      return known.has(n)
+        ? [{ block_number: n, block_hash: `0x${"a".repeat(64)}` }]
+        : [];
+    }
+    return [];
+  };
+  return { d1, calls };
+}
+
+test("loadBlock treats a malformed non-hash ref as a clean miss (#2314)", async () => {
+  // Each of these would Number()-coerce to a stored block_number under the old
+  // path (0x1->1, 1e3->1000, ' 5'->5); the strict guard must reject them.
+  const bad = [
+    "0x1",
+    "1e3",
+    " 5",
+    "12-3",
+    "+7",
+    "0x1f",
+    "99999999999999999999",
+  ];
+  for (const ref of bad) {
+    const { d1, calls } = recordingDb(new Set([1, 5, 7, 31, 1000]));
+    const out = await loadBlock(d1, ref);
+    assert.equal(out.block, null, `ref ${ref} must miss`);
+    assert.equal(out.ref, ref);
+    assert.equal(
+      calls.some((c) => /WHERE block_number = \?/.test(c.sql)),
+      false,
+      `ref ${ref} must skip the block_number lookup`,
+    );
+  }
+});
+
+test("loadBlock still resolves a well-formed numeric ref (#2314)", async () => {
+  const { d1, calls } = recordingDb(new Set([42]));
+  const out = await loadBlock(d1, "42");
+  assert.equal(out.block.block_number, 42);
+  assert.equal(
+    calls.some(
+      (c) => /WHERE block_number = \?/.test(c.sql) && c.params[0] === 42,
+    ),
+    true,
+  );
+});
+
+test("loadBlock still resolves a 64-hex block_hash ref (#2314)", async () => {
+  const hash = `0x${"a".repeat(64)}`;
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/WHERE block_hash = \?/.test(sql)) {
+      return [{ block_number: 9, block_hash: hash }];
+    }
+    return [];
+  };
+  const out = await loadBlock(d1, hash);
+  assert.equal(out.block.block_number, 9);
+  assert.equal(
+    calls.some(
+      (c) => /WHERE block_hash = \?/.test(c.sql) && c.params[0] === hash,
+    ),
+    true,
+  );
 });
