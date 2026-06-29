@@ -118,6 +118,11 @@ for (const workflow of workflows) {
       workflow,
       "publish workflow must not refresh live registry data during deployment",
     );
+    check(
+      !/^\s+cache:\s*npm\s*$/m.test(content),
+      workflow,
+      "publish workflow must not restore shared npm caches on the Cloudflare release path",
+    );
     const refreshJob = workflowJobBlock(content, "refresh");
     const publishJob = workflowJobBlock(content, "publish");
     check(
