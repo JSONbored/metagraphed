@@ -712,7 +712,9 @@ test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", a
   const d1 = async (sql, params) => {
     calls.push({ sql, params });
     if (/WHERE block_hash = \?/.test(sql)) {
-      return params[0] === lower ? [{ block_number: 9, block_hash: lower }] : [];
+      return params[0] === lower
+        ? [{ block_number: 9, block_hash: lower }]
+        : [];
     }
     return [];
   };
