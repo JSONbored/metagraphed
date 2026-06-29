@@ -1,5 +1,5 @@
 {
-  "contract_version": "2026-06-29.1",
+  "contract_version": "2026-06-06.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "kinds": [
     "archive",
@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 77,
+  "surface_count": 74,
   "surfaces": [
     {
       "auth_required": false,
@@ -932,24 +932,6 @@
     },
     {
       "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 64,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "chutes",
-      "public_safe": true,
-      "subnet_name": "Chutes",
-      "subnet_slug": "sn-64",
-      "surface_id": "sn-64-chutes-subnet-api",
-      "surface_key": "srf-a854169bb85658e8",
-      "url": "https://llm.chutes.ai/v1/models"
-    },
-    {
-      "auth_required": false,
       "authority": "registry-observed",
       "kind": "data-artifact",
       "netuid": 64,
@@ -1220,24 +1202,6 @@
     },
     {
       "auth_required": false,
-      "authority": "community",
-      "kind": "data-artifact",
-      "netuid": 88,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "mobiusfund",
-      "public_safe": true,
-      "subnet_name": "Investing",
-      "subnet_slug": "sn-88",
-      "surface_id": "sn-88-investing-ratio",
-      "surface_key": "srf-e606f94442e24006",
-      "url": "https://api.investing88.ai/ratio"
-    },
-    {
-      "auth_required": false,
       "authority": "provider-claimed",
       "kind": "data-artifact",
       "netuid": 95,
@@ -1271,24 +1235,6 @@
       "surface_id": "sn-96-verathos-models-api",
       "surface_key": "srf-4f803cf3db704548",
       "url": "https://api.verathos.ai/v1/models"
-    },
-    {
-      "auth_required": false,
-      "authority": "community",
-      "kind": "subnet-api",
-      "netuid": 107,
-      "probe": {
-        "expect": "json",
-        "method": "GET",
-        "timeout_ms": 10000
-      },
-      "provider": "minos",
-      "public_safe": true,
-      "subnet_name": "Minos",
-      "subnet_slug": "sn-107",
-      "surface_id": "sn-107-minos-subnet-api",
-      "surface_key": "srf-f55a1192b6efcbdf",
-      "url": "https://api.theminos.ai/health"
     },
     {
       "auth_required": false,
