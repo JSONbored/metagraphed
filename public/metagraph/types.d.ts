@@ -17718,7 +17718,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-06.1",
+                     *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",

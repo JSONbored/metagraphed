@@ -155,7 +155,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-06.1",
+      "contract_version": "2026-06-29.1",
       "description": "One curated surface for a subnet with a live health overlay — the full registry Surface record plus the current cron probe reading, composed live at /api/v1/subnets/{netuid}/surfaces/{surface_id} (no static file).",
       "id": "surface-detail-subnet",
       "path": "/metagraph/surfaces/{netuid}/{surface_id}.json",
