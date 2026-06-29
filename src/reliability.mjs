@@ -60,7 +60,18 @@ export function scoreFromStats({
             (avgLatencyMs - LATENCY_FREE_MS) * LATENCY_PENALTY_PER_MS,
           ),
         );
-  const score = Math.max(0, Math.round(uptimeScore - latencyPenalty));
+  let score = Math.max(0, Math.round(uptimeScore - latencyPenalty));
+  // Apply the same anti-overstatement guard `displayUptimeRatio` enforces for the
+  // displayed ratio (#1799) and turnover's `stability_score` enforces for its 0–100
+  // composite (#2299): a sub-perfect uptime must never round the 0–100 score up to a
+  // flawless 100. okCount/samples = 24999/25000 = 0.99996 yields uptimeScore 99.996,
+  // and `Math.round` lifts that to 100 — reporting a perfect reliability score (and
+  // the top grade) for a surface that demonstrably failed a probe, while the very same
+  // call honestly reports `uptime_ratio: 0.9999`. Clamp the score to 99 whenever uptime
+  // is sub-perfect; only a genuine okCount === samples (uptimeRatio exactly 1) keeps the
+  // perfect 100. (Any latencyPenalty already pulls the score below 100, so this only
+  // fires when uptime alone rounded up to a 100.)
+  if (score >= 100 && uptimeRatio < 1) score = 99;
   return {
     score,
     grade: gradeFor(score),

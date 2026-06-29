@@ -2540,6 +2540,33 @@ describe("computeReliability (score from uptime history)", () => {
     );
   });
 
+  test("a sub-perfect uptime must not round the 0-100 score up to a perfect 100", () => {
+    // The same 24999/25000 = 0.99996 input whose displayed ratio clamps to 0.9999
+    // above: uptimeScore = 99.996, which a bare Math.round lifts to 100 — overstating
+    // a surface that demonstrably failed a probe as a flawless 100 (and grade A),
+    // contradicting the honest uptime_ratio on the very same object. It must clamp to 99.
+    const subPerfect = scoreFromStats({
+      samples: 25000,
+      okCount: 24999,
+      avgLatencyMs: null,
+    });
+    assert.equal(subPerfect.score, 99);
+    assert.equal(subPerfect.uptime_ratio, 0.9999);
+    // 99 still grades A (>=99), so the grade is unchanged — only the overstated 100 is.
+    assert.equal(subPerfect.grade, "A");
+    // a genuine perfect uptime (okCount === samples) still scores an honest 100.
+    assert.equal(
+      scoreFromStats({ samples: 25000, okCount: 25000, avgLatencyMs: null })
+        .score,
+      100,
+    );
+    // an already-sub-100 score is untouched by the clamp (90% uptime -> 90).
+    assert.equal(
+      scoreFromStats({ samples: 100, okCount: 90, avgLatencyMs: null }).score,
+      90,
+    );
+  });
+
   test("covers grade B, null latency, missing day, and nullish rows", () => {
     // grade B (95-98)
     assert.equal(
