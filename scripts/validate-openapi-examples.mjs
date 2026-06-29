@@ -22,6 +22,42 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
+// Register the OpenAPI components block ONCE so its 220 schemas are compiled a
+// single time and reused across every route (#2094). Previously each route's
+// compile inlined `components: openapi.components`, re-traversing all 220 schemas
+// per route (~94x redundant). Route response schemas reference components with
+// document-relative `#/components/...` pointers; rebaseRefs redirects those into
+// the registered doc so AJV resolves them against the already-compiled schema.
+// Mirrors the addSchema + $ref pattern in validate-schemas.mjs.
+const COMPONENTS_SCHEMA_ID =
+  "https://metagraph.sh/openapi-components.schema.json";
+ajv.addSchema(
+  { $id: COMPONENTS_SCHEMA_ID, components: openapi.components },
+  COMPONENTS_SCHEMA_ID,
+);
+
+function rebaseComponentRefs(node) {
+  if (Array.isArray(node)) {
+    return node.map(rebaseComponentRefs);
+  }
+  if (node && typeof node === "object") {
+    const out = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (
+        key === "$ref" &&
+        typeof value === "string" &&
+        value.startsWith("#/components/")
+      ) {
+        out[key] = `${COMPONENTS_SCHEMA_ID}${value}`;
+      } else {
+        out[key] = rebaseComponentRefs(value);
+      }
+    }
+    return out;
+  }
+  return node;
+}
+
 const errors = [];
 let validated = 0;
 
@@ -40,10 +76,7 @@ for (const route of API_ROUTES) {
     );
     continue;
   }
-  const validator = ajv.compile({
-    components: openapi.components,
-    ...responseSchema,
-  });
+  const validator = ajv.compile(rebaseComponentRefs(responseSchema));
   if (!validator(example)) {
     errors.push(
       `${route.path}: response example failed schema validation: ${ajv.errorsText(

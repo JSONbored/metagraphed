@@ -22,6 +22,41 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
+// Register the OpenAPI components block ONCE so its 220 schemas are compiled a
+// single time and reused across every route's response/error-envelope validator
+// (#2094). Previously each compile inlined `components: openapi.components`,
+// re-traversing all 220 schemas per call. Route schemas reference components with
+// document-relative `#/components/...` pointers; rebaseComponentRefs redirects
+// those into the registered doc. Mirrors the pattern in validate-schemas.mjs.
+const COMPONENTS_SCHEMA_ID =
+  "https://metagraph.sh/openapi-components.schema.json";
+ajv.addSchema(
+  { $id: COMPONENTS_SCHEMA_ID, components: openapi.components },
+  COMPONENTS_SCHEMA_ID,
+);
+
+function rebaseComponentRefs(node) {
+  if (Array.isArray(node)) {
+    return node.map(rebaseComponentRefs);
+  }
+  if (node && typeof node === "object") {
+    const out = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (
+        key === "$ref" &&
+        typeof value === "string" &&
+        value.startsWith("#/components/")
+      ) {
+        out[key] = `${COMPONENTS_SCHEMA_ID}${value}`;
+      } else {
+        out[key] = rebaseComponentRefs(value);
+      }
+    }
+    return out;
+  }
+  return node;
+}
+
 // The chain-events routes proxy to the Postgres-backed data Worker (DATA_API
 // service binding). It's a separate Worker not present in this harness, so mock it
 // with the bare response shapes it serves (ADR 0013) — api.mjs rewraps them in the
@@ -963,10 +998,7 @@ function validateWorkerResponse(route, body) {
     operation?.responses?.["200"]?.content?.["application/json"]?.schema;
   assert.ok(responseSchema, `${route}: missing OpenAPI 200 schema`);
 
-  const validator = ajv.compile({
-    components: openapi.components,
-    ...responseSchema,
-  });
+  const validator = ajv.compile(rebaseComponentRefs(responseSchema));
   assert.equal(
     validator(body),
     true,
@@ -978,8 +1010,7 @@ function validateWorkerResponse(route, body) {
 
 function validateErrorEnvelope(body) {
   const validator = ajv.compile({
-    components: openapi.components,
-    $ref: "#/components/schemas/ErrorEnvelope",
+    $ref: `${COMPONENTS_SCHEMA_ID}#/components/schemas/ErrorEnvelope`,
   });
   assert.equal(
     validator(body),
