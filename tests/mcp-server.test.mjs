@@ -3876,6 +3876,53 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.windows["30d"].surfaces, []);
   });
 
+  test("get_chain_calls returns schema-stable empty calls on cold D1", async () => {
+    const res = await callTool("get_chain_calls", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.call_count, 0);
+    assert.deepEqual(out.calls, []);
+  });
+
+  test("get_chain_calls rejects invalid window and group_by params", async () => {
+    const window = await callTool("get_chain_calls", { window: "90d" });
+    assert.equal(window.body.result.isError, true);
+    const groupBy = await callTool("get_chain_calls", { group_by: "bogus" });
+    assert.equal(groupBy.body.result.isError, true);
+  });
+
+  test("get_chain_calls aggregates extrinsic rows with honest shares", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(..._params) {
+              const rows = /GROUP BY call_module/.test(sql)
+                ? [
+                    { call_module: "SubtensorModule", count: 60 },
+                    { call_module: "Balances", count: 30 },
+                  ]
+                : /COUNT\(\*\) AS total/.test(sql)
+                  ? [{ total: 120 }]
+                  : [];
+              return { all: () => Promise.resolve({ results: rows }) };
+            },
+          };
+        },
+      },
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_chain_calls",
+      { window: "30d", limit: 2 },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.observed_at, FRESH_RUN);
+    assert.equal(out.total_extrinsics, 120);
+    assert.equal(out.calls[0].share, 0.5);
+  });
+
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
     const res = await callTool(
       "get_registry_leaderboards",

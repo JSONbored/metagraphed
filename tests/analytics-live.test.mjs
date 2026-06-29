@@ -6,6 +6,7 @@ import {
   composeCompareData,
   growthRowsFromSamples,
   loadCompareSubnets,
+  loadChainCalls,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
@@ -353,6 +354,38 @@ describe("analytics-live loaders", () => {
     assert.equal(data.window, "30d");
     assert.equal(data.summary.incident_count, 1);
     assert.equal(data.surfaces[0].incidents[0].failed_samples, 4);
+  });
+
+  test("loadChainCalls aggregates grouped rows with an honest share denominator", async () => {
+    const data = await loadChainCalls(
+      d1({
+        "GROUP BY call_module": [
+          { call_module: "SubtensorModule", count: 60 },
+          { call_module: "Balances", count: 30 },
+        ],
+        "COUNT\\(\\*\\) AS total": [{ total: 120 }],
+      }),
+      {
+        window: "30d",
+        groupBy: "module",
+        limit: 2,
+        observedAt: OBSERVED_AT,
+        now: Date.UTC(2026, 5, 26),
+      },
+    );
+    assert.equal(data.window, "30d");
+    assert.equal(data.total_extrinsics, 120);
+    assert.equal(data.call_count, 2);
+    assert.equal(data.calls[0].share, 0.5);
+  });
+
+  test("loadChainCalls returns a cold-stable empty payload", async () => {
+    const data = await loadChainCalls(d1(), {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.call_count, 0);
+    assert.deepEqual(data.calls, []);
   });
 });
 

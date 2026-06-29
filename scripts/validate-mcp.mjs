@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const chainCalls = await callOk("get_chain_calls", { window: "7d", limit: 10 });
+assert.ok(
+  Array.isArray(chainCalls.calls),
+  "get_chain_calls must return calls[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),

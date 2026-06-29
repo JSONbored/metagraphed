@@ -56,10 +56,9 @@ import {
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
-import { loadSubnetHealthTrends } from "../../src/analytics-live.mjs";
+import { loadChainCalls, loadSubnetHealthTrends } from "../../src/analytics-live.mjs";
 import {
   buildChainActivity,
-  buildChainCalls,
   buildChainFees,
 } from "../../src/chain-analytics.mjs";
 import { loadChainSigners } from "../../src/chain-query-loaders.mjs";
@@ -809,7 +808,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
 // call_module/call_function). The share denominator is the full-window extrinsic
 // count read separately, so the truncated LIMIT tail never skews shares.
 export async function handleChainCalls(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["group_by", "limit"]);
+  const { label, error } = analyticsWindow(url, ["group_by", "limit"]);
   if (error) return analyticsQueryError(error);
   const groupByError = validateEnumParam(url, "group_by", [
     "module",
@@ -823,39 +822,18 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
   return withEdgeCache(request, ctx, env, "chain-calls", async () => {
-    const cutoff = Date.now() - days * DAY_MS;
-    const groupCols =
-      groupBy === "module_function"
-        ? "call_module, call_function"
-        : "call_module";
-    const selectCols =
-      groupBy === "module_function"
-        ? "call_module, call_function"
-        : "call_module";
-    const [rows, totalRows] = await Promise.all([
-      d1All(
-        env,
-        `SELECT ${selectCols}, COUNT(*) AS count
-         FROM extrinsics
-         WHERE observed_at >= ? AND call_module IS NOT NULL
-         GROUP BY ${groupCols}
-         ORDER BY count DESC
-         LIMIT ?`,
-        [cutoff, limit],
-      ),
-      d1All(
-        env,
-        `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`,
-        [cutoff],
-      ),
-    ]);
+    let usedFallback = false;
+    const d1 = async (sql, params) => {
+      const rows = await d1All(env, sql, params);
+      if (hasD1FallbackRows(rows)) usedFallback = true;
+      return rows;
+    };
     const meta = await readHealthMetaKv(env);
-    const data = buildChainCalls({
+    const data = await loadChainCalls(d1, {
       window: label,
       groupBy,
+      limit,
       observedAt: meta?.last_run_at || null,
-      total: totalRows?.[0]?.total ?? 0,
-      rows,
     });
     const response = await envelopeResponse(
       request,
@@ -869,9 +847,7 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
       },
       "short",
     );
-    return hasD1FallbackRows(rows, totalRows)
-      ? markD1FallbackResponse(response)
-      : response;
+    return usedFallback ? markD1FallbackResponse(response) : response;
   });
 }
 
