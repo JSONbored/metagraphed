@@ -104,7 +104,7 @@ export const R2_ONLY_PATTERNS = [
   /^compare\.json$/,
   // One curated surface + live health overlay, composed live at
   // /api/v1/subnets/{netuid}/surfaces/{surface_id} — never a file.
-  /^surfaces\/(?:\d+|\{netuid\})\/[a-z0-9][a-z0-9:._-]+\.json$/,
+  /^surfaces\/(?:\d+|\{netuid\})\/(?:[a-z0-9][a-z0-9:._-]+|\{surface_id\})\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,
