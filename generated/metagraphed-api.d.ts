@@ -1541,7 +1541,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup). */
+        /** Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup). */
         get: operations["subnetTurnover"];
         put?: never;
         post?: never;
@@ -4850,6 +4850,25 @@ export interface components {
         };
         /** @description Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. */
         SubnetTurnoverArtifact: {
+            /** @description Optional drilldown included only when the live turnover route is requested with changes=true. */
+            changes?: {
+                uid_reassignment_count?: number;
+                uid_reassignments: {
+                    from_hotkey: string;
+                    to_hotkey: string;
+                    uid: number;
+                }[];
+                validators_entered: {
+                    hotkey: string;
+                    uid: number | null;
+                }[];
+                validators_entered_count?: number;
+                validators_exited: {
+                    hotkey: string;
+                    uid: number | null;
+                }[];
+                validators_exited_count?: number;
+            } | null;
             comparable: boolean;
             end_date?: string | null;
             netuid: number;
@@ -17721,6 +17740,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
+                changes?: "true";
             };
             header?: never;
             path: {
@@ -17742,6 +17762,30 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "changes": {
+                     *           "uid_reassignment_count": 1,
+                     *           "uid_reassignments": [
+                     *             {
+                     *               "from_hotkey": "example",
+                     *               "to_hotkey": "example",
+                     *               "uid": 1
+                     *             }
+                     *           ],
+                     *           "validators_entered": [
+                     *             {
+                     *               "hotkey": "example",
+                     *               "uid": 1
+                     *             }
+                     *           ],
+                     *           "validators_entered_count": 1,
+                     *           "validators_exited": [
+                     *             {
+                     *               "hotkey": "example",
+                     *               "uid": 1
+                     *             }
+                     *           ],
+                     *           "validators_exited_count": 1
+                     *         },
                      *         "comparable": false,
                      *         "end_date": "example",
                      *         "netuid": 7,

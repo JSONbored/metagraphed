@@ -341,7 +341,16 @@ export function canonicalSubnetConcentrationHistoryCachePath(url) {
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
 export function canonicalSubnetTurnoverCachePath(url) {
-  return canonicalWindowedCachePath(url, parseHistoryWindow);
+  const validationError = validateQueryParams(url, ["window", "changes"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
+  if (error) return `${url.pathname}${url.search}`;
+  const changes = url.searchParams.get("changes");
+  if (changes != null && changes !== "true") {
+    return `${url.pathname}${url.search}`;
+  }
+  const suffix = changes === "true" ? "&changes=true" : "";
+  return `${url.pathname}?window=${encodeURIComponent(label)}${suffix}`;
 }
 
 // Canonical edge-cache key for the subnet-metagraph route. Only
@@ -401,21 +410,28 @@ export async function handleSubnetConcentrationHistory(
 }
 
 // GET /api/v1/subnets/{netuid}/turnover?window=7d|30d|90d|1y|all: validator-set &
-// registration churn between the window's start and end neuron_daily snapshots —
-// validators entered/exited + Jaccard retention, UID deregistrations, and a 0–100
-// stability score. Reads only the two boundary snapshot_dates (a MIN/MAX bounds
-// query then their rows). Cold/absent store or a single snapshot → 200 with
-// comparable:false + zeroed metrics (schema-stable, never 404).
+// registration churn between the window's start and end neuron_daily snapshots.
+// Add ?changes=true for validator hotkeys entered/exited and UID slots reassigned
+// between the same boundary snapshots. Cold/absent store or a single snapshot →
+// 200 with comparable:false + zeroed metrics (schema-stable, never 404).
 export async function handleSubnetTurnover(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "changes"]);
   if (validationError) return analyticsQueryError(validationError);
   const { label, days, error } = parseHistoryWindow(
     url.searchParams.get("window"),
   );
   if (error) return analyticsQueryError(error);
+  const changes = url.searchParams.get("changes");
+  if (changes != null && changes !== "true") {
+    return analyticsQueryError({
+      parameter: "changes",
+      message: `"${changes}" is not a valid changes flag. Supported: true.`,
+    });
+  }
   const data = await loadSubnetTurnover(d1Runner(env), netuid, {
     windowLabel: label,
     windowDays: days,
+    includeChanges: changes === "true",
   });
   return envelopeResponse(
     request,

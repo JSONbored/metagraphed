@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-29.1";
+export const CONTRACT_VERSION = "2026-06-29.2";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1738,7 +1738,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/turnover",
     "/metagraph/subnets/{netuid}/turnover.json",
-    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+    "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup).",
     "short",
     ["subnets", "analytics"],
     [
@@ -1746,6 +1746,7 @@ export const API_ROUTES = [
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
+      { name: "changes", schema: { type: "string", enum: ["true"] } },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),

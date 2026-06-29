@@ -858,7 +858,59 @@
           "neurons_end": { "type": "integer", "minimum": 0 },
           "uids_deregistered": { "type": "integer", "minimum": 0 },
           "neuron_retention": { "type": ["number", "null"] },
-          "stability_score": { "type": ["integer", "null"] }
+          "stability_score": { "type": ["integer", "null"] },
+          "changes": {
+            "type": ["object", "null"],
+            "description": "Optional drilldown included only when the live turnover route is requested with changes=true.",
+            "required": [
+              "validators_entered",
+              "validators_exited",
+              "uid_reassignments"
+            ],
+            "properties": {
+              "validators_entered_count": { "type": "integer", "minimum": 0 },
+              "validators_exited_count": { "type": "integer", "minimum": 0 },
+              "uid_reassignment_count": { "type": "integer", "minimum": 0 },
+              "validators_entered": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["hotkey", "uid"],
+                  "properties": {
+                    "hotkey": { "type": "string" },
+                    "uid": { "type": ["integer", "null"] }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "validators_exited": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["hotkey", "uid"],
+                  "properties": {
+                    "hotkey": { "type": "string" },
+                    "uid": { "type": ["integer", "null"] }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "uid_reassignments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["uid", "from_hotkey", "to_hotkey"],
+                  "properties": {
+                    "uid": { "type": "integer", "minimum": 0 },
+                    "from_hotkey": { "type": "string" },
+                    "to_hotkey": { "type": "string" }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
         },
         "additionalProperties": true
       },

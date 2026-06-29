@@ -13220,6 +13220,101 @@
         "additionalProperties": true,
         "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup.",
         "properties": {
+          "changes": {
+            "additionalProperties": false,
+            "description": "Optional drilldown included only when the live turnover route is requested with changes=true.",
+            "properties": {
+              "uid_reassignment_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "uid_reassignments": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "from_hotkey": {
+                      "type": "string"
+                    },
+                    "to_hotkey": {
+                      "type": "string"
+                    },
+                    "uid": {
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "uid",
+                    "from_hotkey",
+                    "to_hotkey"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "validators_entered": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "hotkey": {
+                      "type": "string"
+                    },
+                    "uid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "uid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "validators_entered_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_exited": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "hotkey": {
+                      "type": "string"
+                    },
+                    "uid": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "hotkey",
+                    "uid"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "validators_exited_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "validators_entered",
+              "validators_exited",
+              "uid_reassignments"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "comparable": {
             "type": "boolean"
           },
@@ -14292,7 +14387,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-06-29.1"
+    "version": "2026-06-29.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -33048,6 +33143,17 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "changes",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -33056,6 +33162,30 @@
               "application/json": {
                 "example": {
                   "data": {
+                    "changes": {
+                      "uid_reassignment_count": 1,
+                      "uid_reassignments": [
+                        {
+                          "from_hotkey": "example",
+                          "to_hotkey": "example",
+                          "uid": 1
+                        }
+                      ],
+                      "validators_entered": [
+                        {
+                          "hotkey": "example",
+                          "uid": 1
+                        }
+                      ],
+                      "validators_entered_count": 1,
+                      "validators_exited": [
+                        {
+                          "hotkey": "example",
+                          "uid": 1
+                        }
+                      ],
+                      "validators_exited_count": 1
+                    },
                     "comparable": false,
                     "end_date": "example",
                     "netuid": 7,
@@ -33172,7 +33302,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score (computed live from the neuron_daily D1 rollup).",
+        "summary": "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup).",
         "tags": [
           "subnets",
           "analytics"
@@ -33732,7 +33862,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-06-29.1",
+    "contract_version": "2026-06-29.2",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

@@ -52,17 +52,43 @@ function validatorHotkeys(rows) {
   return set;
 }
 
+function normalizedUid(value) {
+  if (value == null) return null;
+  const uid = Number(value);
+  return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
+}
+
 // UID → hotkey map for one snapshot (rows with a real hotkey). A UID whose hotkey
 // changes between snapshots was deregistered + re-registered to a new owner.
 function uidHotkeyMap(rows) {
   const map = new Map();
   for (const row of rows) {
+    const uid = normalizedUid(row?.uid);
     const hotkey = row?.hotkey;
-    if (row?.uid != null && typeof hotkey === "string" && hotkey.length > 0) {
-      map.set(row.uid, hotkey);
+    if (uid != null && typeof hotkey === "string" && hotkey.length > 0) {
+      map.set(uid, hotkey);
     }
   }
   return map;
+}
+
+function validatorHotkeyMap(rows) {
+  const map = new Map();
+  for (const row of rows) {
+    const hotkey = row?.hotkey;
+    if (
+      Number(row?.validator_permit) === 1 &&
+      typeof hotkey === "string" &&
+      hotkey.length > 0
+    ) {
+      map.set(hotkey, { hotkey, uid: normalizedUid(row.uid) });
+    }
+  }
+  return map;
+}
+
+function sortValidatorDetails(rows) {
+  return rows.sort((a, b) => a.hotkey.localeCompare(b.hotkey));
 }
 
 const EMPTY_TURNOVER = {
@@ -77,6 +103,20 @@ const EMPTY_TURNOVER = {
   uids_deregistered: 0,
   neuron_retention: null,
   stability_score: null,
+};
+
+const EMPTY_TURNOVER_CHANGES = {
+  comparable: false,
+  validators_start: 0,
+  validators_end: 0,
+  validators_entered_count: 0,
+  validators_exited_count: 0,
+  neurons_start: 0,
+  neurons_end: 0,
+  uid_reassignment_count: 0,
+  validators_entered: [],
+  validators_exited: [],
+  uid_reassignments: [],
 };
 
 // Compare a subnet's start-of-window vs end-of-window neuron_daily snapshots into a
@@ -156,14 +196,81 @@ export function buildTurnover(
   };
 }
 
-// One subnet's validator-set & registration churn — shared by the REST route and
-// MCP tool: MIN/MAX the window's boundary snapshot_dates on neuron_daily, read
-// exactly those two days' rows, shape with buildTurnover. Cold D1 → comparable:false.
-export async function loadSubnetTurnover(
-  d1,
+// Detail view for the turnover scorecard: which validator hotkeys entered/exited
+// and which UID slots were reassigned to a different hotkey between the boundary
+// snapshots.
+export function buildTurnoverChanges(
+  rows,
   netuid,
-  { windowLabel, windowDays },
+  { window, startDate, endDate } = {},
 ) {
+  const list = Array.isArray(rows) ? rows : [];
+  const base = {
+    schema_version: 1,
+    netuid,
+    window: window ?? null,
+    start_date: startDate ?? null,
+    end_date: endDate ?? null,
+  };
+  if (startDate == null || endDate == null || list.length === 0) {
+    return { ...base, ...EMPTY_TURNOVER_CHANGES };
+  }
+
+  const startRows = list.filter((row) => row?.snapshot_date === startDate);
+  const endRows = list.filter((row) => row?.snapshot_date === endDate);
+  const startValidators = validatorHotkeyMap(startRows);
+  const endValidators = validatorHotkeyMap(endRows);
+
+  const entered = sortValidatorDetails(
+    [...endValidators]
+      .filter(([hotkey]) => !startValidators.has(hotkey))
+      .map(([, value]) => value),
+  );
+  const exited = sortValidatorDetails(
+    [...startValidators]
+      .filter(([hotkey]) => !endValidators.has(hotkey))
+      .map(([, value]) => value),
+  );
+
+  const startMap = uidHotkeyMap(startRows);
+  const endMap = uidHotkeyMap(endRows);
+  const reassignments = [];
+  for (const [uid, fromHotkey] of startMap) {
+    const toHotkey = endMap.get(uid);
+    if (toHotkey != null && toHotkey !== fromHotkey) {
+      reassignments.push({ uid, from_hotkey: fromHotkey, to_hotkey: toHotkey });
+    }
+  }
+  reassignments.sort((a, b) => a.uid - b.uid);
+
+  return {
+    ...base,
+    comparable: startDate !== endDate,
+    validators_start: startValidators.size,
+    validators_end: endValidators.size,
+    validators_entered_count: entered.length,
+    validators_exited_count: exited.length,
+    neurons_start: startMap.size,
+    neurons_end: endMap.size,
+    uid_reassignment_count: reassignments.length,
+    validators_entered: entered,
+    validators_exited: exited,
+    uid_reassignments: reassignments,
+  };
+}
+
+function turnoverChangeDetail(changes) {
+  return {
+    validators_entered_count: changes.validators_entered_count,
+    validators_exited_count: changes.validators_exited_count,
+    uid_reassignment_count: changes.uid_reassignment_count,
+    validators_entered: changes.validators_entered,
+    validators_exited: changes.validators_exited,
+    uid_reassignments: changes.uid_reassignments,
+  };
+}
+
+async function loadTurnoverBoundaryRows(d1, netuid, { windowDays }) {
   let boundsSql =
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ?";
   const boundsParams = [netuid];
@@ -184,9 +291,33 @@ export async function loadSubnetTurnover(
           `SELECT ${TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE netuid = ? AND snapshot_date IN (?, ?) ORDER BY snapshot_date ASC, uid ASC`,
           [netuid, startDate, endDate],
         );
-  return buildTurnover(rows, netuid, {
+  return { startDate, endDate, rows };
+}
+
+// One subnet's validator-set & registration churn — shared by the REST route and
+// MCP tool: MIN/MAX the window's boundary snapshot_dates on neuron_daily, read
+// exactly those two days' rows, shape with buildTurnover. Cold D1 → comparable:false.
+export async function loadSubnetTurnover(
+  d1,
+  netuid,
+  { windowLabel, windowDays, includeChanges = false },
+) {
+  const { startDate, endDate, rows } = await loadTurnoverBoundaryRows(
+    d1,
+    netuid,
+    {
+      windowDays,
+    },
+  );
+  const options = {
     window: windowLabel,
     startDate,
     endDate,
-  });
+  };
+  const data = buildTurnover(rows, netuid, options);
+  if (!includeChanges) return data;
+  return {
+    ...data,
+    changes: turnoverChangeDetail(buildTurnoverChanges(rows, netuid, options)),
+  };
 }

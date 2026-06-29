@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
-import { buildTurnover, loadSubnetTurnover } from "../src/turnover.mjs";
+import {
+  buildTurnover,
+  buildTurnoverChanges,
+  loadSubnetTurnover,
+} from "../src/turnover.mjs";
 
 describe("buildTurnover", () => {
   test("cold / empty / non-array / no-window inputs yield a schema-stable empty block", () => {
@@ -192,6 +196,95 @@ describe("buildTurnover", () => {
     assert.equal(data.validators_end, 1); // V1
     assert.equal(data.neurons_start, 0);
     assert.equal(data.neurons_end, 1);
+  });
+});
+
+describe("buildTurnoverChanges", () => {
+  test("cold / empty / non-array inputs yield schema-stable empty detail", () => {
+    for (const rows of [[], null, undefined]) {
+      const data = buildTurnoverChanges(rows, 7, { window: "30d" });
+      assert.equal(data.netuid, 7);
+      assert.equal(data.comparable, false);
+      assert.equal(data.validators_entered_count, 0);
+      assert.deepEqual(data.validators_entered, []);
+      assert.deepEqual(data.validators_exited, []);
+      assert.deepEqual(data.uid_reassignments, []);
+    }
+  });
+
+  test("lists validator entries, exits, and UID reassignments", () => {
+    const data = buildTurnoverChanges(
+      [
+        {
+          snapshot_date: "2026-06-01",
+          uid: "0",
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "V2",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 2,
+          hotkey: "M1",
+          validator_permit: 0,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          uid: 3,
+          hotkey: "V4",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: "0",
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "V3",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 2,
+          hotkey: "M1",
+          validator_permit: 0,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 4,
+          hotkey: "V0",
+          validator_permit: 1,
+        },
+      ],
+      9,
+      {
+        window: "30d",
+        startDate: "2026-06-01",
+        endDate: "2026-06-30",
+      },
+    );
+    assert.equal(data.comparable, true);
+    assert.equal(data.validators_entered_count, 2);
+    assert.equal(data.validators_exited_count, 2);
+    assert.deepEqual(data.validators_entered, [
+      { hotkey: "V0", uid: 4 },
+      { hotkey: "V3", uid: 1 },
+    ]);
+    assert.deepEqual(data.validators_exited, [
+      { hotkey: "V2", uid: 1 },
+      { hotkey: "V4", uid: 3 },
+    ]);
+    assert.deepEqual(data.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
   });
 });
 

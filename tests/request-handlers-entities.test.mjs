@@ -1159,6 +1159,71 @@ describe("handleSubnetTurnover", () => {
     assert.equal(captures.params[idx][0], NETUID);
   });
 
+  test("rejects an invalid changes flag with 400", async () => {
+    const res = await handleSubnetTurnover(
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover?changes=false`),
+    );
+    await errorJson(res);
+  });
+
+  test("changes=true returns schema-stable empty detail on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetTurnover,
+      req(`/api/v1/subnets/${NETUID}/turnover`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/turnover?changes=true`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.comparable, false);
+    assert.deepEqual(body.data.changes.validators_entered, []);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/turnover.json`,
+    );
+  });
+
+  test("changes=true returns entry, exit, and UID reassignment detail", async () => {
+    const { env } = dbWith({
+      turnoverBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+      turnoverRows: [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 1,
+          hotkey: "V2",
+          validator_permit: 1,
+        },
+        {
+          snapshot_date: "2026-06-30",
+          uid: 1,
+          hotkey: "V3",
+          validator_permit: 1,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetTurnover(
+        req(`/api/v1/subnets/${NETUID}/turnover`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/turnover?window=30d&changes=true`),
+      ),
+    );
+    assert.equal(body.data.window, "30d");
+    assert.deepEqual(body.data.changes.validators_entered, [
+      { hotkey: "V3", uid: 1 },
+    ]);
+    assert.deepEqual(body.data.changes.validators_exited, [
+      { hotkey: "V2", uid: 1 },
+    ]);
+    assert.deepEqual(body.data.changes.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
+  });
+
   describe("canonicalSubnetTurnoverCachePath", () => {
     test("omitted window and explicit ?window=30d produce the same cache key", () => {
       const noWindow = canonicalSubnetTurnoverCachePath(
@@ -1171,6 +1236,15 @@ describe("handleSubnetTurnover", () => {
       );
       assert.equal(noWindow, explicit30d);
       assert.equal(noWindow, "/api/v1/subnets/1/turnover?window=30d");
+      const withChanges = canonicalSubnetTurnoverCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/turnover?changes=true",
+        ),
+      );
+      assert.equal(
+        withChanges,
+        "/api/v1/subnets/1/turnover?window=30d&changes=true",
+      );
     });
 
     test("preserves a non-default valid window label", () => {
