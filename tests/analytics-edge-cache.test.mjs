@@ -745,6 +745,69 @@ describe("analytics edge cache", () => {
       );
     }
   });
+
+  test("chain-calls: out-of-order params collapse to the same cache slot (canonicalized)", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const base = "/api/v1/chain/calls";
+
+    // First request with params in one order — MISS, caches under the canonical key.
+    const first = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh${base}?window=7d&group_by=module&limit=10`,
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+    assert.ok(queriesAfterMiss > 0, "cold MISS must run D1");
+
+    // Same params in a different order must resolve to the same canonical cache key.
+    const hit = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh${base}?limit=10&group_by=module&window=7d`,
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "reordered params must be a cache HIT — no new D1 queries",
+    );
+    assert.equal(cache.store.size, 1, "both requests share one canonical slot");
+  });
+
+  test("chain-calls: canonical cache key is window-first then group_by then limit", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // Submit params in reverse-canonical order; key must still be in canonical order.
+    await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/calls?limit=10&group_by=module&window=7d",
+      ),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "chain-calls",
+        "/api/v1/chain/calls",
+        "?window=7d&group_by=module&limit=10",
+      ),
+    ]);
+  });
 });
 
 const NEURON_CAPTURED_AT = 1_781_500_000_000;

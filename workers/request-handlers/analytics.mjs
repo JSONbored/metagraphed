@@ -804,57 +804,64 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  return withEdgeCache(request, ctx, env, "chain-calls", async () => {
-    const cutoff = Date.now() - days * DAY_MS;
-    const groupCols =
-      groupBy === "module_function"
-        ? "call_module, call_function"
-        : "call_module";
-    const selectCols =
-      groupBy === "module_function"
-        ? "call_module, call_function"
-        : "call_module";
-    const [rows, totalRows] = await Promise.all([
-      d1All(
-        env,
-        `SELECT ${selectCols}, COUNT(*) AS count
-         FROM extrinsics
-         WHERE observed_at >= ? AND call_module IS NOT NULL
-         GROUP BY ${groupCols}
-         ORDER BY count DESC
-         LIMIT ?`,
-        [cutoff, limit],
-      ),
-      d1All(
-        env,
-        `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`,
-        [cutoff],
-      ),
-    ]);
-    const meta = await readHealthMetaKv(env);
-    const data = buildChainCalls({
-      window: label,
-      groupBy,
-      observedAt: meta?.last_run_at || null,
-      total: totalRows?.[0]?.total ?? 0,
-      rows,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-calls",
+    async () => {
+      const cutoff = Date.now() - days * DAY_MS;
+      const groupCols =
+        groupBy === "module_function"
+          ? "call_module, call_function"
+          : "call_module";
+      const selectCols =
+        groupBy === "module_function"
+          ? "call_module, call_function"
+          : "call_module";
+      const [rows, totalRows] = await Promise.all([
+        d1All(
           env,
-          "/metagraph/chain/calls.json",
-          data.observed_at,
+          `SELECT ${selectCols}, COUNT(*) AS count
+           FROM extrinsics
+           WHERE observed_at >= ? AND call_module IS NOT NULL
+           GROUP BY ${groupCols}
+           ORDER BY count DESC
+           LIMIT ?`,
+          [cutoff, limit],
         ),
-      },
-      "short",
-    );
-    return hasD1FallbackRows(rows, totalRows)
-      ? markD1FallbackResponse(response)
-      : response;
-  });
+        d1All(
+          env,
+          `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`,
+          [cutoff],
+        ),
+      ]);
+      const meta = await readHealthMetaKv(env);
+      const data = buildChainCalls({
+        window: label,
+        groupBy,
+        observedAt: meta?.last_run_at || null,
+        total: totalRows?.[0]?.total ?? 0,
+        rows,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/calls.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return hasD1FallbackRows(rows, totalRows)
+        ? markD1FallbackResponse(response)
+        : response;
+    },
+    canonicalAnalyticsCacheRoute(url, ["group_by", "limit"]),
+  );
 }
 
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
