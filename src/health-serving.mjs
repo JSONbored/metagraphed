@@ -1108,7 +1108,10 @@ export function formatUptime({
       day: row.day,
       samples: Number(row.samples) || 0,
       ok_count: Number(row.ok_count) || 0,
-      uptime_ratio: row.uptime_ratio == null ? null : Number(row.uptime_ratio),
+      uptime_ratio:
+        Number(row.samples) > 0
+          ? displayUptimeRatio(Number(row.ok_count) / Number(row.samples))
+          : null,
       avg_latency_ms: roundInt(row.avg_latency_ms),
       latency_sample_count: Number(row.latency_samples) || 0,
       latency_ms: {

@@ -5,6 +5,7 @@
 // `applyQueryFilters` is the single public entry; the rest are internal helpers.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 import { linkHeader } from "./http.mjs";
+import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
 
 const FIELD_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -301,7 +302,7 @@ function paginateRows(rows, params) {
   const requestedCursor = integerParam(params.get("cursor"));
   const shouldPage = requestedLimit !== null || requestedCursor !== null;
   const limit = shouldPage
-    ? Math.min(Math.max(requestedLimit ?? 100, 1), 1000)
+    ? Math.min(Math.max(requestedLimit ?? DEFAULT_LIMIT, MIN_LIMIT), MAX_LIMIT)
     : rows.length;
   const cursor = Math.min(Math.max(requestedCursor ?? 0, 0), rows.length);
   const next = cursor + limit;
@@ -320,16 +321,19 @@ function paginateRows(rows, params) {
 
 function validateListQuery(params, config) {
   const limit = params.get("limit");
-  if (limit !== null && (integerParam(limit) === null || Number(limit) < 1)) {
+  if (
+    limit !== null &&
+    (integerParam(limit) === null || Number(limit) < MIN_LIMIT)
+  ) {
     return {
       parameter: "limit",
-      message: "limit must be an integer between 1 and 1000.",
+      message: `limit must be an integer between ${MIN_LIMIT} and ${MAX_LIMIT}.`,
     };
   }
-  if (limit !== null && Number(limit) > 1000) {
+  if (limit !== null && Number(limit) > MAX_LIMIT) {
     return {
       parameter: "limit",
-      message: "limit must be an integer between 1 and 1000.",
+      message: `limit must be an integer between ${MIN_LIMIT} and ${MAX_LIMIT}.`,
     };
   }
 

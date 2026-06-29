@@ -130,6 +130,23 @@ describe("MCP tool registry", () => {
     }
   });
 
+  test("concentration history is registered once with a typed point schema", () => {
+    const tools = MCP_TOOLS.filter(
+      (tool) => tool.name === "get_subnet_concentration_history",
+    );
+    assert.equal(tools.length, 1);
+
+    const defs = listToolDefinitions().filter(
+      (def) => def.name === "get_subnet_concentration_history",
+    );
+    assert.equal(defs.length, 1);
+    const pointProperties =
+      defs[0].outputSchema?.properties?.points?.items?.properties;
+    assert.ok(pointProperties?.snapshot_date);
+    assert.ok(pointProperties?.stake_gini);
+    assert.ok(pointProperties?.emission_top_10pct_share);
+  });
+
   test("every advertised tool description carries the untrusted-data note", () => {
     for (const def of listToolDefinitions()) {
       assert.match(
@@ -3279,6 +3296,7 @@ describe("MCP economics + metagraph data tools", () => {
     incidentRows = [],
     growthSamples = [],
     rpcRows = [],
+    neuronDaily = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -3301,6 +3319,9 @@ describe("MCP economics + metagraph data tools", () => {
                     return Promise.resolve({ results: growthSamples });
                   }
                   return Promise.resolve({ results: snapshots });
+                }
+                if (sql.includes("FROM neuron_daily")) {
+                  return Promise.resolve({ results: neuronDaily });
                 }
                 if (sql.includes("FROM surface_uptime_daily")) {
                   return Promise.resolve({ results: uptimeRows });
@@ -3450,6 +3471,72 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.points[0].date, "2026-06-01");
     assert.equal(out.points[1].validator_count, 12);
     assert.equal(out.deltas["7d"].completeness_score, 7);
+  });
+
+  test("get_subnet_concentration returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_subnet_concentration", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.stake, null);
+    assert.equal(out.emission, null);
+  });
+
+  test("get_subnet_concentration computes entity-collapsed scorecards", async () => {
+    const res = await callTool(
+      "get_subnet_concentration",
+      { netuid: 7 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              { ...ROW, stake_tao: 100, emission_tao: 2, coldkey: "ck-a" },
+              {
+                ...MINER,
+                stake_tao: 50,
+                emission_tao: 1,
+                coldkey: "ck-a",
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.entity_count, 1);
+    assert.equal(out.entity_stake.total, 150);
+    assert.equal(out.stake.holders, 2);
+  });
+
+  test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
+    const res = await callTool(
+      "get_subnet_concentration_history",
+      { netuid: 7 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neuronDaily: [
+              { snapshot_date: "2026-06-02", stake_tao: 20, emission_tao: 2 },
+              { snapshot_date: "2026-06-01", stake_tao: 10, emission_tao: 1 },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.point_count, 2);
+    assert.equal(out.points[0].snapshot_date, "2026-06-02");
+  });
+
+  test("concentration tools reject invalid window params", async () => {
+    const res = await callTool("get_subnet_concentration_history", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
   });
 
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {

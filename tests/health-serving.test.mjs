@@ -2270,6 +2270,28 @@ describe("formatUptime (daily uptime history)", () => {
     assert.equal(out.observed_at, ts);
   });
 
+  test("clamps per-day uptime_ratio that SQL ROUND rounds up to 1 for sub-perfect days", () => {
+    const out = formatUptime({
+      netuid: 7,
+      window: "90d",
+      rows: [
+        {
+          surface_id: "a",
+          day: "2026-06-12",
+          samples: 25000,
+          ok_count: 24999,
+          uptime_ratio: 1, // SQL ROUND(24999/25000, 4) = 1.0
+          avg_latency_ms: 50,
+          status: "degraded",
+        },
+      ],
+    });
+    // per-day series must not show 1 when samples < ok_count
+    assert.equal(out.surfaces[0].days[0].uptime_ratio, 0.9999);
+    // window-wide ratio must also be clamped
+    assert.equal(out.surfaces[0].uptime_ratio, 0.9999);
+  });
+
   test("handles null ratios/latency, missing status, zero samples, and no window", () => {
     const out = formatUptime({
       netuid: 7,
