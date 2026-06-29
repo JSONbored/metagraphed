@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.mjs";
+import { handleExtrinsic } from "../workers/request-handlers/entities.mjs";
 import {
   EXTRINSIC_INSERT_COLUMNS,
   EXTRINSIC_READ_COLUMNS,
@@ -410,6 +411,26 @@ test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async
   assert.equal(bad.status, 400);
 });
 
+test("GET /extrinsics rejects non-numeric value filters with 400 (#2086)", async () => {
+  const env = dbWith({ feed: [] });
+  for (const query of [
+    "block=abc",
+    "from=foo",
+    "to=foo",
+    "block_start=abc",
+    "block_end=abc",
+  ]) {
+    const res = await handleRequest(
+      req(`/api/v1/extrinsics?${query}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, query);
+    const body = await res.json();
+    assert.equal(body.ok, false);
+  }
+});
+
 test("GET /extrinsics?block=<n> scopes the feed to one block (#1345)", async () => {
   let boundSql;
   const env = {
@@ -615,6 +636,75 @@ test("GET /extrinsics/{ref} embeds the events the extrinsic emitted (#1849)", as
   assert.equal(body.data.events.length, 1);
   assert.equal(body.data.events[0].event_kind, "StakeAdded");
   assert.equal(body.data.events[0].extrinsic_index, 2);
+});
+
+// #2063: the composite "<block>-<index>" parser used split("-") + Number(),
+// which resolved several malformed refs to a wrong-but-VALID row. The route regex
+// (/^...\d+-\d+$/) gates these at the router, so this hardens the HANDLER itself
+// (defense in depth) — the layer the issue verifies — by calling handleExtrinsic
+// directly with the malformed ref. The mock returns the SAME detail row for any
+// composite WHERE (it matches by SQL shape, not bind values), so a malformed ref
+// that still issued the query would surface that row; the strict matcher must
+// instead skip the query → extrinsic:null.
+for (const badRef of [
+  "1234-3-5", // extra segment (old split dropped "5", resolved 1234-3)
+  "1234-", // empty index half (old Number("") === 0, resolved 1234-0)
+  "-3", // empty block half (old Number("") === 0, resolved 0-3)
+  "0x1-2", // hex (old Number("0x1") === 1, resolved 1-2)
+  "1e3-2", // scientific notation (old Number("1e3") === 1000, resolved 1000-2)
+  "99999999999999999999-3", // block half overflows MAX_SAFE_INTEGER → 1e20
+]) {
+  test(`handleExtrinsic("${badRef}") is a clean miss, not a coerced row (#2063)`, async () => {
+    const env = dbWith({
+      detail: {
+        block_number: 1234,
+        extrinsic_index: 3,
+        extrinsic_hash: null,
+        call_module: "Timestamp",
+        call_function: "set",
+        success: 1,
+        observed_at: 1750009000000,
+      },
+    });
+    const res = await handleExtrinsic(
+      req(`/api/v1/extrinsics/${badRef}`),
+      env,
+      badRef,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.ref, badRef);
+    assert.equal(
+      body.data.extrinsic,
+      null,
+      `malformed composite ref "${badRef}" must not resolve to a row`,
+    );
+    assert.deepEqual(body.data.events, []);
+  });
+}
+
+// A well-formed composite ref still resolves (the strict matcher must not
+// over-reject the canonical "<block>-<index>" form).
+test("handleExtrinsic resolves a well-formed composite ref (#2063 regression guard)", async () => {
+  const env = dbWith({
+    detail: {
+      block_number: 1234,
+      extrinsic_index: 3,
+      extrinsic_hash: null,
+      call_module: "Timestamp",
+      call_function: "set",
+      success: 1,
+      observed_at: 1750009000000,
+    },
+  });
+  const res = await handleExtrinsic(
+    req("/api/v1/extrinsics/1234-3"),
+    env,
+    "1234-3",
+  );
+  const body = await res.json();
+  assert.equal(body.data.extrinsic.block_number, 1234);
+  assert.equal(body.data.extrinsic.extrinsic_index, 3);
 });
 
 test("GET /extrinsics is schema-stable when D1 is cold (never 404)", async () => {

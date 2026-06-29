@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "./lib.mjs";
 
@@ -99,7 +100,7 @@ const r2Fallback = await handleRequest(
           async json() {
             return {
               schema_version: 1,
-              contract_version: "2026-06-06.1",
+              contract_version: CONTRACT_VERSION,
               generated_at: "1970-01-01T00:00:00.000Z",
               source: "generated-artifact-diff",
             };
@@ -166,7 +167,7 @@ for (const unsafeUrl of [
   try {
     const unsafePoolArtifact = {
       schema_version: 1,
-      contract_version: "2026-06-06.1",
+      contract_version: CONTRACT_VERSION,
       generated_at: "1970-01-01T00:00:00.000Z",
       pools: [
         {
@@ -258,7 +259,7 @@ globalThis.fetch = async (url, init) => {
 try {
   const safePoolArtifact = {
     schema_version: 1,
-    contract_version: "2026-06-06.1",
+    contract_version: CONTRACT_VERSION,
     generated_at: "1970-01-01T00:00:00.000Z",
     pools: [
       {

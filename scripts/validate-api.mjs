@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import path from "node:path";
-import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
+import {
+  API_ROUTES,
+  CONTRACT_VERSION,
+  compileRoutePattern,
+} from "../src/contracts.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import {
   createLocalArtifactEnv,
@@ -783,7 +787,7 @@ for (const [route, assertion] of checks) {
   assert.ok(response.headers.get("etag"), `${route}: missing ETag`);
   assert.equal(
     response.headers.get("x-metagraph-contract-version"),
-    "2026-06-06.1",
+    CONTRACT_VERSION,
     `${route}: missing contract header`,
   );
   const body = await response.json();
@@ -931,7 +935,7 @@ const r2Fallback = await handleRequest(
           async json() {
             return {
               schema_version: 1,
-              contract_version: "2026-06-06.1",
+              contract_version: CONTRACT_VERSION,
               generated_at: "1970-01-01T00:00:00.000Z",
               source: "generated-artifact-diff",
             };

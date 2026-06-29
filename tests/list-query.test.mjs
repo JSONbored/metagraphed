@@ -432,6 +432,41 @@ describe("list-query numeric range filters", () => {
   });
 });
 
+// #2085: integration_readiness was sortable/filterable via MCP list_subnets but
+// not on the equivalent REST subnets collection. After wiring it into the
+// contract's sort + rangeFilters, the generic list-query engine reads row[key]
+// and must rank/threshold by it just like the other numeric fields.
+describe("list-query integration_readiness (#2085)", () => {
+  const data = {
+    subnets: [
+      { netuid: 1, integration_readiness: 40 },
+      { netuid: 2, integration_readiness: 90 },
+      { netuid: 3, integration_readiness: 65 },
+      { netuid: 4 }, // field absent → sorts last, filtered out by min_
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("?sort=integration_readiness&order=desc ranks by the field", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=integration_readiness&order=desc"),
+      "subnets",
+    );
+    // 90, 65, 40 desc, then the row missing the field last.
+    assert.deepEqual(netuids(result), [2, 3, 1, 4]);
+  });
+
+  test("?min_integration_readiness=N keeps rows >= the bound (inclusive)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?min_integration_readiness=65"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 3]);
+  });
+});
+
 describe("list-query pagination Link header", () => {
   test("first page: next + last only (no earlier page exists)", () => {
     const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&limit=2"));

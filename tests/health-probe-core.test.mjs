@@ -18,6 +18,7 @@ import {
   rollupSubnetStatus,
   normalizeProbeStatus,
   statusForClassification,
+  SUBTENSOR_PROBE_CALLS,
   summarizeRpcProbe,
 } from "../src/health-probe-core.mjs";
 
@@ -590,7 +591,7 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
     assert.equal(probe.methods_supported.chain_getBlockHash, true);
   });
 
-  test("transport error on first method exits the loop early", async () => {
+  test("transport error: all calls dispatched concurrently, first error returned", async () => {
     let callCount = 0;
     const probe = await probeSubtensorHttp("https://rpc.dev", 5000, {
       isUnsafeUrl: async () => false,
@@ -601,8 +602,8 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
         throw err;
       },
     });
-    // Only the first SUBTENSOR_PROBE_CALLS entry should have been attempted.
-    assert.equal(callCount, 1);
+    // All SUBTENSOR_PROBE_CALLS are dispatched concurrently — all are attempted.
+    assert.equal(callCount, SUBTENSOR_PROBE_CALLS.length);
     assert.equal(probe.transport_error, true);
     assert.equal(probe.error_class, "FetchError");
     assert.equal(probe.method_results.chain_getHeader.ok, false);
