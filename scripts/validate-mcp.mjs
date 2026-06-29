@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const healthTrends = await callOk("get_subnet_health_trends", { netuid: 7 });
+assert.ok(
+  healthTrends.windows && typeof healthTrends.windows === "object",
+  "get_subnet_health_trends must return the per-window trends object",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),

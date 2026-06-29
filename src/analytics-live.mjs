@@ -4,10 +4,15 @@
 // workers/request-handlers/analytics-routes.mjs (#1919); MCP tools call these
 // loaders so agents get REST parity without duplicating SQL paths.
 
-import { dailyLatencyColumns } from "./health-sql.mjs";
+import {
+  dailyLatencyColumns,
+  latencyStatColumns,
+  rankedChecksCte,
+} from "./health-sql.mjs";
 import {
   formatGlobalIncidents,
   formatLeaderboards,
+  formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
@@ -15,6 +20,7 @@ import {
 import {
   ANALYTICS_WINDOWS,
   DAY_MS,
+  HEALTH_TREND_WINDOWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
@@ -158,6 +164,44 @@ export async function loadSubnetUptime(
     rows,
     now: now || new Date().toISOString(),
   });
+}
+
+// Per-subnet rolling uptime + latency trend windows — shared by the REST route
+// (handleHealthTrends) and the get_subnet_health_trends MCP tool so both read
+// one D1 contract. Aggregates the ranked health-check history per surface for
+// every window in HEALTH_TREND_WINDOWS (7d/30d). The per-window reads are
+// independent, so they run in parallel (one D1 round-trip each) rather than
+// serialized. Returns {data, windows}: `data` is the formatTrends payload and
+// `windows` carries the raw rows so the REST caller can mark a D1 fallback.
+// Cold/absent D1 → every window degrades to empty surfaces (never throws).
+export async function loadHealthTrends(
+  d1,
+  netuid,
+  { observedAt = null, now = null } = {},
+) {
+  const nowMs = now ?? Date.now();
+  const windows = {};
+  const windowRows = await Promise.all(
+    Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
+      const rows = await d1(
+        `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+           SELECT MAX(surface_id) AS surface_id,
+                  surface_key,
+                  COUNT(*) AS total,
+                  SUM(ok) AS ok_count,
+                  ${latencyStatColumns({ includeMinMax: false })}
+           FROM ranked
+           GROUP BY surface_key`,
+        [netuid, nowMs - days * DAY_MS],
+      );
+      return [label, rows];
+    }),
+  );
+  for (const [label, rows] of windowRows) {
+    windows[label] = rows;
+  }
+  const data = formatTrends({ netuid, observedAt, windows });
+  return { data, windows };
 }
 
 export async function loadGlobalIncidents(

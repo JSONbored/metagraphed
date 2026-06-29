@@ -3381,6 +3381,7 @@ describe("MCP economics + metagraph data tools", () => {
     surfaceStatus = [],
     uptimeRows = [],
     incidentRows = [],
+    trendRows = [],
     growthSamples = [],
     rpcRows = [],
     neuronDaily = [],
@@ -3420,6 +3421,11 @@ describe("MCP economics + metagraph data tools", () => {
                 }
                 if (sql.includes("FROM surface_uptime_daily")) {
                   return Promise.resolve({ results: uptimeRows });
+                }
+                // health-trends aggregates the ranked-checks CTE (which itself
+                // reads surface_checks), so match the outer `FROM ranked` first.
+                if (sql.includes("FROM ranked")) {
+                  return Promise.resolve({ results: trendRows });
                 }
                 if (sql.includes("FROM surface_checks")) {
                   return Promise.resolve({ results: incidentRows });
@@ -3771,6 +3777,56 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.window, "90d");
     assert.deepEqual(out.surfaces, []);
+  });
+
+  test("get_subnet_health_trends returns schema-stable empty windows on cold D1", async () => {
+    const res = await callTool("get_subnet_health_trends", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.deepEqual(Object.keys(out.windows), ["7d", "30d"]);
+    for (const window of Object.values(out.windows)) {
+      assert.deepEqual(window.surfaces, []);
+      assert.equal(window.uptime_ratio, null);
+    }
+  });
+
+  test("get_subnet_health_trends aggregates ranked checks per surface", async () => {
+    const res = await callTool(
+      "get_subnet_health_trends",
+      { netuid: 7 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            trendRows: [
+              {
+                surface_id: "api-root",
+                surface_key: "api-root",
+                total: 100,
+                ok_count: 95,
+                latency_samples: 95,
+                avg_latency_ms: 120,
+                p50: 100,
+                p95: 180,
+                p99: 240,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    const window = out.windows["7d"];
+    assert.equal(window.samples, 100);
+    assert.equal(window.uptime_ratio, 0.95);
+    assert.equal(window.surfaces.length, 1);
+    assert.equal(window.surfaces[0].surface_id, "api-root");
+    assert.equal(window.surfaces[0].uptime_ratio, 0.95);
+    assert.equal(window.surfaces[0].latency_ms.p95, 180);
+  });
+
+  test("get_subnet_health_trends rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_health_trends", {});
+    assert.equal(res.body.result.isError, true);
   });
 
   test("get_registry_leaderboards returns boards from committed profiles", async () => {

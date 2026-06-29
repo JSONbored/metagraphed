@@ -32,6 +32,7 @@ import {
 import {
   loadCompareSubnets,
   loadGlobalIncidents,
+  loadHealthTrends,
   loadRegistryLeaderboards,
   loadSubnetUptime,
   parseAnalyticsWindow,
@@ -124,7 +125,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.7.0";
+export const MCP_SERVER_VERSION = "1.8.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -180,7 +181,9 @@ export const MCP_INSTRUCTIONS =
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
-  "long-term surface uptime history, get_subnet_concentration stake and " +
+  "long-term surface uptime history, get_subnet_health_trends its rolling " +
+  "7d/30d uptime and latency trend windows per surface, " +
+  "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
@@ -1500,6 +1503,33 @@ export const MCP_TOOLS = [
         window: window || "90d",
         observedAt: await mcpObservedAt(ctx),
       });
+    },
+  },
+  {
+    name: "get_subnet_health_trends",
+    title: "Get subnet health trends",
+    description:
+      "Fetch one subnet's rolling 7d and 30d uptime + latency trend windows per " +
+      "operational surface, computed live from the D1 health-check history. Each " +
+      "window returns the aggregate uptime_ratio and latency sample count plus a " +
+      "per-surface breakdown (uptime_ratio, avg and p50/p95/p99 latency) for " +
+      "trend and regression analysis — the time-series companion to " +
+      "get_subnet_health's current status. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/health/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const { data } = await loadHealthTrends(mcpD1Runner(ctx), netuid, {
+        observedAt: await mcpObservedAt(ctx),
+      });
+      return data;
     },
   },
   {
@@ -3435,6 +3465,18 @@ const TOOL_OUTPUT_SCHEMAS = {
       observed_at: NULLABLE_STRING,
       surfaces: { type: "array", items: { type: "object" } },
       reliability: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_health_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "windows"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      observed_at: NULLABLE_STRING,
+      source: NULLABLE_STRING,
+      windows: { type: "object" },
     },
   },
   get_registry_leaderboards: {

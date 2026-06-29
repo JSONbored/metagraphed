@@ -7,6 +7,7 @@ import {
   growthRowsFromSamples,
   loadCompareSubnets,
   loadGlobalIncidents,
+  loadHealthTrends,
   loadRegistryLeaderboards,
   loadSubnetUptime,
   parseAnalyticsWindow,
@@ -171,6 +172,54 @@ describe("analytics-live loaders", () => {
     assert.equal(data.surfaces.length, 1);
     assert.equal(data.surfaces[0].samples, 50);
     assert.equal(data.surfaces[0].days[0].uptime_ratio, 0.9);
+  });
+
+  test("loadHealthTrends returns schema-stable empty windows on cold D1", async () => {
+    const { data, windows } = await loadHealthTrends(d1(), NETUID, {
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.netuid, NETUID);
+    assert.equal(data.observed_at, OBSERVED_AT);
+    // Both configured windows (7d/30d) degrade to an empty per-surface breakdown.
+    assert.deepEqual(Object.keys(data.windows), ["7d", "30d"]);
+    for (const window of Object.values(data.windows)) {
+      assert.deepEqual(window.surfaces, []);
+      assert.equal(window.uptime_ratio, null);
+    }
+    // Raw rows are surfaced so the REST caller can run its D1-fallback check.
+    assert.deepEqual(Object.keys(windows), ["7d", "30d"]);
+  });
+
+  test("loadHealthTrends aggregates ranked check rows per surface", async () => {
+    const { data } = await loadHealthTrends(
+      d1({
+        "FROM ranked": [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            total: 100,
+            ok_count: 95,
+            latency_samples: 95,
+            avg_latency_ms: 120,
+            p50: 100,
+            p95: 180,
+            p99: 240,
+          },
+        ],
+      }),
+      NETUID,
+      { observedAt: OBSERVED_AT },
+    );
+    for (const window of Object.values(data.windows)) {
+      assert.equal(window.samples, 100);
+      assert.equal(window.uptime_ratio, 0.95);
+      assert.equal(window.surfaces.length, 1);
+      assert.equal(window.surfaces[0].surface_id, "api-root");
+      assert.equal(window.surfaces[0].samples, 100);
+      assert.equal(window.surfaces[0].uptime_ratio, 0.95);
+      assert.equal(window.surfaces[0].avg_latency_ms, 120);
+      assert.equal(window.surfaces[0].latency_ms.p95, 180);
+    }
   });
 
   test("loadRegistryLeaderboards returns all boards object", async () => {

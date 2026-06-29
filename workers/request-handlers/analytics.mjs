@@ -53,10 +53,10 @@ import {
   formatGlobalIncidents,
   formatIncidents,
   formatPercentiles,
-  formatTrends,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
+import { loadHealthTrends } from "../../src/analytics-live.mjs";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -421,40 +421,17 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async () => {
-    const nowMs = Date.now();
-    const windows = {};
-    // The per-window aggregations are independent — run them in parallel (one D1
-    // round-trip each) like handleHealthPercentiles/handleLeaderboards, rather than
-    // serializing the two with an await-in-loop. Read through the shared d1All so a
-    // failure is logged + marked as a D1 fallback (the dark-serve log contract) —
-    // the inline bare catch this replaced swallowed errors silently, the exact
-    // failure mode the [d1All] logging exists to prevent.
-    const windowRows = await Promise.all(
-      Object.entries(HEALTH_TREND_WINDOWS).map(async ([label, days]) => {
-        const rows = await d1All(
-          env,
-          `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
-             SELECT MAX(surface_id) AS surface_id,
-                    surface_key,
-                    COUNT(*) AS total,
-                    SUM(ok) AS ok_count,
-                    ${latencyStatColumns({ includeMinMax: false })}
-             FROM ranked
-             GROUP BY surface_key`,
-          [netuid, nowMs - days * DAY_MS],
-        );
-        return [label, rows];
-      }),
-    );
-    for (const [label, rows] of windowRows) {
-      windows[label] = rows;
-    }
+    // Read through the shared loadHealthTrends loader (analytics-live.mjs) so the
+    // REST route and the get_subnet_health_trends MCP tool share one D1 read
+    // contract. The runner stays the analytics-local d1All so every per-window
+    // query is logged + marked as a D1 fallback (the dark-serve log contract),
+    // and `windows` carries the raw rows for the hasD1FallbackRows check below.
     const meta = await readHealthMetaKv(env);
-    const data = formatTrends({
+    const { data, windows } = await loadHealthTrends(
+      (sql, params) => d1All(env, sql, params),
       netuid,
-      observedAt: meta?.last_run_at || null,
-      windows,
-    });
+      { observedAt: meta?.last_run_at || null },
+    );
     const response = await envelopeResponse(
       request,
       {
