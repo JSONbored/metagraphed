@@ -610,6 +610,33 @@ describe("probeSubtensorHttp / jsonRpcHttp (HTTP RPC)", () => {
     assert.equal(probe.archive_support, undefined);
   });
 
+  test("rechecks URL safety before each sequential RPC fetch", async () => {
+    let fetchCount = 0;
+    let safetyChecks = 0;
+    const probe = await probeSubtensorHttp("https://rpc.dev", 5000, {
+      isUnsafeUrl: async () => {
+        safetyChecks += 1;
+        return fetchCount > 0;
+      },
+      fetchImpl: async (_url, init) => {
+        fetchCount += 1;
+        const req = JSON.parse(init.body);
+        return fakeResponse({
+          status: 200,
+          body: rpcBody(req.id, { number: "0x1" }),
+        });
+      },
+    });
+
+    assert.equal(fetchCount, 1);
+    assert.equal(safetyChecks, 3);
+    assert.equal(probe.transport_error, true);
+    assert.equal(probe.unsafe_url, true);
+    assert.equal(probe.error, "unsafe URL");
+    assert.equal(probe.method_results.chain_getHeader.ok, true);
+    assert.equal(probe.method_results.system_health.ok, false);
+  });
+
   test("non-JSON response is a transport error (response was not JSON)", async () => {
     const probe = await probeSubtensorHttp("https://rpc.dev", 5000, {
       isUnsafeUrl: async () => false,

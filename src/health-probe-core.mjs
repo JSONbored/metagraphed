@@ -461,6 +461,14 @@ export async function probeSubtensorHttp(url, timeoutMs, options = {}) {
 
 async function jsonRpcHttp(url, method, params, id, timeoutMs, options = {}) {
   const { isUnsafeUrl = isUnsafePublicUrl, fetchImpl = fetch } = options;
+  if (await isUnsafeUrl(url)) {
+    return {
+      transport_error: true,
+      unsafe_url: true,
+      error: "unsafe URL",
+    };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
