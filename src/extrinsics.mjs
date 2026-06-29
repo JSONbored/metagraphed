@@ -253,6 +253,14 @@ export async function loadExtrinsics(
   return buildExtrinsicFeed(rows, { limit: lim, offset: off, nextCursor });
 }
 
+// A canonical composite ref is EXACTLY two strict decimal halves — so a loose
+// split("-") + Number() can't coerce a malformed ref (hex, sci-notation, an
+// extra/empty segment, leading space, oversized digits) into a wrong-but-valid
+// lookup. Mirrors the REST route's COMPOSITE_REF_RE + isSafeInteger guard
+// (#2063/#2241); this shared MCP get_extrinsic loader was the missed sibling.
+// Kept local because src/ is a leaf and must not import the worker request handler.
+const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
+
 // Per-extrinsic detail by 0x hash or composite "block_number-extrinsic_index"
 // ref. Returns extrinsic:null when the ref is unknown or the store is cold —
 // never throws (schema-stable zero, mirrors the REST route). Events emitted by
@@ -266,11 +274,13 @@ export async function loadExtrinsic(d1, ref) {
       [String(ref)],
     );
   } else {
-    const [b, i] = String(ref).split("-");
-    const blockNumber = Number(b);
-    const extrinsicIndex = Number(i);
+    const composite = COMPOSITE_REF_RE.exec(String(ref));
+    const blockNumber = composite ? Number(composite[1]) : NaN;
+    const extrinsicIndex = composite ? Number(composite[2]) : NaN;
     rows =
-      Number.isInteger(blockNumber) && Number.isInteger(extrinsicIndex)
+      composite &&
+      Number.isSafeInteger(blockNumber) &&
+      Number.isSafeInteger(extrinsicIndex)
         ? await d1(
             `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
             [blockNumber, extrinsicIndex],

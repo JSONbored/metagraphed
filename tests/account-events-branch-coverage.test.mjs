@@ -166,6 +166,7 @@ describe("loadAccountTransfers direction clauses", () => {
     const d1 = makeD1([[]]);
     await loadAccountTransfers(d1, "5Hk", { direction: "sent" });
     const { sql, params } = d1.calls[0];
+    assert.ok(/INDEXED BY idx_account_events_hotkey/.test(sql));
     assert.ok(/hotkey = \?/.test(sql));
     assert.ok(!/coldkey = \?/.test(sql)); // only the sent (hotkey) side clause
     // sideParams=[ss58] then lim, off bound.
@@ -176,8 +177,12 @@ describe("loadAccountTransfers direction clauses", () => {
     const d1 = makeD1([[{ block_number: 1, hotkey: "5Hk", observed_at: 1 }]]);
     const out = await loadAccountTransfers(d1, "5Hk", {});
     const { sql, params } = d1.calls[0];
-    assert.ok(/\(hotkey = \? OR coldkey = \?\)/.test(sql));
-    assert.deepEqual(params, ["5Hk", "5Hk", 100, 0]);
+    assert.ok(/UNION ALL/.test(sql));
+    assert.ok(/INDEXED BY idx_account_events_hotkey/.test(sql));
+    assert.ok(/INDEXED BY idx_account_events_coldkey/.test(sql));
+    assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
+    assert.equal(sql.includes(" OR "), false);
+    assert.deepEqual(params, ["5Hk", "5Hk", "5Hk", 100, 0]);
     assert.equal(out.transfer_count, 1);
   });
 });

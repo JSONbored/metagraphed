@@ -255,6 +255,61 @@ describe("list-query sort tie-break", () => {
   });
 });
 
+// #2073: REST enum/string filters were case-sensitive while MCP list_subnets
+// lowercases its args, so ?status=Active returned a 400 the equivalent MCP call
+// would not. Enum + string-equality + array-membership matching is now
+// case-insensitive (the configured vocabularies + stored values are lowercase).
+describe("list-query case-insensitive enum/string filters (#2073)", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        status: "active",
+        subnet_type: "application",
+        categories: ["inference"],
+      },
+      {
+        netuid: 2,
+        status: "inactive",
+        subnet_type: "root",
+        categories: ["training"],
+      },
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  for (const [mixed, lower] of [
+    ["status=Active", "status=active"],
+    ["subnet_type=Application", "subnet_type=application"],
+    ["domain=Inference", "domain=inference"],
+  ]) {
+    test(`?${mixed} returns 200 with the same rows as ?${lower}`, () => {
+      const upper = applyQueryFilters(
+        data,
+        query(`/api/v1/subnets?${mixed}`),
+        "subnets",
+      );
+      const lowerResult = applyQueryFilters(
+        data,
+        query(`/api/v1/subnets?${lower}`),
+        "subnets",
+      );
+      assert.equal(upper.error, undefined, `?${mixed} must not 400`);
+      assert.deepEqual(netuids(upper), [1]);
+      assert.deepEqual(netuids(upper), netuids(lowerResult));
+    });
+  }
+
+  test("a genuinely invalid enum value still errors (400 invalid_query)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=Bogus"),
+      "subnets",
+    );
+    assert.equal(result.error.parameter, "status");
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
