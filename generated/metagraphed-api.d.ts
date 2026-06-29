@@ -14415,6 +14415,13 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                not_netuid?: number;
+                not_netuids?: string;
+                not_coverage_level?: "native-only" | "manifested" | "probed";
+                not_curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                not_domain?: "agents" | "compute" | "data" | "finance" | "inference" | "media" | "prediction" | "privacy" | "robotics" | "science" | "search" | "security" | "storage" | "training";
+                not_status?: "active" | "inactive";
+                not_subnet_type?: "root" | "application";
                 fields?: string;
                 limit?: number;
                 cursor?: number;

@@ -28430,6 +28430,102 @@
           },
           {
             "in": "query",
+            "name": "not_netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_netuids",
+            "required": false,
+            "schema": {
+              "maxLength": 767,
+              "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_coverage_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "native-only",
+                "manifested",
+                "probed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_curation_level",
+            "required": false,
+            "schema": {
+              "enum": [
+                "native",
+                "candidate-discovered",
+                "community-seeded",
+                "machine-verified",
+                "maintainer-reviewed",
+                "adapter-backed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_domain",
+            "required": false,
+            "schema": {
+              "enum": [
+                "agents",
+                "compute",
+                "data",
+                "finance",
+                "inference",
+                "media",
+                "prediction",
+                "privacy",
+                "robotics",
+                "science",
+                "search",
+                "security",
+                "storage",
+                "training"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "active",
+                "inactive"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "not_subnet_type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "root",
+                "application"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "fields",
             "required": false,
             "schema": {

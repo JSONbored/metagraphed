@@ -255,6 +255,185 @@ describe("list-query sort tie-break", () => {
   });
 });
 
+describe("list-query negation (exclusion) filters", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        status: "active",
+        subnet_type: "application",
+        categories: ["agents"],
+      },
+      {
+        netuid: 2,
+        status: "inactive",
+        subnet_type: "application",
+        derived_categories: ["compute"],
+      },
+      {
+        netuid: 3,
+        status: "active",
+        subnet_type: "root",
+        categories: ["data", "agents"],
+      },
+      { netuid: 4 }, // none of the negation fields present
+    ],
+  };
+  const netuids = (result) => result.data.subnets.map((r) => r.netuid);
+
+  test("not_<scalar> drops rows matching the value (complement of equality)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=active"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("a row missing the field is never excluded", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_subnet_type=application"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [3, 4]);
+  });
+
+  test("F and its own not_F AND together to empty (contradictory filters)", () => {
+    // status=active keeps {1,3}; not_status=active drops them — the two compose
+    // with AND semantics, so the contradiction yields no rows.
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=active&not_status=active"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), []);
+  });
+
+  test("not_F and F partition the rows (exact complement)", () => {
+    const included = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=active"),
+      "subnets",
+    );
+    const excluded = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=active"),
+      "subnets",
+    );
+    assert.deepEqual(
+      [...netuids(included), ...netuids(excluded)].sort(),
+      [1, 2, 3, 4],
+    );
+  });
+
+  test("not_<csv-membership> drops rows whose mapped field is in the set", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuids=1,3"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("inclusion netuids csv filter keeps the listed rows (shared matcher)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?netuids=1,3"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 3]);
+  });
+
+  test("not_<array-membership> drops rows whose array union contains the value", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_domain=agents"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [2, 4]);
+  });
+
+  test("multiple not_ params AND together and compose with sort", () => {
+    const result = applyQueryFilters(
+      data,
+      query(
+        "/api/v1/subnets?not_status=active&not_subnet_type=application&sort=netuid&order=desc",
+      ),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [4]);
+  });
+
+  test("no not_ param is a no-op (every row passes)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?sort=netuid"),
+      "subnets",
+    );
+    assert.deepEqual(netuids(result), [1, 2, 3, 4]);
+  });
+
+  test("an invalid not_<enum> value is a query error naming the not_ param", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_status=bogus"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_status");
+    assert.match(bad.error.message, /not supported for this route/);
+  });
+
+  test("an invalid not_<integer> value is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuid=-1"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuid");
+    assert.match(bad.error.message, /must be a non-negative integer/);
+  });
+
+  test("a malformed not_<pattern> value is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?not_netuids=abc"),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuids");
+    assert.match(bad.error.message, /not in the expected format/);
+  });
+
+  test("an over-length not_<maxLength> value is a query error", () => {
+    const tooLong = `1${",1".repeat(400)}`; // exceeds the netuids 767 cap
+    const bad = applyQueryFilters(
+      data,
+      query(`/api/v1/subnets?not_netuids=${tooLong}`),
+      "subnets",
+    );
+    assert.equal(bad.error.parameter, "not_netuids");
+    assert.match(bad.error.message, /too long/);
+  });
+
+  test("an array-valued field excludes when the value is a member of the array", () => {
+    const arrayData = {
+      subnets: [
+        { netuid: 1, subnet_type: ["application", "root"] },
+        { netuid: 2, subnet_type: "application" },
+      ],
+    };
+    const result = applyQueryFilters(
+      arrayData,
+      query("/api/v1/subnets?not_subnet_type=root"),
+      "subnets",
+    );
+    assert.deepEqual(
+      result.data.subnets.map((r) => r.netuid),
+      [2],
+    );
+  });
+});
+
 describe("list-query numeric range filters", () => {
   const data = {
     subnets: [
@@ -595,8 +774,9 @@ describe("list-query canonicalListSearch (cache-key safety)", () => {
       "/api/v1/subnets?q=chutes&fields=netuid&sort=netuid&order=desc" +
         "&limit=5&cursor=10&curation_level=native" + // a plain filter
         "&netuids=1,2" + // a csv filter
-        "&domain=ai" + // an array filter
+        "&domain=data" + // an array filter (a valid domain enum value)
         "&min_block=100&max_block=200" + // a range filter pair
+        "&not_status=inactive&not_netuids=9&not_domain=data" + // negation filters
         "&utm_campaign=evil&token=SECRET123&__proto__=x", // ignored extras
     );
     const p = params(canonicalListSearch(url, "subnets"));
@@ -609,9 +789,13 @@ describe("list-query canonicalListSearch (cache-key safety)", () => {
     assert.equal(p.get("cursor"), "10");
     assert.equal(p.get("curation_level"), "native");
     assert.equal(p.get("netuids"), "1,2");
-    assert.equal(p.get("domain"), "ai");
+    assert.equal(p.get("domain"), "data");
     assert.equal(p.get("min_block"), "100");
     assert.equal(p.get("max_block"), "200");
+    // The exclusion (negation) params are cache-key-significant too.
+    assert.equal(p.get("not_status"), "inactive");
+    assert.equal(p.get("not_netuids"), "9");
+    assert.equal(p.get("not_domain"), "data");
     // Dropped: anything the edge cache key ignores.
     assert.equal(p.has("utm_campaign"), false);
     assert.equal(p.has("token"), false);

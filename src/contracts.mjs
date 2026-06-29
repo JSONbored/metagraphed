@@ -606,6 +606,17 @@ export const API_QUERY_COLLECTIONS = {
       "surface_count",
       "tempo",
     ],
+    // Exclusion filters: `?not_status=active`, `?not_domain=inference`,
+    // `?not_netuids=1,7` — the complement of the matching equality filter.
+    negationFilters: [
+      "netuid",
+      "netuids",
+      "coverage_level",
+      "curation_level",
+      "domain",
+      "status",
+      "subnet_type",
+    ],
   }),
 };
 
@@ -2721,6 +2732,10 @@ function queryCollection(dataKey, options = {}) {
     // params (inclusive bounds on the numeric row[F]). Generalizes the one-off
     // hand-rolled min_readiness the MCP list_subnets tool did.
     range_filters: options.rangeFilters || [],
+    // Exclusion filters: each equality-filter field F listed here also accepts a
+    // `not_F` query param returning the complement of `?F=v` (same schema).
+    // Opt-in per collection so the contract surface grows deliberately.
+    negation_filters: options.negationFilters || [],
     search_keys: options.search || [],
     sort_fields: options.sort || [],
   };
@@ -2748,6 +2763,11 @@ function listQuery(collection, options = {}) {
     { name: `min_${field}`, schema: { type: "number" } },
     { name: `max_${field}`, schema: { type: "number" } },
   ]);
+  // Each opt-in negation field F → a `not_F` exclusion parameter accepting the
+  // same values as `F` (the complement of `?F=v`).
+  const negationParameters = config.negation_filters
+    .filter((field) => config.filters[field] && !excluded.has(field))
+    .map((field) => ({ name: `not_${field}`, schema: config.filters[field] }));
   return {
     collection,
     filterNames: filterParameters.map((parameter) => parameter.name),
@@ -2755,6 +2775,7 @@ function listQuery(collection, options = {}) {
       ...filterParameters,
       ...searchParameters,
       ...rangeParameters,
+      ...negationParameters,
       {
         name: "fields",
         schema: fieldListSchema,

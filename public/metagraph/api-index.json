@@ -998,6 +998,88 @@
           }
         },
         {
+          "name": "not_netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "not_netuids",
+          "schema": {
+            "maxLength": 767,
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_coverage_level",
+          "schema": {
+            "enum": [
+              "native-only",
+              "manifested",
+              "probed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_curation_level",
+          "schema": {
+            "enum": [
+              "native",
+              "candidate-discovered",
+              "community-seeded",
+              "machine-verified",
+              "maintainer-reviewed",
+              "adapter-backed"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_domain",
+          "schema": {
+            "enum": [
+              "agents",
+              "compute",
+              "data",
+              "finance",
+              "inference",
+              "media",
+              "prediction",
+              "privacy",
+              "robotics",
+              "science",
+              "search",
+              "security",
+              "storage",
+              "training"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_status",
+          "schema": {
+            "enum": [
+              "active",
+              "inactive"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "not_subnet_type",
+          "schema": {
+            "enum": [
+              "root",
+              "application"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
