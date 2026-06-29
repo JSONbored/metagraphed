@@ -15,7 +15,10 @@ const ARTIFACT_ROUTE = "https://metagraph.sh/api/v1/subnets";
 describe("serve-time contract staleness (#1001)", () => {
   function parseExposeHeader(response) {
     return new Set(
-      (response.headers.get("access-control-expose-headers") || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean),
+      (response.headers.get("access-control-expose-headers") || "")
+        .split(",")
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean),
     );
   }
 
@@ -36,11 +39,13 @@ describe("serve-time contract staleness (#1001)", () => {
     expect(res.headers.get("x-metagraph-stale-contract")).toBe(
       body.meta.stale_contract.built_under,
     );
+    const staleContractHeader = "x-metagraph-stale-contract";
     const exposedHeaders = parseExposeHeader(res);
     const emittedMetagraphHeaders = [...res.headers.entries()]
       .map(([name]) => name.toLowerCase())
       .filter((name) => name.startsWith("x-metagraph-"));
 
+    expect(exposedHeaders.has(staleContractHeader)).toBe(true);
     expect(emittedMetagraphHeaders.length).toBeGreaterThan(0);
     for (const name of emittedMetagraphHeaders) {
       expect(exposedHeaders.has(name)).toBe(true);
