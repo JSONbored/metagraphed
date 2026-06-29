@@ -7406,6 +7406,295 @@
           "registry"
         ]
       },
+      "ProviderReportArtifact": {
+        "additionalProperties": false,
+        "description": "Live cross-subnet performance report for one provider — identity, per-subnet surface-kind breakdown, live probe health, and economics — composed at GET /api/v1/providers/{slug}/report (no static file).",
+        "properties": {
+          "dimensions": {
+            "items": {
+              "enum": [
+                "identity",
+                "surfaces",
+                "health",
+                "economics"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "identity": {
+            "additionalProperties": false,
+            "properties": {
+              "authority": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "endpoint_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "netuids": {
+                "items": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "subnet_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "website_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "string"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderReportSubnetEntry"
+            },
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ProviderReportTotals"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source",
+          "provider",
+          "dimensions",
+          "found",
+          "subnets",
+          "totals"
+        ],
+        "type": "object"
+      },
+      "ProviderReportKindCell": {
+        "additionalProperties": false,
+        "properties": {
+          "avg_latency_ms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ok_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "ok_count"
+        ],
+        "type": "object"
+      },
+      "ProviderReportSubnetEntry": {
+        "additionalProperties": false,
+        "description": "One subnet's slice of a provider report. Optional dimension blocks are present only when requested; each is null when the subnet is unknown to the registry projection.",
+        "properties": {
+          "economics": {
+            "additionalProperties": false,
+            "properties": {
+              "alpha_price_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "emission_share": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "miner_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "miner_readiness": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "open_slots": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "registration_allowed": {
+                "type": "boolean"
+              },
+              "registration_cost_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "total_stake_tao": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validator_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "found": {
+            "type": "boolean"
+          },
+          "health": {
+            "additionalProperties": false,
+            "properties": {
+              "avg_latency_ms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ok_count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surfaces": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "kinds": {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ProviderReportKindCell"
+                },
+                "type": "object"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "name",
+          "slug",
+          "found"
+        ],
+        "type": "object"
+      },
+      "ProviderReportTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "health_ok_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "subnet_count",
+          "surface_count",
+          "health_ok_ratio"
+        ],
+        "type": "object"
+      },
       "ProvidersArtifact": {
         "allOf": [
           {
@@ -24241,6 +24530,175 @@
         "tags": [
           "providers",
           "endpoints"
+        ]
+      }
+    },
+    "/api/v1/providers/{slug}/report": {
+      "get": {
+        "operationId": "providerReport",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dimensions",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "dimensions": [
+                      "identity"
+                    ],
+                    "found": false,
+                    "identity": {
+                      "authority": "example",
+                      "endpoint_count": 1,
+                      "id": "example",
+                      "kind": "example",
+                      "name": "Example Subnet",
+                      "netuids": [
+                        7
+                      ],
+                      "subnet_count": 1,
+                      "surface_count": 1,
+                      "website_url": "https://api.metagraph.sh/example"
+                    },
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "provider": "example-provider",
+                    "schema_version": 1,
+                    "source": "live-cron-prober",
+                    "subnets": [
+                      {
+                        "found": false,
+                        "name": "Example Subnet",
+                        "netuid": 7,
+                        "slug": "example-subnet"
+                      }
+                    ],
+                    "totals": {
+                      "health_ok_ratio": 0.9966,
+                      "subnet_count": 1,
+                      "surface_count": 1
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ProviderReportArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a live cross-subnet performance report for one provider: identity summary, per-subnet surface-kind breakdown with live probe health, and economics rows for every subnet the provider serves. `dimensions` selects a subset of identity,surfaces,health,economics (default all). Composed live (no static file); the provider-axis complement to GET /api/v1/compare.",
+        "tags": [
+          "providers",
+          "analytics"
         ]
       }
     },

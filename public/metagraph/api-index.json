@@ -30,6 +30,13 @@
     },
     {
       "contract_version": "2026-06-29.1",
+      "id": "provider-report",
+      "path": "/metagraph/providers/{slug}/report.json",
+      "schema_ref": "#/components/schemas/ProviderReportArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-29.1",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
       "schema_ref": "#/components/schemas/ApiIndexArtifact",
@@ -2213,6 +2220,25 @@
               "asc",
               "desc"
             ]
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/providers/{slug}/report.json",
+      "cache": "standard",
+      "description": "Fetch a live cross-subnet performance report for one provider: identity summary, per-subnet surface-kind breakdown with live probe health, and economics rows for every subnet the provider serves. `dimensions` selects a subset of identity,surfaces,health,economics (default all). Composed live (no static file); the provider-axis complement to GET /api/v1/compare.",
+      "id": "provider-report",
+      "method": "GET",
+      "path": "/api/v1/providers/{slug}/report",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "dimensions",
+          "schema": {
+            "type": "string"
           }
         }
       ]

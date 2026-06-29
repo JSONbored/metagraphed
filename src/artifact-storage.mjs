@@ -102,6 +102,9 @@ export const R2_ONLY_PATTERNS = [
   // like its sibling live routes so the contract maps a schema to the route
   // without the build expecting a committed/staged artifact.
   /^compare\.json$/,
+  // Live provider cross-subnet report: composed at /api/v1/providers/{slug}/report
+  // from provider detail + profiles + D1 + economics — never written as a file.
+  /^providers\/[^/]+\/report\.json$/,
   // RPC reverse-proxy usage analytics (B3), computed live from D1 telemetry at
   // /api/v1/rpc/usage — never written as a file.
   /^rpc\/usage\.json$/,

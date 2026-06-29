@@ -429,6 +429,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/providers/allways/report?dimensions=identity",
+    (body) => {
+      assert.equal(body.data.provider, "allways");
+      assert.equal(body.data.found, true);
+      assert.equal(body.data.identity?.id, "allways");
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.totals.subnet_count, "number");
+    },
+  ],
+  [
     "/api/v1/rpc/usage",
     (body) => {
       assert.equal(body.data.source, "rpc-proxy");

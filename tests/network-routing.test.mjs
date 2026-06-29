@@ -305,6 +305,13 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const compare = await get(env, "/api/v1/testnet/compare?netuids=1");
     assert.equal(compare.res.status, 404);
     assert.equal(compare.body.meta.network, "testnet");
+
+    const providerReport = await get(
+      env,
+      "/api/v1/testnet/providers/datura/report",
+    );
+    assert.equal(providerReport.res.status, 404);
+    assert.equal(providerReport.body.meta.network, "testnet");
   });
 
   test("D1-backed live routes 404 under testnet with a mainnet-only message", async () => {
