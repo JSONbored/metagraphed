@@ -56,7 +56,10 @@ import {
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
-import { loadChainCalls, loadSubnetHealthTrends } from "../../src/analytics-live.mjs";
+import {
+  loadChainCalls,
+  loadSubnetHealthTrends,
+} from "../../src/analytics-live.mjs";
 import {
   buildChainActivity,
   buildChainFees,

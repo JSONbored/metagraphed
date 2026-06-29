@@ -392,10 +392,9 @@ export async function loadChainCalls(
        LIMIT ?`,
       [cutoff, limit],
     ),
-    d1(
-      `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`,
-      [cutoff],
-    ),
+    d1(`SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`, [
+      cutoff,
+    ]),
   ]);
   return buildChainCalls({
     window: windowLabel,
