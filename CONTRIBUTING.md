@@ -39,9 +39,9 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 ## Community submissions
 
-Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
+Surfaces live in **one file per subnet**: `registry/subnets/<slug>.json` → its `surfaces[]` array. A community contribution **adds a surface to that one file** — `npm run surface:add` writes it with `authority: "community"` and `review.state: "community-submitted"`. If the subnet has no manifest yet, scaffold that one subnet file first with `npm run subnet:new`, then add the surface to the same file. There is no per-surface candidate file anymore (recreating `registry/candidates/community/*.json` is rejected by CI), so you can't farm one surface per PR: **one subnet = one file = one PR.**
 
-> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR; provider identity still gets reviewed before it's trusted.
+> Change **only** the one `registry/subnets/<slug>.json` — no generated artifacts. For an existing subnet manifest, that means appending your community surface without changing top-level subnet metadata. For a missing subnet manifest, the required `subnet:new` scaffold fields are expected in the new file. First-time provider? Pass `--provider-name` + `--provider-url` and `surface:add` scaffolds the `registry/providers/<slug>.json` stub for you in the same PR; provider identity still gets reviewed before it's trusted.
 
 > **Plagiarism is not tolerated.** Copying another contributor's PR, surface, or work and submitting it as your own — including duplicated or lightly reworded copies filed under a different account — is a hard violation. Don't copy others to farm Gittensor rewards: anyone attempting to cheat or copy for gain is **permanently blocked from contributing across all of our repositories**. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
@@ -83,12 +83,12 @@ A good surface PR is small: one public `url`, one `source_url` proving the claim
 
 **Accepted vs rejected at a glance** — the visible checklist (the final merge decision is the review gate's):
 
-| ✅ Tends to get accepted                                                                                          | ❌ Gets closed / routed to manual                                                                    |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Exactly one `registry/subnets/<slug>.json` changed (+ an optional `providers/*.json` for a debut)                 | Touches generated artifacts, scripts, or workflows                                                   |
-| A surface with a public `url` **plus** a `source_url` that proves the claim                                       | `source_url` 404s or doesn't back the claim                                                          |
-| `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider | A surface the subnet already exposes — duplicate                                                     |
-| `auth_required: false`, `public_safe: true`                                                                       | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |
+| ✅ Tends to get accepted                                                                                                                                                     | ❌ Gets closed / routed to manual                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Exactly one subnet manifest changed: append to an existing file, or create the missing `subnet:new` scaffold plus the surface (+ an optional `providers/*.json` for a debut) | Touches generated artifacts, scripts, or workflows                                                   |
+| A surface with a public `url` **plus** a `source_url` that proves the claim                                                                                                  | `source_url` 404s or doesn't back the claim                                                          |
+| `authority: community` + `review.state: community-submitted`, an auto-review `kind`, an active netuid, a provider                                                            | A surface the subnet already exposes — duplicate                                                     |
+| `auth_required: false`, `public_safe: true`                                                                                                                                  | Secrets/PATs/wallet paths, private/localhost URLs, unproven ownership, or a recreated candidate file |
 
 Callable surface with documented limits? Add an optional structured `rate_limit` — `{ requests, window, burst?, scope?, cost_notes? }` (`requests` + `window` required) — so agents and SDKs can pace calls. It's integration-only: metagraphed never enforces it and it doesn't feed completeness.
 

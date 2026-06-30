@@ -107,7 +107,14 @@
             "additionalProperties": true
           },
           "status": {
-            "enum": ["captured", "error", "not-found", "too-large", "unsafe"]
+            "enum": [
+              "captured",
+              "error",
+              "not-captured",
+              "not-found",
+              "too-large",
+              "unsafe"
+            ]
           },
           "subnet_slug": {
             "type": "string"

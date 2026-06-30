@@ -89,9 +89,12 @@ complete.
 
 ## Best Auto-Review Contributions
 
-Direct PRs should add surface(s) to exactly one `registry/subnets/<slug>.json`
-file (its `surfaces[]` array) and no generated artifacts. The per-candidate-file
-lane (`registry/candidates/community/*.json`) is retired and rejected by CI.
+Direct PRs should change exactly one `registry/subnets/<slug>.json` file and no
+generated artifacts. Existing subnet manifests should only append surface(s) to
+their `surfaces[]` array. If the subnet has no manifest yet, run
+`npm run subnet:new` first, then add the surface(s) to that same new file. The
+per-candidate-file lane (`registry/candidates/community/*.json`) is retired and
+rejected by CI.
 
 Use:
 
