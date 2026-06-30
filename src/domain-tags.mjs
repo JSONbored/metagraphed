@@ -10,7 +10,7 @@
 const DOMAIN_TAG_RULES = [
   [
     "agents",
-    /\b(agent|agentic|autonomous (?:agent|software)|tool[- ]?use|workflow automat\w*)\b/i,
+    /\b(agents?|agentic|autonomous (?:agents?|software)|tool[- ]?use|workflow automat\w*)\b/i,
   ],
   [
     "compute",
@@ -26,7 +26,7 @@ const DOMAIN_TAG_RULES = [
   ],
   [
     "inference",
-    /\b(inference|llms?|large language model|language model|text[- ]generation|chatbot|prompt(?:ing)?|completion(?:s)?)\b/i,
+    /\b(inference|llms?|large language model|language model|text[- ]generation|chatbots?|prompt(?:s|ing)?|completion(?:s)?)\b/i,
   ],
   [
     "media",
@@ -54,7 +54,7 @@ const DOMAIN_TAG_RULES = [
   ],
   [
     "security",
-    /\b(cyber ?security|deepfakes?|fraud|threat|malware|vulnerab\w*|exploit\w*|phishing|anomaly detection)\b/i,
+    /\b(cyber ?security|deepfakes?|fraud|threats?|malware|vulnerab\w*|exploit\w*|phishing|anomaly detection)\b/i,
   ],
   [
     "storage",

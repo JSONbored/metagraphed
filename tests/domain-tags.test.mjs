@@ -18,6 +18,42 @@ describe("deriveDomainTags", () => {
     assert.deepEqual(tags, ["inference", "training"]);
   });
 
+  test("tags the plural 'agents' the same as the singular 'agent'", () => {
+    // Real on-chain descriptions phrase it both ways; the plural must not be
+    // dropped from the ?domain=agents facet.
+    for (const description of [
+      "AI commerce agents",
+      "Software Engineering Agents",
+      "autonomous agents",
+      "Designed for AI Agents",
+    ]) {
+      assert.deepEqual(
+        deriveDomainTags({ description }),
+        ["agents"],
+        `expected ["agents"] for ${JSON.stringify(description)}`,
+      );
+    }
+    // The singular still works (no regression).
+    assert.deepEqual(deriveDomainTags({ description: "an agent network" }), [
+      "agents",
+    ]);
+  });
+
+  test("tags plural inflections of chatbot / threat / prompt", () => {
+    assert.deepEqual(
+      deriveDomainTags({ description: "A network of chatbots" }),
+      ["inference"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({ description: "Detecting security threats" }),
+      ["security"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({ description: "A marketplace for prompts" }),
+      ["inference"],
+    );
+  });
+
   test("accepts curated categories that are already in the vocabulary", () => {
     const tags = deriveDomainTags({
       categories: ["Finance", "privacy"],

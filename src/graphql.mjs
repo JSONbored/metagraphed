@@ -355,6 +355,18 @@ function buildFragmentMap(documentNode) {
   return fragments;
 }
 
+// Introspection root meta-fields (`__schema` / `__type`) resolve against the
+// schema document only — they have no per-row data fan-out — so they carry none
+// of the DoS risk the depth/complexity weights were sized for. Exempt them (and
+// their subtree) from both counters so the standard getIntrospectionQuery() that
+// every GraphQL tool sends (intrinsically deeper/wider than the data limits)
+// stays enabled over POST, matching the documented contract. Sibling data fields
+// in the same operation are still measured, so a mixed query stays bounded.
+const INTROSPECTION_ROOT_FIELDS = new Set(["__schema", "__type"]);
+function isIntrospectionRootField(sel) {
+  return sel.kind === "Field" && INTROSPECTION_ROOT_FIELDS.has(sel.name?.value);
+}
+
 // Depth/complexity must follow named fragment spreads. Otherwise a client moves
 // the whole (expensive) selection into a fragment and the operation's own
 // selection set is just a single transparent spread — counting as depth 0 /
@@ -369,6 +381,7 @@ function buildFragmentMap(documentNode) {
 function selectionDepth(selectionSet, fragments, visited, memo, max) {
   let deepest = 0;
   for (const sel of selectionSet.selections) {
+    if (isIntrospectionRootField(sel)) continue; // schema-only: depth 0
     let depth = 0;
     if (sel.kind === "FragmentSpread") {
       const fragName = sel.name.value;
@@ -432,6 +445,7 @@ export function maxDepthRule(max) {
 function selectionComplexity(selectionSet, fragments, visited, memo, max) {
   let count = 0;
   for (const sel of selectionSet.selections) {
+    if (isIntrospectionRootField(sel)) continue; // schema-only: no complexity cost
     if (sel.kind === "FragmentSpread") {
       const fragName = sel.name.value;
       const frag = fragments.get(fragName);

@@ -39,6 +39,19 @@ function toIso(ms) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+// Coerce a chain-position cell (block_number / extrinsic_index) to a
+// non-negative integer, or null when missing, non-finite, or negative. D1 can
+// return an INTEGER column as a numeric string, so a bare `?? null` pass-through
+// would silently leak the string into the API payload and break downstream
+// arithmetic/comparisons. Mirrors the `toBlockNumber` already applied in
+// account-events.mjs / chain-analytics.mjs and the `toBlockNumber` added to
+// blocks.mjs in #2435.
+function toChainPosition(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 // Keep only well-formed extrinsics rows (a valid (block_number, extrinsic_index)
 // primary key + an integer timestamp). Shared by the staged-batch loader so
 // garbage is rejected before it touches D1.
@@ -120,8 +133,8 @@ export function formatExtrinsic(row) {
     }
   }
   return {
-    block_number: row.block_number ?? null,
-    extrinsic_index: row.extrinsic_index ?? null,
+    block_number: toChainPosition(row.block_number),
+    extrinsic_index: toChainPosition(row.extrinsic_index),
     extrinsic_hash: row.extrinsic_hash ?? null,
     signer: row.signer ?? null,
     call_module: row.call_module ?? null,

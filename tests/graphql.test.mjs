@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Blob } from "node:buffer";
-import { buildSchema, parse, validate } from "graphql";
+import { buildSchema, getIntrospectionQuery, parse, validate } from "graphql";
 import { describe, test } from "vitest";
 import {
   FIELD_COMPLEXITY,
@@ -234,6 +234,37 @@ describe("handleGraphQLRequest — validation rules", () => {
     );
     assert.ok(
       ext,
+      `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
+    );
+  });
+
+  test("standard introspection query is accepted over POST", async () => {
+    // The full getIntrospectionQuery() is intrinsically deeper/wider than the
+    // data limits; exempting the schema-only __schema/__type roots keeps it
+    // working for tooling (GraphiQL/Apollo/codegen) as the contract promises.
+    const { status, body } = await gql(getIntrospectionQuery());
+    assert.equal(
+      status,
+      200,
+      `introspection must not be rejected, got: ${JSON.stringify(body.errors)}`,
+    );
+    assert.ok(body.data?.__schema?.types?.length > 0);
+  });
+
+  test("introspection exemption does not let sibling data fields bypass depth", async () => {
+    // A query that pairs __schema with an over-deep real data selection must
+    // still be rejected on the data portion — the exemption is scoped to the
+    // schema-only meta-field subtree, not the whole operation.
+    const deepData =
+      "subnets { items { ".repeat(GRAPHQL_MAX_DEPTH + 1) +
+      "netuid" +
+      " } }".repeat(GRAPHQL_MAX_DEPTH + 1);
+    const { status, body } = await gql(
+      `{ __schema { queryType { name } } ${deepData} }`,
+    );
+    assert.equal(status, 400);
+    assert.ok(
+      body.errors.find((e) => e.extensions?.code === "DEPTH_LIMIT_EXCEEDED"),
       `expected DEPTH_LIMIT_EXCEEDED, got: ${JSON.stringify(body.errors)}`,
     );
   });
