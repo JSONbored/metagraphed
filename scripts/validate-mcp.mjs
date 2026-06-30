@@ -6,7 +6,7 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.mjs";
 import {
@@ -18,7 +18,7 @@ import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
 } from "../src/agent-tool-specs.mjs";
-import { createLocalArtifactEnv } from "./lib.mjs";
+import { artifactFilePath, createLocalArtifactEnv } from "./lib.mjs";
 
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -256,13 +256,31 @@ await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
 
-const subnetGaps = await callOk("get_subnet_gaps", { netuid: 7 });
-assert.ok(
-  Array.isArray(subnetGaps.priorities) &&
-    Array.isArray(subnetGaps.enrichment_queue),
-  "get_subnet_gaps must return priorities[] + enrichment_queue[]",
-);
-assert.equal(subnetGaps.netuid, 7, "get_subnet_gaps must echo the netuid");
+// Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
+// env has them only after `npm run build` stages dist/. Exercise the happy path
+// when staged, otherwise assert the not_found guard.
+const gapsArtifactPath = artifactFilePath("review/gaps/7.json");
+if (existsSync(gapsArtifactPath)) {
+  const subnetGaps = await callOk("get_subnet_gaps", { netuid: 7 });
+  assert.ok(
+    Array.isArray(subnetGaps.priorities) &&
+      Array.isArray(subnetGaps.enrichment_queue),
+    "get_subnet_gaps must return priorities[] + enrichment_queue[]",
+  );
+  assert.equal(subnetGaps.netuid, 7, "get_subnet_gaps must echo the netuid");
+} else {
+  const subnetGapsCold = await call("get_subnet_gaps", { netuid: 7 });
+  assert.equal(
+    subnetGapsCold.isError,
+    true,
+    "get_subnet_gaps must isError when the R2 gap artifact is absent",
+  );
+  assert.match(
+    subnetGapsCold.content[0]?.text,
+    /No gap report exists/i,
+    "get_subnet_gaps must report not_found when the artifact is missing",
+  );
+}
 
 // Economic opportunity boards project from the committed economics.json in the
 // cold local env; assert the call succeeds and returns the economic boards.
