@@ -10,6 +10,7 @@ import {
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
+  loadSubnetPercentiles,
   loadSubnetUptime,
   parseAnalyticsWindow,
   parseCompareDimensionList,
@@ -210,6 +211,44 @@ describe("analytics-live loaders", () => {
       assert.equal(data.windows[label].surfaces[0].uptime_ratio, 0.95);
       assert.equal(data.windows[label].surfaces[0].latency_ms.p95, 110);
     }
+  });
+
+  test("loadSubnetPercentiles returns schema-stable empty surfaces on cold D1", async () => {
+    const data = await loadSubnetPercentiles(d1(), NETUID, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.netuid, NETUID);
+    assert.equal(data.window, "7d");
+    assert.equal(data.observed_at, OBSERVED_AT);
+    assert.deepEqual(data.surfaces, []);
+  });
+
+  test("loadSubnetPercentiles shapes per-surface latency percentiles; unknown window → 7d", async () => {
+    const data = await loadSubnetPercentiles(
+      d1({
+        "FROM ranked": [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            latency_samples: 95,
+            p50: 80,
+            p95: 110,
+            p99: 130,
+            avg_latency_ms: 90,
+            min_latency_ms: 40,
+            max_latency_ms: 200,
+          },
+        ],
+      }),
+      NETUID,
+      { window: "bogus", observedAt: OBSERVED_AT },
+    );
+    assert.equal(data.window, "7d"); // an unknown window defaults to 7d
+    assert.equal(data.surfaces[0].surface_id, "api-root");
+    assert.equal(data.surfaces[0].samples, 95);
+    assert.equal(data.surfaces[0].latency_ms.p95, 110);
+    assert.equal(data.surfaces[0].latency_ms.max, 200);
   });
 
   test("loadRegistryLeaderboards returns all boards object", async () => {

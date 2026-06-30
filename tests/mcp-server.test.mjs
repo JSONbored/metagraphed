@@ -4174,6 +4174,58 @@ describe("MCP economics + metagraph data tools", () => {
     }
   });
 
+  test("get_subnet_health_percentiles shapes per-surface latency percentiles from ranked rows", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        incidentRows: [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            latency_samples: 95,
+            p50: 80,
+            p95: 110,
+            p99: 130,
+            avg_latency_ms: 90,
+            min_latency_ms: 40,
+            max_latency_ms: 200,
+          },
+        ],
+      }),
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_subnet_health_percentiles",
+      { netuid: 7, window: "30d" },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.observed_at, FRESH_RUN);
+    assert.equal(out.surfaces[0].surface_id, "api-root");
+    assert.equal(out.surfaces[0].samples, 95);
+    assert.equal(out.surfaces[0].latency_ms.p95, 110);
+    assert.equal(out.surfaces[0].latency_ms.max, 200);
+  });
+
+  test("get_subnet_health_percentiles returns schema-stable empty surfaces (default 7d) on cold D1", async () => {
+    const res = await callTool("get_subnet_health_percentiles", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d");
+    assert.deepEqual(out.surfaces, []);
+  });
+
+  test("get_subnet_health_percentiles rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_subnet_health_percentiles",
+      { netuid: 7, window: "99d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
   test("get_registry_leaderboards can filter to one board", async () => {
     const res = await callTool(
       "get_registry_leaderboards",

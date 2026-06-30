@@ -12,6 +12,7 @@ import {
 import {
   formatGlobalIncidents,
   formatLeaderboards,
+  formatPercentiles,
   formatTrends,
   formatUptime,
   INCIDENT_GAP_MS,
@@ -198,6 +199,32 @@ export async function loadSubnetHealthTrends(
     windows[label] = rows;
   }
   return formatTrends({ netuid, observedAt, windows });
+}
+
+// p50/p95/p99 (+avg/min/max) request-latency percentiles per operational surface
+// for one subnet over a 7d/30d window, from the live surface_checks history. The
+// query + formatting live here so the REST handler (handleHealthPercentiles) and
+// the get_subnet_health_percentiles MCP tool share one read path (mirrors
+// loadSubnetHealthTrends, #2335). Defensively defaults an unknown window to 7d;
+// cold/empty D1 → a schema-stable surfaces:[] payload.
+export async function loadSubnetPercentiles(
+  d1,
+  netuid,
+  { window = "7d", observedAt = null } = {},
+) {
+  const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const days = ANALYTICS_WINDOWS[windowParam];
+  const rows = await d1(
+    `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
+       SELECT MAX(surface_id) AS surface_id,
+              surface_key,
+              ${latencyStatColumns()}
+       FROM ranked
+       GROUP BY surface_key
+       HAVING MAX(lat_cnt) > 0`,
+    [netuid, Date.now() - days * DAY_MS],
+  );
+  return formatPercentiles({ netuid, window: windowParam, observedAt, rows });
 }
 
 export async function loadGlobalIncidents(

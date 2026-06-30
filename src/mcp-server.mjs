@@ -40,6 +40,7 @@ import {
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
+  loadSubnetPercentiles,
   loadSubnetUptime,
   parseAnalyticsWindow,
   parseCompareDimensionList,
@@ -132,7 +133,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.10.0";
+export const MCP_SERVER_VERSION = "1.11.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -188,7 +189,9 @@ export const MCP_INSTRUCTIONS =
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
-  "long-term surface uptime history, get_subnet_concentration stake and " +
+  "long-term surface uptime history, get_subnet_health_percentiles its " +
+  "per-surface p50/p95/p99 request-latency distribution, " +
+  "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
@@ -1370,6 +1373,42 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetHealthTrends(mcpD1Runner(ctx), netuid, {
+        observedAt: await mcpObservedAt(ctx),
+      });
+    },
+  },
+  {
+    name: "get_subnet_health_percentiles",
+    title: "Get subnet latency percentiles",
+    description:
+      "Fetch one subnet's request-latency percentiles per operational surface over " +
+      "a 7d or 30d window, from the live health-probe history: p50/p95/p99 plus " +
+      "avg/min/max latency in ms and the healthy-sample count behind them. Use it " +
+      "to see a surface's latency distribution and tail behavior, where " +
+      "get_subnet_health_trends gives the uptime+latency trend and get_subnet_health " +
+      "the current status. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Lookback window (default 7d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (args?.window !== undefined && parsed === null) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label } = parsed;
+      return loadSubnetPercentiles(mcpD1Runner(ctx), netuid, {
+        window: label,
         observedAt: await mcpObservedAt(ctx),
       });
     },
@@ -3593,6 +3632,34 @@ const TOOL_OUTPUT_SCHEMAS = {
       observed_at: NULLABLE_STRING,
       source: NULLABLE_STRING,
       windows: { type: "object" },
+    },
+  },
+  get_subnet_health_percentiles: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "surfaces"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      observed_at: NULLABLE_STRING,
+      source: NULLABLE_STRING,
+      surfaces: objectItems({
+        surface_id: NULLABLE_STRING,
+        samples: { type: "integer" },
+        latency_ms: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            p50: NULLABLE_INT,
+            p95: NULLABLE_INT,
+            p99: NULLABLE_INT,
+            avg: NULLABLE_INT,
+            min: NULLABLE_INT,
+            max: NULLABLE_INT,
+          },
+        },
+      }),
     },
   },
   get_subnet_economics: {
