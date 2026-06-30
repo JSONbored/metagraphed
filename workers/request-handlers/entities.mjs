@@ -1501,14 +1501,19 @@ export async function handleExtrinsics(request, env, url) {
     !hasSuccessFilter &&
     !hasBlockRangeFilter &&
     !useCursor;
-  // For module-scoped feed scans, force the composite module index so SQLite/D1
-  // seeks on the equality predicate instead of a PK-desc walk.
+  // For module-only feed scans, force the composite module index so SQLite/D1
+  // seeks on the equality predicate instead of a PK-desc walk. Let the planner
+  // choose when additional selective filters are present.
   const forceModuleIndex =
     hasCallModuleFilter &&
     !forceObservedOrderIndex &&
     !hasBlockFilter &&
     !hasBlockRangeFilter &&
     !hasSignerFilter &&
+    !hasCallFunctionFilter &&
+    !hasSuccessFilter &&
+    fromMs == null &&
+    toMs == null &&
     !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
   if (forceObservedOrderIndex)

@@ -2645,6 +2645,29 @@ describe("handleExtrinsics", () => {
     );
   });
 
+  test("does not force module-index for compound module filters", async () => {
+    const recentMs = Date.now() - 60_000;
+    for (const query of [
+      "call_module=Balances&call_function=__never__",
+      "call_module=Balances&success=true",
+      `call_module=Balances&from=${recentMs}`,
+      `call_module=Balances&to=${recentMs}`,
+    ]) {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?${query}&limit=10`),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql);
+      assert.ok(
+        !/INDEXED BY idx_extrinsics_module_block/.test(sql),
+        `compound module filter must stay planner-selected for ${query}, got: ${sql}`,
+      );
+    }
+  });
+
   test("uses idx_extrinsics_module_block for module feed query plan", () => {
     const db = new DatabaseSync(":memory:");
     db.exec(`
