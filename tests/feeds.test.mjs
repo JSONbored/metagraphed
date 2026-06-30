@@ -378,6 +378,21 @@ describe("feeds — item builders", () => {
     );
   });
 
+  test("incidentItems falls back to ended_at when started_at is absent", () => {
+    const incidents = {
+      surfaces: [
+        {
+          netuid: 1,
+          surface_id: "api",
+          incidents: [{ ended_at: Date.parse("2026-06-20T00:00:00.000Z") }],
+        },
+      ],
+    };
+    const item = incidentItems(incidents)[0];
+    assert.equal(item.timestamp, "2026-06-20T00:00:00.000Z");
+    assert.ok(item.tags.includes("resolved"));
+  });
+
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
     const items = gapsItems(ENRICHMENT_QUEUE);
     assert.equal(items.length, 3);
