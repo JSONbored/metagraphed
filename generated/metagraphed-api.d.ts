@@ -96,7 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. */
+        /** Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
         get: operations["accountExtrinsics"];
         put?: never;
         post?: never;
@@ -1729,11 +1729,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file). */
+        /** @description Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Page with limit/offset or follow next_cursor, the opaque keyset token emitted on full pages. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file). */
         AccountExtrinsicsArtifact: {
             extrinsic_count: number;
             extrinsics: components["schemas"]["Extrinsic"][];
             limit?: number;
+            next_cursor?: string | null;
             offset?: number;
             schema_version: number;
             ss58: string;
@@ -5834,6 +5835,7 @@ export interface operations {
                 block_end?: number;
                 limit?: number;
                 offset?: number;
+                cursor?: string;
             };
             header?: never;
             path: {
@@ -5863,6 +5865,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "limit": 1,
+                     *         "next_cursor": "example",
                      *         "offset": 1,
                      *         "schema_version": 1,
                      *         "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"

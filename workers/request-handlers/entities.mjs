@@ -631,7 +631,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
 // (newest first), from the extrinsics D1 tier (#1844). Matched by the extrinsic
 // signer only — NOT the hotkey or coldkey union the account_events routes use,
 // since `extrinsics` carries a single `signer` column. ?block_start/?block_end
-// constrain block height; ?limit (<=1000) / ?offset. Cold/absent store →
+// constrain block height; ?limit (<=1000) / ?offset, or ?cursor=. Cold/absent store →
 // schema-stable zero (never 404).
 export async function handleAccountExtrinsics(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
@@ -639,6 +639,7 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     "block_end",
     "limit",
     "offset",
+    "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const blockStart = parseNonNegativeIntParam(
@@ -654,6 +655,7 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
   const data = await loadAccountExtrinsics(d1Runner(env), ss58, {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
+    cursor: url.searchParams.get("cursor"),
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });

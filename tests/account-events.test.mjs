@@ -541,6 +541,68 @@ test("loadAccountExtrinsics applies the block_start/block_end range as bound par
   assert.deepEqual(captured.params, ["5Hk", 100, 900, 100, 0]);
 });
 
+test("loadAccountExtrinsics emits next_cursor for a full page", async () => {
+  const out = await loadAccountExtrinsics(
+    async () => [
+      {
+        block_number: 150,
+        extrinsic_index: 4,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        observed_at: 1,
+      },
+    ],
+    "5Hk",
+    { limit: 1 },
+  );
+  assert.equal(out.next_cursor, encodeCursor([150, 4]));
+});
+
+test("loadAccountExtrinsics uses cursor keyset pagination over offset", async () => {
+  let captured;
+  const out = await loadAccountExtrinsics(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        {
+          block_number: 150,
+          extrinsic_index: 4,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          observed_at: 1,
+        },
+      ];
+    },
+    "5Hk",
+    {
+      blockStart: 100,
+      blockEnd: 900,
+      cursor: encodeCursor([200, 2]),
+      limit: 1,
+      offset: 99,
+    },
+  );
+  assert.ok(
+    /\(block_number, extrinsic_index\) < \(\?, \?\)/.test(captured.sql),
+  );
+  assert.ok(!/OFFSET/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", 100, 900, 200, 2, 1]);
+  assert.equal(out.next_cursor, encodeCursor([150, 4]));
+});
+
+test("loadAccountExtrinsics ignores malformed cursors and falls back to offset", async () => {
+  let captured;
+  await loadAccountExtrinsics(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { cursor: "not-a-cursor", limit: 7, offset: 5 },
+  );
+  assert.ok(/OFFSET \?/.test(captured.sql));
+  assert.ok(!/\(block_number, extrinsic_index\) </.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", 7, 5]);
+});
+
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
   // A registration row with NONE of the optional fields must still produce a
   // fully-shaped object (nulls + coerced false), never undefined — the

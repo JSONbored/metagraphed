@@ -1686,7 +1686,7 @@
       "AccountExtrinsicsArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+        "description": "Paginated extrinsics this account signed (#1844), newest first, from the extrinsics D1 tier. Matched by the extrinsic signer only — not the hotkey or coldkey union the event routes use. Page with limit/offset or follow next_cursor, the opaque keyset token emitted on full pages. Served live at /api/v1/accounts/{ss58}/extrinsics (no static file).",
         "required": ["schema_version", "ss58", "extrinsic_count", "extrinsics"],
         "properties": {
           "schema_version": { "type": "integer" },
@@ -1694,6 +1694,7 @@
           "extrinsic_count": { "type": "integer", "minimum": 0 },
           "limit": { "type": "integer" },
           "offset": { "type": "integer" },
+          "next_cursor": { "type": ["string", "null"] },
           "extrinsics": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Extrinsic" }
