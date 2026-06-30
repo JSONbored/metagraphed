@@ -147,6 +147,39 @@ describe("badge — rendering", () => {
     assert.ok((square.match(/<text /g) || []).length === 4);
   });
 
+  test("renderBadge flat + flat-square output is unchanged (regression)", () => {
+    const flat = renderBadge("92/100", "#2ea44f");
+    const square = renderBadge("92/100", "#2ea44f", { style: "flat-square" });
+    assert.equal(flat, renderBadge("92/100", "#2ea44f"));
+    assert.equal(
+      square,
+      renderBadge("92/100", "#2ea44f", { style: "flat-square" }),
+    );
+    assert.match(flat, /height="20"/);
+    assert.match(square, /height="20"/);
+  });
+
+  test("renderBadge style=for-the-badge is taller, uppercase, bold, and matte", () => {
+    const svg = renderBadge("92/100", "#2ea44f", { style: "for-the-badge" });
+    assert.match(svg, /height="28"/);
+    assert.match(svg, /font-weight="bold"/);
+    assert.match(svg, /font-size="10"/);
+    assert.match(svg, /rx="0"/);
+    assert.ok(!svg.includes("linearGradient"));
+    assert.match(svg, /aria-label="METAGRAPHED: 92\/100"/);
+    assert.match(svg, />METAGRAPHED</);
+    assert.match(svg, />92\/100</);
+    assert.ok((svg.match(/<text /g) || []).length === 2);
+  });
+
+  test("renderBadge for-the-badge uppercases mixed-case labels", () => {
+    const svg = renderBadge("ok", "#2ea44f", {
+      style: "for-the-badge",
+      label: "My Label",
+    });
+    assert.match(svg, /aria-label="MY LABEL: OK"/);
+  });
+
   test("scoreColor thresholds (green / amber / red / gray)", () => {
     assert.equal(scoreColor(92), "#2ea44f");
     assert.equal(scoreColor(80), "#2ea44f");
@@ -193,6 +226,10 @@ describe("badge — rendering", () => {
       parseBadgeOptions(sp("style=flat-square")).style,
       "flat-square",
     );
+    assert.equal(
+      parseBadgeOptions(sp("style=for-the-badge")).style,
+      "for-the-badge",
+    );
     assert.equal(parseBadgeOptions(sp("style=plastic")).style, "flat");
     // label: default brand; override kept; control chars stripped; capped; blank→brand.
     assert.equal(parseBadgeOptions(sp("")).label, "metagraphed");
@@ -227,6 +264,16 @@ describe("badge — handleBadgeRequest", () => {
     assert.match(res.headers.get("cache-control"), /max-age=3600/);
     assert.match(text, /92\/100/);
     assert.match(text, /#2ea44f/); // green (>= 80)
+  });
+
+  test("style=for-the-badge renders through handleBadgeRequest", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/7/badge.svg?style=for-the-badge",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /height="28"/);
+    assert.match(text, /92\/100/);
+    assert.match(text, /METAGRAPHED/);
   });
 
   test("a low score gets the red color", async () => {
