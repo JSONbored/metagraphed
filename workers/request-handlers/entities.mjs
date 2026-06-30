@@ -57,7 +57,6 @@ import {
   buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
-  buildBlockEvents,
   formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
@@ -77,10 +76,13 @@ import {
 import {
   EXTRINSIC_READ_COLUMNS,
   EXTRINSIC_RETENTION_MS,
-  buildBlockExtrinsics,
   buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
+import {
+  loadBlockEvents,
+  loadBlockExtrinsics,
+} from "../../src/block-subresources.mjs";
 import {
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_READ_COLUMNS,
@@ -1197,28 +1199,10 @@ export async function handleBlockExtrinsics(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  const refBlockNumber = isHash ? null : strictBlockNumber(ref);
-  const blockRows =
-    isHash || refBlockNumber !== null
-      ? await d1All(
-          env,
-          isHash
-            ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
-            : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-          [isHash ? ref.toLowerCase() : refBlockNumber],
-        )
-      : [];
-  const blockNumber = blockRows[0]?.block_number ?? null;
-  const rows =
-    blockNumber == null
-      ? []
-      : await d1All(
-          env,
-          `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?`,
-          [blockNumber, limit, offset],
-        );
-  const data = buildBlockExtrinsics(rows, ref, blockNumber, { limit, offset });
+  const { data } = await loadBlockExtrinsics(d1Runner(env), ref, {
+    limit,
+    offset,
+  });
   return envelopeResponse(
     request,
     {
@@ -1243,28 +1227,10 @@ export async function handleBlockEvents(request, env, ref, url) {
   const validationError = validateQueryParams(url, ["limit", "offset"]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  const refBlockNumber = isHash ? null : strictBlockNumber(ref);
-  const blockRows =
-    isHash || refBlockNumber !== null
-      ? await d1All(
-          env,
-          isHash
-            ? `SELECT block_number FROM blocks WHERE block_hash = ? LIMIT 1`
-            : `SELECT block_number FROM blocks WHERE block_number = ? LIMIT 1`,
-          [isHash ? ref.toLowerCase() : refBlockNumber],
-        )
-      : [];
-  const blockNumber = blockRows[0]?.block_number ?? null;
-  const rows =
-    blockNumber == null
-      ? []
-      : await d1All(
-          env,
-          `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? ORDER BY event_index ASC LIMIT ? OFFSET ?`,
-          [blockNumber, limit, offset],
-        );
-  const data = buildBlockEvents(rows, ref, blockNumber, { limit, offset });
+  const { data } = await loadBlockEvents(d1Runner(env), ref, {
+    limit,
+    offset,
+  });
   return envelopeResponse(
     request,
     {

@@ -468,6 +468,22 @@ assert.ok(
     Array.isArray(healthTrendsCold.windows["7d"].subnets),
   "get_health_trends must return windows.7d.subnets[] on cold D1",
 );
+const blockExtrinsicsCold = await callOk("list_block_extrinsics", {
+  ref: "4200000",
+});
+assert.ok(
+  blockExtrinsicsCold.ref === "4200000" &&
+    blockExtrinsicsCold.block_number == null &&
+    Array.isArray(blockExtrinsicsCold.extrinsics),
+  "list_block_extrinsics must return ref + block_number:null + extrinsics[] on cold D1",
+);
+const blockEventsCold = await callOk("get_block_events", { ref: "4200000" });
+assert.ok(
+  blockEventsCold.ref === "4200000" &&
+    blockEventsCold.block_number == null &&
+    Array.isArray(blockEventsCold.events),
+  "get_block_events must return ref + block_number:null + events[] on cold D1",
+);
 
 // --- Negative paths --------------------------------------------------------
 

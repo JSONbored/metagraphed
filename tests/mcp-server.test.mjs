@@ -5461,7 +5461,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 });
 
-describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get_extrinsic)", () => {
+describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsics, get_block_events, list_extrinsics, get_extrinsic)", () => {
   // Tests for the chain block-explorer MCP surface.
 
   function chainD1(fixtures = {}, capture = []) {
@@ -5503,12 +5503,28 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
                       results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
                     });
                   if (
+                    /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: fixtures.blockExtrinsics || [],
+                    });
+                  if (
                     /FROM extrinsics WHERE block_number = \? AND extrinsic_index/.test(
                       sql,
                     )
                   )
                     return Promise.resolve({
                       results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
+                    });
+                  if (
+                    /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: fixtures.blockEvents || [],
                     });
                   if (/FROM extrinsics/.test(sql))
                     return Promise.resolve({
@@ -5546,6 +5562,18 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
     success: 1,
     fee_tao: 0.0005,
     tip_tao: null,
+    observed_at: 1750009000000,
+  };
+
+  const EVENT_ROW = {
+    block_number: 4200000,
+    event_index: 0,
+    event_kind: "WeightsSet",
+    hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+    coldkey: null,
+    netuid: 7,
+    uid: 3,
+    amount_tao: null,
     observed_at: 1750009000000,
   };
 
@@ -5630,6 +5658,78 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
     const res = await callTool("get_block", {});
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /ref/);
+  });
+
+  test("list_block_extrinsics returns per-block extrinsics in read order", async () => {
+    const capture = [];
+    const env = chainD1(
+      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
+      capture,
+    );
+    const res = await callTool(
+      "list_block_extrinsics",
+      { ref: "4200000" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, "4200000");
+    assert.equal(out.block_number, 4200000);
+    assert.equal(out.extrinsic_count, 1);
+    assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
+    const q = capture.find((c) =>
+      /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index/.test(
+        c.sql,
+      ),
+    );
+    assert.ok(q, "must query extrinsics by resolved block_number");
+    assert.deepEqual(q.params.slice(0, 3), [4200000, 50, 0]);
+  });
+
+  test("list_block_extrinsics accepts a 0x hash ref", async () => {
+    const capture = [];
+    const env = chainD1(
+      { block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] },
+      capture,
+    );
+    const hash = "0x" + "a".repeat(64);
+    await callTool("list_block_extrinsics", { ref: hash }, { env });
+    const q = capture.find((c) => /block_hash = \?/.test(c.sql));
+    assert.ok(q, "hash ref must resolve via blocks.block_hash");
+  });
+
+  test("list_block_extrinsics returns empty payload for unknown ref", async () => {
+    const res = await callTool("list_block_extrinsics", { ref: "9999999" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_number, null);
+    assert.deepEqual(out.extrinsics, []);
+  });
+
+  test("get_block_events returns per-block events in read order", async () => {
+    const capture = [];
+    const env = chainD1(
+      { block: BLOCK_ROW, blockEvents: [EVENT_ROW] },
+      capture,
+    );
+    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ref, "4200000");
+    assert.equal(out.block_number, 4200000);
+    assert.equal(out.event_count, 1);
+    assert.equal(out.events[0].event_kind, "WeightsSet");
+    const q = capture.find((c) =>
+      /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
+        c.sql,
+      ),
+    );
+    assert.ok(q, "must query account_events by resolved block_number");
+    assert.deepEqual(q.params.slice(0, 3), [4200000, 100, 0]);
+  });
+
+  test("get_block_events returns empty payload for unknown ref", async () => {
+    const res = await callTool("get_block_events", { ref: "9999999" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_number, null);
+    assert.deepEqual(out.events, []);
   });
 
   test("list_extrinsics returns extrinsic feed with correct fields", async () => {
@@ -5731,6 +5831,16 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_extrinsics, get
       [
         "get_block",
         chainD1({ block: BLOCK_ROW, prev: 4199999, next: 4200001 }),
+        { ref: "4200000" },
+      ],
+      [
+        "list_block_extrinsics",
+        chainD1({ block: BLOCK_ROW, blockExtrinsics: [EXTRINSIC_ROW] }),
+        { ref: "4200000" },
+      ],
+      [
+        "get_block_events",
+        chainD1({ block: BLOCK_ROW, blockEvents: [EVENT_ROW] }),
         { ref: "4200000" },
       ],
       ["list_extrinsics", chainD1({ extrinsics: [EXTRINSIC_ROW] }), {}],

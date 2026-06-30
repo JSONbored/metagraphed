@@ -109,6 +109,7 @@ import { loadSubnetTurnover } from "./turnover.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
+import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
 import {
   aiEnabled,
@@ -141,7 +142,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.12.0";
+export const MCP_SERVER_VERSION = "1.13.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -2501,6 +2502,90 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "list_block_extrinsics",
+    title: "List extrinsics in one block",
+    description:
+      "Fetch the extrinsics in one block by ref (numeric block_number or 0x " +
+      "block_hash), in natural read order (extrinsic_index ASC). Page with limit " +
+      "(1-100, default 50) / offset. Returns block_number:null + extrinsics:[] when " +
+      "the ref is unknown or the store is cold — never errors. Use get_block to " +
+      "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/extrinsics.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Block reference: a numeric block number as a string (e.g. '4200000') " +
+            "or a 0x block hash (e.g. '0xabc...64hex').",
+        },
+        limit: {
+          type: "integer",
+          description: "Max extrinsics to return (1-100, default 50).",
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      const { data } = await loadBlockExtrinsics(mcpD1Runner(ctx), ref, {
+        limit: args?.limit,
+        offset: args?.offset,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_block_events",
+    title: "Get decoded events in one block",
+    description:
+      "Fetch the decoded chain events in one block by ref (numeric block_number " +
+      "or 0x block_hash), in natural read order (event_index ASC). Page with limit " +
+      "(1-1000, default 100) / offset. Returns block_number:null + events:[] when " +
+      "the ref is unknown or the store is cold — never errors. Use get_block to " +
+      "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Block reference: a numeric block number as a string (e.g. '4200000') " +
+            "or a 0x block hash (e.g. '0xabc...64hex').",
+        },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Pagination offset. Default 0.",
+          minimum: 0,
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      const { data } = await loadBlockEvents(mcpD1Runner(ctx), ref, {
+        limit: args?.limit,
+        offset: args?.offset,
+      });
+      return data;
+    },
+  },
+  {
     name: "list_extrinsics",
     title: "List extrinsics with optional filters",
     description:
@@ -4460,6 +4545,34 @@ const TOOL_OUTPUT_SCHEMAS = {
       block: { type: ["object", "null"], additionalProperties: true },
       prev_block_number: NULLABLE_INT,
       next_block_number: NULLABLE_INT,
+    },
+  },
+  list_block_extrinsics: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ref", "extrinsic_count", "extrinsics"],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block_number: NULLABLE_INT,
+      extrinsic_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      extrinsics: objectItems(EXTRINSIC_ITEM),
+    },
+  },
+  get_block_events: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ref", "event_count", "events"],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block_number: NULLABLE_INT,
+      event_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      events: objectItems(ACCOUNT_EVENT_ITEM),
     },
   },
   list_extrinsics: {
