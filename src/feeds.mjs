@@ -100,10 +100,14 @@ function toRfc822(iso) {
 // (the diffSubnets shape), so render the actual name change instead of dropping
 // it; added/removed entries carry `name`. Falls back to the bare verb when no
 // names are present (e.g. a legacy/bare `{ netuid }` entry).
+function subnetRenameSide(value) {
+  return value == null ? "?" : clamp(String(value).trim(), 60) || "?";
+}
+
 function subnetChangeText(n, change, entry) {
   if (change === "renamed" && (entry?.before != null || entry?.after != null)) {
-    const before = entry.before != null ? clamp(String(entry.before), 60) : "?";
-    const after = entry.after != null ? clamp(String(entry.after), 60) : "?";
+    const before = subnetRenameSide(entry.before);
+    const after = subnetRenameSide(entry.after);
     return {
       title: `Subnet ${n} renamed — ${before} → ${after}`,
       summary: `Subnet ${n} renamed from ${before} to ${after} in the registry.`,

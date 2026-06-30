@@ -228,6 +228,16 @@ describe("feeds — item builders", () => {
       beforeOnly[0].summary,
       "Subnet 6 renamed from Stale to ? in the registry.",
     );
+
+    const blankSides = registryItems({
+      subnets: { renamed: [{ netuid: 8, before: "", after: "   " }] },
+    });
+    assert.equal(blankSides.length, 1);
+    assert.equal(blankSides[0].title, "Subnet 8 renamed — ? → ?");
+    assert.equal(
+      blankSides[0].summary,
+      "Subnet 8 renamed from ? to ? in the registry.",
+    );
   });
 
   test("registryItems filtered by netuid omits artifacts + coverage", () => {
