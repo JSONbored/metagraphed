@@ -47,13 +47,13 @@ import { dailyLatencyColumns } from "../../src/health-sql.mjs";
 import {
   formatBulkTrends,
   formatGlobalIncidents,
-  formatIncidents,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
 import {
   loadChainCalls,
   loadSubnetHealthTrends,
+  loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
 import {
@@ -513,7 +513,7 @@ export async function handleHealthIncidents(
   url,
   ctx = {},
 ) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   return withEdgeCache(
     request,
@@ -521,90 +521,20 @@ export async function handleHealthIncidents(
     env,
     "incidents",
     async () => {
-      const since = Date.now() - days * DAY_MS;
-      const [slaRows, incidentRows] = await Promise.all([
-        d1All(
-          env,
-          `SELECT MAX(surface_id) AS surface_id,
-              COALESCE(surface_key, surface_id) AS surface_key,
-              COUNT(*) AS total,
-              SUM(ok) AS ok_count
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ?
-       GROUP BY COALESCE(surface_key, surface_id)`,
-          [netuid, since],
-        ),
-        // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-        // incident threshold) into one incident row, then cap per surface_key so
-        // one flappy endpoint cannot starve sibling surfaces in the same subnet.
-        d1All(
-          env,
-          `WITH checks AS (
-         SELECT COALESCE(surface_key, surface_id) AS surface_key,
-                surface_id,
-                checked_at,
-                ok,
-                checked_at - LAG(checked_at)
-                  OVER (
-                    PARTITION BY COALESCE(surface_key, surface_id)
-                    ORDER BY checked_at
-                  ) AS gap
-         FROM surface_checks
-         WHERE netuid = ? AND checked_at >= ?
-       ),
-       grouped AS (
-         SELECT surface_key, surface_id, checked_at, ok,
-                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
-         FROM checks
-       ),
-       incidents AS (
-         SELECT MAX(surface_id) AS surface_id,
-                surface_key,
-                MIN(checked_at) AS started_at,
-                MAX(checked_at) AS ended_at,
-                COUNT(*) AS failed_samples
-         FROM grouped
-         WHERE ok = 0
-         GROUP BY surface_key, grp
-         HAVING COUNT(*) >= ?
-       )
-       SELECT surface_id,
-              surface_key,
-              started_at,
-              ended_at,
-              failed_samples
-       FROM (
-         SELECT surface_id,
-                surface_key,
-                started_at,
-                ended_at,
-                failed_samples,
-                ROW_NUMBER() OVER (
-                  PARTITION BY surface_key
-                  ORDER BY started_at
-                ) AS rn
-         FROM incidents
-       ) ranked
-       WHERE rn <= ?
-       ORDER BY surface_id, started_at`,
-          [
-            netuid,
-            since,
-            INCIDENT_GAP_MS,
-            MIN_INCIDENT_SAMPLES,
-            MAX_INCIDENT_ROWS,
-          ],
-        ),
-      ]);
+      // Wrap d1All so a failure in either read is still logged + marked as a D1
+      // fallback (the dark-serve contract), since the formatted result no longer
+      // exposes the raw row arrays hasD1FallbackRows used to check (mirrors
+      // handleHealthTrends / handleHealthPercentiles).
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
       const meta = await readHealthMetaKv(env);
-      const data = formatIncidents({
-        netuid,
+      const data = await loadSubnetIncidents(d1, netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        slaRows,
-        incidentRows,
-        maxIncidents: MAX_INCIDENT_ROWS,
       });
       const response = await envelopeResponse(
         request,
@@ -618,9 +548,7 @@ export async function handleHealthIncidents(
         },
         "short",
       );
-      return hasD1FallbackRows(slaRows, incidentRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return usedFallback ? markD1FallbackResponse(response) : response;
     },
     canonicalHealthWindowCachePath(url),
   );

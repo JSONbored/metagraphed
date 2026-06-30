@@ -11,6 +11,7 @@ import {
 } from "./health-sql.mjs";
 import {
   formatGlobalIncidents,
+  formatIncidents,
   formatLeaderboards,
   formatPercentiles,
   formatTrends,
@@ -225,6 +226,97 @@ export async function loadSubnetPercentiles(
     [netuid, Date.now() - days * DAY_MS],
   );
   return formatPercentiles({ netuid, window: windowParam, observedAt, rows });
+}
+
+// Per-surface SLA + reconstructed downtime incidents for one subnet over a 7d/30d
+// window, from the live surface_checks history: an SLA rollup (samples + uptime
+// ratio) joined with gap-island-grouped failure incidents (consecutive failures
+// within the incident gap collapse into one, capped per surface). The query +
+// formatting live here so the REST handler (handleHealthIncidents) and the
+// get_subnet_health_incidents MCP tool share one read path (mirrors
+// loadSubnetPercentiles). Unknown window → 7d; cold/empty D1 → surfaces:[].
+export async function loadSubnetIncidents(
+  d1,
+  netuid,
+  { window = "7d", observedAt = null } = {},
+) {
+  const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const since = Date.now() - ANALYTICS_WINDOWS[windowParam] * DAY_MS;
+  const [slaRows, incidentRows] = await Promise.all([
+    d1(
+      `SELECT MAX(surface_id) AS surface_id,
+              COALESCE(surface_key, surface_id) AS surface_key,
+              COUNT(*) AS total,
+              SUM(ok) AS ok_count
+       FROM surface_checks
+       WHERE netuid = ? AND checked_at >= ?
+       GROUP BY COALESCE(surface_key, surface_id)`,
+      [netuid, since],
+    ),
+    // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
+    // incident threshold) into one incident row, then cap per surface_key so one
+    // flappy endpoint cannot starve sibling surfaces in the same subnet.
+    d1(
+      `WITH checks AS (
+         SELECT COALESCE(surface_key, surface_id) AS surface_key,
+                surface_id,
+                checked_at,
+                ok,
+                checked_at - LAG(checked_at)
+                  OVER (
+                    PARTITION BY COALESCE(surface_key, surface_id)
+                    ORDER BY checked_at
+                  ) AS gap
+         FROM surface_checks
+         WHERE netuid = ? AND checked_at >= ?
+       ),
+       grouped AS (
+         SELECT surface_key, surface_id, checked_at, ok,
+                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
+         FROM checks
+       ),
+       incidents AS (
+         SELECT MAX(surface_id) AS surface_id,
+                surface_key,
+                MIN(checked_at) AS started_at,
+                MAX(checked_at) AS ended_at,
+                COUNT(*) AS failed_samples
+         FROM grouped
+         WHERE ok = 0
+         GROUP BY surface_key, grp
+         HAVING COUNT(*) >= ?
+       )
+       SELECT surface_id,
+              surface_key,
+              started_at,
+              ended_at,
+              failed_samples
+       FROM (
+         SELECT surface_id,
+                surface_key,
+                started_at,
+                ended_at,
+                failed_samples,
+                ROW_NUMBER() OVER (
+                  PARTITION BY surface_key
+                  ORDER BY started_at
+                ) AS rn
+         FROM incidents
+       ) ranked
+       WHERE rn <= ?
+       ORDER BY surface_id, started_at`,
+      [netuid, since, INCIDENT_GAP_MS, MIN_INCIDENT_SAMPLES, MAX_INCIDENT_ROWS],
+    ),
+  ]);
+  return formatIncidents({
+    netuid,
+    window: windowParam,
+    observedAt,
+    slaRows,
+    incidentRows,
+    maxIncidents: MAX_INCIDENT_ROWS,
+  });
 }
 
 export async function loadGlobalIncidents(

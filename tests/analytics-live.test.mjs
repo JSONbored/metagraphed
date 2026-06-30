@@ -10,6 +10,7 @@ import {
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
+  loadSubnetIncidents,
   loadSubnetPercentiles,
   loadSubnetUptime,
   parseAnalyticsWindow,
@@ -249,6 +250,54 @@ describe("analytics-live loaders", () => {
     assert.equal(data.surfaces[0].samples, 95);
     assert.equal(data.surfaces[0].latency_ms.p95, 110);
     assert.equal(data.surfaces[0].latency_ms.max, 200);
+  });
+
+  test("loadSubnetIncidents returns schema-stable empty surfaces on cold D1", async () => {
+    const data = await loadSubnetIncidents(d1(), NETUID, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.netuid, NETUID);
+    assert.equal(data.window, "7d");
+    assert.equal(data.observed_at, OBSERVED_AT);
+    assert.deepEqual(data.surfaces, []);
+  });
+
+  test("loadSubnetIncidents joins SLA rows with gap-island incidents; unknown window → 7d", async () => {
+    const data = await loadSubnetIncidents(
+      d1({
+        // The SLA rollup (samples + ok_count) and the gap-island incident scan are
+        // two distinct reads against surface_checks; match each by a unique clause.
+        "COUNT\\(\\*\\) AS total": [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            total: 100,
+            ok_count: 96,
+          },
+        ],
+        "WITH checks AS": [
+          {
+            surface_id: "api-root",
+            surface_key: "api-root",
+            started_at: 1000,
+            ended_at: 1300,
+            failed_samples: 4,
+          },
+        ],
+      }),
+      NETUID,
+      { window: "bogus", observedAt: OBSERVED_AT },
+    );
+    assert.equal(data.window, "7d"); // an unknown window defaults to 7d
+    const surface = data.surfaces[0];
+    assert.equal(surface.surface_id, "api-root");
+    assert.equal(surface.samples, 100);
+    assert.equal(surface.uptime_ratio, 0.96); // 96 / 100
+    assert.equal(surface.incident_count, 1);
+    assert.equal(surface.downtime_ms, 300); // 1300 - 1000
+    assert.equal(surface.incidents[0].duration_ms, 300);
+    assert.equal(surface.incidents[0].failed_samples, 4);
   });
 
   test("loadRegistryLeaderboards returns all boards object", async () => {

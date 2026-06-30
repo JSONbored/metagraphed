@@ -4355,6 +4355,87 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
+  // get_subnet_health_incidents issues TWO surface_checks reads (SLA rollup +
+  // gap-island incident scan); route each to the right rows by a unique clause.
+  function incidentsEnv(slaRows = [], incidentRows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  return Promise.resolve({
+                    results: /WITH checks AS/.test(sql)
+                      ? incidentRows
+                      : slaRows,
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_health_incidents joins SLA + downtime incidents from D1", async () => {
+    const env = incidentsEnv(
+      [
+        {
+          surface_id: "api-root",
+          surface_key: "api-root",
+          total: 100,
+          ok_count: 96,
+        },
+      ],
+      [
+        {
+          surface_id: "api-root",
+          surface_key: "api-root",
+          started_at: 1000,
+          ended_at: 1300,
+          failed_samples: 4,
+        },
+      ],
+    );
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_subnet_health_incidents",
+      { netuid: 7, window: "30d" },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.observed_at, FRESH_RUN);
+    const surface = out.surfaces[0];
+    assert.equal(surface.surface_id, "api-root");
+    assert.equal(surface.samples, 100);
+    assert.equal(surface.uptime_ratio, 0.96);
+    assert.equal(surface.incident_count, 1);
+    assert.equal(surface.downtime_ms, 300);
+    assert.equal(surface.incidents[0].failed_samples, 4);
+  });
+
+  test("get_subnet_health_incidents returns schema-stable empty surfaces (default 7d) on cold D1", async () => {
+    const res = await callTool("get_subnet_health_incidents", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d");
+    assert.deepEqual(out.surfaces, []);
+  });
+
+  test("get_subnet_health_incidents rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_subnet_health_incidents",
+      { netuid: 7, window: "99d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
   test("get_registry_leaderboards can filter to one board", async () => {
     const res = await callTool(
       "get_registry_leaderboards",
