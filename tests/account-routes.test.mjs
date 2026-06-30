@@ -295,6 +295,101 @@ test("GET /accounts/{ss58}/transfers rejects an unsupported direction enum value
   assert.equal(body.meta.parameter, "direction");
 });
 
+// A capturing D1 mock that records every (sql, params), so a filter test can
+// assert the predicate + bind order — the naive dbWith stub ignores the WHERE
+// clause, so it cannot prove a range filter is wired correctly.
+function capturingDb(events = []) {
+  const calls = [];
+  return {
+    calls,
+    env: {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              calls.push({ sql, params });
+              return {
+                async all() {
+                  return {
+                    results: /FROM account_events/.test(sql) ? events : [],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    },
+  };
+}
+
+test("GET /accounts/{ss58}/transfers accepts a block_start/block_end range and binds it in each arm (parity with /events)", async () => {
+  const db = capturingDb([]);
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?block_start=100&block_end=200`),
+    db.env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const read = db.calls.find((c) => /FROM account_events/.test(c.sql));
+  assert.ok(read, "account_events read happened");
+  assert.match(read.sql, /block_number >= \?/);
+  assert.match(read.sql, /block_number <= \?/);
+  // default direction = both → the [key, block_start, block_end] binds repeat per
+  // UNION arm (hotkey arm, then coldkey + hotkey<> arm), before limit/offset.
+  assert.deepEqual(read.params.slice(0, 7), [
+    SS58,
+    100,
+    200,
+    SS58,
+    SS58,
+    100,
+    200,
+  ]);
+});
+
+test("GET /accounts/{ss58}/transfers applies a single bound with direction=sent", async () => {
+  const db = capturingDb([]);
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?direction=sent&block_start=500`),
+    db.env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const read = db.calls.find((c) => /FROM account_events/.test(c.sql));
+  assert.match(read.sql, /hotkey = \?/);
+  assert.match(read.sql, /block_number >= \?/);
+  assert.doesNotMatch(read.sql, /block_number <= \?/);
+  assert.deepEqual(read.params.slice(0, 2), [SS58, 500]);
+});
+
+test("GET /accounts/{ss58}/transfers applies a block_end bound with direction=received", async () => {
+  const db = capturingDb([]);
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?direction=received&block_end=900`),
+    db.env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const read = db.calls.find((c) => /FROM account_events/.test(c.sql));
+  assert.match(read.sql, /coldkey = \?/);
+  assert.match(read.sql, /block_number <= \?/);
+  assert.doesNotMatch(read.sql, /block_number >= \?/);
+  assert.deepEqual(read.params.slice(0, 2), [SS58, 900]);
+});
+
+test("GET /accounts/{ss58}/transfers rejects a non-integer block_start", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?block_start=abc`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "block_start");
+});
+
 test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404)", async () => {
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/transfers`),
