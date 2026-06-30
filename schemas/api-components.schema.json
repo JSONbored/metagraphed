@@ -2947,7 +2947,7 @@
       },
       "ChainSignersArtifact": {
         "additionalProperties": true,
-        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
+        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by tx_count or total_fee_tao over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
         "properties": {
           "observed_at": {
             "format": "date-time",
@@ -2969,6 +2969,13 @@
             },
             "type": "array"
           },
+          "sort": {
+            "enum": [
+              "tx_count",
+              "total_fee_tao"
+            ],
+            "type": "string"
+          },
           "window": {
             "type": "string"
           }
@@ -2976,6 +2983,7 @@
         "required": [
           "schema_version",
           "window",
+          "sort",
           "signer_count",
           "signers"
         ],

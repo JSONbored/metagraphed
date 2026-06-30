@@ -150,7 +150,13 @@ export function buildChainCalls({
 
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic
 // count over the window, with their total fees/tips and newest signed block.
-export function buildChainSigners({ window, observedAt = null, rows = [] }) {
+export function buildChainSigners({
+  window,
+  sort = "tx_count",
+  observedAt = null,
+  rows = [],
+}) {
+  const sortBy = sort === "total_fee_tao" ? "total_fee_tao" : "tx_count";
   const signers = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r.signer === "string" && r.signer.length > 0)
     .map((r) => ({
@@ -163,6 +169,7 @@ export function buildChainSigners({ window, observedAt = null, rows = [] }) {
   return {
     schema_version: 1,
     window,
+    sort: sortBy,
     observed_at: observedAt,
     signer_count: signers.length,
     signers,

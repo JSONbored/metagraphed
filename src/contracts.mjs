@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.8";
+export const CONTRACT_VERSION = "2026-06-30.9";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1105,7 +1105,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-signers",
     "/metagraph/chain/signers.json",
-    "Windowed most-active-account leaderboard (signers ranked by extrinsic count, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
+    "Windowed most-active-account leaderboard (signers ranked by tx_count or total_fee_tao, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
     "ChainSignersArtifact",
   ),
   artifact(
@@ -2200,11 +2200,15 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/signers",
     "/metagraph/chain/signers.json",
-    "Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+    "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
     "short",
     ["chain", "analytics"],
     [
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      {
+        name: "sort",
+        schema: { type: "string", enum: ["tx_count", "total_fee_tao"] },
+      },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "call_module", schema: { type: "string", maxLength: 100 } },
     ],

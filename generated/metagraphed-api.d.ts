@@ -436,7 +436,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the windowed most-active-account leaderboard (signers ranked by extrinsic count, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
+        /** Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
         get: operations["chainSigners"];
         put?: never;
         post?: never;
@@ -2412,13 +2412,15 @@ export interface components {
             total_tip_tao: number;
             tx_count: number;
         };
-        /** @description Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold. */
+        /** @description Windowed most-active-account leaderboard (#1990): signers ranked by tx_count or total_fee_tao over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold. */
         ChainSignersArtifact: {
             /** Format: date-time */
             observed_at?: string | null;
             schema_version: number;
             signer_count: number;
             signers: components["schemas"]["ChainSignerEntry"][];
+            /** @enum {string} */
+            sort: "tx_count" | "total_fee_tao";
             window: string;
         } & {
             [key: string]: unknown;
@@ -8295,6 +8297,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d";
+                sort?: "tx_count" | "total_fee_tao";
                 limit?: number;
                 call_module?: string;
             };
@@ -8328,6 +8331,7 @@ export interface operations {
                      *             "tx_count": 1
                      *           }
                      *         ],
+                     *         "sort": "tx_count",
                      *         "window": "30d"
                      *       },
                      *       "meta": {
