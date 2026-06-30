@@ -33,7 +33,9 @@ function json(data, status = 200) {
 function clampLimit(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
-  return Math.min(Math.floor(n), MAX_LIMIT);
+  // Floor to a minimum of 1 (mirrors clampStatsBlocks): a fractional 0<n<1 floors
+  // to 0 otherwise, binding LIMIT 0 and then dereferencing rows[-1] for the cursor.
+  return Math.min(Math.max(Math.floor(n), 1), MAX_LIMIT);
 }
 
 function clampStatsBlocks(raw) {

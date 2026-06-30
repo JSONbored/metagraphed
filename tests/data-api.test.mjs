@@ -74,6 +74,15 @@ test("limit is clamped and defaults safely", async () => {
   expect(res.status).toBe(200); // clamp to MAX_LIMIT, no error
 });
 
+test("chain-events preserves a minimum limit after flooring a fractional value", async () => {
+  // A fractional 0<n<1 limit floored to 0 binds LIMIT 0 and then dereferences
+  // rows[-1] for the cursor (TypeError → 502); it must clamp up to 1 instead.
+  const res = await req("/api/v1/chain-events?limit=0.5");
+  expect(res.status).toBe(200);
+  expect(sqlCalls.at(-1).values).toContain(1);
+  expect(sqlCalls.at(-1).values).not.toContain(0);
+});
+
 test("chain-events accepts block + extrinsic filters (extrinsic-detail view)", async () => {
   const res = await req("/api/v1/chain-events?block=5870000&extrinsic=3");
   expect(res.status).toBe(200);
