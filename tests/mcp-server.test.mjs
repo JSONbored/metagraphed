@@ -4478,6 +4478,66 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.calls[0].share, 0.5);
   });
 
+  test("get_chain_calls rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_calls",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("get_chain_calls scopes grouped rows and totals by call_module", async () => {
+    const captured = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              captured.push({ sql, params });
+              const rows = /GROUP BY call_module, call_function/.test(sql)
+                ? [
+                    {
+                      call_module: "SubtensorModule",
+                      call_function: "add_stake",
+                      count: 50,
+                    },
+                  ]
+                : /COUNT\(\*\) AS total/.test(sql)
+                  ? [{ total: 80 }]
+                  : [];
+              return { all: () => Promise.resolve({ results: rows }) };
+            },
+          };
+        },
+      },
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_chain_calls",
+      {
+        window: "7d",
+        group_by: "module_function",
+        call_module: "SubtensorModule",
+        limit: 3,
+      },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.group_by, "module_function");
+    assert.equal(out.total_extrinsics, 80);
+    assert.equal(out.calls[0].share, 0.625);
+    const extrinsicsQueries = captured.filter((q) =>
+      /FROM extrinsics/.test(q.sql),
+    );
+    assert.equal(extrinsicsQueries.length, 2);
+    for (const q of extrinsicsQueries) {
+      assert.match(q.sql, /AND call_module = \?/);
+      assert.ok(q.params.includes("SubtensorModule"));
+    }
+  });
+
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
     const res = await callTool(
       "get_registry_leaderboards",

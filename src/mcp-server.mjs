@@ -2713,10 +2713,10 @@ export const MCP_TOOLS = [
     description:
       "Fetch the extrinsic call-mix breakdown over a 7d or 30d window: each " +
       "call_module (or call_module/call_function with group_by=module_function) " +
-      "by count and share of all extrinsics. Use it to see which pallets and " +
-      "calls dominate on-chain traffic before drilling into specific blocks " +
-      "(get_block) or extrinsics (list_extrinsics). Mirrors " +
-      "GET /api/v1/chain/calls.",
+      "by count and share of all extrinsics. Optionally scope to one pallet via " +
+      "call_module. Use it to see which pallets and calls dominate on-chain traffic " +
+      "before drilling into specific blocks (get_block) or extrinsics " +
+      "(list_extrinsics). Mirrors GET /api/v1/chain/calls.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2737,6 +2737,11 @@ export const MCP_TOOLS = [
           minimum: 1,
           maximum: 100,
         },
+        call_module: {
+          type: "string",
+          description:
+            "Optional pallet filter (e.g. Balances); omit for all modules.",
+        },
       },
       required: [],
       additionalProperties: false,
@@ -2751,9 +2756,17 @@ export const MCP_TOOLS = [
         optionalEnum(args, "group_by", ["module", "module_function"]) ||
         "module";
       const limit = clampLimit(args?.limit, 50, 100);
+      const callModule = optionalString(args, "call_module");
+      if (callModule != null && callModule.length > 100) {
+        throw toolError(
+          "invalid_params",
+          "call_module must be at most 100 characters.",
+        );
+      }
       return loadChainCalls(mcpD1Runner(ctx), {
         window: label,
         groupBy,
+        callModule,
         limit,
         observedAt: await mcpObservedAt(ctx),
       });
