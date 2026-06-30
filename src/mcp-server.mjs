@@ -3493,6 +3493,79 @@ const EXTRINSIC_ITEM = {
   tip_tao: ANY,
   observed_at: NULLABLE_STRING,
 };
+// RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
+// schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
+const RPC_USAGE_LATENCY_MS = {
+  type: "object",
+  additionalProperties: true,
+  required: ["p50", "p95", "avg"],
+  properties: {
+    p50: NULLABLE_INT,
+    p95: NULLABLE_INT,
+    avg: NULLABLE_INT,
+  },
+};
+const RPC_USAGE_SUMMARY = {
+  type: "object",
+  additionalProperties: true,
+  required: ["total_requests", "ok_requests", "error_requests", "latency_ms"],
+  properties: {
+    total_requests: { type: "integer", minimum: 0 },
+    ok_requests: { type: "integer", minimum: 0 },
+    error_requests: { type: "integer", minimum: 0 },
+    error_rate: { type: ["number", "null"] },
+    failover_requests: { type: "integer", minimum: 0 },
+    failover_rate: { type: ["number", "null"] },
+    cache_hits: { type: "integer", minimum: 0 },
+    cache_hit_rate: { type: ["number", "null"] },
+    latency_ms: RPC_USAGE_LATENCY_MS,
+  },
+};
+const RPC_USAGE_ENDPOINTS = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: true,
+    required: ["endpoint_id", "requests", "ok_requests"],
+    properties: {
+      rank: { type: "integer", minimum: 1 },
+      endpoint_id: NULLABLE_STRING,
+      provider: NULLABLE_STRING,
+      requests: { type: "integer", minimum: 0 },
+      ok_requests: { type: "integer", minimum: 0 },
+      error_rate: { type: ["number", "null"] },
+      avg_latency_ms: NULLABLE_INT,
+    },
+  },
+};
+const RPC_USAGE_NETWORKS = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: true,
+    required: ["network", "requests", "ok_requests"],
+    properties: {
+      network: { type: "string" },
+      requests: { type: "integer", minimum: 0 },
+      ok_requests: { type: "integer", minimum: 0 },
+      error_rate: { type: ["number", "null"] },
+    },
+  },
+};
+const RPC_USAGE_BUCKETS = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ts", "requests", "errors", "avg_latency_ms"],
+    properties: {
+      ts: { type: "integer", minimum: 0 },
+      requests: { type: "integer", minimum: 0 },
+      errors: { type: "integer", minimum: 0 },
+      avg_latency_ms: NULLABLE_INT,
+    },
+  },
+};
 const TOOL_OUTPUT_SCHEMAS = {
   search_subnets: {
     type: "object",
@@ -4112,17 +4185,24 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_rpc_usage: {
     type: "object",
     additionalProperties: true,
-    required: ["window", "summary", "endpoints", "networks", "buckets"],
+    required: [
+      "schema_version",
+      "source",
+      "summary",
+      "endpoints",
+      "networks",
+      "buckets",
+    ],
     properties: {
       schema_version: { type: "integer" },
-      window: { type: "string" },
+      window: NULLABLE_STRING,
       bucket_granularity: NULLABLE_STRING,
       observed_at: NULLABLE_STRING,
-      source: NULLABLE_STRING,
-      summary: { type: "object" },
-      endpoints: { type: "array" },
-      networks: { type: "array" },
-      buckets: { type: "array" },
+      source: { type: "string" },
+      summary: RPC_USAGE_SUMMARY,
+      endpoints: RPC_USAGE_ENDPOINTS,
+      networks: RPC_USAGE_NETWORKS,
+      buckets: RPC_USAGE_BUCKETS,
     },
   },
   list_subnet_apis: {
