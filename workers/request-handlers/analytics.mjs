@@ -53,13 +53,11 @@ import {
 } from "../../src/health-serving.mjs";
 import {
   loadChainCalls,
+  loadChainFees,
   loadSubnetHealthTrends,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
-import {
-  buildChainActivity,
-  buildChainFees,
-} from "../../src/chain-analytics.mjs";
+import { buildChainActivity } from "../../src/chain-analytics.mjs";
 import { loadChainSigners } from "../../src/chain-query-loaders.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
@@ -914,7 +912,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
 // SUMs; exact median is a deliberate follow-up (no native percentile in D1).
 export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
+  const { label, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
@@ -926,47 +924,22 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
-  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(
     request,
     ctx,
     env,
     "chain-fees",
     async () => {
-      const cutoff = Date.now() - days * DAY_MS;
-      const [dailyRows, payerRows] = await Promise.all([
-        d1All(
-          env,
-          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                COUNT(*) AS extrinsic_count,
-                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
-                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
-         FROM extrinsics
-         WHERE observed_at >= ?${moduleClause}
-         GROUP BY day`,
-          callModule ? [cutoff, callModule] : [cutoff],
-        ),
-        d1All(
-          env,
-          `SELECT signer,
-                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
-                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
-                COUNT(*) AS extrinsic_count
-         FROM extrinsics
-         WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
-         GROUP BY signer
-         ORDER BY total_fee_tao DESC
-         LIMIT ?`,
-          callModule ? [cutoff, callModule, limit] : [cutoff, limit],
-        ),
-      ]);
       const meta = await readHealthMetaKv(env);
-      const data = buildChainFees({
-        window: label,
-        observedAt: meta?.last_run_at || null,
-        dailyRows,
-        payerRows,
-      });
+      const { data, dailyRows, payerRows } = await loadChainFees(
+        d1Runner(env),
+        {
+          window: label,
+          limit,
+          callModule,
+          observedAt: meta?.last_run_at || null,
+        },
+      );
       const response = await envelopeResponse(
         request,
         {
