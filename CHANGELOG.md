@@ -19,6 +19,16 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.29.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.29.0...platform-v0.29.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **api:** reject non-safe-integer netuid on the account history feed ([#2378](https://github.com/JSONbored/metagraphed/issues/2378)) ([09c8c9d](https://github.com/JSONbored/metagraphed/commit/09c8c9d64ace951c7ba1457c26bc57ddfdb84963))
+* **extrinsics:** limit forced module index to module-only feeds ([#2384](https://github.com/JSONbored/metagraphed/issues/2384)) ([dffb92d](https://github.com/JSONbored/metagraphed/commit/dffb92d7d843fd733b0b5543b7eb138967f97503))
+* **feeds:** render renamed-subnet before/after in registry feed items ([#2380](https://github.com/JSONbored/metagraphed/issues/2380)) ([3d7e607](https://github.com/JSONbored/metagraphed/commit/3d7e60757e95043cf274384cb09f6ac9d0a01c26))
+* **health:** gate IPv6-literal SSRF patterns to IPv6 hosts and widen to fc00::/7 ([#2376](https://github.com/JSONbored/metagraphed/issues/2376)) ([38bc959](https://github.com/JSONbored/metagraphed/commit/38bc95943282dc15f2577bce9bc8bd7318789045))
+
 ## [0.29.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.28.0...platform-v0.29.0) (2026-06-30)
 
 
