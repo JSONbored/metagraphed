@@ -134,6 +134,27 @@ test("formatAccountEvent is null-safe on junk + sparse rows", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
+  // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
+  // `?? null` pass-through this replaced would have leaked strings into the API
+  // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.mjs
+  // (#2439) — and the block_number / event_index / extrinsic_index coercion
+  // already applied in this same function.
+  const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 });
+  assert.equal(out.netuid, 7);
+  assert.equal(typeof out.netuid, "number");
+  assert.equal(out.uid, 42);
+  assert.equal(typeof out.uid, "number");
+});
+
+test("formatAccountEvent rejects non-integer or negative netuid/uid cells to null", () => {
+  // Guard the toBlockNumber helper for these fields: netuids are never negative
+  // on-chain, and a uid above Number.MAX_SAFE_INTEGER would lose precision.
+  assert.equal(formatAccountEvent({ netuid: -1 }).netuid, null);
+  assert.equal(formatAccountEvent({ uid: 1.5 }).uid, null);
+  assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
+});
+
 test("utcDayBounds returns the UTC day window", () => {
   const b = utcDayBounds(Date.UTC(2026, 5, 21, 14, 30, 0));
   assert.equal(b.date, "2026-06-21");

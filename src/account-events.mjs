@@ -103,8 +103,13 @@ export function formatAccountEvent(row) {
     event_kind: row.event_kind ?? null,
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
-    netuid: row.netuid ?? null,
-    uid: row.uid ?? null,
+    // Coerce netuid / uid (D1 INTEGER columns, can return as numeric strings)
+    // through toBlockNumber so a bare `?? null` pass-through never leaks the
+    // string form into the API payload. Same shape as the coercion applied to
+    // block_number / event_index / extrinsic_index directly below — and to the
+    // sibling formatters in blocks.mjs (#2435) and extrinsics.mjs (#2439).
+    netuid: toBlockNumber(row.netuid),
+    uid: toBlockNumber(row.uid),
     amount_tao: row.amount_tao ?? null,
     alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
