@@ -34,7 +34,7 @@ Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the sour
 
 ## Where to start
 
-- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and add it as a surface on the subnet's file ([Community submissions](#community-submissions) below). Each issue links the exact `surface:add` command.
+- **Enrich a subnet** (the best first PR) — we track one scoped task per subnet under the [surface-enrichment epic #427](https://github.com/JSONbored/metagraphed/issues/427). Browse [`good first issue`](https://github.com/JSONbored/metagraphed/labels/good%20first%20issue) + [`help wanted`](https://github.com/JSONbored/metagraphed/labels/help%20wanted): pick a subnet, find its real public API / OpenAPI / data artifact, and add it as a surface on the subnet's file ([Community submissions](#community-submissions) below). Each issue links the `surface:add` command and flags `subnet:new` when the subnet file does not exist yet.
 - **Data gaps** — generate the current curation queue: `npm run curation:brief` (add `-- --limit 20` for more, `-- --json` for machine-readable). Start with profile-light subnets: directory-only entries, missing websites or source repos, public APIs with no OpenAPI metadata yet. See [`docs/curation-playbook.md`](docs/curation-playbook.md).
 
 ## Community submissions
@@ -72,7 +72,7 @@ npm run validate:surface -- registry/subnets/<slug>.json
 
 A good surface PR is small: one public `url`, one `source_url` proving the claim, the right `kind`, all on the subnet's single file. Auto-review kinds: `docs`, `website`, `source-repo`, `dashboard`, `openapi`, `subnet-api`, `sse`, `data-artifact`, `sdk`, `example`.
 
-**Higher-trust kinds** (base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints, authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership).
+**Higher-trust application surfaces** (authenticated or paid APIs, unknown providers, identity disputes) are welcome too — the autonomous reviewer scrutinizes identity/evidence harder and, when in doubt, closes or escalates rather than merging. Make the proof airtight (an independent `source_url` proving ownership). Base-layer `subtensor-rpc`/`subtensor-wss`/`archive` endpoints are maintainer-curated network infrastructure served through the endpoint lane, not contributor subnet surfaces.
 
 **Hard boundaries:**
 
