@@ -48,6 +48,7 @@ const {
   escapeXml,
   filterByTag,
   filterSince,
+  filterUntil,
   parseSinceParam,
 } = __test;
 
@@ -477,6 +478,34 @@ describe("feeds — filterSince", () => {
   });
 });
 
+describe("feeds — filterUntil", () => {
+  const items = [
+    { id: "old", timestamp: "2026-06-10T00:00:00.000Z" },
+    { id: "new", timestamp: "2026-06-20T00:00:00.000Z" },
+    { id: "bad", timestamp: "not-a-date" },
+  ];
+
+  test("a null bound is a no-op (returns the input)", () => {
+    assert.equal(filterUntil(items, null), items);
+  });
+
+  test("keeps items at or before the bound; drops unparseable timestamps", () => {
+    const kept = filterUntil(items, Date.parse("2026-06-15T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["old"],
+    );
+  });
+
+  test("is inclusive of the exact bound", () => {
+    const kept = filterUntil(items, Date.parse("2026-06-10T00:00:00.000Z"));
+    assert.deepEqual(
+      kept.map((i) => i.id),
+      ["old"],
+    );
+  });
+});
+
 describe("feeds — ?since= filter", () => {
   test("a future since yields an empty but valid feed (200)", async () => {
     const { res, text } = await feed(
@@ -505,6 +534,48 @@ describe("feeds — ?since= filter", () => {
     ]) {
       const { res } = await feed(
         `/api/v1/feeds/registry.json?since=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
+  });
+});
+
+describe("feeds — ?until= filter", () => {
+  test("a past until yields an empty but valid feed (200)", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?until=2000-01-01",
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("a future until keeps items and composes with ?since= and ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2000-01-01&until=2099-01-01&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.ok(items.length > 0);
+    assert.ok(items.every((it) => (it.tags || []).includes("registry")));
+  });
+
+  test("a since/until window excludes items outside the bounds", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?since=2000-01-01&until=2000-01-02",
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(text).items, []);
+  });
+
+  test("a malformed until is rejected with 400", async () => {
+    for (const value of [
+      "notadate",
+      "1",
+      "2026-02-31",
+      "Tue, 01 Jun 2026 00:00:00 GMT",
+    ]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?until=${encodeURIComponent(value)}`,
       );
       assert.equal(res.status, 400, value);
     }
@@ -1062,6 +1133,82 @@ describe("feeds — Worker dispatch integration", () => {
     assert.equal(
       invalid.headers.get("x-metagraph-error-code"),
       "invalid_since",
+    );
+  });
+
+  test("handleRequest keys edge-cached feeds by until", async () => {
+    installMockCache();
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all: () => {
+                  if (sql.includes("recent_checks")) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 7,
+                          surface_id: "allways-api",
+                          surface_key: "allways-api",
+                          started_at: 1781266255266,
+                          ended_at: 1781499480737,
+                          failed_samples: 1945,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+      METAGRAPH_CONTROL: {
+        async get(key) {
+          if (key === "health:meta") {
+            return { last_run_at: "2026-06-15T00:00:00.000Z" };
+          }
+          return null;
+        },
+      },
+    };
+    const ctx = { waitUntil: (promise) => promise };
+
+    // A past `until` excludes every item. If the edge-cache key ignored
+    // `until`, the later unfiltered request would be served this empty body.
+    const past = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?until=2000-01-01",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(past.status, 200);
+    assert.deepEqual((await past.json()).items, []);
+
+    const unfiltered = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/feeds/incidents.json"),
+      env,
+      ctx,
+    );
+    assert.equal(unfiltered.status, 200);
+    assert.ok((await unfiltered.json()).items.length > 0);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/incidents.json?until=notadate",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_until",
     );
   });
 

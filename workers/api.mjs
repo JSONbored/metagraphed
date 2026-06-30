@@ -1011,6 +1011,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (since != null) {
       feedCacheParams.push(`since=${encodeURIComponent(since)}`);
     }
+    const until = url.searchParams.get("until");
+    if (until != null) {
+      feedCacheParams.push(`until=${encodeURIComponent(until)}`);
+    }
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
       request.method === "HEAD"

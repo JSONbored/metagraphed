@@ -23,6 +23,10 @@
 // Optional `?since=<ISO-8601>` returns only items at or after that instant
 // (e.g. ?since=2026-06-01 or ?since=2026-06-01T00:00:00Z), for incremental
 // polling; it composes with `?tag=`. A malformed `since` is a 400.
+//
+// Optional `?until=<ISO-8601>` returns only items at or before that instant
+// (same strict parsing as `since`) and composes with `?since=` and `?tag=` to
+// page a bounded window; a malformed `until` is a 400.
 
 import {
   EXPOSED_RESPONSE_HEADERS_VALUE,
@@ -319,6 +323,17 @@ function filterSince(items, sinceMs) {
   });
 }
 
+// Optional `?until=` filter: keep only items at or before `untilMs` (epoch ms).
+// A null bound (absent param) is a no-op; items whose timestamp can't be parsed
+// are dropped, so a malformed feed entry never leaks past an explicit `until`.
+function filterUntil(items, untilMs) {
+  if (untilMs == null) return items;
+  return items.filter((item) => {
+    const t = Date.parse(item.timestamp);
+    return !Number.isNaN(t) && t <= untilMs;
+  });
+}
+
 function jsonFeed(meta, items) {
   return `${JSON.stringify(
     {
@@ -553,6 +568,21 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     }
   }
 
+  // Optional `?until=` upper bound (same strict ISO-8601 contract as `since`),
+  // parsed up front so a malformed value is rejected before any artifact work.
+  let untilMs = null;
+  const untilParam = url.searchParams.get("until");
+  if (untilParam != null) {
+    untilMs = parseSinceParam(untilParam);
+    if (Number.isNaN(untilMs)) {
+      return fail(
+        "invalid_until",
+        "`until` must be an ISO-8601 date or date-time, e.g. 2026-06-30 or 2026-06-30T00:00:00Z.",
+        400,
+      );
+    }
+  }
+
   let items;
   let title;
   let description;
@@ -606,6 +636,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
 
   items = filterByTag(items, url.searchParams.get("tag"));
   items = filterSince(items, sinceMs);
+  items = filterUntil(items, untilMs);
   items = sortAndCap(items);
   const meta = {
     title,
@@ -667,5 +698,6 @@ export const __test = {
   escapeXml,
   filterByTag,
   filterSince,
+  filterUntil,
   parseSinceParam,
 };
