@@ -402,7 +402,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold. */
+        /** Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold. */
         get: operations["chainCalls"];
         put?: never;
         post?: never;
@@ -2293,7 +2293,7 @@ export interface components {
             count: number;
             share: number | null;
         };
-        /** @description Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold. */
+        /** @description Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics, or of the selected call_module when ?call_module= is supplied. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold. */
         ChainCallsArtifact: {
             call_count: number;
             calls: components["schemas"]["ChainCallEntry"][];
@@ -7977,6 +7977,7 @@ export interface operations {
                 window?: "7d" | "30d";
                 group_by?: "module" | "module_function";
                 limit?: number;
+                call_module?: string;
             };
             header?: never;
             path?: never;

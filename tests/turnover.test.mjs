@@ -36,6 +36,49 @@ describe("buildTurnover", () => {
     assert.equal(buildTurnover([], 7, {}).window, null);
   });
 
+  test("rows present but neither boundary date resolves is not comparable (#2415)", () => {
+    // Only a mid-window snapshot exists; the requested boundary dates have no
+    // rows. jaccard(empty, empty) = 1 must NOT surface as perfect retention.
+    const data = buildTurnover(
+      [
+        {
+          snapshot_date: "2026-06-15",
+          uid: 0,
+          hotkey: "H0",
+          validator_permit: 1,
+        },
+      ],
+      1,
+      { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
+    );
+    assert.equal(data.comparable, false);
+    assert.equal(data.validator_retention, null);
+    assert.equal(data.neuron_retention, null);
+    assert.equal(data.stability_score, null);
+    assert.equal(data.validators_start, 0);
+    assert.equal(data.neurons_end, 0);
+  });
+
+  test("a missing end snapshot is not read as total churn (#2415)", () => {
+    // Start resolves, end does not — without the guard this would report
+    // validator_retention 0 (everyone "exited") instead of no-data.
+    const data = buildTurnover(
+      [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+      ],
+      1,
+      { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
+    );
+    assert.equal(data.comparable, false);
+    assert.equal(data.validator_retention, null);
+    assert.equal(data.stability_score, null);
+  });
+
   test("computes validator churn, deregistrations, and retention between two snapshots", () => {
     const rows = [
       // start: validators V1 (uid0), V2 (uid1); miner M1 (uid2)
@@ -210,6 +253,26 @@ describe("buildTurnoverChanges", () => {
       assert.deepEqual(data.validators_exited, []);
       assert.deepEqual(data.uid_reassignments, []);
     }
+  });
+
+  test("rows present but neither boundary date resolves yields empty detail (#2415)", () => {
+    const data = buildTurnoverChanges(
+      [
+        {
+          snapshot_date: "2026-06-15",
+          uid: 0,
+          hotkey: "H0",
+          validator_permit: 1,
+        },
+      ],
+      7,
+      { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
+    );
+    assert.equal(data.comparable, false);
+    assert.equal(data.validators_entered_count, 0);
+    assert.deepEqual(data.validators_entered, []);
+    assert.deepEqual(data.validators_exited, []);
+    assert.deepEqual(data.uid_reassignments, []);
   });
 
   test("lists validator entries, exits, and UID reassignments", () => {

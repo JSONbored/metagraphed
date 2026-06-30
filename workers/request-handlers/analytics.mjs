@@ -43,22 +43,18 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
-import {
-  dailyLatencyColumns,
-  latencyStatColumns,
-  rankedChecksCte,
-} from "../../src/health-sql.mjs";
+import { dailyLatencyColumns } from "../../src/health-sql.mjs";
 import {
   formatBulkTrends,
   formatGlobalIncidents,
   formatIncidents,
-  formatPercentiles,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
 import {
   loadChainCalls,
   loadSubnetHealthTrends,
+  loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
 import {
   buildChainActivity,
@@ -459,7 +455,9 @@ export async function handleHealthTrends(request, env, netuid, url, ctx = {}) {
   });
 }
 
-// p50/p95/p99 latency percentiles per surface, computed in D1.
+// p50/p95/p99 latency percentiles per surface, computed in D1. The query +
+// formatting live in loadSubnetPercentiles (src/analytics-live.mjs) so the
+// get_subnet_health_percentiles MCP tool shares this exact read path.
 export async function handleHealthPercentiles(
   request,
   env,
@@ -467,7 +465,7 @@ export async function handleHealthPercentiles(
   url,
   ctx = {},
 ) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   return withEdgeCache(
     request,
@@ -475,23 +473,19 @@ export async function handleHealthPercentiles(
     env,
     "percentiles",
     async () => {
-      const rows = await d1All(
-        env,
-        `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
-     SELECT MAX(surface_id) AS surface_id,
-            surface_key,
-            ${latencyStatColumns()}
-     FROM ranked
-     GROUP BY surface_key
-     HAVING MAX(lat_cnt) > 0`,
-        [netuid, Date.now() - days * DAY_MS],
-      );
+      // Wrap d1All so a failure is still logged + marked as a D1 fallback (the
+      // dark-serve contract), since the formatted result no longer exposes the
+      // raw rows hasD1FallbackRows used to check (mirrors handleHealthTrends).
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
       const meta = await readHealthMetaKv(env);
-      const data = formatPercentiles({
-        netuid,
+      const data = await loadSubnetPercentiles(d1, netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        rows,
       });
       const response = await envelopeResponse(
         request,
@@ -505,9 +499,7 @@ export async function handleHealthPercentiles(
         },
         "short",
       );
-      return hasD1FallbackRows(rows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return usedFallback ? markD1FallbackResponse(response) : response;
     },
     canonicalHealthWindowCachePath(url),
   );
@@ -811,7 +803,11 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
 // call_module/call_function). The share denominator is the full-window extrinsic
 // count read separately, so the truncated LIMIT tail never skews shares.
 export async function handleChainCalls(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["group_by", "limit"]);
+  const { label, error } = analyticsWindow(url, [
+    "group_by",
+    "limit",
+    "call_module",
+  ]);
   if (error) return analyticsQueryError(error);
   const groupByError = validateEnumParam(url, "group_by", [
     "module",
@@ -824,34 +820,45 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  return withEdgeCache(request, ctx, env, "chain-calls", async () => {
-    let usedFallback = false;
-    const d1 = async (sql, params) => {
-      const rows = await d1All(env, sql, params);
-      if (hasD1FallbackRows(rows)) usedFallback = true;
-      return rows;
-    };
-    const meta = await readHealthMetaKv(env);
-    const data = await loadChainCalls(d1, {
-      window: label,
-      groupBy,
-      limit,
-      observedAt: meta?.last_run_at || null,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          "/metagraph/chain/calls.json",
-          data.observed_at,
-        ),
-      },
-      "short",
-    );
-    return usedFallback ? markD1FallbackResponse(response) : response;
-  });
+  const callModule = url.searchParams.get("call_module");
+  const callModuleError = validateMaxLength(url, "call_module", 100);
+  if (callModuleError) return analyticsQueryError(callModuleError);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-calls",
+    async () => {
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainCalls(d1, {
+        window: label,
+        groupBy,
+        callModule,
+        limit,
+        observedAt: meta?.last_run_at || null,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/calls.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return usedFallback ? markD1FallbackResponse(response) : response;
+    },
+    canonicalAnalyticsCacheRoute(url, ["group_by", "limit", "call_module"]),
+  );
 }
 
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic

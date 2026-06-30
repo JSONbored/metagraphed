@@ -461,7 +461,23 @@ export function buildAccountTransfers(
 // runner; a cold/unbound DB yields [] → a schema-stable zero payload.
 
 // Events match either key (a coldkey controls hotkeys); a registration is hotkey-only.
-const ACCOUNT_EVENT_MATCH = "hotkey = ? OR coldkey = ?";
+// OR across two columns can miss index plans in SQLite/D1 (#2059), so every
+// account_events read uses an indexed UNION-of-seeks (same pattern as
+// loadAccountTransfers' both-direction feed).
+const ACCOUNT_EVENT_HOTKEY_INDEX = "idx_account_events_hotkey";
+const ACCOUNT_EVENT_COLDKEY_INDEX = "idx_account_events_coldkey";
+
+function accountEventIndexedUnion(select, filters = "", filterParams = []) {
+  const branchFilters = filters ? ` ${filters}` : "";
+  return {
+    sql:
+      `(SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_HOTKEY_INDEX} WHERE hotkey = ?${branchFilters}` +
+      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_COLDKEY_INDEX} WHERE coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)${branchFilters})`,
+    paramsFor(ss58) {
+      return [ss58, ...filterParams, ss58, ss58, ...filterParams];
+    },
+  };
+}
 const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
 // Bound public account-summary signing activity to the newest signer rows. This
 // keeps /api/v1/accounts/{ss58} from doing full retained-history aggregates for
@@ -471,23 +487,28 @@ export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
 // Cross-subnet summary: event aggregates, per-kind counts, the 10 newest events,
 // current registrations, and bounded signing-activity aggregates from the extrinsics tier.
 export async function loadAccountSummary(d1, ss58) {
+  const aggUnion = accountEventIndexedUnion(
+    "netuid, block_number, observed_at",
+  );
+  const kindUnion = accountEventIndexedUnion("event_kind");
+  const recentUnion = accountEventIndexedUnion(ACCOUNT_EVENT_COLUMNS);
   const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
     await Promise.all([
       d1(
-        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM account_events WHERE ${ACCOUNT_EVENT_MATCH}`,
-        [ss58, ss58],
+        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM ${aggUnion.sql}`,
+        aggUnion.paramsFor(ss58),
       ),
       d1(
-        `SELECT event_kind AS kind, COUNT(*) AS count FROM account_events WHERE ${ACCOUNT_EVENT_MATCH} GROUP BY event_kind ORDER BY count DESC`,
-        [ss58, ss58],
+        `SELECT event_kind AS kind, COUNT(*) AS count FROM ${kindUnion.sql} GROUP BY event_kind ORDER BY count DESC`,
+        kindUnion.paramsFor(ss58),
       ),
       d1(
         `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
         [ss58],
       ),
       d1(
-        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE ${ACCOUNT_EVENT_MATCH} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-        [ss58, ss58],
+        `SELECT * FROM ${recentUnion.sql} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+        recentUnion.paramsFor(ss58),
       ),
       // Signing activity from the extrinsics tier, matched by signer and
       // explicitly bounded to the newest rows before aggregation. The inner
@@ -522,31 +543,36 @@ export async function loadAccountEvents(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  const params = [ss58, ss58];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE (${ACCOUNT_EVENT_MATCH})`;
+  const filterParts = [];
+  const filterParams = [];
   if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
+    filterParts.push("AND event_kind = ?");
+    filterParams.push(kind);
   }
   // Block-height range filter, parity with the extrinsics and chain-events
   // feeds: the per-branch hotkey/coldkey indexes both lead block_number, so a
   // bounded range stays index-satisfiable.
   if (blockStart != null) {
-    sql += " AND block_number >= ?";
-    params.push(blockStart);
+    filterParts.push("AND block_number >= ?");
+    filterParams.push(blockStart);
   }
   if (blockEnd != null) {
-    sql += " AND block_number <= ?";
-    params.push(blockEnd);
+    filterParts.push("AND block_number <= ?");
+    filterParams.push(blockEnd);
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
+    filterParts.push("AND (block_number, event_index) < (?, ?)");
+    filterParams.push(cur[0], cur[1]);
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(lim);
+  const union = accountEventIndexedUnion(
+    ACCOUNT_EVENT_COLUMNS,
+    filterParts.join(" "),
+    filterParams,
+  );
+  const params = [...union.paramsFor(ss58), lim];
+  let sql = `SELECT * FROM ${union.sql} ORDER BY block_number DESC, event_index DESC LIMIT ?`;
   if (!useCursor) {
     sql += " OFFSET ?";
     params.push(off);

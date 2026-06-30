@@ -65,6 +65,26 @@ describe("buildCounterparties", () => {
     assert.equal(data.counterparties[2].address, "B");
   });
 
+  test("coerces a numeric-string block_number into last_block and its tie-break (#2413)", () => {
+    // D1 can return an INTEGER column as a numeric string; last_block must still
+    // populate (matching buildCounterpartyRelationship) so the equal-volume
+    // tie-break prefers the more recent counterparty instead of collapsing to 0.
+    const data = buildCounterparties(
+      [
+        { hotkey: "ME", coldkey: "OLD", amount_tao: 100, block_number: "5" },
+        { hotkey: "ME", coldkey: "NEW", amount_tao: 100, block_number: "9" },
+      ],
+      ME,
+      { limit: 20 },
+    );
+    const newer = data.counterparties.find((c) => c.address === "NEW");
+    const older = data.counterparties.find((c) => c.address === "OLD");
+    assert.equal(newer.last_block, 9);
+    assert.equal(older.last_block, 5);
+    // Equal volume (100 each) -> the newer last_block ranks first.
+    assert.equal(data.counterparties[0].address, "NEW");
+  });
+
   test("skips self-transfers (account on both sides)", () => {
     const data = buildCounterparties(
       [
@@ -533,6 +553,11 @@ describe("loadCounterparties", () => {
     assert.match(sql, /UNION ALL/);
     assert.match(sql, /coldkey = \? AND hotkey <> \?/);
     assert.equal(sql.includes(" OR "), false);
+    // The bounded scan must tie-break same-block rows on event_index so the row
+    // cap truncates deterministically (newest-first), matching the relationship
+    // drill-down and the transfer feed (#2413).
+    assert.match(sql, /ORDER BY block_number DESC, event_index DESC/);
+    assert.match(sql, /event_index FROM account_events/);
     assert.deepEqual(params, [ME, ME, ME, COUNTERPARTIES_SCAN_CAP]);
     assert.equal(data.ss58, ME);
     assert.equal(data.counterparty_count, 2);

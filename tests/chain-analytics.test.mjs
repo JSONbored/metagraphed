@@ -362,13 +362,65 @@ test("GET /api/v1/chain/calls groups by call_module with honest share + 400 on j
   assert.equal(bad.status, 400);
 });
 
+test("GET /api/v1/chain/calls scopes module-function groups by call_module", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            const rows = /GROUP BY call_module, call_function/.test(sql)
+              ? [
+                  {
+                    call_module: "SubtensorModule",
+                    call_function: "add_stake",
+                    count: 50,
+                  },
+                ]
+              : /COUNT\(\*\) AS total/.test(sql)
+                ? [{ total: 80 }]
+                : [];
+            return { all: () => Promise.resolve({ results: rows }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/calls?call_module=SubtensorModule&group_by=module_function&limit=1",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.group_by, "module_function");
+  assert.equal(body.data.total_extrinsics, 80);
+  assert.equal(body.data.calls[0].call_function, "add_stake");
+  assert.equal(body.data.calls[0].share, 0.625);
+
+  const extrinsicsQueries = captured.filter((q) =>
+    /FROM extrinsics/.test(q.sql),
+  );
+  assert.equal(extrinsicsQueries.length, 2);
+  for (const q of extrinsicsQueries) {
+    assert.match(q.sql, /AND call_module = \?/);
+    assert.ok(q.params.includes("SubtensorModule"));
+  }
+});
+
 test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", async () => {
   const env = createLocalArtifactEnv();
+  const long = "x".repeat(101);
   for (const [path, parameter] of [
     ["/api/v1/chain/calls?group_by=x1", "group_by"],
     ["/api/v1/chain/calls?limit=abc1", "limit"],
     ["/api/v1/chain/calls?limit=001", "limit"],
     ["/api/v1/chain/calls?limit=999999", "limit"],
+    [`/api/v1/chain/calls?call_module=${long}`, "call_module"],
   ]) {
     const res = await handleRequest(
       new Request(`https://api.metagraph.sh${path}`),

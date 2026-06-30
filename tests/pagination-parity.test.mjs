@@ -94,7 +94,7 @@ const ROUTES = [
   {
     name: "GET /accounts/{ss58}/events",
     profile: FEED_PAGINATION,
-    feed: /FROM account_events WHERE \(hotkey = \? OR coldkey = \?\)/,
+    feed: /INDEXED BY idx_account_events_hotkey.*UNION ALL.*idx_account_events_coldkey/s,
     invoke: (env, qs) =>
       handleAccountEvents(
         req(`/api/v1/accounts/${SS58}/events`),

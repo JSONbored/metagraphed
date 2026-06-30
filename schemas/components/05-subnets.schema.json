@@ -2001,7 +2001,7 @@
       "ChainCallsArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold.",
+        "description": "Extrinsic call-mix breakdown (#1989) over a 7d/30d window: each call_module (or call_module/call_function with group_by=module_function) by count and share of all extrinsics, or of the selected call_module when ?call_module= is supplied. Served live from the extrinsics D1 tier at /api/v1/chain/calls (no static file); call_count is 0 and calls is empty when the store is cold.",
         "required": [
           "schema_version",
           "window",
