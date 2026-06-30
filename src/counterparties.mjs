@@ -11,6 +11,11 @@
 export const COUNTERPARTIES_READ_COLUMNS =
   "hotkey, coldkey, amount_tao, block_number";
 
+// The columns the inner scan must expose so the bounded newest-first read can
+// tie-break same-block rows on event_index (the output still projects only
+// COUNTERPARTIES_READ_COLUMNS — event_index is needed for ORDER BY, not the body).
+export const COUNTERPARTIES_SCAN_COLUMNS = `${COUNTERPARTIES_READ_COLUMNS}, event_index`;
+
 export const COUNTERPARTY_RELATIONSHIP_READ_COLUMNS =
   "block_number, event_index, hotkey, coldkey, netuid, amount_tao, observed_at";
 
@@ -102,11 +107,11 @@ export function buildCounterparties(rows, ss58, { limit = 20 } = {}) {
     entry.received += received;
     entry.count += 1;
     // `row` is non-null here (it produced a party), so no optional chain needed.
-    const block = row.block_number;
-    if (
-      typeof block === "number" &&
-      (entry.lastBlock == null || block > entry.lastBlock)
-    ) {
+    // Coerce the cell (D1 can return an INTEGER column as a numeric string) so a
+    // string block_number still updates last_block — matching the coercion the
+    // sibling buildCounterpartyRelationship already applies via nullableInteger.
+    const block = nullableInteger(row.block_number);
+    if (block != null && (entry.lastBlock == null || block > entry.lastBlock)) {
       entry.lastBlock = block;
     }
     byParty.set(party, entry);
@@ -236,7 +241,7 @@ export function buildCounterpartyRelationship(
 // hotkey/coldkey OR); buildCounterparties does the per-party rollup. Null-safe.
 export async function loadCounterparties(d1, ss58, { limit } = {}) {
   const rows = await d1(
-    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM (SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?) ORDER BY block_number DESC LIMIT ?`,
+    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM (SELECT ${COUNTERPARTIES_SCAN_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${COUNTERPARTIES_SCAN_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
     [ss58, ss58, ss58, COUNTERPARTIES_SCAN_CAP],
   );
   return buildCounterparties(rows, ss58, { limit });
