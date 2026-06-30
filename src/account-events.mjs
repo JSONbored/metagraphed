@@ -363,8 +363,13 @@ export function formatAccountDay(row) {
   if (!row || typeof row !== "object") return null;
   return {
     day: row.day ?? null,
-    netuid: row.netuid ?? null,
-    event_count: row.event_count ?? null,
+    // Coerce netuid / event_count (D1 INTEGER columns, can return as numeric
+    // strings) through toBlockNumber so a bare `?? null` pass-through never
+    // leaks the string form into the API payload. Same shape as the coercion
+    // applied in formatAccountEvent above (#2481) and the sibling formatters
+    // in blocks.mjs (#2435) / extrinsics.mjs (#2439).
+    netuid: toBlockNumber(row.netuid),
+    event_count: toBlockNumber(row.event_count),
     event_kinds:
       typeof row.event_kinds === "string" && row.event_kinds.length > 0
         ? row.event_kinds.split(",").filter(Boolean)
