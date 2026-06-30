@@ -12178,6 +12178,7 @@
         "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",
         "properties": {
           "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "type": [
               "string",
               "null"
@@ -12277,6 +12278,7 @@
             "type": "string"
           },
           "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "type": [
               "string",
               "null"
@@ -34136,7 +34138,7 @@
               "application/json": {
                 "example": {
                   "data": {
-                    "end_date": "example",
+                    "end_date": "2026-06-01",
                     "movers": [
                       {
                         "emission_delta_tao": 0.5,
@@ -34158,7 +34160,7 @@
                     ],
                     "schema_version": 1,
                     "sort": "stake",
-                    "start_date": "example",
+                    "start_date": "2026-06-01",
                     "subnet_count": 1,
                     "window": "7d"
                   },

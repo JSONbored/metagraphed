@@ -12156,6 +12156,7 @@
         "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",
         "properties": {
           "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "type": [
               "string",
               "null"
@@ -12255,6 +12256,7 @@
             "type": "string"
           },
           "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "type": [
               "string",
               "null"

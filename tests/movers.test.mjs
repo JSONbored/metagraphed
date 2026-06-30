@@ -43,6 +43,12 @@ describe("buildMovers", () => {
     assert.equal(data.window, null);
     assert.equal(data.sort, "stake");
   });
+
+  test("normalizes an unknown window/sort to schema-valid defaults", () => {
+    const data = buildMovers([], [], { window: "bogus", sort: "bogus" });
+    assert.equal(data.window, DEFAULT_MOVERS_WINDOW);
+    assert.equal(data.sort, DEFAULT_MOVERS_SORT);
+  });
 });
 
 describe("computeMovers", () => {

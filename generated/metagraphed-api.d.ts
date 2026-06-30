@@ -18356,7 +18356,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "end_date": "example",
+                     *         "end_date": "2026-06-01",
                      *         "movers": [
                      *           {
                      *             "emission_delta_tao": 0.5,
@@ -18378,7 +18378,7 @@ export interface operations {
                      *         ],
                      *         "schema_version": 1,
                      *         "sort": "stake",
-                     *         "start_date": "example",
+                     *         "start_date": "2026-06-01",
                      *         "subnet_count": 1,
                      *         "window": "7d"
                      *       },

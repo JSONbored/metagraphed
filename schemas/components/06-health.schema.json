@@ -960,8 +960,14 @@
             "type": ["string", "null"],
             "enum": ["7d", "30d", "90d", null]
           },
-          "start_date": { "type": ["string", "null"] },
-          "end_date": { "type": ["string", "null"] },
+          "start_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
           "sort": {
             "type": "string",
             "enum": ["stake", "emission", "validators"]

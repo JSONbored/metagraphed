@@ -4,9 +4,9 @@
 // Worker adds the REST envelope. Null-safe: a cold store or a single snapshot yields an
 // empty movers list (never throws), matching the sibling live tiers (turnover, history).
 //
-// Reads the neuron_daily rollup the refresh-metagraph cron lands daily; the cross-subnet
-// GROUP BY netuid, snapshot_date over the two boundary dates is covered by
-// idx_neuron_daily_netuid_date_agg (migrations/0028).
+// Reads the neuron_daily rollup the refresh-metagraph cron lands daily. The route's scans
+// filter on snapshot_date first (the window-boundary MIN/MAX and the two-day aggregate), so
+// the date-first idx_neuron_daily_date_netuid_agg (migrations/0030) covers them.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -125,15 +125,29 @@ export function buildMovers(
     limit = MOVERS_LIMIT_DEFAULT,
   } = {},
 ) {
+  // Normalize sort/window so the artifact is always schema-valid even for direct
+  // callers: computeMovers silently falls back to stake for an unknown sort, so the
+  // returned sort must reflect that, and an unknown window resolves to the default.
+  const normalizedSort = MOVERS_SORTS.includes(sort)
+    ? sort
+    : DEFAULT_MOVERS_SORT;
+  const normalizedWindow =
+    window == null
+      ? null
+      : MOVERS_WINDOWS[window]
+        ? window
+        : DEFAULT_MOVERS_WINDOW;
   const comparable =
     startDate != null && endDate != null && startDate !== endDate;
-  const ranked = comparable ? computeMovers(startRows, endRows, { sort }) : [];
+  const ranked = comparable
+    ? computeMovers(startRows, endRows, { sort: normalizedSort })
+    : [];
   return {
     schema_version: 1,
-    window: window ?? null,
+    window: normalizedWindow,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
-    sort,
+    sort: normalizedSort,
     subnet_count: ranked.length,
     movers: ranked.slice(0, limit),
   };
@@ -141,8 +155,9 @@ export function buildMovers(
 
 // Cross-subnet movers leaderboard, computed live: resolve the window's global boundary
 // snapshot_dates (MIN over the cutoff, MAX), read every subnet's aggregate at those two
-// days (GROUP BY netuid, snapshot_date; idx_neuron_daily_netuid_date_agg covers it), shape
-// with buildMovers. Cold/absent or single-snapshot D1 -> empty movers.
+// days (GROUP BY netuid, snapshot_date; the date-first idx_neuron_daily_date_netuid_agg
+// covers both the boundary scan and this aggregate), shape with buildMovers. Cold/absent
+// or single-snapshot D1 -> empty movers.
 export async function loadSubnetMovers(
   d1,
   {
