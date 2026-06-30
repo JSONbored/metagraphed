@@ -1725,6 +1725,114 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_chain_fees", () => {
+  test("returns daily series + top payers from D1", async () => {
+    let dailySql;
+    let payerSql;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  if (sql.includes("GROUP BY day")) {
+                    dailySql = sql;
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-01",
+                          extrinsic_count: 5,
+                          total_fee_tao: 3,
+                          total_tip_tao: 1,
+                        },
+                      ],
+                    };
+                  }
+                  payerSql = sql;
+                  return {
+                    results: [
+                      {
+                        signer:
+                          "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        total_fee_tao: 2,
+                        total_tip_tao: 0.5,
+                        extrinsic_count: 4,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "7d", limit: 25 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.daily[0].extrinsic_count, 5);
+    assert.equal(out.top_fee_payers[0].total_fee_tao, 2);
+    assert.match(dailySql, /FROM extrinsics/);
+    assert.match(payerSql, /ORDER BY total_fee_tao DESC/);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_chain_fees", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("scopes both queries by call_module", async () => {
+    let boundModule;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              if (sql.includes("call_module = ?")) {
+                boundModule = params[1];
+              }
+              return { async all() { return { results: [] }; } };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "30d", call_module: "Balances", limit: 10 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(boundModule, "Balances");
+  });
+
+  test("returns empty series on a cold D1 store", async () => {
+    const res = await callTool("get_chain_fees", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+    assert.deepEqual(out.top_fee_payers, []);
+  });
+});
+
 // keyword-search.test.mjs covers the scoring matrix; here we only prove both
 // tools are wired to it — substring noise is gone and the precise target wins.
 describe("MCP keyword discovery relevance", () => {
