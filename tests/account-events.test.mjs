@@ -710,6 +710,28 @@ test("loadAccountSummary bounds signing activity before aggregating", async () =
   assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
 });
 
+test("loadAccountSummary tie-breaks leaderboard aggregates for stable output", async () => {
+  const calls = [];
+  await loadAccountSummary(async (sql) => {
+    calls.push({ sql });
+    return [];
+  }, "5Hk");
+
+  const kinds = calls.find((c) => /GROUP BY event_kind/.test(c.sql));
+  const modules = calls.find((c) => /GROUP BY call_module/.test(c.sql));
+  // `count DESC` alone is not a total order. Without a stable secondary key the
+  // per-kind ordering — and, for the trailing LIMIT 10, the membership of the
+  // top call modules — would vary with D1/SQLite group order on tied counts.
+  assert.ok(
+    /GROUP BY event_kind ORDER BY count DESC, event_kind ASC/.test(kinds.sql),
+  );
+  assert.ok(
+    /GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10/.test(
+      modules.sql,
+    ),
+  );
+});
+
 test("loadAccountSummary uses indexed union seeks for account_events (#2059)", async () => {
   const calls = [];
   await loadAccountSummary(async (sql, params) => {

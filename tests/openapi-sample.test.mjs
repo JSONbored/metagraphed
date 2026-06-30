@@ -122,6 +122,7 @@ describe("sampleFromSchema", () => {
       s({ type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" }),
       "2026-06-01",
     );
+    assert.match(s({ type: "string", pattern: "^\\d+\\.\\d+$" }), /^\d+\.\d+$/);
     assert.equal(
       s({ type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" }, "ss58"),
       "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",

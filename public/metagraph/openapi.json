@@ -2748,7 +2748,7 @@
       },
       "ChainEventsFeedArtifact": {
         "additionalProperties": true,
-        "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). next_before is the cursor for the next page (null when the page was not full). Empty (count:0, events:[]) before the all-events backfill runs.",
+        "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events. Optional ?pallet / ?method narrow by event id (method requires pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor (exclusive), while ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). next_cursor is the cursor for the next page (null when the page was not full); next_before is retained for legacy callers. Empty (count:0, events:[]) before the all-events backfill runs.",
         "properties": {
           "count": {
             "minimum": 0,
@@ -2761,8 +2761,18 @@
             "type": "array"
           },
           "next_before": {
+            "description": "Legacy block_number-only cursor for the next page. Prefer next_cursor to avoid skipping same-block events.",
             "type": [
               "integer",
+              "null"
+            ]
+          },
+          "next_cursor": {
+            "description": "Lossless block_number.event_index cursor for the next page. Both parts are non-negative safe integers; pass it back as ?cursor=.",
+            "maxLength": 33,
+            "pattern": "^\\d+\\.\\d+$",
+            "type": [
+              "string",
               "null"
             ]
           }
@@ -14446,7 +14456,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-06-30.6"
+    "version": "2026-06-30.7"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -17835,6 +17845,17 @@
           },
           {
             "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
+              "maxLength": 33,
+              "pattern": "^\\d+\\.\\d+$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "before",
             "required": false,
             "schema": {
@@ -17868,7 +17889,8 @@
                         "pallet": "example"
                       }
                     ],
-                    "next_before": 1
+                    "next_before": 1,
+                    "next_cursor": "123.4"
                   },
                   "meta": {
                     "artifact_path": "example",
@@ -17969,7 +17991,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+        "summary": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
         "tags": [
           "chain",
           "analytics"
@@ -34149,7 +34171,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-06-30.6",
+    "contract_version": "2026-06-30.7",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

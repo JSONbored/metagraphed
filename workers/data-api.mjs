@@ -10,6 +10,7 @@
 // connection is opened per request through Hyperdrive (pooled + edge-cached) and
 // closed via ctx.waitUntil so it never blocks the response.
 import postgres from "postgres";
+import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
@@ -98,10 +99,12 @@ export default {
         });
       }
 
-      // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&before=&limit=
+      // GET /api/v1/chain-events?pallet=&method=&block=&extrinsic=&cursor=&before=&limit=
       // recent all-events feed. block= scopes to one block; block=+extrinsic= scopes to
       // a single extrinsic's emitted events (explorer extrinsic-detail view). Ignore
       // extrinsic without block to avoid an unindexed global extrinsic_index scan.
+      // cursor is the lossless keyset over (block_number,event_index); before is
+      // retained as the legacy block_number-only cursor for existing callers.
       if (url.pathname === "/api/v1/chain-events") {
         const limit = clampLimit(url.searchParams.get("limit"));
         const pallet = url.searchParams.get("pallet");
@@ -123,7 +126,8 @@ export default {
         };
         const blockN = numParam("block");
         const extrN = blockN != null ? numParam("extrinsic") : null;
-        const beforeBn = numParam("before"); // block_number cursor (exclusive)
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        const beforeBn = cursor ? null : numParam("before"); // legacy block_number cursor
         if (method && !pallet && blockN == null) {
           return json(
             {
@@ -138,18 +142,26 @@ export default {
           WHERE TRUE
             ${blockN != null ? sql`AND block_number = ${blockN}` : sql``}
             ${extrN != null ? sql`AND extrinsic_index = ${extrN}` : sql``}
-            ${beforeBn != null ? sql`AND block_number < ${beforeBn}` : sql``}
+            ${
+              cursor
+                ? sql`AND (block_number, event_index) < (${cursor[0]}, ${cursor[1]})`
+                : beforeBn != null
+                  ? sql`AND block_number < ${beforeBn}`
+                  : sql``
+            }
             ${pallet ? sql`AND pallet = ${pallet}` : sql``}
             ${method ? sql`AND method = ${method}` : sql``}
           ORDER BY block_number DESC, event_index DESC
           LIMIT ${limit}`;
-        const next =
-          rows.length === limit
-            ? numberOrNull(rows[rows.length - 1].block_number)
-            : null;
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextBlock = last ? numberOrNull(last.block_number) : null;
+        const nextCursor = last
+          ? encodeCursor([nextBlock, numberOrNull(last.event_index)])
+          : null;
         return json({
           count: rows.length,
-          next_before: next,
+          next_before: nextBlock,
+          next_cursor: nextCursor,
           events: rows.map(coerceEvent),
         });
       }

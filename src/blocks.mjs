@@ -32,6 +32,18 @@ function toIso(ms) {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+// Coerce a block-height cell to a non-negative integer, or null when missing,
+// non-finite, or negative. D1 can return an INTEGER column as a numeric string,
+// so a bare `row.block_number ?? null` would silently leak the string into the
+// API payload (and break downstream arithmetic/comparisons). Mirrors the
+// `toBlockNumber` already applied in account-events.mjs / chain-analytics.mjs
+// and the `nullableInteger` coercion added to counterparties in #2414.
+function toBlockNumber(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 // Keep only well-formed blocks rows (a valid block_number primary key + a
 // non-empty hash + an integer timestamp). Shared by the staged-batch loader so
 // garbage is rejected before it touches D1.
@@ -101,7 +113,7 @@ export const BLOCK_READ_COLUMNS =
 export function formatBlock(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    block_number: row.block_number ?? null,
+    block_number: toBlockNumber(row.block_number),
     block_hash: row.block_hash ?? null,
     parent_hash: row.parent_hash ?? null,
     author: row.author ?? null,

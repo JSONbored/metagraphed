@@ -127,6 +127,23 @@ test("formatBlock defaults a missing block_number to null (every field nullable)
   assert.equal(out.block_hash, "0xabc");
 });
 
+test("formatBlock coerces a string-typed block_number cell to a Number", () => {
+  // D1 can return an INTEGER column as a numeric string ("1000" not 1000); the
+  // bare `?? null` pass-through this replaced would have leaked the string into
+  // the API payload and broken downstream arithmetic/comparisons.
+  const out = formatBlock({ block_number: "1000", block_hash: "0xabc" });
+  assert.equal(out.block_number, 1000);
+  assert.equal(typeof out.block_number, "number");
+});
+
+test("formatBlock rejects a negative or non-integer block_number cell to null", () => {
+  // Guard the toBlockNumber helper: negatives and floats are not valid block
+  // heights, so the formatter must fall back to null rather than coerce them.
+  assert.equal(formatBlock({ block_number: -1 }).block_number, null);
+  assert.equal(formatBlock({ block_number: 1.5 }).block_number, null);
+  assert.equal(formatBlock({ block_number: "abc" }).block_number, null);
+});
+
 test("buildBlock defaults a null/absent ref to null (regression)", () => {
   // A caller that passes no ref must get ref:null, never undefined — keeps the
   // detail artifact JSON-stable when the lookup key itself is missing.

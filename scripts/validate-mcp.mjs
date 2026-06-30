@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const econTrends = await callOk("get_economics_trends", { window: "30d" });
+assert.ok(
+  Array.isArray(econTrends.days),
+  "get_economics_trends must return days[]",
+);
 const chainCalls = await callOk("get_chain_calls", { window: "7d", limit: 10 });
 assert.ok(
   Array.isArray(chainCalls.calls),
@@ -414,12 +419,28 @@ assert.ok(
   Array.isArray(signersCold.signers) && signersCold.window === "7d",
   "get_chain_signers must return window + signers[] on cold D1",
 );
+const feesCold = await callOk("get_chain_fees", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(feesCold.daily) &&
+    Array.isArray(feesCold.top_fee_payers) &&
+    feesCold.window === "7d",
+  "get_chain_fees must return window + daily[] + top_fee_payers[] on cold D1",
+);
 const rpcUsageCold = await callOk("get_rpc_usage", { window: "7d" });
 assert.ok(
   rpcUsageCold.window === "7d" &&
     Array.isArray(rpcUsageCold.endpoints) &&
     Array.isArray(rpcUsageCold.buckets),
   "get_rpc_usage must return window + endpoints[] + buckets[] on cold D1",
+);
+const healthTrendsCold = await callOk("get_health_trends", {});
+assert.ok(
+  healthTrendsCold.windows?.["7d"] &&
+    Array.isArray(healthTrendsCold.windows["7d"].subnets),
+  "get_health_trends must return windows.7d.subnets[] on cold D1",
 );
 
 // --- Negative paths --------------------------------------------------------
