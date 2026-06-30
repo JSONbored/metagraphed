@@ -55,7 +55,10 @@ import {
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
-import { loadChainSigners } from "../../src/chain-query-loaders.mjs";
+import {
+  CHAIN_SIGNERS_SORTS,
+  loadChainSigners,
+} from "../../src/chain-query-loaders.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -733,13 +736,20 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
 // count over the window. The observed_at index bounds the scan to the hot window;
 // the aggregation is amortized behind the edge cache (runs only on a new snapshot).
 export async function handleChainSigners(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
+  const { label, days, error } = analyticsWindow(url, [
+    "limit",
+    "call_module",
+    "sort",
+  ]);
   if (error) return analyticsQueryError(error);
+  const sortError = validateEnumParam(url, "sort", CHAIN_SIGNERS_SORTS);
+  if (sortError) return analyticsQueryError(sortError);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 50,
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
+  const sort = url.searchParams.get("sort") || "tx_count";
   // Optional pallet scope, backed by idx_extrinsics_module_block.
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
@@ -757,6 +767,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         observedAt: meta?.last_run_at || null,
         limit,
         callModule,
+        sort,
       });
       const response = await envelopeResponse(
         request,
@@ -774,7 +785,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         ? markD1FallbackResponse(response)
         : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "call_module"]),
+    canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"]),
   );
 }
 

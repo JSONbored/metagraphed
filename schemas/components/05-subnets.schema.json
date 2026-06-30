@@ -2045,11 +2045,18 @@
       "ChainSignersArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic count over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
-        "required": ["schema_version", "window", "signer_count", "signers"],
+        "description": "Windowed most-active-account leaderboard (#1990): signers ranked by tx_count or total_fee_tao over a 7d/30d window, with total fees/tips and the newest signed block. Served live from the extrinsics D1 tier at /api/v1/chain/signers (no static file); signer_count is 0 and signers is empty when the store is cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "sort",
+          "signer_count",
+          "signers"
+        ],
         "properties": {
           "schema_version": { "type": "integer" },
           "window": { "type": "string" },
+          "sort": { "type": "string", "enum": ["tx_count", "total_fee_tao"] },
           "observed_at": { "type": ["string", "null"], "format": "date-time" },
           "signer_count": { "type": "integer", "minimum": 0 },
           "signers": {

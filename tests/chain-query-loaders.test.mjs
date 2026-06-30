@@ -26,6 +26,7 @@ describe("loadChainSigners", () => {
     });
     assert.equal(rows.length, 1);
     assert.equal(data.window, "30d");
+    assert.equal(data.sort, "tx_count");
     assert.equal(data.signer_count, 1);
     assert.equal(data.signers[0].tx_count, 8);
     assert.match(calls[0].sql, /call_module = \?/);
@@ -59,6 +60,37 @@ describe("loadChainSigners", () => {
       },
       { windowLabel: "7d", windowDays: 7, limit: 5 },
     );
+    assert.match(sql, /ORDER BY tx_count DESC, signer ASC/);
+  });
+
+  test("can rank signers by total_fee_tao", async () => {
+    let sql = "";
+    const { data } = await loadChainSigners(
+      async (query) => {
+        sql = query;
+        return [];
+      },
+      {
+        windowLabel: "7d",
+        windowDays: 7,
+        limit: 5,
+        sort: "total_fee_tao",
+      },
+    );
+    assert.equal(data.sort, "total_fee_tao");
+    assert.match(sql, /ORDER BY total_fee_tao DESC, signer ASC/);
+  });
+
+  test("falls back to tx_count for an unknown loader sort", async () => {
+    let sql = "";
+    const { data } = await loadChainSigners(
+      async (query) => {
+        sql = query;
+        return [];
+      },
+      { windowLabel: "7d", windowDays: 7, limit: 5, sort: "nope" },
+    );
+    assert.equal(data.sort, "tx_count");
     assert.match(sql, /ORDER BY tx_count DESC, signer ASC/);
   });
 });
