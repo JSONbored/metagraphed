@@ -42,6 +42,15 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("feff::1"), false);
   });
 
+  test("IPv6 multicast (ff00::/8) → false", () => {
+    // Multicast is not global unicast (2000::/3) and is never a valid public
+    // webhook target. The fe00::/8 pass missed it; the prober guard already
+    // rejects every ff-prefixed literal (#1538), so this one must too.
+    assert.equal(isPublicWebhookAddress("ff02::1"), false); // link-local all-nodes
+    assert.equal(isPublicWebhookAddress("ff00::1"), false);
+    assert.equal(isPublicWebhookAddress("ff05::1:3"), false); // site-local
+  });
+
   test("public IPv6 → true", () => {
     assert.equal(isPublicWebhookAddress("2606:4700:4700::1111"), true);
   });

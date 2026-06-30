@@ -104,6 +104,7 @@ export function isPublicWebhookAddress(value) {
       host.startsWith("fe") || // fe00::/8 reserved: link-local fe80::/10 + deprecated site-local fec0::/10
       host.startsWith("fc") || // unique-local fc00::/7
       host.startsWith("fd") ||
+      host.startsWith("ff") || // ff00::/8 multicast — not global unicast (2000::/3), matching the prober guard (#1538)
       host.startsWith("::ffff:") // IPv4-mapped
     ) {
       return false;
