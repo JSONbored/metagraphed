@@ -1624,6 +1624,49 @@ describe("handleAccountExtrinsics", () => {
     assert.ok(/AND block_number <= \?/.test(sql));
     assert.deepEqual(captures.params[idx], [SS58, 100, 900, 100, 0]);
   });
+
+  test("cursor combines with block range filters and emits next_cursor", async () => {
+    const { env, captures } = dbWith({
+      extrinsics: [extrinsicRow({ block_number: 150, extrinsic_index: 4 })],
+    });
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=900&limit=1&cursor=${encodeCursor([200, 2])}`,
+        ),
+      ),
+    );
+    const idx = captures.sql.findIndex((s) => /FROM extrinsics/.test(s));
+    assert.ok(idx !== -1);
+    const sql = captures.sql[idx];
+    assert.ok(/AND block_number >= \?/.test(sql));
+    assert.ok(/AND block_number <= \?/.test(sql));
+    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(sql));
+    assert.ok(!/OFFSET/.test(sql));
+    assert.deepEqual(captures.params[idx], [SS58, 100, 900, 200, 2, 1]);
+    assert.equal(body.data.next_cursor, encodeCursor([150, 4]));
+  });
+
+  test("malformed cursor falls back to offset pagination", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleAccountExtrinsics(
+      req(`/api/v1/accounts/${SS58}/extrinsics`),
+      env,
+      SS58,
+      url(
+        `/api/v1/accounts/${SS58}/extrinsics?cursor=not-a-cursor&limit=7&offset=5`,
+      ),
+    );
+    const idx = captures.sql.findIndex((s) => /FROM extrinsics/.test(s));
+    assert.ok(idx !== -1);
+    const sql = captures.sql[idx];
+    assert.ok(/OFFSET \?/.test(sql));
+    assert.ok(!/\(block_number, extrinsic_index\) </.test(sql));
+    assert.deepEqual(captures.params[idx], [SS58, 7, 5]);
+  });
 });
 
 describe("handleAccountTransfers", () => {

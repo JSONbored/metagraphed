@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.3";
+export const CONTRACT_VERSION = "2026-06-30.4";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1889,7 +1889,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/extrinsics",
     "/metagraph/accounts/{ss58}/extrinsics.json",
-    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
     "short",
     ["accounts", "analytics"],
     [
@@ -1897,6 +1897,7 @@ export const API_ROUTES = [
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),

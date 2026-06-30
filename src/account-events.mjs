@@ -641,11 +641,12 @@ export async function loadAccountHistory(
 
 // Extrinsics signed by this account, newest first. Matched by the extrinsic
 // SIGNER only (not hotkey/coldkey union) — `extrinsics` carries a single
-// `signer` column. Clamps limit to 1-1000 (default 100); clamps offset.
+// `signer` column. Clamps limit to 1-1000 (default 100); clamps offset. A
+// cursor takes precedence over offset for stable head-growing pages.
 export async function loadAccountExtrinsics(
   d1,
   ss58,
-  { limit, offset, blockStart, blockEnd } = {},
+  { limit, offset, cursor, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -659,10 +660,28 @@ export async function loadAccountExtrinsics(
     sql += " AND block_number <= ?";
     params.push(blockEnd);
   }
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ? OFFSET ?";
-  params.push(lim, off);
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    sql += " AND (block_number, extrinsic_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
   const rows = await d1(sql, params);
-  return buildAccountExtrinsics(rows, ss58, { limit: lim, offset: off });
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.extrinsic_index])
+    : null;
+  return buildAccountExtrinsics(rows, ss58, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
 }
 
 // Native-TAO transfer feed for this account, from account_events where

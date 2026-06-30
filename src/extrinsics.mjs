@@ -168,7 +168,11 @@ export function buildExtrinsicFeed(rows, { limit, offset, nextCursor } = {}) {
 // union the account_events routes use — `extrinsics` carries a single `signer`
 // column. extrinsic_count is the PAGE count (matches the feed + account-events
 // convention), not a grand total. Null-safe on a cold store.
-export function buildAccountExtrinsics(rows, ss58, { limit, offset } = {}) {
+export function buildAccountExtrinsics(
+  rows,
+  ss58,
+  { limit, offset, nextCursor } = {},
+) {
   const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
   return {
     schema_version: 1,
@@ -176,6 +180,7 @@ export function buildAccountExtrinsics(rows, ss58, { limit, offset } = {}) {
     extrinsic_count: extrinsics.length,
     limit: limit ?? null,
     offset: offset ?? null,
+    next_cursor: nextCursor ?? null,
     extrinsics,
   };
 }
