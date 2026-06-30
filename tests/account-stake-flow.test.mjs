@@ -171,6 +171,16 @@ describe("buildAccountStakeFlow", () => {
     const d = buildAccountStakeFlow([added(1, 0.1), removed(1, 0.2)], ADDR);
     assert.equal(d.net_flow_tao, -0.1);
   });
+
+  test("coerces a non-numeric tao / count cell to 0", () => {
+    const d = buildAccountStakeFlow(
+      [{ netuid: 1, event_kind: STAKE_ADDED_KIND, total_tao: "n/a" }],
+      ADDR,
+    );
+    assert.equal(d.total_staked_tao, 0);
+    assert.equal(d.stake_events, 0); // undefined event_count -> 0
+    assert.equal(d.subnet_count, 1);
+  });
 });
 
 describe("loadAccountStakeFlow", () => {
