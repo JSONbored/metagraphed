@@ -19,6 +19,29 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.32.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.31.0...platform-v0.32.0) (2026-06-30)
+
+
+### Features
+
+* **api:** add account extrinsics cursor pagination ([#2409](https://github.com/JSONbored/metagraphed/issues/2409)) ([c365453](https://github.com/JSONbored/metagraphed/commit/c36545356c45af9e10996c3492874f75f7da57da))
+* **api:** add chain calls module filter ([#2420](https://github.com/JSONbored/metagraphed/issues/2420)) ([61aac1d](https://github.com/JSONbored/metagraphed/commit/61aac1d2f69e9635b35a7d03a62f7d55a87d9098))
+* **badge:** add style=for-the-badge render style ([#2402](https://github.com/JSONbored/metagraphed/issues/2402)) ([db7d12a](https://github.com/JSONbored/metagraphed/commit/db7d12a189d2855a657acbf21f41b288a777cb00))
+* **mcp:** add get_rpc_usage with shared REST loader ([#2405](https://github.com/JSONbored/metagraphed/issues/2405)) ([bcd4f2b](https://github.com/JSONbored/metagraphed/commit/bcd4f2bb59e945c5218431ea62811820eb9935d4))
+* **mcp:** add get_subnet_health_percentiles with shared REST loader ([#2410](https://github.com/JSONbored/metagraphed/issues/2410)) ([1e7bcfa](https://github.com/JSONbored/metagraphed/commit/1e7bcfa066f5b2f512b551ccba60f7bbcd744ffd))
+
+
+### Bug Fixes
+
+* **api:** return the empty turnover block when a boundary snapshot is absent ([#2416](https://github.com/JSONbored/metagraphed/issues/2416)) ([644fdde](https://github.com/JSONbored/metagraphed/commit/644fdde12524d4fcd93e1115c82c24603ec072b6))
+* **api:** tie-break counterparties scan on event_index and coerce string block_number ([#2413](https://github.com/JSONbored/metagraphed/issues/2413)) ([#2414](https://github.com/JSONbored/metagraphed/issues/2414)) ([ab0c963](https://github.com/JSONbored/metagraphed/commit/ab0c9630291cec6b0fe44968abc0fda05fc4b136))
+* **balance:** bound finney RPC fetch with AbortSignal.timeout ([#2404](https://github.com/JSONbored/metagraphed/issues/2404)) ([83e9e0a](https://github.com/JSONbored/metagraphed/commit/83e9e0a1fc3095d3affaaffb1a853f5d50b39afa))
+
+
+### Performance
+
+* **account-events:** indexed union seeks for hotkey/coldkey match ([#2059](https://github.com/JSONbored/metagraphed/issues/2059)) ([#2406](https://github.com/JSONbored/metagraphed/issues/2406)) ([98eabeb](https://github.com/JSONbored/metagraphed/commit/98eabeb992d2ee13287d86690182a8939c525096))
+
 ## [0.31.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.30.0...platform-v0.31.0) (2026-06-30)
 
 
