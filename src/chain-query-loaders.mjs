@@ -3,7 +3,7 @@
 // edge-cache + envelope wiring.
 
 import { DAY_MS } from "../workers/config.mjs";
-import { buildChainSigners } from "./chain-analytics.mjs";
+import { buildChainFees, buildChainSigners } from "./chain-analytics.mjs";
 
 // Windowed most-active-account leaderboard (#2342): signers ranked by extrinsic
 // count over the window (ties broken by signer ASC for stable ordering).
@@ -34,4 +34,49 @@ export async function loadChainSigners(
     rows,
   });
   return { data, rows };
+}
+
+// Fee/tip market analytics (#1988): per-UTC-day fee series + windowed top-fee-payer
+// list. Shared by REST /chain/fees and get_chain_fees MCP tool.
+export async function loadChainFees(
+  d1Runner,
+  { windowLabel, windowDays, observedAt = null, limit = 25, callModule = null },
+) {
+  const cutoff = Date.now() - windowDays * DAY_MS;
+  const moduleClause = callModule ? " AND call_module = ?" : "";
+  const dailyParams = callModule ? [cutoff, callModule] : [cutoff];
+  const payerParams = callModule
+    ? [cutoff, callModule, limit]
+    : [cutoff, limit];
+  const [dailyRows, payerRows] = await Promise.all([
+    d1Runner(
+      `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+            COUNT(*) AS extrinsic_count,
+            SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+            SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
+     FROM extrinsics
+     WHERE observed_at >= ?${moduleClause}
+     GROUP BY day`,
+      dailyParams,
+    ),
+    d1Runner(
+      `SELECT signer,
+            SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+            SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
+            COUNT(*) AS extrinsic_count
+     FROM extrinsics
+     WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
+     GROUP BY signer
+     ORDER BY total_fee_tao DESC
+     LIMIT ?`,
+      payerParams,
+    ),
+  ]);
+  const data = buildChainFees({
+    window: windowLabel,
+    observedAt,
+    dailyRows,
+    payerRows,
+  });
+  return { data, dailyRows, payerRows };
 }

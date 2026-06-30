@@ -1725,6 +1725,86 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_chain_fees", () => {
+  function extrinsicsDb(resultsBySql = {}) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  for (const [pattern, rows] of Object.entries(resultsBySql)) {
+                    if (new RegExp(pattern).test(sql)) return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns daily series and top payers from D1", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "7d", limit: 10 },
+      {
+        env: extrinsicsDb({
+          "GROUP BY day": [
+            {
+              day: "2026-06-02",
+              extrinsic_count: 4,
+              total_fee_tao: 2,
+              total_tip_tao: 0.5,
+            },
+          ],
+          "ORDER BY total_fee_tao DESC": [
+            {
+              signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+              total_fee_tao: 2,
+              total_tip_tao: 0.5,
+              extrinsic_count: 4,
+            },
+          ],
+        }),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.daily[0].total_fee_tao, 2);
+    assert.equal(out.top_fee_payers[0].extrinsic_count, 4);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_chain_fees", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("returns schema-stable empty payload on cold D1", async () => {
+    const res = await callTool("get_chain_fees", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+    assert.deepEqual(out.top_fee_payers, []);
+  });
+});
+
 // keyword-search.test.mjs covers the scoring matrix; here we only prove both
 // tools are wired to it — substring noise is gone and the precise target wins.
 describe("MCP keyword discovery relevance", () => {

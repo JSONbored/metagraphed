@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { loadChainSigners } from "../src/chain-query-loaders.mjs";
+import {
+  loadChainSigners,
+  loadChainFees,
+} from "../src/chain-query-loaders.mjs";
 
 describe("loadChainSigners", () => {
   test("builds a ranked leaderboard from extrinsic rows", async () => {
@@ -60,5 +63,64 @@ describe("loadChainSigners", () => {
       { windowLabel: "7d", windowDays: 7, limit: 5 },
     );
     assert.match(sql, /ORDER BY tx_count DESC, signer ASC/);
+  });
+});
+
+describe("loadChainFees", () => {
+  test("builds daily series and top payers from extrinsic rows", async () => {
+    const calls = [];
+    const d1Runner = async (sql, params) => {
+      calls.push({ sql, params });
+      if (/GROUP BY day/.test(sql)) {
+        return [
+          {
+            day: "2026-06-02",
+            extrinsic_count: 4,
+            total_fee_tao: 2,
+            total_tip_tao: 0.5,
+          },
+        ];
+      }
+      return [
+        {
+          signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+          total_fee_tao: 2,
+          total_tip_tao: 0.5,
+          extrinsic_count: 4,
+        },
+      ];
+    };
+    const { data, dailyRows, payerRows } = await loadChainFees(d1Runner, {
+      windowLabel: "7d",
+      windowDays: 7,
+      observedAt: "2026-06-01T00:00:00.000Z",
+      limit: 10,
+      callModule: "Balances",
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(dailyRows.length, 1);
+    assert.equal(payerRows.length, 1);
+    assert.equal(data.window, "7d");
+    assert.equal(data.day_count, 1);
+    assert.equal(data.daily[0].total_fee_tao, 2);
+    assert.equal(data.top_fee_payers[0].extrinsic_count, 4);
+    assert.match(calls[0].sql, /call_module = \?/);
+    assert.equal(calls[0].params[1], "Balances");
+    assert.equal(calls[1].params[2], 10);
+  });
+
+  test("omits the module clause when callModule is null", async () => {
+    const calls = [];
+    await loadChainFees(
+      async (sql, params) => {
+        calls.push({ sql, params });
+        return [];
+      },
+      { windowLabel: "30d", windowDays: 30, limit: 5 },
+    );
+    assert.equal(calls.length, 2);
+    assert.doesNotMatch(calls[0].sql, /call_module/);
+    assert.doesNotMatch(calls[1].sql, /call_module/);
+    assert.equal(calls[1].params[1], 5);
   });
 });
