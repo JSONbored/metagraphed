@@ -196,6 +196,37 @@ test("formatExtrinsic is null-safe on junk + sparse rows", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatExtrinsic coerces string-typed chain-position cells to Numbers", () => {
+  // D1 can return an INTEGER column as a numeric string ("1" not 1); the bare
+  // `?? null` pass-through this replaced would have leaked strings into the API
+  // payload and broken downstream arithmetic/comparisons.
+  const out = formatExtrinsic({
+    block_number: "8400000",
+    extrinsic_index: "3",
+  });
+  assert.equal(out.block_number, 8400000);
+  assert.equal(typeof out.block_number, "number");
+  assert.equal(out.extrinsic_index, 3);
+  assert.equal(typeof out.extrinsic_index, "number");
+});
+
+test("formatExtrinsic rejects negative or non-integer chain-position cells to null", () => {
+  // Guard the toChainPosition helper: negatives and floats are not valid chain
+  // positions, so the formatter must fall back to null rather than coerce them.
+  assert.equal(
+    formatExtrinsic({ block_number: -1, extrinsic_index: 0 }).block_number,
+    null,
+  );
+  assert.equal(
+    formatExtrinsic({ block_number: 1, extrinsic_index: 1.5 }).extrinsic_index,
+    null,
+  );
+  assert.equal(
+    formatExtrinsic({ block_number: "abc", extrinsic_index: 0 }).block_number,
+    null,
+  );
+});
+
 test("buildExtrinsic wraps a row + is schema-stable when absent (#1345)", () => {
   const hash = `0x${"a".repeat(64)}`;
   const out = buildExtrinsic(
