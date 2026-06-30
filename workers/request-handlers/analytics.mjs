@@ -789,9 +789,9 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
   );
 }
 
-// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + averages)
-// plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
-// SUMs; exact median is a deliberate follow-up (no native percentile in D1).
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
+// exact medians) plus a windowed top-fee-payer list. COALESCE keeps NULL
+// fees/tips out of the SUMs and medians.
 export async function handleChainFees(request, env, url, ctx = {}) {
   const { label, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
@@ -812,7 +812,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     "chain-fees",
     async () => {
       const meta = await readHealthMetaKv(env);
-      const { data, dailyRows, payerRows } = await loadChainFees(
+      const { data, dailyRows, payerRows, medianRows } = await loadChainFees(
         d1Runner(env),
         {
           window: label,
@@ -833,7 +833,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(dailyRows, payerRows)
+      return hasD1FallbackRows(dailyRows, payerRows, medianRows)
         ? markD1FallbackResponse(response)
         : response;
     },

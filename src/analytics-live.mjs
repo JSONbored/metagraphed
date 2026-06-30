@@ -111,10 +111,7 @@ export function parseCompareDimensions(dimensionsRaw) {
   if (dimensionsRaw === null || dimensionsRaw === undefined) {
     return COMPARE_DIMENSIONS;
   }
-  const requested = String(dimensionsRaw).split(",");
-  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-  if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
+  return compareDimensionsFromTokens(String(dimensionsRaw).split(","));
 }
 
 export function parseCompareDimensionList(dimensions) {
@@ -122,9 +119,19 @@ export function parseCompareDimensionList(dimensions) {
     return COMPARE_DIMENSIONS;
   }
   if (!Array.isArray(dimensions) || dimensions.length === 0) return null;
-  const unknown = dimensions.find((d) => !COMPARE_DIMENSIONS.includes(d));
+  return compareDimensionsFromTokens(dimensions);
+}
+
+function compareDimensionsFromTokens(tokens) {
+  const requested = [];
+  for (const token of tokens) {
+    const trimmed = String(token).trim();
+    if (trimmed === "") return null;
+    requested.push(trimmed);
+  }
+  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
   if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => dimensions.includes(d));
+  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
 }
 
 export async function loadSubnetUptime(
@@ -393,32 +400,49 @@ export async function loadRegistryLeaderboards(
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples] = await Promise.all([
-    d1(
-      `SELECT netuid,
+  // `fastest-growing` uses a short completeness window; `most-reliable` is
+  // intentionally more durable and ranks the last 30d of uptime history
+  // (mirrors handleLeaderboards in analytics-routes.mjs).
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, reliabilityRows] =
+    await Promise.all([
+      d1(
+        `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
               AVG(latency_ms) AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
-      [],
-    ),
-    d1(
-      `SELECT netuid, MIN(latency_ms) AS min_latency_ms
+        [],
+      ),
+      d1(
+        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
        FROM surface_status
        WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
          AND status = 'ok' AND latency_ms IS NOT NULL
        GROUP BY netuid`,
-      [],
-    ),
-    d1(
-      `SELECT netuid, snapshot_date, completeness_score
+        [],
+      ),
+      d1(
+        `SELECT netuid, snapshot_date, completeness_score
        FROM subnet_snapshots
        WHERE snapshot_date >= ?
        ORDER BY netuid, snapshot_date`,
-      [sevenDaysAgo],
-    ),
-  ]);
+        [sevenDaysAgo],
+      ),
+      d1(
+        `SELECT netuid,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              ${dailyLatencyColumns({ roundedAvg: true })}
+       FROM surface_uptime_daily
+       WHERE day >= ?
+       GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
   return formatLeaderboards({
     board,
     limit,
@@ -427,6 +451,7 @@ export async function loadRegistryLeaderboards(
     rpcRows,
     mostComplete,
     growthRows: growthRowsFromSamples(growthSamples),
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
@@ -482,7 +507,8 @@ export async function loadCompareSubnets(
 
 // Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
 // call_module/call_function). The share denominator is the full-window extrinsic
-// count read separately, so the truncated LIMIT tail never skews shares. Mirrors
+// count read separately, so the truncated LIMIT tail never skews shares. Tie-break
+// on the GROUP BY keys so tied counts keep a stable LIMIT membership. Mirrors
 // REST's handleChainCalls and the get_chain_calls MCP tool (#2364).
 export async function loadChainCalls(
   d1,
@@ -506,6 +532,10 @@ export async function loadChainCalls(
     groupBy === "module_function"
       ? "call_module, call_function"
       : "call_module";
+  const orderByCols =
+    groupBy === "module_function"
+      ? "count DESC, call_module ASC, call_function ASC"
+      : "count DESC, call_module ASC";
   const callModuleFilter =
     typeof callModule === "string" && callModule.length > 0 ? callModule : null;
   const moduleClause = callModuleFilter ? " AND call_module = ?" : "";
@@ -515,7 +545,7 @@ export async function loadChainCalls(
        FROM extrinsics
        WHERE observed_at >= ? AND call_module IS NOT NULL${moduleClause}
        GROUP BY ${groupCols}
-       ORDER BY count DESC
+       ORDER BY ${orderByCols}
        LIMIT ?`,
       callModuleFilter ? [cutoff, callModuleFilter, limit] : [cutoff, limit],
     ),
@@ -533,8 +563,9 @@ export async function loadChainCalls(
   });
 }
 
-// Fee/tip market analytics (#1988): per-UTC-day fee series plus a windowed
-// top-fee-payer list. Mirrors REST handleChainFees and get_chain_fees MCP (#2423).
+// Fee/tip market analytics (#1988): per-UTC-day fee series with exact medians
+// plus a windowed top-fee-payer list. Mirrors REST handleChainFees and
+// get_chain_fees MCP (#2423).
 export async function loadChainFees(
   d1,
   {
@@ -555,7 +586,7 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  const [dailyRows, payerRows] = await Promise.all([
+  const [dailyRows, payerRows, medianRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
               COUNT(*) AS extrinsic_count,
@@ -578,14 +609,56 @@ export async function loadChainFees(
        LIMIT ?`,
       payerParams,
     ),
+    d1(
+      `WITH samples AS (
+         SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao,
+                COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ?${moduleClause}
+       ),
+       fee_ranked AS (
+         SELECT day,
+                fee_tao,
+                ROW_NUMBER() OVER (PARTITION BY day ORDER BY fee_tao) AS rn,
+                COUNT(*) OVER (PARTITION BY day) AS cnt
+         FROM samples
+       ),
+       fee_medians AS (
+         SELECT day, AVG(fee_tao) AS median_fee_tao
+         FROM fee_ranked
+         WHERE rn IN (CAST((cnt + 1) / 2 AS INTEGER), CAST((cnt + 2) / 2 AS INTEGER))
+         GROUP BY day
+       ),
+       tip_ranked AS (
+         SELECT day,
+                tip_tao,
+                ROW_NUMBER() OVER (PARTITION BY day ORDER BY tip_tao) AS rn,
+                COUNT(*) OVER (PARTITION BY day) AS cnt
+         FROM samples
+       ),
+       tip_medians AS (
+         SELECT day, AVG(tip_tao) AS median_tip_tao
+         FROM tip_ranked
+         WHERE rn IN (CAST((cnt + 1) / 2 AS INTEGER), CAST((cnt + 2) / 2 AS INTEGER))
+         GROUP BY day
+       )
+       SELECT fee_medians.day,
+              fee_medians.median_fee_tao,
+              tip_medians.median_tip_tao
+       FROM fee_medians
+       JOIN tip_medians USING (day)`,
+      dailyParams,
+    ),
   ]);
   const data = buildChainFees({
     window: windowLabel,
     observedAt,
     dailyRows,
+    medianRows,
     payerRows,
   });
-  return { data, dailyRows, payerRows };
+  return { data, dailyRows, payerRows, medianRows };
 }
 
 // Daily network-activity aggregates (#1987): per-UTC-day extrinsic/event/block

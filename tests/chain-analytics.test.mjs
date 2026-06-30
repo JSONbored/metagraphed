@@ -609,7 +609,7 @@ test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
   assert.equal(body.meta.parameter, "sort");
 });
 
-test("GET /api/v1/chain/fees scopes both the daily series and payers by call_module", async () => {
+test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
   const captured = [];
   const env = {
     ...createLocalArtifactEnv(),
@@ -632,12 +632,12 @@ test("GET /api/v1/chain/fees scopes both the daily series and payers by call_mod
     {},
   );
   assert.equal(res.status, 200);
-  // Both extrinsics queries (daily series + payer list) are scoped; filter to
-  // them explicitly rather than assuming the captured order/count.
+  // All extrinsics queries (daily series, payer list, medians) are scoped;
+  // filter to them explicitly rather than assuming the captured order/count.
   const extrinsicsQueries = captured.filter((q) =>
     /FROM extrinsics/.test(q.sql),
   );
-  assert.equal(extrinsicsQueries.length, 2);
+  assert.equal(extrinsicsQueries.length, 3);
   for (const q of extrinsicsQueries) {
     assert.match(q.sql, /AND call_module = \?/);
     assert.ok(q.params.includes("SubtensorModule"));
@@ -698,6 +698,18 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
         total_tip_tao: 0,
       },
     ],
+    medianRows: [
+      {
+        day: "2026-06-25",
+        median_fee_tao: "0.004",
+        median_tip_tao: 0.001,
+      },
+      {
+        day: "2026-06-26",
+        median_fee_tao: 0,
+        median_tip_tao: 0,
+      },
+    ],
     payerRows: [
       {
         signer: "5Pay",
@@ -714,10 +726,39 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
   );
   const d25 = out.daily.find((d) => d.day === "2026-06-25");
   assert.equal(d25.avg_fee_tao, 0.01); // 1.0/100
+  assert.equal(d25.median_fee_tao, 0.004);
   assert.equal(d25.avg_tip_tao, 0.005);
+  assert.equal(d25.median_tip_tao, 0.001);
   const d26 = out.daily.find((d) => d.day === "2026-06-26");
   assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
+  assert.equal(d26.median_fee_tao, null);
+  assert.equal(d26.median_tip_tao, null);
   assert.equal(out.top_fee_payers[0].signer, "5Pay");
+});
+
+test("buildChainFees reports malformed median rows as null, not JSON numbers", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 2,
+        total_fee_tao: 1,
+        total_tip_tao: 1,
+      },
+    ],
+    medianRows: [
+      {
+        day: "2026-06-25",
+        median_fee_tao: "not-a-number",
+        median_tip_tao: -1,
+      },
+      { day: 20260625, median_fee_tao: 1, median_tip_tao: 1 },
+    ],
+  });
+  assert.equal(out.daily[0].median_fee_tao, null);
+  assert.equal(out.daily[0].median_tip_tao, null);
+  assert.equal(JSON.parse(JSON.stringify(out)).daily[0].median_fee_tao, null);
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
@@ -729,25 +770,33 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
         return {
           bind(...params) {
             captured.push({ sql, params });
-            const rows = /GROUP BY day/.test(sql)
+            const rows = /ROW_NUMBER\(\) OVER/.test(sql)
               ? [
                   {
                     day: "2026-06-25",
-                    extrinsic_count: 50,
-                    total_fee_tao: 0.5,
-                    total_tip_tao: 0,
+                    median_fee_tao: 0.006,
+                    median_tip_tao: 0,
                   },
                 ]
-              : /GROUP BY signer/.test(sql)
+              : /GROUP BY day/.test(sql)
                 ? [
                     {
-                      signer: "5Pay",
+                      day: "2026-06-25",
+                      extrinsic_count: 50,
                       total_fee_tao: 0.5,
                       total_tip_tao: 0,
-                      extrinsic_count: 50,
                     },
                   ]
-                : [];
+                : /GROUP BY signer/.test(sql)
+                  ? [
+                      {
+                        signer: "5Pay",
+                        total_fee_tao: 0.5,
+                        total_tip_tao: 0,
+                        extrinsic_count: 50,
+                      },
+                    ]
+                  : [];
             return { all: () => Promise.resolve({ results: rows }) };
           },
         };
@@ -762,9 +811,17 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
+  assert.equal(body.data.daily[0].median_fee_tao, 0.006);
+  assert.equal(body.data.daily[0].median_tip_tao, 0);
   assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
-  const daily = captured.find((q) => /GROUP BY day/.test(q.sql));
+  const daily = captured.find(
+    (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
+  );
   assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+  const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
+  assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
+  assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
+  assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
 });
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {

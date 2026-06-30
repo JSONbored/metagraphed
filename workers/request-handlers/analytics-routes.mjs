@@ -414,7 +414,12 @@ function compareNetuids(netuidsRaw) {
 
 function compareDimensions(dimensionsRaw) {
   if (dimensionsRaw === null) return COMPARE_DIMENSIONS;
-  const requested = dimensionsRaw.split(",");
+  const requested = [];
+  for (const part of dimensionsRaw.split(",")) {
+    const trimmed = part.trim();
+    if (trimmed === "") return null;
+    requested.push(trimmed);
+  }
   const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
   if (unknown !== undefined) return null;
   return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
@@ -525,12 +530,15 @@ export async function handleCompare(request, env, url) {
   const dimensionsRaw = url.searchParams.get("dimensions");
   const dimensions = compareDimensions(dimensionsRaw);
   if (!dimensions) {
-    const unknown = dimensionsRaw
-      .split(",")
-      .find((d) => !COMPARE_DIMENSIONS.includes(d));
+    const tokens = dimensionsRaw.split(",").map((d) => d.trim());
+    const unknown =
+      tokens.find((d) => d === "") ??
+      tokens.find((d) => !COMPARE_DIMENSIONS.includes(d));
     return errorResponse(
       "invalid_query",
-      `Unknown dimension "${unknown}". Valid dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
+      unknown === ""
+        ? "dimensions must not contain empty entries."
+        : `Unknown dimension "${unknown}". Valid dimensions: ${COMPARE_DIMENSIONS.join(", ")}.`,
       400,
       { parameter: "dimensions" },
     );

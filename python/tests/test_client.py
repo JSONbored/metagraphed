@@ -11,6 +11,7 @@ import metagraphed.client as client
 from metagraphed import (
     MetagraphedClient,
     MetagraphedError,
+    Provider,
     Subnet,
     Surface,
     metagraphed_fetch,
@@ -72,6 +73,48 @@ class ClientTest(unittest.TestCase):
         self.assertIn("q=image+gen", captured["url"])
         self.assertIn("limit=5", captured["url"])
         self.assertNotIn("cursor", captured["url"])
+
+    def test_bool_query_values_serialize_lowercase(self):
+        # Python's str(True) is "True", but the API compares query params
+        # === "true"; a bool filter must be sent as the lowercase wire form or it
+        # is silently ignored (regression: validator_permit=True was dropped, so
+        # the request returned unfiltered results).
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/subnets/7/metagraph",
+                query={"validator_permit": True, "changes": False},
+            )
+
+        self.assertIn("validator_permit=true", captured["url"])
+        self.assertIn("changes=false", captured["url"])
+        self.assertNotIn("True", captured["url"])
+        self.assertNotIn("False", captured["url"])
+
+    def test_sequence_query_values_expand_and_coerce(self):
+        # A list value expands via doseq; bools nested in it coerce element-wise
+        # to the same lowercase wire form.
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/surfaces",
+                query={"kind": ["docs", "openapi"], "flags": [True, False]},
+            )
+
+        self.assertIn("kind=docs", captured["url"])
+        self.assertIn("kind=openapi", captured["url"])
+        self.assertIn("flags=true", captured["url"])
+        self.assertIn("flags=false", captured["url"])
 
     def test_base_url_override(self):
         captured = {}
@@ -446,6 +489,29 @@ class FetchAllAndModelsTest(unittest.TestCase):
     def test_model_from_dict_tolerates_non_mapping(self):
         self.assertEqual(Subnet.from_dict(None).raw, {})
         self.assertIsNone(Subnet.from_dict(None).netuid)
+
+    def test_provider_slug_aliases_the_api_id_key(self):
+        # The providers API exposes the slug as `id` (there is no `slug` key), so
+        # Provider.slug must alias from `id` instead of silently staying None.
+        provider = Provider.from_dict(
+            {"id": "macrocosmos", "name": "Macrocosmos", "surface_count": 12}
+        )
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.name, "Macrocosmos")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertEqual(provider.raw["id"], "macrocosmos")
+
+    def test_provider_explicit_slug_wins_over_alias(self):
+        # A direct `slug` (should the API ever send one) takes precedence over the
+        # `id` alias; the alias only fills an otherwise-unset field.
+        provider = Provider.from_dict({"id": "from-id", "slug": "from-slug"})
+        self.assertEqual(provider.slug, "from-slug")
+
+    def test_alias_does_not_leak_to_other_models(self):
+        # The alias map is per-model: a Subnet carrying an `id` must not pick it
+        # up as a slug (Subnet has no such alias).
+        subnet = Subnet.from_dict({"id": "x", "slug": "real-slug"})
+        self.assertEqual(subnet.slug, "real-slug")
 
 
 if __name__ == "__main__":

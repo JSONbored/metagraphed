@@ -354,6 +354,33 @@ describe("analytics-live loaders", () => {
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
+  test("loadRegistryLeaderboards ranks most-reliable from surface_uptime_daily", async () => {
+    const data = await loadRegistryLeaderboards(
+      d1({
+        "FROM surface_uptime_daily": [
+          {
+            netuid: 7,
+            samples: 100,
+            ok_count: 100,
+            avg_latency_ms: 50,
+            latency_samples: 100,
+          },
+        ],
+      }),
+      {
+        profiles: [{ netuid: 7, slug: "apex", name: "Apex" }],
+        economicsRows: [],
+        board: "most-reliable",
+        limit: 5,
+        observedAt: OBSERVED_AT,
+      },
+    );
+    assert.equal(data.boards["most-reliable"].length, 1);
+    assert.equal(data.boards["most-reliable"][0].netuid, 7);
+    assert.equal(data.boards["most-reliable"][0].score, 100);
+    assert.equal("healthiest" in data.boards, false);
+  });
+
   test("loadCompareSubnets composes requested dimensions", async () => {
     const data = await loadCompareSubnets(
       d1({
@@ -469,6 +496,38 @@ describe("analytics-live loaders", () => {
     assert.equal(data.calls[0].share, 0.5);
   });
 
+  test("loadChainCalls tie-breaks grouped rows for stable LIMIT membership", async () => {
+    const captured = [];
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 0 }];
+      return [];
+    };
+
+    await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module",
+      limit: 5,
+      now: Date.UTC(2026, 5, 26),
+    });
+    assert.match(
+      captured[0].sql,
+      /GROUP BY call_module[\s\S]*ORDER BY count DESC, call_module ASC\s+LIMIT \?/,
+    );
+
+    captured.length = 0;
+    await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module_function",
+      limit: 5,
+      now: Date.UTC(2026, 5, 26),
+    });
+    assert.match(
+      captured[0].sql,
+      /GROUP BY call_module, call_function[\s\S]*ORDER BY count DESC, call_module ASC, call_function ASC\s+LIMIT \?/,
+    );
+  });
+
   test("loadChainCalls groups by call_module and call_function when requested", async () => {
     const captured = [];
     const run = async (sql, params) => {
@@ -554,7 +613,16 @@ describe("loadChainFees", () => {
     const calls = [];
     const run = async (sql, params) => {
       calls.push({ sql, params });
-      if (sql.includes("strftime")) {
+      if (/ROW_NUMBER\(\) OVER/.test(sql)) {
+        return [
+          {
+            day: "2026-06-01",
+            median_fee_tao: 0.5,
+            median_tip_tao: 0.05,
+          },
+        ];
+      }
+      if (/GROUP BY day/.test(sql)) {
         return [
           {
             day: "2026-06-01",
@@ -573,19 +641,25 @@ describe("loadChainFees", () => {
         },
       ];
     };
-    const { data, dailyRows, payerRows } = await loadChainFees(run, {
-      window: "7d",
-      limit: 10,
-      callModule: "SubtensorModule",
-      observedAt: OBSERVED_AT,
-      now,
-    });
-    assert.equal(calls.length, 2);
+    const { data, dailyRows, payerRows, medianRows } = await loadChainFees(
+      run,
+      {
+        window: "7d",
+        limit: 10,
+        callModule: "SubtensorModule",
+        observedAt: OBSERVED_AT,
+        now,
+      },
+    );
+    assert.equal(calls.length, 3);
     assert.equal(dailyRows.length, 1);
     assert.equal(payerRows.length, 1);
+    assert.equal(medianRows.length, 1);
     assert.equal(data.window, "7d");
     assert.equal(data.day_count, 1);
     assert.equal(data.daily[0].extrinsic_count, 10);
+    assert.equal(data.daily[0].median_fee_tao, 0.5);
+    assert.equal(data.daily[0].median_tip_tao, 0.05);
     assert.equal(data.top_fee_payers[0].total_fee_tao, 3);
     assert.match(calls[0].sql, /call_module = \?/);
     assert.deepEqual(calls[0].params, [
@@ -597,6 +671,14 @@ describe("loadChainFees", () => {
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
       10,
+    ]);
+    assert.match(calls[2].sql, /ROW_NUMBER\(\) OVER/);
+    assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
+    assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
+    assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    assert.deepEqual(calls[2].params, [
+      now - 7 * 24 * 60 * 60 * 1000,
+      "SubtensorModule",
     ]);
   });
 
@@ -613,10 +695,12 @@ describe("loadChainFees", () => {
       observedAt: OBSERVED_AT,
       now,
     });
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
     assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
+    assert.doesNotMatch(calls[2].sql, /call_module = \?/);
+    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000]);
   });
 
   test("treats empty call_module as unscoped", async () => {
@@ -630,6 +714,8 @@ describe("loadChainFees", () => {
     );
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
+    assert.doesNotMatch(calls[2].sql, /call_module = \?/);
+    assert.equal(calls[2].params.length, 1);
   });
 
   test("falls back to 7d for an unknown window label", async () => {
@@ -752,10 +838,19 @@ describe("analytics-live window parsers", () => {
   test("parseCompareDimensionList rejects unknown dimensions", () => {
     assert.deepEqual(parseCompareDimensionList(["structure"]), ["structure"]);
     assert.equal(parseCompareDimensionList(["bogus"]), null);
+    assert.deepEqual(parseCompareDimensionList(["structure", " health"]), [
+      "structure",
+      "health",
+    ]);
+    assert.equal(parseCompareDimensionList(["structure", ""]), null);
   });
 
   test("parseCompareDimensions mirrors REST comma-list input", () => {
     assert.deepEqual(parseCompareDimensions("structure,health"), [
+      "structure",
+      "health",
+    ]);
+    assert.deepEqual(parseCompareDimensions("structure, health"), [
       "structure",
       "health",
     ]);
@@ -765,5 +860,6 @@ describe("analytics-live window parsers", () => {
       "health",
     ]);
     assert.equal(parseCompareDimensions("bogus"), null);
+    assert.equal(parseCompareDimensions("structure,,health"), null);
   });
 });

@@ -1800,7 +1800,18 @@ describe("MCP get_chain_fees", () => {
             bind(...params) {
               return {
                 async all() {
-                  if (sql.includes("strftime")) {
+                  if (/ROW_NUMBER\(\) OVER/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-01",
+                          median_fee_tao: 0.4,
+                          median_tip_tao: 0.05,
+                        },
+                      ],
+                    };
+                  }
+                  if (/GROUP BY day/.test(sql)) {
                     return {
                       results: [
                         {
@@ -1841,10 +1852,12 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
     assert.equal(out.daily[0].extrinsic_count, 20);
+    assert.equal(out.daily[0].median_fee_tao, 0.4);
+    assert.equal(out.daily[0].median_tip_tao, 0.05);
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
-  test("scopes both queries by call_module", async () => {
+  test("scopes every chain-fees query by call_module", async () => {
     const modules = [];
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -1869,7 +1882,7 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.deepEqual(modules, ["Balances", "Balances"]);
+    assert.deepEqual(modules, ["Balances", "Balances", "Balances"]);
   });
 
   test("rejects an invalid window", async () => {
