@@ -92,6 +92,7 @@ import {
 import {
   buildNeuronHistory,
   buildSubnetHistory,
+  loadEconomicsTrends,
   MAX_HISTORY_POINTS,
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
@@ -2539,6 +2540,38 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_economics_trends",
+    title: "Get network-wide economics trends",
+    description:
+      "Fetch the network-wide daily economics time series across all subnets: per " +
+      "UTC day the total stake (TAO), stake-weighted and median alpha price, total " +
+      "validator and miner counts, and mean emission share, newest first. Window is " +
+      "7d, 30d (default), 90d, 1y, or all. The cross-subnet companion to the " +
+      "per-subnet get_subnet_economics / get_subnet_trajectory — use it to see how " +
+      "the whole network's stake, price, and participation are trending. Mirrors " +
+      "GET /api/v1/economics/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const { label, days } = requireHistoryWindow(args);
+      const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+      });
+      return data;
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -4068,6 +4101,26 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_fee_tao: { type: ["number", "null"] },
         total_tip_tao: { type: ["number", "null"] },
         last_tx_block: NULLABLE_INT,
+      }),
+    },
+  },
+  get_economics_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "day_count", "days"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      day_count: { type: "integer" },
+      days: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        total_stake_tao: ANY,
+        alpha_price_tao_weighted: ANY,
+        alpha_price_tao_median: ANY,
+        validator_count: NULLABLE_INT,
+        miner_count: NULLABLE_INT,
+        mean_emission_share: ANY,
       }),
     },
   },

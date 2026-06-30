@@ -10,6 +10,7 @@ import {
   NEURON_COLUMNS,
   formatNeuron,
 } from "./metagraph-neurons.mjs";
+import { DAY_MS } from "../workers/config.mjs";
 
 // Columns copied verbatim from `neurons` into `neuron_daily` (identical shape).
 const ROLLUP_COLUMNS = NEURON_INSERT_COLUMNS;
@@ -397,6 +398,39 @@ export function buildEconomicsTrends(rows, { window } = {}) {
     day_count: days.length,
     days,
   };
+}
+
+// Bound any single economics-trends read: ~129 subnets × 365 days ≈ 47k rows for
+// the `all` window, so the cap is generous but finite (nothing can force an
+// unbounded scan). Exported so tests assert against the constant, not a literal.
+export const ECONOMICS_TRENDS_ROW_CAP = 60000;
+
+// Shared D1 loader for REST + MCP parity (mirrors loadChainSigners): the
+// network-wide economics-trends read lives in one place — used by
+// handleEconomicsTrends with d1Runner(env) and the get_economics_trends MCP tool
+// with mcpD1Runner(ctx). Takes a pre-parsed window ({ windowLabel, windowDays };
+// windowDays null = the unbounded `all` window). Returns { data, rows } so the
+// REST handler keeps its D1-fallback wiring; cold D1 → schema-stable day_count:0.
+export async function loadEconomicsTrends(
+  d1,
+  { windowLabel, windowDays } = {},
+) {
+  const params = [];
+  let sql =
+    "SELECT snapshot_date, total_stake_tao, alpha_price_tao, " +
+    "validator_count, miner_count, emission_share " +
+    "FROM subnet_snapshots WHERE TRUE";
+  if (windowDays != null) {
+    const cutoff = new Date(Date.now() - windowDays * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    sql += " AND snapshot_date >= ?";
+    params.push(cutoff);
+  }
+  sql += " ORDER BY snapshot_date DESC LIMIT ?";
+  params.push(ECONOMICS_TRENDS_ROW_CAP);
+  const rows = await d1(sql, params);
+  return { data: buildEconomicsTrends(rows, { window: windowLabel }), rows };
 }
 
 function toFiniteOrNull(v) {

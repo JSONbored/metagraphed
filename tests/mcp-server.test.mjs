@@ -1725,6 +1725,103 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_economics_trends", () => {
+  // Returns the canned rows for the subnet_snapshots read; records every query.
+  function trendsD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  return Promise.resolve({
+                    results: /FROM subnet_snapshots/.test(sql) ? rows : [],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("rolls per-subnet snapshots into one network point per day from D1", async () => {
+    const capture = [];
+    const env = trendsD1(
+      [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          total_stake_tao: 100,
+          alpha_price_tao: 0.01,
+          validator_count: 4,
+          miner_count: 20,
+          emission_share: 0.03,
+        },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 2);
+    assert.equal(out.days[0].snapshot_date, "2026-06-02"); // newest first
+    assert.equal(out.days[0].subnet_count, 1);
+    const q = capture.find((c) => /FROM subnet_snapshots/.test(c.sql));
+    assert.match(q.sql, /snapshot_date >= \?/); // a bounded window adds the cutoff
+  });
+
+  test("defaults to the 30d window when omitted", async () => {
+    const capture = [];
+    const env = trendsD1([], capture);
+    const res = await callTool("get_economics_trends", {}, { env });
+    assert.equal(res.body.result.structuredContent.window, "30d");
+    const q = capture.find((c) => /FROM subnet_snapshots/.test(c.sql));
+    assert.match(q.sql, /snapshot_date >= \?/);
+  });
+
+  test("the `all` window omits the cutoff clause", async () => {
+    const capture = [];
+    const env = trendsD1([], capture);
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "all" },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.window, "all");
+    const q = capture.find((c) => /FROM subnet_snapshots/.test(c.sql));
+    assert.equal(/snapshot_date >= \?/.test(q.sql), false);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_economics_trends", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("degrades to an empty series on cold D1", async () => {
+    const res = await callTool("get_economics_trends", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
