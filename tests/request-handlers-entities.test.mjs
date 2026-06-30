@@ -1492,7 +1492,9 @@ describe("handleAccountHistory", () => {
   });
 
   test("rejects malformed netuid filters with 400", async () => {
-    for (const netuid of ["abc", "-1", "7.5", ""]) {
+    // 9007199254740993 = Number.MAX_SAFE_INTEGER + 2: passes /^\d+$/ but loses
+    // precision under Number(), so the safe-integer guard rejects it.
+    for (const netuid of ["abc", "-1", "7.5", "", "9007199254740993"]) {
       const res = await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
         emptyEnv(),
@@ -2683,6 +2685,29 @@ describe("handleExtrinsics", () => {
       /INDEXED BY idx_extrinsics_module_block/.test(sql),
       `expected module-filter call to use idx_extrinsics_module_block, got: ${sql}`,
     );
+  });
+
+  test("does not force module-index for compound module filters", async () => {
+    const recentMs = Date.now() - 60_000;
+    for (const query of [
+      "call_module=Balances&call_function=__never__",
+      "call_module=Balances&success=true",
+      `call_module=Balances&from=${recentMs}`,
+      `call_module=Balances&to=${recentMs}`,
+    ]) {
+      const { env, captures } = dbWith({ extrinsics: [] });
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url(`/api/v1/extrinsics?${query}&limit=10`),
+      );
+      const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+      assert.ok(sql);
+      assert.ok(
+        !/INDEXED BY idx_extrinsics_module_block/.test(sql),
+        `compound module filter must stay planner-selected for ${query}, got: ${sql}`,
+      );
+    }
   });
 
   test("uses idx_extrinsics_module_block for module feed query plan", () => {

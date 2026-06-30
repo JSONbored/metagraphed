@@ -123,6 +123,32 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks the full fc00::/7 unique-local range, not just fc00: (issue #2375)", () => {
+    for (const url of [
+      "http://[fc00::1]/x",
+      "http://[fc12::1]/x", // previously slipped through /^fc00:/
+      "http://[fcff:abcd::1]/x",
+      "http://[fd00::1]/x",
+      "http://[fdab:1234::1]/x",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
+  test("does not misread public domains as IPv6 unique-local literals (issue #2375)", () => {
+    // The fd/fc/fe prefixes must apply ONLY to IPv6 literals (host with a colon),
+    // never to registrable domains that happen to start with those letters.
+    for (const url of [
+      "https://fda.gov/",
+      "https://fd.io/",
+      "https://fdroid.org/",
+      "https://fc-barcelona.com/",
+      "https://feedback.example.com/x",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), false, url);
+    }
+  });
+
   test("blocks a private v4 tunnelled inside an IPv6 literal host", () => {
     for (const url of [
       "http://[::ffff:169.254.169.254]/latest", // IPv4-mapped metadata IP
