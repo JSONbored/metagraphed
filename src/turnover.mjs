@@ -142,6 +142,14 @@ export function buildTurnover(
 
   const startRows = list.filter((row) => row?.snapshot_date === startDate);
   const endRows = list.filter((row) => row?.snapshot_date === endDate);
+  // A boundary date that resolves to no rows isn't comparable: jaccard(∅, ∅) = 1
+  // would otherwise report a flawless retention/stability_score of 100 for a
+  // window with no boundary data. Honor the documented "no resolvable boundary
+  // dates yields the empty block" contract. (A snapshot that genuinely exists
+  // with zero validators still has rows, so it keeps computing.)
+  if (startRows.length === 0 || endRows.length === 0) {
+    return { ...base, ...EMPTY_TURNOVER };
+  }
 
   // Validator-set churn, keyed by hotkey (the validating entity).
   const startValidators = validatorHotkeys(startRows);
@@ -218,6 +226,11 @@ export function buildTurnoverChanges(
 
   const startRows = list.filter((row) => row?.snapshot_date === startDate);
   const endRows = list.filter((row) => row?.snapshot_date === endDate);
+  // Mirror buildTurnover: a boundary date with no rows is not resolvable, so
+  // return the empty changes block instead of inventing entered/exited churn.
+  if (startRows.length === 0 || endRows.length === 0) {
+    return { ...base, ...EMPTY_TURNOVER_CHANGES };
+  }
   const startValidators = validatorHotkeyMap(startRows);
   const endValidators = validatorHotkeyMap(endRows);
 
