@@ -35,8 +35,11 @@ if (!openApiMatches) {
 }
 
 const typegen = spawnSync(
-  "npx",
-  ["openapi-typescript", "public/metagraph/openapi.json"],
+  process.execPath,
+  [
+    path.join(repoRoot, "node_modules/openapi-typescript/bin/cli.js"),
+    "public/metagraph/openapi.json",
+  ],
   {
     cwd: repoRoot,
     encoding: "utf8",

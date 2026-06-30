@@ -10335,6 +10335,7 @@
             "enum": [
               "captured",
               "error",
+              "not-captured",
               "not-found",
               "too-large",
               "unsafe"

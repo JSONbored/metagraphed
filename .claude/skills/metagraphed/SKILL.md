@@ -172,12 +172,15 @@ Each added surface must carry `authority: "community"` and a `review` block — 
 }
 ```
 
-You set **identity + proof + `review.state: community-submitted`** only. **Do not** add
-`verification`, health, or `curation` changes, and **do not** touch other surfaces or top-level fields
-in the file — a community PR that edits anything beyond appending its own community surface(s) is
-out-of-shape and gets routed to full review or closed. `review.state` is the human-governance axis: a
-maintainer flips it → `maintainer-reviewed` (or `rejected`) in place; machine verification + freshness
-is the separate probe overlay (the build's prober fills `verification`/health).
+You set **identity + proof + `review.state: community-submitted`** only. For an existing subnet
+manifest, **do not** add `verification`, health, or `curation` changes, and **do not** touch other
+surfaces or top-level fields in the file — a community PR that edits anything beyond appending its own
+community surface(s) is out-of-shape and gets routed to full review or closed. A missing subnet
+manifest is the exception: `subnet:new` creates the required top-level scaffold fields, then
+`surface:add` appends the community surface in that same new file. `review.state` is the
+human-governance axis: a maintainer flips it → `maintainer-reviewed` (or `rejected`) in place; machine
+verification + freshness is the separate probe overlay (the build's prober fills
+`verification`/health).
 
 > New subnet not yet in `registry/subnets/`? Scaffold it with `npm run subnet:new -- --netuid <n>`
 > first (one file), then add your surface to it in the same PR.
@@ -276,7 +279,9 @@ the PR template with the validation commands you actually ran. Sync with `main` 
 
 **Path A (surface):**
 
-- [ ] Exactly one `registry/subnets/<slug>.json` changed; only community surface(s) appended; no other file.
+- [ ] Exactly one `registry/subnets/<slug>.json` changed; existing manifests only append community
+      surface(s), while missing manifests may include the required `subnet:new` scaffold plus the
+      community surface(s); no other file.
 - [ ] Each surface: real public `url` + a proving `source_url`; right `kind`; `authority: community`;
       `review.state: community-submitted`; `public_safe: true`; no health/`verification`/secrets set by hand.
 - [ ] Not a duplicate of an existing surface or an open PR; not the same surface re-titled by `kind`.

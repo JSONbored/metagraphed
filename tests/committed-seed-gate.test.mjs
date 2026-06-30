@@ -4,6 +4,8 @@
 // using a synthetic env so the real public/ files are never touched.
 
 import path from "node:path";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
 import {
   committedSeedRoutes,
@@ -32,6 +34,53 @@ describe("committed cold-start seed gate", () => {
     const { checked, errors } = await runCommittedSeedGate({ env, openapi });
     expect(checked).toBeGreaterThan(0);
     expect(errors).toEqual([]);
+  });
+
+  it("accepts not-captured schema-index placeholders", () => {
+    const operation = openapi.paths["/api/v1/schemas"].get;
+    const responseSchema =
+      operation.responses["200"].content["application/json"].schema;
+    const ajv = new Ajv2020({
+      allErrors: true,
+      allowUnionTypes: true,
+      strict: false,
+      validateFormats: true,
+    });
+    addFormats(ajv);
+    const validate = ajv.compile({
+      components: openapi.components,
+      ...responseSchema,
+    });
+    const body = {
+      ok: true,
+      schema_version: 1,
+      data: {
+        schema_version: 1,
+        contract_version: "test",
+        generated_at: "1970-01-01T00:00:00.000Z",
+        source: "openapi-snapshot",
+        schemas: [
+          {
+            netuid: 59,
+            subnet_slug: "sn-59",
+            surface_id: "sn-59-babelbit-openapi",
+            url: "https://api.babelbit.ai/openapi.json",
+            schema_url: "https://api.babelbit.ai/openapi.json",
+            status: "not-captured",
+            drift_status: "not-captured",
+            hash: null,
+            previous_hash: null,
+            path: null,
+            error: null,
+          },
+        ],
+      },
+      meta: {
+        contract_version: "test",
+      },
+    };
+
+    expect(validate(body), JSON.stringify(validate.errors, null, 2)).toBe(true);
   });
 
   it("flags a committed contract seed that no longer matches the schema", async () => {

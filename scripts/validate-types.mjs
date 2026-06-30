@@ -8,8 +8,11 @@ const outputPaths = [
   path.join(repoRoot, "public/metagraph/types.d.ts"),
 ];
 const result = spawnSync(
-  "npx",
-  ["openapi-typescript", "public/metagraph/openapi.json"],
+  process.execPath,
+  [
+    path.join(repoRoot, "node_modules/openapi-typescript/bin/cli.js"),
+    "public/metagraph/openapi.json",
+  ],
   {
     cwd: repoRoot,
     encoding: "utf8",
