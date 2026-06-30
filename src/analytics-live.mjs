@@ -576,9 +576,11 @@ export async function loadChainCalls(
   });
 }
 
-// Fee/tip market analytics (#1988): per-UTC-day fee series with exact medians
-// plus a windowed top-fee-payer list. Mirrors REST handleChainFees and
-// get_chain_fees MCP (#2423).
+const CHAIN_FEE_MEDIAN_SAMPLE_LIMIT = 10000;
+
+// Fee/tip market analytics (#1988): per-UTC-day fee series with bounded
+// request-time medians plus a windowed top-fee-payer list. Mirrors REST
+// handleChainFees and get_chain_fees MCP (#2423).
 export async function loadChainFees(
   d1,
   {
@@ -599,6 +601,9 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
+  const medianParams = callModuleFilter
+    ? [cutoff, callModuleFilter, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT]
+    : [cutoff, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT];
   const [dailyRows, payerRows, medianRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
@@ -631,6 +636,7 @@ export async function loadChainFees(
                 COALESCE(tip_tao, 0) AS tip_tao
          FROM extrinsics
          WHERE observed_at >= ?${moduleClause}
+         LIMIT ?
        ),
        fee_ranked AS (
          SELECT day,
@@ -663,7 +669,7 @@ export async function loadChainFees(
               tip_medians.median_tip_tao
        FROM fee_medians
        JOIN tip_medians USING (day)`,
-      dailyParams,
+      medianParams,
     ),
   ]);
   const data = buildChainFees({

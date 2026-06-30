@@ -716,9 +716,11 @@ describe("loadChainFees", () => {
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    assert.match(calls[2].sql, /LIMIT \?/);
     assert.deepEqual(calls[2].params, [
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
+      10000,
     ]);
   });
 
@@ -740,7 +742,7 @@ describe("loadChainFees", () => {
     assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
     assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000]);
+    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000, 10000]);
   });
 
   test("treats empty call_module as unscoped", async () => {
@@ -755,7 +757,7 @@ describe("loadChainFees", () => {
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.equal(calls[2].params.length, 1);
+    assert.equal(calls[2].params.length, 2);
   });
 
   test("loadChainFees tie-breaks top_fee_payers for stable LIMIT membership", async () => {
