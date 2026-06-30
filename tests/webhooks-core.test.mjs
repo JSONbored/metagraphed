@@ -75,6 +75,17 @@ describe("isPublicWebhookAddress", () => {
     assert.equal(isPublicWebhookAddress("100.64.0.1"), false);
   });
 
+  test("IPv4 multicast / reserved (224.0.0.0/3) → false", () => {
+    // 224.0.0.0/3 (multicast 224/4 + reserved/Class-E 240/4, incl 255/8) is not
+    // unicast and is never a valid public webhook target — the prober guard
+    // already rejects a>=224, so this guard must too.
+    assert.equal(isPublicWebhookAddress("224.0.0.1"), false); // all-systems multicast
+    assert.equal(isPublicWebhookAddress("239.255.255.250"), false); // SSDP multicast
+    assert.equal(isPublicWebhookAddress("240.0.0.1"), false); // reserved/Class-E
+    // The last unicast address (223.255.255.255) stays public.
+    assert.equal(isPublicWebhookAddress("223.255.255.255"), true);
+  });
+
   test("public IPv4 literal → true", () => {
     assert.equal(isPublicWebhookAddress("8.8.8.8"), true);
   });

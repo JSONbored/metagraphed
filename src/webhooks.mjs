@@ -67,7 +67,7 @@ const PRIVATE_IPV4_PATTERNS = [
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // 100.64.0.0/10 CGNAT
   /^192\.0\.0\./,
   /^198\.1[89]\./,
-  /^255\./,
+  /^(22[4-9]|2[3-5]\d)\./, // 224.0.0.0/3 — multicast 224/4 + reserved 240/4 (incl 255/8 broadcast); not unicast, matching the prober's a>=224 guard (#1538)
 ];
 
 function normalizedHostname(value) {
