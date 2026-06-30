@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Surfaces live in **one file per subnet** — `registry/subnets/<slug>.json`. The fastest path is a direct PR: run `npm run surface:add` and open a PR that changes **only that one file** (see `CONTRIBUTING.md` → Community submissions). It lands with `authority: community` and `review.state: community-submitted`, and the build's prober owns verification/health.
+        Surfaces live in **one file per subnet** — `registry/subnets/<slug>.json`. The fastest path is a direct PR: run `npm run surface:add` and open a PR that changes **only that one file**; if the subnet has no file yet, run `npm run subnet:new` first and add the surface to that same new file (see `CONTRIBUTING.md` → Community submissions). It lands with `authority: community` and `review.state: community-submitted`, and the build's prober owns verification/health.
 
         Use this issue only to **request** a surface if you can't open a PR. Issue submissions do not auto-publish — they are a request a maintainer or contributor turns into a PR.
   - type: input

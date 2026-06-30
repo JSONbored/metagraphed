@@ -9,8 +9,10 @@ repo root (Node 22, `npm install` first).
 
 **Surfaces live in ONE file per subnet:** `registry/subnets/<slug>.json` → its `surfaces[]` array. A
 community contribution **appends a surface to that one file** with `authority: "community"` and
-`review.state: "community-submitted"`. The Gittensory Gate flips the review state in place on merge;
-the build's prober fills `verification`/health.
+`review.state: "community-submitted"`. If the subnet has no manifest on the base branch, the valid
+one-file shape is a new `subnet:new` scaffold plus the community surface in that same file. The
+Gittensory Gate flips the review state in place on merge; the build's prober fills
+`verification`/health.
 
 This **replaces** the old per-surface intake lane (`registry/candidates/community/<one-file-per-surface>.json`).
 That lane created the farm: one surface = one file = one PR = one merge, so a contributor split a single
@@ -61,8 +63,10 @@ sse · sdk · example · repo-registry · data-artifact` — all auto-reviewable
 > `/rpc` proxy + `/api/v1/rpc/*`). They stay valid in the schema (for `registry/subnets/root.json` +
 > the endpoint pipeline) but are excluded from the contributor surface template.
 
-Subnet-level fields you must **not** touch in a community PR: `curation` (`level` + `review_state`),
-`status`, `categories`, `baseline_excluded_*`, `social`, `contact`. Those are maintainer/build-owned.
+Subnet-level fields you must **not** touch in an existing-manifest community PR: `curation` (`level` +
+`review_state`), `status`, `categories`, `baseline_excluded_*`, `social`, `contact`. Those are
+maintainer/build-owned after the manifest exists. New subnet manifests are the exception: `subnet:new`
+must create the required scaffold fields before the first surface is added.
 
 ---
 
