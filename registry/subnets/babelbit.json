@@ -1,0 +1,35 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Babelbit",
+  "netuid": 59,
+  "schema_version": 1,
+  "slug": "sn-59",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-59-babelbit-openapi",
+      "kind": "openapi",
+      "name": "Babelbit Utterance Engine OpenAPI",
+      "notes": "Machine-readable OpenAPI schema for the Babelbit utterance engine API; the official README points validators at api.babelbit.ai and the hosted Swagger UI loads this schema.",
+      "provider": "babelbit",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.babelbit.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/babelbit/babelbit_subnet/blob/main/README.md",
+        "https://api.babelbit.ai/docs"
+      ],
+      "url": "https://api.babelbit.ai/openapi.json"
+    }
+  ]
+}
