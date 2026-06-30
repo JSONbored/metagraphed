@@ -130,7 +130,9 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC time
   await withFetchStub(
     async (_url, init) => {
       assert.ok(init?.signal, "finney fetch must pass AbortSignal.timeout");
-      throw new DOMException("The operation timed out.", "TimeoutError");
+      const err = new Error("The operation timed out.");
+      err.name = "TimeoutError";
+      throw err;
     },
     async () => {
       const res = await handleRequest(
