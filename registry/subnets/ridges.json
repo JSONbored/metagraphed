@@ -70,6 +70,27 @@
         "submitted_by": "dexterity104"
       },
       "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
+    },
+    {
+      "id": "sn-62-ridges-network-statistics",
+      "name": "Ridges API — network statistics (retrieval)",
+      "kind": "subnet-api",
+      "url": "https://agent-upload.ridges.ai/retrieval/network-statistics",
+      "provider": "ridges",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "schema_status": "machine-readable",
+      "source_urls": [
+        "https://raw.githubusercontent.com/ridgesai/ridges/main/api/endpoints/retrieval.py",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "notes": "Public, unauthenticated read endpoint on the Ridges backend API: live network statistics (top score, 24h agent/score deltas). The /retrieval/network-statistics route is defined (no auth) in api/endpoints/retrieval.py and enumerated in the API's OpenAPI 3.1.0 spec at /openapi.json. Distinct from the registered /retrieval/top-agents leaderboard endpoint."
     }
   ],
   "contact": "hello@ridges.ai"
