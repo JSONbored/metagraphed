@@ -19,6 +19,13 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.31.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.30.0...platform-v0.31.0) (2026-06-30)
+
+
+### Features
+
+* **api:** add account extrinsics block range filters ([#2398](https://github.com/JSONbored/metagraphed/issues/2398)) ([fc713bc](https://github.com/JSONbored/metagraphed/commit/fc713bcc27874234f906dee134a7b78060337e68))
+
 ## [0.30.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.29.1...platform-v0.30.0) (2026-06-30)
 
 
