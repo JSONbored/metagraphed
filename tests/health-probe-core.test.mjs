@@ -169,6 +169,7 @@ describe("isUnsafePublicUrl", () => {
       "https://[fcab:1:2::3]/x",
       "http://[fd00::1]/x",
       "http://[fdff::1]/x",
+      "http://[fdff:ffff::1]/x", // upper bound — only the first hextet decides ULA
     ]) {
       assert.equal(isUnsafePublicUrl(url), true, url);
     }
