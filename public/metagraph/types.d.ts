@@ -1602,6 +1602,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/movers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        get: operations["subnetMovers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/surfaces": {
         parameters: {
             query?: never;
@@ -4624,6 +4641,34 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots. */
+        SubnetMoversArtifact: {
+            end_date: string | null;
+            movers: {
+                emission_delta_tao: number;
+                emission_end_tao: number;
+                emission_pct_change: number | null;
+                emission_start_tao: number;
+                netuid: number;
+                neurons_delta: number;
+                neurons_end: number;
+                neurons_start: number;
+                stake_delta_tao: number;
+                stake_end_tao: number;
+                stake_pct_change: number | null;
+                stake_start_tao: number;
+                validators_delta: number;
+                validators_end: number;
+                validators_start: number;
+            }[];
+            schema_version: number;
+            /** @enum {string} */
+            sort: "stake" | "emission" | "validators";
+            start_date: string | null;
+            subnet_count: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         SubnetOverviewArtifact: components["schemas"]["ArtifactBase"] & ({
             counts: {
@@ -18242,6 +18287,133 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetValidatorsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetMovers: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                sort?: "stake" | "emission" | "validators";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "end_date": "2026-06-01",
+                     *         "movers": [
+                     *           {
+                     *             "emission_delta_tao": 0.5,
+                     *             "emission_end_tao": 0.5,
+                     *             "emission_pct_change": 0.5,
+                     *             "emission_start_tao": 0.5,
+                     *             "netuid": 7,
+                     *             "neurons_delta": 1,
+                     *             "neurons_end": 1,
+                     *             "neurons_start": 1,
+                     *             "stake_delta_tao": 0.5,
+                     *             "stake_end_tao": 0.5,
+                     *             "stake_pct_change": 0.5,
+                     *             "stake_start_tao": 0.5,
+                     *             "validators_delta": 1,
+                     *             "validators_end": 1,
+                     *             "validators_start": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "sort": "stake",
+                     *         "start_date": "2026-06-01",
+                     *         "subnet_count": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetMoversArtifact"];
                     };
                 };
             };

@@ -198,6 +198,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
+    (body) => {
+      assert.equal(body.data.window, "30d");
+      assert.equal(body.data.sort, "stake");
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.movers), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);

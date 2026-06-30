@@ -343,6 +343,88 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
+  test("GET /subnets/movers routes to the cross-subnet movers handler", async () => {
+    const moversEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/MIN\(snapshot_date\)/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        { start_date: "2026-05-31", end_date: "2026-06-30" },
+                      ],
+                    });
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 1,
+                          snapshot_date: "2026-05-31",
+                          neuron_count: 10,
+                          validator_count: 3,
+                          total_stake_tao: 100,
+                          total_emission_tao: 5,
+                        },
+                        {
+                          netuid: 1,
+                          snapshot_date: "2026-06-30",
+                          neuron_count: 12,
+                          validator_count: 4,
+                          total_stake_tao: 250,
+                          total_emission_tao: 9,
+                        },
+                        {
+                          netuid: 2,
+                          snapshot_date: "2026-05-31",
+                          neuron_count: 8,
+                          validator_count: 2,
+                          total_stake_tao: 50,
+                          total_emission_tao: 4,
+                        },
+                        {
+                          netuid: 2,
+                          snapshot_date: "2026-06-30",
+                          neuron_count: 8,
+                          validator_count: 2,
+                          total_stake_tao: 30,
+                          total_emission_tao: 4,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
+      moversEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.sort, "stake");
+    assert.equal(body.data.start_date, "2026-05-31");
+    assert.equal(body.data.end_date, "2026-06-30");
+    assert.equal(body.data.subnet_count, 2);
+    // subnet 1 (+150 stake) ranks above subnet 2 (-20)
+    assert.equal(body.data.movers[0].netuid, 1);
+    assert.equal(body.data.movers[0].stake_delta_tao, 150);
+    assert.equal(body.data.movers[1].netuid, 2);
+    assert.equal(body.data.movers[1].stake_delta_tao, -20);
+    // neuron_daily provenance + end snapshot date as generated_at.
+    assert.equal(body.meta.source, "metagraph-snapshot");
+    assert.equal(body.meta.generated_at, "2026-06-30");
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);

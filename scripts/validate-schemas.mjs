@@ -31,6 +31,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-concentration-history",
   "subnet-turnover",
   "subnet-stake-flow",
+  "subnet-movers",
   "subnet-uptime",
   "subnet-metagraph",
   "subnet-neuron",

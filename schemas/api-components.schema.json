@@ -12168,6 +12168,145 @@
         ],
         "type": "object"
       },
+      "SubnetMoversArtifact": {
+        "additionalProperties": false,
+        "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",
+        "properties": {
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "movers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "emission_delta_tao": {
+                  "type": "number"
+                },
+                "emission_end_tao": {
+                  "type": "number"
+                },
+                "emission_pct_change": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "emission_start_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neurons_delta": {
+                  "type": "integer"
+                },
+                "neurons_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neurons_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_delta_tao": {
+                  "type": "number"
+                },
+                "stake_end_tao": {
+                  "type": "number"
+                },
+                "stake_pct_change": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stake_start_tao": {
+                  "type": "number"
+                },
+                "validators_delta": {
+                  "type": "integer"
+                },
+                "validators_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "stake_start_tao",
+                "stake_end_tao",
+                "stake_delta_tao",
+                "stake_pct_change",
+                "emission_start_tao",
+                "emission_end_tao",
+                "emission_delta_tao",
+                "emission_pct_change",
+                "validators_start",
+                "validators_end",
+                "validators_delta",
+                "neurons_start",
+                "neurons_end",
+                "neurons_delta"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "stake",
+              "emission",
+              "validators"
+            ],
+            "type": "string"
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "sort",
+          "subnet_count",
+          "movers"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {

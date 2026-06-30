@@ -12190,6 +12190,145 @@
         ],
         "type": "object"
       },
+      "SubnetMoversArtifact": {
+        "additionalProperties": false,
+        "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",
+        "properties": {
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "movers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "emission_delta_tao": {
+                  "type": "number"
+                },
+                "emission_end_tao": {
+                  "type": "number"
+                },
+                "emission_pct_change": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "emission_start_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neurons_delta": {
+                  "type": "integer"
+                },
+                "neurons_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "neurons_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_delta_tao": {
+                  "type": "number"
+                },
+                "stake_end_tao": {
+                  "type": "number"
+                },
+                "stake_pct_change": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "stake_start_tao": {
+                  "type": "number"
+                },
+                "validators_delta": {
+                  "type": "integer"
+                },
+                "validators_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "stake_start_tao",
+                "stake_end_tao",
+                "stake_delta_tao",
+                "stake_pct_change",
+                "emission_start_tao",
+                "emission_end_tao",
+                "emission_delta_tao",
+                "emission_pct_change",
+                "validators_start",
+                "validators_end",
+                "validators_delta",
+                "neurons_start",
+                "neurons_end",
+                "neurons_delta"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "stake",
+              "emission",
+              "validators"
+            ],
+            "type": "string"
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "sort",
+          "subnet_count",
+          "movers"
+        ],
+        "type": "object"
+      },
       "SubnetOverviewArtifact": {
         "allOf": [
           {
@@ -14481,7 +14620,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-06-30.9"
+    "version": "2026-06-30.10"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -33971,6 +34110,185 @@
         ]
       }
     },
+    "/api/v1/subnets/movers": {
+      "get": {
+        "operationId": "subnetMovers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "stake",
+                "emission",
+                "validators"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "end_date": "2026-06-01",
+                    "movers": [
+                      {
+                        "emission_delta_tao": 0.5,
+                        "emission_end_tao": 0.5,
+                        "emission_pct_change": 0.5,
+                        "emission_start_tao": 0.5,
+                        "netuid": 7,
+                        "neurons_delta": 1,
+                        "neurons_end": 1,
+                        "neurons_start": 1,
+                        "stake_delta_tao": 0.5,
+                        "stake_end_tao": 0.5,
+                        "stake_pct_change": 0.5,
+                        "stake_start_tao": 0.5,
+                        "validators_delta": 1,
+                        "validators_end": 1,
+                        "validators_start": 1
+                      }
+                    ],
+                    "schema_version": 1,
+                    "sort": "stake",
+                    "start_date": "2026-06-01",
+                    "subnet_count": 1,
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetMoversArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/surfaces": {
       "get": {
         "operationId": "surfaces",
@@ -34211,7 +34529,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-06-30.9",
+    "contract_version": "2026-06-30.10",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

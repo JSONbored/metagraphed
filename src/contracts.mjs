@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.9";
+export const CONTRACT_VERSION = "2026-06-30.10";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -947,6 +947,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetStakeFlowArtifact",
   ),
   artifact(
+    "subnet-movers",
+    "/metagraph/subnets/movers.json",
+    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+    "SubnetMoversArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -1771,6 +1777,30 @@ export const API_ROUTES = [
       },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-movers",
+    "GET",
+    "/api/v1/subnets/movers",
+    "/metagraph/subnets/movers.json",
+    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "sort",
+        schema: { type: "string", enum: ["stake", "emission", "validators"] },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ],
+    [],
   ),
   route(
     "subnet-metagraph",

@@ -74,6 +74,8 @@ import {
   canonicalSubnetTurnoverCachePath,
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
+  handleSubnetMovers,
+  canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
   handleAccount,
   handleAccountHistory,
@@ -1147,6 +1149,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug
+  // resolution so "movers" is never treated as a slug): every subnet ranked by its
+  // stake/emission/validator change over the window, from the neuron_daily rollup.
+  if (url.pathname === "/api/v1/subnets/movers") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "subnet-movers",
+      () => handleSubnetMovers(request, env, url),
+      canonicalSubnetMoversCachePath(url),
+    );
+  }
+
   // RPC reverse-proxy usage analytics (D1 telemetry; fileless-D1 pattern, B3).
   if (url.pathname === "/api/v1/rpc/usage") {
     return handleRpcUsage(request, env, url);
@@ -1601,6 +1617,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/search/semantic" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
+    pathname === "/api/v1/subnets/movers" ||
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||
     pathname === "/api/v1/rpc/usage" ||

@@ -21,6 +21,7 @@ import {
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
+  handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
@@ -39,6 +40,7 @@ import {
   canonicalSubnetHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
+  canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
@@ -1440,6 +1442,91 @@ describe("handleSubnetStakeFlow", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/stake-flow?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetMovers", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?bogus=1"),
+      ),
+    );
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?window=1y"),
+      ),
+    );
+  });
+
+  test("rejects an unsupported sort with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?sort=bogus"),
+      ),
+    );
+  });
+
+  test("rejects an out-of-range limit with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?limit=0"),
+      ),
+    );
+  });
+
+  test("returns a schema-stable empty leaderboard on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetMovers,
+      req("/api/v1/subnets/movers"),
+      emptyEnv(),
+      url("/api/v1/subnets/movers"),
+    );
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.sort, "stake");
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.movers, []);
+    await assertValidComponent("SubnetMoversArtifact", body.data);
+    assert.equal(body.meta.artifact_path, "/metagraph/subnets/movers.json");
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  describe("canonicalSubnetMoversCachePath", () => {
+    test("canonicalizes omitted params to the full default cache key", () => {
+      const omitted = canonicalSubnetMoversCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/movers"),
+      );
+      const explicit = canonicalSubnetMoversCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(
+        omitted,
+        "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+      );
+    });
+
+    test("passes invalid params through unchanged (the handler rejects them)", () => {
+      for (const q of ["?bogus=1", "?window=1y", "?sort=bogus", "?limit=0"]) {
+        const path = canonicalSubnetMoversCachePath(
+          new URL(`https://api.metagraph.sh/api/v1/subnets/movers${q}`),
+        );
+        assert.equal(path, `/api/v1/subnets/movers${q}`);
+      }
     });
   });
 });

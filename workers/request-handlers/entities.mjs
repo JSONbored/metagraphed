@@ -100,6 +100,15 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../../src/stake-flow.mjs";
+import {
+  loadSubnetMovers,
+  MOVERS_WINDOWS,
+  DEFAULT_MOVERS_WINDOW,
+  MOVERS_SORTS,
+  DEFAULT_MOVERS_SORT,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+} from "../../src/movers.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -374,6 +383,28 @@ export function canonicalSubnetStakeFlowCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
+// Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
+// canonicalized to its default when omitted, so equivalent requests share one slot.
+export function canonicalSubnetMoversCachePath(url) {
+  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+  if (!MOVERS_SORTS.includes(sortParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: MOVERS_LIMIT_DEFAULT,
+    min: 1,
+    max: MOVERS_LIMIT_MAX,
+  });
+  if (limit.error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`;
+}
+
 // Canonical edge-cache key for the subnet-metagraph route. Only
 // ?validator_permit=true changes the response; omission and =false both serve
 // the full metagraph and must share one cache slot.
@@ -504,6 +535,60 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/stake-flow.json`,
         generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/movers?window=7d|30d|90d&sort=stake|emission|validators&limit=20:
+// cross-subnet momentum leaderboard — every subnet ranked by its stake/emission/validator
+// change between the window's start and end neuron_daily snapshots. Computed live from the
+// neuron_daily rollup (idx_neuron_daily_netuid_date_agg covers the GROUP BY netuid,
+// snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
+// (schema-stable, never 404), mirroring the sibling history/turnover routes.
+export async function handleSubnetMovers(request, env, url) {
+  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        MOVERS_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+  if (!MOVERS_SORTS.includes(sortParam)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${MOVERS_SORTS.join(
+        ", ",
+      )}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: MOVERS_LIMIT_DEFAULT,
+    min: 1,
+    max: MOVERS_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadSubnetMovers(d1Runner(env), {
+    windowLabel: windowParam,
+    sort: sortParam,
+    limit: limit.value,
+  });
+  // neuron_daily-derived, so the meta reports the metagraph-snapshot source; generated_at
+  // is the end snapshot date (string), matching the turnover/history routes.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/subnets/movers.json",
+        data.end_date,
       ),
     },
     "short",
