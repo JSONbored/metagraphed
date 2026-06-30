@@ -414,6 +414,13 @@ assert.ok(
   Array.isArray(signersCold.signers) && signersCold.window === "7d",
   "get_chain_signers must return window + signers[] on cold D1",
 );
+const rpcUsageCold = await callOk("get_rpc_usage", { window: "7d" });
+assert.ok(
+  rpcUsageCold.window === "7d" &&
+    Array.isArray(rpcUsageCold.endpoints) &&
+    Array.isArray(rpcUsageCold.buckets),
+  "get_rpc_usage must return window + endpoints[] + buckets[] on cold D1",
+);
 
 // --- Negative paths --------------------------------------------------------
 

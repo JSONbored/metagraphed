@@ -1725,6 +1725,96 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_rpc_usage", () => {
+  test("returns usage analytics from rpc_proxy_events", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(..._params) {
+              return {
+                async all() {
+                  if (/COUNT\(\*\) AS total/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          total: 50,
+                          ok_count: 48,
+                          failover_count: 2,
+                          cache_hits: 10,
+                          avg_latency_ms: 80,
+                        },
+                      ],
+                    };
+                  }
+                  if (/ROW_NUMBER\(\) OVER/.test(sql)) {
+                    return { results: [{ p50: 70, p95: 200 }] };
+                  }
+                  if (/GROUP BY endpoint_id/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          endpoint_id: "a",
+                          provider: "p",
+                          requests: 50,
+                          ok_count: 48,
+                          avg_latency_ms: 80,
+                        },
+                      ],
+                    };
+                  }
+                  if (/GROUP BY network/.test(sql)) {
+                    return {
+                      results: [
+                        { network: "finney", requests: 50, ok_count: 48 },
+                      ],
+                    };
+                  }
+                  if (/GROUP BY ts/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          ts: 1_700_000_000_000,
+                          requests: 5,
+                          errors: 0,
+                          avg_latency_ms: 75,
+                        },
+                      ],
+                    };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool("get_rpc_usage", { window: "7d" }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.summary.total_requests, 50);
+    assert.equal(out.endpoints[0].endpoint_id, "a");
+    assert.equal(out.networks[0].network, "finney");
+    assert.equal(out.buckets.length, 1);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_rpc_usage", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("returns a cold-stable zeroed payload on empty D1", async () => {
+    const res = await callTool("get_rpc_usage", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.summary.total_requests, 0);
+    assert.deepEqual(out.endpoints, []);
+    assert.deepEqual(out.buckets, []);
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
