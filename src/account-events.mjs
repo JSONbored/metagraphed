@@ -499,7 +499,7 @@ export async function loadAccountSummary(d1, ss58) {
         aggUnion.paramsFor(ss58),
       ),
       d1(
-        `SELECT event_kind AS kind, COUNT(*) AS count FROM ${kindUnion.sql} GROUP BY event_kind ORDER BY count DESC`,
+        `SELECT event_kind AS kind, COUNT(*) AS count FROM ${kindUnion.sql} GROUP BY event_kind ORDER BY count DESC, event_kind ASC`,
         kindUnion.paramsFor(ss58),
       ),
       d1(
@@ -519,8 +519,12 @@ export async function loadAccountSummary(d1, ss58) {
         `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
         [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
       ),
+      // Top call modules over the same bounded window. `count DESC` alone is not a
+      // total order, so when modules tie on count the trailing LIMIT 10 would keep
+      // an arbitrary subset (D1/SQLite group order is unspecified); call_module ASC
+      // makes both the membership and the ordering of the top-10 deterministic.
       d1(
-        `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC LIMIT 10`,
+        `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`,
         [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
       ),
     ]);

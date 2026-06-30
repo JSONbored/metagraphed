@@ -1739,6 +1739,112 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_chain_fees", () => {
+  test("returns daily series and top payers from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  if (sql.includes("strftime")) {
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-01",
+                          extrinsic_count: 20,
+                          total_fee_tao: 8,
+                          total_tip_tao: 2,
+                        },
+                      ],
+                    };
+                  }
+                  assert.match(sql, /ORDER BY total_fee_tao DESC/);
+                  assert.ok(params.includes(25));
+                  return {
+                    results: [
+                      {
+                        signer:
+                          "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        total_fee_tao: 4,
+                        total_tip_tao: 1,
+                        extrinsic_count: 6,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "7d", limit: 25 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.daily[0].extrinsic_count, 20);
+    assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
+  });
+
+  test("scopes both queries by call_module", async () => {
+    const modules = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              if (sql.includes("call_module = ?")) {
+                modules.push(params[1]);
+              }
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    await callTool(
+      "get_chain_fees",
+      { window: "30d", call_module: "Balances", limit: 10 },
+      { env },
+    );
+    assert.deepEqual(modules, ["Balances", "Balances"]);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_chain_fees", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("returns empty series on a cold D1 store", async () => {
+    const res = await callTool("get_chain_fees", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+    assert.deepEqual(out.top_fee_payers, []);
+  });
+});
+
 describe("MCP get_rpc_usage", () => {
   function rpcUsageDb() {
     return {
@@ -3798,6 +3904,7 @@ describe("MCP economics + metagraph data tools", () => {
     METAGRAPH_HEALTH_DB: metagraphD1({
       neurons: [ROW, MINER],
       snapshots: SNAPSHOTS,
+      growthSamples: SNAPSHOTS,
       surfaceStatus: [
         { netuid: 1, surface_count: 5, ok_count: 4, avg_latency_ms: 100 },
         { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
@@ -3914,6 +4021,33 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.points[0].date, "2026-06-01");
     assert.equal(out.points[1].validator_count, 12);
     assert.equal(out.deltas["7d"].completeness_score, 7);
+  });
+
+  test("get_economics_trends defaults to 30d and rolls subnet_snapshots rows", async () => {
+    const res = await callTool("get_economics_trends", {}, { env: d1Env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.day_count, 2);
+    assert.equal(out.days[0].snapshot_date, "2026-06-01");
+    assert.equal(out.days[1].total_stake_tao, 1000);
+  });
+
+  test("get_economics_trends rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "99d" },
+      { env: d1Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_economics_trends returns schema-stable empty days on cold D1", async () => {
+    const res = await callTool("get_economics_trends", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
   });
 
   test("get_subnet_concentration returns schema-stable null blocks on cold D1", async () => {
@@ -4127,6 +4261,53 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.deepEqual(out.windows["7d"].surfaces, []);
     assert.deepEqual(out.windows["30d"].surfaces, []);
+  });
+
+  test("get_health_trends returns schema-stable empty windows on cold D1", async () => {
+    const res = await callTool("get_health_trends", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.windows["7d"].subnet_count, 0);
+    assert.deepEqual(out.windows["7d"].subnets, []);
+    assert.equal(out.windows["30d"].subnet_count, 0);
+    assert.deepEqual(out.windows["30d"].subnets, []);
+  });
+
+  test("get_health_trends aggregates bulk trend rows from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                async all() {
+                  assert.match(sql, /FROM surface_uptime_daily/);
+                  return {
+                    results: [
+                      {
+                        netuid: 7,
+                        date: "2026-06-28",
+                        total: 20,
+                        ok_count: 18,
+                        avg_latency_ms: 42,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool("get_health_trends", {}, { deps, env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.observed_at, FRESH_RUN);
+    assert.equal(out.windows["7d"].subnet_count, 1);
+    assert.equal(out.windows["7d"].subnets[0].netuid, 7);
+    assert.equal(out.windows["7d"].subnets[0].samples, 20);
   });
 
   test("get_chain_calls returns schema-stable empty calls on cold D1", async () => {
@@ -4348,6 +4529,87 @@ describe("MCP economics + metagraph data tools", () => {
   test("get_subnet_health_percentiles rejects an invalid window", async () => {
     const res = await callTool(
       "get_subnet_health_percentiles",
+      { netuid: 7, window: "99d" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  // get_subnet_health_incidents issues TWO surface_checks reads (SLA rollup +
+  // gap-island incident scan); route each to the right rows by a unique clause.
+  function incidentsEnv(slaRows = [], incidentRows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  return Promise.resolve({
+                    results: /WITH checks AS/.test(sql)
+                      ? incidentRows
+                      : slaRows,
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_health_incidents joins SLA + downtime incidents from D1", async () => {
+    const env = incidentsEnv(
+      [
+        {
+          surface_id: "api-root",
+          surface_key: "api-root",
+          total: 100,
+          ok_count: 96,
+        },
+      ],
+      [
+        {
+          surface_id: "api-root",
+          surface_key: "api-root",
+          started_at: 1000,
+          ended_at: 1300,
+          failed_samples: 4,
+        },
+      ],
+    );
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_subnet_health_incidents",
+      { netuid: 7, window: "30d" },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d");
+    assert.equal(out.observed_at, FRESH_RUN);
+    const surface = out.surfaces[0];
+    assert.equal(surface.surface_id, "api-root");
+    assert.equal(surface.samples, 100);
+    assert.equal(surface.uptime_ratio, 0.96);
+    assert.equal(surface.incident_count, 1);
+    assert.equal(surface.downtime_ms, 300);
+    assert.equal(surface.incidents[0].failed_samples, 4);
+  });
+
+  test("get_subnet_health_incidents returns schema-stable empty surfaces (default 7d) on cold D1", async () => {
+    const res = await callTool("get_subnet_health_incidents", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "7d");
+    assert.deepEqual(out.surfaces, []);
+  });
+
+  test("get_subnet_health_incidents rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_subnet_health_incidents",
       { netuid: 7, window: "99d" },
       {},
     );
@@ -4971,6 +5233,61 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("get_account_extrinsics applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = tailD1(
+      {
+        extrinsics: [
+          {
+            block_number: 150,
+            extrinsic_index: 4,
+            extrinsic_hash: "0xabc",
+            signer: SS58,
+            call_module: "Balances",
+            call_function: "transfer",
+            call_args: null,
+            success: 1,
+            fee_tao: 0.001,
+            tip_tao: null,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_extrinsics",
+      {
+        ss58: SS58,
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /FROM extrinsics WHERE signer/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_account_extrinsics rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
   });
 
   test("get_account_transfers returns transfers with direction field", async () => {

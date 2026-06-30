@@ -62,11 +62,23 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   const body = await res.json();
   expect(body.count).toBe(1);
   expect(body.next_before).toBe(123); // rows.length === limit → cursor is the last row
+  expect(body.next_cursor).toBe("123.0"); // lossless block_number.event_index cursor
   // BIGINT columns are coerced from postgres.js strings to numbers (D1-route parity).
   expect(body.events[0].block_number).toBe(123);
   expect(typeof body.events[0].block_number).toBe("number");
   expect(body.events[0].observed_at).toBe(100);
   expect(typeof body.events[0].observed_at).toBe("number");
+});
+
+test("chain-events cursor seeks by block_number and event_index", async () => {
+  const res = await req("/api/v1/chain-events?limit=1&cursor=123.4&before=500");
+  expect(res.status).toBe(200);
+  expect(queryText()).toContain("AND (block_number, event_index) < (?, ?)");
+  expect(queryText()).not.toContain("AND block_number <");
+  const cursorCall = sqlCalls.find((call) =>
+    call.text.includes("(block_number, event_index) <"),
+  );
+  expect(cursorCall.values).toEqual([123, 4]);
 });
 
 test("limit is clamped and defaults safely", async () => {

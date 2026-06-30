@@ -13,6 +13,7 @@
 const OPTIONAL_DEPTH = 3;
 const MAX_DEPTH = 8;
 const ISO = "2026-06-01T00:00:00.000Z";
+const CURSOR2 = "123.4";
 const HEX64 = "a3f1".repeat(16); // 64 hex chars, matches ^[a-f0-9]{64}$
 const SAMPLE_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const SAMPLE_COUNTERPARTY_SS58 =
@@ -29,6 +30,8 @@ function valueForPattern(pattern, name = "") {
         : SAMPLE_SS58;
     case "^\\d{4}-\\d{2}-\\d{2}$":
       return "2026-06-01";
+    case "^\\d+\\.\\d+$":
+      return CURSOR2;
     case "^[a-z0-9][a-z0-9-]*$":
       return "example-subnet";
     case "^/metagraph/":

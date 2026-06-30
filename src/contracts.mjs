@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.5";
+export const CONTRACT_VERSION = "2026-06-30.6";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -2028,7 +2028,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain-events",
     "/metagraph/chain-events.json",
-    "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?before is a block_number keyset cursor (exclusive); ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+    "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
     "short",
     ["chain", "analytics"],
     [
@@ -2036,6 +2036,16 @@ export const API_ROUTES = [
       { name: "method", schema: { type: "string", maxLength: 64 } },
       { name: "block", schema: { type: "integer", minimum: 0 } },
       { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
+      {
+        name: "cursor",
+        schema: {
+          type: "string",
+          pattern: "^\\d+\\.\\d+$",
+          maxLength: 33,
+          description:
+            "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
+        },
+      },
       { name: "before", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
     ],

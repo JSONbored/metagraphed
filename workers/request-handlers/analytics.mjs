@@ -30,8 +30,6 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   DAY_MS,
-  HEALTH_TREND_WINDOWS,
-  MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
 } from "../config.mjs";
@@ -43,23 +41,20 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
-import { dailyLatencyColumns } from "../../src/health-sql.mjs";
+import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
-  formatBulkTrends,
   formatGlobalIncidents,
-  formatIncidents,
   INCIDENT_GAP_MS,
   MIN_INCIDENT_SAMPLES,
 } from "../../src/health-serving.mjs";
 import {
   loadChainCalls,
+  loadChainFees,
   loadSubnetHealthTrends,
+  loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
-import {
-  buildChainActivity,
-  buildChainFees,
-} from "../../src/chain-analytics.mjs";
+import { buildChainActivity } from "../../src/chain-analytics.mjs";
 import { loadChainSigners } from "../../src/chain-query-loaders.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
@@ -354,39 +349,9 @@ export async function handleBulkHealthTrends(
   }
 
   return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
-    const nowMs = Date.now();
-    const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-    const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    const rows = await d1All(
-      env,
-      `SELECT netuid,
-            day AS date,
-            SUM(samples) AS total,
-            SUM(ok_count) AS ok_count,
-            ${dailyLatencyColumns()}
-     FROM surface_uptime_daily
-     WHERE day >= ?
-     GROUP BY netuid, day
-     ORDER BY netuid, day
-     LIMIT ?`,
-      [cutoffDay, MAX_BULK_TREND_ROWS],
-    );
-    const windows = {};
-    for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-      const windowCutoff = new Date(nowMs - days * DAY_MS)
-        .toISOString()
-        .slice(0, 10);
-      windows[label] = rows.filter(
-        (row) => String(row.day || row.date) >= windowCutoff,
-      );
-    }
     const meta = await readHealthMetaKv(env);
-    const data = formatBulkTrends({
+    const { data, rows } = await loadBulkHealthTrends(d1Runner(env), {
       observedAt: meta?.last_run_at || null,
-      windows,
-      windowDays: HEALTH_TREND_WINDOWS,
     });
     const response = await envelopeResponse(
       request,
@@ -513,7 +478,7 @@ export async function handleHealthIncidents(
   url,
   ctx = {},
 ) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   return withEdgeCache(
     request,
@@ -521,90 +486,20 @@ export async function handleHealthIncidents(
     env,
     "incidents",
     async () => {
-      const since = Date.now() - days * DAY_MS;
-      const [slaRows, incidentRows] = await Promise.all([
-        d1All(
-          env,
-          `SELECT MAX(surface_id) AS surface_id,
-              COALESCE(surface_key, surface_id) AS surface_key,
-              COUNT(*) AS total,
-              SUM(ok) AS ok_count
-       FROM surface_checks
-       WHERE netuid = ? AND checked_at >= ?
-       GROUP BY COALESCE(surface_key, surface_id)`,
-          [netuid, since],
-        ),
-        // Gap-island grouping in SQL: collapse consecutive failures (gap <= the
-        // incident threshold) into one incident row, then cap per surface_key so
-        // one flappy endpoint cannot starve sibling surfaces in the same subnet.
-        d1All(
-          env,
-          `WITH checks AS (
-         SELECT COALESCE(surface_key, surface_id) AS surface_key,
-                surface_id,
-                checked_at,
-                ok,
-                checked_at - LAG(checked_at)
-                  OVER (
-                    PARTITION BY COALESCE(surface_key, surface_id)
-                    ORDER BY checked_at
-                  ) AS gap
-         FROM surface_checks
-         WHERE netuid = ? AND checked_at >= ?
-       ),
-       grouped AS (
-         SELECT surface_key, surface_id, checked_at, ok,
-                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
-                  OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
-         FROM checks
-       ),
-       incidents AS (
-         SELECT MAX(surface_id) AS surface_id,
-                surface_key,
-                MIN(checked_at) AS started_at,
-                MAX(checked_at) AS ended_at,
-                COUNT(*) AS failed_samples
-         FROM grouped
-         WHERE ok = 0
-         GROUP BY surface_key, grp
-         HAVING COUNT(*) >= ?
-       )
-       SELECT surface_id,
-              surface_key,
-              started_at,
-              ended_at,
-              failed_samples
-       FROM (
-         SELECT surface_id,
-                surface_key,
-                started_at,
-                ended_at,
-                failed_samples,
-                ROW_NUMBER() OVER (
-                  PARTITION BY surface_key
-                  ORDER BY started_at
-                ) AS rn
-         FROM incidents
-       ) ranked
-       WHERE rn <= ?
-       ORDER BY surface_id, started_at`,
-          [
-            netuid,
-            since,
-            INCIDENT_GAP_MS,
-            MIN_INCIDENT_SAMPLES,
-            MAX_INCIDENT_ROWS,
-          ],
-        ),
-      ]);
+      // Wrap d1All so a failure in either read is still logged + marked as a D1
+      // fallback (the dark-serve contract), since the formatted result no longer
+      // exposes the raw row arrays hasD1FallbackRows used to check (mirrors
+      // handleHealthTrends / handleHealthPercentiles).
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
       const meta = await readHealthMetaKv(env);
-      const data = formatIncidents({
-        netuid,
+      const data = await loadSubnetIncidents(d1, netuid, {
         window: label,
         observedAt: meta?.last_run_at || null,
-        slaRows,
-        incidentRows,
-        maxIncidents: MAX_INCIDENT_ROWS,
       });
       const response = await envelopeResponse(
         request,
@@ -618,9 +513,7 @@ export async function handleHealthIncidents(
         },
         "short",
       );
-      return hasD1FallbackRows(slaRows, incidentRows)
-        ? markD1FallbackResponse(response)
-        : response;
+      return usedFallback ? markD1FallbackResponse(response) : response;
     },
     canonicalHealthWindowCachePath(url),
   );
@@ -914,7 +807,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
 // plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
 // SUMs; exact median is a deliberate follow-up (no native percentile in D1).
 export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
+  const { label, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
@@ -926,47 +819,22 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
-  const moduleClause = callModule ? " AND call_module = ?" : "";
   return withEdgeCache(
     request,
     ctx,
     env,
     "chain-fees",
     async () => {
-      const cutoff = Date.now() - days * DAY_MS;
-      const [dailyRows, payerRows] = await Promise.all([
-        d1All(
-          env,
-          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                COUNT(*) AS extrinsic_count,
-                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
-                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
-         FROM extrinsics
-         WHERE observed_at >= ?${moduleClause}
-         GROUP BY day`,
-          callModule ? [cutoff, callModule] : [cutoff],
-        ),
-        d1All(
-          env,
-          `SELECT signer,
-                SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
-                SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
-                COUNT(*) AS extrinsic_count
-         FROM extrinsics
-         WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
-         GROUP BY signer
-         ORDER BY total_fee_tao DESC
-         LIMIT ?`,
-          callModule ? [cutoff, callModule, limit] : [cutoff, limit],
-        ),
-      ]);
       const meta = await readHealthMetaKv(env);
-      const data = buildChainFees({
-        window: label,
-        observedAt: meta?.last_run_at || null,
-        dailyRows,
-        payerRows,
-      });
+      const { data, dailyRows, payerRows } = await loadChainFees(
+        d1Runner(env),
+        {
+          window: label,
+          limit,
+          callModule,
+          observedAt: meta?.last_run_at || null,
+        },
+      );
       const response = await envelopeResponse(
         request,
         {
