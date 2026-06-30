@@ -1786,6 +1786,76 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.match(res.body.result.content[0].text, /Too many data API requests/);
     assert.equal(dataApi.calls.length, 0);
   });
+
+  test("list_chain_events forwards block/extrinsic/cursor and degrades to an empty feed", async () => {
+    // An empty data-Worker body exercises the count/next/events fallbacks, and the
+    // block/extrinsic/cursor filters cover the remaining query-param branches.
+    const dataApi = makeDataApi({ payload: {} });
+    const res = await callTool(
+      "list_chain_events",
+      { block: 4200000, extrinsic: 2, cursor: "abc", limit: 25 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 0);
+    assert.equal(out.next_before, null);
+    assert.equal(out.next_cursor, null);
+    assert.deepEqual(out.events, []);
+    const q = dataApi.calls[0].searchParams;
+    assert.equal(q.get("block"), "4200000");
+    assert.equal(q.get("extrinsic"), "2");
+    assert.equal(q.get("cursor"), "abc");
+    assert.equal(q.get("limit"), "25");
+  });
+
+  test("list_chain_events surfaces a non-400 data-Worker error as tier_unavailable", async () => {
+    const dataApi = makeDataApi({ status: 503 });
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /chain-events tier/);
+    assert.match(res.body.result.content[0].text, /503/);
+  });
+
+  test("list_chain_events errors cleanly when the data Worker fetch throws", async () => {
+    const dataApi = {
+      calls: [],
+      fetch() {
+        return Promise.reject(new Error("socket hang up"));
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /could not be reached/);
+  });
+
+  test("list_chain_events falls back to a default message on a non-JSON 400 body", async () => {
+    const dataApi = {
+      calls: [],
+      fetch(request) {
+        this.calls.push(new URL(request.url));
+        return Promise.resolve(new Response("not json", { status: 400 }));
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      { method: "WeightsSet" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Invalid chain-events filter/,
+    );
+  });
 });
 
 describe("MCP get_chain_signers", () => {
