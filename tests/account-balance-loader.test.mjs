@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   BALANCE_NEGATIVE_KV_TTL,
+  BALANCE_RPC_TIMEOUT_MS,
   isFinneySs58Address,
   loadAccountBalance,
 } from "../src/account-balance.mjs";
@@ -120,6 +121,48 @@ describe("loadAccountBalance", () => {
       assert.equal(putKey, `balance:${SS58}`);
       assert.equal(putValue.balance_tao, null);
       assert.equal(putOptions.expirationTtl, BALANCE_NEGATIVE_KV_TTL);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("returns balance_tao:null when finney RPC times out (#2075)", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      assert.ok(init?.signal, "finney fetch must pass AbortSignal.timeout");
+      const err = new Error("The operation timed out.");
+      err.name = "TimeoutError";
+      throw err;
+    };
+    try {
+      const data = await loadAccountBalance({}, SS58);
+      assert.equal(data.ss58, SS58);
+      assert.equal(data.balance_tao, null);
+      assert.ok(data.queried_at);
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  test("passes AbortSignal.timeout to the finney fetch", async () => {
+    let seenSignal;
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (_url, init) => {
+      seenSignal = init?.signal;
+      return {
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { data: { free: 1_000_000_000, reserved: 0 } },
+        }),
+      };
+    };
+    try {
+      await loadAccountBalance({}, SS58);
+      assert.ok(seenSignal);
+      assert.equal(typeof seenSignal.aborted, "boolean");
+      assert.equal(BALANCE_RPC_TIMEOUT_MS, 5000);
     } finally {
       globalThis.fetch = orig;
     }

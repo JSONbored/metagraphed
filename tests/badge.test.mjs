@@ -147,6 +147,108 @@ describe("badge — rendering", () => {
     assert.ok((square.match(/<text /g) || []).length === 4);
   });
 
+  test("renderBadge flat + flat-square output is unchanged (regression)", () => {
+    const flatGolden =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n' +
+      "<title>metagraphed: 92/100</title>\n" +
+      '<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>\n' +
+      '<clipPath id="r"><rect width="144" height="20" rx="3" fill="#fff"/></clipPath>\n' +
+      '<g clip-path="url(#r)">\n' +
+      '<rect width="85" height="20" fill="#555"/>\n' +
+      '<rect x="85" width="59" height="20" fill="#2ea44f"/>\n' +
+      '<rect width="144" height="20" fill="url(#s)"/>\n' +
+      "</g>\n" +
+      '<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n' +
+      '<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n' +
+      '<text x="42.5" y="14">metagraphed</text>\n' +
+      '<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n' +
+      '<text x="114.5" y="14">92/100</text>\n' +
+      "</g>\n" +
+      "</svg>\n";
+    const squareGolden =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n' +
+      "<title>metagraphed: 92/100</title>\n" +
+      '<clipPath id="r"><rect width="144" height="20" rx="0" fill="#fff"/></clipPath>\n' +
+      '<g clip-path="url(#r)">\n' +
+      '<rect width="85" height="20" fill="#555"/>\n' +
+      '<rect x="85" width="59" height="20" fill="#2ea44f"/>\n' +
+      "</g>\n" +
+      '<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n' +
+      '<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n' +
+      '<text x="42.5" y="14">metagraphed</text>\n' +
+      '<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n' +
+      '<text x="114.5" y="14">92/100</text>\n' +
+      "</g>\n" +
+      "</svg>\n";
+    assert.equal(renderBadge("92/100", "#2ea44f"), flatGolden);
+    assert.equal(
+      renderBadge("92/100", "#2ea44f", { style: "flat-square" }),
+      squareGolden,
+    );
+  });
+
+  test("renderBadge style=for-the-badge is taller, uppercase, bold, and matte", () => {
+    const svg = renderBadge("92/100", "#2ea44f", { style: "for-the-badge" });
+    assert.match(svg, /height="28"/);
+    assert.match(svg, /font-weight="bold"/);
+    assert.match(svg, /font-size="10"/);
+    assert.match(svg, /rx="0"/);
+    assert.ok(!svg.includes("linearGradient"));
+    assert.match(svg, /aria-label="METAGRAPHED: 92\/100"/);
+    assert.match(svg, />METAGRAPHED</);
+    assert.match(svg, />92\/100</);
+    assert.match(svg, /textLength="\d+"/);
+    assert.match(svg, /lengthAdjust="spacing"/);
+    assert.ok((svg.match(/<text /g) || []).length === 2);
+  });
+
+  test("renderBadge for-the-badge uppercases mixed-case labels", () => {
+    const svg = renderBadge("ok", "#2ea44f", {
+      style: "for-the-badge",
+      label: "My Label",
+    });
+    assert.match(svg, /aria-label="MY LABEL: OK"/);
+  });
+
+  test("renderBadge for-the-badge width branches cover narrow, wide, CJK, and accented glyphs", () => {
+    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const narrow = widthOf(
+      renderBadge(".", "#000", { style: "for-the-badge", label: "." }),
+    );
+    const wide = widthOf(
+      renderBadge("@", "#000", { style: "for-the-badge", label: "@" }),
+    );
+    const punct = widthOf(
+      renderBadge("-", "#000", { style: "for-the-badge", label: "-" }),
+    );
+    const cjk = widthOf(
+      renderBadge("字", "#000", { style: "for-the-badge", label: "字" }),
+    );
+    const accent = widthOf(
+      renderBadge("é", "#000", { style: "for-the-badge", label: "é" }),
+    );
+    assert.ok(wide > narrow, "MW%@ glyphs should out-measure narrow ilj");
+    assert.ok(
+      punct > narrow,
+      "punctuation should use the lowercase-width branch",
+    );
+    assert.ok(cjk >= wide, "CJK should use the wide code-point branch");
+    assert.ok(
+      accent >= narrow,
+      "accented Latin should use the non-ASCII branch",
+    );
+  });
+
+  test("renderBadge for-the-badge escapes injected markup", () => {
+    const svg = renderBadge('"><x', "#000", {
+      style: "for-the-badge",
+      label: "a&b",
+    });
+    assert.ok(!svg.includes("<x>"));
+    assert.match(svg, /&lt;X/);
+    assert.match(svg, /A&amp;B/);
+  });
+
   test("scoreColor thresholds (green / amber / red / gray)", () => {
     assert.equal(scoreColor(92), "#2ea44f");
     assert.equal(scoreColor(80), "#2ea44f");
@@ -193,6 +295,10 @@ describe("badge — rendering", () => {
       parseBadgeOptions(sp("style=flat-square")).style,
       "flat-square",
     );
+    assert.equal(
+      parseBadgeOptions(sp("style=for-the-badge")).style,
+      "for-the-badge",
+    );
     assert.equal(parseBadgeOptions(sp("style=plastic")).style, "flat");
     // label: default brand; override kept; control chars stripped; capped; blank→brand.
     assert.equal(parseBadgeOptions(sp("")).label, "metagraphed");
@@ -227,6 +333,16 @@ describe("badge — handleBadgeRequest", () => {
     assert.match(res.headers.get("cache-control"), /max-age=3600/);
     assert.match(text, /92\/100/);
     assert.match(text, /#2ea44f/); // green (>= 80)
+  });
+
+  test("style=for-the-badge renders through handleBadgeRequest", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/7/badge.svg?style=for-the-badge",
+    );
+    assert.equal(res.status, 200);
+    assert.match(text, /height="28"/);
+    assert.match(text, /92\/100/);
+    assert.match(text, /METAGRAPHED/);
   });
 
   test("a low score gets the red color", async () => {

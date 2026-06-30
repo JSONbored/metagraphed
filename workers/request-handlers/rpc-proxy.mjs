@@ -37,7 +37,7 @@ import {
   analyticsMeta,
   analyticsQueryError,
   analyticsWindow,
-  d1All,
+  d1Runner,
 } from "./analytics.mjs";
 import {
   findSurface,
@@ -49,17 +49,13 @@ import {
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../../src/health-prober.mjs";
+import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
+import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
 import {
-  formatRpcUsage,
-  overlayRpcPoolEligibility,
-} from "../../src/health-serving.mjs";
-import {
-  DAY_MS,
   DENIED_RPC_PREFIXES,
   JSON_CONTENT_TYPE,
   MAX_RPC_BODY_BYTES,
   resolveClientIp,
-  RPC_USAGE_BUCKETS,
   SAFE_RPC_METHODS,
   TRUSTED_RPC_UPSTREAM_ORIGINS,
 } from "../config.mjs";
@@ -146,99 +142,12 @@ function recordRpcUsage(env, ctx, event) {
 // from the rpc_proxy_events D1 telemetry; cold/unmigrated D1 returns a
 // schema-stable zeroed payload (d1All swallows the missing-table error).
 export async function handleRpcUsage(request, env, url) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
-  const since = Date.now() - days * DAY_MS;
-  const bucketConfig = RPC_USAGE_BUCKETS[label];
-  const [totalsRows, latencyRows, endpointRows, networkRows, bucketRows] =
-    await Promise.all([
-      d1All(
-        env,
-        `SELECT COUNT(*) AS total,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
-                SUM(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,
-                SUM(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,
-                AVG(latency_ms) AS avg_latency_ms
-         FROM rpc_proxy_events
-         WHERE observed_at >= ?`,
-        [since],
-      ),
-      d1All(
-        env,
-        `WITH ranked AS (
-           SELECT latency_ms,
-                  ROW_NUMBER() OVER (ORDER BY latency_ms) AS rn,
-                  COUNT(*) OVER () AS cnt
-           FROM rpc_proxy_events
-           WHERE observed_at >= ? AND latency_ms IS NOT NULL
-         )
-         SELECT MAX(CASE WHEN rn = CAST(0.50 * cnt AS INTEGER) + (0.50 * cnt > CAST(0.50 * cnt AS INTEGER)) THEN latency_ms END) AS p50,
-                MAX(CASE WHEN rn = CAST(0.95 * cnt AS INTEGER) + (0.95 * cnt > CAST(0.95 * cnt AS INTEGER)) THEN latency_ms END) AS p95
-         FROM ranked`,
-        [since],
-      ),
-      d1All(
-        env,
-        `SELECT endpoint_id, provider,
-                COUNT(*) AS requests,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count,
-                AVG(latency_ms) AS avg_latency_ms
-         FROM rpc_proxy_events
-         WHERE observed_at >= ? AND endpoint_id IS NOT NULL
-         GROUP BY endpoint_id, provider
-         ORDER BY requests DESC
-         LIMIT 50`,
-        [since],
-      ),
-      d1All(
-        env,
-        `SELECT network,
-                COUNT(*) AS requests,
-                SUM(CASE WHEN ok = 1 THEN 1 ELSE 0 END) AS ok_count
-         FROM rpc_proxy_events
-         WHERE observed_at >= ?
-         GROUP BY network
-         ORDER BY requests DESC`,
-        [since],
-      ),
-      d1All(
-        env,
-        // Buckets are aligned to absolute boundaries but `since` is not, so a
-        // full window spans maxBuckets+1 buckets. Keep the most-recent
-        // maxBuckets (inner ORDER BY ts DESC LIMIT) — dropping the partial
-        // oldest bucket rather than the current one — then re-order ascending
-        // for the chart. A bare `ORDER BY ts ASC LIMIT` would drop the current
-        // bucket, leaving the series permanently missing its leading edge.
-        `SELECT ts, requests, errors, avg_latency_ms FROM (
-           SELECT CAST(observed_at / ? AS INTEGER) * ? AS ts,
-                  COUNT(*) AS requests,
-                  SUM(CASE WHEN ok = 1 THEN 0 ELSE 1 END) AS errors,
-                  AVG(latency_ms) AS avg_latency_ms
-           FROM rpc_proxy_events
-           WHERE observed_at >= ?
-           GROUP BY ts
-           ORDER BY ts DESC
-           LIMIT ?
-         )
-         ORDER BY ts ASC`,
-        [
-          bucketConfig.bucketMs,
-          bucketConfig.bucketMs,
-          since,
-          bucketConfig.maxBuckets,
-        ],
-      ),
-    ]);
   const meta = await readHealthMetaKv(env);
-  const data = formatRpcUsage({
+  const data = await loadRpcUsage(d1Runner(env), {
     window: label,
     observedAt: meta?.last_run_at || null,
-    totals: totalsRows[0],
-    latency: latencyRows[0],
-    endpointRows,
-    networkRows,
-    bucketRows,
-    bucketGranularity: bucketConfig.granularity,
   });
   return envelopeResponse(
     request,

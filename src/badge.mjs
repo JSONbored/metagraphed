@@ -16,6 +16,7 @@
 //   metric=completeness  coverage completeness 0–100 from profiles.json
 //                        (alias: coverage); provider = mean across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
+//   style=for-the-badge  taller (28px), uppercase bold, letter-spaced, matte
 //   label=…            override the left "metagraphed" segment text
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
@@ -41,7 +42,10 @@ const BADGE_METRICS = {
   coverage: "completeness",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
-const BADGE_STYLES = new Set(["flat", "flat-square"]);
+const BADGE_STYLES = new Set(["flat", "flat-square", "for-the-badge"]);
+const FOR_THE_BADGE_HEIGHT = 28;
+const FOR_THE_BADGE_PAD = 12;
+const FOR_THE_BADGE_LETTER_SPACING = 1.25;
 // shields.io "informational" blue, used for plain-count metrics (e.g. apis).
 const INFO_COLOR = "#007ec6";
 // Surface kinds that are callable machine interfaces (mirrors the build's
@@ -110,6 +114,28 @@ function textWidth(text) {
   return Math.ceil(w);
 }
 
+// Width estimate for the shields `for-the-badge` style: uppercase bold 10px
+// Verdana plus synthetic letter-spacing. Safe overestimate so glyphs never clip.
+function forTheBadgeTextWidth(text) {
+  const upper = String(text).toUpperCase();
+  let w = 0;
+  for (const ch of upper) {
+    const cp = ch.codePointAt(0);
+    if (cp <= 0x7f) {
+      if (/[ilj.,:'!|]/.test(ch)) w += 4;
+      else if (/[MW%@]/.test(ch)) w += 11;
+      else if (/[A-Z0-9]/.test(ch)) w += 9;
+      else w += 7;
+    } else if (isWideCodePoint(cp)) {
+      w += 12;
+    } else {
+      w += 9;
+    }
+    w += FOR_THE_BADGE_LETTER_SPACING;
+  }
+  return Math.ceil(w);
+}
+
 // Readiness score (0–100) → color (green / amber / red; gray for unknown).
 export function scoreColor(score) {
   if (typeof score !== "number" || Number.isNaN(score)) return UNKNOWN_COLOR;
@@ -124,9 +150,39 @@ export function gradeColor(grade) {
 }
 
 // Render a two-segment badge: gray label + colored message. `style` is "flat"
-// (rounded + glossy gradient) or "flat-square" (square, matte).
+// (rounded + glossy gradient), "flat-square" (square, matte), or "for-the-badge"
+// (28px tall, uppercase bold, letter-spaced, matte).
 export function renderBadge(message, color, options = {}) {
   const { label = BADGE_LABEL, style = "flat" } = options;
+  if (style === "for-the-badge") {
+    const displayLabel = String(label).toUpperCase();
+    const displayMessage = String(message).toUpperCase();
+    const eLabel = escapeXml(displayLabel);
+    const eMsg = escapeXml(displayMessage);
+    const labelTextW = forTheBadgeTextWidth(displayLabel);
+    const msgTextW = forTheBadgeTextWidth(displayMessage);
+    const labelW = labelTextW + FOR_THE_BADGE_PAD;
+    const msgW = msgTextW + FOR_THE_BADGE_PAD;
+    const total = labelW + msgW;
+    const labelMid = labelW / 2;
+    const msgMid = labelW + msgW / 2;
+    return [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${FOR_THE_BADGE_HEIGHT}" role="img" aria-label="${eLabel}: ${eMsg}">`,
+      `<title>${eLabel}: ${eMsg}</title>`,
+      `<clipPath id="r"><rect width="${total}" height="${FOR_THE_BADGE_HEIGHT}" rx="0" fill="#fff"/></clipPath>`,
+      `<g clip-path="url(#r)">`,
+      `<rect width="${labelW}" height="${FOR_THE_BADGE_HEIGHT}" fill="#555"/>`,
+      `<rect x="${labelW}" width="${msgW}" height="${FOR_THE_BADGE_HEIGHT}" fill="${color}"/>`,
+      `</g>`,
+      `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="10" font-weight="bold">`,
+      `<text x="${labelMid}" y="20" textLength="${labelTextW}" lengthAdjust="spacing">${eLabel}</text>`,
+      `<text x="${msgMid}" y="20" textLength="${msgTextW}" lengthAdjust="spacing">${eMsg}</text>`,
+      `</g>`,
+      `</svg>`,
+      ``,
+    ].join("\n");
+  }
+
   const eLabel = escapeXml(label);
   const eMsg = escapeXml(message);
   const pad = 12;

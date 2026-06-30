@@ -92,13 +92,11 @@ export async function loadAccountBalance(env, ss58) {
   let balanceTao = null;
   let rpcOk = false;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BALANCE_RPC_TIMEOUT_MS);
   try {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(BALANCE_RPC_TIMEOUT_MS),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -125,8 +123,6 @@ export async function loadAccountBalance(env, ss58) {
     }
   } catch {
     // RPC fetch failed — balance_tao stays null.
-  } finally {
-    clearTimeout(timeout);
   }
 
   const payload = {
