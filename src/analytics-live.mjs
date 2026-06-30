@@ -482,7 +482,8 @@ export async function loadCompareSubnets(
 
 // Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
 // call_module/call_function). The share denominator is the full-window extrinsic
-// count read separately, so the truncated LIMIT tail never skews shares. Mirrors
+// count read separately, so the truncated LIMIT tail never skews shares. Tie-break
+// on the GROUP BY keys so tied counts keep a stable LIMIT membership. Mirrors
 // REST's handleChainCalls and the get_chain_calls MCP tool (#2364).
 export async function loadChainCalls(
   d1,
@@ -506,6 +507,10 @@ export async function loadChainCalls(
     groupBy === "module_function"
       ? "call_module, call_function"
       : "call_module";
+  const orderByCols =
+    groupBy === "module_function"
+      ? "count DESC, call_module ASC, call_function ASC"
+      : "count DESC, call_module ASC";
   const callModuleFilter =
     typeof callModule === "string" && callModule.length > 0 ? callModule : null;
   const moduleClause = callModuleFilter ? " AND call_module = ?" : "";
@@ -515,7 +520,7 @@ export async function loadChainCalls(
        FROM extrinsics
        WHERE observed_at >= ? AND call_module IS NOT NULL${moduleClause}
        GROUP BY ${groupCols}
-       ORDER BY count DESC
+       ORDER BY ${orderByCols}
        LIMIT ?`,
       callModuleFilter ? [cutoff, callModuleFilter, limit] : [cutoff, limit],
     ),
