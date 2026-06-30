@@ -210,6 +210,16 @@ test("formatExtrinsic coerces string-typed chain-position cells to Numbers", () 
   assert.equal(typeof out.extrinsic_index, "number");
 });
 
+test("formatExtrinsic coerces a fully missing chain-position to null (both fields)", () => {
+  // A row without block_number / extrinsic_index keys must still yield null for
+  // both — exercises the `value == null` short-circuit in toChainPosition that
+  // the partial-row cases above don't reach (every input above was a defined
+  // primitive, so the helper's null guard was never hit).
+  const out = formatExtrinsic({});
+  assert.equal(out.block_number, null);
+  assert.equal(out.extrinsic_index, null);
+});
+
 test("formatExtrinsic rejects negative or non-integer chain-position cells to null", () => {
   // Guard the toChainPosition helper: negatives and floats are not valid chain
   // positions, so the formatter must fall back to null rather than coerce them.
