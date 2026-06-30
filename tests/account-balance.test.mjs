@@ -126,6 +126,29 @@ test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC fail
   assert.ok(body.data.queried_at);
 });
 
+test("GET /accounts/{ss58}/balance returns 200 with balance_tao:null on RPC timeout (#2075)", async () => {
+  await withFetchStub(
+    async (_url, init) => {
+      assert.ok(init?.signal, "finney fetch must pass AbortSignal.timeout");
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    },
+    async () => {
+      const res = await handleRequest(
+        req(`/api/v1/accounts/${SS58}/balance`),
+        {},
+        {},
+      );
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.ok, true);
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.ss58, SS58);
+      assert.equal(body.data.balance_tao, null);
+      assert.ok(body.data.queried_at);
+    },
+  );
+});
+
 test("GET /accounts/{ss58}/balance serves from KV cache when available", async () => {
   const cached = {
     schema_version: 1,
