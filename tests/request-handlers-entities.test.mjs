@@ -1611,6 +1611,28 @@ describe("handleAccountTransfers", () => {
     assert.equal(body.meta.parameter, "direction");
   });
 
+  test("rejects a non-integer block_start with 400", async () => {
+    const res = await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?block_start=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "block_start");
+  });
+
+  test("rejects a non-integer block_end with 400", async () => {
+    const res = await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?block_end=oops`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "block_end");
+  });
+
   test("returns schema-stable empty transfers on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountTransfers,
@@ -1641,6 +1663,32 @@ describe("handleAccountTransfers", () => {
     assert.ok(/hotkey = \?/.test(sql));
     assert.ok(/coldkey = \? AND hotkey <> \?/.test(sql));
     assert.equal(sql.includes(" OR "), false);
+  });
+
+  test("block_start/block_end range filter is applied and bound", async () => {
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
+    await handleAccountTransfers(
+      req(`/api/v1/accounts/${SS58}/transfers`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?block_start=100&block_end=900`),
+    );
+    const idx = captures.sql.findIndex((s) => /Transfer/.test(s));
+    assert.ok(idx !== -1);
+    const sql = captures.sql[idx];
+    assert.equal((sql.match(/block_number >= \?/g) || []).length, 2);
+    assert.equal((sql.match(/block_number <= \?/g) || []).length, 2);
+    assert.deepEqual(captures.params[idx], [
+      SS58,
+      100,
+      900,
+      SS58,
+      SS58,
+      100,
+      900,
+      100,
+      0,
+    ]);
   });
 
   test("direction=sent binds hotkey-only clause", async () => {

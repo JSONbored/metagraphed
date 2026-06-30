@@ -147,7 +147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; ?limit (<=1000) / ?offset. */
+        /** Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
         get: operations["accountTransfers"];
         put?: never;
         post?: never;
@@ -6170,8 +6170,11 @@ export interface operations {
         parameters: {
             query?: {
                 direction?: "all" | "sent" | "received";
+                block_start?: number;
+                block_end?: number;
                 limit?: number;
                 offset?: number;
+                cursor?: string;
             };
             header?: never;
             path: {

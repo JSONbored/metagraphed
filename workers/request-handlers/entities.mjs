@@ -663,12 +663,15 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
 // GET /api/v1/accounts/{ss58}/transfers: the native-TAO Balances.Transfer feed for
 // this account (#1850), newest first, from the account_events tier (event_kind=
 // 'Transfer', where the poller stores hotkey=from / coldkey=to). ?direction=
-// all|sent|received narrows by side; ?limit (<=1000) / ?offset. This is the
-// native-TAO transfer feed only, NOT a full balance ledger. Cold/absent store →
+// all|sent|received narrows by side; ?block_start/?block_end constrain block
+// height; ?limit (<=1000) / ?offset, or ?cursor=. This is the native-TAO
+// transfer feed only, NOT a full balance ledger. Cold/absent store →
 // schema-stable zero (never 404).
 export async function handleAccountTransfers(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "direction",
+    "block_start",
+    "block_end",
     "limit",
     "offset",
     "cursor",
@@ -687,6 +690,16 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     });
   }
   const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const blockStart = parseNonNegativeIntParam(
+    url.searchParams.get("block_start"),
+    "block_start",
+  );
+  if (blockStart.error) return analyticsQueryError(blockStart.error);
+  const blockEnd = parseNonNegativeIntParam(
+    url.searchParams.get("block_end"),
+    "block_end",
+  );
+  if (blockEnd.error) return analyticsQueryError(blockEnd.error);
   // sent => this account is the sender (hotkey=from); received => recipient
   // (coldkey=to); default/all => either side. Keep the default read as two
   // side-specific seeks rather than an OR predicate so D1 cannot satisfy only
@@ -694,24 +707,38 @@ export async function handleAccountTransfers(request, env, ss58, url) {
   // Self-transfers are returned once, matching the old OR semantics.
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
+  const blockRangeClause = `${blockStart.value != null ? " AND block_number >= ?" : ""}${blockEnd.value != null ? " AND block_number <= ?" : ""}`;
   const cursorClause = useCursor
     ? " AND (block_number, event_index) < (?, ?)"
     : "";
+  const pushBlockRangeParams = (target) => {
+    if (blockStart.value != null) target.push(blockStart.value);
+    if (blockEnd.value != null) target.push(blockEnd.value);
+  };
+  const pushCursorParams = (target) => {
+    if (useCursor) target.push(cur[0], cur[1]);
+  };
   let params;
   let sql;
   if (direction === "sent") {
     params = [ss58];
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${cursorClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause}`;
   } else if (direction === "received") {
     params = [ss58];
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${cursorClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${blockRangeClause}${cursorClause}`;
   } else {
     params = [ss58];
-    if (useCursor) params.push(cur[0], cur[1]);
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
     params.push(ss58, ss58);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${cursorClause})`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${blockRangeClause}${cursorClause})`;
   }
-  if (useCursor) params.push(cur[0], cur[1]);
   sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
   params.push(limit);
   if (!useCursor) {

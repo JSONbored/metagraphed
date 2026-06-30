@@ -500,6 +500,31 @@ test("loadAccountTransfers threads the requested direction into the label (#2362
   assert.equal(out.transfers[0].direction, "received");
 });
 
+test("loadAccountTransfers applies the block_start/block_end range to both sides", async () => {
+  let captured;
+  await loadAccountTransfers(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { blockStart: 100, blockEnd: 900 },
+  );
+  assert.equal((captured.sql.match(/block_number >= \?/g) || []).length, 2);
+  assert.equal((captured.sql.match(/block_number <= \?/g) || []).length, 2);
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    100,
+    900,
+    "5Hk",
+    "5Hk",
+    100,
+    900,
+    100,
+    0,
+  ]);
+});
+
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
   // A registration row with NONE of the optional fields must still produce a
   // fully-shaped object (nulls + coerced false), never undefined — the

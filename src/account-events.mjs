@@ -632,21 +632,31 @@ export async function loadAccountExtrinsics(d1, ss58, { limit, offset } = {}) {
 export async function loadAccountTransfers(
   d1,
   ss58,
-  { direction, limit, offset } = {},
+  { direction, limit, offset, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  const rangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
+  const pushRangeParams = (params) => {
+    if (blockStart != null) params.push(blockStart);
+    if (blockEnd != null) params.push(blockEnd);
+  };
   let sql;
   let params;
   if (direction === "sent") {
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?`;
     params = [ss58];
+    pushRangeParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause}`;
   } else if (direction === "received") {
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?`;
     params = [ss58];
+    pushRangeParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${rangeClause}`;
   } else {
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?)`;
-    params = [ss58, ss58, ss58];
+    params = [ss58];
+    pushRangeParams(params);
+    params.push(ss58, ss58);
+    pushRangeParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${rangeClause})`;
   }
   sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
   params.push(lim, off);
