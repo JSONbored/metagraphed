@@ -27,7 +27,7 @@ import {
   MAX_UPTIME_ROWS,
   UPTIME_WINDOWS,
 } from "../workers/config.mjs";
-import { buildChainCalls } from "./chain-analytics.mjs";
+import { buildChainCalls, buildChainFees } from "./chain-analytics.mjs";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
 
 export { composeCompareData };
@@ -435,6 +435,61 @@ export async function loadChainCalls(
     total: totalRows?.[0]?.total ?? 0,
     rows,
   });
+}
+
+// Fee/tip market analytics (#1988): per-UTC-day fee series plus a windowed
+// top-fee-payer list. Mirrors REST handleChainFees and get_chain_fees MCP (#2423).
+export async function loadChainFees(
+  d1,
+  {
+    window = "7d",
+    limit = 25,
+    callModule = null,
+    observedAt = null,
+    now = Date.now(),
+  } = {},
+) {
+  const days = ANALYTICS_WINDOWS[window] ?? ANALYTICS_WINDOWS["7d"];
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const cutoff = now - days * DAY_MS;
+  const callModuleFilter =
+    typeof callModule === "string" && callModule.length > 0 ? callModule : null;
+  const moduleClause = callModuleFilter ? " AND call_module = ?" : "";
+  const dailyParams = callModuleFilter ? [cutoff, callModuleFilter] : [cutoff];
+  const payerParams = callModuleFilter
+    ? [cutoff, callModuleFilter, limit]
+    : [cutoff, limit];
+  const [dailyRows, payerRows] = await Promise.all([
+    d1(
+      `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+              COUNT(*) AS extrinsic_count,
+              SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+              SUM(COALESCE(tip_tao, 0)) AS total_tip_tao
+       FROM extrinsics
+       WHERE observed_at >= ?${moduleClause}
+       GROUP BY day`,
+      dailyParams,
+    ),
+    d1(
+      `SELECT signer,
+              SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
+              SUM(COALESCE(tip_tao, 0)) AS total_tip_tao,
+              COUNT(*) AS extrinsic_count
+       FROM extrinsics
+       WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
+       GROUP BY signer
+       ORDER BY total_fee_tao DESC
+       LIMIT ?`,
+      payerParams,
+    ),
+  ]);
+  const data = buildChainFees({
+    window: windowLabel,
+    observedAt,
+    dailyRows,
+    payerRows,
+  });
+  return { data, dailyRows, payerRows };
 }
 
 export function parseAnalyticsWindow(window) {

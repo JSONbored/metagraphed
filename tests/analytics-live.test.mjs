@@ -7,6 +7,7 @@ import {
   growthRowsFromSamples,
   loadCompareSubnets,
   loadChainCalls,
+  loadChainFees,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
@@ -494,6 +495,110 @@ describe("analytics-live loaders", () => {
     });
     assert.equal(data.call_count, 0);
     assert.deepEqual(data.calls, []);
+  });
+});
+
+describe("loadChainFees", () => {
+  test("aggregates daily series and top payers with call_module filter", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const calls = [];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes("strftime")) {
+        return [
+          {
+            day: "2026-06-01",
+            extrinsic_count: 10,
+            total_fee_tao: 5,
+            total_tip_tao: 1,
+          },
+        ];
+      }
+      return [
+        {
+          signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+          total_fee_tao: 3,
+          total_tip_tao: 0.5,
+          extrinsic_count: 4,
+        },
+      ];
+    };
+    const { data, dailyRows, payerRows } = await loadChainFees(run, {
+      window: "7d",
+      limit: 10,
+      callModule: "SubtensorModule",
+      observedAt: OBSERVED_AT,
+      now,
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(dailyRows.length, 1);
+    assert.equal(payerRows.length, 1);
+    assert.equal(data.window, "7d");
+    assert.equal(data.day_count, 1);
+    assert.equal(data.daily[0].extrinsic_count, 10);
+    assert.equal(data.top_fee_payers[0].total_fee_tao, 3);
+    assert.match(calls[0].sql, /call_module = \?/);
+    assert.deepEqual(calls[0].params, [
+      now - 7 * 24 * 60 * 60 * 1000,
+      "SubtensorModule",
+    ]);
+    assert.match(calls[1].sql, /ORDER BY total_fee_tao DESC/);
+    assert.deepEqual(calls[1].params, [
+      now - 7 * 24 * 60 * 60 * 1000,
+      "SubtensorModule",
+      10,
+    ]);
+  });
+
+  test("omits call_module from SQL params when unscoped", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const calls = [];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      return [];
+    };
+    await loadChainFees(run, {
+      window: "30d",
+      limit: 5,
+      observedAt: OBSERVED_AT,
+      now,
+    });
+    assert.equal(calls.length, 2);
+    assert.doesNotMatch(calls[0].sql, /call_module = \?/);
+    assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
+    assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
+  });
+
+  test("treats empty call_module as unscoped", async () => {
+    const calls = [];
+    await loadChainFees(
+      async (sql, params) => {
+        calls.push({ sql, params });
+        return [];
+      },
+      { window: "7d", callModule: "", observedAt: OBSERVED_AT },
+    );
+    assert.doesNotMatch(calls[0].sql, /call_module = \?/);
+    assert.equal(calls[0].params.length, 1);
+  });
+
+  test("falls back to 7d for an unknown window label", async () => {
+    const { data } = await loadChainFees(d1(), {
+      window: "90d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "7d");
+  });
+
+  test("returns a cold-stable empty payload", async () => {
+    const { data } = await loadChainFees(d1(), {
+      window: "30d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "30d");
+    assert.equal(data.day_count, 0);
+    assert.deepEqual(data.daily, []);
+    assert.deepEqual(data.top_fee_payers, []);
   });
 });
 
