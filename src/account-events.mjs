@@ -236,6 +236,12 @@ export function eventInsertStatements(db, rows) {
 export const ACCOUNT_EVENT_COLUMNS =
   "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index";
 
+// Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
+// must not pass through Boolean(), which treats any non-empty string as true.
+function toD1Flag(value) {
+  return Number(value) === 1;
+}
+
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
 export function formatRegistration(row) {
@@ -244,8 +250,8 @@ export function formatRegistration(row) {
     netuid: toBlockNumber(row.netuid),
     uid: toBlockNumber(row.uid),
     stake_tao: toTaoOrNull(row.stake_tao),
-    validator_permit: Boolean(row.validator_permit),
-    active: Boolean(row.active),
+    validator_permit: toD1Flag(row.validator_permit),
+    active: toD1Flag(row.active),
   };
 }
 

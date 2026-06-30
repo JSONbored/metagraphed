@@ -268,6 +268,18 @@ test("formatRegistration coerces D1 numeric-string cells to schema types", () =>
   assert.equal(out.stake_tao, 100.5);
 });
 
+test("formatRegistration coerces D1 string flag cells to booleans", () => {
+  const out = formatRegistration({
+    netuid: 1,
+    uid: 0,
+    stake_tao: null,
+    validator_permit: "0",
+    active: "1",
+  });
+  assert.equal(out.validator_permit, false);
+  assert.equal(out.active, true);
+});
+
 test("formatRegistration drops invalid netuid and uid cells instead of leaking strings", () => {
   const out = formatRegistration({
     netuid: "not-a-netuid",
