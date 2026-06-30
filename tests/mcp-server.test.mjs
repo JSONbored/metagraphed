@@ -3798,6 +3798,7 @@ describe("MCP economics + metagraph data tools", () => {
     METAGRAPH_HEALTH_DB: metagraphD1({
       neurons: [ROW, MINER],
       snapshots: SNAPSHOTS,
+      growthSamples: SNAPSHOTS,
       surfaceStatus: [
         { netuid: 1, surface_count: 5, ok_count: 4, avg_latency_ms: 100 },
         { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
@@ -3914,6 +3915,33 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.points[0].date, "2026-06-01");
     assert.equal(out.points[1].validator_count, 12);
     assert.equal(out.deltas["7d"].completeness_score, 7);
+  });
+
+  test("get_economics_trends defaults to 30d and rolls subnet_snapshots rows", async () => {
+    const res = await callTool("get_economics_trends", {}, { env: d1Env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.day_count, 2);
+    assert.equal(out.days[0].snapshot_date, "2026-06-01");
+    assert.equal(out.days[1].total_stake_tao, 1000);
+  });
+
+  test("get_economics_trends rejects an invalid window", async () => {
+    const res = await callTool(
+      "get_economics_trends",
+      { window: "99d" },
+      { env: d1Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_economics_trends returns schema-stable empty days on cold D1", async () => {
+    const res = await callTool("get_economics_trends", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
   });
 
   test("get_subnet_concentration returns schema-stable null blocks on cold D1", async () => {

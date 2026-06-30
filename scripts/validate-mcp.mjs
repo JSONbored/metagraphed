@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const econTrends = await callOk("get_economics_trends", { window: "30d" });
+assert.ok(
+  Array.isArray(econTrends.days),
+  "get_economics_trends must return days[]",
+);
 const chainCalls = await callOk("get_chain_calls", { window: "7d", limit: 10 });
 assert.ok(
   Array.isArray(chainCalls.calls),

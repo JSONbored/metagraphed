@@ -32,6 +32,10 @@ import {
 import { loadChainSigners } from "./chain-query-loaders.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
+  loadEconomicsTrends,
+  parseEconomicsTrendsWindow,
+} from "./economics-trends.mjs";
+import {
   loadCounterparties,
   loadCounterpartyRelationship,
 } from "./counterparties.mjs";
@@ -134,7 +138,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.11.0";
+export const MCP_SERVER_VERSION = "1.12.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -188,7 +192,8 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, stake, emission split and validator/miner counts, " +
+  "open slots, and alpha price, get_economics_trends the network-wide " +
+  "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_subnet_health_percentiles its " +
   "per-surface p50/p95/p99 request-latency distribution, " +
@@ -1459,6 +1464,41 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetTrajectory(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_economics_trends",
+    title: "Get network-wide economics trends",
+    description:
+      "Fetch the network-wide economics time series aggregated per UTC day " +
+      "across all subnets: total stake, stake-weighted and median alpha price, " +
+      "total validator and miner counts, and mean emission share. Mirrors " +
+      "GET /api/v1/economics/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const parsed = parseEconomicsTrendsWindow(args?.window);
+      if (args?.window !== undefined && parsed === null) {
+        throw toolError(
+          "invalid_params",
+          "window must be one of: 7d, 30d, 90d, 1y, all.",
+        );
+      }
+      const { label, days } = parsed;
+      const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+      });
+      return data;
     },
   },
   {
@@ -3795,6 +3835,26 @@ const TOOL_OUTPUT_SCHEMAS = {
       point_count: { type: "integer" },
       points: { type: "array", items: { type: "object" } },
       deltas: { type: "object" },
+    },
+  },
+  get_economics_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "day_count", "days"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      day_count: { type: "integer" },
+      days: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: NULLABLE_INT,
+        total_stake_tao: { type: ["number", "null"] },
+        alpha_price_tao_weighted: { type: ["number", "null"] },
+        alpha_price_tao_median: { type: ["number", "null"] },
+        validator_count: NULLABLE_INT,
+        miner_count: NULLABLE_INT,
+        mean_emission_share: { type: ["number", "null"] },
+      }),
     },
   },
   get_subnet_concentration: {
