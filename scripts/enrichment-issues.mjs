@@ -147,7 +147,7 @@ function issueBody(netuid, name, kinds) {
 Search for the subnet's official ${kindList} (project site / GitHub / docs / Bittensor). Confirm each link is real, public, no-auth, and genuinely SN${netuid}'s — cross-reference the subnet name + Bittensor. ⚠️ Many subnets simply don't expose a public API yet, and on-chain identity links are often **stale/dead** — verify each link actually resolves before submitting. If the subnet genuinely exposes no such public surface, comment here so a maintainer can close it.
 
 ### Submit — one subnet, one file
-Surfaces live in **one file per subnet**: \`registry/subnets/<slug>.json\` → its \`surfaces[]\` array. First find the provider slug for the team/operator behind the surface (a wrong slug is the #1 validation failure): \`npm run providers:list\`. Then append the surface to the subnet's file:
+Surfaces live in **one file per subnet**: \`registry/subnets/<slug>.json\` → its \`surfaces[]\` array. First find the provider slug for the team/operator behind the surface (a wrong slug is the #1 validation failure): \`npm run providers:list\`. If the subnet has no manifest yet, scaffold it first with \`npm run subnet:new -- --netuid ${netuid} --write\`. Then append the surface to the subnet's file:
 \`\`\`bash
 npm run surface:add -- --netuid ${netuid} --kind ${primary} \\
   --url <real-public-url> --source-url <link-that-proves-it> \\
@@ -155,7 +155,7 @@ npm run surface:add -- --netuid ${netuid} --kind ${primary} \\
 \`\`\`
 \`surface:add\` writes it with \`authority: "community"\` and \`review.state: "community-submitted"\`.
 
-Open a PR touching **exactly one** \`registry/subnets/<slug>.json\` file — the review gate validates + reviews it. (The per-candidate-file lane is retired: recreating \`registry/candidates/community/*.json\` is rejected by CI.)
+Open a PR touching **exactly one** \`registry/subnets/<slug>.json\` file — append-only for an existing manifest, or a \`subnet:new\` scaffold plus surface for a missing manifest. The review gate validates + reviews it. (The per-candidate-file lane is retired: recreating \`registry/candidates/community/*.json\` is rejected by CI.)
 
 **Rules:** a real \`url\` that resolves · a \`source_url\` that proves it's official · one file · no generated artifacts · \`public_safe: true\` · \`auth_required: false\`. Full guide: [CONTRIBUTING → Community submissions](https://github.com/JSONbored/metagraphed/blob/main/CONTRIBUTING.md#community-submissions).`;
 }
