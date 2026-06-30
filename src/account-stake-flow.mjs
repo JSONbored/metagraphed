@@ -91,7 +91,9 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
       unstakeEvents: 0,
     };
     const tao = toNumber(row?.total_tao);
-    const count = toNumber(row?.event_count);
+    // Counts are integer (the schema requires it); truncate defensively so a non-D1
+    // caller passing a float cannot emit a fractional event count.
+    const count = Math.max(0, Math.trunc(toNumber(row?.event_count)));
     if (kind === STAKE_ADDED_KIND) {
       bucket.staked += tao;
       bucket.stakeEvents += count;
@@ -107,8 +109,6 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
   let totalStakeEvents = 0;
   let totalUnstakeEvents = 0;
   let grossSquares = 0;
-  let dominantNetuid = null;
-  let dominantGross = -1;
   const subnets = [];
   for (const [netuid, b] of perSubnet) {
     const net = b.staked - b.unstaked;
@@ -118,10 +118,6 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
     totalStakeEvents += b.stakeEvents;
     totalUnstakeEvents += b.unstakeEvents;
     grossSquares += gross * gross;
-    if (gross > dominantGross) {
-      dominantGross = gross;
-      dominantNetuid = netuid;
-    }
     subnets.push({
       netuid,
       staked_tao: roundTao(b.staked),
@@ -138,6 +134,10 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
   subnets.sort(
     (a, b) => b.gross_flow_tao - a.gross_flow_tao || a.netuid - b.netuid,
   );
+  // The dominant subnet is the head of that deterministic ranking (highest gross,
+  // lowest netuid on a tie), so it always agrees with the subnets list order rather
+  // than depending on D1 GROUP BY row order.
+  const dominantNetuid = subnets.length > 0 ? subnets[0].netuid : null;
 
   const totalNet = totalStaked - totalUnstaked;
   const totalGross = totalStaked + totalUnstaked;

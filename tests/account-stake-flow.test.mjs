@@ -135,6 +135,24 @@ describe("buildAccountStakeFlow", () => {
     );
   });
 
+  test("equal-gross subnets keep dominant_netuid deterministic (tie-break, not row order)", () => {
+    // Rows arrive netuid 7 then 3 (D1 row order); equal gross must still resolve to the
+    // netuid tie-break, and dominant_netuid must agree with the head of the sorted list.
+    const d = buildAccountStakeFlow([added(7, 50), added(3, 50)], ADDR);
+    assert.deepEqual(
+      d.subnets.map((s) => s.netuid),
+      [3, 7],
+    );
+    assert.equal(d.dominant_netuid, 3);
+    assert.equal(d.dominant_netuid, d.subnets[0].netuid);
+  });
+
+  test("truncates a fractional event_count to an integer", () => {
+    const d = buildAccountStakeFlow([added(1, 100, 2.9)], ADDR);
+    assert.equal(d.stake_events, 2);
+    assert.equal(d.subnets[0].stake_events, 2);
+  });
+
   test("skips malformed netuid cells and non-stake event kinds", () => {
     const d = buildAccountStakeFlow(
       [

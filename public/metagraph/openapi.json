@@ -16008,29 +16008,29 @@
                 "example": {
                   "data": {
                     "address": "example",
-                    "concentration": 0.5,
+                    "concentration": 1,
                     "direction": "accumulating",
-                    "dominant_netuid": 7,
-                    "flow_ratio": 0.9966,
-                    "gross_flow_tao": 0.5,
-                    "net_flow_tao": 0.5,
+                    "dominant_netuid": 1,
+                    "flow_ratio": 0.6,
+                    "gross_flow_tao": 2.5,
+                    "net_flow_tao": 1.5,
                     "schema_version": 1,
-                    "stake_events": 1,
+                    "stake_events": 3,
                     "subnet_count": 1,
                     "subnets": [
                       {
                         "direction": "accumulating",
-                        "flow_ratio": 0.9966,
-                        "gross_flow_tao": 0.5,
-                        "net_flow_tao": 0.5,
-                        "netuid": 7,
-                        "stake_events": 1,
-                        "staked_tao": 0.5,
+                        "flow_ratio": 0.6,
+                        "gross_flow_tao": 2.5,
+                        "net_flow_tao": 1.5,
+                        "netuid": 1,
+                        "stake_events": 3,
+                        "staked_tao": 2,
                         "unstake_events": 1,
                         "unstaked_tao": 0.5
                       }
                     ],
-                    "total_staked_tao": 0.5,
+                    "total_staked_tao": 2,
                     "total_unstaked_tao": 0.5,
                     "unstake_events": 1,
                     "window": "7d"

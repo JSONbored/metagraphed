@@ -188,9 +188,57 @@ function normalizeAccountCounterpartiesSample(out) {
   return out;
 }
 
+function normalizeAccountStakeFlowSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    typeof out.gross_flow_tao !== "number" ||
+    !Array.isArray(out.subnets) ||
+    !("concentration" in out) ||
+    !("dominant_netuid" in out)
+  ) {
+    return out;
+  }
+  // A single-subnet, internally consistent worked example: 2.0 TAO in, 0.5 out, so
+  // net 1.5 / gross 2.5 / ratio 0.6 reads "accumulating", and the account totals, the
+  // HHI concentration (one subnet -> 1), and the dominant subnet all line up. The
+  // generic per-field generator cannot satisfy these cross-field invariants on its own.
+  const staked = 2;
+  const unstaked = 0.5;
+  const net = staked - unstaked;
+  const gross = staked + unstaked;
+  const ratio = Math.round((net / gross) * 10000) / 10000;
+  out.subnets = [
+    {
+      netuid: 1,
+      staked_tao: staked,
+      unstaked_tao: unstaked,
+      net_flow_tao: net,
+      gross_flow_tao: gross,
+      flow_ratio: ratio,
+      direction: "accumulating",
+      stake_events: 3,
+      unstake_events: 1,
+    },
+  ];
+  out.total_staked_tao = staked;
+  out.total_unstaked_tao = unstaked;
+  out.net_flow_tao = net;
+  out.gross_flow_tao = gross;
+  out.flow_ratio = ratio;
+  out.direction = "accumulating";
+  out.stake_events = 3;
+  out.unstake_events = 1;
+  out.subnet_count = 1;
+  out.concentration = 1;
+  out.dominant_netuid = 1;
+  return out;
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
+  normalizeAccountStakeFlowSample(out);
   return out;
 }
 
