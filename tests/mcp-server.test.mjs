@@ -1345,6 +1345,58 @@ describe("MCP tools (injected deps)", () => {
     assert.match(res.body.result.content[0].text, /No resource/);
   });
 
+  test("get_subnet_gaps returns the per-subnet gap artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/review/gaps/7.json": {
+        schema_version: 1,
+        netuid: 7,
+        slug: "allways",
+        name: "Allways",
+        priorities: [
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            missing_kinds: ["docs"],
+            priority_score: 72,
+            suggested_next_action: "Submit official docs evidence",
+            candidate_count: 1,
+            curation_level: "verified",
+            review_state: "maintainer-reviewed",
+            surface_count: 4,
+            verified_candidate_count: 1,
+          },
+        ],
+        enrichment_queue: [
+          {
+            netuid: 7,
+            lane: "direct-submission",
+            missing_kinds: ["docs"],
+            recommended_action: "Submit official docs evidence",
+            contribution_hint:
+              "Submit one official public docs candidate with npm run surface:add.",
+          },
+        ],
+      },
+    });
+    const res = await callTool("get_subnet_gaps", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.priorities[0].missing_kinds[0], "docs");
+    assert.equal(out.enrichment_queue[0].lane, "direct-submission");
+  });
+
+  test("get_subnet_gaps is not_found when the artifact is missing", async () => {
+    const res = await callTool("get_subnet_gaps", { netuid: 99999 });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
+  test("get_subnet_gaps rejects invalid netuid", async () => {
+    const res = await callTool("get_subnet_gaps", { netuid: -1 });
+    assert.equal(res.body.result.isError, true);
+  });
+
   const opportunityDeps = makeDeps({
     "/metagraph/economics.json": {
       captured_at: "2026-06-20T00:00:00Z",

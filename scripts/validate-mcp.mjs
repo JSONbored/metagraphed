@@ -256,6 +256,14 @@ await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
 
+const subnetGaps = await callOk("get_subnet_gaps", { netuid: 7 });
+assert.ok(
+  Array.isArray(subnetGaps.priorities) &&
+    Array.isArray(subnetGaps.enrichment_queue),
+  "get_subnet_gaps must return priorities[] + enrichment_queue[]",
+);
+assert.equal(subnetGaps.netuid, 7, "get_subnet_gaps must echo the netuid");
+
 // Economic opportunity boards project from the committed economics.json in the
 // cold local env; assert the call succeeds and returns the economic boards.
 const opportunities = await callOk("find_subnet_opportunities", { limit: 5 });

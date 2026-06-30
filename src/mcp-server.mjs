@@ -134,7 +134,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.11.0";
+export const MCP_SERVER_VERSION = "1.12.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -183,7 +183,9 @@ export const MCP_INSTRUCTIONS =
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
-  "fixtures, examples, provenance, and candidate-review gaps. " +
+  "fixtures, examples, provenance, and candidate-review gaps, and " +
+  "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
+  "enrichment queue. " +
   "For goal-shaped flows, find_subnet_for_task turns a plain-language task into " +
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
@@ -3078,6 +3080,44 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_gaps",
+    title: "Get subnet interface gaps",
+    description:
+      "Fetch one subnet's interface gap priorities and contributor enrichment " +
+      "queue: missing surface kinds, priority scores, recommended actions, and " +
+      "copyable submission hints. This is the per-subnet contribution flywheel " +
+      "view behind GET /api/v1/subnets/{netuid}/gaps — distinct from " +
+      "list_enrichment_targets, which ranks the registry-wide coverage-depth " +
+      "scorecard.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: {
+          type: "integer",
+          description: "Subnet netuid.",
+          minimum: 0,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const gaps = await loadOptionalArtifact(
+        ctx,
+        `/metagraph/review/gaps/${netuid}.json`,
+      );
+      if (!gaps) {
+        throw toolError(
+          "not_found",
+          `No gap report exists for netuid ${netuid}. Use list_subnets or ` +
+            "search_subnets to discover valid netuids.",
+        );
+      }
+      return gaps;
+    },
+  },
+  {
     name: "find_subnet_opportunities",
     title: "Rank subnets by economic opportunity",
     description:
@@ -4456,6 +4496,21 @@ const TOOL_OUTPUT_SCHEMAS = {
         recommended_next_action: NULLABLE_STRING,
         dimensions: { type: "object" },
       }),
+    },
+  },
+  get_subnet_gaps: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "priorities", "enrichment_queue"],
+    properties: {
+      schema_version: { type: "integer" },
+      contract_version: NULLABLE_STRING,
+      generated_at: NULLABLE_STRING,
+      netuid: { type: "integer" },
+      slug: NULLABLE_STRING,
+      name: NULLABLE_STRING,
+      priorities: { type: "array", items: { type: "object" } },
+      enrichment_queue: { type: "array", items: { type: "object" } },
     },
   },
   find_subnet_for_task: {
