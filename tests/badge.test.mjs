@@ -148,15 +148,43 @@ describe("badge — rendering", () => {
   });
 
   test("renderBadge flat + flat-square output is unchanged (regression)", () => {
-    const flat = renderBadge("92/100", "#2ea44f");
-    const square = renderBadge("92/100", "#2ea44f", { style: "flat-square" });
-    assert.equal(flat, renderBadge("92/100", "#2ea44f"));
+    const flatGolden =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n' +
+      "<title>metagraphed: 92/100</title>\n" +
+      '<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>\n' +
+      '<clipPath id="r"><rect width="144" height="20" rx="3" fill="#fff"/></clipPath>\n' +
+      '<g clip-path="url(#r)">\n' +
+      '<rect width="85" height="20" fill="#555"/>\n' +
+      '<rect x="85" width="59" height="20" fill="#2ea44f"/>\n' +
+      '<rect width="144" height="20" fill="url(#s)"/>\n' +
+      "</g>\n" +
+      '<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n' +
+      '<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n' +
+      '<text x="42.5" y="14">metagraphed</text>\n' +
+      '<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n' +
+      '<text x="114.5" y="14">92/100</text>\n' +
+      "</g>\n" +
+      "</svg>\n";
+    const squareGolden =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n' +
+      "<title>metagraphed: 92/100</title>\n" +
+      '<clipPath id="r"><rect width="144" height="20" rx="0" fill="#fff"/></clipPath>\n' +
+      '<g clip-path="url(#r)">\n' +
+      '<rect width="85" height="20" fill="#555"/>\n' +
+      '<rect x="85" width="59" height="20" fill="#2ea44f"/>\n' +
+      "</g>\n" +
+      '<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n' +
+      '<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n' +
+      '<text x="42.5" y="14">metagraphed</text>\n' +
+      '<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n' +
+      '<text x="114.5" y="14">92/100</text>\n' +
+      "</g>\n" +
+      "</svg>\n";
+    assert.equal(renderBadge("92/100", "#2ea44f"), flatGolden);
     assert.equal(
-      square,
       renderBadge("92/100", "#2ea44f", { style: "flat-square" }),
+      squareGolden,
     );
-    assert.match(flat, /height="20"/);
-    assert.match(square, /height="20"/);
   });
 
   test("renderBadge style=for-the-badge is taller, uppercase, bold, and matte", () => {
@@ -169,6 +197,8 @@ describe("badge — rendering", () => {
     assert.match(svg, /aria-label="METAGRAPHED: 92\/100"/);
     assert.match(svg, />METAGRAPHED</);
     assert.match(svg, />92\/100</);
+    assert.match(svg, /textLength="\d+"/);
+    assert.match(svg, /lengthAdjust="spacing"/);
     assert.ok((svg.match(/<text /g) || []).length === 2);
   });
 

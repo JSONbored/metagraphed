@@ -159,8 +159,10 @@ export function renderBadge(message, color, options = {}) {
     const displayMessage = String(message).toUpperCase();
     const eLabel = escapeXml(displayLabel);
     const eMsg = escapeXml(displayMessage);
-    const labelW = forTheBadgeTextWidth(displayLabel) + FOR_THE_BADGE_PAD;
-    const msgW = forTheBadgeTextWidth(displayMessage) + FOR_THE_BADGE_PAD;
+    const labelTextW = forTheBadgeTextWidth(displayLabel);
+    const msgTextW = forTheBadgeTextWidth(displayMessage);
+    const labelW = labelTextW + FOR_THE_BADGE_PAD;
+    const msgW = msgTextW + FOR_THE_BADGE_PAD;
     const total = labelW + msgW;
     const labelMid = labelW / 2;
     const msgMid = labelW + msgW / 2;
@@ -173,8 +175,8 @@ export function renderBadge(message, color, options = {}) {
       `<rect x="${labelW}" width="${msgW}" height="${FOR_THE_BADGE_HEIGHT}" fill="${color}"/>`,
       `</g>`,
       `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="10" font-weight="bold">`,
-      `<text x="${labelMid}" y="20">${eLabel}</text>`,
-      `<text x="${msgMid}" y="20">${eMsg}</text>`,
+      `<text x="${labelMid}" y="20" textLength="${labelTextW}" lengthAdjust="spacing">${eLabel}</text>`,
+      `<text x="${msgMid}" y="20" textLength="${msgTextW}" lengthAdjust="spacing">${eMsg}</text>`,
       `</g>`,
       `</svg>`,
       ``,
