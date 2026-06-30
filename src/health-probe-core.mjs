@@ -51,6 +51,8 @@ export const OPERATIONAL_SURFACE_KINDS = [
 // build injects the stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.mjs.
 // Operational surfaces are already curated `public_safe`, so this is defense in
 // depth, not the primary control.
+// IPv4 / registrable-domain unsafe prefixes. Their leading characters can never
+// collide with a public hostname, so they are matched against EVERY host.
 const UNSAFE_HOST_PATTERNS = [
   /^localhost$/i,
   /\.localhost$/i,
@@ -60,17 +62,39 @@ const UNSAFE_HOST_PATTERNS = [
   /^192\.168\./,
   /^169\.254\./,
   /^0\./,
+  // 172.16.0.0 - 172.31.255.255 (private range).
+  /^172\.(1[6-9]|2\d|3[01])\./,
   // 100.64.0.0/10 CGNAT — blocked by the webhook + build SSRF guards; the probe
   // literal guard must stay in parity (issue #2312).
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+];
+
+// IPv6-LITERAL-only unsafe patterns. These are applied ONLY when the host is an
+// IPv6 literal (it contains a ':'), so a registrable domain that merely begins
+// with the same hex characters (e.g. fda.gov, fd.io, fdroid.org) is never
+// misread as a unique-local address. Covers loopback (::1), the unspecified
+// address (::), the fe80::/10 link-local + fec0::/10 deprecated site-local range
+// (the whole fe80::–feff: block, mirroring the webhook guard, issue #1538), and
+// the FULL fc00::/7 unique-local range (fc00:–fdff:, not just the fc00: hextet).
+const UNSAFE_IPV6_LITERAL_PATTERNS = [
   /^::1$/,
   /^::$/,
-  // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879) — the whole
-  // fe80::–feff: reserved range, mirroring the webhook guard (issue #1538).
   /^fe[89a-f][0-9a-f]:/i,
-  /^fc00:/i,
-  /^fd/i,
+  /^f[cd][0-9a-f]{2}:/i,
 ];
+
+// Classify a bare (bracket-stripped) host as an unsafe literal target. IPv6
+// literal rules only apply to colon-bearing hosts so a public `fd*`/`fc*` domain
+// is not mistaken for a unique-local IPv6 address.
+function isUnsafeLiteralHost(host) {
+  if (
+    host.includes(":") &&
+    UNSAFE_IPV6_LITERAL_PATTERNS.some((pattern) => pattern.test(host))
+  ) {
+    return true;
+  }
+  return UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(host));
+}
 
 export function isUnsafePublicUrl(value) {
   try {
@@ -86,25 +110,15 @@ export function isUnsafePublicUrl(value) {
     if (!host) {
       return true;
     }
-    // 172.16.0.0 – 172.31.255.255 (private range).
-    if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) {
-      return true;
-    }
     // IPv4 tunnelled inside an IPv6 literal (::ffff:a.b.c.d mapped, ::a.b.c.d
     // compatible, 2002::/16 6to4, 64:ff9b::/96 NAT64) hides a private/loopback
     // target — e.g. ::ffff:169.254.169.254 (cloud metadata) — from the prefix
     // patterns. Re-check the embedded v4 against the same ranges.
     const embedded = ipv6EmbeddedIpv4(host);
-    if (embedded) {
-      const dotted = embedded.join(".");
-      if (
-        /^172\.(1[6-9]|2\d|3[01])\./.test(dotted) ||
-        UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(dotted))
-      ) {
-        return true;
-      }
+    if (embedded && isUnsafeLiteralHost(embedded.join("."))) {
+      return true;
     }
-    return UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(host));
+    return isUnsafeLiteralHost(host);
   } catch {
     return true;
   }

@@ -146,6 +146,33 @@ describe("isUnsafePublicUrl", () => {
       assert.equal(isUnsafePublicUrl(url), false, url);
     }
   });
+
+  test("allows public domains that begin with fc/fd (issue #2375)", () => {
+    // The unique-local IPv6 patterns must only apply to IPv6 literals — a
+    // registrable hostname starting with the same hex chars is public.
+    for (const url of [
+      "https://fda.gov/api",
+      "https://fd.io/x",
+      "https://fdroid.org/x",
+      "https://fdic.gov/x",
+      "https://fc-bank.example/x",
+      "wss://fde.example.com:443",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), false, url);
+    }
+  });
+
+  test("blocks the full fc00::/7 unique-local range, not just fc00: (issue #2375)", () => {
+    for (const url of [
+      "http://[fc00::1]/x",
+      "http://[fc12::1]/x", // fc-hextet ULA the old /^fc00:/ missed
+      "https://[fcab:1:2::3]/x",
+      "http://[fd00::1]/x",
+      "http://[fdff::1]/x",
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
 });
 
 describe("classifyProbe", () => {
