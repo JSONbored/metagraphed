@@ -57,7 +57,6 @@ import {
   buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
-  formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
   loadAccountExtrinsics,
