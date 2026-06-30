@@ -485,7 +485,7 @@ describe("analytics-live loaders", () => {
     });
     assert.match(
       captured[0].sql,
-      /GROUP BY call_module[\s\S]*ORDER BY count DESC, call_module ASC LIMIT \?/,
+      /GROUP BY call_module[\s\S]*ORDER BY count DESC, call_module ASC\s+LIMIT \?/,
     );
 
     captured.length = 0;
@@ -497,7 +497,7 @@ describe("analytics-live loaders", () => {
     });
     assert.match(
       captured[0].sql,
-      /GROUP BY call_module, call_function[\s\S]*ORDER BY count DESC, call_module ASC, call_function ASC LIMIT \?/,
+      /GROUP BY call_module, call_function[\s\S]*ORDER BY count DESC, call_module ASC, call_function ASC\s+LIMIT \?/,
     );
   });
 
