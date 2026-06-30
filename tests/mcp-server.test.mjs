@@ -3974,6 +3974,8 @@ describe("MCP economics + metagraph data tools", () => {
     neuronDaily = [],
     turnoverBounds = [],
     turnoverRows = [],
+    moversBounds = [],
+    moversAggRows = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -3999,7 +4001,12 @@ describe("MCP economics + metagraph data tools", () => {
                 }
                 if (sql.includes("FROM neuron_daily")) {
                   if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
-                    return Promise.resolve({ results: turnoverBounds });
+                    const bounds =
+                      moversBounds.length > 0 ? moversBounds : turnoverBounds;
+                    return Promise.resolve({ results: bounds });
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return Promise.resolve({ results: moversAggRows });
                   }
                   if (/snapshot_date IN/.test(sql)) {
                     return Promise.resolve({ results: turnoverRows });
@@ -4329,6 +4336,89 @@ describe("MCP economics + metagraph data tools", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_movers returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_subnet_movers", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.sort, "stake");
+    assert.deepEqual(out.movers, []);
+    assert.equal(out.subnet_count, 0);
+  });
+
+  test("get_subnet_movers ranks subnets by stake delta between boundary snapshots", async () => {
+    const res = await callTool(
+      "get_subnet_movers",
+      { window: "30d", sort: "stake", limit: 10 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            moversBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            moversAggRows: [
+              {
+                netuid: 1,
+                snapshot_date: "2026-06-01",
+                neuron_count: 10,
+                validator_count: 3,
+                total_stake_tao: 100,
+                total_emission_tao: 5,
+              },
+              {
+                netuid: 1,
+                snapshot_date: "2026-06-30",
+                neuron_count: 12,
+                validator_count: 4,
+                total_stake_tao: 250,
+                total_emission_tao: 9,
+              },
+              {
+                netuid: 7,
+                snapshot_date: "2026-06-01",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 2,
+              },
+              {
+                netuid: 7,
+                snapshot_date: "2026-06-30",
+                neuron_count: 6,
+                validator_count: 2,
+                total_stake_tao: 60,
+                total_emission_tao: 3,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.start_date, "2026-06-01");
+    assert.equal(out.end_date, "2026-06-30");
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.movers.length, 2);
+    assert.equal(out.movers[0].netuid, 1);
+    assert.equal(out.movers[0].stake_delta_tao, 150);
+    assert.equal(out.movers[1].netuid, 7);
+    assert.equal(out.movers[1].stake_delta_tao, 10);
+  });
+
+  test("get_subnet_movers rejects an invalid window", async () => {
+    const res = await callTool("get_subnet_movers", { window: "1y" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Argument `window` must be one of/,
+    );
+  });
+
+  test("get_subnet_movers rejects an invalid sort", async () => {
+    const res = await callTool("get_subnet_movers", { sort: "latency" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort.*must be one of/);
   });
 
   test("get_subnet_turnover accepts the all window without a date cutoff", async () => {

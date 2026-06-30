@@ -340,6 +340,19 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const moversCold = await callOk("get_subnet_movers", {
+  window: "30d",
+  limit: 10,
+});
+assert.ok(
+  Array.isArray(moversCold.movers),
+  "get_subnet_movers must return movers[]",
+);
+assert.equal(
+  moversCold.sort,
+  "stake",
+  "get_subnet_movers must default sort to stake",
+);
 const econTrends = await callOk("get_economics_trends", { window: "30d" });
 assert.ok(
   Array.isArray(econTrends.days),

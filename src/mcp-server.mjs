@@ -107,6 +107,15 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
+import {
+  DEFAULT_MOVERS_SORT,
+  DEFAULT_MOVERS_WINDOW,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+  MOVERS_SORTS,
+  MOVERS_WINDOWS,
+  loadSubnetMovers,
+} from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
@@ -143,7 +152,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.14.0";
+export const MCP_SERVER_VERSION = "1.15.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -212,7 +221,8 @@ export const MCP_INSTRUCTIONS =
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
-  "boundary snapshots, get_registry_leaderboards the live " +
+  "boundary snapshots, get_subnet_movers the cross-subnet momentum " +
+  "leaderboard (stake/emission/validator change), get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_chain_signers the windowed most-active-account " +
@@ -1671,6 +1681,55 @@ export const MCP_TOOLS = [
       return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
         windowLabel: label,
         windowDays: days,
+      });
+    },
+  },
+  {
+    name: "get_subnet_movers",
+    title: "Get cross-subnet momentum leaderboard",
+    description:
+      "Rank every subnet by how much its stake, emission, or validator count " +
+      "changed between the start and end neuron_daily snapshots in the " +
+      "requested window (7d, 30d, or 90d; default 30d). Sort by stake, " +
+      "emission, or validators (default stake). Use it to spot subnets gaining " +
+      "or losing participation momentum. Mirrors GET /api/v1/subnets/movers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Comparison window (default 30d).",
+        },
+        sort: {
+          type: "string",
+          enum: ["stake", "emission", "validators"],
+          description: "Metric to rank by (default stake).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max subnets to return (1-100, default 20).",
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const windowLabel =
+        optionalEnum(args, "window", Object.keys(MOVERS_WINDOWS)) ??
+        DEFAULT_MOVERS_WINDOW;
+      const sort =
+        optionalEnum(args, "sort", MOVERS_SORTS) ?? DEFAULT_MOVERS_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        MOVERS_LIMIT_DEFAULT,
+        MOVERS_LIMIT_MAX,
+      );
+      return loadSubnetMovers(mcpD1Runner(ctx), {
+        windowLabel,
+        sort,
+        limit,
       });
     },
   },
@@ -4293,6 +4352,68 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+    },
+  },
+  get_subnet_movers: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "schema_version",
+      "window",
+      "start_date",
+      "end_date",
+      "sort",
+      "subnet_count",
+      "movers",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      sort: { type: "string" },
+      subnet_count: { type: "integer" },
+      movers: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: true,
+          required: [
+            "netuid",
+            "stake_start_tao",
+            "stake_end_tao",
+            "stake_delta_tao",
+            "stake_pct_change",
+            "emission_start_tao",
+            "emission_end_tao",
+            "emission_delta_tao",
+            "emission_pct_change",
+            "validators_start",
+            "validators_end",
+            "validators_delta",
+            "neurons_start",
+            "neurons_end",
+            "neurons_delta",
+          ],
+          properties: {
+            netuid: { type: "integer" },
+            stake_start_tao: { type: "number" },
+            stake_end_tao: { type: "number" },
+            stake_delta_tao: { type: "number" },
+            stake_pct_change: { type: ["number", "null"] },
+            emission_start_tao: { type: "number" },
+            emission_end_tao: { type: "number" },
+            emission_delta_tao: { type: "number" },
+            emission_pct_change: { type: ["number", "null"] },
+            validators_start: { type: "integer" },
+            validators_end: { type: "integer" },
+            validators_delta: { type: "integer" },
+            neurons_start: { type: "integer" },
+            neurons_end: { type: "integer" },
+            neurons_delta: { type: "integer" },
+          },
+        },
+      },
     },
   },
   get_subnet_uptime: {
