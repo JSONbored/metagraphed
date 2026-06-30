@@ -194,6 +194,7 @@ const checks = [
       assert.equal(typeof body.data.total_unstaked_tao, "number");
       assert.equal(typeof body.data.net_flow_tao, "number");
       assert.equal(typeof body.data.stake_events, "number");
+      assert.equal(typeof body.data.unstake_events, "number");
     },
   ],
   [

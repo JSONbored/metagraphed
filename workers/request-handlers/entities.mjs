@@ -469,7 +469,7 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
 // GET /api/v1/subnets/{netuid}/stake-flow?window=7d|30d|90d: net stake flow for one
 // subnet over the window — TAO staked (StakeAdded) vs unstaked (StakeRemoved) and
 // the net, summed live from the account_events stream (idx_account_events_netuid_kind).
-// Windows are bounded by the ~90d account_events retention. Cold/absent store →
+// Windows (7d/30d/90d) match the concentration/history route. Cold/absent store →
 // 200 with zeroed totals (schema-stable, never 404), mirroring the sibling routes.
 export async function handleSubnetStakeFlow(request, env, netuid, url) {
   const validationError = validateQueryParams(url, ["window"]);

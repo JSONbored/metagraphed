@@ -5,9 +5,9 @@
 // or an empty window yields schema-stable zeros (never throws), matching the sibling
 // live tiers (turnover, subnet events).
 //
-// account_events keeps a rolling ~90-day hot window (migrations/0009_account_events.sql),
-// so the flow windows are bounded to 7d/30d/90d — the recent-capital-movement signal,
-// which is exactly what a flow view answers.
+// The 7d/30d/90d windows match the set the concentration/history route already uses,
+// keeping the per-subnet analytics windows consistent for the recent-capital-movement
+// signal a flow view answers.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -17,10 +17,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const STAKE_ADDED_KIND = "StakeAdded";
 export const STAKE_REMOVED_KIND = "StakeRemoved";
 
-// Supported flow windows (label -> days), bounded by the ~90d account_events
-// retention. Mirrors the UPTIME_WINDOWS lookup pattern; 1y/all are intentionally
-// unsupported because the underlying events are pruned past 90 days, so a longer
-// window would understate flow while claiming a full year.
+// Supported flow windows (label -> days), the same set the concentration/history
+// route exposes. Mirrors the UPTIME_WINDOWS lookup pattern; an unsupported label is
+// rejected by the handler with a 400.
 export const STAKE_FLOW_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
 export const DEFAULT_STAKE_FLOW_WINDOW = "30d";
 
@@ -75,8 +74,9 @@ export function buildStakeFlow(rows, netuid, { window } = {}) {
 
 // One subnet's net stake flow — sums StakeAdded/StakeRemoved amount_tao from
 // account_events over the window (observed_at >= now - windowDays, epoch ms),
-// grouped by kind, shaped with buildStakeFlow. Seeks idx_account_events_netuid_kind
-// (migrations/0024). Cold/absent D1 -> zeroed totals.
+// grouped by kind, shaped with buildStakeFlow. The (netuid, event_kind) prefix of
+// idx_account_events_netuid_kind (migrations/0024) seeks the two stake kinds; the
+// observed_at window is a residual filter on that seek. Cold/absent D1 -> zeroed totals.
 export async function loadSubnetStakeFlow(
   d1,
   netuid,
