@@ -983,7 +983,12 @@ test("loadAccountHistory binds netuid/from/to filters and clamps pagination", as
   assert.ok(/AND netuid = \?/.test(captured.sql));
   assert.ok(/AND day >= \?/.test(captured.sql));
   assert.ok(/AND day <= \?/.test(captured.sql));
-  assert.ok(/ORDER BY day DESC LIMIT \? OFFSET \?/.test(captured.sql));
+  // Same-day rows are tie-broken on netuid so the order is total; no cursor →
+  // offset paging.
+  assert.ok(
+    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
+  );
+  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
   // limit 0 is below the floor → clamps to 1; offset 5 passes through.
   assert.deepEqual(captured.params, [
     "5Hk",
@@ -993,6 +998,49 @@ test("loadAccountHistory binds netuid/from/to filters and clamps pagination", as
     1,
     5,
   ]);
+});
+
+test("loadAccountHistory applies a (day, netuid) keyset cursor and drops offset", async () => {
+  let captured;
+  const out = await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        { day: "2026-06-20", netuid: 3, event_count: 2, event_kinds: "" },
+        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
+      ];
+    },
+    "5Hk",
+    { limit: 2, offset: 99, cursor: encodeCursor([20260624, 7]) },
+  );
+  // Cursor path: keyset predicate present, OFFSET dropped, day re-hyphenated.
+  assert.ok(/AND \(day, netuid\) < \(\?, \?\)/.test(captured.sql));
+  assert.ok(/ORDER BY day DESC, netuid DESC LIMIT \?/.test(captured.sql));
+  assert.ok(!/OFFSET/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", "2026-06-24", 7, 2]);
+  // A full page (rows.length === limit) yields a next_cursor from the last row.
+  assert.deepEqual(out.next_cursor, encodeCursor([20260620, 1]));
+});
+
+test("loadAccountHistory ignores a malformed cursor and emits no next_cursor on a short page", async () => {
+  let captured;
+  const out = await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
+      ];
+    },
+    "5Hk",
+    { limit: 50, cursor: "not-a-valid-cursor" },
+  );
+  // Malformed cursor → first page (offset path), no keyset predicate, no throw.
+  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
+  assert.ok(
+    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
+  );
+  // Short page (rows.length < limit) → no next_cursor.
+  assert.equal(out.next_cursor, null);
 });
 
 test("loadAccountHistory ignores a non-integer netuid filter", async () => {

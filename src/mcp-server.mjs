@@ -2194,10 +2194,11 @@ export const MCP_TOOLS = [
       "Fetch the per-day activity series for one account by its SS58 hotkey address, " +
       "from the account_events_daily rollup: event count, kinds seen, and first/last " +
       "block per day. Optionally filter to one subnet (netuid), a date range (from/to " +
-      "as YYYY-MM-DD), and page with limit (1-1000, default 100) / offset. Newest day " +
-      "first. Useful for understanding how active a wallet has been over time. Note: " +
-      "the rollup is hotkey-attributed only — a delegate-only SS58 address returns " +
-      "zero days even if it has events in get_account_events.",
+      "as YYYY-MM-DD), and page with limit (1-1000, default 100) plus either a cursor " +
+      "(pass the previous response's next_cursor for stable head-growing pages) or an " +
+      "offset. Newest day first. Useful for understanding how active a wallet has been " +
+      "over time. Note: the rollup is hotkey-attributed only — a delegate-only SS58 " +
+      "address returns zero days even if it has events in get_account_events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2230,8 +2231,15 @@ export const MCP_TOOLS = [
         },
         offset: {
           type: "integer",
-          description: "Pagination offset. Default 0.",
+          description:
+            "Pagination offset. Default 0. Ignored when cursor is set.",
           minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor. " +
+            "Takes precedence over offset for stable head-growing pages.",
         },
       },
       required: ["ss58"],
@@ -2243,12 +2251,14 @@ export const MCP_TOOLS = [
         typeof args?.netuid === "number" ? Math.floor(args.netuid) : undefined;
       const from = optionalString(args, "from");
       const to = optionalString(args, "to");
+      const cursor = optionalString(args, "cursor");
       return loadAccountHistory(mcpD1Runner(ctx), ss58, {
         netuid,
         from: from ?? undefined,
         to: to ?? undefined,
         limit: args?.limit,
         offset: args?.offset,
+        cursor: cursor ?? undefined,
       });
     },
   },
