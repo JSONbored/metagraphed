@@ -4,6 +4,7 @@
 // the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
 // for tests; the Worker runs the D1 I/O.
 import {
+  DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
@@ -612,10 +613,21 @@ const ACCOUNT_DAY_COLUMNS =
 // rollup. ?netuid narrows to one subnet; ?from / ?to are YYYY-MM-DD bounds
 // (lexicographic on the TEXT `day` column). Newest day first. Clamps limit to
 // 1-1000 (default 100); clamps offset to 0-1 000 000. Null-safe on cold store.
+//
+// account_events_daily holds one row per (hotkey, day, netuid), so `day` alone
+// is not a total order — an account active on several subnets has multiple rows
+// per day. Ordering by `day DESC` only left same-day rows in an unspecified
+// order, which made offset paging non-deterministic (a page boundary inside a
+// day could drop or repeat a same-day row). Tie-break on `netuid DESC` so the
+// order is total, and expose the same `(day, netuid)` keyset cursor the REST
+// handler (handleAccountHistory) and the sibling tail loaders use, so callers
+// can page stable head-growing windows. A cursor takes precedence over offset;
+// a cursor that does not decode to a valid YYYY-MM-DD day is ignored (falls back
+// to the first page), preserving the never-throw contract.
 export async function loadAccountHistory(
   d1,
   ss58,
-  { netuid, from, to, limit, offset } = {},
+  { netuid, from, to, limit, offset, cursor } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -633,10 +645,32 @@ export async function loadAccountHistory(
     sql += " AND day <= ?";
     params.push(to);
   }
-  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
-  params.push(lim, off);
+  const cur = decodeCursor(cursor, 2);
+  const cursorDay = cur
+    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+    : null;
+  const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
+  if (useCursor) {
+    sql += " AND (day, netuid) < (?, ?)";
+    params.push(cursorDay, cur[1]);
+  }
+  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
   const rows = await d1(sql, params);
-  return buildAccountHistory(rows, ss58, { limit: lim, offset: off });
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor =
+    last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
+      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
+      : null;
+  return buildAccountHistory(rows, ss58, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
 }
 
 // Extrinsics signed by this account, newest first. Matched by the extrinsic
