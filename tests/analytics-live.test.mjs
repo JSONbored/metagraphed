@@ -496,6 +496,38 @@ describe("analytics-live loaders", () => {
     assert.equal(data.calls[0].share, 0.5);
   });
 
+  test("loadChainCalls tie-breaks grouped rows for stable LIMIT membership", async () => {
+    const captured = [];
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 0 }];
+      return [];
+    };
+
+    await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module",
+      limit: 5,
+      now: Date.UTC(2026, 5, 26),
+    });
+    assert.match(
+      captured[0].sql,
+      /GROUP BY call_module[\s\S]*ORDER BY count DESC, call_module ASC\s+LIMIT \?/,
+    );
+
+    captured.length = 0;
+    await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module_function",
+      limit: 5,
+      now: Date.UTC(2026, 5, 26),
+    });
+    assert.match(
+      captured[0].sql,
+      /GROUP BY call_module, call_function[\s\S]*ORDER BY count DESC, call_module ASC, call_function ASC\s+LIMIT \?/,
+    );
+  });
+
   test("loadChainCalls groups by call_module and call_function when requested", async () => {
     const captured = [];
     const run = async (sql, params) => {
