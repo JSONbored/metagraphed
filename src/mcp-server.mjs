@@ -29,7 +29,7 @@ import {
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
-import { loadChainSigners } from "./chain-query-loaders.mjs";
+import { loadChainFees, loadChainSigners } from "./chain-query-loaders.mjs";
 import {
   loadCompareSubnets,
   loadChainCalls,
@@ -192,7 +192,8 @@ export const MCP_INSTRUCTIONS =
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_chain_signers the windowed most-active-account " +
-  "leaderboard (extrinsic counts + fees), get_subnet_metagraph the " +
+  "leaderboard (extrinsic counts + fees), get_chain_fees the fee/tip market " +
+  "analytics (per-day series + top payers), get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
   "list_subnet_validators its validators ranked by stake, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
@@ -2468,6 +2469,59 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_fees",
+    title: "Get chain fee/tip market analytics",
+    description:
+      "Fetch fee/tip market analytics: a per-UTC-day fee series (totals + " +
+      "averages) plus a windowed top-fee-payer list. Optionally scope to one " +
+      "pallet via call_module. Mirrors GET /api/v1/chain/fees.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d"],
+          description: "Lookback window (default 7d).",
+        },
+        limit: {
+          type: "integer",
+          description: "Max top fee payers to return (1-100, default 25).",
+          minimum: 1,
+          maximum: 100,
+        },
+        call_module: {
+          type: "string",
+          description:
+            "Optional pallet filter (e.g. Balances); omit for all modules.",
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const parsed = parseAnalyticsWindow(args?.window ?? "7d");
+      if (args?.window !== undefined && parsed === null) {
+        throw toolError("invalid_params", "window must be one of: 7d, 30d.");
+      }
+      const { label, days } = parsed;
+      const limit = clampLimit(args?.limit, 25, 100);
+      const callModule = optionalString(args, "call_module");
+      if (callModule != null && callModule.length > 100) {
+        throw toolError(
+          "invalid_params",
+          "call_module must be at most 100 characters.",
+        );
+      }
+      const { data } = await loadChainFees(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: await mcpObservedAt(ctx),
+        limit,
+        callModule,
+      });
+      return data;
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -3973,6 +4027,31 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_fee_tao: { type: ["number", "null"] },
         total_tip_tao: { type: ["number", "null"] },
         last_tx_block: NULLABLE_INT,
+      }),
+    },
+  },
+  get_chain_fees: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "day_count", "daily", "top_fee_payers"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: { type: "string" },
+      observed_at: NULLABLE_STRING,
+      day_count: { type: "integer" },
+      daily: objectItems({
+        day: NULLABLE_STRING,
+        extrinsic_count: NULLABLE_INT,
+        total_fee_tao: { type: ["number", "null"] },
+        avg_fee_tao: { type: ["number", "null"] },
+        total_tip_tao: { type: ["number", "null"] },
+        avg_tip_tao: { type: ["number", "null"] },
+      }),
+      top_fee_payers: objectItems({
+        signer: NULLABLE_STRING,
+        total_fee_tao: { type: ["number", "null"] },
+        total_tip_tao: { type: ["number", "null"] },
+        extrinsic_count: NULLABLE_INT,
       }),
     },
   },
