@@ -16,13 +16,14 @@ import {
   analyticsMeta,
   analyticsQueryError,
   d1All,
+  d1Runner,
   hasD1FallbackRows,
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
 import { dailyLatencyColumns } from "../../src/health-sql.mjs";
 import {
-  buildEconomicsTrends,
+  loadEconomicsTrends,
   parseHistoryWindow,
 } from "../../src/neuron-history.mjs";
 import {
@@ -92,12 +93,9 @@ export async function handleTrajectory(request, env, netuid, url) {
 // Network-wide economics time series (#1307): aggregate the per-subnet daily
 // subnet_snapshots rows up to one point per UTC day across every subnet (total
 // stake, stake-weighted + median alpha price, total validator/miner counts, mean
-// emission share). Same source as the per-subnet trajectory; raw rows (not a GROUP
-// BY) so the weighted/median price is computed in the pure builder. Schema-stable
-// (day_count:0, days:[]) on a cold rollup. Bounded by ECONOMICS_TRENDS_ROW_CAP:
-// ~129 subnets × 365 days ≈ 47k rows for `all`, so the cap is generous but finite.
-const ECONOMICS_TRENDS_ROW_CAP = 60000;
-
+// emission share). The bounded D1 read + pure builder live in loadEconomicsTrends
+// (src/neuron-history.mjs), shared with the get_economics_trends MCP tool;
+// schema-stable (day_count:0, days:[]) on a cold rollup.
 export async function handleEconomicsTrends(request, env, url) {
   const validationError = validateQueryParams(url, ["window"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -105,22 +103,10 @@ export async function handleEconomicsTrends(request, env, url) {
     url.searchParams.get("window"),
   );
   if (error) return analyticsQueryError(error);
-  const params = [];
-  let sql =
-    "SELECT snapshot_date, total_stake_tao, alpha_price_tao, " +
-    "validator_count, miner_count, emission_share " +
-    "FROM subnet_snapshots WHERE TRUE";
-  if (days != null) {
-    const cutoff = new Date(Date.now() - days * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    sql += " AND snapshot_date >= ?";
-    params.push(cutoff);
-  }
-  sql += " ORDER BY snapshot_date DESC LIMIT ?";
-  params.push(ECONOMICS_TRENDS_ROW_CAP);
-  const rows = await d1All(env, sql, params);
-  const data = buildEconomicsTrends(rows, { window: label });
+  const { data, rows } = await loadEconomicsTrends(d1Runner(env), {
+    windowLabel: label,
+    windowDays: days,
+  });
   return envelopeWithD1Fallback(
     request,
     {

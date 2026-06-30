@@ -14,6 +14,8 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
   buildEconomicsTrends,
+  loadEconomicsTrends,
+  ECONOMICS_TRENDS_ROW_CAP,
   HISTORY_WINDOWS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.mjs";
@@ -354,6 +356,81 @@ describe("history builders", () => {
     assert.equal(out.point_count, 1);
     assert.equal(out.points[0].neuron_count, 256);
     assert.deepEqual(buildSubnetHistory(undefined, 7).points, []);
+  });
+});
+
+describe("loadEconomicsTrends", () => {
+  // A (sql, params) => rows runner that records its calls (mirrors d1Runner(env)
+  // / mcpD1Runner(ctx)); returns the canned rows for every call.
+  function fakeD1(rows = []) {
+    const calls = [];
+    const runner = async (sql, params) => {
+      calls.push({ sql, params });
+      return rows;
+    };
+    runner.calls = calls;
+    return runner;
+  }
+
+  test("bounded-windowed read applies the cutoff and rolls rows up via the builder", async () => {
+    const d1 = fakeD1([
+      {
+        snapshot_date: "2026-06-02",
+        total_stake_tao: 300,
+        alpha_price_tao: 0.02,
+        validator_count: 8,
+        miner_count: 50,
+        emission_share: 0.04,
+      },
+      {
+        snapshot_date: "2026-06-01",
+        total_stake_tao: 100,
+        alpha_price_tao: 0.01,
+        validator_count: 4,
+        miner_count: 20,
+        emission_share: 0.03,
+      },
+    ]);
+    const { data, rows } = await loadEconomicsTrends(d1, {
+      windowLabel: "7d",
+      windowDays: 7,
+    });
+    assert.equal(d1.calls.length, 1);
+    const { sql, params } = d1.calls[0];
+    assert.match(sql, /FROM subnet_snapshots/);
+    assert.match(sql, /snapshot_date >= \?/); // bounded window adds the cutoff
+    assert.match(sql, /ORDER BY snapshot_date DESC LIMIT \?/);
+    // params: [cutoff (YYYY-MM-DD), ECONOMICS_TRENDS_ROW_CAP].
+    assert.match(params[0], /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(params[params.length - 1], ECONOMICS_TRENDS_ROW_CAP);
+    // The loader returns both the built payload and the raw rows (D1-fallback).
+    assert.equal(data.window, "7d");
+    assert.equal(data.day_count, 2);
+    assert.equal(data.days[0].snapshot_date, "2026-06-02");
+    assert.equal(rows.length, 2);
+  });
+
+  test("the unbounded `all` window omits the cutoff clause", async () => {
+    const d1 = fakeD1([]);
+    const { data } = await loadEconomicsTrends(d1, {
+      windowLabel: "all",
+      windowDays: null,
+    });
+    const { sql, params } = d1.calls[0];
+    assert.equal(/snapshot_date >= \?/.test(sql), false);
+    // Only the row-cap bind param remains.
+    assert.deepEqual(params, [ECONOMICS_TRENDS_ROW_CAP]);
+    assert.equal(data.window, "all");
+  });
+
+  test("a cold runner yields the schema-stable empty payload", async () => {
+    const { data, rows } = await loadEconomicsTrends(fakeD1([]), {
+      windowLabel: "30d",
+      windowDays: 30,
+    });
+    assert.equal(data.day_count, 0);
+    assert.deepEqual(data.days, []);
+    assert.deepEqual(rows, []);
   });
 });
 

@@ -92,6 +92,7 @@ import {
 import {
   buildNeuronHistory,
   buildSubnetHistory,
+  loadEconomicsTrends,
   MAX_HISTORY_POINTS,
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
@@ -132,7 +133,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.10.0";
+export const MCP_SERVER_VERSION = "1.11.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -187,7 +188,10 @@ export const MCP_INSTRUCTIONS =
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
   "open slots, stake, emission split and validator/miner counts, " +
-  "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
+  "get_subnet_trajectory its week-over-week trend, get_economics_trends the " +
+  "network-wide daily economics time series (total stake, alpha price, " +
+  "validator/miner counts, emission share) across all subnets, " +
+  "get_subnet_uptime its " +
   "long-term surface uptime history, get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
@@ -2539,6 +2543,38 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_economics_trends",
+    title: "Get network-wide economics trends",
+    description:
+      "Fetch the network-wide daily economics time series across all subnets: per " +
+      "UTC day the total stake (TAO), stake-weighted and median alpha price, total " +
+      "validator and miner counts, and mean emission share, newest first. Window is " +
+      "7d, 30d (default), 90d, 1y, or all. The cross-subnet companion to the " +
+      "per-subnet get_subnet_economics / get_subnet_trajectory — use it to see how " +
+      "the whole network's stake, price, and participation are trending. Mirrors " +
+      "GET /api/v1/economics/trends.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d", "1y", "all"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const { label, days } = requireHistoryWindow(args);
+      const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
+        windowLabel: label,
+        windowDays: days,
+      });
+      return data;
+    },
+  },
+  {
     name: "list_subnet_apis",
     title: "List a subnet's callable services",
     description:
@@ -4068,6 +4104,26 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_fee_tao: { type: ["number", "null"] },
         total_tip_tao: { type: ["number", "null"] },
         last_tx_block: NULLABLE_INT,
+      }),
+    },
+  },
+  get_economics_trends: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "day_count", "days"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      day_count: { type: "integer" },
+      days: objectItems({
+        snapshot_date: NULLABLE_STRING,
+        subnet_count: { type: "integer" },
+        total_stake_tao: ANY,
+        alpha_price_tao_weighted: ANY,
+        alpha_price_tao_median: ANY,
+        validator_count: NULLABLE_INT,
+        miner_count: NULLABLE_INT,
+        mean_emission_share: ANY,
       }),
     },
   },
