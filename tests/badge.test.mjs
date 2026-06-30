@@ -180,6 +180,45 @@ describe("badge — rendering", () => {
     assert.match(svg, /aria-label="MY LABEL: OK"/);
   });
 
+  test("renderBadge for-the-badge width branches cover narrow, wide, CJK, and accented glyphs", () => {
+    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const narrow = widthOf(
+      renderBadge(".", "#000", { style: "for-the-badge", label: "." }),
+    );
+    const wide = widthOf(
+      renderBadge("@", "#000", { style: "for-the-badge", label: "@" }),
+    );
+    const punct = widthOf(
+      renderBadge("-", "#000", { style: "for-the-badge", label: "-" }),
+    );
+    const cjk = widthOf(
+      renderBadge("字", "#000", { style: "for-the-badge", label: "字" }),
+    );
+    const accent = widthOf(
+      renderBadge("é", "#000", { style: "for-the-badge", label: "é" }),
+    );
+    assert.ok(wide > narrow, "MW%@ glyphs should out-measure narrow ilj");
+    assert.ok(
+      punct > narrow,
+      "punctuation should use the lowercase-width branch",
+    );
+    assert.ok(cjk >= wide, "CJK should use the wide code-point branch");
+    assert.ok(
+      accent >= narrow,
+      "accented Latin should use the non-ASCII branch",
+    );
+  });
+
+  test("renderBadge for-the-badge escapes injected markup", () => {
+    const svg = renderBadge('"><x', "#000", {
+      style: "for-the-badge",
+      label: "a&b",
+    });
+    assert.ok(!svg.includes("<x>"));
+    assert.match(svg, /&lt;X/);
+    assert.match(svg, /A&amp;B/);
+  });
+
   test("scoreColor thresholds (green / amber / red / gray)", () => {
     assert.equal(scoreColor(92), "#2ea44f");
     assert.equal(scoreColor(80), "#2ea44f");
