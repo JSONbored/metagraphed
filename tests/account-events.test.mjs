@@ -648,6 +648,25 @@ test("loadAccountSummary bounds signing activity before aggregating", async () =
   assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
 });
 
+test("loadAccountSummary uses indexed union seeks for account_events (#2059)", async () => {
+  const calls = [];
+  await loadAccountSummary(async (sql, params) => {
+    calls.push({ sql, params });
+    return [];
+  }, "5Hk");
+
+  const eventReads = calls.filter((c) =>
+    /idx_account_events_hotkey/.test(c.sql),
+  );
+  assert.equal(eventReads.length, 3);
+  for (const { sql } of eventReads) {
+    assert.doesNotMatch(sql, /hotkey = \? OR coldkey = \?/);
+    assert.match(sql, /INDEXED BY idx_account_events_hotkey/);
+    assert.match(sql, /INDEXED BY idx_account_events_coldkey/);
+    assert.match(sql, /UNION ALL/);
+  }
+});
+
 // ---- Async loader failure-path coverage ------------------------------------
 // The shared loaders take a (sql, params) => Promise<rows[]> runner. The real
 // d1All swallows a D1 timeout/schema-drift to [] (workers analytics), so from a
@@ -694,7 +713,7 @@ test("loadAccountEvents clamps limit/offset and matches both account keys", asyn
   // limit clamps to the 1000 ceiling, offset clamps up to the 0 floor.
   assert.ok(captured.sql.includes("LIMIT ?"));
   assert.ok(captured.sql.includes("OFFSET ?"));
-  assert.deepEqual(captured.params, ["5Hk", "5Hk", 1000, 0]);
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", "5Hk", 1000, 0]);
 });
 
 test("loadAccountEvents applies the ?kind filter as a bound param", async () => {
@@ -708,8 +727,15 @@ test("loadAccountEvents applies the ?kind filter as a bound param", async () => 
     { kind: "StakeAdded" },
   );
   assert.ok(/AND event_kind = \?/.test(captured.sql));
-  // [ss58, ss58, kind, limit(default 100), offset(default 0)]
-  assert.deepEqual(captured.params, ["5Hk", "5Hk", "StakeAdded", 100, 0]);
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    "StakeAdded",
+    "5Hk",
+    "5Hk",
+    "StakeAdded",
+    100,
+    0,
+  ]);
 });
 
 test("loadAccountEvents applies the block_start/block_end range as bound params", async () => {
@@ -724,8 +750,17 @@ test("loadAccountEvents applies the block_start/block_end range as bound params"
   );
   assert.ok(/AND block_number >= \?/.test(captured.sql));
   assert.ok(/AND block_number <= \?/.test(captured.sql));
-  // [ss58, ss58, blockStart, blockEnd, limit(default 100), offset(default 0)]
-  assert.deepEqual(captured.params, ["5Hk", "5Hk", 100, 900, 100, 0]);
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    100,
+    900,
+    "5Hk",
+    "5Hk",
+    100,
+    900,
+    100,
+    0,
+  ]);
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {
@@ -762,8 +797,16 @@ test("loadAccountEvents uses a keyset seek (not OFFSET) when a cursor is given",
   );
   assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(captured.sql));
   assert.ok(!/OFFSET/.test(captured.sql)); // cursor overrides offset
-  // [ss58, ss58, curBlock, curIndex, limit]
-  assert.deepEqual(captured.params, ["5Hk", "5Hk", 1000, 3, 50]);
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    1000,
+    3,
+    "5Hk",
+    "5Hk",
+    1000,
+    3,
+    50,
+  ]);
 });
 
 test("loadAccountEvents ignores a malformed cursor and falls back to OFFSET", async () => {
@@ -778,7 +821,24 @@ test("loadAccountEvents ignores a malformed cursor and falls back to OFFSET", as
   );
   assert.ok(/OFFSET \?/.test(captured.sql));
   assert.ok(!/\(block_number, event_index\) </.test(captured.sql));
-  assert.deepEqual(captured.params, ["5Hk", "5Hk", 100, 20]);
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", "5Hk", 100, 20]);
+});
+
+test("loadAccountEvents uses indexed union seeks instead of hotkey OR coldkey (#2059)", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    {},
+  );
+  assert.doesNotMatch(captured.sql, /hotkey = \? OR coldkey = \?/);
+  assert.match(captured.sql, /INDEXED BY idx_account_events_hotkey/);
+  assert.match(captured.sql, /INDEXED BY idx_account_events_coldkey/);
+  assert.match(captured.sql, /UNION ALL/);
+  assert.match(captured.sql, /hotkey <> \?/);
 });
 
 test("loadAccountHistory is schema-stable when the D1 read yields nothing", async () => {
