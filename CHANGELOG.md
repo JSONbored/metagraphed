@@ -19,6 +19,14 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.30.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.29.1...platform-v0.30.0) (2026-06-30)
+
+
+### Features
+
+* **api:** add account transfer block range filters ([#2393](https://github.com/JSONbored/metagraphed/issues/2393)) ([5cd6c93](https://github.com/JSONbored/metagraphed/commit/5cd6c938c4868ff433557ae3a76022482868effe))
+* **mcp:** add get_account_counterparties with shared REST loader ([#2389](https://github.com/JSONbored/metagraphed/issues/2389)) ([3055e91](https://github.com/JSONbored/metagraphed/commit/3055e91aebeaf2e84464e5581853868df37b7ab0))
+
 ## [0.29.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.29.0...platform-v0.29.1) (2026-06-30)
 
 
