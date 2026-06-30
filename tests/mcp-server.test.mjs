@@ -4365,6 +4365,85 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_retention, 1);
   });
 
+  // get_subnet_stake_flow sums the StakeAdded/StakeRemoved account_events; a
+  // self-contained env returns the GROUP BY event_kind rows for that read.
+  function stakeFlowEnv(rows = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  return Promise.resolve({
+                    results: /FROM account_events/.test(sql) ? rows : [],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_stake_flow sums StakeAdded vs StakeRemoved into net flow", async () => {
+    const env = stakeFlowEnv([
+      {
+        event_kind: "StakeAdded",
+        total_tao: 300,
+        event_count: 5,
+        last_observed: 1750000000000,
+      },
+      {
+        event_kind: "StakeRemoved",
+        total_tao: 120,
+        event_count: 2,
+        last_observed: 1750000001000,
+      },
+    ]);
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7, window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "7d");
+    assert.equal(out.total_staked_tao, 300);
+    assert.equal(out.total_unstaked_tao, 120);
+    assert.equal(out.net_flow_tao, 180); // 300 - 120
+    assert.equal(out.stake_events, 5);
+    assert.equal(out.unstake_events, 2);
+  });
+
+  test("get_subnet_stake_flow defaults to the 30d window", async () => {
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7 },
+      { env: stakeFlowEnv() },
+    );
+    assert.equal(res.body.result.structuredContent.window, "30d");
+  });
+
+  test("get_subnet_stake_flow degrades to zeroed flow on cold D1", async () => {
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.net_flow_tao, 0);
+    assert.equal(out.stake_events, 0);
+  });
+
+  test("get_subnet_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7, window: "1y" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
     const meta = await callTool("get_subnet_metagraph", { netuid: 7 });
     assert.equal(meta.body.result.isError, false);

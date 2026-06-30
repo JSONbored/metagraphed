@@ -107,6 +107,11 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
+import {
+  DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_FLOW_WINDOWS,
+  loadSubnetStakeFlow,
+} from "./stake-flow.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
@@ -143,7 +148,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.13.0";
+export const MCP_SERVER_VERSION = "1.14.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -212,7 +217,8 @@ export const MCP_INSTRUCTIONS =
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
-  "boundary snapshots, get_registry_leaderboards the live " +
+  "boundary snapshots, get_subnet_stake_flow its net stake flow (TAO staked vs " +
+  "unstaked) over a 7d/30d/90d window, get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_chain_signers the windowed most-active-account " +
@@ -1672,6 +1678,46 @@ export const MCP_TOOLS = [
         windowLabel: label,
         windowDays: days,
       });
+    },
+  },
+  {
+    name: "get_subnet_stake_flow",
+    title: "Get subnet net stake flow",
+    description:
+      "Fetch one subnet's net stake flow over a recent window: how much TAO entered " +
+      "(StakeAdded) vs left (StakeRemoved), the net flow (positive = inflow, " +
+      "negative = outflow), and the stake/unstake event counts, summed from the " +
+      "live account-events stream. Window is 7d, 30d (default), or 90d. Use it to " +
+      "see whether capital is flowing into or out of a subnet — a recent-momentum " +
+      "signal alongside get_subnet_economics (current stake) and get_subnet_turnover " +
+      "(validator churn). Mirrors GET /api/v1/subnets/{netuid}/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${Object.keys(STAKE_FLOW_WINDOWS).join(", ")}.`,
+        );
+      }
+      const { data } = await loadSubnetStakeFlow(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+      });
+      return data;
     },
   },
   {
@@ -4280,6 +4326,21 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+    },
+  },
+  get_subnet_stake_flow: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "net_flow_tao"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      total_staked_tao: ANY,
+      total_unstaked_tao: ANY,
+      net_flow_tao: ANY,
+      stake_events: { type: "integer" },
+      unstake_events: { type: "integer" },
     },
   },
   get_subnet_uptime: {
