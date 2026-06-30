@@ -214,12 +214,20 @@ describe("feeds — item builders", () => {
     });
     assert.equal(afterOnly.length, 1);
     assert.equal(afterOnly[0].title, "Subnet 5 renamed — ? → Fresh");
+    assert.equal(
+      afterOnly[0].summary,
+      "Subnet 5 renamed from ? to Fresh in the registry.",
+    );
 
     const beforeOnly = registryItems({
       subnets: { renamed: [{ netuid: 6, before: "Stale" }] },
     });
     assert.equal(beforeOnly.length, 1);
     assert.equal(beforeOnly[0].title, "Subnet 6 renamed — Stale → ?");
+    assert.equal(
+      beforeOnly[0].summary,
+      "Subnet 6 renamed from Stale to ? in the registry.",
+    );
   });
 
   test("registryItems filtered by netuid omits artifacts + coverage", () => {
