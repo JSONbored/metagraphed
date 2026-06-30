@@ -2540,6 +2540,28 @@ describe("computeReliability (score from uptime history)", () => {
     );
   });
 
+  test("a sub-perfect ratio that rounds to 100 is not reported as a perfect score", () => {
+    // 199/200 = 0.995 uptime, zero latency penalty → uptimeScore 99.5, and
+    // `Math.round(99.5) === 100`, which would otherwise headline a flawless
+    // score: 100 / grade A for a surface that actually had downtime — directly
+    // contradicting its own sub-1 uptime_ratio. Clamp the would-be-100 score to
+    // 99 (still grade A), mirroring the uptime_ratio and turnover guards.
+    const subPerfect = scoreFromStats({
+      samples: 200,
+      okCount: 199,
+      avgLatencyMs: 100,
+    });
+    assert.equal(subPerfect.score, 99);
+    assert.equal(subPerfect.grade, "A");
+    assert.equal(subPerfect.uptime_ratio, 0.995);
+    // a genuine okCount === samples window with no latency penalty still reports
+    // the perfect 100.
+    assert.equal(
+      scoreFromStats({ samples: 200, okCount: 200, avgLatencyMs: 100 }).score,
+      100,
+    );
+  });
+
   test("covers grade B, null latency, missing day, and nullish rows", () => {
     // grade B (95-98)
     assert.equal(
