@@ -176,6 +176,32 @@ def _jsonrpc_result(parsed: Any, method: str) -> Any:
     return parsed.get("result") if isinstance(parsed, dict) else None
 
 
+def _query_pairs(query: Mapping[str, Any]) -> List[Tuple[str, Any]]:
+    """Normalize a query mapping into ``urlencode``-ready ``(key, value)`` pairs.
+
+    Drops ``None`` values and coerces Python ``bool`` to the lowercase
+    ``"true"``/``"false"`` the API expects. ``str(True)`` would otherwise send
+    ``"True"``, which the API compares ``=== "true"`` and silently ignores — so a
+    boolean filter such as ``validator_permit=True`` would be dropped and return
+    unfiltered results (diverging from both the async/httpx client and the
+    TypeScript client). Booleans nested in a sequence value — expanded by
+    ``doseq=True`` — are coerced element-wise so list-valued filters normalize too.
+    """
+
+    def coerce(value: Any) -> Any:
+        # ``bool`` is a subclass of ``int``, so it must be handled before any
+        # numeric branch; here it maps straight to the API's wire form.
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (list, tuple)):
+            return [coerce(item) for item in value]
+        return value
+
+    return [
+        (key, coerce(value)) for key, value in query.items() if value is not None
+    ]
+
+
 def metagraphed_fetch(
     path: str,
     *,
@@ -200,7 +226,7 @@ def metagraphed_fetch(
     """
     url = base_url.rstrip("/") + _interpolate(path, path_params)
     if query:
-        pairs = [(key, value) for key, value in query.items() if value is not None]
+        pairs = _query_pairs(query)
         if pairs:
             url += "?" + urllib.parse.urlencode(pairs, doseq=True)
 

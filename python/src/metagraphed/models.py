@@ -11,7 +11,7 @@ or the typed convenience methods such as ``client.subnets()``).
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Any, List, Mapping, Optional
+from typing import Any, ClassVar, List, Mapping, Optional
 
 
 class _Model:
@@ -20,16 +20,33 @@ class _Model:
 
     raw: Mapping[str, Any]
 
+    # Per-model alias map: API response key -> dataclass field name. The API and
+    # the models mostly share names, but a few collections expose a field under a
+    # different key (e.g. providers carry their slug as ``id``); without an alias
+    # ``from_dict`` would leave the typed field ``None`` even though ``.raw`` has
+    # the value. Subclasses override this.
+    _aliases: ClassVar[Mapping[str, str]] = {}
+
+    @classmethod
+    def _known_kwargs(cls, mapping: Mapping[str, Any]) -> dict:
+        """Project an API dict onto this model's fields.
+
+        Direct name matches win; any ``_aliases`` entry (API key -> field) then
+        fills a field the API exposes under a different key, so a renamed key
+        such as provider ``id`` -> ``slug`` populates the typed field instead of
+        silently staying ``None``.
+        """
+        known = {f.name for f in fields(cls) if f.name != "raw"}  # type: ignore[arg-type]
+        kwargs = {name: mapping[name] for name in known if name in mapping}
+        for source, target in cls._aliases.items():
+            if target in known and target not in kwargs and source in mapping:
+                kwargs[target] = mapping[source]
+        return kwargs
+
     @classmethod
     def from_dict(cls, data: Any) -> Any:
         mapping = data if isinstance(data, Mapping) else {}
-        known = {f.name for f in fields(cls)}  # type: ignore[arg-type]
-        kwargs = {
-            name: mapping.get(name)
-            for name in known
-            if name != "raw" and name in mapping
-        }
-        instance = cls(**kwargs)  # type: ignore[call-arg]
+        instance = cls(**cls._known_kwargs(mapping))  # type: ignore[call-arg]
         instance.raw = dict(mapping)
         return instance
 
@@ -86,6 +103,8 @@ class Endpoint(_Model):
 
 @dataclass
 class Provider(_Model):
+    # The providers API exposes the provider slug as ``id`` (no ``slug`` key).
+    _aliases: ClassVar[Mapping[str, str]] = {"id": "slug"}
     slug: Optional[str] = None
     name: Optional[str] = None
     authority: Optional[str] = None

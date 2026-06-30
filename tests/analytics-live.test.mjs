@@ -354,6 +354,33 @@ describe("analytics-live loaders", () => {
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
+  test("loadRegistryLeaderboards ranks most-reliable from surface_uptime_daily", async () => {
+    const data = await loadRegistryLeaderboards(
+      d1({
+        "FROM surface_uptime_daily": [
+          {
+            netuid: 7,
+            samples: 100,
+            ok_count: 100,
+            avg_latency_ms: 50,
+            latency_samples: 100,
+          },
+        ],
+      }),
+      {
+        profiles: [{ netuid: 7, slug: "apex", name: "Apex" }],
+        economicsRows: [],
+        board: "most-reliable",
+        limit: 5,
+        observedAt: OBSERVED_AT,
+      },
+    );
+    assert.equal(data.boards["most-reliable"].length, 1);
+    assert.equal(data.boards["most-reliable"][0].netuid, 7);
+    assert.equal(data.boards["most-reliable"][0].score, 100);
+    assert.equal("healthiest" in data.boards, false);
+  });
+
   test("loadCompareSubnets composes requested dimensions", async () => {
     const data = await loadCompareSubnets(
       d1({
