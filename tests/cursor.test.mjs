@@ -34,6 +34,7 @@ test("encodeCursor rejects empty/negative/non-integer input", () => {
   assert.equal(encodeCursor([-1]), null);
   assert.equal(encodeCursor([1.5]), null);
   assert.equal(encodeCursor("nope"), null);
+  assert.equal(encodeCursor(["12x"]), null);
   assert.equal(encodeCursor(["9007199254740993"]), null);
 });
 
