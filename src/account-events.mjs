@@ -241,9 +241,9 @@ export const ACCOUNT_EVENT_COLUMNS =
 export function formatRegistration(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    netuid: row.netuid ?? null,
-    uid: row.uid ?? null,
-    stake_tao: row.stake_tao ?? null,
+    netuid: toBlockNumber(row.netuid),
+    uid: toBlockNumber(row.uid),
+    stake_tao: toTaoOrNull(row.stake_tao),
     validator_permit: Boolean(row.validator_permit),
     active: Boolean(row.active),
   };

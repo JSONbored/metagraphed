@@ -252,6 +252,54 @@ test("formatRegistration coerces flags + is null-safe (#1347)", () => {
   assert.equal(formatRegistration(null), null);
 });
 
+test("formatRegistration coerces D1 numeric-string cells to schema types", () => {
+  const out = formatRegistration({
+    netuid: "7",
+    uid: "3",
+    stake_tao: "100.5",
+    validator_permit: 1,
+    active: 1,
+  });
+  assert.equal(typeof out.netuid, "number");
+  assert.equal(typeof out.uid, "number");
+  assert.equal(typeof out.stake_tao, "number");
+  assert.equal(out.netuid, 7);
+  assert.equal(out.uid, 3);
+  assert.equal(out.stake_tao, 100.5);
+});
+
+test("formatRegistration drops invalid netuid and uid cells instead of leaking strings", () => {
+  const out = formatRegistration({
+    netuid: "not-a-netuid",
+    uid: "-1",
+    stake_tao: null,
+    validator_permit: 0,
+    active: 0,
+  });
+  assert.equal(out.netuid, null);
+  assert.equal(out.uid, null);
+});
+
+test("buildAccountSummary and buildAccountSubnets keep coerced registration types", () => {
+  const row = {
+    netuid: "14",
+    uid: "2",
+    stake_tao: "12.25",
+    validator_permit: 1,
+    active: 1,
+  };
+  const summary = buildAccountSummary("5Hk", { registrations: [row] });
+  const subnets = buildAccountSubnets([row], "5Hk");
+  for (const reg of [summary.registrations[0], subnets.subnets[0]]) {
+    assert.equal(typeof reg.netuid, "number");
+    assert.equal(typeof reg.uid, "number");
+    assert.equal(typeof reg.stake_tao, "number");
+    assert.equal(reg.netuid, 14);
+    assert.equal(reg.uid, 2);
+    assert.equal(reg.stake_tao, 12.25);
+  }
+});
+
 test("buildAccountSummary joins aggregates + registrations (#1347)", () => {
   const out = buildAccountSummary("5Hk", {
     agg: { c: 5, sc: 2, fb: 1, lb: 9, fo: 1750000000000, lo: 1750009000000 },
