@@ -4973,6 +4973,61 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
   });
 
+  test("get_account_extrinsics applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = tailD1(
+      {
+        extrinsics: [
+          {
+            block_number: 150,
+            extrinsic_index: 4,
+            extrinsic_hash: "0xabc",
+            signer: SS58,
+            call_module: "Balances",
+            call_function: "transfer",
+            call_args: null,
+            success: 1,
+            fee_tao: 0.001,
+            tip_tao: null,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_extrinsics",
+      {
+        ss58: SS58,
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.extrinsic_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /FROM extrinsics WHERE signer/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_account_extrinsics rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_account_extrinsics",
+      { ss58: SS58, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
   test("get_account_transfers returns transfers with direction field", async () => {
     const env = tailD1({
       transfers: [

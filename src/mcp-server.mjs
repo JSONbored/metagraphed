@@ -678,6 +678,18 @@ function requireNonNegativeInt(args, key) {
   return value;
 }
 
+function optionalNonNegativeInt(args, key) {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (!Number.isInteger(value) || value < 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a non-negative integer.`,
+    );
+  }
+  return value;
+}
+
 function requireNetuid(args) {
   return requireNonNegativeInt(args, "netuid");
 }
@@ -2134,8 +2146,10 @@ export const MCP_TOOLS = [
       "Fetch the extrinsics (transactions) signed by one account by its SS58 address, " +
       "newest first: block, extrinsic index, hash, call module and function, success " +
       "flag, and fee. Matched by the extrinsic signer only (not the hotkey or coldkey " +
-      "union used by get_account_events). Page with limit (1-1000, default 100) / " +
-      "offset. Useful for seeing exactly which extrinsics a wallet submitted.",
+      "union used by get_account_events). Optionally constrain block height with " +
+      "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
+      "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/extrinsics.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2144,6 +2158,18 @@ export const MCP_TOOLS = [
           description:
             "The account's SS58 address (the extrinsic signer), base58, 47-48 chars.",
           pattern: SS58_PATTERN_SOURCE,
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2156,15 +2182,25 @@ export const MCP_TOOLS = [
           description: "Pagination offset. Default 0.",
           minimum: 0,
         },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
       },
       required: ["ss58"],
       additionalProperties: false,
     },
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
+      const cursor = optionalString(args, "cursor");
       return loadAccountExtrinsics(mcpD1Runner(ctx), ss58, {
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
+        cursor: cursor ?? undefined,
       });
     },
   },
@@ -4095,6 +4131,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       extrinsic_count: { type: "integer" },
       limit: NULLABLE_INT,
       offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
       extrinsics: objectItems(EXTRINSIC_ITEM),
     },
   },
