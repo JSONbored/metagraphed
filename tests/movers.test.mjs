@@ -4,12 +4,9 @@ import {
   computeMovers,
   buildMovers,
   loadSubnetMovers,
-  MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
   DEFAULT_MOVERS_SORT,
 } from "../src/movers.mjs";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Aggregate row helper: one neuron_daily GROUP BY netuid,snapshot_date row.
 function agg(netuid, snapshot_date, { neurons, validators, stake, emission }) {
@@ -48,6 +45,26 @@ describe("buildMovers", () => {
     const data = buildMovers([], [], { window: "bogus", sort: "bogus" });
     assert.equal(data.window, DEFAULT_MOVERS_WINDOW);
     assert.equal(data.sort, DEFAULT_MOVERS_SORT);
+  });
+
+  test("clamps a non-integer / negative / over-max limit", () => {
+    const startRows = [
+      agg(1, "s", { stake: 1 }),
+      agg(2, "s", { stake: 2 }),
+      agg(3, "s", { stake: 3 }),
+    ];
+    const endRows = [
+      agg(1, "e", { stake: 30 }),
+      agg(2, "e", { stake: 20 }),
+      agg(3, "e", { stake: 10 }),
+    ];
+    const opts = { window: "30d", startDate: "x", endDate: "y" };
+    const len = (limit) =>
+      buildMovers(startRows, endRows, { ...opts, limit }).movers.length;
+    assert.equal(len(1.9), 1); // floored to 1
+    assert.equal(len(-5), 0); // negative clamps to 0
+    assert.equal(len(999), 3); // over-max clamps to MOVERS_LIMIT_MAX, capped by data
+    assert.equal(len(Number.NaN), 3); // non-finite -> default (>= data length here)
   });
 });
 
@@ -215,7 +232,8 @@ describe("loadSubnetMovers", () => {
     });
     assert.equal(calls.length, 2);
     assert.match(calls[0].sql, /MIN\(snapshot_date\)/);
-    assert.equal(calls[0].params[0], "2026-05-31"); // cutoff = now - 30d (slice YYYY-MM-DD)
+    assert.match(calls[0].sql, /date\(MAX\(snapshot_date\), \?\)/); // anchored to stored MAX, not now
+    assert.equal(calls[0].params[0], "-30 days");
     assert.match(calls[1].sql, /GROUP BY netuid, snapshot_date/);
     assert.deepEqual(calls[1].params, ["2026-05-31", "2026-06-30"]);
     assert.equal(data.window, "30d");
@@ -257,46 +275,52 @@ describe("loadSubnetMovers", () => {
     assert.equal(data.start_date, "2026-06-30");
   });
 
-  test("cutoff is now - windowDays as a YYYY-MM-DD string", async () => {
+  test("anchors the window to the newest stored snapshot, not the worker clock", async () => {
+    // Worker clock is mid-2026 but the store's newest snapshot is months older; a now-relative
+    // window would return empty. The loader must still compare the stored boundary snapshots.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T12:00:00.000Z"));
-    let cutoff;
+    let boundsParam;
     const d1 = async (sql, params) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
-        cutoff = params[0];
-        return [{ start_date: null, end_date: null }];
+        boundsParam = params[0];
+        return [{ start_date: "2026-01-01", end_date: "2026-01-31" }];
       }
-      return [];
+      return [
+        agg(1, "2026-01-01", {
+          neurons: 10,
+          validators: 3,
+          stake: 100,
+          emission: 5,
+        }),
+        agg(1, "2026-01-31", {
+          neurons: 12,
+          validators: 4,
+          stake: 250,
+          emission: 9,
+        }),
+      ];
     };
-    await loadSubnetMovers(d1, { windowLabel: "7d" });
-    assert.equal(
-      cutoff,
-      new Date(Date.now() - MOVERS_WINDOWS["7d"] * DAY_MS)
-        .toISOString()
-        .slice(0, 10),
-    );
+    const data = await loadSubnetMovers(d1, { windowLabel: "7d" });
+    assert.equal(boundsParam, "-7 days"); // cutoff computed in SQL relative to MAX(snapshot_date)
+    assert.equal(data.start_date, "2026-01-01");
+    assert.equal(data.end_date, "2026-01-31");
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.movers[0].stake_delta_tao, 150);
     vi.useRealTimers();
   });
 
-  test("an unknown window label falls back to the 30d cutoff", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
-    let cutoff;
+  test("an unknown window label falls back to the 30d window", async () => {
+    let boundsParam;
     const d1 = async (sql, params) => {
       if (/MIN\(snapshot_date\)/.test(sql)) {
-        cutoff = params[0];
+        boundsParam = params[0];
         return [{ start_date: null, end_date: null }];
       }
       return [];
     };
     await loadSubnetMovers(d1, { windowLabel: "bogus" });
-    assert.equal(
-      cutoff,
-      new Date(Date.now() - MOVERS_WINDOWS["30d"] * DAY_MS)
-        .toISOString()
-        .slice(0, 10),
-    );
-    vi.useRealTimers();
+    assert.equal(boundsParam, "-30 days");
   });
 
   test("a non-array aggregate result degrades to an empty leaderboard", async () => {

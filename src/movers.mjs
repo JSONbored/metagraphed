@@ -8,9 +8,7 @@
 // filter on snapshot_date first (the window-boundary MIN/MAX and the two-day aggregate), so
 // the date-first idx_neuron_daily_date_netuid_agg (migrations/0030) covers them.
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Supported comparison windows (label -> days), the same set concentration/history use.
+// Supported comparison windows (label -> days): the 7d/30d/90d set the concentration scorecards use.
 export const MOVERS_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
 export const DEFAULT_MOVERS_WINDOW = "30d";
 
@@ -137,6 +135,13 @@ export function buildMovers(
       : MOVERS_WINDOWS[window]
         ? window
         : DEFAULT_MOVERS_WINDOW;
+  // Clamp limit to a whole number in [0, MOVERS_LIMIT_MAX] so a direct caller cannot make
+  // slice() behave oddly with a non-integer, negative, or over-max value (the HTTP layer
+  // already validates 1..MOVERS_LIMIT_MAX; this keeps the pure builder's contract aligned).
+  const flooredLimit = Math.floor(Number(limit));
+  const normalizedLimit = Number.isFinite(flooredLimit)
+    ? Math.max(0, Math.min(flooredLimit, MOVERS_LIMIT_MAX))
+    : MOVERS_LIMIT_DEFAULT;
   const comparable =
     startDate != null && endDate != null && startDate !== endDate;
   const ranked = comparable
@@ -149,7 +154,7 @@ export function buildMovers(
     end_date: endDate ?? null,
     sort: normalizedSort,
     subnet_count: ranked.length,
-    movers: ranked.slice(0, limit),
+    movers: ranked.slice(0, normalizedLimit),
   };
 }
 
@@ -168,13 +173,14 @@ export async function loadSubnetMovers(
 ) {
   const days =
     MOVERS_WINDOWS[windowLabel] ?? MOVERS_WINDOWS[DEFAULT_MOVERS_WINDOW];
-  const cutoff = new Date(Date.now() - days * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
+  // Anchor the window to the newest STORED snapshot (date() relative to MAX(snapshot_date)),
+  // not the worker's wall clock, so a lagging, restored, or historical D1 store still compares
+  // its real boundary snapshots instead of returning empty when the data trails "now".
   const bounds = await d1(
     "SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date " +
-      "FROM neuron_daily WHERE snapshot_date >= ?",
-    [cutoff],
+      "FROM neuron_daily " +
+      "WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ?) FROM neuron_daily)",
+    [`-${days} days`],
   );
   const startDate = bounds?.[0]?.start_date ?? null;
   const endDate = bounds?.[0]?.end_date ?? null;
