@@ -40,7 +40,14 @@ describe("buildTurnover", () => {
     // Only a mid-window snapshot exists; the requested boundary dates have no
     // rows. jaccard(empty, empty) = 1 must NOT surface as perfect retention.
     const data = buildTurnover(
-      [{ snapshot_date: "2026-06-15", uid: 0, hotkey: "H0", validator_permit: 1 }],
+      [
+        {
+          snapshot_date: "2026-06-15",
+          uid: 0,
+          hotkey: "H0",
+          validator_permit: 1,
+        },
+      ],
       1,
       { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
     );
@@ -56,7 +63,14 @@ describe("buildTurnover", () => {
     // Start resolves, end does not — without the guard this would report
     // validator_retention 0 (everyone "exited") instead of no-data.
     const data = buildTurnover(
-      [{ snapshot_date: "2026-06-01", uid: 0, hotkey: "V1", validator_permit: 1 }],
+      [
+        {
+          snapshot_date: "2026-06-01",
+          uid: 0,
+          hotkey: "V1",
+          validator_permit: 1,
+        },
+      ],
       1,
       { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
     );
@@ -243,7 +257,14 @@ describe("buildTurnoverChanges", () => {
 
   test("rows present but neither boundary date resolves yields empty detail (#2415)", () => {
     const data = buildTurnoverChanges(
-      [{ snapshot_date: "2026-06-15", uid: 0, hotkey: "H0", validator_permit: 1 }],
+      [
+        {
+          snapshot_date: "2026-06-15",
+          uid: 0,
+          hotkey: "H0",
+          validator_permit: 1,
+        },
+      ],
       7,
       { window: "30d", startDate: "2026-06-01", endDate: "2026-06-30" },
     );
