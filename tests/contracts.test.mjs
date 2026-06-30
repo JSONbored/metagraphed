@@ -19,7 +19,7 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 
 describe("public contract registry", () => {
   test("keeps API routes and artifacts unique", () => {
-    assert.equal(CONTRACT_VERSION, "2026-06-30.4");
+    assert.equal(CONTRACT_VERSION, "2026-06-30.5");
     assert.equal(CACHE_SECONDS.short, 60);
     assert.equal(
       new Set(API_ROUTES.map((route) => route.id)).size,

@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.4";
+export const CONTRACT_VERSION = "2026-06-30.5";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -2119,7 +2119,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/calls",
     "/metagraph/chain/calls.json",
-    "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, ordered by count. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
+    "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
     "short",
     ["chain", "analytics"],
     [
@@ -2129,6 +2129,7 @@ export const API_ROUTES = [
         schema: { type: "string", enum: ["module", "module_function"] },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "call_module", schema: { type: "string", maxLength: 100 } },
     ],
     [],
   ),

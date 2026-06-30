@@ -446,6 +446,39 @@ describe("analytics-live loaders", () => {
     assert.equal(data.calls[0].call_function, "add_stake");
   });
 
+  test("loadChainCalls scopes grouped rows and totals by call_module", async () => {
+    const captured = [];
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/GROUP BY call_module, call_function/.test(sql)) {
+        return [
+          {
+            call_module: "SubtensorModule",
+            call_function: "add_stake",
+            count: 50,
+          },
+        ];
+      }
+      if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 80 }];
+      return [];
+    };
+    const data = await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module_function",
+      callModule: "SubtensorModule",
+      limit: 3,
+      observedAt: OBSERVED_AT,
+      now: Date.UTC(2026, 5, 26),
+    });
+
+    assert.match(captured[0].sql, /AND call_module = \?/);
+    assert.match(captured[1].sql, /AND call_module = \?/);
+    assert.deepEqual(captured[0].params.slice(1), ["SubtensorModule", 3]);
+    assert.deepEqual(captured[1].params.slice(1), ["SubtensorModule"]);
+    assert.equal(data.total_extrinsics, 80);
+    assert.equal(data.calls[0].share, 0.625);
+  });
+
   test("loadChainCalls falls back to 7d for an unknown window label", async () => {
     const data = await loadChainCalls(d1(), {
       window: "90d",

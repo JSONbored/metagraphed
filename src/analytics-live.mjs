@@ -393,6 +393,7 @@ export async function loadChainCalls(
   {
     window = "7d",
     groupBy = "module",
+    callModule = null,
     limit = 50,
     observedAt = null,
     now = Date.now(),
@@ -409,19 +410,23 @@ export async function loadChainCalls(
     groupBy === "module_function"
       ? "call_module, call_function"
       : "call_module";
+  const callModuleFilter =
+    typeof callModule === "string" && callModule.length > 0 ? callModule : null;
+  const moduleClause = callModuleFilter ? " AND call_module = ?" : "";
   const [rows, totalRows] = await Promise.all([
     d1(
       `SELECT ${selectCols}, COUNT(*) AS count
        FROM extrinsics
-       WHERE observed_at >= ? AND call_module IS NOT NULL
+       WHERE observed_at >= ? AND call_module IS NOT NULL${moduleClause}
        GROUP BY ${groupCols}
        ORDER BY count DESC
        LIMIT ?`,
-      [cutoff, limit],
+      callModuleFilter ? [cutoff, callModuleFilter, limit] : [cutoff, limit],
     ),
-    d1(`SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`, [
-      cutoff,
-    ]),
+    d1(
+      `SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?${moduleClause}`,
+      callModuleFilter ? [cutoff, callModuleFilter] : [cutoff],
+    ),
   ]);
   return buildChainCalls({
     window: windowLabel,

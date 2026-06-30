@@ -803,7 +803,11 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
 // call_module/call_function). The share denominator is the full-window extrinsic
 // count read separately, so the truncated LIMIT tail never skews shares.
 export async function handleChainCalls(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["group_by", "limit"]);
+  const { label, error } = analyticsWindow(url, [
+    "group_by",
+    "limit",
+    "call_module",
+  ]);
   if (error) return analyticsQueryError(error);
   const groupByError = validateEnumParam(url, "group_by", [
     "module",
@@ -816,34 +820,45 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   });
   if (limitError) return analyticsQueryError(limitError);
   const groupBy = url.searchParams.get("group_by") || "module";
-  return withEdgeCache(request, ctx, env, "chain-calls", async () => {
-    let usedFallback = false;
-    const d1 = async (sql, params) => {
-      const rows = await d1All(env, sql, params);
-      if (hasD1FallbackRows(rows)) usedFallback = true;
-      return rows;
-    };
-    const meta = await readHealthMetaKv(env);
-    const data = await loadChainCalls(d1, {
-      window: label,
-      groupBy,
-      limit,
-      observedAt: meta?.last_run_at || null,
-    });
-    const response = await envelopeResponse(
-      request,
-      {
-        data,
-        meta: await analyticsMeta(
-          env,
-          "/metagraph/chain/calls.json",
-          data.observed_at,
-        ),
-      },
-      "short",
-    );
-    return usedFallback ? markD1FallbackResponse(response) : response;
-  });
+  const callModule = url.searchParams.get("call_module");
+  const callModuleError = validateMaxLength(url, "call_module", 100);
+  if (callModuleError) return analyticsQueryError(callModuleError);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-calls",
+    async () => {
+      let usedFallback = false;
+      const d1 = async (sql, params) => {
+        const rows = await d1All(env, sql, params);
+        if (hasD1FallbackRows(rows)) usedFallback = true;
+        return rows;
+      };
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainCalls(d1, {
+        window: label,
+        groupBy,
+        callModule,
+        limit,
+        observedAt: meta?.last_run_at || null,
+      });
+      const response = await envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/calls.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+      return usedFallback ? markD1FallbackResponse(response) : response;
+    },
+    canonicalAnalyticsCacheRoute(url, ["group_by", "limit", "call_module"]),
+  );
 }
 
 // Windowed most-active-account leaderboard (#1990): signers ranked by extrinsic

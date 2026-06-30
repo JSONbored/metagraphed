@@ -348,6 +348,21 @@ describe("canonicalAnalyticsCacheRoute", () => {
       canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
     );
   });
+
+  test("includes the chain calls grouping and module filter in canonical order", () => {
+    const requestUrl = url(
+      "/api/v1/chain/calls?call_module=SubtensorModule&limit=10&group_by=module_function&window=30d",
+    );
+
+    assert.equal(
+      canonicalAnalyticsCacheRoute(requestUrl, [
+        "group_by",
+        "limit",
+        "call_module",
+      ]),
+      "/api/v1/chain/calls?window=30d&group_by=module_function&limit=10&call_module=SubtensorModule",
+    );
+  });
 });
 
 describe("canonicalHealthWindowCachePath", () => {
