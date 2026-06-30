@@ -1792,7 +1792,7 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
-  test("scopes both queries by call_module", async () => {
+  test("scopes all three queries by call_module", async () => {
     const modules = [];
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -1817,7 +1817,7 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.deepEqual(modules, ["Balances", "Balances"]);
+    assert.deepEqual(modules, ["Balances", "Balances", "Balances"]);
   });
 
   test("rejects an invalid window", async () => {
