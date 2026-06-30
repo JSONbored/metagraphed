@@ -579,12 +579,12 @@ test("GET /api/v1/chain/fees scopes both the daily series and payers by call_mod
     {},
   );
   assert.equal(res.status, 200);
-  // Both extrinsics queries (daily series + payer list) are scoped; filter to
-  // them explicitly rather than assuming the captured order/count.
+  // All three extrinsics queries (daily series, payer list, median samples) are
+  // scoped; filter to them explicitly rather than assuming the captured order/count.
   const extrinsicsQueries = captured.filter((q) =>
     /FROM extrinsics/.test(q.sql),
   );
-  assert.equal(extrinsicsQueries.length, 2);
+  assert.equal(extrinsicsQueries.length, 3);
   for (const q of extrinsicsQueries) {
     assert.match(q.sql, /AND call_module = \?/);
     assert.ok(q.params.includes("SubtensorModule"));
@@ -628,7 +628,7 @@ test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
 
 // ---- fees (#1988) builder + handler ---------------------------------------
 
-test("buildChainFees computes per-day averages + null avg on a zero-extrinsic day", () => {
+test("buildChainFees computes per-day averages + null avg/median on a zero-extrinsic day", () => {
   const out = buildChainFees({
     window: "7d",
     dailyRows: [
@@ -644,6 +644,11 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
         total_fee_tao: 0,
         total_tip_tao: 0,
       },
+    ],
+    feeSampleRows: [
+      { day: "2026-06-25", fee_tao: 0.01, tip_tao: 0.001 },
+      { day: "2026-06-25", fee_tao: 0.02, tip_tao: 0.003 },
+      { day: "2026-06-25", fee_tao: 0.03, tip_tao: 0.005 },
     ],
     payerRows: [
       {
@@ -662,9 +667,47 @@ test("buildChainFees computes per-day averages + null avg on a zero-extrinsic da
   const d25 = out.daily.find((d) => d.day === "2026-06-25");
   assert.equal(d25.avg_fee_tao, 0.01); // 1.0/100
   assert.equal(d25.avg_tip_tao, 0.005);
+  assert.equal(d25.median_fee_tao, 0.02);
+  assert.equal(d25.median_tip_tao, 0.003);
   const d26 = out.daily.find((d) => d.day === "2026-06-26");
   assert.equal(d26.avg_fee_tao, null); // zero extrinsics → null, never NaN
+  assert.equal(d26.median_fee_tao, null);
   assert.equal(out.top_fee_payers[0].signer, "5Pay");
+});
+
+test("buildChainFees median uses the mean of the two middle values on even counts", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 2,
+        total_fee_tao: 0.04,
+        total_tip_tao: 0,
+      },
+    ],
+    feeSampleRows: [
+      { day: "2026-06-25", fee_tao: 0.01, tip_tao: 0 },
+      { day: "2026-06-25", fee_tao: 0.03, tip_tao: 0 },
+    ],
+  });
+  assert.equal(out.daily[0].median_fee_tao, 0.02);
+});
+
+test("buildChainFees leaves medians null when no per-extrinsic samples were loaded", () => {
+  const out = buildChainFees({
+    window: "7d",
+    dailyRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 2,
+        total_fee_tao: 0.04,
+        total_tip_tao: 0,
+      },
+    ],
+  });
+  assert.equal(out.daily[0].median_fee_tao, null);
+  assert.equal(out.daily[0].median_tip_tao, null);
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
@@ -694,7 +737,12 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
                       extrinsic_count: 50,
                     },
                   ]
-                : [];
+                : /COALESCE\(fee_tao, 0\) AS fee_tao/.test(sql)
+                  ? [
+                      { day: "2026-06-25", fee_tao: 0.01, tip_tao: 0 },
+                      { day: "2026-06-25", fee_tao: 0.03, tip_tao: 0 },
+                    ]
+                  : [];
             return { all: () => Promise.resolve({ results: rows }) };
           },
         };
@@ -709,9 +757,16 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
+  assert.equal(body.data.daily[0].median_fee_tao, 0.02); // median([0.01, 0.03])
   assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
   const daily = captured.find((q) => /GROUP BY day/.test(q.sql));
   assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+  const samples = captured.find(
+    (q) =>
+      /COALESCE\(fee_tao, 0\) AS fee_tao/.test(q.sql) &&
+      !/GROUP BY/.test(q.sql),
+  );
+  assert.ok(samples, "must load per-extrinsic fee samples for medians");
 });
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {

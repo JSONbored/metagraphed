@@ -2787,7 +2787,7 @@
       },
       "ChainFeeDay": {
         "additionalProperties": false,
-        "description": "One UTC day of fee/tip totals + averages. avg_*_tao is null when the day recorded zero extrinsics.",
+        "description": "One UTC day of fee/tip totals, averages, and exact per-extrinsic medians. avg_*_tao and median_*_tao are null when the day recorded zero extrinsics.",
         "properties": {
           "avg_fee_tao": {
             "minimum": 0,
@@ -2810,6 +2810,20 @@
             "minimum": 0,
             "type": "integer"
           },
+          "median_fee_tao": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median_tip_tao": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "total_fee_tao": {
             "minimum": 0,
             "type": "number"
@@ -2824,8 +2838,10 @@
           "extrinsic_count",
           "total_fee_tao",
           "avg_fee_tao",
+          "median_fee_tao",
           "total_tip_tao",
-          "avg_tip_tao"
+          "avg_tip_tao",
+          "median_tip_tao"
         ],
         "type": "object"
       },
@@ -2859,7 +2875,7 @@
       },
       "ChainFeesArtifact": {
         "additionalProperties": true,
-        "description": "Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals + averages; exact median is a follow-up) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold.",
+        "description": "Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals, averages, and exact per-extrinsic medians) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold.",
         "properties": {
           "daily": {
             "items": {

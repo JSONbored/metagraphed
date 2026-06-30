@@ -169,30 +169,62 @@ export function buildChainSigners({ window, observedAt = null, rows = [] }) {
   };
 }
 
-// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + exact
-// builder-computed averages; median is a follow-up) plus a windowed top-fee-payer
-// list. avg_*_tao guard the zero-denominator (a day with no extrinsics → null).
+// Exact median of per-extrinsic TAO values for one UTC day (even-length uses the
+// mean of the two middle values), rounded to rao precision via toTao.
+function medianTao(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const raw =
+    sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+  return toTao(raw);
+}
+
+function feeSamplesByDay(feeSampleRows) {
+  const byDay = new Map();
+  for (const row of Array.isArray(feeSampleRows) ? feeSampleRows : []) {
+    if (!row || typeof row.day !== "string") continue;
+    const bucket = byDay.get(row.day) || { fees: [], tips: [] };
+    bucket.fees.push(toTao(row.fee_tao));
+    bucket.tips.push(toTao(row.tip_tao));
+    byDay.set(row.day, bucket);
+  }
+  return byDay;
+}
+
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
+// and exact per-extrinsic medians) plus a windowed top-fee-payer list. avg_*_tao
+// and median_*_tao guard the zero-extrinsic day (null, never NaN).
 export function buildChainFees({
   window,
   observedAt = null,
   dailyRows = [],
   payerRows = [],
+  feeSampleRows = [],
 }) {
+  const samplesByDay = feeSamplesByDay(feeSampleRows);
   const daily = (Array.isArray(dailyRows) ? dailyRows : [])
     .filter((r) => r && typeof r.day === "string")
     .map((r) => {
       const extrinsicCount = toCount(r.extrinsic_count);
       const totalFee = toTao(r.total_fee_tao);
       const totalTip = toTao(r.total_tip_tao);
+      const samples = samplesByDay.get(r.day);
       return {
         day: r.day,
         extrinsic_count: extrinsicCount,
         total_fee_tao: totalFee,
         avg_fee_tao:
           extrinsicCount > 0 ? toTao(totalFee / extrinsicCount) : null,
+        median_fee_tao:
+          extrinsicCount > 0 && samples ? medianTao(samples.fees) : null,
         total_tip_tao: totalTip,
         avg_tip_tao:
           extrinsicCount > 0 ? toTao(totalTip / extrinsicCount) : null,
+        median_tip_tao:
+          extrinsicCount > 0 && samples ? medianTao(samples.tips) : null,
       };
     })
     .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));

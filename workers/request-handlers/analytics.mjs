@@ -910,9 +910,10 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
   );
 }
 
-// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + averages)
-// plus a windowed top-fee-payer list. COALESCE keeps NULL fees/tips out of the
-// SUMs; exact median is a deliberate follow-up (no native percentile in D1).
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
+// and exact per-extrinsic medians) plus a windowed top-fee-payer list. COALESCE
+// keeps NULL fees/tips out of the SUMs; medians are computed in the pure builder
+// from a per-extrinsic sample read (D1 has no native percentile).
 export async function handleChainFees(request, env, url, ctx = {}) {
   const { label, days, error } = analyticsWindow(url, ["limit", "call_module"]);
   if (error) return analyticsQueryError(error);
@@ -934,7 +935,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
     "chain-fees",
     async () => {
       const cutoff = Date.now() - days * DAY_MS;
-      const [dailyRows, payerRows] = await Promise.all([
+      const [dailyRows, payerRows, feeSampleRows] = await Promise.all([
         d1All(
           env,
           `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
@@ -959,6 +960,15 @@ export async function handleChainFees(request, env, url, ctx = {}) {
          LIMIT ?`,
           callModule ? [cutoff, callModule, limit] : [cutoff, limit],
         ),
+        d1All(
+          env,
+          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao,
+                COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ?${moduleClause}`,
+          callModule ? [cutoff, callModule] : [cutoff],
+        ),
       ]);
       const meta = await readHealthMetaKv(env);
       const data = buildChainFees({
@@ -966,6 +976,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         observedAt: meta?.last_run_at || null,
         dailyRows,
         payerRows,
+        feeSampleRows,
       });
       const response = await envelopeResponse(
         request,
@@ -979,7 +990,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         },
         "short",
       );
-      return hasD1FallbackRows(dailyRows, payerRows)
+      return hasD1FallbackRows(dailyRows, payerRows, feeSampleRows)
         ? markD1FallbackResponse(response)
         : response;
     },

@@ -732,7 +732,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-30.5",
-      "description": "Fee/tip market analytics (daily totals + averages and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+      "description": "Fee/tip market analytics (daily totals, averages, medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",

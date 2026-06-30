@@ -1099,7 +1099,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
-    "Fee/tip market analytics (daily totals + averages and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
+    "Fee/tip market analytics (daily totals, averages, medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
     "ChainFeesArtifact",
   ),
   artifact(
@@ -2153,7 +2153,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/chain/fees",
     "/metagraph/chain/fees.json",
-    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
+    "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact per-extrinsic medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
     "short",
     ["chain", "analytics"],
     [
