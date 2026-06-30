@@ -1731,7 +1731,7 @@ describe("MCP get_chain_fees", () => {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           return {
-            bind(...params) {
+            bind(..._params) {
               return {
                 async all() {
                   for (const [pattern, rows] of Object.entries(resultsBySql)) {
