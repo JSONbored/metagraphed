@@ -502,6 +502,30 @@ describe("overlaySubnetHealth (additional paths)", () => {
     assert.equal(out.summary.status, "ok");
   });
 
+  test("folds unrecognized live status into unknown on each surface row", () => {
+    const live = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      surfaces: [
+        {
+          surface_id: "sn7-api",
+          netuid: 7,
+          kind: "subnet-api",
+          provider: "prov",
+          url: "https://api",
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          last_checked: "2026-06-13T00:00:00.000Z",
+          last_ok: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const out = overlaySubnetHealth(null, live, 7);
+    assert.equal(out.surfaces[0].status, "unknown");
+    assert.equal(out.summary.status, "unknown");
+    assert.equal(out.summary.unknown_count, 1);
+  });
+
   test("static artifact without a surfaces array → treated as empty, live pushed", () => {
     const live = {
       last_run_at: null,
@@ -1303,6 +1327,8 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.equal(live.summary.status_counts.unknown, 1);
     assert.equal(live.summary.status_counts.throttled, undefined);
     assert.equal(live.summary.surface_count, 1);
+    assert.equal(live.surfaces[0].status, "unknown");
+    assert.equal(live.subnets[0].status, "unknown");
   });
 
   test("does not return stale D1-only surface_status rows", async () => {
