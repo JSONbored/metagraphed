@@ -22,11 +22,19 @@ test("cursor tokens are URL-safe (digits + dots only)", () => {
   assert.deepEqual(decodeCursor(token, 2), [4294967295, 4294967294]);
 });
 
+test("encodeCursor round-trips D1 numeric-string PK parts", () => {
+  const token = encodeCursor(["7270283", "2"]);
+  assert.equal(token, "7270283.2");
+  assert.deepEqual(decodeCursor(token, 2), [7270283, 2]);
+  assert.equal(encodeCursor(["150"]), "150");
+});
+
 test("encodeCursor rejects empty/negative/non-integer input", () => {
   assert.equal(encodeCursor([]), null);
   assert.equal(encodeCursor([-1]), null);
   assert.equal(encodeCursor([1.5]), null);
   assert.equal(encodeCursor("nope"), null);
+  assert.equal(encodeCursor(["9007199254740993"]), null);
 });
 
 test("decodeCursor returns null on malformed/garbage/arity-mismatch", () => {
