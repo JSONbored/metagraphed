@@ -1733,7 +1733,7 @@ describe("MCP get_chain_fees", () => {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           return {
-            bind(...params) {
+            bind() {
               return {
                 async all() {
                   if (sql.includes("GROUP BY day")) {
