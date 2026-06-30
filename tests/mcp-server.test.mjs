@@ -1733,9 +1733,46 @@ describe("MCP get_chain_signers", () => {
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
+    assert.equal(out.sort, "tx_count");
     assert.equal(out.signer_count, 1);
     assert.equal(out.signers[0].tx_count, 12);
     assert.equal(out.signers[0].total_fee_tao, 1.5);
+  });
+
+  test("rejects an invalid sort", async () => {
+    const res = await callTool("get_chain_signers", { sort: "bogus" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort/i);
+  });
+
+  test("ranks signers by total_fee_tao when requested", async () => {
+    let capturedSql;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capturedSql = sql;
+              return {
+                async all() {
+                  assert.match(sql, /FROM extrinsics/);
+                  assert.ok(params.includes(50));
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_signers",
+      { window: "7d", sort: "total_fee_tao", limit: 50 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_fee_tao");
+    assert.match(capturedSql, /ORDER BY total_fee_tao DESC, signer ASC/);
   });
 
   test("rejects an invalid window", async () => {

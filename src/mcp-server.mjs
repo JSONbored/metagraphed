@@ -29,7 +29,7 @@ import {
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
-import { loadChainSigners } from "./chain-query-loaders.mjs";
+import { CHAIN_SIGNERS_SORTS, loadChainSigners } from "./chain-query-loaders.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
@@ -2764,9 +2764,9 @@ export const MCP_TOOLS = [
     title: "Get the most-active account signers",
     description:
       "Fetch the windowed most-active-account leaderboard: signers ranked by " +
-      "extrinsic count over the requested window (7d or 30d), with total fees, " +
-      "tips, and last signed block. Optionally scope to one pallet via " +
-      "call_module. Mirrors GET /api/v1/chain/signers.",
+      "extrinsic count (default) or total fees over the requested window " +
+      "(7d or 30d), with total fees, tips, and last signed block. Optionally " +
+      "scope to one pallet via call_module. Mirrors GET /api/v1/chain/signers.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2774,6 +2774,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d"],
           description: "Lookback window (default 7d).",
+        },
+        sort: {
+          type: "string",
+          enum: ["tx_count", "total_fee_tao"],
+          description:
+            "Rank signers by extrinsic count (default) or total fees paid.",
         },
         limit: {
           type: "integer",
@@ -2795,6 +2801,8 @@ export const MCP_TOOLS = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label, days } = parsed;
+      const sort =
+        optionalEnum(args, "sort", CHAIN_SIGNERS_SORTS) || "tx_count";
       const limit = clampLimit(args?.limit, 50, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
@@ -2809,6 +2817,7 @@ export const MCP_TOOLS = [
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
+        sort,
       });
       return data;
     },
@@ -4676,10 +4685,11 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_chain_signers: {
     type: "object",
     additionalProperties: true,
-    required: ["window", "signer_count", "signers"],
+    required: ["window", "sort", "signer_count", "signers"],
     properties: {
       schema_version: { type: "integer" },
       window: { type: "string" },
+      sort: { type: "string", enum: ["tx_count", "total_fee_tao"] },
       observed_at: NULLABLE_STRING,
       signer_count: { type: "integer" },
       signers: objectItems({
