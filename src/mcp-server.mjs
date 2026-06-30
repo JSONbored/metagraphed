@@ -2678,12 +2678,12 @@ export const MCP_TOOLS = [
     name: "get_extrinsic_chain_events",
     title: "Get raw chain events emitted by one extrinsic",
     description:
-      "Fetch every raw pallet.method event one extrinsic emitted from the " +
-      "Postgres-backed all-events tier, newest first (up to 200). ref must be the " +
-      "composite id 'block_number-extrinsic_index' (e.g. '4200000-3'). Distinct from " +
-      "the curated account_events embedded in get_extrinsic. Requires the all-events " +
-      "data Worker (tier_unavailable in preview deploys). Mirrors GET " +
-      "/api/v1/chain-events?block=&extrinsic=.",
+      "Fetch raw pallet.method events one extrinsic emitted from the Postgres-backed " +
+      "all-events tier (newest first). ref must be the composite id " +
+      "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
+      "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
+      "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
+      "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2692,13 +2692,28 @@ export const MCP_TOOLS = [
           description:
             "Composite extrinsic id 'block_number-extrinsic_index' (e.g. '4200000-3').",
         },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-200, default 50).",
+          minimum: 1,
+          maximum: 200,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor for the next page.",
+        },
       },
       required: ["ref"],
       additionalProperties: false,
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return loadExtrinsicChainEvents(ctx, ref);
+      const cursor = optionalString(args, "cursor");
+      return loadExtrinsicChainEvents(ctx, ref, {
+        limit: args?.limit,
+        cursor: cursor ?? undefined,
+      });
     },
   },
   {
@@ -4708,6 +4723,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       ref: ANY,
       block_number: NULLABLE_INT,
       extrinsic_index: NULLABLE_INT,
+      limit: NULLABLE_INT,
       event_count: { type: "integer" },
       next_cursor: NULLABLE_STRING,
       events: objectItems(CHAIN_EVENT_ITEM),

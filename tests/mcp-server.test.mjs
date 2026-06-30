@@ -6078,7 +6078,49 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.equal(res.body.result.isError, false);
     assert.equal(dataApi.calls[0].searchParams.get("block"), "4200000");
     assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+    assert.equal(dataApi.calls[0].searchParams.get("limit"), "50");
     assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
+  test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {
+    const calls = [];
+    const dataApi = {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        const cursor = new URL(request.url).searchParams.get("cursor");
+        const payload = cursor
+          ? {
+              count: 1,
+              events: [{ pallet: "System", method: "ExtrinsicSuccess" }],
+            }
+          : { count: 0, next_cursor: "4200000.9", events: [] };
+        return Promise.resolve(
+          new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+    const first = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3", limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(first.body.result.isError, false);
+    assert.equal(first.body.result.structuredContent.next_cursor, "4200000.9");
+    const second = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3", cursor: "4200000.9" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(second.body.result.isError, false);
+    assert.equal(calls[1].searchParams.get("cursor"), "4200000.9");
+    assert.equal(
+      second.body.result.structuredContent.events[0].method,
+      "ExtrinsicSuccess",
+    );
   });
 
   test("get_extrinsic_chain_events rejects a hash ref", async () => {

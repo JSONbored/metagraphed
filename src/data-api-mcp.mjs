@@ -9,6 +9,15 @@ function throwToolError(code, message) {
   throw error;
 }
 
+const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
+const CHAIN_EVENTS_LIMIT_MAX = 200;
+
+function clampChainEventsLimit(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return CHAIN_EVENTS_LIMIT_DEFAULT;
+  return Math.min(Math.max(Math.floor(n), 1), CHAIN_EVENTS_LIMIT_MAX);
+}
+
 export async function dataApiFetchJson(ctx, pathAndQuery) {
   if (ctx.env?.DATA_RATE_LIMITER?.limit) {
     const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
@@ -60,7 +69,14 @@ export async function dataApiFetchJson(ctx, pathAndQuery) {
     );
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    throwToolError(
+      "tier_unavailable",
+      "The all-events data tier returned a malformed response. Try again shortly.",
+    );
+  }
 }
 
 export async function loadBlockChainEvents(ctx, blockNumber) {
@@ -84,7 +100,11 @@ export async function loadBlockChainEvents(ctx, blockNumber) {
 
 const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 
-export async function loadExtrinsicChainEvents(ctx, ref) {
+export async function loadExtrinsicChainEvents(
+  ctx,
+  ref,
+  { limit, cursor } = {},
+) {
   const composite = COMPOSITE_REF_RE.exec(String(ref));
   const blockNumber = composite ? Number(composite[1]) : NaN;
   const extrinsicIndex = composite ? Number(composite[2]) : NaN;
@@ -98,15 +118,18 @@ export async function loadExtrinsicChainEvents(ctx, ref) {
       "ref must be the composite id 'block_number-extrinsic_index' (e.g. '4200000-3').",
     );
   }
-  const data = await dataApiFetchJson(
-    ctx,
-    `/api/v1/chain-events?block=${blockNumber}&extrinsic=${extrinsicIndex}&limit=200`,
-  );
+  const lim = clampChainEventsLimit(limit);
+  let path =
+    `/api/v1/chain-events?block=${blockNumber}` +
+    `&extrinsic=${extrinsicIndex}&limit=${lim}`;
+  if (cursor) path += `&cursor=${encodeURIComponent(String(cursor))}`;
+  const data = await dataApiFetchJson(ctx, path);
   return {
     schema_version: 1,
     ref,
     block_number: blockNumber,
     extrinsic_index: extrinsicIndex,
+    limit: lim,
     event_count: data?.count ?? 0,
     next_cursor: data?.next_cursor ?? null,
     events: Array.isArray(data?.events) ? data.events : [],
