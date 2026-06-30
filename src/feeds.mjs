@@ -580,11 +580,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   }
 
   if (sinceMs != null && untilMs != null && sinceMs > untilMs) {
-    return fail(
-      "invalid_query",
-      "`since` must not be after `until`.",
-      400,
-    );
+    return fail("invalid_query", "`since` must not be after `until`.", 400);
   }
 
   let items;
