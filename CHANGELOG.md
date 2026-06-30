@@ -19,6 +19,29 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.29.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.28.0...platform-v0.29.0) (2026-06-30)
+
+
+### Features
+
+* **api:** add subnet turnover change drilldown ([#2348](https://github.com/JSONbored/metagraphed/issues/2348)) ([a4ddc30](https://github.com/JSONbored/metagraphed/commit/a4ddc302477a0391633a8de75ae603e79306d646))
+* **api:** support a block-height window on the per-subnet event route ([#2360](https://github.com/JSONbored/metagraphed/issues/2360)) ([d584cf9](https://github.com/JSONbored/metagraphed/commit/d584cf98f2f9edf5a01213f94251a1d75d9449bd))
+* **feeds:** add /api/v1/feeds/gaps enrichment subscription feed ([#2350](https://github.com/JSONbored/metagraphed/issues/2350)) ([68e1824](https://github.com/JSONbored/metagraphed/commit/68e1824c2071369b42de85ffdc07ae156c0d10a4))
+* **graphql:** add compare query mirroring /api/v1/compare ([#2367](https://github.com/JSONbored/metagraphed/issues/2367)) ([7b0ef33](https://github.com/JSONbored/metagraphed/commit/7b0ef33afa58f5232085f88aa8a4bf7330e6bb10))
+* **mcp:** add get_account_balance with full SS58 checksum validation ([#2338](https://github.com/JSONbored/metagraphed/issues/2338)) ([#2361](https://github.com/JSONbored/metagraphed/issues/2361)) ([bab0d8f](https://github.com/JSONbored/metagraphed/commit/bab0d8f185ed899268a533791281327630615deb))
+* **mcp:** add get_chain_calls with shared REST loader ([#2364](https://github.com/JSONbored/metagraphed/issues/2364)) ([#2365](https://github.com/JSONbored/metagraphed/issues/2365)) ([faeedb7](https://github.com/JSONbored/metagraphed/commit/faeedb76ddc8fbdd68e46400cf2df3b26af69dc1))
+* **mcp:** add get_chain_signers tool mirroring REST /chain/signers ([#2342](https://github.com/JSONbored/metagraphed/issues/2342)) ([#2343](https://github.com/JSONbored/metagraphed/issues/2343)) ([9352d61](https://github.com/JSONbored/metagraphed/commit/9352d61c43ba65826e19996f721e0928ece64ae4))
+
+
+### Bug Fixes
+
+* **api:** null counterparty first_block when scan is capped ([#2358](https://github.com/JSONbored/metagraphed/issues/2358)) ([32c1a3f](https://github.com/JSONbored/metagraphed/commit/32c1a3f2e43909fe90d1ce763d88a354a6f1a567))
+* **api:** round account-summary activity.total_fee_tao to rao precision ([#2352](https://github.com/JSONbored/metagraphed/issues/2352)) ([7e482a9](https://github.com/JSONbored/metagraphed/commit/7e482a95af74e8527d83aa4891dd34dc80661ae9))
+* **api:** round subnet-history total_stake_tao/total_emission_tao sums ([#2357](https://github.com/JSONbored/metagraphed/issues/2357)) ([64df1f8](https://github.com/JSONbored/metagraphed/commit/64df1f8472eb9bb8e756ca4c9e8900f46784cf1c)), closes [#2354](https://github.com/JSONbored/metagraphed/issues/2354)
+* **chain:** label account transfers by the requested side ([#2363](https://github.com/JSONbored/metagraphed/issues/2363)) ([e0a5ef0](https://github.com/JSONbored/metagraphed/commit/e0a5ef01371a9c57a70b37501d842053caf44819))
+* **chain:** lowercase 0x hashes in MCP get_block/get_extrinsic loaders ([#2353](https://github.com/JSONbored/metagraphed/issues/2353)) ([5f6ab0b](https://github.com/JSONbored/metagraphed/commit/5f6ab0b4e00fb80672988a19147d107a5f4038ca))
+* force module index on extrinsics feed ([#2345](https://github.com/JSONbored/metagraphed/issues/2345)) ([3080fe8](https://github.com/JSONbored/metagraphed/commit/3080fe8b8ffa55ac6c7bb5466e8486b60d8bbf0a))
+
 ## [0.28.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.27.0...platform-v0.28.0) (2026-06-29)
 
 
