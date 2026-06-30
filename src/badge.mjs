@@ -16,6 +16,7 @@
 //   metric=completeness  coverage completeness 0–100 from profiles.json
 //                        (alias: coverage); provider = mean across its subnets
 //   style=flat-square  square corners, no gradient (default: flat)
+//   style=for-the-badge  shields' tall, uppercase, bold, letter-spaced look
 //   label=…            override the left "metagraphed" segment text
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
@@ -41,7 +42,7 @@ const BADGE_METRICS = {
   coverage: "completeness",
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
-const BADGE_STYLES = new Set(["flat", "flat-square"]);
+const BADGE_STYLES = new Set(["flat", "flat-square", "for-the-badge"]);
 // shields.io "informational" blue, used for plain-count metrics (e.g. apis).
 const INFO_COLOR = "#007ec6";
 // Surface kinds that are callable machine interfaces (mirrors the build's
@@ -127,6 +128,12 @@ export function gradeColor(grade) {
 // (rounded + glossy gradient) or "flat-square" (square, matte).
 export function renderBadge(message, color, options = {}) {
   const { label = BADGE_LABEL, style = "flat" } = options;
+  // for-the-badge is a distinct layout (taller, uppercase, letter-spaced), so it
+  // gets its own renderer; the flat / flat-square path below is left untouched
+  // and its output stays byte-for-byte identical.
+  if (style === "for-the-badge") {
+    return renderForTheBadge(label, message, color);
+  }
   const eLabel = escapeXml(label);
   const eMsg = escapeXml(message);
   const pad = 12;
@@ -160,6 +167,54 @@ export function renderBadge(message, color, options = {}) {
   ]
     .filter((line) => line != null)
     .join("\n");
+}
+
+// for-the-badge geometry: a taller (28px), roomier, letter-spaced layout, so a
+// segment needs more width than the flat styles. textWidth() already
+// overestimates the glyph run; uppercasing (caps fall in the wide 8px bucket)
+// plus the per-glyph letter-spacing and the wide end padding keep the bold caps
+// from clipping their segment.
+const FTB_HEIGHT = 28;
+const FTB_FONT_SIZE = 10;
+const FTB_LETTER_SPACING = 1.5;
+const FTB_PAD = 24;
+
+// Width of one for-the-badge segment: the overestimated (uppercased) glyph run,
+// plus the letter-spacing rendered after each glyph, plus the wide end padding.
+function ftbSegmentWidth(text) {
+  const upper = String(text).toUpperCase();
+  const glyphs = [...upper].length;
+  return Math.ceil(textWidth(upper) + glyphs * FTB_LETTER_SPACING) + FTB_PAD;
+}
+
+// Render the shields "for-the-badge" variant: a tall, square, matte (no
+// gradient) badge with uppercase, bold, letter-spaced text — same two segments
+// and metric/label/color logic as the flat styles. aria-label/title keep the
+// original casing (the uppercasing is presentational, not semantic).
+function renderForTheBadge(label, message, color) {
+  const eLabel = escapeXml(label);
+  const eMsg = escapeXml(message);
+  const eLabelText = escapeXml(String(label).toUpperCase());
+  const eMsgText = escapeXml(String(message).toUpperCase());
+  const labelW = ftbSegmentWidth(label);
+  const msgW = ftbSegmentWidth(message);
+  const total = labelW + msgW;
+  const labelMid = labelW / 2;
+  const msgMid = labelW + msgW / 2;
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${FTB_HEIGHT}" role="img" aria-label="${eLabel}: ${eMsg}">`,
+    `<title>${eLabel}: ${eMsg}</title>`,
+    `<g shape-rendering="crispEdges">`,
+    `<rect width="${labelW}" height="${FTB_HEIGHT}" fill="#555"/>`,
+    `<rect x="${labelW}" width="${msgW}" height="${FTB_HEIGHT}" fill="${color}"/>`,
+    `</g>`,
+    `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="${FTB_FONT_SIZE}" font-weight="bold" letter-spacing="${FTB_LETTER_SPACING}">`,
+    `<text x="${labelMid}" y="18">${eLabelText}</text>`,
+    `<text x="${msgMid}" y="18">${eMsgText}</text>`,
+    `</g>`,
+    `</svg>`,
+    ``,
+  ].join("\n");
 }
 
 async function readData(readArtifact, env, path) {

@@ -147,6 +147,36 @@ describe("badge — rendering", () => {
     assert.ok((square.match(/<text /g) || []).length === 4);
   });
 
+  // Byte-for-byte locks the flat / flat-square output so the for-the-badge
+  // addition (and any future change) cannot silently alter the existing styles.
+  // Two representative inputs (default + label override) per style.
+  test("flat / flat-square output is byte-identical (regression lock)", () => {
+    const FLAT_DEFAULT =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n<title>metagraphed: 92/100</title>\n<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>\n<clipPath id="r"><rect width="144" height="20" rx="3" fill="#fff"/></clipPath>\n<g clip-path="url(#r)">\n<rect width="85" height="20" fill="#555"/>\n<rect x="85" width="59" height="20" fill="#2ea44f"/>\n<rect width="144" height="20" fill="url(#s)"/>\n</g>\n<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n<text x="42.5" y="14">metagraphed</text>\n<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n<text x="114.5" y="14">92/100</text>\n</g>\n</svg>\n';
+    const SQUARE_DEFAULT =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="metagraphed: 92/100">\n<title>metagraphed: 92/100</title>\n<clipPath id="r"><rect width="144" height="20" rx="0" fill="#fff"/></clipPath>\n<g clip-path="url(#r)">\n<rect width="85" height="20" fill="#555"/>\n<rect x="85" width="59" height="20" fill="#2ea44f"/>\n</g>\n<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n<text x="42.5" y="15" fill="#010101" fill-opacity=".3">metagraphed</text>\n<text x="42.5" y="14">metagraphed</text>\n<text x="114.5" y="15" fill="#010101" fill-opacity=".3">92/100</text>\n<text x="114.5" y="14">92/100</text>\n</g>\n</svg>\n';
+    const FLAT_LABELED =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="104" height="20" role="img" aria-label="uptime: 99.83%">\n<title>uptime: 99.83%</title>\n<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>\n<clipPath id="r"><rect width="104" height="20" rx="3" fill="#fff"/></clipPath>\n<g clip-path="url(#r)">\n<rect width="49" height="20" fill="#555"/>\n<rect x="49" width="55" height="20" fill="#dfb317"/>\n<rect width="104" height="20" fill="url(#s)"/>\n</g>\n<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n<text x="24.5" y="15" fill="#010101" fill-opacity=".3">uptime</text>\n<text x="24.5" y="14">uptime</text>\n<text x="76.5" y="15" fill="#010101" fill-opacity=".3">99.83%</text>\n<text x="76.5" y="14">99.83%</text>\n</g>\n</svg>\n';
+    const SQUARE_LABELED =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="104" height="20" role="img" aria-label="uptime: 99.83%">\n<title>uptime: 99.83%</title>\n<clipPath id="r"><rect width="104" height="20" rx="0" fill="#fff"/></clipPath>\n<g clip-path="url(#r)">\n<rect width="49" height="20" fill="#555"/>\n<rect x="49" width="55" height="20" fill="#dfb317"/>\n</g>\n<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">\n<text x="24.5" y="15" fill="#010101" fill-opacity=".3">uptime</text>\n<text x="24.5" y="14">uptime</text>\n<text x="76.5" y="15" fill="#010101" fill-opacity=".3">99.83%</text>\n<text x="76.5" y="14">99.83%</text>\n</g>\n</svg>\n';
+    assert.equal(renderBadge("92/100", "#2ea44f"), FLAT_DEFAULT);
+    assert.equal(
+      renderBadge("92/100", "#2ea44f", { style: "flat-square" }),
+      SQUARE_DEFAULT,
+    );
+    assert.equal(
+      renderBadge("99.83%", "#dfb317", { label: "uptime" }),
+      FLAT_LABELED,
+    );
+    assert.equal(
+      renderBadge("99.83%", "#dfb317", {
+        label: "uptime",
+        style: "flat-square",
+      }),
+      SQUARE_LABELED,
+    );
+  });
+
   test("scoreColor thresholds (green / amber / red / gray)", () => {
     assert.equal(scoreColor(92), "#2ea44f");
     assert.equal(scoreColor(80), "#2ea44f");
@@ -193,6 +223,10 @@ describe("badge — rendering", () => {
       parseBadgeOptions(sp("style=flat-square")).style,
       "flat-square",
     );
+    assert.equal(
+      parseBadgeOptions(sp("style=FOR-THE-BADGE")).style,
+      "for-the-badge",
+    );
     assert.equal(parseBadgeOptions(sp("style=plastic")).style, "flat");
     // label: default brand; override kept; control chars stripped; capped; blank→brand.
     assert.equal(parseBadgeOptions(sp("")).label, "metagraphed");
@@ -216,6 +250,77 @@ describe("badge — rendering", () => {
     });
     assert.equal(parseBadgePath("/api/v1/subnets/7"), null);
     assert.equal(parseBadgePath("/api/v1/subnets/abc/badge.svg"), null);
+  });
+});
+
+describe("badge — for-the-badge style", () => {
+  test("renders the tall, square, matte, uppercase, bold, spaced variant", () => {
+    const svg = renderBadge("92/100", "#2ea44f", {
+      style: "for-the-badge",
+      label: "metagraphed",
+    });
+    assert.match(svg, /^<svg /);
+    assert.match(svg, /<\/svg>\s*$/);
+    assert.match(svg, /height="28"/); // taller than the 20px flat styles
+    assert.match(svg, /shape-rendering="crispEdges"/);
+    assert.match(svg, /font-weight="bold"/);
+    assert.match(svg, /letter-spacing="1.5"/);
+    assert.match(svg, /fill="#2ea44f"/);
+    // Matte + square: no gradient, no gloss overlay, no rounded clip.
+    assert.ok(!svg.includes("linearGradient"));
+    assert.ok(!svg.includes('fill="url(#s)"'));
+    assert.ok(!svg.includes("clipPath"));
+    // Visible text is uppercased; there is no drop-shadow layer (2 texts, not 4).
+    assert.match(svg, />METAGRAPHED</);
+    assert.match(svg, />92\/100</);
+    assert.equal((svg.match(/<text /g) || []).length, 2);
+  });
+
+  test("aria-label + title keep the original (non-uppercased) casing", () => {
+    const svg = renderBadge("ok", "#2ea44f", {
+      style: "for-the-badge",
+      label: "uptime",
+    });
+    assert.match(svg, /aria-label="uptime: ok"/);
+    assert.match(svg, /<title>uptime: ok<\/title>/);
+    assert.match(svg, />UPTIME</); // visible text is uppercased
+    assert.match(svg, />OK</);
+  });
+
+  test("escapes label + message (SVG injection-safe, both cases)", () => {
+    const svg = renderBadge('"><script>x</script>', "#000", {
+      style: "for-the-badge",
+      label: "a&b",
+    });
+    assert.ok(!svg.includes("<script>"));
+    assert.ok(!svg.includes("<SCRIPT>")); // uppercasing must not unescape
+    assert.match(svg, /&lt;script&gt;/i);
+    assert.match(svg, /a&amp;b/i);
+  });
+
+  test("width is a safe overestimate (>= the flat width for the same content)", () => {
+    const widthOf = (svg) => Number(svg.match(/width="(\d+)"/)[1]);
+    const flat = widthOf(renderBadge("92/100", "#2ea44f"));
+    const ftb = widthOf(
+      renderBadge("92/100", "#2ea44f", { style: "for-the-badge" }),
+    );
+    // Uppercase + bold + letter-spaced glyphs are wider, so the segment must be
+    // at least as wide as the flat rendering — the badge can never clip its text.
+    assert.ok(
+      ftb >= flat,
+      `for-the-badge width ${ftb} should be >= flat ${flat}`,
+    );
+  });
+
+  test("handleBadgeRequest honors ?style=for-the-badge end-to-end", async () => {
+    const { res, text } = await badge(
+      "/api/v1/subnets/7/badge.svg?style=for-the-badge",
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /image\/svg\+xml/);
+    assert.match(text, /height="28"/);
+    assert.match(text, />92\/100</); // real score, for-the-badge layout
+    assert.match(text, /font-weight="bold"/);
   });
 });
 
