@@ -472,7 +472,7 @@ function accountEventIndexedUnion(select, filters = "", filterParams = []) {
   return {
     sql:
       `(SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_HOTKEY_INDEX} WHERE hotkey = ?${branchFilters}` +
-      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_COLDKEY_INDEX} WHERE coldkey = ? AND hotkey <> ?${branchFilters})`,
+      ` UNION ALL SELECT ${select} FROM account_events INDEXED BY ${ACCOUNT_EVENT_COLDKEY_INDEX} WHERE coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)${branchFilters})`,
     paramsFor(ss58) {
       return [ss58, ...filterParams, ss58, ss58, ...filterParams];
     },

@@ -664,6 +664,7 @@ test("loadAccountSummary uses indexed union seeks for account_events (#2059)", a
     assert.match(sql, /INDEXED BY idx_account_events_hotkey/);
     assert.match(sql, /INDEXED BY idx_account_events_coldkey/);
     assert.match(sql, /UNION ALL/);
+    assert.match(sql, /hotkey IS NULL OR hotkey <> \?/);
   }
 });
 
@@ -838,7 +839,31 @@ test("loadAccountEvents uses indexed union seeks instead of hotkey OR coldkey (#
   assert.match(captured.sql, /INDEXED BY idx_account_events_hotkey/);
   assert.match(captured.sql, /INDEXED BY idx_account_events_coldkey/);
   assert.match(captured.sql, /UNION ALL/);
-  assert.match(captured.sql, /hotkey <> \?/);
+  assert.match(captured.sql, /hotkey IS NULL OR hotkey <> \?/);
+});
+
+test("loadAccountEvents includes coldkey-only rows when hotkey is NULL (#2059)", async () => {
+  const nullHotkeyRow = {
+    block_number: 42,
+    event_index: 1,
+    event_kind: "Transfer",
+    hotkey: null,
+    coldkey: "5Hk",
+    netuid: 1,
+    uid: null,
+    amount_tao: 1.5,
+    alpha_amount: null,
+    observed_at: 1_700_000_000_000,
+    extrinsic_index: 0,
+  };
+  const out = await loadAccountEvents(
+    async () => [nullHotkeyRow],
+    "5Hk",
+    { limit: 10 },
+  );
+  assert.equal(out.event_count, 1);
+  assert.equal(out.events[0].coldkey, "5Hk");
+  assert.equal(out.events[0].hotkey, null);
 });
 
 test("loadAccountHistory is schema-stable when the D1 read yields nothing", async () => {
