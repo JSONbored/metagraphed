@@ -429,6 +429,14 @@ assert.ok(
     feesCold.window === "7d",
   "get_chain_fees must return window + daily[] + top_fee_payers[] on cold D1",
 );
+const networkActivityCold = await callOk("get_network_activity", {
+  window: "7d",
+});
+assert.ok(
+  networkActivityCold.window === "7d" &&
+    Array.isArray(networkActivityCold.days),
+  "get_network_activity must return window + days[] on cold D1",
+);
 const rpcUsageCold = await callOk("get_rpc_usage", { window: "7d" });
 assert.ok(
   rpcUsageCold.window === "7d" &&

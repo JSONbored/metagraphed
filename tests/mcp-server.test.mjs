@@ -1845,6 +1845,75 @@ describe("MCP get_chain_fees", () => {
   });
 });
 
+describe("MCP get_network_activity", () => {
+  test("merges extrinsics + blocks tiers from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  if (/FROM extrinsics/.test(sql)) {
+                    assert.ok(typeof params[0] === "number");
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-25",
+                          extrinsic_count: 100,
+                          successful_extrinsics: 99,
+                          unique_signers: 40,
+                        },
+                      ],
+                    };
+                  }
+                  if (/FROM blocks/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-25",
+                          block_count: 7200,
+                          event_count: 15000,
+                        },
+                      ],
+                    };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_network_activity",
+      { window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.days[0].success_rate, 0.99);
+    assert.equal(out.days[0].block_count, 7200);
+    assert.equal(out.days[0].unique_signers, 40);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_network_activity", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("defaults to 7d and returns schema-stable empty days on cold D1", async () => {
+    const res = await callTool("get_network_activity", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.days, []);
+  });
+});
+
 describe("MCP get_rpc_usage", () => {
   function rpcUsageDb() {
     return {

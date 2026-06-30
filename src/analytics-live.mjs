@@ -28,7 +28,11 @@ import {
   MAX_UPTIME_ROWS,
   UPTIME_WINDOWS,
 } from "../workers/config.mjs";
-import { buildChainCalls, buildChainFees } from "./chain-analytics.mjs";
+import {
+  buildChainActivity,
+  buildChainCalls,
+  buildChainFees,
+} from "./chain-analytics.mjs";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
 
 export { composeCompareData };
@@ -582,6 +586,46 @@ export async function loadChainFees(
     payerRows,
   });
   return { data, dailyRows, payerRows };
+}
+
+// Daily network-activity aggregates (#1987): per-UTC-day extrinsic/event/block
+// counts, success rate, and unique signers. Mirrors REST handleChainActivity and
+// get_network_activity MCP (#2452).
+export async function loadNetworkActivity(
+  d1,
+  { window = "7d", observedAt = null, now = Date.now() } = {},
+) {
+  const days = ANALYTICS_WINDOWS[window] ?? ANALYTICS_WINDOWS["7d"];
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const cutoff = now - days * DAY_MS;
+  const [extrinsicRows, blockRows] = await Promise.all([
+    d1(
+      `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+              COUNT(*) AS extrinsic_count,
+              SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successful_extrinsics,
+              COUNT(DISTINCT signer) AS unique_signers
+       FROM extrinsics
+       WHERE observed_at >= ?
+       GROUP BY day`,
+      [cutoff],
+    ),
+    d1(
+      `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+              COUNT(*) AS block_count,
+              SUM(event_count) AS event_count
+       FROM blocks
+       WHERE observed_at >= ?
+       GROUP BY day`,
+      [cutoff],
+    ),
+  ]);
+  const data = buildChainActivity({
+    window: windowLabel,
+    observedAt,
+    extrinsicRows,
+    blockRows,
+  });
+  return { data, extrinsicRows, blockRows };
 }
 
 export function parseAnalyticsWindow(window) {

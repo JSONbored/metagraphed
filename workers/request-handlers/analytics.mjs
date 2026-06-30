@@ -50,11 +50,11 @@ import {
 import {
   loadChainCalls,
   loadChainFees,
+  loadNetworkActivity,
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.mjs";
-import { buildChainActivity } from "../../src/chain-analytics.mjs";
 import { loadChainSigners } from "../../src/chain-query-loaders.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
@@ -627,7 +627,7 @@ export async function handleGlobalIncidents(request, env, url) {
 // run in parallel and merge in the pure builder, so the route is schema-stable
 // (day_count:0, days:[]) on a cold store and never re-aggregates on an edge hit.
 export async function handleChainActivity(request, env, url, ctx = {}) {
-  const { label, days, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url);
   if (error) return analyticsQueryError(error);
   return withEdgeCache(
     request,
@@ -635,39 +635,14 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     env,
     "chain-activity",
     async () => {
-      const cutoff = Date.now() - days * DAY_MS;
-      // observed_at is epoch-ms; `/ 1000` (SQLite integer division) → unix seconds
-      // for strftime's 'unixepoch' UTC bucketer. Values are always bound.
-      const [extrinsicRows, blockRows] = await Promise.all([
-        d1All(
-          env,
-          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                COUNT(*) AS extrinsic_count,
-                SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successful_extrinsics,
-                COUNT(DISTINCT signer) AS unique_signers
-         FROM extrinsics
-         WHERE observed_at >= ?
-         GROUP BY day`,
-          [cutoff],
-        ),
-        d1All(
-          env,
-          `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                COUNT(*) AS block_count,
-                SUM(event_count) AS event_count
-         FROM blocks
-         WHERE observed_at >= ?
-         GROUP BY day`,
-          [cutoff],
-        ),
-      ]);
       const meta = await readHealthMetaKv(env);
-      const data = buildChainActivity({
-        window: label,
-        observedAt: meta?.last_run_at || null,
-        extrinsicRows,
-        blockRows,
-      });
+      const { data, extrinsicRows, blockRows } = await loadNetworkActivity(
+        d1Runner(env),
+        {
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        },
+      );
       const response = await envelopeResponse(
         request,
         {

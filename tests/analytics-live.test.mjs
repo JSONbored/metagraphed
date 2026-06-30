@@ -8,6 +8,7 @@ import {
   loadCompareSubnets,
   loadChainCalls,
   loadChainFees,
+  loadNetworkActivity,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
@@ -648,6 +649,91 @@ describe("loadChainFees", () => {
     assert.equal(data.day_count, 0);
     assert.deepEqual(data.daily, []);
     assert.deepEqual(data.top_fee_payers, []);
+  });
+});
+
+describe("loadNetworkActivity", () => {
+  test("merges extrinsics + blocks tiers by UTC day", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const calls = [];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      if (/FROM extrinsics/.test(sql)) {
+        return [
+          {
+            day: "2026-06-25",
+            extrinsic_count: 100,
+            successful_extrinsics: 99,
+            unique_signers: 40,
+          },
+          {
+            day: "2026-06-24",
+            extrinsic_count: 50,
+            successful_extrinsics: 50,
+            unique_signers: 20,
+          },
+        ];
+      }
+      if (/FROM blocks/.test(sql)) {
+        return [
+          { day: "2026-06-25", block_count: 7200, event_count: 15000 },
+          { day: "2026-06-24", block_count: 7100, event_count: 14000 },
+        ];
+      }
+      return [];
+    };
+    const { data, extrinsicRows, blockRows } = await loadNetworkActivity(run, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+      now,
+    });
+    assert.equal(calls.length, 2);
+    assert.equal(extrinsicRows.length, 2);
+    assert.equal(blockRows.length, 2);
+    assert.equal(data.window, "7d");
+    assert.equal(data.day_count, 2);
+    assert.equal(data.days[0].day, "2026-06-25");
+    assert.equal(data.days[0].success_rate, 0.99);
+    assert.equal(data.days[0].block_count, 7200);
+    assert.equal(data.days[0].unique_signers, 40);
+    const ex = calls.find((q) => /FROM extrinsics/.test(q.sql));
+    const bl = calls.find((q) => /FROM blocks/.test(q.sql));
+    assert.match(ex.sql, /COUNT\(DISTINCT signer\)/);
+    assert.match(bl.sql, /SUM\(event_count\)/);
+    assert.deepEqual(ex.params, [now - 7 * 24 * 60 * 60 * 1000]);
+    assert.deepEqual(bl.params, [now - 7 * 24 * 60 * 60 * 1000]);
+  });
+
+  test("uses a 30d cutoff when requested", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const cutoffs = [];
+    await loadNetworkActivity(
+      async (_sql, params) => {
+        cutoffs.push(params[0]);
+        return [];
+      },
+      { window: "30d", observedAt: OBSERVED_AT, now },
+    );
+    assert.equal(cutoffs.length, 2);
+    assert.ok(cutoffs.every((c) => c === now - 30 * 24 * 60 * 60 * 1000));
+  });
+
+  test("falls back to 7d for an unknown window label", async () => {
+    const { data } = await loadNetworkActivity(d1(), {
+      window: "90d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "7d");
+  });
+
+  test("returns a cold-stable empty payload", async () => {
+    const { data } = await loadNetworkActivity(d1(), {
+      window: "30d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "30d");
+    assert.equal(data.day_count, 0);
+    assert.deepEqual(data.days, []);
   });
 });
 
