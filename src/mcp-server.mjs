@@ -31,6 +31,10 @@ import {
 } from "./concentration.mjs";
 import { loadChainSigners } from "./chain-query-loaders.mjs";
 import {
+  loadCounterparties,
+  loadCounterpartyRelationship,
+} from "./counterparties.mjs";
+import {
   loadCompareSubnets,
   loadChainCalls,
   loadGlobalIncidents,
@@ -2174,6 +2178,73 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_account_counterparties",
+    title: "Rank an account's transfer counterparties",
+    description:
+      "Rank who one account transacts native TAO with, by total transfer volume, from " +
+      "the Balances.Transfer feed: per counterparty the sent, received, and net TAO, " +
+      "transfer count, and last block. Add counterparty='<ss58>' to drill into a single " +
+      "relationship instead — its fund-flow totals plus the transfer evidence " +
+      "(direction-aware), newest first. List mode returns the top `limit` " +
+      "counterparties (1-100, default 20); the relationship drilldown returns up to " +
+      "`limit` transfers (default 50). Native-TAO transfers only, NOT stake or other " +
+      "events (those are in get_account_events).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 address (sender or recipient), base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        counterparty: {
+          type: "string",
+          description:
+            "Optional second SS58 address: drill into this account's relationship " +
+            "with it (fund-flow totals + transfer evidence) instead of the ranked " +
+            "list. Must differ from ss58.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        limit: {
+          type: "integer",
+          description:
+            "Max counterparties (list mode, default 20) or transfers (relationship " +
+            "mode, default 50) to return; 1-100.",
+          minimum: 1,
+          maximum: 100,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const counterparty = optionalString(args, "counterparty");
+      if (counterparty != null) {
+        if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+          throw toolError(
+            "invalid_params",
+            "Argument `counterparty` must be a valid SS58 account address (base58, 47-48 chars).",
+          );
+        }
+        if (counterparty === ss58) {
+          throw toolError(
+            "invalid_params",
+            "Argument `counterparty` must differ from `ss58`.",
+          );
+        }
+        return loadCounterpartyRelationship(
+          mcpD1Runner(ctx),
+          ss58,
+          counterparty,
+          { limit: args?.limit },
+        );
+      }
+      return loadCounterparties(mcpD1Runner(ctx), ss58, { limit: args?.limit });
+    },
+  },
+  {
     name: "list_blocks",
     title: "List recent blocks",
     description:
@@ -3868,6 +3939,30 @@ const TOOL_OUTPUT_SCHEMAS = {
         direction: NULLABLE_STRING,
         observed_at: NULLABLE_STRING,
       }),
+    },
+  },
+  get_account_counterparties: {
+    type: "object",
+    additionalProperties: true,
+    required: ["ss58", "counterparty_count", "counterparties"],
+    properties: {
+      schema_version: { type: "integer" },
+      ss58: { type: "string" },
+      counterparty_count: { type: "integer" },
+      transfers_scanned: NULLABLE_INT,
+      scan_capped: { type: "boolean" },
+      total_sent_tao: ANY,
+      total_received_tao: ANY,
+      counterparties: objectItems({
+        address: NULLABLE_STRING,
+        sent_tao: ANY,
+        received_tao: ANY,
+        net_tao: ANY,
+        transfer_count: NULLABLE_INT,
+        last_block: NULLABLE_INT,
+      }),
+      // Present only in counterparty='<ss58>' drilldown mode (the per-pair detail).
+      relationship: { type: "object", additionalProperties: true },
     },
   },
   list_blocks: {

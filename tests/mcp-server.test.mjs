@@ -1725,6 +1725,130 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_account_counterparties", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";
+
+  // Returns the canned rows for the Transfer-tier read; records every query.
+  function cpD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  return Promise.resolve({
+                    results: /event_kind = 'Transfer'/.test(sql) ? rows : [],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("ranks counterparties by transfer volume from D1", async () => {
+    const capture = [];
+    const env = cpD1(
+      [
+        { hotkey: SS58, coldkey: "A", amount_tao: 100, block_number: 10 },
+        { hotkey: "C", coldkey: SS58, amount_tao: 200, block_number: 7 },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: SS58, limit: 10 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.ss58, SS58);
+    assert.equal(out.counterparty_count, 2);
+    assert.equal(out.counterparties[0].address, "C"); // highest volume (200)
+    // The single read is the bounded two-side union, never a hotkey/coldkey OR.
+    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
+    assert.match(q.sql, /UNION ALL/);
+    assert.equal(q.sql.includes(" OR "), false);
+    assert.deepEqual(q.params.slice(0, 3), [SS58, SS58, SS58]);
+  });
+
+  test("counterparty=<ss58> drills into the nested relationship detail", async () => {
+    const env = cpD1([
+      {
+        block_number: 20,
+        event_index: 2,
+        hotkey: SS58,
+        coldkey: CP,
+        netuid: 1,
+        amount_tao: 40,
+        observed_at: 1700,
+      },
+      {
+        block_number: 18,
+        event_index: 1,
+        hotkey: CP,
+        coldkey: SS58,
+        netuid: 1,
+        amount_tao: 10,
+        observed_at: 1600,
+      },
+    ]);
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: SS58, counterparty: CP },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.counterparty_count, 1);
+    assert.equal(out.counterparties[0].address, CP);
+    assert.equal(out.relationship.counterparty, CP);
+    assert.equal(out.relationship.transfer_count, 2);
+    assert.equal(out.relationship.net_tao, -30); // 10 received - 40 sent
+  });
+
+  test("rejects a malformed counterparty before any D1 work", async () => {
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: SS58, counterparty: "not-ss58" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /counterparty/);
+  });
+
+  test("rejects a counterparty equal to ss58", async () => {
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: SS58, counterparty: SS58 },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /differ/);
+  });
+
+  test("rejects a malformed ss58", async () => {
+    const res = await callTool(
+      "get_account_counterparties",
+      { ss58: "bad" },
+      { env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/);
+  });
+
+  test("degrades to an empty rollup on cold D1", async () => {
+    const res = await callTool("get_account_counterparties", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.counterparty_count, 0);
+    assert.deepEqual(out.counterparties, []);
+  });
+});
+
 // keyword-search.test.mjs covers the scoring matrix; here we only prove both
 // tools are wired to it — substring noise is gone and the precise target wins.
 describe("MCP keyword discovery relevance", () => {

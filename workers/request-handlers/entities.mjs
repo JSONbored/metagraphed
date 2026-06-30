@@ -89,12 +89,8 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import {
-  COUNTERPARTIES_READ_COLUMNS,
-  COUNTERPARTIES_SCAN_CAP,
-  COUNTERPARTY_RELATIONSHIP_READ_COLUMNS,
-  COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-  buildCounterpartyRelationship,
-  buildCounterparties,
+  loadCounterparties,
+  loadCounterpartyRelationship,
 } from "../../src/counterparties.mjs";
 import { loadSubnetTurnover } from "../../src/turnover.mjs";
 
@@ -767,67 +763,26 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
         message: "counterparty must differ from ss58.",
       });
     }
-    const rows = await d1All(
-      env,
-      `SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM (SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ? UNION ALL SELECT ${COUNTERPARTY_RELATIONSHIP_READ_COLUMNS} FROM account_events WHERE event_kind = 'Transfer' AND hotkey = ? AND coldkey = ?) ORDER BY block_number DESC, event_index DESC LIMIT ?`,
-      [
-        ss58,
-        counterparty,
-        counterparty,
-        ss58,
-        COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
-      ],
-    );
-    const relationship = buildCounterpartyRelationship(
-      rows,
+    const data = await loadCounterpartyRelationship(
+      d1Runner(env),
       ss58,
       counterparty,
-      {
-        limit,
-      },
+      { limit },
     );
-    const counterpartyRow =
-      relationship.transfer_count === 0
-        ? []
-        : [
-            {
-              address: counterparty,
-              sent_tao: relationship.total_sent_tao,
-              received_tao: relationship.total_received_tao,
-              net_tao: relationship.net_tao,
-              transfer_count: relationship.transfer_count,
-              last_block: relationship.last_block,
-            },
-          ];
     return envelopeResponse(
       request,
       {
-        data: {
-          schema_version: 1,
-          ss58,
-          counterparty_count: counterpartyRow.length,
-          transfers_scanned: relationship.transfers_scanned,
-          scan_capped: relationship.scan_capped,
-          total_sent_tao: relationship.total_sent_tao,
-          total_received_tao: relationship.total_received_tao,
-          counterparties: counterpartyRow,
-          relationship,
-        },
+        data,
         meta: await accountMeta(
           env,
           `/metagraph/accounts/${ss58}/counterparties.json`,
-          relationship.last_seen_at,
+          data.relationship.last_seen_at,
         ),
       },
       "short",
     );
   }
-  const rows = await d1All(
-    env,
-    `SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM (SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ? UNION ALL SELECT ${COUNTERPARTIES_READ_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?) ORDER BY block_number DESC LIMIT ?`,
-    [ss58, ss58, ss58, COUNTERPARTIES_SCAN_CAP],
-  );
-  const data = buildCounterparties(rows, ss58, { limit });
+  const data = await loadCounterparties(d1Runner(env), ss58, { limit });
   return envelopeResponse(
     request,
     {
