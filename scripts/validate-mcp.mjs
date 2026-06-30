@@ -254,6 +254,11 @@ assert.ok(
 
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
+const agentResources = await callOk("get_agent_resources", {});
+assert.ok(
+  agentResources.copyable_agent?.url && Array.isArray(agentResources.resources),
+  "get_agent_resources must return copyable_agent + resources[]",
+);
 await callOk("registry_summary", {});
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold

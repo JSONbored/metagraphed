@@ -141,7 +141,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.12.0";
+export const MCP_SERVER_VERSION = "1.13.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -188,7 +188,9 @@ export const MCP_INSTRUCTIONS =
   "to discover by intent (meaning-based), and ask for a grounded natural-" +
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
-  "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint, and " +
+  "get_agent_resources the AI-resources index (copyable agent, MCP install, skill, " +
+  "llms.txt, OpenAPI, agent-facing APIs). " +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -2965,6 +2967,25 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_agent_resources",
+    title: "Get the AI-resources index",
+    description:
+      "Fetch the machine index of every AI-facing resource: the copyable agent " +
+      "at /agent.md, MCP server endpoint + install command + tool list, the " +
+      "Bittensor skill, llms.txt, OpenAPI, and the agent-facing REST APIs " +
+      "(agent-catalog, semantic-search, ask, fixtures, lineage, datasets). " +
+      "Use it to bootstrap an agent integration without hard-coding URLs. " +
+      "Mirrors GET /api/v1/agent-resources.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/agent-resources.json");
+    },
+  },
+  {
     name: "get_lineage",
     title: "Get cross-network subnet lineage",
     description:
@@ -4660,6 +4681,21 @@ const TOOL_OUTPUT_SCHEMAS = {
       observed_at: NULLABLE_STRING,
       generated_at: NULLABLE_STRING,
       notes: NULLABLE_STRING,
+    },
+  },
+  get_agent_resources: {
+    type: "object",
+    additionalProperties: true,
+    required: ["copyable_agent", "mcp", "resources"],
+    properties: {
+      schema_version: { type: "integer" },
+      contract_version: NULLABLE_STRING,
+      generated_at: NULLABLE_STRING,
+      published_at: NULLABLE_STRING,
+      content_hash: NULLABLE_STRING,
+      copyable_agent: { type: "object" },
+      mcp: { type: "object" },
+      resources: { type: "array", items: { type: "object" } },
     },
   },
   get_lineage: {

@@ -6191,6 +6191,29 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     );
   });
 
+  test("get_agent_resources returns the agent-resources index artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/agent-resources.json": {
+        schema_version: 1,
+        copyable_agent: {
+          title: "Bittensor integration agent",
+          url: "https://api.metagraph.sh/agent.md",
+        },
+        mcp: {
+          endpoint: "https://api.metagraph.sh/mcp",
+          tools: [{ name: "get_subnet", title: "Get subnet overview" }],
+        },
+        resources: [{ id: "agent", title: "Copyable AI agent", url: "x" }],
+      },
+    });
+    const res = await callTool("get_agent_resources", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.match(out.copyable_agent.url, /\/agent\.md$/);
+    assert.equal(out.mcp.tools[0].name, "get_subnet");
+    assert.equal(out.resources[0].id, "agent");
+  });
+
   test("get_lineage returns the lineage artifact", async () => {
     const deps = makeDeps({
       "/metagraph/lineage.json": {
