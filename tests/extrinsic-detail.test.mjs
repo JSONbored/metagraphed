@@ -6,6 +6,11 @@ import {
   loadBlockChainEvents,
   loadExtrinsicChainEvents,
 } from "../src/data-api-mcp.mjs";
+import { handleExtrinsic } from "../workers/request-handlers/entities.mjs";
+
+function req(path) {
+  return new Request(`https://api.metagraph.sh${path}`);
+}
 
 function d1With(fixtures = {}, capture = []) {
   return async (sql, params) => {
@@ -101,6 +106,71 @@ describe("loadExtrinsicDetail", () => {
       false,
     );
   });
+
+  test("skips account_events when the resolved row lacks block coordinates", async () => {
+    const capture = [];
+    const d1 = d1With(
+      { byComposite: [{ ...EXTRINSIC, block_number: null }] },
+      capture,
+    );
+    const data = await loadExtrinsicDetail(d1, "4200000-3");
+    assert.equal(data.extrinsic.block_number, null);
+    assert.deepEqual(data.events, []);
+    assert.equal(
+      capture.some((c) => /FROM account_events/.test(c.sql)),
+      false,
+    );
+  });
+
+  test("treats a null account_events result as an empty embed", async () => {
+    const d1 = async (sql) => {
+      if (
+        /FROM extrinsics WHERE block_number = \? AND extrinsic_index/.test(sql)
+      )
+        return [EXTRINSIC];
+      if (/FROM account_events/.test(sql)) return null;
+      return [];
+    };
+    const data = await loadExtrinsicDetail(d1, "4200000-3");
+    assert.deepEqual(data.events, []);
+  });
+});
+
+describe("handleExtrinsic via loadExtrinsicDetail", () => {
+  test("returns embedded events through the shared loader", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (
+                    /FROM extrinsics WHERE block_number = \? AND extrinsic_index/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({ results: [EXTRINSIC] });
+                  if (/FROM account_events/.test(sql))
+                    return Promise.resolve({ results: [EVENT] });
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await handleExtrinsic(
+      req("/api/v1/extrinsics/4200000-3"),
+      env,
+      "4200000-3",
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.events.length, 1);
+    assert.equal(body.data.events[0].event_kind, "WeightsSet");
+  });
 });
 
 function dataApiCtx({ fetchImpl, rateLimit = null } = {}) {
@@ -139,6 +209,20 @@ describe("data-api-mcp", () => {
     );
   });
 
+  test("dataApiFetchJson proceeds when the data API limiter allows the request", async () => {
+    const ctx = dataApiCtx({
+      rateLimit: {
+        async limit({ key }) {
+          assert.equal(key, "data:127.0.0.1");
+          return { success: true };
+        },
+      },
+      fetchImpl: async () => Response.json({ ok: true }),
+    });
+    const out = await dataApiFetchJson(ctx, "/api/v1/chain-events/stats");
+    assert.equal(out.ok, true);
+  });
+
   test("dataApiFetchJson surfaces tier_unavailable when fetch throws", async () => {
     await assert.rejects(
       () =>
@@ -171,6 +255,22 @@ describe("data-api-mcp", () => {
         dataApiFetchJson(
           dataApiCtx({
             fetchImpl: async () => new Response("not-json", { status: 400 }),
+          }),
+          "/api/v1/chain-events?method=x",
+        ),
+      (err) =>
+        err.code === "invalid_params" &&
+        /Invalid request to the all-events data tier/.test(err.message),
+    );
+  });
+
+  test("dataApiFetchJson keeps the default 400 message when error is absent", async () => {
+    await assert.rejects(
+      () =>
+        dataApiFetchJson(
+          dataApiCtx({
+            fetchImpl: async () =>
+              new Response(JSON.stringify({}), { status: 400 }),
           }),
           "/api/v1/chain-events?method=x",
         ),
@@ -243,6 +343,32 @@ describe("data-api-mcp", () => {
     assert.equal(out.events[0].pallet, "Balances");
   });
 
+  test("loadBlockChainEvents falls back to the requested block_number", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json({ count: 0, events: [] }),
+    });
+    const out = await loadBlockChainEvents(ctx, 99);
+    assert.equal(out.block_number, 99);
+    assert.equal(out.event_count, 0);
+  });
+
+  test("loadBlockChainEvents falls back when upstream block_number is null", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () =>
+        Response.json({ block_number: null, count: 0, events: [] }),
+    });
+    const out = await loadBlockChainEvents(ctx, 88);
+    assert.equal(out.block_number, 88);
+  });
+
+  test("loadBlockChainEvents defaults a missing event_count to zero", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json({ block_number: 77, events: [] }),
+    });
+    const out = await loadBlockChainEvents(ctx, 77);
+    assert.equal(out.event_count, 0);
+  });
+
   test("loadBlockChainEvents tolerates a non-array events field", async () => {
     const ctx = dataApiCtx({
       fetchImpl: async () => Response.json({ count: 2, events: null }),
@@ -300,5 +426,32 @@ describe("data-api-mcp", () => {
     assert.equal(out.limit, 25);
     assert.equal(out.next_cursor, "4200000.8");
     assert.equal(out.events[0].method, "ExtrinsicSuccess");
+  });
+
+  test("loadExtrinsicChainEvents clamps an oversized limit and tolerates sparse payloads", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async (request) => {
+        assert.equal(new URL(request.url).searchParams.get("limit"), "200");
+        return Response.json({ events: null });
+      },
+    });
+    const out = await loadExtrinsicChainEvents(ctx, "4200000-3", {
+      limit: 999,
+    });
+    assert.equal(out.limit, 200);
+    assert.equal(out.event_count, 0);
+    assert.deepEqual(out.events, []);
+    assert.equal(out.next_cursor, null);
+  });
+
+  test("loadExtrinsicChainEvents defaults invalid limits to 50", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async (request) => {
+        assert.equal(new URL(request.url).searchParams.get("limit"), "50");
+        return Response.json({ count: 0, events: [] });
+      },
+    });
+    const out = await loadExtrinsicChainEvents(ctx, "4200000-3", { limit: 0 });
+    assert.equal(out.limit, 50);
   });
 });

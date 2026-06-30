@@ -6143,6 +6143,49 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
       assert.match(res.body.result.content[0].text, /unavailable/i);
     }
   });
+
+  test("all-events tool payloads validate against their declared outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const dataApi = makeDataApi({
+      payload: {
+        block_number: 4200000,
+        count: 1,
+        events: [
+          {
+            block_number: 4200000,
+            event_index: 0,
+            pallet: "System",
+            method: "ExtrinsicSuccess",
+            observed_at: 1,
+          },
+        ],
+      },
+    });
+    const blockRes = await callTool(
+      "get_block_chain_events",
+      { block_number: 4200000 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.ok(
+      validatorFor("get_block_chain_events")(
+        blockRes.body.result.structuredContent,
+      ),
+    );
+    const extrinsicRes = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3", limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.ok(
+      validatorFor("get_extrinsic_chain_events")(
+        extrinsicRes.body.result.structuredContent,
+      ),
+    );
+  });
 });
 
 describe("MCP tool-input validation — typed errors, never a throw (#742)", () => {
