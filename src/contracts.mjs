@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-29.2";
+export const CONTRACT_VERSION = "2026-06-30.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1791,11 +1791,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/events",
     "/metagraph/subnets/{netuid}/events.json",
-    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
     "short",
     ["subnets", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
+      { name: "block_start", schema: { type: "integer", minimum: 0 } },
+      { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],

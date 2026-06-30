@@ -15,6 +15,12 @@ import {
   resolveLiveHealth,
   subnetBadgeStatus,
 } from "./health-serving.mjs";
+import {
+  loadCompareSubnets,
+  parseCompareDimensionList,
+  parseCompareNetuidList,
+} from "./analytics-live.mjs";
+import { KV_HEALTH_META } from "./kv-keys.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -46,6 +52,8 @@ export const SDL = `
     health: GlobalHealth
     "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
     opportunity_boards(limit: Int): OpportunityBoards!
+    "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
+    compare(netuids: [Int!]!, dimensions: [String!]): Compare!
   }
 
   type SubnetList {
@@ -263,6 +271,49 @@ export const SDL = `
     validator_headroom: Int
     max_validators: Int
   }
+
+  type Compare {
+    schema_version: Int!
+    source: String
+    observed_at: String
+    dimensions: [String!]!
+    requested_netuids: [Int!]!
+    subnets: [CompareSubnet!]!
+  }
+
+  type CompareSubnet {
+    netuid: Int!
+    name: String
+    slug: String
+    found: Boolean!
+    structure: CompareStructure
+    economics: CompareEconomics
+    health: CompareHealth
+  }
+
+  type CompareStructure {
+    completeness_score: Float
+    surface_count: Int
+    operational_interface_count: Int
+  }
+
+  type CompareEconomics {
+    registration_cost_tao: Float
+    registration_allowed: Boolean
+    open_slots: Int
+    emission_share: Float
+    alpha_price_tao: Float
+    validator_count: Int
+    miner_count: Int
+    total_stake_tao: Float
+    miner_readiness: Int
+  }
+
+  type CompareHealth {
+    surface_count: Int
+    ok_count: Int
+    avg_latency_ms: Int
+  }
 `;
 
 const schema = buildSchema(SDL);
@@ -285,6 +336,7 @@ export const FIELD_COMPLEXITY = {
   endpoints: RELATIONSHIP_FIELD_COMPLEXITY,
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
+  compare: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -491,6 +543,7 @@ const ARTIFACT = {
   economics: "/metagraph/economics.json",
   surfaces: "/metagraph/surfaces.json",
   endpoints: "/metagraph/endpoints.json",
+  profiles: "/metagraph/profiles.json",
 };
 const LIVE_HEALTH_KEY = "live:health";
 const LIVE_ECONOMICS_KEY = "live:economics";
@@ -550,6 +603,41 @@ function loadEconomics(context) {
     const res = await readArtifact(context.env, ARTIFACT.economics);
     return res.ok ? res.data : null;
   });
+}
+
+// A (sql, params) => Promise<rows[]> runner over the health DB, mirroring REST's
+// d1All and the MCP compare runner: a cold DB or query error yields [] so the
+// compare health dimension degrades to null rows instead of erroring.
+function graphqlD1(context) {
+  return async (sql, params) => {
+    const db = context.env?.METAGRAPH_HEALTH_DB;
+    if (!db?.prepare) return [];
+    try {
+      const result = await db
+        .prepare(sql)
+        .bind(...params)
+        .all();
+      return result?.results || [];
+    } catch {
+      return [];
+    }
+  };
+}
+
+// Cron snapshot freshness stamp (KV health:meta) — the same observed_at REST
+// compare stamps its envelope with. Null when the live store is cold.
+function loadObservedAt(context) {
+  return once(context, KV_HEALTH_META, async () => {
+    const meta = await readHealthKv(context.env, KV_HEALTH_META);
+    return meta?.last_run_at || null;
+  });
+}
+
+// Economics subnet rows for compare, reusing the live-preferring economics memo
+// (same source the `economics` root + opportunity boards serve).
+async function loadEconomicsRows(context) {
+  const data = await loadEconomics(context);
+  return Array.isArray(data?.subnets) ? data.subnets : [];
 }
 
 // --- Node builders (attach lazy relationship resolvers to artifact rows) ---
@@ -746,6 +834,39 @@ const rootValue = {
       highest_emission: boards["highest-emission"] || [],
       validator_headroom: boards["validator-headroom"] || [],
     };
+  },
+
+  async compare({ netuids, dimensions }, context) {
+    // Reuse the REST/MCP shared parsers so the GraphQL contract matches
+    // /api/v1/compare and the compare_subnets MCP tool exactly (distinctness +
+    // range + the dimension whitelist), then the shared loader composes the rows.
+    const parsedNetuids = parseCompareNetuidList(netuids);
+    if (!parsedNetuids) {
+      throw new GraphQLError(
+        "netuids must be a non-empty array of 1-128 distinct non-negative subnet ids.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const parsedDimensions = parseCompareDimensionList(dimensions);
+    if (dimensions != null && parsedDimensions === null) {
+      throw new GraphQLError(
+        "dimensions must be a non-empty subset of structure, economics, health.",
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const profilesData = await loadArtifact(context, ARTIFACT.profiles);
+    const profiles = Array.isArray(profilesData?.profiles)
+      ? profilesData.profiles
+      : [];
+    return loadCompareSubnets(graphqlD1(context), {
+      profiles,
+      economicsRows: parsedDimensions.includes("economics")
+        ? await loadEconomicsRows(context)
+        : [],
+      netuids: parsedNetuids,
+      dimensions: parsedDimensions,
+      observedAt: await loadObservedAt(context),
+    });
   },
 };
 

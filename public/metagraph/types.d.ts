@@ -1286,7 +1286,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset. */
+        /** Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. */
         get: operations["subnetEvents"];
         put?: never;
         post?: never;
@@ -15425,6 +15425,8 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: string;
+                block_start?: number;
+                block_end?: number;
                 limit?: number;
                 offset?: number;
             };

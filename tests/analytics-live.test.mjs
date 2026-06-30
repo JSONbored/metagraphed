@@ -6,6 +6,7 @@ import {
   composeCompareData,
   growthRowsFromSamples,
   loadCompareSubnets,
+  loadChainCalls,
   loadGlobalIncidents,
   loadRegistryLeaderboards,
   loadSubnetHealthTrends,
@@ -353,6 +354,74 @@ describe("analytics-live loaders", () => {
     assert.equal(data.window, "30d");
     assert.equal(data.summary.incident_count, 1);
     assert.equal(data.surfaces[0].incidents[0].failed_samples, 4);
+  });
+
+  test("loadChainCalls aggregates grouped rows with an honest share denominator", async () => {
+    const data = await loadChainCalls(
+      d1({
+        "GROUP BY call_module": [
+          { call_module: "SubtensorModule", count: 60 },
+          { call_module: "Balances", count: 30 },
+        ],
+        "COUNT\\(\\*\\) AS total": [{ total: 120 }],
+      }),
+      {
+        window: "30d",
+        groupBy: "module",
+        limit: 2,
+        observedAt: OBSERVED_AT,
+        now: Date.UTC(2026, 5, 26),
+      },
+    );
+    assert.equal(data.window, "30d");
+    assert.equal(data.total_extrinsics, 120);
+    assert.equal(data.call_count, 2);
+    assert.equal(data.calls[0].share, 0.5);
+  });
+
+  test("loadChainCalls groups by call_module and call_function when requested", async () => {
+    const captured = [];
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/call_function/.test(sql) && /GROUP BY/.test(sql)) {
+        return [
+          {
+            call_module: "SubtensorModule",
+            call_function: "add_stake",
+            count: 10,
+          },
+        ];
+      }
+      if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 10 }];
+      return [];
+    };
+    const data = await loadChainCalls(run, {
+      window: "7d",
+      groupBy: "module_function",
+      limit: 5,
+      observedAt: OBSERVED_AT,
+      now: Date.UTC(2026, 5, 26),
+    });
+    assert.match(captured[0].sql, /call_module, call_function/);
+    assert.equal(data.group_by, "module_function");
+    assert.equal(data.calls[0].call_function, "add_stake");
+  });
+
+  test("loadChainCalls falls back to 7d for an unknown window label", async () => {
+    const data = await loadChainCalls(d1(), {
+      window: "90d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.window, "7d");
+  });
+
+  test("loadChainCalls returns a cold-stable empty payload", async () => {
+    const data = await loadChainCalls(d1(), {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+    });
+    assert.equal(data.call_count, 0);
+    assert.deepEqual(data.calls, []);
   });
 });
 

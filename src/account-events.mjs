@@ -414,11 +414,23 @@ export function buildAccountSubnets(rows, ss58) {
 // ss58: it sent (== from) or received (== to). This is the native-TAO
 // Balances.Transfer feed only, NOT a full balance ledger (stake flows are separate
 // event kinds). Null-safe on a cold store.
+//
+// `direction` (the option) is an INTERNAL post-filter hint: the side the loader
+// already filtered the SQL on (see loadAccountTransfers / handleAccountTransfers),
+// NOT a free-form caller input. ONLY the exact strings `sent`/`received` force the
+// label; every other value (`all`, omitted, junk) falls back to the per-row
+// hotkey-first derivation. It must only be passed when the rows are guaranteed to
+// be on that side — when set, every row is labeled with it. This fixes a
+// self-transfer (from === to === ss58, i.e. hotkey === coldkey === ss58) returned
+// by the received-side query, which the hotkey-first per-row derivation would
+// otherwise mislabel `sent`, contradicting the requested filter (#2362).
 export function buildAccountTransfers(
   rows,
   ss58,
-  { limit, offset, nextCursor } = {},
+  { limit, offset, nextCursor, direction } = {},
 ) {
+  const fixedDirection =
+    direction === "sent" || direction === "received" ? direction : null;
   const transfers = (rows || [])
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
@@ -428,7 +440,8 @@ export function buildAccountTransfers(
       to: r.coldkey ?? null,
       amount_tao: r.amount_tao ?? null,
       direction:
-        r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null,
+        fixedDirection ??
+        (r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null),
       observed_at: toIso(r.observed_at),
     }));
   return {
@@ -638,5 +651,9 @@ export async function loadAccountTransfers(
   sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
   params.push(lim, off);
   const rows = await d1(sql, params);
-  return buildAccountTransfers(rows, ss58, { limit: lim, offset: off });
+  return buildAccountTransfers(rows, ss58, {
+    limit: lim,
+    offset: off,
+    direction,
+  });
 }

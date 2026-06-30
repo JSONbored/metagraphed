@@ -314,6 +314,11 @@ assert.ok(
   Array.isArray(traj.points),
   "get_subnet_trajectory must return points[]",
 );
+const chainCalls = await callOk("get_chain_calls", { window: "7d", limit: 10 });
+assert.ok(
+  Array.isArray(chainCalls.calls),
+  "get_chain_calls must return calls[]",
+);
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
   Array.isArray(meta.neurons),
@@ -356,6 +361,11 @@ const accountSubnets = await callOk("get_account_subnets", { ss58: SS58 });
 assert.ok(
   Array.isArray(accountSubnets.subnets),
   "get_account_subnets must return subnets[]",
+);
+const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
+assert.ok(
+  "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
+  "get_account_balance must return ss58 + balance_tao (null on cold RPC)",
 );
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.

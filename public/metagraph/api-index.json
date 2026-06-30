@@ -1,763 +1,763 @@
 {
   "artifact_contracts": [
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "contracts",
       "path": "/metagraph/contracts.json",
       "schema_ref": "#/components/schemas/ContractsArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "providers",
       "path": "/metagraph/providers.json",
       "schema_ref": "#/components/schemas/ProvidersArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "provider-detail",
       "path": "/metagraph/providers/{slug}.json",
       "schema_ref": "#/components/schemas/ProviderArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "provider-endpoints",
       "path": "/metagraph/providers/{slug}/endpoints.json",
       "schema_ref": "#/components/schemas/ProviderEndpointsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
       "schema_ref": "#/components/schemas/ApiIndexArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "openapi",
       "path": "/metagraph/openapi.json",
       "schema_ref": "#/components/schemas/OpenApiArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "type-definitions",
       "path": "/metagraph/types.d.ts",
       "schema_ref": null,
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "changelog",
       "path": "/metagraph/changelog.json",
       "schema_ref": "#/components/schemas/ChangelogArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnets",
       "path": "/metagraph/subnets.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "metagraph-latest",
       "path": "/metagraph/metagraph/latest.json",
       "schema_ref": "#/components/schemas/SubnetsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-detail",
       "path": "/metagraph/subnets/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetDetailArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-overview",
       "path": "/metagraph/overview/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetOverviewArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "profiles",
       "path": "/metagraph/profiles.json",
       "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "profile-detail",
       "path": "/metagraph/profiles/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetProfileArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
       "schema_ref": "#/components/schemas/SurfacesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "surface-aliases",
       "path": "/metagraph/surface-aliases.json",
       "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "endpoints",
       "path": "/metagraph/endpoints.json",
       "schema_ref": "#/components/schemas/EndpointsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "endpoints-subnet",
       "path": "/metagraph/endpoints/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetEndpointsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "candidates",
       "path": "/metagraph/candidates.json",
       "schema_ref": "#/components/schemas/CandidatesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "candidates-subnet",
       "path": "/metagraph/candidates/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetCandidatesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-queue",
       "path": "/metagraph/review-queue.json",
       "schema_ref": "#/components/schemas/ReviewQueueArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "search",
       "path": "/metagraph/search.json",
       "schema_ref": "#/components/schemas/SearchArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "search-index",
       "path": "/metagraph/search-index.json",
       "schema_ref": "#/components/schemas/SearchIndexArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "coverage",
       "path": "/metagraph/coverage.json",
       "schema_ref": "#/components/schemas/CoverageArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "coverage-depth",
       "path": "/metagraph/coverage-depth.json",
       "schema_ref": "#/components/schemas/CoverageDepthArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "economics",
       "path": "/metagraph/economics.json",
       "schema_ref": "#/components/schemas/EconomicsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "economics-trends",
       "path": "/metagraph/economics/trends.json",
       "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
       "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "lineage",
       "path": "/metagraph/lineage.json",
       "schema_ref": "#/components/schemas/LineageArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "fixtures-index",
       "path": "/metagraph/fixtures.json",
       "schema_ref": "#/components/schemas/FixturesIndexArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
       "schema_ref": "#/components/schemas/AgentResourcesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",
       "schema_ref": "#/components/schemas/JsonObject",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "curation",
       "path": "/metagraph/curation.json",
       "schema_ref": "#/components/schemas/CurationArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "gaps",
       "path": "/metagraph/gaps.json",
       "schema_ref": "#/components/schemas/GapsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "verification",
       "path": "/metagraph/verification/latest.json",
       "schema_ref": "#/components/schemas/VerificationArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "verification-subnet",
       "path": "/metagraph/verification/subnets/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetVerificationArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "freshness",
       "path": "/metagraph/freshness.json",
       "schema_ref": "#/components/schemas/FreshnessArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "source-health",
       "path": "/metagraph/source-health.json",
       "schema_ref": "#/components/schemas/SourceHealthArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "source-snapshots",
       "path": "/metagraph/source-snapshots.json",
       "schema_ref": "#/components/schemas/SourceSnapshotsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "evidence-ledger",
       "path": "/metagraph/evidence-ledger.json",
       "schema_ref": "#/components/schemas/EvidenceLedgerArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "evidence-subnet",
       "path": "/metagraph/evidence/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetEvidenceArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-latest",
       "path": "/metagraph/health/latest.json",
       "schema_ref": "#/components/schemas/HealthLatestArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-summary",
       "path": "/metagraph/health/summary.json",
       "schema_ref": "#/components/schemas/HealthSummaryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-history",
       "path": "/metagraph/health/history/{date}.json",
       "schema_ref": "#/components/schemas/HealthHistoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-subnet",
       "path": "/metagraph/health/subnets/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthSubnetArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-badge",
       "path": "/metagraph/health/badges/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthBadgeArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthTrendsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-trends-bulk",
       "path": "/metagraph/health/trends.json",
       "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "health-incidents",
       "path": "/metagraph/health/incidents/{netuid}.json",
       "schema_ref": "#/components/schemas/HealthIncidentsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-trajectory",
       "path": "/metagraph/subnets/{netuid}/trajectory.json",
       "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-concentration-history",
       "path": "/metagraph/subnets/{netuid}/concentration/history.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-turnover",
       "path": "/metagraph/subnets/{netuid}/turnover.json",
       "schema_ref": "#/components/schemas/SubnetTurnoverArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-neuron",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
       "schema_ref": "#/components/schemas/NeuronDetailArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
       "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
       "schema_ref": "#/components/schemas/SubnetEventsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-history",
       "path": "/metagraph/subnets/{netuid}/history.json",
       "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "schema_ref": "#/components/schemas/AccountSummaryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-events",
       "path": "/metagraph/accounts/{ss58}/events.json",
       "schema_ref": "#/components/schemas/AccountEventsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-history",
       "path": "/metagraph/accounts/{ss58}/history.json",
       "schema_ref": "#/components/schemas/AccountHistoryArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-extrinsics",
       "path": "/metagraph/accounts/{ss58}/extrinsics.json",
       "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-transfers",
       "path": "/metagraph/accounts/{ss58}/transfers.json",
       "schema_ref": "#/components/schemas/AccountTransfersArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-counterparties",
       "path": "/metagraph/accounts/{ss58}/counterparties.json",
       "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
       "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
       "schema_ref": "#/components/schemas/AccountBalanceArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "schema_ref": "#/components/schemas/BlocksFeedArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
       "schema_ref": "#/components/schemas/BlockDetailArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "block-extrinsics",
       "path": "/metagraph/blocks/{ref}/extrinsics.json",
       "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "block-events",
       "path": "/metagraph/blocks/{ref}/events.json",
       "schema_ref": "#/components/schemas/BlockEventsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-events-feed",
       "path": "/metagraph/chain-events.json",
       "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "block-chain-events",
       "path": "/metagraph/blocks/{ref}/chain-events.json",
       "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-events-stats",
       "path": "/metagraph/chain-events/stats.json",
       "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
       "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "extrinsic-detail",
       "path": "/metagraph/extrinsics/{hash}.json",
       "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-activity",
       "path": "/metagraph/chain/activity.json",
       "schema_ref": "#/components/schemas/ChainActivityArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-calls",
       "path": "/metagraph/chain/calls.json",
       "schema_ref": "#/components/schemas/ChainCallsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-signers",
       "path": "/metagraph/chain/signers.json",
       "schema_ref": "#/components/schemas/ChainSignersArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "global-incidents",
       "path": "/metagraph/incidents.json",
       "schema_ref": "#/components/schemas/GlobalIncidentsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
       "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "compare",
       "path": "/metagraph/compare.json",
       "schema_ref": "#/components/schemas/CompareArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
       "schema_ref": "#/components/schemas/RpcUsageArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
       "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
       "schema_ref": "#/components/schemas/RpcPoolsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "endpoint-pools",
       "path": "/metagraph/endpoint-pools.json",
       "schema_ref": "#/components/schemas/EndpointPoolsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "endpoint-incidents",
       "path": "/metagraph/endpoint-incidents.json",
       "schema_ref": "#/components/schemas/EndpointIncidentsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
       "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
       "schema_ref": "#/components/schemas/AgentCatalogArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "agent-catalog-subnet",
       "path": "/metagraph/agent-catalog/{netuid}.json",
       "schema_ref": "#/components/schemas/AgentCatalogSubnetArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
       "schema_ref": "#/components/schemas/SchemaDriftArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "schema-index",
       "path": "/metagraph/schemas/index.json",
       "schema_ref": "#/components/schemas/SchemaIndexArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "schema-snapshot",
       "path": "/metagraph/schemas/{surface_id}.json",
       "schema_ref": "#/components/schemas/JsonObject",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "adapter",
       "path": "/metagraph/adapters/{slug}.json",
       "schema_ref": "#/components/schemas/AdapterArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "r2-manifest",
       "path": "/metagraph/r2-manifest.json",
       "schema_ref": "#/components/schemas/R2ManifestArtifact",
       "storage_tier": "dual"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-curation",
       "path": "/metagraph/review/curation.json",
       "schema_ref": "#/components/schemas/ReviewCurationArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
       "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "subnet-gaps",
       "path": "/metagraph/review/gaps/{netuid}.json",
       "schema_ref": "#/components/schemas/SubnetGapsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
       "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-adapter-candidates",
       "path": "/metagraph/review/adapter-candidates.json",
       "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-enrichment-queue",
       "path": "/metagraph/review/enrichment-queue.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentQueueArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-enrichment-evidence",
       "path": "/metagraph/review/enrichment-evidence.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentEvidenceArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-enrichment-targets",
       "path": "/metagraph/review/enrichment-targets.json",
       "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
       "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
       "storage_tier": "r2"
     },
     {
-      "contract_version": "2026-06-29.2",
+      "contract_version": "2026-06-30.1",
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
       "schema_ref": "#/components/schemas/BuildSummaryArtifact",
@@ -765,7 +765,7 @@
     }
   ],
   "base_path": "/api/v1",
-  "contract_version": "2026-06-29.2",
+  "contract_version": "2026-06-30.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "openapi_url": "/api/v1/openapi.json",
   "primary_domain": "api.metagraph.sh",
@@ -4359,7 +4359,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/events.json",
       "cache": "short",
-      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter; ?limit (<=1000) / ?offset.",
+      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
       "id": "subnet-events",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/events",
@@ -4371,6 +4371,20 @@
           "name": "kind",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "block_start",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "block_end",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         {

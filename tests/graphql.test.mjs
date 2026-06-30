@@ -15,7 +15,11 @@ import {
 } from "../src/graphql.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { resolveClientIp } from "../workers/config.mjs";
-import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "../src/kv-keys.mjs";
+import {
+  KV_ECONOMICS_CURRENT,
+  KV_HEALTH_CURRENT,
+  KV_HEALTH_META,
+} from "../src/kv-keys.mjs";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
@@ -1455,5 +1459,201 @@ describe("graphql — resolver branch coverage", () => {
     const res = await handleGraphQLRequest(req, emptyEnv);
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { data: { __typename: "Query" } });
+  });
+});
+
+describe("graphql — compare (reuse the shared compare loader)", () => {
+  const profilesEnv = (extra = {}, opts = {}) =>
+    fixtureEnv(
+      {
+        "/metagraph/profiles.json": {
+          profiles: [
+            {
+              netuid: 1,
+              slug: "a",
+              name: "A",
+              completeness_score: 90,
+              surface_count: 4,
+              operational_interface_count: 2,
+            },
+            {
+              netuid: 2,
+              slug: "b",
+              name: "B",
+              completeness_score: 50,
+              surface_count: 1,
+              operational_interface_count: 0,
+            },
+          ],
+        },
+        ...extra,
+      },
+      opts,
+    );
+
+  test("default dimensions: structure + economics + health side by side", async () => {
+    const env = profilesEnv({
+      "/metagraph/economics.json": {
+        subnets: [{ netuid: 1, emission_share: 0.1, open_slots: 5 }],
+      },
+    });
+    const { status, body } = await gql(
+      `{ compare(netuids: [1, 99]) {
+          schema_version dimensions requested_netuids
+          subnets { netuid found
+            structure { completeness_score surface_count }
+            economics { emission_share open_slots }
+            health { ok_count }
+          }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const c = body.data.compare;
+    assert.equal(c.schema_version, 1);
+    assert.deepEqual(c.dimensions, ["structure", "economics", "health"]);
+    assert.deepEqual(c.requested_netuids, [1, 99]);
+    // Requested order is preserved.
+    assert.equal(c.subnets[0].netuid, 1);
+    assert.equal(c.subnets[0].found, true);
+    assert.equal(c.subnets[0].structure.completeness_score, 90);
+    assert.equal(c.subnets[0].economics.emission_share, 0.1);
+    // No D1 binding → health is null, not an error.
+    assert.equal(c.subnets[0].health, null);
+    // Unknown netuid → found:false, all dimension blocks null.
+    assert.equal(c.subnets[1].netuid, 99);
+    assert.equal(c.subnets[1].found, false);
+    assert.equal(c.subnets[1].structure, null);
+    assert.equal(c.subnets[1].economics, null);
+  });
+
+  test("explicit dimensions subset skips the economics read", async () => {
+    const reads = new Map();
+    const env = profilesEnv({}, { reads });
+    const { status, body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["structure"]) {
+          dimensions subnets { structure { surface_count } economics { emission_share } }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.compare.dimensions, ["structure"]);
+    assert.equal(body.data.compare.subnets[0].structure.surface_count, 4);
+    assert.equal(body.data.compare.subnets[0].economics, null);
+    // economics dimension excluded → no economics artifact read.
+    assert.equal(reads.has("latest/economics.json"), false);
+  });
+
+  test("observed_at is stamped from the health:meta KV freshness", async () => {
+    const env = profilesEnv(
+      {},
+      { kv: { [KV_HEALTH_META]: { last_run_at: "2026-06-23T00:00:00.000Z" } } },
+    );
+    const { body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["structure"]) { observed_at } }`,
+      env,
+    );
+    assert.equal(body.data.compare.observed_at, "2026-06-23T00:00:00.000Z");
+  });
+
+  test("the health dimension runs the D1 surface_status aggregate", async () => {
+    const env = profilesEnv();
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return {
+                  results: [
+                    {
+                      netuid: 1,
+                      surface_count: 3,
+                      ok_count: 3,
+                      avg_latency_ms: 42,
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    };
+    const { status, body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["health"]) {
+          subnets { netuid health { surface_count ok_count avg_latency_ms } }
+        } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.subnets[0].health.ok_count, 3);
+    assert.equal(body.data.compare.subnets[0].health.avg_latency_ms, 42);
+  });
+
+  test("a D1 result with no rows yields null health (results || [] fallback)", async () => {
+    const env = profilesEnv();
+    env.METAGRAPH_HEALTH_DB = {
+      prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
+    };
+    const { status, body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["health"]) { subnets { health { ok_count } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.subnets[0].health, null);
+  });
+
+  test("a D1 error degrades the health dimension to null (no throw)", async () => {
+    const env = profilesEnv();
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        throw new Error("db unavailable");
+      },
+    };
+    const { status, body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["health"]) { subnets { health { ok_count } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.subnets[0].health, null);
+  });
+
+  test("invalid netuids (empty / negative) returns BAD_USER_INPUT", async () => {
+    const empty = await gql("{ compare(netuids: []) { schema_version } }");
+    assert.equal(empty.status, 200);
+    assert.ok(
+      empty.body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
+    const neg = await gql("{ compare(netuids: [-1]) { schema_version } }");
+    assert.ok(
+      neg.body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"),
+    );
+  });
+
+  test("an unknown dimension returns BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      '{ compare(netuids: [1], dimensions: ["bogus"]) { schema_version } }',
+    );
+    assert.ok(body.errors.find((e) => e.extensions?.code === "BAD_USER_INPUT"));
+  });
+
+  test("cold store: no profiles/economics artifacts → found:false, empty rows", async () => {
+    // emptyEnv: readArtifact always ok:false, so profiles and economics both
+    // resolve to [] (the fallback arms), observed_at is null, and every
+    // requested netuid is reported found:false with null dimension blocks.
+    const { status, body } = await gql(
+      `{ compare(netuids: [1], dimensions: ["economics"]) {
+          observed_at subnets { netuid found economics { emission_share } }
+        } }`,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.compare.observed_at, null);
+    assert.equal(body.data.compare.subnets[0].found, false);
+    assert.equal(body.data.compare.subnets[0].economics, null);
+  });
+
+  test("compare is weighted as a fan-out field", () => {
+    assert.equal(FIELD_COMPLEXITY.compare, 5);
   });
 });

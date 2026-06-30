@@ -2009,6 +2009,46 @@ describe("handleSubnetEvents", () => {
     assert.ok(captures.sql.some((s) => /event_kind = \?/.test(s)));
   });
 
+  test("block_start/block_end range filter is applied and bound", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 500 })],
+    });
+    await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?block_start=100&block_end=900`),
+    );
+    assert.ok(
+      captures.sql.some(
+        (s) => /block_number >= \?/.test(s) && /block_number <= \?/.test(s),
+      ),
+    );
+    assert.ok(captures.params.some((p) => p.includes(100) && p.includes(900)));
+  });
+
+  test("rejects a non-integer block_start with 400", async () => {
+    const res = await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?block_start=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "block_start");
+  });
+
+  test("rejects a non-integer block_end with 400", async () => {
+    const res = await handleSubnetEvents(
+      req(`/api/v1/subnets/${NETUID}/events`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/events?block_end=oops`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "block_end");
+  });
+
   test("cursor uses keyset seek instead of offset", async () => {
     const { env, captures } = dbWith({
       subnetEvents: [accountEventRow({ block_number: 150, event_index: 2 })],

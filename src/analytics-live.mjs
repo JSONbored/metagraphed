@@ -26,6 +26,7 @@ import {
   MAX_UPTIME_ROWS,
   UPTIME_WINDOWS,
 } from "../workers/config.mjs";
+import { buildChainCalls } from "./chain-analytics.mjs";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.mjs";
 
 export { composeCompareData };
@@ -353,6 +354,54 @@ export async function loadCompareSubnets(
     economicsRows: economics,
     healthRows,
     observedAt,
+  });
+}
+
+// Extrinsic call-mix breakdown (#1989): counts + share per call_module (or
+// call_module/call_function). The share denominator is the full-window extrinsic
+// count read separately, so the truncated LIMIT tail never skews shares. Mirrors
+// REST's handleChainCalls and the get_chain_calls MCP tool (#2364).
+export async function loadChainCalls(
+  d1,
+  {
+    window = "7d",
+    groupBy = "module",
+    limit = 50,
+    observedAt = null,
+    now = Date.now(),
+  } = {},
+) {
+  const days = ANALYTICS_WINDOWS[window] ?? ANALYTICS_WINDOWS["7d"];
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const cutoff = now - days * DAY_MS;
+  const groupCols =
+    groupBy === "module_function"
+      ? "call_module, call_function"
+      : "call_module";
+  const selectCols =
+    groupBy === "module_function"
+      ? "call_module, call_function"
+      : "call_module";
+  const [rows, totalRows] = await Promise.all([
+    d1(
+      `SELECT ${selectCols}, COUNT(*) AS count
+       FROM extrinsics
+       WHERE observed_at >= ? AND call_module IS NOT NULL
+       GROUP BY ${groupCols}
+       ORDER BY count DESC
+       LIMIT ?`,
+      [cutoff, limit],
+    ),
+    d1(`SELECT COUNT(*) AS total FROM extrinsics WHERE observed_at >= ?`, [
+      cutoff,
+    ]),
+  ]);
+  return buildChainCalls({
+    window: windowLabel,
+    groupBy,
+    observedAt,
+    total: totalRows?.[0]?.total ?? 0,
+    rows,
   });
 }
 

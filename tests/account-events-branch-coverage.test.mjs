@@ -185,4 +185,25 @@ describe("loadAccountTransfers direction clauses", () => {
     assert.deepEqual(params, ["5Hk", "5Hk", "5Hk", 100, 0]);
     assert.equal(out.transfer_count, 1);
   });
+
+  test("loadAccountTransfers received-side query labels a self-transfer 'received' (#2362)", async () => {
+    // Tie the requested-side labeling to the REAL query shape: the received-side
+    // read selects on coldkey only (no hotkey union), so a self-transfer
+    // (hotkey === coldkey === ss58) IS returned by it — and must be labeled
+    // 'received' to match the requested filter, not 'sent' from the hotkey-first
+    // per-row derivation.
+    const d1 = makeD1([
+      [{ block_number: 5, event_index: 0, hotkey: "5Self", coldkey: "5Self" }],
+    ]);
+    const out = await loadAccountTransfers(d1, "5Self", {
+      direction: "received",
+    });
+    const { sql, params } = d1.calls[0];
+    assert.ok(/INDEXED BY idx_account_events_coldkey/.test(sql));
+    assert.ok(/coldkey = \?/.test(sql));
+    assert.ok(!/hotkey = \?/.test(sql)); // only the received (coldkey) side clause
+    assert.ok(!/UNION ALL/.test(sql));
+    assert.deepEqual(params, ["5Self", 100, 0]);
+    assert.equal(out.transfers[0].direction, "received");
+  });
 });

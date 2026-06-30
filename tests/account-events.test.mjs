@@ -22,6 +22,7 @@ import {
   pruneAccountEvents,
   validEventRows,
   buildAccountTransfers,
+  loadAccountTransfers,
 } from "../src/account-events.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
 
@@ -417,6 +418,86 @@ test("account builders null invalid block heights and indices", () => {
   );
   assert.equal(fracTransfers.transfers[0].block_number, null);
   assert.equal(fracTransfers.transfers[0].event_index, null);
+});
+
+test("buildAccountTransfers labels a self-transfer by the requested side (#2362)", () => {
+  // A self-transfer (from === to === ss58, i.e. hotkey === coldkey === ss58) is
+  // returned by BOTH the sent-side and received-side queries. Without the
+  // requested direction the hotkey-first per-row derivation always labels it
+  // "sent" — so a ?direction=received page would contain a row whose direction
+  // contradicts the filter. The requested side must win.
+  const selfRow = {
+    block_number: 5,
+    event_index: 0,
+    hotkey: "5SELF",
+    coldkey: "5SELF",
+    amount_tao: 1,
+    observed_at: null,
+  };
+
+  // received-side query → labeled "received" (was "sent" before the fix).
+  const received = buildAccountTransfers([selfRow], "5SELF", {
+    direction: "received",
+  });
+  assert.equal(received.transfers[0].direction, "received");
+
+  // sent-side query → labeled "sent".
+  const sent = buildAccountTransfers([selfRow], "5SELF", { direction: "sent" });
+  assert.equal(sent.transfers[0].direction, "sent");
+
+  // No side filter (both/all/omitted) keeps the per-row hotkey-first derivation.
+  const both = buildAccountTransfers([selfRow], "5SELF");
+  assert.equal(both.transfers[0].direction, "sent");
+  // Only the exact strings "sent"/"received" force a label; every other value
+  // ("all", "both", junk) falls back to the per-row hotkey-first derivation.
+  for (const value of ["all", "both", "BOTH", "", "weird"]) {
+    const out = buildAccountTransfers([selfRow], "5SELF", { direction: value });
+    assert.equal(out.transfers[0].direction, "sent");
+  }
+});
+
+test("buildAccountTransfers explicit side never flips a normal row (#2362)", () => {
+  // For a non-self transfer the requested side already matches the per-row
+  // derivation, so forcing the label is a no-op — the fix only changes the
+  // self-transfer edge, never a genuine counterparty row.
+  const out = buildAccountTransfers(
+    [
+      {
+        block_number: 9,
+        event_index: 1,
+        hotkey: "5SENDER",
+        coldkey: "5ME",
+        amount_tao: 2,
+        observed_at: null,
+      },
+    ],
+    "5ME",
+    { direction: "received" },
+  );
+  assert.equal(out.transfers[0].direction, "received");
+  assert.equal(out.transfers[0].from, "5SENDER");
+  assert.equal(out.transfers[0].to, "5ME");
+});
+
+test("loadAccountTransfers threads the requested direction into the label (#2362)", async () => {
+  // End-to-end through the shared MCP/REST loader: the received-side query yields
+  // the self-transfer row, and the loader must hand the requested direction to
+  // buildAccountTransfers so the row is labeled "received", not "sent".
+  const selfRow = {
+    block_number: 5,
+    event_index: 0,
+    hotkey: "5SELF",
+    coldkey: "5SELF",
+    amount_tao: 1,
+    observed_at: null,
+  };
+  const d1 = async (sql) =>
+    /coldkey = \?/.test(sql) && !/hotkey <>/.test(sql) ? [selfRow] : [];
+  const out = await loadAccountTransfers(d1, "5SELF", {
+    direction: "received",
+  });
+  assert.equal(out.transfers.length, 1);
+  assert.equal(out.transfers[0].direction, "received");
 });
 
 test("formatRegistration defaults every sparse field to null/false (null-safe)", () => {
