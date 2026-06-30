@@ -223,6 +223,24 @@ describe("GET /api/v1/compare", () => {
     assert.deepEqual(body.data.dimensions, ["structure", "health"]);
   });
 
+  test("dimensions tolerate whitespace around comma-separated entries", async () => {
+    const { body } = await get(
+      "/api/v1/compare?netuids=1&dimensions=structure,%20health",
+    );
+    assert.deepEqual(body.data.dimensions, ["structure", "health"]);
+    const [s] = body.data.subnets;
+    assert.equal("structure" in s, true);
+    assert.equal("health" in s, true);
+  });
+
+  test("rejects empty dimension tokens", async () => {
+    const { status, body } = await get(
+      "/api/v1/compare?netuids=1&dimensions=structure,,health",
+    );
+    assert.equal(status, 400);
+    assert.equal(body.meta.parameter, "dimensions");
+  });
+
   test("an unknown netuid is found:false, never a 404", async () => {
     const { status, body } = await get("/api/v1/compare?netuids=99999");
     assert.equal(status, 200);

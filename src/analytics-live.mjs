@@ -111,10 +111,7 @@ export function parseCompareDimensions(dimensionsRaw) {
   if (dimensionsRaw === null || dimensionsRaw === undefined) {
     return COMPARE_DIMENSIONS;
   }
-  const requested = String(dimensionsRaw).split(",");
-  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
-  if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
+  return compareDimensionsFromTokens(String(dimensionsRaw).split(","));
 }
 
 export function parseCompareDimensionList(dimensions) {
@@ -122,9 +119,19 @@ export function parseCompareDimensionList(dimensions) {
     return COMPARE_DIMENSIONS;
   }
   if (!Array.isArray(dimensions) || dimensions.length === 0) return null;
-  const unknown = dimensions.find((d) => !COMPARE_DIMENSIONS.includes(d));
+  return compareDimensionsFromTokens(dimensions);
+}
+
+function compareDimensionsFromTokens(tokens) {
+  const requested = [];
+  for (const token of tokens) {
+    const trimmed = String(token).trim();
+    if (trimmed === "") return null;
+    requested.push(trimmed);
+  }
+  const unknown = requested.find((d) => !COMPARE_DIMENSIONS.includes(d));
   if (unknown !== undefined) return null;
-  return COMPARE_DIMENSIONS.filter((d) => dimensions.includes(d));
+  return COMPARE_DIMENSIONS.filter((d) => requested.includes(d));
 }
 
 export async function loadSubnetUptime(

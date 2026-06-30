@@ -752,10 +752,19 @@ describe("analytics-live window parsers", () => {
   test("parseCompareDimensionList rejects unknown dimensions", () => {
     assert.deepEqual(parseCompareDimensionList(["structure"]), ["structure"]);
     assert.equal(parseCompareDimensionList(["bogus"]), null);
+    assert.deepEqual(parseCompareDimensionList(["structure", " health"]), [
+      "structure",
+      "health",
+    ]);
+    assert.equal(parseCompareDimensionList(["structure", ""]), null);
   });
 
   test("parseCompareDimensions mirrors REST comma-list input", () => {
     assert.deepEqual(parseCompareDimensions("structure,health"), [
+      "structure",
+      "health",
+    ]);
+    assert.deepEqual(parseCompareDimensions("structure, health"), [
       "structure",
       "health",
     ]);
@@ -765,5 +774,6 @@ describe("analytics-live window parsers", () => {
       "health",
     ]);
     assert.equal(parseCompareDimensions("bogus"), null);
+    assert.equal(parseCompareDimensions("structure,,health"), null);
   });
 });
