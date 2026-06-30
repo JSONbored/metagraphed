@@ -30,8 +30,6 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   DAY_MS,
-  HEALTH_TREND_WINDOWS,
-  MAX_BULK_TREND_ROWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
 } from "../config.mjs";
@@ -43,9 +41,8 @@ import {
   publishedAt,
 } from "../responses.mjs";
 import { d1TimeoutMs, withTimeout } from "../storage.mjs";
-import { dailyLatencyColumns } from "../../src/health-sql.mjs";
+import { loadBulkHealthTrends } from "../../src/bulk-health-trends.mjs";
 import {
-  formatBulkTrends,
   formatGlobalIncidents,
   formatIncidents,
   INCIDENT_GAP_MS,
@@ -354,39 +351,9 @@ export async function handleBulkHealthTrends(
   }
 
   return withEdgeCache(request, ctx, env, "bulk-trends", async () => {
-    const nowMs = Date.now();
-    const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-    const cutoffDay = new Date(nowMs - maxWindowDays * DAY_MS)
-      .toISOString()
-      .slice(0, 10);
-    const rows = await d1All(
-      env,
-      `SELECT netuid,
-            day AS date,
-            SUM(samples) AS total,
-            SUM(ok_count) AS ok_count,
-            ${dailyLatencyColumns()}
-     FROM surface_uptime_daily
-     WHERE day >= ?
-     GROUP BY netuid, day
-     ORDER BY netuid, day
-     LIMIT ?`,
-      [cutoffDay, MAX_BULK_TREND_ROWS],
-    );
-    const windows = {};
-    for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-      const windowCutoff = new Date(nowMs - days * DAY_MS)
-        .toISOString()
-        .slice(0, 10);
-      windows[label] = rows.filter(
-        (row) => String(row.day || row.date) >= windowCutoff,
-      );
-    }
     const meta = await readHealthMetaKv(env);
-    const data = formatBulkTrends({
+    const { data, rows } = await loadBulkHealthTrends(d1Runner(env), {
       observedAt: meta?.last_run_at || null,
-      windows,
-      windowDays: HEALTH_TREND_WINDOWS,
     });
     const response = await envelopeResponse(
       request,

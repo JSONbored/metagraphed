@@ -421,6 +421,12 @@ assert.ok(
     Array.isArray(rpcUsageCold.buckets),
   "get_rpc_usage must return window + endpoints[] + buckets[] on cold D1",
 );
+const healthTrendsCold = await callOk("get_health_trends", {});
+assert.ok(
+  healthTrendsCold.windows?.["7d"] &&
+    Array.isArray(healthTrendsCold.windows["7d"].subnets),
+  "get_health_trends must return windows.7d.subnets[] on cold D1",
+);
 
 // --- Negative paths --------------------------------------------------------
 
