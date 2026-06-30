@@ -333,19 +333,19 @@ describe("validateQueryParams", () => {
 describe("canonicalAnalyticsCacheRoute", () => {
   test("normalizes decoded query values for cache keys", () => {
     const plain = url(
-      "/api/v1/chain/signers?call_module=Balances&limit=10&window=30d",
+      "/api/v1/chain/signers?call_module=Balances&limit=10&window=30d&sort=total_fee_tao",
     );
     const encoded = url(
-      "/api/v1/chain/signers?limit=10&call_module=%42alances&window=30d",
+      "/api/v1/chain/signers?limit=10&call_module=%42alances&sort=total_fee_tao&window=30d",
     );
 
     assert.equal(
-      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
-      "/api/v1/chain/signers?window=30d&limit=10&call_module=Balances",
+      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module", "sort"]),
+      "/api/v1/chain/signers?window=30d&limit=10&call_module=Balances&sort=total_fee_tao",
     );
     assert.equal(
-      canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module"]),
-      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module"]),
+      canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module", "sort"]),
+      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module", "sort"]),
     );
   });
 

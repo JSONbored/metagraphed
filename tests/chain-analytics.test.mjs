@@ -460,10 +460,22 @@ test("buildChainSigners maps rows + is cold-stable", () => {
   assert.deepEqual(buildChainSigners({ window: "7d" }), {
     schema_version: 1,
     window: "7d",
+    sort: "tx_count",
     observed_at: null,
     signer_count: 0,
     signers: [],
   });
+});
+
+test("buildChainSigners echoes the selected sort", () => {
+  assert.equal(
+    buildChainSigners({ window: "7d", sort: "total_fee_tao" }).sort,
+    "total_fee_tao",
+  );
+  assert.equal(
+    buildChainSigners({ window: "7d", sort: "nope" }).sort,
+    "tx_count",
+  );
 });
 
 test("buildChainSigners nulls non-finite and negative last_tx_block", () => {
@@ -518,12 +530,42 @@ test("GET /api/v1/chain/signers ranks by tx_count via the signer GROUP BY", asyn
   );
   assert.equal(res.status, 200);
   const body = await res.json();
+  assert.equal(body.data.sort, "tx_count");
   assert.equal(body.data.signers[0].signer, "5Top");
   assert.equal(body.data.signers[0].tx_count, 900);
   const sql = captured[0].sql;
   assert.match(sql, /GROUP BY signer/);
   assert.match(sql, /ORDER BY tx_count DESC/);
   assert.equal(captured[0].params.at(-1), 10);
+});
+
+test("GET /api/v1/chain/signers ranks by total_fee_tao when requested", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return { all: () => Promise.resolve({ results: [] }) };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/signers?sort=total_fee_tao",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.sort, "total_fee_tao");
+  const q = captured.find((c) => /FROM extrinsics/.test(c.sql));
+  assert.match(q.sql, /ORDER BY total_fee_tao DESC, signer ASC/);
 });
 
 test("GET /api/v1/chain/signers scopes the leaderboard by call_module", async () => {
@@ -554,6 +596,17 @@ test("GET /api/v1/chain/signers scopes the leaderboard by call_module", async ()
   const q = captured.find((c) => /FROM extrinsics/.test(c.sql));
   assert.match(q.sql, /AND call_module = \?/);
   assert.ok(q.params.includes("Balances"));
+});
+
+test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/signers?sort=fees"),
+    createLocalArtifactEnv(),
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.meta.parameter, "sort");
 });
 
 test("GET /api/v1/chain/fees scopes both the daily series and payers by call_module", async () => {
