@@ -884,7 +884,8 @@ export function formatLeaderboards({
     .sort(
       (a, b) =>
         (b.uptime_ratio ?? -1) - (a.uptime_ratio ?? -1) ||
-        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity),
+        (a.avg_latency_ms ?? Infinity) - (b.avg_latency_ms ?? Infinity) ||
+        a.netuid - b.netuid,
     )
     .slice(0, cap);
 
@@ -895,7 +896,7 @@ export function formatLeaderboards({
       latency_ms: roundInt(row.min_latency_ms),
     }))
     .filter((entry) => entry.latency_ms != null)
-    .sort((a, b) => a.latency_ms - b.latency_ms)
+    .sort((a, b) => a.latency_ms - b.latency_ms || a.netuid - b.netuid)
     .slice(0, cap);
 
   const completeBoard = (mostComplete || [])
@@ -905,7 +906,11 @@ export function formatLeaderboards({
       name: row.name ?? null,
       completeness_score: row.completeness_score ?? null,
     }))
-    .sort((a, b) => (b.completeness_score ?? -1) - (a.completeness_score ?? -1))
+    .sort(
+      (a, b) =>
+        (b.completeness_score ?? -1) - (a.completeness_score ?? -1) ||
+        a.netuid - b.netuid,
+    )
     .slice(0, cap);
 
   // Enrichment depth: how much curation/discovery has fleshed out a subnet's
@@ -924,7 +929,8 @@ export function formatLeaderboards({
     .sort(
       (a, b) =>
         b.surface_count - a.surface_count ||
-        b.operational_interface_count - a.operational_interface_count,
+        b.operational_interface_count - a.operational_interface_count ||
+        a.netuid - b.netuid,
     )
     .slice(0, cap);
 
@@ -938,7 +944,10 @@ export function formatLeaderboards({
       (entry) =>
         entry.completeness_delta != null && entry.completeness_delta > 0,
     )
-    .sort((a, b) => b.completeness_delta - a.completeness_delta)
+    .sort(
+      (a, b) =>
+        b.completeness_delta - a.completeness_delta || a.netuid - b.netuid,
+    )
     .slice(0, cap);
 
   // Durable reliability ranking: the windowed score (uptime ratio minus a

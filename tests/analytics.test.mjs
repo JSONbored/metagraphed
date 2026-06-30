@@ -286,6 +286,101 @@ describe("formatLeaderboards", () => {
       [4, 9, 7],
     );
   });
+  // Every registry board must end with an ascending-netuid tiebreak so tied
+  // rows order deterministically (and the limit cap selects a stable
+  // membership) instead of inheriting the unordered GROUP BY / profiles-artifact
+  // input order. Each test reverses the input to prove order-independence.
+  test("healthiest breaks uptime/latency ties by netuid", () => {
+    const tied = [
+      { netuid: 5, total: 4, ok_count: 4, avg_latency_ms: 100 },
+      { netuid: 2, total: 4, ok_count: 4, avg_latency_ms: 100 },
+      { netuid: 9, total: 4, ok_count: 4, avg_latency_ms: 100 },
+    ];
+    const order = (healthRows) =>
+      formatLeaderboards({
+        ...inputs,
+        healthRows,
+        board: "healthiest",
+      }).boards.healthiest.map((e) => e.netuid);
+    assert.deepEqual(order(tied), [2, 5, 9]);
+    assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
+  });
+  test("fastest-rpc breaks latency ties by netuid", () => {
+    const tied = [
+      { netuid: 5, min_latency_ms: 100 },
+      { netuid: 2, min_latency_ms: 100 },
+      { netuid: 9, min_latency_ms: 100 },
+    ];
+    const order = (rpcRows) =>
+      formatLeaderboards({ ...inputs, rpcRows, board: "fastest-rpc" }).boards[
+        "fastest-rpc"
+      ].map((e) => e.netuid);
+    assert.deepEqual(order(tied), [2, 5, 9]);
+    assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
+  });
+  test("most-complete breaks score ties by netuid", () => {
+    const tied = [
+      { netuid: 5, slug: "five", name: "Five", completeness_score: 90 },
+      { netuid: 2, slug: "two", name: "Two", completeness_score: 90 },
+      { netuid: 9, slug: "nine", name: "Nine", completeness_score: 90 },
+    ];
+    const order = (mostComplete) =>
+      formatLeaderboards({
+        ...inputs,
+        mostComplete,
+        board: "most-complete",
+      }).boards["most-complete"].map((e) => e.netuid);
+    assert.deepEqual(order(tied), [2, 5, 9]);
+    assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
+  });
+  test("most-enriched breaks surface-count ties by netuid", () => {
+    const tied = [
+      {
+        netuid: 5,
+        slug: "five",
+        name: "Five",
+        surface_count: 8,
+        operational_interface_count: 2,
+      },
+      {
+        netuid: 2,
+        slug: "two",
+        name: "Two",
+        surface_count: 8,
+        operational_interface_count: 2,
+      },
+      {
+        netuid: 9,
+        slug: "nine",
+        name: "Nine",
+        surface_count: 8,
+        operational_interface_count: 2,
+      },
+    ];
+    const order = (mostComplete) =>
+      formatLeaderboards({
+        ...inputs,
+        mostComplete,
+        board: "most-enriched",
+      }).boards["most-enriched"].map((e) => e.netuid);
+    assert.deepEqual(order(tied), [2, 5, 9]);
+    assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
+  });
+  test("fastest-growing breaks delta ties by netuid", () => {
+    const tied = [
+      { netuid: 5, delta: 7 },
+      { netuid: 2, delta: 7 },
+      { netuid: 9, delta: 7 },
+    ];
+    const order = (growthRows) =>
+      formatLeaderboards({
+        ...inputs,
+        growthRows,
+        board: "fastest-growing",
+      }).boards["fastest-growing"].map((e) => e.netuid);
+    assert.deepEqual(order(tied), [2, 5, 9]);
+    assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
+  });
   test("most-enriched excludes zero-surface subnets", () => {
     const out = formatLeaderboards({
       ...inputs,
