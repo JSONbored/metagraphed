@@ -11,6 +11,7 @@ import metagraphed.client as client
 from metagraphed import (
     MetagraphedClient,
     MetagraphedError,
+    Provider,
     Subnet,
     Surface,
     metagraphed_fetch,
@@ -446,6 +447,29 @@ class FetchAllAndModelsTest(unittest.TestCase):
     def test_model_from_dict_tolerates_non_mapping(self):
         self.assertEqual(Subnet.from_dict(None).raw, {})
         self.assertIsNone(Subnet.from_dict(None).netuid)
+
+    def test_provider_slug_aliases_the_api_id_key(self):
+        # The providers API exposes the slug as `id` (there is no `slug` key), so
+        # Provider.slug must alias from `id` instead of silently staying None.
+        provider = Provider.from_dict(
+            {"id": "macrocosmos", "name": "Macrocosmos", "surface_count": 12}
+        )
+        self.assertEqual(provider.slug, "macrocosmos")
+        self.assertEqual(provider.name, "Macrocosmos")
+        self.assertEqual(provider.surface_count, 12)
+        self.assertEqual(provider.raw["id"], "macrocosmos")
+
+    def test_provider_explicit_slug_wins_over_alias(self):
+        # A direct `slug` (should the API ever send one) takes precedence over the
+        # `id` alias; the alias only fills an otherwise-unset field.
+        provider = Provider.from_dict({"id": "from-id", "slug": "from-slug"})
+        self.assertEqual(provider.slug, "from-slug")
+
+    def test_alias_does_not_leak_to_other_models(self):
+        # The alias map is per-model: a Subnet carrying an `id` must not pick it
+        # up as a slug (Subnet has no such alias).
+        subnet = Subnet.from_dict({"id": "x", "slug": "real-slug"})
+        self.assertEqual(subnet.slug, "real-slug")
 
 
 if __name__ == "__main__":
