@@ -1694,6 +1694,98 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(res.body.result.isError, true);
     assert.ok(res.body.result.content[0].text.includes("502"));
   });
+
+  test("list_chain_events returns the raw event feed and forwards filters", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        count: 1,
+        next_before: 4199999,
+        next_cursor: "cursor-xyz",
+        events: [
+          {
+            block_number: 4200000,
+            event_index: 3,
+            pallet: "SubtensorModule",
+            method: "WeightsSet",
+            args: [{ name: "netuid", value: 7 }],
+            phase: "ApplyExtrinsic",
+            extrinsic_index: 2,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_chain_events",
+      { pallet: "SubtensorModule", method: "WeightsSet", limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 1);
+    assert.equal(out.next_cursor, "cursor-xyz");
+    assert.equal(out.events[0].pallet, "SubtensorModule");
+    assert.equal(out.events[0].method, "WeightsSet");
+    // The feed read hits /chain-events and forwards the filters + limit.
+    assert.equal(dataApi.calls[0].pathname, "/api/v1/chain-events");
+    assert.equal(
+      dataApi.calls[0].searchParams.get("pallet"),
+      "SubtensorModule",
+    );
+    assert.equal(dataApi.calls[0].searchParams.get("method"), "WeightsSet");
+    assert.equal(dataApi.calls[0].searchParams.get("limit"), "10");
+  });
+
+  test("list_chain_events surfaces a data-Worker 400 as an invalid_params error", async () => {
+    const dataApi = {
+      calls: [],
+      fetch(request) {
+        this.calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: "method filter requires pallet unless block is specified",
+            }),
+            { status: 400, headers: { "content-type": "application/json" } },
+          ),
+        );
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      { method: "WeightsSet" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /requires pallet/);
+  });
+
+  test("list_chain_events errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool("list_chain_events", {}, { env: {} });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /chain-events tier/);
+  });
+
+  test("list_chain_events applies the data API limiter before fetching", async () => {
+    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit() {
+              return { success: false };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.equal(dataApi.calls.length, 0);
+  });
 });
 
 describe("MCP get_chain_signers", () => {
