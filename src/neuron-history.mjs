@@ -408,6 +408,13 @@ function toFiniteOrNull(v) {
 function roundTao(v) {
   return Math.round(v * 1e6) / 1e6;
 }
+// Round a TAO sum, preserving null — so an unrounded D1 SUM(stake_tao)/SUM(
+// emission_tao) never leaks accumulated float noise, while a null SUM (cold/
+// sparse day) stays null rather than collapsing to 0.
+function roundTaoOrNull(v) {
+  const n = toFiniteOrNull(v);
+  return n == null ? null : roundTao(n);
+}
 function roundPrice(v) {
   return Math.round(v * 1e9) / 1e9;
 }
@@ -437,8 +444,10 @@ export function buildSubnetHistory(rows, netuid, { window } = {}) {
       snapshot_date: r.snapshot_date,
       neuron_count: r.neuron_count ?? null,
       validator_count: r.validator_count ?? null,
-      total_stake_tao: r.total_stake_tao ?? null,
-      total_emission_tao: r.total_emission_tao ?? null,
+      // Round the per-day SUM(stake_tao)/SUM(emission_tao) to stop accumulated
+      // float noise from leaking, matching buildEconomicsTrends above.
+      total_stake_tao: roundTaoOrNull(r.total_stake_tao),
+      total_emission_tao: roundTaoOrNull(r.total_emission_tao),
     }));
   return {
     schema_version: 1,

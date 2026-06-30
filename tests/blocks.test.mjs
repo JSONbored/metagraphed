@@ -701,3 +701,30 @@ test("loadBlock still resolves a 64-hex block_hash ref (#2314)", async () => {
     true,
   );
 });
+
+test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", async () => {
+  // The poller stores hashes lowercase + D1 is BINARY-collated, so an upper-case
+  // ref must be lowercased before binding or the MCP get_block tool misses a
+  // block the REST route resolves. Mirrors the REST handleBlock guard (#1955).
+  const lower = `0x${"a".repeat(64)}`;
+  const mixed = `0x${"A".repeat(64)}`;
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/WHERE block_hash = \?/.test(sql)) {
+      return params[0] === lower
+        ? [{ block_number: 9, block_hash: lower }]
+        : [];
+    }
+    return [];
+  };
+  const out = await loadBlock(d1, mixed);
+  assert.equal(out.block.block_number, 9);
+  assert.equal(
+    calls.some(
+      (c) => /WHERE block_hash = \?/.test(c.sql) && c.params[0] === lower,
+    ),
+    true,
+    "the hash bind parameter must be lowercased",
+  );
+});

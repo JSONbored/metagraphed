@@ -304,6 +304,8 @@ describe("buildCounterpartyRelationship", () => {
     const data = buildCounterpartyRelationship(rows, ME, "A", { limit: 2 });
     assert.equal(data.transfer_count, COUNTERPARTY_RELATIONSHIP_SCAN_CAP);
     assert.equal(data.scan_capped, true);
+    assert.equal(data.first_block, null);
+    assert.equal(data.first_seen_at, null);
     assert.equal(data.total_sent_tao, COUNTERPARTY_RELATIONSHIP_SCAN_CAP);
     assert.equal(data.transfers.length, 2);
   });

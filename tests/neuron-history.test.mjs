@@ -187,6 +187,36 @@ describe("history builders", () => {
     assert.equal(out.points[0].validator_count, 64);
   });
 
+  test("buildSubnetHistory rounds the per-day TAO sums to drop float noise (#2354)", () => {
+    // A per-day SUM(stake_tao)/SUM(emission_tao) over many REAL UID cells
+    // accumulates float noise; the builder must round it like buildEconomicsTrends
+    // instead of leaking the long fractional tail. A null SUM stays null.
+    const out = buildSubnetHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: 3,
+          validator_count: 1,
+          total_stake_tao: 0.1 + 0.2, // 0.30000000000000004
+          total_emission_tao: 1.005 + 2.005, // 3.0100000000000002
+        },
+        {
+          snapshot_date: "2026-06-19",
+          neuron_count: 0,
+          validator_count: 0,
+          total_stake_tao: null,
+          total_emission_tao: null,
+        },
+      ],
+      7,
+    );
+    assert.equal(out.points[0].total_stake_tao, 0.3);
+    assert.equal(out.points[0].total_emission_tao, 3.01);
+    // A null SUM (cold/sparse day) stays null, never coerced to 0.
+    assert.equal(out.points[1].total_stake_tao, null);
+    assert.equal(out.points[1].total_emission_tao, null);
+  });
+
   test("buildNeuronHistory defaults window + per-point captured_at/block_number to null", () => {
     // A point row with no captured_at/block_number (sparse / pre-block-tag rows)
     // must still produce a schema-stable point — null, never undefined — and an

@@ -808,3 +808,31 @@ test("loadExtrinsic still resolves a 64-hex extrinsic_hash ref (#2316)", async (
     true,
   );
 });
+
+test("loadExtrinsic lowercases a mixed-case 0x extrinsic_hash before binding (#2349)", async () => {
+  // The poller stores hashes lowercase + D1 is BINARY-collated, so an upper-case
+  // ref must be lowercased before binding or the MCP get_extrinsic tool misses an
+  // extrinsic the REST route resolves. Mirrors the REST handleExtrinsic guard (#1955).
+  const lower = `0x${"b".repeat(64)}`;
+  const mixed = `0x${"B".repeat(64)}`;
+  const calls = [];
+  const d1 = async (sql, params) => {
+    calls.push({ sql, params });
+    if (/WHERE extrinsic_hash = \?/.test(sql)) {
+      return params[0] === lower
+        ? [{ block_number: 7, extrinsic_index: 2, extrinsic_hash: lower }]
+        : [];
+    }
+    return [];
+  };
+  const out = await loadExtrinsic(d1, mixed);
+  assert.equal(out.extrinsic.block_number, 7);
+  assert.equal(out.extrinsic.extrinsic_index, 2);
+  assert.equal(
+    calls.some(
+      (c) => /WHERE extrinsic_hash = \?/.test(c.sql) && c.params[0] === lower,
+    ),
+    true,
+    "the hash bind parameter must be lowercased",
+  );
+});

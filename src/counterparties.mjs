@@ -202,19 +202,21 @@ export function buildCounterpartyRelationship(
   }
 
   const cap = Math.max(1, Math.min(limit, 100));
+  const scanCapped = list.length >= COUNTERPARTY_RELATIONSHIP_SCAN_CAP;
   return {
     schema_version: 1,
     ss58,
     counterparty,
     transfer_count: transfers.length,
     transfers_scanned: list.length,
-    scan_capped: list.length >= COUNTERPARTY_RELATIONSHIP_SCAN_CAP,
+    scan_capped: scanCapped,
     total_sent_tao: round(totalSent),
     total_received_tao: round(totalReceived),
     net_tao: round(totalReceived - totalSent),
-    first_block: firstBlock,
+    // Oldest block/timestamp are unknowable when the newest-first scan was truncated.
+    first_block: scanCapped ? null : firstBlock,
     last_block: lastBlock,
-    first_seen_at: toIso(firstObserved),
+    first_seen_at: scanCapped ? null : toIso(firstObserved),
     last_seen_at: toIso(lastObserved),
     limit: cap,
     transfers: transfers.slice(0, cap),
