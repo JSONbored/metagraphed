@@ -51,6 +51,9 @@ export const OPERATIONAL_SURFACE_KINDS = [
 // build injects the stronger DNS-aware `isUnsafeResolvedUrl` from scripts/lib.mjs.
 // Operational surfaces are already curated `public_safe`, so this is defense in
 // depth, not the primary control.
+// IPv4 + registrable-domain literal patterns. IPv6-literal ranges are handled
+// separately by isUnsafeIpv6Literal — applying an IPv6 prefix like `fd` to every
+// host wrongly rejected public domains (fda.gov, fd.io) as unique-local (#2375).
 const UNSAFE_HOST_PATTERNS = [
   /^localhost$/i,
   /\.localhost$/i,
@@ -63,14 +66,26 @@ const UNSAFE_HOST_PATTERNS = [
   // 100.64.0.0/10 CGNAT — blocked by the webhook + build SSRF guards; the probe
   // literal guard must stay in parity (issue #2312).
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
-  /^::1$/,
-  /^::$/,
-  // fe80::/10 link-local + fec0::/10 deprecated site-local (RFC 3879) — the whole
-  // fe80::–feff: reserved range, mirroring the webhook guard (issue #1538).
-  /^fe[89a-f][0-9a-f]:/i,
-  /^fc00:/i,
-  /^fd/i,
 ];
+
+// IPv6-literal SSRF ranges, checked only when the host is an actual IPv6 literal
+// (it contains a colon — a registrable domain never does). Mirrors the webhook
+// guard in src/webhooks.mjs so the two stay at parity:
+//   ::1            loopback
+//   ::             unspecified
+//   fe00::/8       link-local fe80::/10 + deprecated site-local fec0::/10 (#1538)
+//   fc00::/7       unique-local — first hextet fc00–fdff, i.e. an fc__/fd__ prefix
+// The full fc00::/7 range matters: the old /^fc00:/ only caught the literal fc00:
+// hextet and let other ULAs (fc12::1, fdab::1) through (#2375).
+function isUnsafeIpv6Literal(host) {
+  return (
+    host === "::1" ||
+    host === "::" ||
+    host.startsWith("fe") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd")
+  );
+}
 
 export function isUnsafePublicUrl(value) {
   try {
@@ -103,6 +118,13 @@ export function isUnsafePublicUrl(value) {
       ) {
         return true;
       }
+    }
+    // An IPv6 literal (host contains a colon) is matched only against the IPv6
+    // ranges; the IPv4/domain patterns never apply to it. Conversely, a domain
+    // or IPv4 host is never tested against the IPv6 prefixes — that parity is
+    // what keeps public `fd*`/`fc*` domains probeable (#2375).
+    if (host.includes(":")) {
+      return isUnsafeIpv6Literal(host);
     }
     return UNSAFE_HOST_PATTERNS.some((pattern) => pattern.test(host));
   } catch {

@@ -99,26 +99,52 @@ function toRfc822(iso) {
 
 // ── item builders (from existing served artifacts) ──────────────────────────
 
+// Title + summary for one subnet change. A renamed entry carries before/after
+// (the diffSubnets shape), so render the actual name change instead of dropping
+// it; added/removed entries carry `name`. Falls back to the bare verb when no
+// names are present (e.g. a legacy/bare `{ netuid }` entry).
+function subnetRenameSide(value) {
+  return value == null ? "?" : clamp(String(value).trim(), 60) || "?";
+}
+
+function subnetChangeText(n, change, entry) {
+  if (change === "renamed" && (entry?.before != null || entry?.after != null)) {
+    const before = subnetRenameSide(entry.before);
+    const after = subnetRenameSide(entry.after);
+    return {
+      title: `Subnet ${n} renamed — ${before} → ${after}`,
+      summary: `Subnet ${n} renamed from ${before} to ${after} in the registry.`,
+    };
+  }
+  const name = typeof entry?.name === "string" ? entry.name : null;
+  return {
+    title: `Subnet ${n} ${change}${name ? ` — ${clamp(name, 80)}` : ""}`,
+    summary: `Subnet ${n} ${change} in the registry.`,
+  };
+}
+
 // Registry feed: the latest changelog window's subnet + artifact + coverage
 // changes. `netuid` (optional) filters to one subnet.
 function registryItems(changelog, netuid) {
   const at = toIso(changelog?.generated_at) || new Date().toISOString();
   const items = [];
 
-  // changelog.subnets is { added: [...], removed: [...], renamed: [...] }, each
-  // entry a netuid or { netuid, name }.
+  // changelog.subnets is { added: [...], removed: [...], renamed: [...] }.
+  // added/removed entries are { netuid, name, slug }; renamed entries are
+  // { netuid, before, after } (see scripts/changelog.mjs diffSubnets).
   const subnets = changelog?.subnets || {};
   for (const change of ["added", "removed", "renamed"]) {
     for (const entry of subnets[change] || []) {
       const n = typeof entry === "number" ? entry : entry?.netuid;
       if (typeof n !== "number") continue;
       if (netuid != null && n !== netuid) continue;
-      const name = typeof entry === "object" ? entry?.name : null;
+      const entryObj = typeof entry === "object" && entry ? entry : null;
+      const { title, summary } = subnetChangeText(n, change, entryObj);
       items.push({
         id: `registry:subnet:${n}:${change}:${at}`,
         url: `${SITE_URL}/subnets/${n}`,
-        title: `Subnet ${n} ${change}${name ? ` — ${clamp(name, 80)}` : ""}`,
-        summary: clamp(`Subnet ${n} ${change} in the registry.`),
+        title,
+        summary: clamp(summary),
         timestamp: at,
         tags: ["registry", "subnet", change],
       });
