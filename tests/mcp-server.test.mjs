@@ -1679,7 +1679,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     const res = await callTool("get_chain_activity", {}, { env: {} });
     assert.equal(res.body.result.isError, true);
     assert.ok(
-      res.body.result.content[0].text.includes("chain activity tier"),
+      res.body.result.content[0].text.includes("all-events data tier"),
       "must surface a clear tier-unavailable message",
     );
   });
@@ -5661,6 +5661,14 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
                       results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
                     });
                   if (
+                    /FROM account_events WHERE block_number = \? AND extrinsic_index = \?/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: fixtures.extrinsicEvents || [],
+                    });
+                  if (
                     /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
                       sql,
                     )
@@ -5949,6 +5957,17 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.ok(q.params.includes(4200000) && q.params.includes(3));
   });
 
+  test("get_extrinsic embeds emitted account_events (#1849)", async () => {
+    const env = chainD1({
+      extrinsic: EXTRINSIC_ROW,
+      extrinsicEvents: [EVENT_ROW],
+    });
+    const res = await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events.length, 1);
+    assert.equal(out.events[0].event_kind, "WeightsSet");
+  });
+
   test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
     const res = await callTool("get_extrinsic", { ref: "0x" + "f".repeat(64) });
     assert.equal(res.body.result.isError, false);
@@ -5986,7 +6005,14 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         { ref: "4200000" },
       ],
       ["list_extrinsics", chainD1({ extrinsics: [EXTRINSIC_ROW] }), {}],
-      ["get_extrinsic", chainD1({ extrinsic: EXTRINSIC_ROW }), { ref: hash }],
+      [
+        "get_extrinsic",
+        chainD1({
+          extrinsic: EXTRINSIC_ROW,
+          extrinsicEvents: [EVENT_ROW],
+        }),
+        { ref: hash },
+      ],
     ];
     for (const [name, env, args] of cases) {
       const res = await callTool(name, args, { env });
@@ -5995,6 +6021,84 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         validate(res.body.result.structuredContent),
         `${name}: ${JSON.stringify(validate.errors)}`,
       );
+    }
+  });
+});
+
+describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain_events)", () => {
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("get_block_chain_events returns raw events for a block", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        block_number: 4200000,
+        count: 1,
+        events: [
+          {
+            event_index: 0,
+            pallet: "Balances",
+            method: "Transfer",
+            observed_at: 1,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 4200000 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.events[0].pallet, "Balances");
+    assert.match(dataApi.calls[0].pathname, /\/blocks\/4200000\/chain-events$/);
+  });
+
+  test("get_extrinsic_chain_events forwards block+extrinsic filters", async () => {
+    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(dataApi.calls[0].searchParams.get("block"), "4200000");
+    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+    assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
+  test("get_extrinsic_chain_events rejects a hash ref", async () => {
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "0x" + "a".repeat(64) },
+      { env: { DATA_API: makeDataApi({ payload: {} }) } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /composite/i);
+  });
+
+  test("tier_unavailable when DATA_API is absent", async () => {
+    for (const [name, args] of [
+      ["get_block_chain_events", { block_number: 1 }],
+      ["get_extrinsic_chain_events", { ref: "1-0" }],
+    ]) {
+      const res = await callTool(name, args, { env: {} });
+      assert.equal(res.body.result.isError, true, name);
+      assert.match(res.body.result.content[0].text, /unavailable/i);
     }
   });
 });

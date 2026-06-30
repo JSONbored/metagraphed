@@ -437,6 +437,22 @@ assert.equal(
   true,
   "get_chain_activity must isError without the DATA_API binding",
 );
+const blockChainEventsCold = await call("get_block_chain_events", {
+  block_number: 4200000,
+});
+assert.equal(
+  blockChainEventsCold.isError,
+  true,
+  "get_block_chain_events must isError without the DATA_API binding",
+);
+const extrinsicChainEventsCold = await call("get_extrinsic_chain_events", {
+  ref: "4200000-3",
+});
+assert.equal(
+  extrinsicChainEventsCold.isError,
+  true,
+  "get_extrinsic_chain_events must isError without the DATA_API binding",
+);
 const signersCold = await callOk("get_chain_signers", {
   window: "7d",
   limit: 5,

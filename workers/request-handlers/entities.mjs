@@ -76,13 +76,13 @@ import {
 import {
   EXTRINSIC_READ_COLUMNS,
   EXTRINSIC_RETENTION_MS,
-  buildExtrinsic,
   buildExtrinsicFeed,
 } from "../../src/extrinsics.mjs";
 import {
   loadBlockEvents,
   loadBlockExtrinsics,
 } from "../../src/block-subresources.mjs";
+import { loadExtrinsicDetail } from "../../src/extrinsic-detail.mjs";
 import {
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_READ_COLUMNS,
@@ -139,7 +139,6 @@ function parseBoundedIntParam(url, parameter, { def, min, max }) {
 // 1e3, empty/extra halves) into a wrong-but-valid lookup; require bare decimal
 // segments + Number.isSafeInteger (same convention as parseBoundedIntParam).
 const STRICT_UINT_RE = /^\d+$/;
-const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 
 // A strict non-negative block_number, or null for a non-decimal ref (so the
 // caller skips the lookup and serves the schema-stable miss).
@@ -1570,50 +1569,7 @@ export async function handleExtrinsics(request, env, url) {
 // embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
 // Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
 export async function handleExtrinsic(request, env, ref) {
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  let rows;
-  if (isHash) {
-    rows = await d1All(
-      env,
-      `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-      [ref.toLowerCase()],
-    );
-  } else {
-    // Composite "<block>-<index>": exactly two strict decimal halves, so a
-    // malformed ref (extra segment, empty half, hex, sci-notation) is a clean
-    // miss (extrinsic:null) rather than a coerced wrong-but-valid row.
-    const composite = COMPOSITE_REF_RE.exec(ref);
-    const blockNumber = composite ? Number(composite[1]) : NaN;
-    const extrinsicIndex = composite ? Number(composite[2]) : NaN;
-    rows =
-      composite &&
-      Number.isSafeInteger(blockNumber) &&
-      Number.isSafeInteger(extrinsicIndex)
-        ? await d1All(
-            env,
-            `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
-            [blockNumber, extrinsicIndex],
-          )
-        : [];
-  }
-  // Embed the emitted events once we have the resolved (block_number,
-  // extrinsic_index). A second sequential read; d1All swallows a missing-column
-  // error pre-migration → [] (the embed is additive, never breaks the detail).
-  let events = [];
-  const resolved = rows[0];
-  if (
-    resolved &&
-    resolved.block_number != null &&
-    resolved.extrinsic_index != null
-  ) {
-    const eventRows = await d1All(
-      env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? AND extrinsic_index = ? ORDER BY event_index ASC LIMIT 50`,
-      [resolved.block_number, resolved.extrinsic_index],
-    );
-    events = eventRows.map(formatAccountEvent).filter(Boolean);
-  }
-  const data = buildExtrinsic(resolved, ref, events);
+  const data = await loadExtrinsicDetail(d1Runner(env), ref);
   return envelopeResponse(
     request,
     {
