@@ -856,11 +856,9 @@ test("loadAccountEvents includes coldkey-only rows when hotkey is NULL (#2059)",
     observed_at: 1_700_000_000_000,
     extrinsic_index: 0,
   };
-  const out = await loadAccountEvents(
-    async () => [nullHotkeyRow],
-    "5Hk",
-    { limit: 10 },
-  );
+  const out = await loadAccountEvents(async () => [nullHotkeyRow], "5Hk", {
+    limit: 10,
+  });
   assert.equal(out.event_count, 1);
   assert.equal(out.events[0].coldkey, "5Hk");
   assert.equal(out.events[0].hotkey, null);
