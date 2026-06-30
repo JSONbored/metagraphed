@@ -13144,6 +13144,12 @@
             "type": "integer"
           },
           "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
             "type": [
               "string",
               "null"
@@ -32920,7 +32926,7 @@
                     "total_staked_tao": 0.5,
                     "total_unstaked_tao": 0.5,
                     "unstake_events": 1,
-                    "window": "30d"
+                    "window": "7d"
                   },
                   "meta": {
                     "artifact_path": "example",

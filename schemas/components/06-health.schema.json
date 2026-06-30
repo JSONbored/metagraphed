@@ -930,7 +930,10 @@
         "properties": {
           "schema_version": { "type": "integer" },
           "netuid": { "type": "integer", "minimum": 0 },
-          "window": { "type": ["string", "null"] },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
           "total_staked_tao": { "type": "number" },
           "total_unstaked_tao": { "type": "number" },
           "net_flow_tao": { "type": "number" },

@@ -287,6 +287,48 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("stake-flow canonicalizes omitted and explicit default window to the same cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    // No ?window — should resolve to the 30d default and cache at ?window=30d.
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/stake-flow"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    // Explicit ?window=30d is the canonical form — must be a cache HIT (no new D1).
+    const hit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=30d must be a cache HIT (no D1 queries)",
+    );
+
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-stake-flow",
+        "/api/v1/subnets/7/stake-flow",
+        "?window=30d",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
   test("chain-activity canonicalizes omitted and explicit default window to the same cache key", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

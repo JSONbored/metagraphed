@@ -4847,7 +4847,8 @@ export interface components {
             total_staked_tao: number;
             total_unstaked_tao: number;
             unstake_events: number;
-            window: string | null;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @enum {unknown} */
         SubnetStatus: "active" | "inactive" | "unknown";
@@ -17570,7 +17571,7 @@ export interface operations {
                      *         "total_staked_tao": 0.5,
                      *         "total_unstaked_tao": 0.5,
                      *         "unstake_events": 1,
-                     *         "window": "30d"
+                     *         "window": "7d"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",

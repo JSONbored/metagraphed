@@ -293,6 +293,56 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.validators_start, 1);
   });
 
+  test("GET /subnets/{n}/stake-flow routes to the stake-flow handler", async () => {
+    const stakeFlowEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/SUM\(amount_tao\)/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          event_kind: "StakeAdded",
+                          total_tao: 300,
+                          event_count: 6,
+                          last_observed: 1717900000000,
+                        },
+                        {
+                          event_kind: "StakeRemoved",
+                          total_tao: 100,
+                          event_count: 3,
+                          last_observed: 1717800000000,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/stake-flow?window=30d",
+      stakeFlowEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_staked_tao, 300);
+    assert.equal(body.data.total_unstaked_tao, 100);
+    assert.equal(body.data.net_flow_tao, 200);
+    // account_events provenance + newest event timestamp in the window.
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, 1717900000000);
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);
