@@ -73,6 +73,48 @@ class ClientTest(unittest.TestCase):
         self.assertIn("limit=5", captured["url"])
         self.assertNotIn("cursor", captured["url"])
 
+    def test_bool_query_values_serialize_lowercase(self):
+        # Python's str(True) is "True", but the API compares query params
+        # === "true"; a bool filter must be sent as the lowercase wire form or it
+        # is silently ignored (regression: validator_permit=True was dropped, so
+        # the request returned unfiltered results).
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/subnets/7/metagraph",
+                query={"validator_permit": True, "changes": False},
+            )
+
+        self.assertIn("validator_permit=true", captured["url"])
+        self.assertIn("changes=false", captured["url"])
+        self.assertNotIn("True", captured["url"])
+        self.assertNotIn("False", captured["url"])
+
+    def test_sequence_query_values_expand_and_coerce(self):
+        # A list value expands via doseq; bools nested in it coerce element-wise
+        # to the same lowercase wire form.
+        captured = {}
+
+        def fake_urlopen(request, timeout=None):
+            captured["url"] = request.full_url
+            return _FakeResponse({"ok": True})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            metagraphed_fetch(
+                "/api/v1/surfaces",
+                query={"kind": ["docs", "openapi"], "flags": [True, False]},
+            )
+
+        self.assertIn("kind=docs", captured["url"])
+        self.assertIn("kind=openapi", captured["url"])
+        self.assertIn("flags=true", captured["url"])
+        self.assertIn("flags=false", captured["url"])
+
     def test_base_url_override(self):
         captured = {}
 
