@@ -393,32 +393,49 @@ export async function loadRegistryLeaderboards(
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
     .toISOString()
     .slice(0, 10);
-  const [healthRows, rpcRows, growthSamples] = await Promise.all([
-    d1(
-      `SELECT netuid,
+  // `fastest-growing` uses a short completeness window; `most-reliable` is
+  // intentionally more durable and ranks the last 30d of uptime history
+  // (mirrors handleLeaderboards in analytics-routes.mjs).
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, reliabilityRows] =
+    await Promise.all([
+      d1(
+        `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
               AVG(latency_ms) AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
-      [],
-    ),
-    d1(
-      `SELECT netuid, MIN(latency_ms) AS min_latency_ms
+        [],
+      ),
+      d1(
+        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
        FROM surface_status
        WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
          AND status = 'ok' AND latency_ms IS NOT NULL
        GROUP BY netuid`,
-      [],
-    ),
-    d1(
-      `SELECT netuid, snapshot_date, completeness_score
+        [],
+      ),
+      d1(
+        `SELECT netuid, snapshot_date, completeness_score
        FROM subnet_snapshots
        WHERE snapshot_date >= ?
        ORDER BY netuid, snapshot_date`,
-      [sevenDaysAgo],
-    ),
-  ]);
+        [sevenDaysAgo],
+      ),
+      d1(
+        `SELECT netuid,
+              SUM(samples) AS samples,
+              SUM(ok_count) AS ok_count,
+              ${dailyLatencyColumns({ roundedAvg: true })}
+       FROM surface_uptime_daily
+       WHERE day >= ?
+       GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
   return formatLeaderboards({
     board,
     limit,
@@ -427,6 +444,7 @@ export async function loadRegistryLeaderboards(
     rpcRows,
     mostComplete,
     growthRows: growthRowsFromSamples(growthSamples),
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
