@@ -533,8 +533,9 @@ export async function loadChainCalls(
   });
 }
 
-// Fee/tip market analytics (#1988): per-UTC-day fee series plus a windowed
-// top-fee-payer list. Mirrors REST handleChainFees and get_chain_fees MCP (#2423).
+// Fee/tip market analytics (#1988): per-UTC-day fee series with exact medians
+// plus a windowed top-fee-payer list. Mirrors REST handleChainFees and
+// get_chain_fees MCP (#2423).
 export async function loadChainFees(
   d1,
   {
@@ -555,7 +556,7 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  const [dailyRows, payerRows] = await Promise.all([
+  const [dailyRows, payerRows, medianRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
               COUNT(*) AS extrinsic_count,
@@ -578,14 +579,56 @@ export async function loadChainFees(
        LIMIT ?`,
       payerParams,
     ),
+    d1(
+      `WITH samples AS (
+         SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao,
+                COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ?${moduleClause}
+       ),
+       fee_ranked AS (
+         SELECT day,
+                fee_tao,
+                ROW_NUMBER() OVER (PARTITION BY day ORDER BY fee_tao) AS rn,
+                COUNT(*) OVER (PARTITION BY day) AS cnt
+         FROM samples
+       ),
+       fee_medians AS (
+         SELECT day, AVG(fee_tao) AS median_fee_tao
+         FROM fee_ranked
+         WHERE rn IN (CAST((cnt + 1) / 2 AS INTEGER), CAST((cnt + 2) / 2 AS INTEGER))
+         GROUP BY day
+       ),
+       tip_ranked AS (
+         SELECT day,
+                tip_tao,
+                ROW_NUMBER() OVER (PARTITION BY day ORDER BY tip_tao) AS rn,
+                COUNT(*) OVER (PARTITION BY day) AS cnt
+         FROM samples
+       ),
+       tip_medians AS (
+         SELECT day, AVG(tip_tao) AS median_tip_tao
+         FROM tip_ranked
+         WHERE rn IN (CAST((cnt + 1) / 2 AS INTEGER), CAST((cnt + 2) / 2 AS INTEGER))
+         GROUP BY day
+       )
+       SELECT fee_medians.day,
+              fee_medians.median_fee_tao,
+              tip_medians.median_tip_tao
+       FROM fee_medians
+       JOIN tip_medians USING (day)`,
+      dailyParams,
+    ),
   ]);
   const data = buildChainFees({
     window: windowLabel,
     observedAt,
     dailyRows,
+    medianRows,
     payerRows,
   });
-  return { data, dailyRows, payerRows };
+  return { data, dailyRows, payerRows, medianRows };
 }
 
 // Daily network-activity aggregates (#1987): per-UTC-day extrinsic/event/block

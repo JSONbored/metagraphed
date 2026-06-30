@@ -4705,8 +4705,10 @@ const TOOL_OUTPUT_SCHEMAS = {
         extrinsic_count: NULLABLE_INT,
         total_fee_tao: { type: ["number", "null"] },
         avg_fee_tao: { type: ["number", "null"] },
+        median_fee_tao: { type: ["number", "null"] },
         total_tip_tao: { type: ["number", "null"] },
         avg_tip_tao: { type: ["number", "null"] },
+        median_tip_tao: { type: ["number", "null"] },
       }),
       top_fee_payers: objectItems({
         signer: NULLABLE_STRING,

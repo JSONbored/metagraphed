@@ -419,7 +419,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals + averages) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
+        /** Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold. */
         get: operations["chainFees"];
         put?: never;
         post?: never;
@@ -2359,12 +2359,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One UTC day of fee/tip totals + averages. avg_*_tao is null when the day recorded zero extrinsics. */
+        /** @description One UTC day of fee/tip totals, averages, and exact medians. avg_*_tao and median_*_tao are null when the day recorded zero extrinsics. */
         ChainFeeDay: {
             avg_fee_tao: number | null;
             avg_tip_tao: number | null;
             day: string;
             extrinsic_count: number;
+            median_fee_tao: number | null;
+            median_tip_tao: number | null;
             total_fee_tao: number;
             total_tip_tao: number;
         };
@@ -2375,7 +2377,7 @@ export interface components {
             total_fee_tao: number;
             total_tip_tao: number;
         };
-        /** @description Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals + averages; exact median is a follow-up) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold. */
+        /** @description Fee/tip market analytics (#1988) over a 7d/30d window: a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list. Served live from the extrinsics D1 tier at /api/v1/chain/fees (no static file); day_count is 0 and the lists are empty when the store is cold. */
         ChainFeesArtifact: {
             daily: components["schemas"]["ChainFeeDay"][];
             day_count: number;
@@ -8155,6 +8157,8 @@ export interface operations {
                      *             "avg_tip_tao": 0.5,
                      *             "day": "2026-06-01",
                      *             "extrinsic_count": 1,
+                     *             "median_fee_tao": 0.5,
+                     *             "median_tip_tao": 0.5,
                      *             "total_fee_tao": 0.5,
                      *             "total_tip_tao": 0.5
                      *           }

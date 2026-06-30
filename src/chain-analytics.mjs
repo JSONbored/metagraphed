@@ -28,6 +28,12 @@ function toTao(value) {
   return Math.round(n * 1e9) / 1e9;
 }
 
+function toNullableTao(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 1e9) / 1e9;
+}
+
 // Coerce a block-height cell to a non-negative integer, or null when the value is
 // missing, non-finite, or negative — block numbers are never negative on-chain.
 function toBlockNumber(value) {
@@ -176,30 +182,43 @@ export function buildChainSigners({
   };
 }
 
-// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals + exact
-// builder-computed averages; median is a follow-up) plus a windowed top-fee-payer
-// list. avg_*_tao guard the zero-denominator (a day with no extrinsics → null).
+// Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
+// exact SQL-computed medians) plus a windowed top-fee-payer list. avg_*_tao and
+// median_*_tao guard the zero-denominator (a day with no extrinsics → null).
 export function buildChainFees({
   window,
   observedAt = null,
   dailyRows = [],
+  medianRows = [],
   payerRows = [],
 }) {
+  const mediansByDay = new Map();
+  for (const r of Array.isArray(medianRows) ? medianRows : []) {
+    if (!r || typeof r.day !== "string") continue;
+    mediansByDay.set(r.day, {
+      fee: toNullableTao(r.median_fee_tao),
+      tip: toNullableTao(r.median_tip_tao),
+    });
+  }
+
   const daily = (Array.isArray(dailyRows) ? dailyRows : [])
     .filter((r) => r && typeof r.day === "string")
     .map((r) => {
       const extrinsicCount = toCount(r.extrinsic_count);
       const totalFee = toTao(r.total_fee_tao);
       const totalTip = toTao(r.total_tip_tao);
+      const medians = mediansByDay.get(r.day);
       return {
         day: r.day,
         extrinsic_count: extrinsicCount,
         total_fee_tao: totalFee,
         avg_fee_tao:
           extrinsicCount > 0 ? toTao(totalFee / extrinsicCount) : null,
+        median_fee_tao: extrinsicCount > 0 ? (medians?.fee ?? null) : null,
         total_tip_tao: totalTip,
         avg_tip_tao:
           extrinsicCount > 0 ? toTao(totalTip / extrinsicCount) : null,
+        median_tip_tao: extrinsicCount > 0 ? (medians?.tip ?? null) : null,
       };
     })
     .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));

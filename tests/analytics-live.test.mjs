@@ -554,7 +554,16 @@ describe("loadChainFees", () => {
     const calls = [];
     const run = async (sql, params) => {
       calls.push({ sql, params });
-      if (sql.includes("strftime")) {
+      if (/ROW_NUMBER\(\) OVER/.test(sql)) {
+        return [
+          {
+            day: "2026-06-01",
+            median_fee_tao: 0.5,
+            median_tip_tao: 0.05,
+          },
+        ];
+      }
+      if (/GROUP BY day/.test(sql)) {
         return [
           {
             day: "2026-06-01",
@@ -573,19 +582,25 @@ describe("loadChainFees", () => {
         },
       ];
     };
-    const { data, dailyRows, payerRows } = await loadChainFees(run, {
-      window: "7d",
-      limit: 10,
-      callModule: "SubtensorModule",
-      observedAt: OBSERVED_AT,
-      now,
-    });
-    assert.equal(calls.length, 2);
+    const { data, dailyRows, payerRows, medianRows } = await loadChainFees(
+      run,
+      {
+        window: "7d",
+        limit: 10,
+        callModule: "SubtensorModule",
+        observedAt: OBSERVED_AT,
+        now,
+      },
+    );
+    assert.equal(calls.length, 3);
     assert.equal(dailyRows.length, 1);
     assert.equal(payerRows.length, 1);
+    assert.equal(medianRows.length, 1);
     assert.equal(data.window, "7d");
     assert.equal(data.day_count, 1);
     assert.equal(data.daily[0].extrinsic_count, 10);
+    assert.equal(data.daily[0].median_fee_tao, 0.5);
+    assert.equal(data.daily[0].median_tip_tao, 0.05);
     assert.equal(data.top_fee_payers[0].total_fee_tao, 3);
     assert.match(calls[0].sql, /call_module = \?/);
     assert.deepEqual(calls[0].params, [
@@ -597,6 +612,14 @@ describe("loadChainFees", () => {
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
       10,
+    ]);
+    assert.match(calls[2].sql, /ROW_NUMBER\(\) OVER/);
+    assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
+    assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
+    assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    assert.deepEqual(calls[2].params, [
+      now - 7 * 24 * 60 * 60 * 1000,
+      "SubtensorModule",
     ]);
   });
 
@@ -613,10 +636,12 @@ describe("loadChainFees", () => {
       observedAt: OBSERVED_AT,
       now,
     });
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
     assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
+    assert.doesNotMatch(calls[2].sql, /call_module = \?/);
+    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000]);
   });
 
   test("treats empty call_module as unscoped", async () => {
@@ -630,6 +655,8 @@ describe("loadChainFees", () => {
     );
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
+    assert.doesNotMatch(calls[2].sql, /call_module = \?/);
+    assert.equal(calls[2].params.length, 1);
   });
 
   test("falls back to 7d for an unknown window label", async () => {
