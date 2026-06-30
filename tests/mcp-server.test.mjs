@@ -147,6 +147,18 @@ describe("MCP tool registry", () => {
     assert.ok(pointProperties?.emission_top_10pct_share);
   });
 
+  test("get_chain_fees advertises a typed ChainFeesArtifact-shaped outputSchema", () => {
+    const def = listToolDefinitions().find((t) => t.name === "get_chain_fees");
+    assert.ok(def);
+    const day = def.outputSchema?.properties?.daily?.items?.properties;
+    assert.ok(day?.avg_fee_tao);
+    assert.ok(day?.total_tip_tao);
+    const payer =
+      def.outputSchema?.properties?.top_fee_payers?.items?.properties;
+    assert.ok(payer?.signer);
+    assert.ok(payer?.extrinsic_count);
+  });
+
   test("every advertised tool description carries the untrusted-data note", () => {
     for (const def of listToolDefinitions()) {
       assert.match(
@@ -1722,6 +1734,106 @@ describe("MCP get_chain_signers", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.signer_count, 0);
     assert.deepEqual(out.signers, []);
+  });
+});
+
+describe("MCP get_chain_fees", () => {
+  function feesDb() {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(..._params) {
+              return {
+                async all() {
+                  if (/GROUP BY day/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          day: "2026-06-29",
+                          extrinsic_count: 4,
+                          total_fee_tao: 2,
+                          total_tip_tao: 0.5,
+                        },
+                      ],
+                    };
+                  }
+                  if (/ORDER BY total_fee_tao DESC/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          signer:
+                            "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                          total_fee_tao: 1.5,
+                          total_tip_tao: 0.25,
+                          extrinsic_count: 2,
+                        },
+                      ],
+                    };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("returns daily series and top payers from D1", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { window: "7d", limit: 10 },
+      { env: feesDb() },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.day_count, 1);
+    assert.equal(out.daily[0].avg_fee_tao, 0.5);
+    assert.equal(out.top_fee_payers[0].total_fee_tao, 1.5);
+  });
+
+  test("rejects an invalid window", async () => {
+    const res = await callTool("get_chain_fees", { window: "99d" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/i);
+  });
+
+  test("rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_fees",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("returns a cold-stable empty payload on empty D1", async () => {
+    const res = await callTool("get_chain_fees", {}, {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+    assert.deepEqual(out.top_fee_payers, []);
+  });
+
+  test("cold and populated payloads validate against the declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "get_chain_fees")
+        .outputSchema,
+    );
+    for (const [label, env] of [
+      ["cold", {}],
+      ["populated", feesDb()],
+    ]) {
+      const res = await callTool("get_chain_fees", { window: "7d" }, { env });
+      assert.ok(
+        validate(res.body.result.structuredContent),
+        `${label}: ${JSON.stringify(validate.errors)}`,
+      );
+    }
   });
 });
 
