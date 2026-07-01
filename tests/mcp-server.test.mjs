@@ -6882,6 +6882,32 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.ok(q.params.includes(1000));
   });
 
+  test("get_subnet_events applies block_start/block_end, parity with the REST route", async () => {
+    const capture = [];
+    const env = parityD1({ events: [] }, capture);
+    await callTool(
+      "get_subnet_events",
+      { netuid: 1, block_start: 100, block_end: 900, limit: 1 },
+      { env },
+    );
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    // netuid, the inclusive block bounds, the limit, then the default OFFSET 0 —
+    // all bound params, never interpolated.
+    assert.deepEqual(q.params, [1, 100, 900, 1, 0]);
+  });
+
+  test("get_subnet_events rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
   test("the parity history/events tools degrade to empty payloads on cold D1", async () => {
     const history = await callTool("get_subnet_history", { netuid: 1 });
     assert.equal(history.body.result.isError, false);
