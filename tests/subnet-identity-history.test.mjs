@@ -273,10 +273,10 @@ describe("recordSubnetIdentityChanges", () => {
   });
 
   test("returns unavailable when profiles are missing", async () => {
-    assert.deepEqual(
-      await recordSubnetIdentityChanges({}, { profiles: [] }),
-      { recorded: false, reason: "unavailable" },
-    );
+    assert.deepEqual(await recordSubnetIdentityChanges({}, { profiles: [] }), {
+      recorded: false,
+      reason: "unavailable",
+    });
   });
 
   test("returns read_failed when the latest-hash query throws", async () => {
@@ -414,10 +414,7 @@ describe("loadSubnetIdentityHistory", () => {
       cursor: encodeCursor([1_700_000_000_000, 10]),
     });
     assert.ok(calls[0].sql.includes("(observed_at, id) <"));
-    assert.equal(
-      out.next_cursor,
-      encodeCursor([1_500_000_000_000, 8]),
-    );
+    assert.equal(out.next_cursor, encodeCursor([1_500_000_000_000, 8]));
   });
 });
 
