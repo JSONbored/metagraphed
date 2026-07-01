@@ -615,6 +615,22 @@ test("loadAccountTransfers applies the block_start/block_end range to both sides
   ]);
 });
 
+test("loadAccountTransfers short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountTransfers(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.transfer_count, 0);
+  assert.deepEqual(out.transfers, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
   let captured;
   const out = await loadAccountTransfers(

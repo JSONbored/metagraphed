@@ -820,6 +820,16 @@ export async function loadAccountTransfers(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountTransfers([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+      direction,
+    });
+  }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const blockRangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
