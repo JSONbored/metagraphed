@@ -14,6 +14,7 @@ import {
   buildAccountSubnets,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountSubnets,
@@ -1104,6 +1105,23 @@ test("loadAccountEvents applies the block_start/block_end range as bound params"
     100,
     0,
   ]);
+});
+
+test("loadSubnetEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadSubnetEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    7,
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.netuid, 7);
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {

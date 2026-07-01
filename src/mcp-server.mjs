@@ -104,6 +104,7 @@ import {
   buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountSubnets,
   loadAccountHistory,
   loadAccountExtrinsics,
@@ -584,44 +585,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
-// account_events filtered by netuid, newest first, optional kind filter, keyset
-// (cursor) pagination on (block_number, event_index) with offset as the
-// deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
-  const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
-  const resolvedOffset = clampOffset(offset);
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(resolvedLimit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(resolvedOffset);
-  }
-  const rows = await run(sql, params);
-  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: resolvedLimit,
-    offset: resolvedOffset,
-    nextCursor,
-  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -2147,7 +2110,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(ctx, netuid, {
+      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
         limit: args?.limit,
         offset: args?.offset,

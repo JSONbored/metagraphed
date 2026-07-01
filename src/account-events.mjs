@@ -360,6 +360,63 @@ export function buildSubnetEvents(
   };
 }
 
+// Paginated chain-event stream for one subnet (newest first), optional kind
+// filter, offset or keyset cursor. Clamps internally so REST and MCP agree; a
+// cursor overrides offset.
+export async function loadSubnetEvents(
+  d1,
+  netuid,
+  { kind, limit, offset, cursor, blockStart, blockEnd } = {},
+) {
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildSubnetEvents([], netuid, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const params = [netuid];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  if (blockStart != null) {
+    sql += " AND block_number >= ?";
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    sql += " AND block_number <= ?";
+    params.push(blockEnd);
+  }
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  return buildSubnetEvents(rows, netuid, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
+}
+
 // The decoded chain events in ONE block (#1852, block explorer): account_events
 // filtered by block_number, in natural read order (event_index ASC). Mirrors
 // buildBlockExtrinsics — ref is the original {ref} (numeric or 0x hash), so a
