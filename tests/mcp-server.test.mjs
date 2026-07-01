@@ -1860,7 +1860,7 @@ describe("MCP get_chain_fees", () => {
                       ],
                     };
                   }
-                  assert.match(sql, /ORDER BY total_fee_tao DESC/);
+                  assert.match(sql, /ORDER BY total_fee_tao DESC, signer ASC/);
                   assert.ok(params.includes(25));
                   return {
                     results: [
