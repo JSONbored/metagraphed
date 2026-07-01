@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -716,7 +717,13 @@ describe("loadChainFees", () => {
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
-    assert.match(calls[2].sql, /LIMIT \?/);
+    // The sample cap must be applied per day (via a day-partitioned row number),
+    // not as a single global LIMIT ahead of the day partition — a global LIMIT
+    // silently truncates or drops later days once a window has >10000 matching
+    // extrinsics (see the loadChainFees regression test below).
+    assert.match(calls[2].sql, /PARTITION BY day ORDER BY observed_at/);
+    assert.match(calls[2].sql, /day_rn <= \?/);
+    assert.doesNotMatch(calls[2].sql, /samples\s*\n\s*LIMIT \?/);
     assert.deepEqual(calls[2].params, [
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
@@ -758,6 +765,64 @@ describe("loadChainFees", () => {
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
     assert.equal(calls[2].params.length, 2);
+  });
+
+  test("bounds the median sample per day so a high-volume day cannot starve its window siblings", async () => {
+    // Regression for a global `LIMIT ?` applied to the `samples` CTE ahead of the
+    // per-day partition: once a single day exceeds the sample cap, the days that
+    // sort after it in scan order lose their entire sample and report a null
+    // median even though extrinsic_count > 0 for that day. Runs the real SQL
+    // against an in-memory D1-shaped table (day-partitioned window functions
+    // aren't meaningfully exercised by the string-matching mock d1 above).
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number    INTEGER NOT NULL,
+        extrinsic_index INTEGER NOT NULL,
+        extrinsic_hash  TEXT,
+        signer          TEXT,
+        call_module     TEXT,
+        call_function   TEXT,
+        success         INTEGER,
+        observed_at     INTEGER NOT NULL,
+        fee_tao         REAL,
+        tip_tao         REAL,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+    `);
+    const insert = db.prepare(
+      "INSERT INTO extrinsics (block_number, extrinsic_index, observed_at, fee_tao, tip_tao) VALUES (?, ?, ?, ?, ?)",
+    );
+    const dayMs = 24 * 60 * 60 * 1000;
+    const day1Start = Date.UTC(2026, 5, 1);
+    const day2Start = Date.UTC(2026, 5, 2);
+    const day1Count = 10005; // exceeds CHAIN_FEE_MEDIAN_SAMPLE_LIMIT (10000)
+    const day2Count = 10; // comfortably under the cap, but scanned after day 1
+    let block = 0;
+    for (let i = 0; i < day1Count; i += 1) {
+      insert.run(block, 0, day1Start + i, 1, 0.1);
+      block += 1;
+    }
+    for (let i = 0; i < day2Count; i += 1) {
+      insert.run(block, 0, day2Start + i, 2, 0.2);
+      block += 1;
+    }
+    const run = async (sql, params) => db.prepare(sql).all(...params);
+    const { data } = await loadChainFees(run, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+      now: day2Start + day2Count + dayMs,
+    });
+    const byDay = Object.fromEntries(data.daily.map((d) => [d.day, d]));
+    assert.ok(byDay["2026-06-01"], "the over-cap day must still report a day");
+    assert.ok(
+      byDay["2026-06-02"],
+      "a sibling day must not be starved by day 1's volume",
+    );
+    assert.equal(byDay["2026-06-01"].median_fee_tao, 1);
+    assert.equal(byDay["2026-06-02"].median_fee_tao, 2);
+    assert.equal(byDay["2026-06-02"].median_tip_tao, 0.2);
   });
 
   test("loadChainFees tie-breaks top_fee_payers for stable LIMIT membership", async () => {

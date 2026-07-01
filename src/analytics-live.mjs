@@ -632,18 +632,29 @@ export async function loadChainFees(
     d1(
       `WITH samples AS (
          SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                observed_at,
                 COALESCE(fee_tao, 0) AS fee_tao,
                 COALESCE(tip_tao, 0) AS tip_tao
          FROM extrinsics
          WHERE observed_at >= ?${moduleClause}
-         LIMIT ?
+       ),
+       capped_samples AS (
+         SELECT day, fee_tao, tip_tao
+         FROM (
+           SELECT day,
+                  fee_tao,
+                  tip_tao,
+                  ROW_NUMBER() OVER (PARTITION BY day ORDER BY observed_at) AS day_rn
+           FROM samples
+         )
+         WHERE day_rn <= ?
        ),
        fee_ranked AS (
          SELECT day,
                 fee_tao,
                 ROW_NUMBER() OVER (PARTITION BY day ORDER BY fee_tao) AS rn,
                 COUNT(*) OVER (PARTITION BY day) AS cnt
-         FROM samples
+         FROM capped_samples
        ),
        fee_medians AS (
          SELECT day, AVG(fee_tao) AS median_fee_tao
@@ -656,7 +667,7 @@ export async function loadChainFees(
                 tip_tao,
                 ROW_NUMBER() OVER (PARTITION BY day ORDER BY tip_tao) AS rn,
                 COUNT(*) OVER (PARTITION BY day) AS cnt
-         FROM samples
+         FROM capped_samples
        ),
        tip_medians AS (
          SELECT day, AVG(tip_tao) AS median_tip_tao
