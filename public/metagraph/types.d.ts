@@ -446,6 +446,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/consensus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide Yuma-consensus performance distribution aggregated across all subnets' neurons: for each signal (trust, consensus, incentive, dividends) a count, mean, and min/p25/median/p75/p90/max spread over the earning participants, plus the active, validator, and miner counts. Computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainConsensus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -2477,6 +2494,22 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide Yuma-consensus performance distribution aggregated across all subnets' neurons, computed live from the neurons D1 tier. For each consensus signal (trust, consensus, incentive, dividends) it reports a distribution summary over the earning participants, alongside the subnet, neuron, active, validator, and miner counts. Every signal summary and the capture stamp are always present as an object or null. */
+        ChainConsensusArtifact: {
+            active_count: number;
+            captured_at: string | null;
+            consensus: components["schemas"]["DistributionSummary"];
+            dividends: components["schemas"]["DistributionSummary"];
+            incentive: components["schemas"]["DistributionSummary"];
+            miner_count: number;
+            neuron_count: number;
+            schema_version: number;
+            subnet_count: number;
+            trust: components["schemas"]["DistributionSummary"];
+            validator_count: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer. */
         ChainEvent: {
             args?: Record<string, never> | unknown[] | null;
@@ -2870,6 +2903,19 @@ export interface components {
             source_count?: number;
             verified_at?: string | null;
         };
+        /** @description Distribution summary of one signal over its participating (positive) values: the participant count, the mean, and the min/p25/median/p75/p90/max spread. Null when no neuron participates (a cold store or an all-zero column). */
+        DistributionSummary: ({
+            count: number;
+            max: number | null;
+            mean: number | null;
+            median: number | null;
+            min: number | null;
+            p25: number | null;
+            p75: number | null;
+            p90: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
         EconomicsArtifact: components["schemas"]["ArtifactBase"] & {
             captured_at: string | null;
             network: string | null;
@@ -8667,6 +8713,151 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainConcentrationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainConsensus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "active_count": 1,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "consensus": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "dividends": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "incentive": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "miner_count": 1,
+                     *         "neuron_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "trust": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "validator_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainConsensusArtifact"];
                     };
                 };
             };

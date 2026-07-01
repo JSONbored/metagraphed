@@ -862,6 +862,62 @@
         },
         "additionalProperties": true
       },
+      "DistributionSummary": {
+        "type": ["object", "null"],
+        "description": "Distribution summary of one signal over its participating (positive) values: the participant count, the mean, and the min/p25/median/p75/p90/max spread. Null when no neuron participates (a cold store or an all-zero column).",
+        "required": [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max"
+        ],
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean": { "type": ["number", "null"], "minimum": 0 },
+          "min": { "type": ["number", "null"], "minimum": 0 },
+          "p25": { "type": ["number", "null"], "minimum": 0 },
+          "median": { "type": ["number", "null"], "minimum": 0 },
+          "p75": { "type": ["number", "null"], "minimum": 0 },
+          "p90": { "type": ["number", "null"], "minimum": 0 },
+          "max": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "ChainConsensusArtifact": {
+        "type": "object",
+        "description": "Network-wide Yuma-consensus performance distribution aggregated across all subnets' neurons, computed live from the neurons D1 tier. For each consensus signal (trust, consensus, incentive, dividends) it reports a distribution summary over the earning participants, alongside the subnet, neuron, active, validator, and miner counts. Every signal summary and the capture stamp are always present as an object or null.",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "active_count",
+          "validator_count",
+          "miner_count",
+          "captured_at",
+          "trust",
+          "consensus",
+          "incentive",
+          "dividends"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "active_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "trust": { "$ref": "#/components/schemas/DistributionSummary" },
+          "consensus": { "$ref": "#/components/schemas/DistributionSummary" },
+          "incentive": { "$ref": "#/components/schemas/DistributionSummary" },
+          "dividends": { "$ref": "#/components/schemas/DistributionSummary" }
+        },
+        "additionalProperties": true
+      },
       "SubnetConcentrationHistoryArtifact": {
         "type": "object",
         "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",

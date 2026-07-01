@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.14";
+export const CONTRACT_VERSION = "2026-06-30.15";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1145,6 +1145,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/concentration.json",
     "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier at /api/v1/chain/concentration (no static file).",
     "ChainConcentrationArtifact",
+  ),
+  artifact(
+    "chain-consensus",
+    "/metagraph/chain/consensus.json",
+    "Network-wide Yuma-consensus performance distribution aggregated across all subnets' neurons: for each signal (trust, consensus, incentive, dividends) a count and mean plus the min/p25/median/p75/p90/max spread over the earning participants, with active, validator, and miner counts. Computed live from the neurons D1 tier at /api/v1/chain/consensus (no static file).",
+    "ChainConsensusArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -2336,6 +2342,17 @@ export const API_ROUTES = [
     "/api/v1/chain/concentration",
     "/metagraph/chain/concentration.json",
     "Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier; schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [],
+    [],
+  ),
+  route(
+    "chain-consensus",
+    "GET",
+    "/api/v1/chain/consensus",
+    "/metagraph/chain/consensus.json",
+    "Fetch the network-wide Yuma-consensus performance distribution aggregated across all subnets' neurons: for each signal (trust, consensus, incentive, dividends) a count, mean, and min/p25/median/p75/p90/max spread over the earning participants, plus the active, validator, and miner counts. Computed live from the neurons D1 tier; schema-stable nulls when cold.",
     "short",
     ["chain", "analytics"],
     [],
