@@ -31,6 +31,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-concentration-history",
   "subnet-turnover",
   "subnet-stake-flow",
+  "subnet-transfer-volume",
   "subnet-movers",
   "subnet-yield",
   "global-validators",

@@ -49,7 +49,7 @@ function valueForPattern(pattern, name = "") {
   }
 }
 
-function seededString(name) {
+function seededString(name, options = {}) {
   const n = String(name || "").toLowerCase();
   if (/(^url$|_url$|href|endpoint|uri|repository|documentation|logo)/.test(n)) {
     return "https://api.metagraph.sh/example";
@@ -71,7 +71,7 @@ function seededString(name) {
   if (/(description|^notes$|instructions|summary$)/.test(n)) {
     return "Example description.";
   }
-  if (/version/.test(n)) return "2026-06-29.1";
+  if (/version/.test(n)) return options.contractVersion ?? "2026-06-29.1";
   if (/(provider|operator)/.test(n)) return "example-provider";
   if (/(content_hash|_hash$|^hash$)/.test(n)) return HEX64;
   if (/health_source/.test(n)) return "probe-derived";
@@ -315,12 +315,17 @@ function normalizeChainTransfersSample(out) {
   return out;
 }
 
+function normalizeSubnetTransferVolumeSample(out) {
+  return normalizeChainTransfersSample(out);
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);
   normalizeSubnetYieldSample(out);
   normalizeChainTransfersSample(out);
+  normalizeSubnetTransferVolumeSample(out);
   return out;
 }
 
@@ -358,6 +363,7 @@ export function sampleFromSchema(
   name = "",
   depth = 0,
   activeRefsByDepth = null,
+  options = {},
 ) {
   if (!schema || typeof schema !== "object") return null;
   const activeRefs = activeRefsByDepth ?? new Map();
@@ -382,6 +388,7 @@ export function sampleFromSchema(
         name,
         depth,
         activeRefs,
+        options,
       );
     } finally {
       unmarkActiveRef(activeRefs, depth, ref);
@@ -395,7 +402,14 @@ export function sampleFromSchema(
     let merged = {};
     let scalar;
     for (const sub of schema.allOf) {
-      const part = sampleFromSchema(sub, components, name, depth, activeRefs);
+      const part = sampleFromSchema(
+        sub,
+        components,
+        name,
+        depth,
+        activeRefs,
+        options,
+      );
       if (part && typeof part === "object" && !Array.isArray(part)) {
         merged = { ...merged, ...part };
       } else if (part !== null && part !== undefined) {
@@ -409,7 +423,7 @@ export function sampleFromSchema(
     const pick =
       variants.find((variant) => pickType(variant.type) !== "null") ||
       variants[0];
-    return sampleFromSchema(pick, components, name, depth, activeRefs);
+    return sampleFromSchema(pick, components, name, depth, activeRefs, options);
   }
 
   const type = pickType(schema.type);
@@ -428,6 +442,7 @@ export function sampleFromSchema(
         key,
         depth + 1,
         activeRefs,
+        options,
       );
     }
     // Pure map object (additionalProperties is a schema, no named props): show
@@ -444,6 +459,7 @@ export function sampleFromSchema(
         "example",
         depth + 1,
         activeRefs,
+        options,
       );
     }
     return normalizeObjectSample(out);
@@ -458,6 +474,7 @@ export function sampleFromSchema(
         name,
         depth + 1,
         activeRefs,
+        options,
       ),
     ];
   }
@@ -466,7 +483,7 @@ export function sampleFromSchema(
     if (schema.pattern) return valueForPattern(schema.pattern, name);
     if (schema.format === "uri") return "https://api.metagraph.sh/example";
     if (schema.format === "date-time") return ISO;
-    return seededString(name);
+    return seededString(name, options);
   }
   if (type === "integer" || type === "number")
     return seededNumber(name, schema);

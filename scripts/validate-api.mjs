@@ -198,6 +198,19 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/transfer-volume?window=30d&limit=10",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(typeof body.data.unique_senders, "number");
+      assert.equal(typeof body.data.unique_receivers, "number");
+      assert.equal(Array.isArray(body.data.top_senders), true);
+      assert.equal(Array.isArray(body.data.top_receivers), true);
+    },
+  ],
+  [
     "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
     (body) => {
       assert.equal(body.data.window, "30d");

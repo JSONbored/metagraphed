@@ -107,6 +107,13 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../../src/stake-flow.mjs";
+import {
+  loadSubnetTransferVolume,
+  SUBNET_TRANSFER_VOLUME_WINDOWS,
+  DEFAULT_SUBNET_TRANSFER_VOLUME_WINDOW,
+  SUBNET_TRANSFER_LIMIT_DEFAULT,
+  SUBNET_TRANSFER_LIMIT_MAX,
+} from "../../src/subnet-transfer-volume.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadSubnetMovers,
@@ -477,6 +484,25 @@ export function canonicalSubnetStakeFlowCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
+// Canonical edge-cache key for the subnet-transfer-volume route. ?window= and ?limit=
+// each canonicalize to their defaults when omitted.
+export function canonicalSubnetTransferVolumeCachePath(url) {
+  const validationError = validateQueryParams(url, ["window", "limit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_TRANSFER_VOLUME_WINDOW;
+  if (!Object.hasOwn(SUBNET_TRANSFER_VOLUME_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: SUBNET_TRANSFER_LIMIT_DEFAULT,
+    min: 1,
+    max: SUBNET_TRANSFER_LIMIT_MAX,
+  });
+  if (limit.error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${encodeURIComponent(windowParam)}&limit=${limit.value}`;
+}
+
 // Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
 // canonicalized to its default when omitted, so equivalent requests share one slot.
 export function canonicalSubnetMoversCachePath(url) {
@@ -626,6 +652,53 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/transfer-volume?window=7d|30d|90d&limit=20: native-TAO
+// Balances.Transfer volume for one subnet over the window — total volume + count,
+// distinct senders/receivers, top senders/receivers leaderboards, and the top
+// senders' share of total volume. Summed live from account_events
+// (idx_account_events_kind_observed*).
+// Cold/absent store → 200 with zeroed totals + empty leaderboards (never 404).
+export async function handleSubnetTransferVolume(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, ["window", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_SUBNET_TRANSFER_VOLUME_WINDOW;
+  if (!Object.hasOwn(SUBNET_TRANSFER_VOLUME_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        SUBNET_TRANSFER_VOLUME_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: SUBNET_TRANSFER_LIMIT_DEFAULT,
+    min: 1,
+    max: SUBNET_TRANSFER_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const { data, generatedAt } = await loadSubnetTransferVolume(
+    d1Runner(env),
+    netuid,
+    {
+      windowLabel: windowParam,
+      limit: limit.value,
+    },
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/subnets/${netuid}/transfer-volume.json`,
         generatedAt,
       ),
     },

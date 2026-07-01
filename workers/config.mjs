@@ -53,6 +53,10 @@ export const SUBNET_TURNOVER_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_STAKE_FLOW_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/stake-flow$/;
+// Per-subnet native-TAO transfer volume (#subnet-transfer-volume): Balances.Transfer
+// events filtered by netuid, summed live from the account_events tier.
+export const SUBNET_TRANSFER_VOLUME_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/transfer-volume$/;
 // Per-UID emission yield distribution over the current neurons snapshot, no static file.
 export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;

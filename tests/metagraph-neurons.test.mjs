@@ -761,6 +761,71 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
+  test("GET /subnets/{n}/transfer-volume routes to the transfer-volume handler", async () => {
+    const transferVolumeEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/COUNT\(DISTINCT CASE WHEN coldkey IN/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          transfer_count: 4,
+                          total_volume_tao: 400,
+                          unique_senders: 2,
+                          unique_receivers: 2,
+                          last_observed: 1717900000000,
+                        },
+                      ],
+                    });
+                  }
+                  if (/GROUP BY hotkey/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          address: "5Sender",
+                          volume_tao: 300,
+                          transfer_count: 3,
+                        },
+                      ],
+                    });
+                  }
+                  if (/GROUP BY coldkey/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          address: "5Receiver",
+                          volume_tao: 250,
+                          transfer_count: 2,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/7/transfer-volume?window=30d&limit=10",
+      transferVolumeEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_volume_tao, 400);
+    assert.equal(body.data.top_senders[0].volume_tao, 300);
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
+  });
+
   test("GET /subnets/movers routes to the cross-subnet movers handler", async () => {
     const moversEnv = {
       ...createLocalArtifactEnv(),

@@ -206,6 +206,17 @@ describe("sampleFromSchema", () => {
     assert.equal(s({ type: "string" }, "description"), "Example description.");
     assert.equal(s({ type: "string" }, "summary"), "Example description.");
     assert.equal(s({ type: "string" }, "version"), "2026-06-29.1");
+    assert.equal(
+      sampleFromSchema(
+        { type: "string" },
+        components,
+        "contract_version",
+        0,
+        null,
+        { contractVersion: "2026-07-01.5" },
+      ),
+      "2026-07-01.5",
+    );
     // clamp DOWN to maximum (block seeds high, capped here)
     assert.equal(s({ type: "integer", maximum: 3 }, "block"), 3);
     // allOf whose only member is a scalar -> returns that scalar

@@ -78,6 +78,8 @@ import {
   canonicalSubnetTurnoverCachePath,
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
+  handleSubnetTransferVolume,
+  canonicalSubnetTransferVolumeCachePath,
   handleSubnetYield,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
@@ -257,6 +259,7 @@ import {
   SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN,
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
+  SUBNET_TRANSFER_VOLUME_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
@@ -1362,6 +1365,25 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             resolved.url,
           ),
         canonicalSubnetStakeFlowCachePath(resolved.url),
+      );
+    }
+    const transferVolumeMatch = SUBNET_TRANSFER_VOLUME_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (transferVolumeMatch) {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-transfer-volume",
+        () =>
+          handleSubnetTransferVolume(
+            request,
+            env,
+            Number(transferVolumeMatch[1]),
+            resolved.url,
+          ),
+        canonicalSubnetTransferVolumeCachePath(resolved.url),
       );
     }
     // Per-UID emission yield distribution over the current neurons snapshot — computed
