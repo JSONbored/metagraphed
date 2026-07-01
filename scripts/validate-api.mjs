@@ -470,6 +470,19 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/yield",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.top_yielders), true);
+      // each lens is a distribution object or null on a cold store.
+      assert.equal(
+        body.data.yield === null || typeof body.data.yield === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/economics/trends",
     (body) => {
       assert.equal(Array.isArray(body.data.days), true);

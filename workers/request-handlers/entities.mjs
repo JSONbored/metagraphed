@@ -23,9 +23,11 @@ import {
   DAY_PATTERN,
   FEED_PAGINATION,
   parseDateRange,
+  parseLimitParam,
   parseNonNegativeIntParam,
   parsePagination,
 } from "../request-params.mjs";
+import { loadChainYield } from "../../src/chain-yield.mjs";
 
 import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
 import {
@@ -420,6 +422,34 @@ export async function handleChainConcentration(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/yield: network-wide emission yield (return on stake) across
+// every subnet's neurons — stake/emission totals, stake-weighted network / validator
+// / miner aggregate yields, a per-neuron yield distribution for each of those three
+// lenses, and a ?limit-capped top-yielders leaderboard. neurons-tier (source
+// "metagraph-snapshot"). Cold/absent store → schema-stable empties.
+export async function handleChainYield(request, env, url) {
+  const validationError = validateQueryParams(url, ["limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, error } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
+  if (error) return analyticsQueryError(error);
+  const data = await loadChainYield(d1Runner(env), { limit });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/yield.json",
         data.captured_at,
       ),
     },

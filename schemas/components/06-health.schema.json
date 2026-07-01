@@ -862,6 +862,98 @@
         },
         "additionalProperties": true
       },
+      "YieldDistribution": {
+        "type": ["object", "null"],
+        "description": "Per-neuron emission-per-stake yield distribution for one lens: the participant count (stake-bearing neurons), the mean, and the min/p25/median/p75/p90/max spread. Null when the lens has no stake-bearing neuron (a cold store or an all-zero-stake column).",
+        "required": [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max"
+        ],
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean": { "type": ["number", "null"], "minimum": 0 },
+          "min": { "type": ["number", "null"], "minimum": 0 },
+          "p25": { "type": ["number", "null"], "minimum": 0 },
+          "median": { "type": ["number", "null"], "minimum": 0 },
+          "p75": { "type": ["number", "null"], "minimum": 0 },
+          "p90": { "type": ["number", "null"], "minimum": 0 },
+          "max": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "YieldLeaderEntry": {
+        "type": "object",
+        "description": "One entry in the top-yielders leaderboard: a stake-bearing neuron ranked by its emission-per-stake return.",
+        "required": [
+          "hotkey",
+          "netuid",
+          "role",
+          "stake_tao",
+          "emission_tao",
+          "yield"
+        ],
+        "properties": {
+          "hotkey": { "type": ["string", "null"] },
+          "netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "role": { "type": "string", "enum": ["validator", "miner"] },
+          "stake_tao": { "type": "number", "minimum": 0 },
+          "emission_tao": { "type": "number", "minimum": 0 },
+          "yield": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "ChainYieldArtifact": {
+        "type": "object",
+        "description": "Network-wide emission yield (return on stake) aggregated across all subnets' neurons, computed live from the neurons D1 tier. Reports stake and emission totals, stake-weighted aggregate yields for the network, validators, and miners, a per-neuron yield distribution for each of those three lenses, and a top-yielders leaderboard. Every aggregate, distribution, and stamp field is always present as a value or null.",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "validator_count",
+          "miner_count",
+          "captured_at",
+          "total_stake_tao",
+          "total_emission_tao",
+          "network_yield",
+          "validator_yield",
+          "miner_yield",
+          "yield",
+          "validator_yield_distribution",
+          "miner_yield_distribution",
+          "top_yielders"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "total_emission_tao": { "type": "number", "minimum": 0 },
+          "network_yield": { "type": ["number", "null"], "minimum": 0 },
+          "validator_yield": { "type": ["number", "null"], "minimum": 0 },
+          "miner_yield": { "type": ["number", "null"], "minimum": 0 },
+          "yield": { "$ref": "#/components/schemas/YieldDistribution" },
+          "validator_yield_distribution": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          },
+          "miner_yield_distribution": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          },
+          "top_yielders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/YieldLeaderEntry" }
+          }
+        },
+        "additionalProperties": true
+      },
       "SubnetConcentrationHistoryArtifact": {
         "type": "object",
         "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",

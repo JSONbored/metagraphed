@@ -3317,6 +3317,99 @@
         ],
         "type": "object"
       },
+      "ChainYieldArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide emission yield (return on stake) aggregated across all subnets' neurons, computed live from the neurons D1 tier. Reports stake and emission totals, stake-weighted aggregate yields for the network, validators, and miners, a per-neuron yield distribution for each of those three lenses, and a top-yielders leaderboard. Every aggregate, distribution, and stamp field is always present as a value or null.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_yield": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_yield_distribution": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          },
+          "network_yield": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "top_yielders": {
+            "items": {
+              "$ref": "#/components/schemas/YieldLeaderEntry"
+            },
+            "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_yield": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_yield_distribution": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          },
+          "yield": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "validator_count",
+          "miner_count",
+          "captured_at",
+          "total_stake_tao",
+          "total_emission_tao",
+          "network_yield",
+          "validator_yield",
+          "miner_yield",
+          "yield",
+          "validator_yield_distribution",
+          "miner_yield_distribution",
+          "top_yielders"
+        ],
+        "type": "object"
+      },
       "ChangelogArtifact": {
         "allOf": [
           {
@@ -15302,6 +15395,126 @@
           "status",
           "url",
           "verified_at"
+        ],
+        "type": "object"
+      },
+      "YieldDistribution": {
+        "additionalProperties": true,
+        "description": "Per-neuron emission-per-stake yield distribution for one lens: the participant count (stake-bearing neurons), the mean, and the min/p25/median/p75/p90/max spread. Null when the lens has no stake-bearing neuron (a cold store or an all-zero-stake column).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p25": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p90": {
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max"
+        ],
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "YieldLeaderEntry": {
+        "additionalProperties": true,
+        "description": "One entry in the top-yielders leaderboard: a stake-bearing neuron ranked by its emission-per-stake return.",
+        "properties": {
+          "emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "hotkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "role": {
+            "enum": [
+              "validator",
+              "miner"
+            ],
+            "type": "string"
+          },
+          "stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "yield": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "hotkey",
+          "netuid",
+          "role",
+          "stake_tao",
+          "emission_tao",
+          "yield"
         ],
         "type": "object"
       }

@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.14";
+export const CONTRACT_VERSION = "2026-06-30.16";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1145,6 +1145,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/concentration.json",
     "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier at /api/v1/chain/concentration (no static file).",
     "ChainConcentrationArtifact",
+  ),
+  artifact(
+    "chain-yield",
+    "/metagraph/chain/yield.json",
+    "Network-wide emission yield (return on stake) aggregated across all subnets' neurons: stake and emission totals, stake-weighted network/validator/miner aggregate yields, a per-neuron yield distribution (count, mean, and min/p25/median/p75/p90/max spread) for each of those three lenses, and a top-yielders leaderboard. Computed live from the neurons D1 tier at /api/v1/chain/yield (no static file).",
+    "ChainYieldArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -2339,6 +2345,17 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     [],
+    [],
+  ),
+  route(
+    "chain-yield",
+    "GET",
+    "/api/v1/chain/yield",
+    "/metagraph/chain/yield.json",
+    "Fetch network-wide emission yield (return on stake) aggregated across all subnets' neurons: stake and emission totals, stake-weighted network/validator/miner aggregate yields, a per-neuron yield distribution (count, mean, and min/p25/median/p75/p90/max spread) for each of those three lenses, and a top-yielders leaderboard capped by ?limit. Computed live from the neurons D1 tier; schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [{ name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } }],
     [],
   ),
   route(
