@@ -15,6 +15,8 @@ import {
   buildBlockFeed,
   formatBlock,
   loadBlock,
+  loadBlocks,
+  MAX_BLOCK_COUNT_FILTER,
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
@@ -744,4 +746,80 @@ test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", a
     true,
     "the hash bind parameter must be lowercased",
   );
+});
+
+// ---- loadBlocks filters (shared REST + MCP list_blocks) --------------------
+
+function recordingBlocksD1(capture = []) {
+  return async (sql, params) => {
+    capture.push({ sql, params });
+    return [];
+  };
+}
+
+test("loadBlocks applies the conjunctive filter set (#1991)", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, {
+    author: "5Author",
+    specVersion: 423,
+    blockStart: 100,
+    blockEnd: 200,
+    from: 1000,
+    to: 2000,
+    minExtrinsics: 1,
+    minEvents: 5,
+    limit: 10,
+    offset: 0,
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/author = \?/.test(sql));
+  assert.ok(/spec_version = \?/.test(sql));
+  assert.ok(/block_number >= \?/.test(sql));
+  assert.ok(/block_number <= \?/.test(sql));
+  assert.ok(/observed_at >= \?/.test(sql));
+  assert.ok(/observed_at <= \?/.test(sql));
+  assert.ok(/extrinsic_count >= \?/.test(sql));
+  assert.ok(/event_count >= \?/.test(sql));
+  assert.ok(params.includes("5Author"));
+  assert.ok(params.includes(423));
+  assert.equal(params.at(-2), 10);
+  assert.equal(params.at(-1), 0);
+});
+
+test("loadBlocks short-circuits impossible ranges and count floors before D1", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  const empty = await loadBlocks(d1, {
+    blockStart: 20,
+    blockEnd: 10,
+    from: 200,
+    to: 100,
+    minEvents: MAX_BLOCK_COUNT_FILTER + 1,
+  });
+  assert.equal(empty.block_count, 0);
+  assert.equal(empty.next_cursor, null);
+  assert.equal(capture.length, 0);
+});
+
+test("loadBlocks ANDs keyset cursor with filters and drops OFFSET", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, {
+    author: "5Author",
+    cursor: encodeCursor([300]),
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/author = \? AND block_number < \?/.test(sql));
+  assert.ok(!/OFFSET/.test(sql));
+  assert.ok(params.includes(300));
+});
+
+test("loadBlocks keeps the plain OFFSET path when unfiltered", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, { limit: 10, offset: 20 });
+  const { sql } = capture[0];
+  assert.ok(!/WHERE/.test(sql));
+  assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
 });

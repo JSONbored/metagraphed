@@ -71,13 +71,12 @@ import { decodeCursor, encodeCursor } from "../../src/cursor.mjs";
 import {
   BLOCK_READ_COLUMNS,
   buildBlock,
-  buildBlockFeed,
+  loadBlocks,
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
-  EXTRINSIC_RETENTION_MS,
   buildExtrinsic,
-  buildExtrinsicFeed,
+  loadExtrinsics,
 } from "../../src/extrinsics.mjs";
 import {
   loadBlockEvents,
@@ -109,8 +108,6 @@ import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
-
-const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -1188,86 +1185,19 @@ export async function handleBlocks(request, env, url) {
   const minExtrinsics = numericFilters.min_extrinsics ?? null;
   const minEvents = numericFilters.min_events ?? null;
 
-  // Inverted indexed ranges and astronomically high per-block count floors are
-  // deterministic no-match cases. Short-circuit them before D1 so public callers
-  // cannot amplify cost by forcing scans to prove an impossible empty result.
-  if (
-    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
-    (from != null && to != null && from > to) ||
-    (minExtrinsics != null && minExtrinsics > MAX_BLOCK_COUNT_FILTER) ||
-    (minEvents != null && minEvents > MAX_BLOCK_COUNT_FILTER)
-  ) {
-    const data = buildBlockFeed([], { limit, offset, nextCursor: null });
-    return envelopeResponse(
-      request,
-      {
-        data,
-        meta: await accountMeta(env, "/metagraph/blocks.json", null),
-      },
-      "short",
-    );
-  }
-
-  // Conjunctive (AND-ed) filter set mirroring handleExtrinsics (#1846/#1991):
-  // every value is BOUND, never interpolated; no-match filters return an empty
-  // feed rather than throwing.
-  const conds = [];
-  const params = [];
-  if (sp.get("author")) {
-    conds.push("author = ?");
-    params.push(sp.get("author"));
-  }
-  if (numericFilters.spec_version != null) {
-    conds.push("spec_version = ?");
-    params.push(numericFilters.spec_version);
-  }
-  if (blockStart != null) {
-    conds.push("block_number >= ?");
-    params.push(blockStart);
-  }
-  if (blockEnd != null) {
-    conds.push("block_number <= ?");
-    params.push(blockEnd);
-  }
-  if (from != null) {
-    conds.push("observed_at >= ?");
-    params.push(from);
-  }
-  if (to != null) {
-    conds.push("observed_at <= ?");
-    params.push(to);
-  }
-  if (minExtrinsics != null) {
-    conds.push("extrinsic_count >= ?");
-    params.push(minExtrinsics);
-  }
-  if (minEvents != null) {
-    conds.push("event_count >= ?");
-    params.push(minEvents);
-  }
-  // Keyset cursor (#1851) takes precedence over offset: fold its block_number < ?
-  // seek into the same conds so it ANDs with the filters (PK-ordered, stable under
-  // head inserts). A malformed cursor decodes to null → ignored (falls back to
-  // offset), preserving never-throw.
-  const cur = decodeCursor(cursor, 1);
-  const useCursor = Boolean(cur);
-  if (useCursor) {
-    conds.push("block_number < ?");
-    params.push(cur[0]);
-  }
-  let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
-  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
-  sql += " ORDER BY block_number DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  // next_cursor only when the page was full (more rows likely); null at the end.
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last ? encodeCursor([last.block_number]) : null;
-  const data = buildBlockFeed(rows, { limit, offset, nextCursor });
+  const data = await loadBlocks(d1Runner(env), {
+    limit,
+    offset,
+    cursor,
+    author: sp.get("author") || undefined,
+    specVersion: numericFilters.spec_version ?? undefined,
+    blockStart,
+    blockEnd,
+    from,
+    to,
+    minExtrinsics,
+    minEvents,
+  });
   return envelopeResponse(
     request,
     {
@@ -1427,123 +1357,22 @@ export async function handleExtrinsics(request, env, url) {
   }
   const fromMs = numericFilters.from ?? null;
   const toMs = numericFilters.to ?? null;
-  const nowMs = Date.now();
-  const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
-  // The extrinsics tier is a retained hot window of block timestamps. Reject
-  // impossible time ranges before D1 so unauthenticated future/expired probes
-  // cannot force a primary-key scan just to return an empty page.
-  if (
-    (fromMs != null && fromMs > nowMs + DAY_MS) ||
-    (toMs != null && toMs < observedFloorMs) ||
-    (fromMs != null && toMs != null && fromMs > toMs)
-  ) {
-    const data = buildExtrinsicFeed([], { limit, offset, nextCursor: null });
-    return envelopeResponse(
-      request,
-      {
-        data,
-        meta: await accountMeta(env, "/metagraph/extrinsics.json", null),
-      },
-      "short",
-    );
-  }
-  const conds = [];
-  const params = [];
-  const eq = (col, val) => {
-    conds.push(`${col} = ?`);
-    params.push(val);
-  };
-  const hasBlockFilter = numericFilters.block != null;
-  const hasSignerFilter = Boolean(sp.get("signer"));
-  const hasCallModuleFilter = Boolean(sp.get("call_module"));
-  const hasCallFunctionFilter = Boolean(sp.get("call_function"));
-  const hasEqualityFilter =
-    hasSignerFilter || hasCallModuleFilter || hasCallFunctionFilter;
-  if (hasBlockFilter) eq("block_number", numericFilters.block);
-  if (hasSignerFilter) eq("signer", sp.get("signer"));
-  if (hasCallModuleFilter) eq("call_module", sp.get("call_module"));
-  if (hasCallFunctionFilter) eq("call_function", sp.get("call_function"));
-  // success is stored 1/0/NULL; bind the literal so success=false never leaks
-  // NULL (undeterminable) rows. Any non-true/false value is ignored.
   const successRaw = sp.get("success");
-  const hasSuccessFilter = successRaw === "true" || successRaw === "false";
-  if (successRaw === "true") eq("success", 1);
-  else if (successRaw === "false") eq("success", 0);
-  const hasBlockRangeFilter =
-    numericFilters.block_start != null || numericFilters.block_end != null;
-  if (numericFilters.block_start != null) {
-    conds.push("block_number >= ?");
-    params.push(numericFilters.block_start);
-  }
-  if (numericFilters.block_end != null) {
-    conds.push("block_number <= ?");
-    params.push(numericFilters.block_end);
-  }
-  if (fromMs != null) {
-    conds.push("observed_at >= ?");
-    params.push(fromMs);
-  }
-  if (toMs != null) {
-    conds.push("observed_at <= ?");
-    params.push(toMs);
-  }
-  // Keyset cursor (#1851): a row-value seek on the (block_number, extrinsic_index)
-  // PK, ANDed with any active filters. Takes precedence over offset; a malformed
-  // cursor decodes to null → ignored. SQLite row-value comparison is PK-covered.
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  if (useCursor) {
-    conds.push("(block_number, extrinsic_index) < (?, ?)");
-    params.push(cur[0], cur[1]);
-  }
-  // Standalone observed_at windows can be highly selective while the feed order
-  // is block_number/extrinsic_index. Force the timestamp index for bounded
-  // narrow windows and one-sided ranges whose effective retained window is
-  // narrow; broad public filters stay planner-selected so SQLite/D1 can use the
-  // order-aligned primary-key path and stop at LIMIT.
-  const effectiveFromMs = fromMs ?? observedFloorMs;
-  const effectiveToMs = toMs ?? nowMs + DAY_MS;
-  const hasNarrowObservedWindow =
-    (fromMs != null || toMs != null) &&
-    effectiveToMs - effectiveFromMs <= DAY_MS;
-  const forceObservedOrderIndex =
-    hasNarrowObservedWindow &&
-    !hasBlockFilter &&
-    !hasEqualityFilter &&
-    !hasSuccessFilter &&
-    !hasBlockRangeFilter &&
-    !useCursor;
-  // For module-only feed scans, force the composite module index so SQLite/D1
-  // seeks on the equality predicate instead of a PK-desc walk. Let the planner
-  // choose when additional selective filters are present.
-  const forceModuleIndex =
-    hasCallModuleFilter &&
-    !forceObservedOrderIndex &&
-    !hasBlockFilter &&
-    !hasBlockRangeFilter &&
-    !hasSignerFilter &&
-    !hasCallFunctionFilter &&
-    !hasSuccessFilter &&
-    fromMs == null &&
-    toMs == null &&
-    !useCursor;
-  let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
-  if (forceObservedOrderIndex)
-    sql += " INDEXED BY idx_extrinsics_observed_order";
-  else if (forceModuleIndex) sql += " INDEXED BY idx_extrinsics_module_block";
-  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
-  sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.extrinsic_index])
-    : null;
-  const data = buildExtrinsicFeed(rows, { limit, offset, nextCursor });
+  const data = await loadExtrinsics(d1Runner(env), {
+    block: numericFilters.block ?? undefined,
+    signer: sp.get("signer") || undefined,
+    callModule: sp.get("call_module") || undefined,
+    callFunction: sp.get("call_function") || undefined,
+    success:
+      successRaw === "true" ? true : successRaw === "false" ? false : undefined,
+    blockStart: numericFilters.block_start ?? undefined,
+    blockEnd: numericFilters.block_end ?? undefined,
+    from: fromMs ?? undefined,
+    to: toMs ?? undefined,
+    limit,
+    offset,
+    cursor,
+  });
   return envelopeResponse(
     request,
     {
