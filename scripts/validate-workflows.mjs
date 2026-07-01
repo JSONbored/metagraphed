@@ -93,6 +93,35 @@ for (const workflow of workflows) {
       workflow,
       "validate workflow must detect rebuilt-but-untracked public artifacts after build",
     );
+    check(
+      content.includes(
+        "github.event.pull_request.head.repo.full_name == github.repository",
+      ) &&
+        content.includes(
+          "github.event.pull_request.head.repo.full_name != github.repository",
+        ) &&
+        workflowStepBlock(content, "Upload coverage to Codecov").includes(
+          "token: ${{ secrets.CODECOV_TOKEN }}",
+        ) &&
+        !workflowStepBlock(
+          content,
+          "Upload coverage to Codecov (fork PR tokenless)",
+        ).includes("secrets.CODECOV_TOKEN") &&
+        workflowStepBlock(
+          content,
+          "Upload coverage to Codecov (fork PR tokenless)",
+        ).includes("fail_ci_if_error: true") &&
+        forkCodecovStepUsesForkBranchPrefix(
+          content,
+          "Upload coverage to Codecov (fork PR tokenless)",
+        ) &&
+        forkCodecovStepUsesForkBranchPrefix(
+          content,
+          "Upload Vitest results to Codecov (fork PR tokenless)",
+        ),
+      workflow,
+      "validate workflow must split Codecov coverage uploads into trusted-token and fork-tokenless paths",
+    );
   }
   if (
     ["validate.yml", "sync-subnets.yml", "publish-cloudflare.yml"].includes(
@@ -241,6 +270,21 @@ function workflowJobBlock(content, jobName) {
     ),
   );
   return match?.[0] || "";
+}
+
+function workflowStepBlock(content, stepName) {
+  const marker = `- name: ${stepName}`;
+  const start = content.indexOf(marker);
+  if (start === -1) return "";
+  const next = content.indexOf("\n      - name:", start + marker.length);
+  return content.slice(start, next === -1 ? undefined : next);
+}
+
+function forkCodecovStepUsesForkBranchPrefix(content, stepName) {
+  const block = workflowStepBlock(content, stepName);
+  return /override_branch:\s*\$\{\{\s*github\.event\.pull_request\.head\.repo\.owner\.login\s*\}\}:\$\{\{\s*github\.event\.pull_request\.head\.ref\s*\}\}/.test(
+    block,
+  );
 }
 
 function stepBlock(content, stepName) {

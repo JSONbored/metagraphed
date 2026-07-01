@@ -107,6 +107,25 @@
         "https://api.subnet90.com/openapi.json"
       ],
       "url": "https://api.subnet90.com/api/markets/pending"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-90-degenbrain-resolutions-api",
+      "kind": "subnet-api",
+      "name": "DegenBrain resolutions API",
+      "notes": "Public, unauthenticated read endpoint of the SN90 DegenBrain Brain-API — past and ongoing prediction-statement resolutions. Documented (security: none) in the API's OpenAPI spec at /openapi.json. Distinct from the registered /api/markets/pending endpoint.",
+      "provider": "degenbrain",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "source_urls": [
+        "https://subnet90.com/",
+        "https://api.subnet90.com/openapi.json"
+      ],
+      "url": "https://api.subnet90.com/api/resolutions"
     }
   ],
   "website_url": "https://subnet90.com/"

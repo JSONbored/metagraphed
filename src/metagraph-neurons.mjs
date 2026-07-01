@@ -75,26 +75,45 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
-// One D1 row → a clean Neuron object. SQLite stores booleans as 0/1 INTEGER, so
-// coerce the flag columns back to real booleans for the API.
+// Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
+// must not pass through Boolean(), which treats any non-empty string as true.
+// Mirrors the local toD1Flag added to formatRegistration by #2487.
+function toD1Flag(value) {
+  return Number(value) === 1;
+}
+
+// coerce the flag columns back to real booleans for the API (toD1Flag
+// handles the D1 INTEGER 0/1 cells; nonNegativeInt/nullableNumber coerce
+// string-typed uid/registered_at_block into real integers, and roundTao
+// rounds stake_tao / emission_tao to rao precision). The explicit null
+// guards preserve the previous null-on-missing contract: Number(null) is
+// 0 (not NaN), so nonNegativeInt(null) / nullableNumber(null) / roundTao(null)
+// would otherwise serialize as 0 instead of null. roundTao itself falls
+// back to numberOrZero(0) for null/non-finite, so the wrapping guards here
+// are what keep "missing cell" cells flowing through as null. Mirrors the
+// proven toBlockNumber / toTaoOrNull null-guards in account-events.mjs
+// (#2487).
 export function formatNeuron(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    uid: row.uid ?? null,
+    uid: row.uid == null ? null : nonNegativeInt(row.uid),
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
-    active: Boolean(row.active),
-    validator_permit: Boolean(row.validator_permit),
+    active: toD1Flag(row.active),
+    validator_permit: toD1Flag(row.validator_permit),
     rank: row.rank ?? null,
     trust: row.trust ?? null,
     validator_trust: row.validator_trust ?? null,
     consensus: row.consensus ?? null,
     incentive: row.incentive ?? null,
     dividends: row.dividends ?? null,
-    emission_tao: row.emission_tao ?? null,
-    stake_tao: row.stake_tao ?? null,
-    registered_at_block: row.registered_at_block ?? null,
-    is_immunity_period: Boolean(row.is_immunity_period),
+    emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
+    stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
+    registered_at_block:
+      row.registered_at_block == null
+        ? null
+        : nonNegativeInt(row.registered_at_block),
+    is_immunity_period: toD1Flag(row.is_immunity_period),
     axon: row.axon ?? null,
   };
 }

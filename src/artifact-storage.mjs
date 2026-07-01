@@ -44,6 +44,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/turnover\.json$/,
   // Net stake flow: computed live from account_events.
   /^subnets\/(?:\d+|\{netuid\})\/stake-flow\.json$/,
+  // Per-UID emission yield distribution: computed live from the neurons snapshot.
+  /^subnets\/(?:\d+|\{netuid\})\/yield\.json$/,
   // Cross-subnet movers leaderboard: computed live from neuron_daily.
   /^subnets\/movers\.json$/,
   // Per-UID metagraph (#1303/#1304/#1305): computed live from the neurons D1
