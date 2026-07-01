@@ -10,6 +10,18 @@
 // A probe whose latency counts toward latency statistics.
 export const OK_LATENCY = "ok = 1 AND latency_ms IS NOT NULL";
 
+// `surface_status` stores textual status; latency averages over it must mirror
+// OK_LATENCY semantics (failures/timeouts can still carry elapsed-time latencies).
+export const SURFACE_STATUS_OK_LATENCY =
+  "status = 'ok' AND latency_ms IS NOT NULL";
+
+// Mean latency over `surface_status` rows, success-only. `rounded: true` wraps
+// the AVG in ROUND() for compare-style integer output.
+export function surfaceStatusAvgLatencySql({ rounded = false } = {}) {
+  const avg = `AVG(CASE WHEN ${SURFACE_STATUS_OK_LATENCY} THEN latency_ms END)`;
+  return rounded ? `ROUND(${avg})` : avg;
+}
+
 // CTE over `surface_checks` that ranks each stable surface's ok-latency rows by
 // latency (`rn`) and counts them (`lat_cnt`), passing all rows through so uptime
 // still totals over every check. The grp term in the PARTITION isolates

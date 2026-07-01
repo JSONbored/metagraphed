@@ -394,6 +394,54 @@ describe("analytics-live loaders", () => {
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
+  test("loadRegistryLeaderboards SQL averages only ok surface_status latencies", async () => {
+    const surfaceStatusSql = [];
+    await loadRegistryLeaderboards(
+      async (sql) => {
+        if (/FROM surface_status/.test(sql)) {
+          surfaceStatusSql.push(sql);
+          return [{ netuid: 1, total: 2, ok_count: 1, avg_latency_ms: 100 }];
+        }
+        return [];
+      },
+      { profiles: [], economicsRows: [], observedAt: OBSERVED_AT },
+    );
+    const healthSql = surfaceStatusSql.find((sql) =>
+      /SUM\(CASE WHEN status = 'ok'/.test(sql),
+    );
+    assert.ok(
+      healthSql,
+      "expected leaderboards healthRows surface_status query",
+    );
+    assert.match(healthSql, /status = 'ok'/);
+    assert.match(healthSql, /AVG\(CASE WHEN/);
+    assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
+  });
+
+  test("loadCompareSubnets health SQL averages only ok surface_status latencies", async () => {
+    let healthSql = "";
+    await loadCompareSubnets(
+      async (sql) => {
+        if (/FROM surface_status/.test(sql)) {
+          healthSql = sql;
+          return [
+            { netuid: 1, surface_count: 2, ok_count: 1, avg_latency_ms: 100 },
+          ];
+        }
+        return [];
+      },
+      {
+        profiles: [{ netuid: 1, slug: "a", name: "A" }],
+        netuids: [1],
+        dimensions: ["health"],
+        observedAt: OBSERVED_AT,
+      },
+    );
+    assert.match(healthSql, /status = 'ok'/);
+    assert.match(healthSql, /ROUND\(AVG\(CASE WHEN/);
+    assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
+  });
+
   test("loadRegistryLeaderboards ranks most-reliable from surface_uptime_daily", async () => {
     const data = await loadRegistryLeaderboards(
       d1({

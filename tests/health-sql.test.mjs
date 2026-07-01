@@ -2,14 +2,31 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   OK_LATENCY,
+  SURFACE_STATUS_OK_LATENCY,
   dailyLatencyColumns,
   latencyStatColumns,
   rankedChecksCte,
+  surfaceStatusAvgLatencySql,
 } from "../src/health-sql.mjs";
 
 describe("health-sql latency builders", () => {
   test("OK_LATENCY gates latency on a successful probe that recorded one", () => {
     assert.equal(OK_LATENCY, "ok = 1 AND latency_ms IS NOT NULL");
+  });
+
+  test("SURFACE_STATUS_OK_LATENCY mirrors OK_LATENCY over surface_status.status", () => {
+    assert.equal(
+      SURFACE_STATUS_OK_LATENCY,
+      "status = 'ok' AND latency_ms IS NOT NULL",
+    );
+  });
+
+  test("surfaceStatusAvgLatencySql averages only ok surface_status rows", () => {
+    const raw = surfaceStatusAvgLatencySql();
+    assert.ok(raw.includes(SURFACE_STATUS_OK_LATENCY));
+    assert.ok(raw.startsWith("AVG(CASE WHEN"));
+    const rounded = surfaceStatusAvgLatencySql({ rounded: true });
+    assert.ok(rounded.startsWith("ROUND(AVG(CASE WHEN"));
   });
 
   test("rankedChecksCte ranks ok-latency rows and inlines the WHERE clause", () => {
