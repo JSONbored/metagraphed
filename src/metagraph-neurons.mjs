@@ -79,6 +79,13 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
+// Coerce a nullable D1 REAL/INTEGER ratio cell to a rounded number (or null).
+function ratioOrNull(value) {
+  if (value == null) return null;
+  const n = nullableNumber(value);
+  return n == null ? null : round(n);
+}
+
 // Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
 // must not pass through Boolean(), which treats any non-empty string as true.
 // Mirrors the local toD1Flag added to formatRegistration by #2487.
@@ -105,12 +112,12 @@ export function formatNeuron(row) {
     coldkey: row.coldkey ?? null,
     active: toD1Flag(row.active),
     validator_permit: toD1Flag(row.validator_permit),
-    rank: row.rank ?? null,
-    trust: row.trust ?? null,
-    validator_trust: row.validator_trust ?? null,
-    consensus: row.consensus ?? null,
-    incentive: row.incentive ?? null,
-    dividends: row.dividends ?? null,
+    rank: ratioOrNull(row.rank),
+    trust: ratioOrNull(row.trust),
+    validator_trust: ratioOrNull(row.validator_trust),
+    consensus: ratioOrNull(row.consensus),
+    incentive: ratioOrNull(row.incentive),
+    dividends: ratioOrNull(row.dividends),
     emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
     stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
     registered_at_block:

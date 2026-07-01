@@ -110,6 +110,25 @@ describe("metagraph-neurons builders", () => {
     assert.equal(typeof n.emission_tao, "number");
   });
 
+  test("formatNeuron coerces string-typed ratio cells to numbers", () => {
+    const n = formatNeuron({
+      rank: "12",
+      trust: "0.25",
+      validator_trust: "0.4",
+      consensus: "0.88",
+      incentive: "0.01",
+      dividends: "0.02",
+    });
+    assert.equal(n.rank, 12);
+    assert.equal(typeof n.rank, "number");
+    assert.equal(n.trust, 0.25);
+    assert.equal(typeof n.trust, "number");
+    assert.equal(n.validator_trust, 0.4);
+    assert.equal(n.consensus, 0.88);
+    assert.equal(n.incentive, 0.01);
+    assert.equal(n.dividends, 0.02);
+  });
+
   test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
     // Regression for the Gittensory Orb follow-up blocker on #2503: stake_tao /
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
