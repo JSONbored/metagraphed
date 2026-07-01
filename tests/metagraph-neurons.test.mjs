@@ -167,6 +167,30 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].validator_permit, true);
   });
 
+  test("coerces a string-typed D1 block_number to an integer in the snapshot stamp + neuron detail", () => {
+    // block_number is a nullable D1 INTEGER that can come back as a numeric
+    // string; the snapshot stamp (metagraph/validators) and neuron-detail top
+    // level must emit an integer or null, never leak the string into the
+    // ["integer","null"] contract field. Mirrors the buildGlobalValidators fix
+    // (#2611) for the remaining emission sites.
+    const meta = buildSubnetMetagraph([{ ...ROW, block_number: "8454388" }], 7);
+    assert.equal(meta.block_number, 8454388);
+    assert.equal(typeof meta.block_number, "number");
+    const vals = buildSubnetValidators(
+      [{ ...ROW, block_number: "8454388" }],
+      7,
+    );
+    assert.equal(vals.block_number, 8454388);
+    const detail = buildNeuronDetail({ ...ROW, block_number: "8454388" }, 7);
+    assert.equal(detail.block_number, 8454388);
+    assert.equal(typeof detail.block_number, "number");
+    // a null block_number stays null (not a fabricated 0).
+    assert.equal(
+      buildNeuronDetail({ ...ROW, block_number: null }, 7).block_number,
+      null,
+    );
+  });
+
   test("buildGlobalValidators groups validator identities across subnets", () => {
     const data = buildGlobalValidators(
       [

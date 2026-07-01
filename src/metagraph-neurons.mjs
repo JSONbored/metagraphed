@@ -127,7 +127,11 @@ function snapshotStamp(rows) {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
-    block_number: first.block_number ?? null,
+    // Coerce like buildGlobalValidators (#2611): block_number is a nullable D1
+    // INTEGER that can come back as a numeric string, so a bare `?? null` would
+    // leak "8454388" into the ["integer","null"] contract field. nonNegativeInt
+    // maps null→null and numeric strings→real integers.
+    block_number: nonNegativeInt(first.block_number),
   };
 }
 
@@ -165,7 +169,9 @@ export function buildNeuronDetail(row, netuid) {
     schema_version: 1,
     netuid,
     captured_at: toIso(row?.captured_at),
-    block_number: row?.block_number ?? null,
+    // Same D1 numeric-string coercion as snapshotStamp / buildGlobalValidators
+    // (#2611): keep the top-level block_number an integer or null, never a string.
+    block_number: nonNegativeInt(row?.block_number),
     neuron: formatNeuron(row),
   };
 }
