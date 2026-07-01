@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.11";
+export const CONTRACT_VERSION = "2026-06-30.12";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -977,6 +977,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetValidatorsArtifact",
   ),
   artifact(
+    "subnet-yield",
+    "/metagraph/subnets/{netuid}/yield.json",
+    "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+    "SubnetYieldArtifact",
+  ),
+  artifact(
     "subnet-events",
     "/metagraph/subnets/{netuid}/events.json",
     "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
@@ -1873,6 +1879,17 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/validators",
     "/metagraph/subnets/{netuid}/validators.json",
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-yield",
+    "GET",
+    "/api/v1/subnets/{netuid}/yield",
+    "/metagraph/subnets/{netuid}/yield.json",
+    "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
     "short",
     ["subnets", "analytics"],
     [],
