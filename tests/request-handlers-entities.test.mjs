@@ -1808,6 +1808,27 @@ describe("handleAccountEvents", () => {
     );
   });
 
+  test("netuid filter narrows results", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ netuid: 7 })],
+    });
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?netuid=7`),
+      ),
+    );
+    assert.ok(
+      captures.sql.some((s) => /netuid = \?/.test(s)),
+      "expected netuid filter in SQL",
+    );
+    const idx = captures.sql.findIndex((s) => /FROM account_events/.test(s));
+    assert.ok(captures.params[idx].includes(7));
+    assert.equal(body.data.events[0].netuid, 7);
+  });
+
   test("cursor uses keyset seek instead of offset", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow({ block_number: 150, event_index: 2 })],

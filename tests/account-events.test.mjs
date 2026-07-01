@@ -1092,15 +1092,7 @@ test("loadAccountEvents applies the ?netuid filter as a bound param", async () =
     { netuid: 7 },
   );
   assert.ok(/AND netuid = \?/.test(captured.sql));
-  assert.deepEqual(captured.params, [
-    "5Hk",
-    7,
-    "5Hk",
-    "5Hk",
-    7,
-    100,
-    0,
-  ]);
+  assert.deepEqual(captured.params, ["5Hk", 7, "5Hk", "5Hk", 7, 100, 0]);
 });
 
 test("loadAccountEvents applies the block_start/block_end range as bound params", async () => {

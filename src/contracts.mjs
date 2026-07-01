@@ -1982,7 +1982,10 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     [
       { name: "kind", schema: { type: "string" } },
-      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 9007199254740991 },
+      },
       { name: "block_start", schema: { type: "integer", minimum: 0 } },
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
