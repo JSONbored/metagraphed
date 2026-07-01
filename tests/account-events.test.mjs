@@ -1032,6 +1032,25 @@ test("loadAccountEvents is schema-stable when the D1 read yields nothing", async
   assert.equal(out.next_cursor, null); // no full page → no next cursor
 });
 
+test("loadAccountEvents short-circuits an inverted block range before D1", async () => {
+  // Parity with the extrinsics/transfers feeds (#2622/#2625): an inverted
+  // block_start > block_end range is a deterministic no-match, so it must return
+  // an empty page WITHOUT touching D1 — callers can't force a scan to prove it.
+  let called = false;
+  const out = await loadAccountEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountEvents propagates a rejecting D1 runner (no silent swallow)", async () => {
   // If the injected runner rejects (e.g. a non-swallowed downstream failure),
   // the loader must not mask it as an empty feed — the caller decides.

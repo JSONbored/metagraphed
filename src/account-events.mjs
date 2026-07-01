@@ -627,6 +627,16 @@ export async function loadAccountEvents(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty
+  // page — parity with the extrinsics and transfers feeds (#2622/#2625).
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountEvents([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const filterParts = [];
   const filterParams = [];
   if (kind) {
