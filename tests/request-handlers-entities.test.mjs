@@ -1888,17 +1888,23 @@ describe("handleAccountHistory", () => {
 
   test("short-circuits an inverted from>to date window before D1", async () => {
     const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
-    const body = await json(
-      await handleAccountHistory(
-        req(`/api/v1/accounts/${SS58}/history`),
-        env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
-      ),
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
     );
+    const body = await json(res);
     assert.equal(body.data.day_count, 0);
     assert.deepEqual(body.data.days, []);
     assert.equal(captures.sql.length, 0);
+    // The inverted-range short-circuit must still expose the artifact-source
+    // header every other account envelope carries (#2618), not drop it.
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(
+      res.headers.get("x-metagraph-artifact-source"),
+      "chain-events",
+    );
   });
 });
 

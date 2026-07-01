@@ -860,7 +860,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
       offset,
       nextCursor: null,
     });
-    return envelopeResponse(
+    return accountEnvelopeResponse(
       request,
       {
         data,
