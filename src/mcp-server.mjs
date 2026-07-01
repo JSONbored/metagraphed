@@ -23,6 +23,7 @@ import {
   clampOffset,
 } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
   loadSubnetConcentration,
@@ -356,17 +357,21 @@ function mcpContractVersion(ctx) {
 }
 
 // A (sql, params) => Promise<rows[]> runner over the health DB for the metagraph
-// / trajectory loaders. Like the REST d1All, a cold DB or query error yields []
-// (schema-stable empty payload). No withTimeout — unavailable to this pure module.
+// / trajectory loaders. Like the REST d1All, a cold DB, timeout, or query error
+// yields [] (schema-stable empty payload). The timeout keeps public MCP tools
+// from monopolizing D1/Worker time with expensive aggregates.
 function mcpD1Runner(ctx) {
   return async (sql, params) => {
     const db = ctx.env?.METAGRAPH_HEALTH_DB;
     if (!db?.prepare) return [];
     try {
-      const result = await db
-        .prepare(sql)
-        .bind(...params)
-        .all();
+      const result = await withTimeout(
+        db
+          .prepare(sql)
+          .bind(...params)
+          .all(),
+        d1TimeoutMs(ctx.env),
+      );
       return result?.results || [];
     } catch {
       return [];
@@ -522,6 +527,53 @@ async function loadChainEventsFeed(
     next_cursor: data?.next_cursor ?? null,
     events: Array.isArray(data?.events) ? data.events : [],
   };
+}
+
+async function requireDataTierRateLimit(ctx) {
+  if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
+  const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+    key: `data:${ctx.clientIp || "anonymous"}`,
+  });
+  if (!success) {
+    throw toolError(
+      "data_rate_limited",
+      "Too many data API requests from this client; slow down.",
+    );
+  }
+}
+
+function chainSignersCacheKey({ label, limit, callModule, sort }) {
+  return JSON.stringify([label, limit, callModule || "", sort || ""]);
+}
+
+async function loadMcpChainSigners(ctx, options) {
+  ctx.chainSignersCache ||= new Map();
+  const key = chainSignersCacheKey(options);
+  if (!ctx.chainSignersCache.has(key)) {
+    // The limiter charge lives inside the cache-miss promise (not ahead of the
+    // cache check) so a batch of identical calls shares one limiter charge
+    // alongside the one D1 aggregation, instead of paying the limiter once per
+    // duplicate request in the batch.
+    ctx.chainSignersCache.set(
+      key,
+      requireDataTierRateLimit(ctx)
+        .then(() =>
+          loadChainSigners(mcpD1Runner(ctx), {
+            windowLabel: options.label,
+            windowDays: options.days,
+            observedAt: options.observedAt,
+            limit: options.limit,
+            callModule: options.callModule,
+            sort: options.sort,
+          }),
+        )
+        .catch((error) => {
+          ctx.chainSignersCache.delete(key);
+          throw error;
+        }),
+    );
+  }
+  return ctx.chainSignersCache.get(key);
 }
 
 async function mcpObservedAt(ctx) {
@@ -3165,9 +3217,9 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
-      const { data } = await loadChainSigners(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
+      const { data } = await loadMcpChainSigners(ctx, {
+        label,
+        days,
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
