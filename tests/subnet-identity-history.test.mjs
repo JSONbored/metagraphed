@@ -164,6 +164,39 @@ describe("formatIdentityHistoryEntry", () => {
     assert.equal(out.block_number, null);
     assert.equal(out.observed_at, null);
   });
+
+  test("sanitizes URI and discord fields to match the published contract", () => {
+    const out = formatIdentityHistoryEntry({
+      block_number: 1,
+      observed_at: 1_700_000_000_000,
+      subnet_name: "X",
+      github_repo: "not-a-uri",
+      subnet_url: "javascript:alert(1)",
+      discord: "x".repeat(201),
+      logo_url: "https://deprecated.png/logo.png",
+      identity_hash: "abc",
+    });
+    assert.equal(out.github_repo, null);
+    assert.equal(out.subnet_url, null);
+    assert.equal(out.discord, null);
+    assert.equal(out.logo_url, null);
+  });
+
+  test("normalizes valid on-chain identity links and discord handles", () => {
+    const out = formatIdentityHistoryEntry({
+      block_number: 1,
+      observed_at: 1_700_000_000_000,
+      github_repo: "github.com/example/repo",
+      subnet_url: "https://miao.example/",
+      discord: "macrocrux",
+      logo_url: "https://miao.example/logo.png",
+      identity_hash: "abc",
+    });
+    assert.equal(out.github_repo, "https://github.com/example/repo");
+    assert.equal(out.subnet_url, "https://miao.example/");
+    assert.equal(out.discord, "macrocrux");
+    assert.equal(out.logo_url, "https://miao.example/logo.png");
+  });
 });
 
 describe("derivePreviouslyKnownAs", () => {
@@ -280,10 +313,10 @@ describe("recordSubnetIdentityChanges", () => {
         native_identity: {
           subnet_name: "New Name",
           description: "changed",
-          github_url: null,
-          website_url: null,
-          discord: null,
-          logo_url: null,
+          github_url: "not-a-uri",
+          website_url: "javascript:alert(1)",
+          discord: "x".repeat(201),
+          logo_url: "https://deprecated.png/logo.png",
         },
       },
     ];
@@ -293,10 +326,13 @@ describe("recordSubnetIdentityChanges", () => {
     );
     assert.equal(result.recorded, true);
     assert.equal(result.rows, 1);
-    assert.equal(
-      statements.some((entry) => entry.sql?.includes("INSERT")),
-      true,
-    );
+    const insert = statements.find((entry) => entry.sql?.includes("INSERT"));
+    assert.ok(insert);
+    assert.equal(insert.args[3], "New Name");
+    assert.equal(insert.args[6], null);
+    assert.equal(insert.args[7], null);
+    assert.equal(insert.args[8], null);
+    assert.equal(insert.args[9], null);
   });
 
   test("skips unchanged identities", async () => {

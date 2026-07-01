@@ -3,6 +3,7 @@
 // timeline + previously_known_as provenance hints. Pure + injectable for tests.
 
 import { encodeCursor, decodeCursor } from "./cursor.mjs";
+import { sanitizeIdentityHistoryFields } from "./chain-identity-sanitize.mjs";
 import {
   clampLimit,
   clampOffset,
@@ -67,7 +68,7 @@ function normalizeName(value) {
 
 export function formatIdentityHistoryEntry(row) {
   if (!row || typeof row !== "object") return null;
-  return {
+  const entry = sanitizeIdentityHistoryFields({
     block_number:
       row.block_number == null
         ? null
@@ -83,7 +84,8 @@ export function formatIdentityHistoryEntry(row) {
     discord: row.discord ?? null,
     logo_url: row.logo_url ?? null,
     identity_hash: row.identity_hash ?? null,
-  };
+  });
+  return entry;
 }
 
 export function buildSubnetIdentityHistory(
@@ -189,18 +191,19 @@ export async function recordSubnetIdentityChanges(
     if (!snapshot) continue;
     const hash = await identityHash(snapshot);
     if (latestByNetuid.get(profile.netuid) === hash) continue;
+    const stored = sanitizeIdentityHistoryFields(snapshot);
     statements.push(
       stmt.bind(
         profile.netuid,
         blockNumber,
         now,
-        snapshot.subnet_name,
-        snapshot.symbol,
-        snapshot.description,
-        snapshot.github_repo,
-        snapshot.subnet_url,
-        snapshot.discord,
-        snapshot.logo_url,
+        stored.subnet_name,
+        stored.symbol,
+        stored.description,
+        stored.github_repo,
+        stored.subnet_url,
+        stored.discord,
+        stored.logo_url,
         hash,
       ),
     );
