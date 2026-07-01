@@ -114,7 +114,13 @@ import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
-import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
+import { loadExtrinsics } from "./extrinsics.mjs";
+import { loadExtrinsicDetail } from "./extrinsic-detail.mjs";
+import {
+  dataApiFetchJson,
+  loadBlockChainEvents,
+  loadExtrinsicChainEvents,
+} from "./data-api-mcp.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -146,7 +152,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.14.0";
+export const MCP_SERVER_VERSION = "1.15.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -383,50 +389,11 @@ async function loadSubnetEconomics(ctx, netuid) {
 // the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
 // this Worker's bundle; MCP handlers reach it through the DATA_API service
 // binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
-// A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
-// upstream response surfaces as a clean tool error, never an exception.
 async function loadChainActivity(ctx, blocks) {
-  // Optional in previews/local runs; production binds this beside DATA_API so
-  // MCP calls pay the same data-tier rate limit as REST proxy calls.
-  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
-      key: `data:${ctx.clientIp}`,
-    });
-    if (!success) {
-      throw toolError(
-        "data_rate_limited",
-        "Too many data API requests from this client; slow down.",
-      );
-    }
-  }
-
-  const dataApi = ctx.env?.DATA_API;
-  if (!dataApi?.fetch) {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier is unavailable (the all-events data Worker is " +
-        "not bound to this deployment). Try again against the production endpoint.",
-    );
-  }
-  let response;
-  try {
-    response = await dataApi.fetch(
-      new Request(`https://d/api/v1/chain-events/stats?blocks=${blocks}`),
-    );
-  } catch {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier could not be reached. Try again shortly.",
-    );
-  }
-  if (!response.ok) {
-    throw toolError(
-      "tier_unavailable",
-      `The chain activity tier returned an error (status ${response.status}). ` +
-        "Try again shortly.",
-    );
-  }
-  const data = await response.json();
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
   return {
     window_blocks: data?.window_blocks ?? blocks,
     groups: data?.groups ?? 0,
@@ -2769,9 +2736,12 @@ export const MCP_TOOLS = [
     title: "Get an extrinsic by hash or composite ref",
     description:
       "Fetch the detail for one extrinsic by its 0x extrinsic hash (e.g. '0xabc...') " +
-      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). Returns " +
-      "extrinsic:null when the ref is unknown or the store is cold — never errors. " +
-      "Use list_extrinsics to find extrinsic refs.",
+      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). " +
+      "Includes up to 50 curated account_events the extrinsic emitted (#1849). " +
+      "Returns extrinsic:null when the ref is unknown or the store is cold — never " +
+      "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
+      "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
+      "GET /api/v1/extrinsics/{ref}.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2787,7 +2757,76 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return loadExtrinsic(mcpD1Runner(ctx), ref);
+      return loadExtrinsicDetail(mcpD1Runner(ctx), ref);
+    },
+  },
+  {
+    name: "get_block_chain_events",
+    title: "Get every raw chain event in one block",
+    description:
+      "Fetch every raw pallet.method event in one block from the Postgres-backed " +
+      "all-events tier (ADR 0013), in natural read order (event_index ASC). " +
+      "Distinct from get_block_events (the curated account-attributed D1 stream). " +
+      "Returns event_count:0 + events:[] when the tier is empty for that block. " +
+      "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
+      "Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block_number: {
+          type: "integer",
+          description: "Numeric block height.",
+          minimum: 0,
+        },
+      },
+      required: ["block_number"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const blockNumber = requireNonNegativeInt(args, "block_number");
+      return loadBlockChainEvents(ctx, blockNumber);
+    },
+  },
+  {
+    name: "get_extrinsic_chain_events",
+    title: "Get raw chain events emitted by one extrinsic",
+    description:
+      "Fetch raw pallet.method events one extrinsic emitted from the Postgres-backed " +
+      "all-events tier (newest first). ref must be the composite id " +
+      "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
+      "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
+      "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
+      "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Composite extrinsic id 'block_number-extrinsic_index' (e.g. '4200000-3').",
+        },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-200, default 50).",
+          minimum: 1,
+          maximum: 200,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor for the next page.",
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      const cursor = optionalString(args, "cursor");
+      return loadExtrinsicChainEvents(ctx, ref, {
+        limit: args?.limit,
+        cursor: cursor ?? undefined,
+      });
     },
   },
   {
@@ -4089,6 +4128,17 @@ const EXTRINSIC_ITEM = {
   tip_tao: ANY,
   observed_at: NULLABLE_STRING,
 };
+// Raw all-events tier item (pallet.method events from Postgres chain_events).
+const CHAIN_EVENT_ITEM = {
+  block_number: NULLABLE_INT,
+  event_index: NULLABLE_INT,
+  pallet: NULLABLE_STRING,
+  method: NULLABLE_STRING,
+  args: ANY,
+  phase: ANY,
+  extrinsic_index: NULLABLE_INT,
+  observed_at: NULLABLE_INT,
+};
 // RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
 // schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
 const RPC_USAGE_LATENCY_MS = {
@@ -4832,6 +4882,39 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
+      events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
+  get_block_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_number", "event_count", "events"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_number: NULLABLE_INT,
+      event_count: { type: "integer" },
+      events: objectItems(CHAIN_EVENT_ITEM),
+    },
+  },
+  get_extrinsic_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "ref",
+      "block_number",
+      "extrinsic_index",
+      "event_count",
+      "events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block_number: NULLABLE_INT,
+      extrinsic_index: NULLABLE_INT,
+      limit: NULLABLE_INT,
+      event_count: { type: "integer" },
+      next_cursor: NULLABLE_STRING,
+      events: objectItems(CHAIN_EVENT_ITEM),
     },
   },
   get_chain_activity: {
