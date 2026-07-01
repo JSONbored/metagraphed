@@ -15,6 +15,8 @@ import {
   buildBlockFeed,
   formatBlock,
   loadBlock,
+  loadBlocks,
+  MAX_BLOCK_COUNT_FILTER,
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
@@ -480,6 +482,22 @@ test("GET /blocks/{ref} emits nearest stored prev/next neighbors (#1853)", async
   assert.equal(body.data.next_block_number, 1240);
 });
 
+test("GET /blocks/{ref} resolves neighbors when D1 returns block_number as a string (#1853)", async () => {
+  // D1 can return the INTEGER block_number as a numeric string. The REST detail
+  // handler must coerce the resolved anchor before the MAX/MIN neighbor lookup —
+  // a bare Number.isInteger("1234") is false, which skipped the query and wrongly
+  // reported prev/next_block_number: null for a block that has neighbors.
+  const env = dbWith({
+    detail: { block_number: "1234", block_hash: "0xabc", observed_at: 1 },
+    neighbors: { prev: 1230, next: 1240 },
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1234"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.block.block_number, 1234);
+  assert.equal(body.data.prev_block_number, 1230);
+  assert.equal(body.data.next_block_number, 1240);
+});
+
 test("GET /blocks/{ref} nulls neighbors at a window edge (#1853)", async () => {
   const env = dbWith({
     detail: { block_number: 1, block_hash: "0x1", observed_at: 1 },
@@ -797,4 +815,80 @@ test("loadBlock lowercases a mixed-case 0x block_hash before binding (#2349)", a
     true,
     "the hash bind parameter must be lowercased",
   );
+});
+
+// ---- loadBlocks filters (shared REST + MCP list_blocks) --------------------
+
+function recordingBlocksD1(capture = []) {
+  return async (sql, params) => {
+    capture.push({ sql, params });
+    return [];
+  };
+}
+
+test("loadBlocks applies the conjunctive filter set (#1991)", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, {
+    author: "5Author",
+    specVersion: 423,
+    blockStart: 100,
+    blockEnd: 200,
+    from: 1000,
+    to: 2000,
+    minExtrinsics: 1,
+    minEvents: 5,
+    limit: 10,
+    offset: 0,
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/author = \?/.test(sql));
+  assert.ok(/spec_version = \?/.test(sql));
+  assert.ok(/block_number >= \?/.test(sql));
+  assert.ok(/block_number <= \?/.test(sql));
+  assert.ok(/observed_at >= \?/.test(sql));
+  assert.ok(/observed_at <= \?/.test(sql));
+  assert.ok(/extrinsic_count >= \?/.test(sql));
+  assert.ok(/event_count >= \?/.test(sql));
+  assert.ok(params.includes("5Author"));
+  assert.ok(params.includes(423));
+  assert.equal(params.at(-2), 10);
+  assert.equal(params.at(-1), 0);
+});
+
+test("loadBlocks short-circuits impossible ranges and count floors before D1", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  const empty = await loadBlocks(d1, {
+    blockStart: 20,
+    blockEnd: 10,
+    from: 200,
+    to: 100,
+    minEvents: MAX_BLOCK_COUNT_FILTER + 1,
+  });
+  assert.equal(empty.block_count, 0);
+  assert.equal(empty.next_cursor, null);
+  assert.equal(capture.length, 0);
+});
+
+test("loadBlocks ANDs keyset cursor with filters and drops OFFSET", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, {
+    author: "5Author",
+    cursor: encodeCursor([300]),
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/author = \? AND block_number < \?/.test(sql));
+  assert.ok(!/OFFSET/.test(sql));
+  assert.ok(params.includes(300));
+});
+
+test("loadBlocks keeps the plain OFFSET path when unfiltered", async () => {
+  const capture = [];
+  const d1 = recordingBlocksD1(capture);
+  await loadBlocks(d1, { limit: 10, offset: 20 });
+  const { sql } = capture[0];
+  assert.ok(!/WHERE/.test(sql));
+  assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
 });

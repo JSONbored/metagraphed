@@ -59,6 +59,7 @@ import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
 } from "../../src/chain-query-loaders.mjs";
+import { loadChainTransfers } from "../../src/chain-transfers.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -786,6 +787,48 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         : response;
     },
     canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"]),
+  );
+}
+
+// Network-wide native-TAO transfer analytics: total Balances.Transfer volume over the
+// window, the top senders + receivers by volume, and the top senders' share of total
+// volume (a concentration signal), from the account_events Transfer feed. The
+// network-level companion of /accounts/{ss58}/transfers + /counterparties.
+export async function handleChainTransfers(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-transfers",
+    async () => {
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainTransfers(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: meta?.last_run_at || null,
+        limit,
+      });
+      return envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/transfers.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
   );
 }
 

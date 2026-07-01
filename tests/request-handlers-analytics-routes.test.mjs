@@ -18,6 +18,11 @@ import {
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.mjs";
+import {
+  unsupportedWindowMessage,
+  HISTORY_WINDOWS,
+} from "../src/neuron-history.mjs";
+import { UPTIME_WINDOWS } from "../workers/config.mjs";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
@@ -148,6 +153,10 @@ describe("handleEconomicsTrends", () => {
     const res = await handleEconomicsTrends(req("/"), {}, url("/?window=99d"));
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("99d", HISTORY_WINDOWS),
+    );
   });
 
   test("aggregates per-day across subnets (sums + weighted/median price)", async () => {
@@ -249,6 +258,10 @@ describe("handleUptime", () => {
     const res = await handleUptime(req("/"), {}, NETUID, url("/?window=30d"));
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("30d", UPTIME_WINDOWS),
+    );
   });
 
   test("rejects duplicate window parameters", async () => {

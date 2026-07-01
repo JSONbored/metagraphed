@@ -50,6 +50,7 @@ export const INDEXED_EVENT_KINDS = [
   "StakeRemoved",
   "StakeMoved",
   "AxonServed",
+  "PrometheusServed",
   "WeightsSet",
   "RootClaimed",
 ];
@@ -713,6 +714,15 @@ export async function loadAccountHistory(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (from && to && from > to) {
+    return buildAccountHistory([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const params = [ss58];
   let sql = `SELECT ${ACCOUNT_DAY_COLUMNS} FROM account_events_daily WHERE hotkey = ?`;
   if (netuid != null && Number.isInteger(netuid)) {
