@@ -21,7 +21,10 @@ import {
   validateQueryParams,
 } from "./analytics.mjs";
 import { dailyLatencyColumns } from "../../src/health-sql.mjs";
-import { parseHistoryWindow } from "../../src/neuron-history.mjs";
+import {
+  parseHistoryWindow,
+  unsupportedWindowMessage,
+} from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
 import {
   formatLeaderboards,
@@ -121,12 +124,10 @@ export async function handleUptime(request, env, netuid, url) {
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
-    return errorResponse(
-      "invalid_query",
-      "Query parameter `window` must be one of: 90d, 1y.",
-      400,
-      { parameter: "window" },
-    );
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, UPTIME_WINDOWS),
+    });
   }
   const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)

@@ -15,6 +15,7 @@ import {
   exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
   weakEtag,
+  X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
 } from "./http.mjs";
 import {
   latestPointer,
@@ -45,6 +46,7 @@ import {
   handleChainCalls,
   handleChainFees,
   handleChainSigners,
+  handleChainTransfers,
   handleGlobalIncidents,
   loadGlobalIncidentsLedger,
   handleHealthIncidents,
@@ -52,6 +54,7 @@ import {
   handleHealthTrends,
   withEdgeCache,
   withNeuronsEdgeCache,
+  readNeuronsCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   loadStagedNeurons,
@@ -68,6 +71,7 @@ import {
   handleSubnetHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
+  handleChainConcentration,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -114,6 +118,7 @@ import {
   handleRpcProxyRequest,
   handleRpcUsage,
   handleSurfaceVerify,
+  isPrivateOrLocalHostname,
   isRpcEndpointEjected,
   orderSafeRpcEndpoints,
   proxyWithFailover,
@@ -350,6 +355,7 @@ export {
 // module (their public test surface is api.mjs, not the new file).
 export {
   classifyUpstreamAttempt,
+  isPrivateOrLocalHostname,
   isRpcEndpointEjected,
   orderSafeRpcEndpoints,
   proxyWithFailover,
@@ -852,7 +858,16 @@ async function handleChainEventsProxy(request, env, url) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  // DATA_API is GET-only (it 405s any other method), so a HEAD probe must be
+  // forwarded as a GET or it would return a 405 error envelope instead of the
+  // bodiless 200 that HEAD yields on every other GET route (and that this route's
+  // own CORS preflight advertises). envelopeResponse(request, …) below still
+  // strips the body for HEAD, so the client gets the correct empty 200.
+  const upstream = await env.DATA_API.fetch(
+    request.method === "HEAD"
+      ? new Request(request.url, { method: "GET", headers: request.headers })
+      : request,
+  );
   let body;
   try {
     body = await upstream.json();
@@ -1156,8 +1171,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
+  // Busts on the newest neuron captured_at across ALL subnets (like chain/concentration
+  // below), not a validator-permit-filtered stamp: a subnet refresh that drops a
+  // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
+  // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
-    return handleGlobalValidators(request, env, url);
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "global-validators",
+      () => handleGlobalValidators(request, env, url),
+      null,
+      (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+    );
   }
 
   // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug
@@ -1601,6 +1628,23 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/fees") {
       return handleChainFees(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/transfers") {
+      return handleChainTransfers(request, env, resolved.url, ctx);
+    }
+    // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
+    // busts on the newest neuron captured_at across ALL subnets, not the health
+    // prober tick (like the per-subnet concentration route, but network-scoped).
+    if (resolved.url.pathname === "/api/v1/chain/concentration") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-concentration",
+        () => handleChainConcentration(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1659,6 +1703,8 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/calls" ||
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
+    pathname === "/api/v1/chain/transfers" ||
+    pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
@@ -1674,6 +1720,11 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
     SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
+    SUBNET_CONCENTRATION_HISTORY_PATH_PATTERN.test(pathname) ||
+    SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
+    SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
+    SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -1681,6 +1732,7 @@ function isMainnetOnlyApiPath(pathname) {
     ACCOUNT_EXTRINSICS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_TRANSFERS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_COUNTERPARTIES_PATH_PATTERN.test(pathname) ||
+    ACCOUNT_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
@@ -1883,7 +1935,7 @@ async function handleRawArtifactRequest(
   const body = JSON.stringify(data);
   const headers = apiHeaders("standard");
   headers.set("content-type", JSON_CONTENT_TYPE);
-  headers.set("x-metagraph-artifact-source", artifact.source);
+  headers.set(X_METAGRAPH_ARTIFACT_SOURCE_HEADER, artifact.source);
   headers.set("x-metagraph-storage-tier", artifact.storage_tier);
   if (pub) {
     headers.set("x-metagraph-published-at", pub);

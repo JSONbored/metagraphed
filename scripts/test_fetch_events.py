@@ -337,6 +337,25 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["amount_tao"])
 
 
+class PrometheusServedExtractorTest(unittest.TestCase):
+    """Tests for the SubtensorModule.PrometheusServed extractor (#2554)."""
+
+    def test_positional_netuid_hotkey(self):
+        result = _extract("PrometheusServed", [7, _SS58_A])
+        self.assertEqual(result["netuid"], 7)
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["uid"])
+
+    def test_invalid_hotkey_gives_null(self):
+        result = _extract("PrometheusServed", [7, "not-an-address"])
+        self.assertEqual(result["netuid"], 7)
+        self.assertIsNone(result["hotkey"])
+
+    def test_empty_shape_drift_is_skipped(self):
+        self.assertIsNone(_extract("PrometheusServed", []))
+
+
 class _Ev:
     """Minimal stand-in for a decoded event (`.value` is the SCALE-decoded dict)."""
 

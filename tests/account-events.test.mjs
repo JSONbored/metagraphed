@@ -4,6 +4,7 @@ import {
   ACCOUNT_EVENT_COLUMNS,
   EVENT_INSERT_COLUMNS,
   INDEXED_EVENT_KINDS,
+  INGESTED_EVENT_KINDS,
   EVENT_RETENTION_MS,
   formatAccountEvent,
   formatAccountDay,
@@ -101,9 +102,14 @@ test("INDEXED_EVENT_KINDS covers the core entity events", () => {
     "StakeRemoved",
     "WeightsSet",
     "AxonServed",
+    "PrometheusServed",
   ]) {
     assert.ok(INDEXED_EVENT_KINDS.includes(k), `missing ${k}`);
   }
+});
+
+test("INGESTED_EVENT_KINDS accepts PrometheusServed for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("PrometheusServed"));
 });
 
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
@@ -609,6 +615,22 @@ test("loadAccountTransfers applies the block_start/block_end range to both sides
   ]);
 });
 
+test("loadAccountTransfers short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountTransfers(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.transfer_count, 0);
+  assert.deepEqual(out.transfers, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
   let captured;
   const out = await loadAccountTransfers(
@@ -654,6 +676,22 @@ test("loadAccountExtrinsics applies the block_start/block_end range as bound par
   assert.ok(/AND block_number >= \?/.test(captured.sql));
   assert.ok(/AND block_number <= \?/.test(captured.sql));
   assert.deepEqual(captured.params, ["5Hk", 100, 900, 100, 0]);
+});
+
+test("loadAccountExtrinsics short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountExtrinsics(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.extrinsic_count, 0);
+  assert.deepEqual(out.extrinsics, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
 });
 
 test("loadAccountExtrinsics emits next_cursor for a full page", async () => {
@@ -1218,6 +1256,21 @@ test("loadAccountHistory binds netuid/from/to filters and clamps pagination", as
     1,
     5,
   ]);
+});
+
+test("loadAccountHistory short-circuits an inverted from>to window before D1", async () => {
+  let called = false;
+  const out = await loadAccountHistory(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { from: "2026-06-30", to: "2026-06-01", limit: 50, offset: 0 },
+  );
+  assert.equal(out.day_count, 0);
+  assert.deepEqual(out.days, []);
+  assert.equal(called, false);
 });
 
 test("loadAccountHistory applies a (day, netuid) keyset cursor and drops offset", async () => {

@@ -1988,6 +1988,184 @@ describe("MCP get_chain_signers", () => {
     assert.equal(out.signer_count, 0);
     assert.deepEqual(out.signers, []);
   });
+
+  test("applies the data-tier limiter before the D1 signers aggregation", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: false };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 0);
+  });
+
+  test("proceeds to the D1 signers aggregation when the data-tier limiter allows the request", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("coalesces identical batched signers calls into one D1 query", async () => {
+    let d1Calls = 0;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("returns an empty leaderboard when the signers D1 query times out", async () => {
+    const env = {
+      METAGRAPH_D1_TIMEOUT_MS: "1",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return new Promise(() => {});
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool("get_chain_signers", {}, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.signer_count, 0);
+    assert.deepEqual(out.signers, []);
+  });
+
+  test("a batch of identical signers calls shares one limiter charge, not one per duplicate", async () => {
+    let d1Calls = 0;
+    let limiterCalls = 0;
+    const env = {
+      DATA_RATE_LIMITER: {
+        async limit() {
+          limiterCalls += 1;
+          return { success: false };
+        },
+      },
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2), message(3)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 3);
+    for (const entry of res.body) {
+      assert.equal(entry.result.isError, true);
+      assert.match(entry.result.content[0].text, /Too many data API requests/);
+    }
+    assert.equal(
+      limiterCalls,
+      1,
+      "identical batched calls must share a single limiter charge",
+    );
+    assert.equal(d1Calls, 0);
+  });
 });
 
 describe("MCP get_chain_fees", () => {
@@ -2106,6 +2284,93 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.day_count, 0);
     assert.deepEqual(out.daily, []);
     assert.deepEqual(out.top_fee_payers, []);
+  });
+});
+
+describe("MCP get_chain_transfers", () => {
+  function chainTransfersD1(
+    {
+      totals = {
+        transfer_count: 10,
+        total_volume_tao: 100,
+        unique_senders: 4,
+        unique_receivers: 6,
+      },
+      senders = [{ address: "5Sa", volume_tao: 80, transfer_count: 5 }],
+      receivers = [{ address: "5Rx", volume_tao: 60, transfer_count: 4 }],
+    } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                    return { results: [totals] };
+                  }
+                  if (/GROUP BY hotkey/.test(sql)) {
+                    return { results: senders };
+                  }
+                  if (/GROUP BY coldkey/.test(sql)) {
+                    return { results: receivers };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("aggregates volume and ranks top senders/receivers", async () => {
+    const capture = [];
+    const env = chainTransfersD1({}, capture);
+    const res = await callTool(
+      "get_chain_transfers",
+      { window: "7d", limit: 5 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.total_volume_tao, 100);
+    assert.equal(out.top_senders[0].address, "5Sa");
+    assert.equal(out.top_receivers[0].address, "5Rx");
+    assert.equal(out.top_sender_share, 0.8);
+    const senders = capture.find((c) => /GROUP BY hotkey/.test(c.sql));
+    assert.match(senders.sql, /event_kind = \?/);
+    assert.equal(senders.params.at(-1), 5);
+  });
+
+  test("defaults to the 7d window", async () => {
+    const res = await callTool(
+      "get_chain_transfers",
+      {},
+      { env: chainTransfersD1() },
+    );
+    assert.equal(res.body.result.structuredContent.window, "7d");
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_transfers", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("degrades to schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_transfers", { window: "30d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.top_sender_share, null);
+    assert.deepEqual(out.top_senders, []);
+    assert.deepEqual(out.top_receivers, []);
   });
 });
 
@@ -4372,7 +4637,7 @@ describe("MCP economics + metagraph data tools", () => {
       { env: d1Env },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
+    assert.match(res.body.result.content[0].text, /is not a supported window/);
   });
 
   test("get_economics_trends returns schema-stable empty days on cold D1", async () => {
@@ -4527,7 +4792,7 @@ describe("MCP economics + metagraph data tools", () => {
       window: "400d",
     });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
+    assert.match(res.body.result.content[0].text, /is not a supported window/);
   });
 
   test("get_subnet_turnover accepts the all window without a date cutoff", async () => {
@@ -4562,6 +4827,56 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.window, "all");
     assert.equal(out.comparable, true);
     assert.equal(out.validator_retention, 1);
+  });
+
+  test("get_subnet_yield returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_subnet_yield", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.subnet_yield, null);
+    assert.deepEqual(out.neurons, []);
+  });
+
+  test("get_subnet_yield ranks UIDs by emission-per-stake return", async () => {
+    const res = await callTool(
+      "get_subnet_yield",
+      { netuid: 7 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                uid: 0,
+                hotkey: "5Hk0",
+                validator_permit: 1,
+                stake_tao: 10,
+                emission_tao: 1,
+                captured_at: 1750000000000,
+                block_number: 5000,
+              },
+              {
+                uid: 1,
+                hotkey: "5Hk1",
+                validator_permit: 0,
+                stake_tao: 10,
+                emission_tao: 3,
+                captured_at: 1750000000000,
+                block_number: 5000,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1);
+    assert.equal(out.subnet_yield, 0.2);
+    assert.equal(out.neurons[0].uid, 1);
+    assert.equal(out.neurons[0].yield, 0.3);
+    assert.equal(out.neurons[1].uid, 0);
+    assert.equal(out.neurons[1].yield, 0.1);
   });
 
   test("the D1-backed tools degrade to schema-stable empty payloads when D1 is cold", async () => {
@@ -5472,6 +5787,72 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.ok(q.params.includes(200) && q.params.includes(1));
   });
 
+  test("get_account_events applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = accountD1(
+      {
+        events: [
+          {
+            block_number: 150,
+            event_index: 4,
+            event_kind: "StakeAdded",
+            hotkey: SS58,
+            coldkey: null,
+            netuid: 7,
+            uid: 3,
+            amount_tao: 1.5,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_events",
+      {
+        ss58: SS58,
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [
+      SS58,
+      100,
+      900,
+      200,
+      2,
+      SS58,
+      SS58,
+      100,
+      900,
+      200,
+      2,
+      1,
+    ]);
+  });
+
+  test("get_account_events rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
   test("get_account_events emits next_cursor for a full page", async () => {
     const env = accountD1({
       events: [
@@ -6010,6 +6391,56 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.deepEqual(res.body.result.structuredContent.blocks, []);
   });
 
+  test("list_blocks applies REST filter parity (author, ranges, count floors)", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [] }, capture);
+    await callTool(
+      "list_blocks",
+      {
+        author: BLOCK_ROW.author,
+        spec_version: 207,
+        block_start: 100,
+        block_end: 200,
+        from: 1_000,
+        to: 2_000,
+        min_extrinsics: 1,
+        min_events: 5,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM blocks/.test(c.sql));
+    assert.ok(/author = \?/.test(q.sql));
+    assert.ok(/spec_version = \?/.test(q.sql));
+    assert.ok(/extrinsic_count >= \?/.test(q.sql));
+    assert.ok(/event_count >= \?/.test(q.sql));
+    assert.ok(q.params.includes(BLOCK_ROW.author));
+  });
+
+  test("list_blocks short-circuits impossible count floors without querying D1", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [BLOCK_ROW] }, capture);
+    const res = await callTool(
+      "list_blocks",
+      { min_events: 9_007_199_254_740_991 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.block_count, 0);
+    assert.equal(capture.filter((c) => /FROM blocks/.test(c.sql)).length, 0);
+  });
+
+  test("list_blocks ANDs cursor with filters", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [] }, capture);
+    await callTool(
+      "list_blocks",
+      { author: BLOCK_ROW.author, cursor: "4200000" },
+      { env },
+    );
+    const q = capture.find((c) => /FROM blocks/.test(c.sql));
+    assert.ok(/author = \? AND block_number < \?/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+  });
+
   test("get_block returns block detail with prev/next neighbors", async () => {
     const capture = [];
     const env = chainD1(
@@ -6175,6 +6606,64 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("list_extrinsics applies REST filter parity (block, success, ranges)", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    const toMs = Date.now();
+    const fromMs = toMs - 60_000;
+    await callTool(
+      "list_extrinsics",
+      {
+        block: 4200000,
+        signer: EXTRINSIC_ROW.signer,
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        success: true,
+        block_start: 100,
+        block_end: 200,
+        from: fromMs,
+        to: toMs,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/block_number = \?/.test(q.sql));
+    assert.ok(/success = \?/.test(q.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/observed_at >= \?/.test(q.sql));
+    assert.ok(q.params.includes(1));
+  });
+
+  test("list_extrinsics short-circuits impossible time ranges without querying D1", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
+    const res = await callTool(
+      "list_extrinsics",
+      { from: 200, to: 100 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+    assert.equal(
+      capture.filter((c) => /FROM extrinsics/.test(c.sql)).length,
+      0,
+    );
+  });
+
+  test("list_extrinsics rejects a non-boolean success filter", async () => {
+    const res = await callTool("list_extrinsics", { success: "maybe" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /success/);
+  });
+
+  test("list_extrinsics binds success=false as 0", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    await callTool("list_extrinsics", { success: false }, { env });
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/success = \?/.test(q.sql));
+    assert.ok(q.params.includes(0));
   });
 
   test("get_extrinsic returns extrinsic detail by 0x hash", async () => {
