@@ -274,13 +274,16 @@ export function formatRegistration(row) {
 export function formatAccountActivity(agg, modules) {
   const a = agg || {};
   return {
-    tx_count: a.tx_count ?? 0,
+    tx_count: toBlockNumber(a.tx_count) ?? 0,
     last_tx_block: toBlockNumber(a.last_tx_block),
     last_tx_at: toIso(a.last_tx_at),
     total_fee_tao: toTaoOrNull(a.total_fee_tao),
     modules_called: (modules || [])
       .filter((m) => m && m.call_module)
-      .map((m) => ({ call_module: m.call_module, count: m.count ?? 0 })),
+      .map((m) => ({
+        call_module: m.call_module,
+        count: toBlockNumber(m.count) ?? 0,
+      })),
   };
 }
 
@@ -289,7 +292,9 @@ export function buildAccountSummary(
   { agg, kinds, scanned, registrations, recent, activity, modules } = {},
 ) {
   const a = agg || {};
-  const eventCount = a.c ?? 0;
+  const eventCount = toBlockNumber(a.c) ?? 0;
+  const scannedCount =
+    scanned != null ? (toBlockNumber(scanned) ?? 0) : eventCount;
   // event_count / subnet_count / event_kinds are aggregated over exactly the
   // account's newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. `scanned` is a probe
   // COUNT over CAP+1: when it exceeds CAP the account has more events than that
@@ -298,13 +303,12 @@ export function buildAccountSummary(
   // null first_*. `> CAP` (not `>=`) means an account with EXACTLY CAP events is
   // complete (the probe found no extra row), so its totals + first_* stay exact.
   // last_* stay exact regardless (the newest events include the latest).
-  const eventScanCapped =
-    (scanned ?? eventCount) > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
+  const eventScanCapped = scannedCount > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
   return {
     schema_version: 1,
     ss58,
     event_count: eventCount,
-    subnet_count: a.sc ?? 0,
+    subnet_count: toBlockNumber(a.sc) ?? 0,
     event_scan_capped: eventScanCapped,
     first_block: eventScanCapped ? null : toBlockNumber(a.fb),
     last_block: toBlockNumber(a.lb),
@@ -312,7 +316,7 @@ export function buildAccountSummary(
     last_seen_at: toIso(a.lo),
     event_kinds: (kinds || [])
       .filter((k) => k && k.kind)
-      .map((k) => ({ kind: k.kind, count: k.count ?? 0 })),
+      .map((k) => ({ kind: k.kind, count: toBlockNumber(k.count) ?? 0 })),
     registrations: (registrations || [])
       .map(formatRegistration)
       .filter(Boolean),
