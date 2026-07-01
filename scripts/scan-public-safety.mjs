@@ -37,8 +37,13 @@ const patterns = [
   },
   {
     name: "token-like assignment",
+    // The optional `[a-z0-9]+[_-]` prefix catches underscore/hyphen-joined
+    // credential names (client_secret, db_password, my_secret): a leading `\b`
+    // has no boundary after the underscore in `client_secret`, so the bare
+    // `secret`/`password` alternatives would otherwise miss the most common
+    // real-world key names while still matching bare `secret=`/`password=`.
     regex:
-      /\b(?:api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{16,}/i,
+      /\b(?:[a-z0-9]+[_-])?(?:api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{16,}/i,
   },
   // `soft` patterns are terminology heuristics (not actual secrets). They are
   // skipped for mirrored third-party OpenAPI specs, where wording like "seed
