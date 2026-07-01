@@ -4372,7 +4372,7 @@ describe("MCP economics + metagraph data tools", () => {
       { env: d1Env },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
+    assert.match(res.body.result.content[0].text, /is not a supported window/);
   });
 
   test("get_economics_trends returns schema-stable empty days on cold D1", async () => {
@@ -4527,7 +4527,7 @@ describe("MCP economics + metagraph data tools", () => {
       window: "400d",
     });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window must be one of/);
+    assert.match(res.body.result.content[0].text, /is not a supported window/);
   });
 
   test("get_subnet_turnover accepts the all window without a date cutoff", async () => {

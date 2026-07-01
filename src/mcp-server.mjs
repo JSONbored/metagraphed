@@ -1653,10 +1653,8 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const parsed = parseEconomicsTrendsWindow(args?.window);
       if (args?.window !== undefined && parsed === null) {
-        throw toolError(
-          "invalid_params",
-          "window must be one of: 7d, 30d, 90d, 1y, all.",
-        );
+        const { error } = parseHistoryWindow(args.window);
+        throw toolError("invalid_params", error.message);
       }
       const { label, days } = parsed;
       const { data } = await loadEconomicsTrends(mcpD1Runner(ctx), {
