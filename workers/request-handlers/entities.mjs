@@ -40,9 +40,14 @@ import {
   validateQueryParams,
 } from "./analytics.mjs";
 import {
+  loadGlobalValidators,
   loadSubnetMetagraph,
   loadSubnetValidators,
   loadNeuron,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
 import {
   buildNeuronHistory,
@@ -100,6 +105,16 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../../src/stake-flow.mjs";
+import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
+import {
+  loadSubnetMovers,
+  MOVERS_WINDOWS,
+  DEFAULT_MOVERS_WINDOW,
+  MOVERS_SORTS,
+  DEFAULT_MOVERS_SORT,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+} from "../../src/movers.mjs";
 
 const MAX_BLOCK_COUNT_FILTER = 1_000_000;
 
@@ -205,6 +220,49 @@ export async function handleSubnetValidators(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators?sort=subnet_count|uid_count|avg_validator_trust|max_validator_trust&limit=20:
+// network-wide validator/operator leaderboard from the current neurons snapshot. This
+// groups validator-permit UID rows by public identity, so consumers can see cross-subnet
+// operator footprint rather than only one subnet at a time. Stake/emission values stay
+// scoped to each membership row because those source units are not globally aggregated.
+// Cold/absent D1 returns a schema-stable empty list.
+export async function handleGlobalValidators(request, env, url) {
+  const validationError = validateQueryParams(url, ["sort", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const sortParam =
+    url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
+  if (!GLOBAL_VALIDATOR_SORTS.includes(sortParam)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
+        ", ",
+      )}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    min: 1,
+    max: GLOBAL_VALIDATOR_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadGlobalValidators(d1Runner(env), {
+    sort: sortParam,
+    limit: limit.value,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/validators.json",
         data.captured_at,
       ),
     },
@@ -374,6 +432,28 @@ export function canonicalSubnetStakeFlowCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
+// Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
+// canonicalized to its default when omitted, so equivalent requests share one slot.
+export function canonicalSubnetMoversCachePath(url) {
+  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+  if (!MOVERS_SORTS.includes(sortParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: MOVERS_LIMIT_DEFAULT,
+    min: 1,
+    max: MOVERS_LIMIT_MAX,
+  });
+  if (limit.error) return `${url.pathname}${url.search}`;
+  return `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`;
+}
+
 // Canonical edge-cache key for the subnet-metagraph route. Only
 // ?validator_permit=true changes the response; omission and =false both serve
 // the full metagraph and must share one cache slot.
@@ -510,6 +590,60 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
   );
 }
 
+// GET /api/v1/subnets/movers?window=7d|30d|90d&sort=stake|emission|validators&limit=20:
+// cross-subnet momentum leaderboard — every subnet ranked by its stake/emission/validator
+// change between the window's start and end neuron_daily snapshots. Computed live from the
+// neuron_daily rollup (idx_neuron_daily_netuid_date_agg covers the GROUP BY netuid,
+// snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
+// (schema-stable, never 404), mirroring the sibling history/turnover routes.
+export async function handleSubnetMovers(request, env, url) {
+  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
+  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        MOVERS_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
+  if (!MOVERS_SORTS.includes(sortParam)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${MOVERS_SORTS.join(
+        ", ",
+      )}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: MOVERS_LIMIT_DEFAULT,
+    min: 1,
+    max: MOVERS_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadSubnetMovers(d1Runner(env), {
+    windowLabel: windowParam,
+    sort: sortParam,
+    limit: limit.value,
+  });
+  // neuron_daily-derived, so the meta reports the metagraph-snapshot source; generated_at
+  // is the end snapshot date (string), matching the turnover/history routes.
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/subnets/movers.json",
+        data.end_date,
+      ),
+    },
+    "short",
+  );
+}
+
 // ---- Account entity handlers (#1347) ---------------------------------------
 // SQL + pagination live in src/account-events.mjs (loadAccount*), shared with the
 // MCP account tools; these handlers add only the REST envelope + meta.
@@ -522,6 +656,44 @@ async function accountMeta(env, artifactPath, generatedAt) {
     published_at: await publishedAt(env),
     source: "chain-events",
   };
+}
+
+// GET /api/v1/accounts/{ss58}/stake-flow: the account's StakeAdded/StakeRemoved flow
+// per subnet over a 7d/30d/90d window — net + gross flow, an HHI concentration of where
+// its flow is focused, and a direction label. account_events-derived (source
+// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountStakeFlow(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
+  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        STAKE_FLOW_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const { data, generatedAt } = await loadAccountStakeFlow(
+    d1Runner(env),
+    ss58,
+    {
+      windowLabel: windowParam,
+    },
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
 }
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates

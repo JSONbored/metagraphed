@@ -21,12 +21,14 @@ import {
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
+  handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
   handleAccountExtrinsics,
   handleAccountTransfers,
   handleAccountCounterparties,
+  handleAccountStakeFlow,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -39,6 +41,7 @@ import {
   canonicalSubnetHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
+  canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
@@ -1444,6 +1447,91 @@ describe("handleSubnetStakeFlow", () => {
   });
 });
 
+describe("handleSubnetMovers", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?bogus=1"),
+      ),
+    );
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?window=1y"),
+      ),
+    );
+  });
+
+  test("rejects an unsupported sort with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?sort=bogus"),
+      ),
+    );
+  });
+
+  test("rejects an out-of-range limit with 400", async () => {
+    await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?limit=0"),
+      ),
+    );
+  });
+
+  test("returns a schema-stable empty leaderboard on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetMovers,
+      req("/api/v1/subnets/movers"),
+      emptyEnv(),
+      url("/api/v1/subnets/movers"),
+    );
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.sort, "stake");
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.movers, []);
+    await assertValidComponent("SubnetMoversArtifact", body.data);
+    assert.equal(body.meta.artifact_path, "/metagraph/subnets/movers.json");
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  describe("canonicalSubnetMoversCachePath", () => {
+    test("canonicalizes omitted params to the full default cache key", () => {
+      const omitted = canonicalSubnetMoversCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/movers"),
+      );
+      const explicit = canonicalSubnetMoversCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(
+        omitted,
+        "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+      );
+    });
+
+    test("passes invalid params through unchanged (the handler rejects them)", () => {
+      for (const q of ["?bogus=1", "?window=1y", "?sort=bogus", "?limit=0"]) {
+        const path = canonicalSubnetMoversCachePath(
+          new URL(`https://api.metagraph.sh/api/v1/subnets/movers${q}`),
+        );
+        assert.equal(path, `/api/v1/subnets/movers${q}`);
+      }
+    });
+  });
+});
+
 describe("handleAccount", () => {
   test("returns schema-stable zero summary on cold/unbound D1", async () => {
     const body = await assertColdSchema(
@@ -2155,6 +2243,109 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       SS58,
     ]);
     await assertValidComponent("AccountCounterpartiesArtifact", body.data);
+  });
+});
+
+describe("handleAccountStakeFlow", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?window=1y`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountStakeFlow,
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow`),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.net_flow_tao, 0);
+    assert.equal(body.data.subnet_count, 0);
+    assert.equal(body.data.concentration, null);
+    assert.equal(body.data.dominant_netuid, null);
+    await assertValidComponent("AccountStakeFlowArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/accounts/${SS58}/stake-flow.json`,
+    );
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("folds per-subnet flow + totals, bound to the hotkey + both stake kinds", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          netuid: 1,
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717900000000,
+        },
+        {
+          netuid: 1,
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717000000000,
+        },
+        {
+          netuid: 7,
+          event_kind: "StakeAdded",
+          total_tao: 10,
+          event_count: 1,
+          last_observed: 1717500000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleAccountStakeFlow(
+        req(`/api/v1/accounts/${SS58}/stake-flow`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-flow?window=90d`),
+      ),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "90d");
+    assert.equal(body.data.total_staked_tao, 210);
+    assert.equal(body.data.total_unstaked_tao, 50);
+    assert.equal(body.data.net_flow_tao, 160);
+    assert.equal(body.data.subnet_count, 2);
+    // subnet 1 has the most gross flow (250) so it leads + is dominant
+    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.dominant_netuid, 1);
+    await assertValidComponent("AccountStakeFlowArtifact", body.data);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events INDEXED BY idx_account_events_hotkey WHERE hotkey = \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], "StakeAdded");
+    assert.equal(captures.params[idx][2], "StakeRemoved");
+    // newest event across all rows, ISO
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 });
 

@@ -1694,6 +1694,168 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(res.body.result.isError, true);
     assert.ok(res.body.result.content[0].text.includes("502"));
   });
+
+  test("list_chain_events returns the raw event feed and forwards filters", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        count: 1,
+        next_before: 4199999,
+        next_cursor: "cursor-xyz",
+        events: [
+          {
+            block_number: 4200000,
+            event_index: 3,
+            pallet: "SubtensorModule",
+            method: "WeightsSet",
+            args: [{ name: "netuid", value: 7 }],
+            phase: "ApplyExtrinsic",
+            extrinsic_index: 2,
+            observed_at: 1750009000000,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_chain_events",
+      { pallet: "SubtensorModule", method: "WeightsSet", limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 1);
+    assert.equal(out.next_cursor, "cursor-xyz");
+    assert.equal(out.events[0].pallet, "SubtensorModule");
+    assert.equal(out.events[0].method, "WeightsSet");
+    // The feed read hits /chain-events and forwards the filters + limit.
+    assert.equal(dataApi.calls[0].pathname, "/api/v1/chain-events");
+    assert.equal(
+      dataApi.calls[0].searchParams.get("pallet"),
+      "SubtensorModule",
+    );
+    assert.equal(dataApi.calls[0].searchParams.get("method"), "WeightsSet");
+    assert.equal(dataApi.calls[0].searchParams.get("limit"), "10");
+  });
+
+  test("list_chain_events surfaces a data-Worker 400 as an invalid_params error", async () => {
+    const dataApi = {
+      calls: [],
+      fetch(request) {
+        this.calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: "method filter requires pallet unless block is specified",
+            }),
+            { status: 400, headers: { "content-type": "application/json" } },
+          ),
+        );
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      { method: "WeightsSet" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /requires pallet/);
+  });
+
+  test("list_chain_events errors cleanly when the DATA_API binding is absent", async () => {
+    const res = await callTool("list_chain_events", {}, { env: {} });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /chain-events tier/);
+  });
+
+  test("list_chain_events applies the data API limiter before fetching", async () => {
+    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      {
+        env: {
+          DATA_API: dataApi,
+          DATA_RATE_LIMITER: {
+            async limit() {
+              return { success: false };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.equal(dataApi.calls.length, 0);
+  });
+
+  test("list_chain_events forwards block/extrinsic/cursor and degrades to an empty feed", async () => {
+    // An empty data-Worker body exercises the count/next/events fallbacks, and the
+    // block/extrinsic/cursor filters cover the remaining query-param branches.
+    const dataApi = makeDataApi({ payload: {} });
+    const res = await callTool(
+      "list_chain_events",
+      { block: 4200000, extrinsic: 2, cursor: "abc", limit: 25 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 0);
+    assert.equal(out.next_before, null);
+    assert.equal(out.next_cursor, null);
+    assert.deepEqual(out.events, []);
+    const q = dataApi.calls[0].searchParams;
+    assert.equal(q.get("block"), "4200000");
+    assert.equal(q.get("extrinsic"), "2");
+    assert.equal(q.get("cursor"), "abc");
+    assert.equal(q.get("limit"), "25");
+  });
+
+  test("list_chain_events surfaces a non-400 data-Worker error as tier_unavailable", async () => {
+    const dataApi = makeDataApi({ status: 503 });
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /chain-events tier/);
+    assert.match(res.body.result.content[0].text, /503/);
+  });
+
+  test("list_chain_events errors cleanly when the data Worker fetch throws", async () => {
+    const dataApi = {
+      calls: [],
+      fetch() {
+        return Promise.reject(new Error("socket hang up"));
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      {},
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /could not be reached/);
+  });
+
+  test("list_chain_events falls back to a default message on a non-JSON 400 body", async () => {
+    const dataApi = {
+      calls: [],
+      fetch(request) {
+        this.calls.push(new URL(request.url));
+        return Promise.resolve(new Response("not json", { status: 400 }));
+      },
+    };
+    const res = await callTool(
+      "list_chain_events",
+      { method: "WeightsSet" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Invalid chain-events filter/,
+    );
+  });
 });
 
 describe("MCP get_chain_signers", () => {
@@ -1733,9 +1895,46 @@ describe("MCP get_chain_signers", () => {
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.window, "7d");
+    assert.equal(out.sort, "tx_count");
     assert.equal(out.signer_count, 1);
     assert.equal(out.signers[0].tx_count, 12);
     assert.equal(out.signers[0].total_fee_tao, 1.5);
+  });
+
+  test("rejects an invalid sort", async () => {
+    const res = await callTool("get_chain_signers", { sort: "bogus" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort/i);
+  });
+
+  test("ranks signers by total_fee_tao when requested", async () => {
+    let capturedSql;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capturedSql = sql;
+              return {
+                async all() {
+                  assert.match(sql, /FROM extrinsics/);
+                  assert.ok(params.includes(50));
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_chain_signers",
+      { window: "7d", sort: "total_fee_tao", limit: 50 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_fee_tao");
+    assert.match(capturedSql, /ORDER BY total_fee_tao DESC, signer ASC/);
   });
 
   test("rejects an invalid window", async () => {
@@ -1823,7 +2022,7 @@ describe("MCP get_chain_fees", () => {
                       ],
                     };
                   }
-                  assert.match(sql, /ORDER BY total_fee_tao DESC/);
+                  assert.match(sql, /ORDER BY total_fee_tao DESC, signer ASC/);
                   assert.ok(params.includes(25));
                   return {
                     results: [
@@ -4489,6 +4688,66 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.observed_at, FRESH_RUN);
     assert.equal(out.total_extrinsics, 120);
     assert.equal(out.calls[0].share, 0.5);
+  });
+
+  test("get_chain_calls rejects an over-long call_module", async () => {
+    const res = await callTool(
+      "get_chain_calls",
+      { call_module: "x".repeat(101) },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /call_module/i);
+  });
+
+  test("get_chain_calls scopes grouped rows and totals by call_module", async () => {
+    const captured = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              captured.push({ sql, params });
+              const rows = /GROUP BY call_module, call_function/.test(sql)
+                ? [
+                    {
+                      call_module: "SubtensorModule",
+                      call_function: "add_stake",
+                      count: 50,
+                    },
+                  ]
+                : /COUNT\(\*\) AS total/.test(sql)
+                  ? [{ total: 80 }]
+                  : [];
+              return { all: () => Promise.resolve({ results: rows }) };
+            },
+          };
+        },
+      },
+    };
+    const deps = makeDeps({}, { "health:meta": { last_run_at: FRESH_RUN } });
+    const res = await callTool(
+      "get_chain_calls",
+      {
+        window: "7d",
+        group_by: "module_function",
+        call_module: "SubtensorModule",
+        limit: 3,
+      },
+      { deps, env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.group_by, "module_function");
+    assert.equal(out.total_extrinsics, 80);
+    assert.equal(out.calls[0].share, 0.625);
+    const extrinsicsQueries = captured.filter((q) =>
+      /FROM extrinsics/.test(q.sql),
+    );
+    assert.equal(extrinsicsQueries.length, 2);
+    for (const q of extrinsicsQueries) {
+      assert.match(q.sql, /AND call_module = \?/);
+      assert.ok(q.params.includes("SubtensorModule"));
+    }
   });
 
   test("get_registry_leaderboards returns boards from committed profiles", async () => {

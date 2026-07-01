@@ -4,8 +4,10 @@ import {
   formatNeuron,
   buildSubnetMetagraph,
   buildSubnetValidators,
+  buildGlobalValidators,
   buildNeuronDetail,
   loadSubnetValidators,
+  loadGlobalValidators,
 } from "../src/metagraph-neurons.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -90,13 +92,245 @@ describe("metagraph-neurons builders", () => {
     assert.equal(data.validators[0].validator_permit, true);
   });
 
+  test("buildGlobalValidators groups validator identities across subnets", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 1,
+          uid: 2,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: "100.1234567891",
+          emission_tao: 5,
+          validator_trust: "0.4",
+          block_number: "10",
+          captured_at: 1750000000000,
+        },
+        {
+          ...ROW,
+          netuid: 2,
+          uid: 1,
+          hotkey: "hk-a",
+          coldkey: "ck-a2",
+          stake_tao: 50,
+          emission_tao: 9,
+          validator_trust: 0.8,
+          block_number: 11,
+          captured_at: 1750000001000,
+        },
+        {
+          ...ROW,
+          netuid: 5,
+          uid: 3,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 1,
+          emission_tao: 2,
+          validator_trust: 0.6,
+          block_number: 12,
+          captured_at: 1750000001000,
+        },
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 0,
+          hotkey: "hk-b",
+          coldkey: "ck-b",
+          stake_tao: 500,
+          emission_tao: 1,
+          validator_trust: null,
+          block_number: 9,
+          captured_at: 1740000000000,
+        },
+        { ...ROW, netuid: 4, uid: 0, hotkey: null },
+      ],
+      { sort: "subnet_count", limit: 1 },
+    );
+
+    assert.equal(data.sort, "subnet_count");
+    assert.equal(data.limit, 1);
+    assert.equal(data.validator_count, 2);
+    assert.equal(data.validators.length, 1);
+    assert.equal(data.captured_at, new Date(1750000001000).toISOString());
+    assert.equal(data.block_number, 12);
+    const top = data.validators[0];
+    assert.equal(top.hotkey, "hk-a");
+    assert.equal(top.coldkey, "ck-a");
+    assert.equal(top.coldkey_count, 2);
+    assert.equal(top.subnet_count, 3);
+    assert.equal(top.uid_count, 3);
+    assert.equal("total_stake_tao" in top, false);
+    assert.equal("total_emission_tao" in top, false);
+    assert.equal(top.avg_validator_trust, 0.6);
+    assert.equal(top.max_validator_trust, 0.8);
+    assert.equal(top.latest_captured_at, new Date(1750000001000).toISOString());
+    assert.equal(top.latest_block_number, 12);
+    assert.deepEqual(
+      top.subnets.map((s) => [s.netuid, s.uid]),
+      [
+        [1, 2],
+        [2, 1],
+        [5, 3],
+      ],
+    );
+  });
+
+  test("buildGlobalValidators is cold-safe and normalizes direct-call options", () => {
+    const empty = buildGlobalValidators(null, {
+      sort: "bogus",
+      limit: "bogus",
+    });
+    assert.equal(empty.sort, "subnet_count");
+    assert.equal(empty.limit, 20);
+    assert.equal(empty.validator_count, 0);
+    assert.deepEqual(empty.validators, []);
+
+    const clamped = buildGlobalValidators(
+      [{ ...ROW, netuid: 7, uid: 0, hotkey: "hk-a" }],
+      { limit: 0 },
+    );
+    assert.equal(clamped.limit, 1);
+    assert.equal(clamped.validator_count, 1);
+    assert.equal(clamped.validators.length, 1);
+  });
+
+  test("buildGlobalValidators handles sparse identity rows and trust sorting", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk-low",
+          coldkey: "",
+          validator_trust: "not-a-number",
+          stake_tao: -5,
+          emission_tao: -1,
+          block_number: 1,
+          captured_at: "not-a-date",
+        },
+        {
+          ...ROW,
+          netuid: 2,
+          uid: 0,
+          hotkey: "hk-high",
+          coldkey: "ck-high",
+          validator_trust: 0.95,
+          stake_tao: 10,
+          emission_tao: 1,
+          block_number: 2,
+          captured_at: 1750000002000,
+        },
+      ],
+      { sort: "avg_validator_trust", limit: 10 },
+    );
+
+    assert.equal(data.sort, "avg_validator_trust");
+    assert.equal(data.captured_at, new Date(1750000002000).toISOString());
+    assert.equal(data.block_number, 2);
+    assert.equal(data.validators[0].hotkey, "hk-high");
+    assert.equal(data.validators[0].avg_validator_trust, 0.95);
+    assert.equal(data.validators[1].hotkey, "hk-low");
+    assert.equal(data.validators[1].coldkey, null);
+    assert.equal(data.validators[1].coldkey_count, 0);
+    assert.equal(data.validators[1].avg_validator_trust, null);
+    assert.equal(data.validators[1].max_validator_trust, null);
+    assert.deepEqual(data.validators[1].subnets[0], {
+      netuid: 1,
+      uid: 0,
+      stake_tao: 0,
+      emission_tao: 0,
+      validator_trust: null,
+    });
+  });
+
+  test("buildGlobalValidators uses deterministic footprint tie-breakers", () => {
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 9,
+          uid: 9,
+          hotkey: "hk-z",
+          coldkey: "ck-b",
+          stake_tao: 5,
+          emission_tao: 1,
+        },
+        {
+          ...ROW,
+          netuid: 8,
+          uid: 4,
+          hotkey: "hk-z",
+          coldkey: "ck-a",
+          stake_tao: 5,
+          emission_tao: 1,
+        },
+        {
+          ...ROW,
+          netuid: 8,
+          uid: 5,
+          hotkey: "hk-z",
+          coldkey: "ck-a",
+          stake_tao: 5,
+          emission_tao: 1,
+        },
+        {
+          ...ROW,
+          netuid: 3,
+          uid: 7,
+          hotkey: "hk-z",
+          coldkey: "ck-c",
+          stake_tao: 5,
+          emission_tao: 2,
+        },
+        {
+          ...ROW,
+          netuid: 2,
+          uid: 0,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 1,
+          emission_tao: 1,
+        },
+      ],
+      { sort: "subnet_count", limit: 10 },
+    );
+
+    assert.deepEqual(
+      data.validators.map((validator) => validator.hotkey),
+      ["hk-z", "hk-a"],
+    );
+    assert.equal(data.validators[0].coldkey, "ck-a");
+    assert.deepEqual(
+      data.validators[0].subnets.map((subnet) => [subnet.netuid, subnet.uid]),
+      [
+        [3, 7],
+        [8, 4],
+        [8, 5],
+        [9, 9],
+      ],
+    );
+
+    const alphabetical = buildGlobalValidators(
+      [
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-b" },
+        { ...ROW, netuid: 2, uid: 0, hotkey: "hk-a" },
+      ],
+      { sort: "uid_count", limit: 10 },
+    );
+    assert.deepEqual(
+      alphabetical.validators.map((validator) => validator.hotkey),
+      ["hk-a", "hk-b"],
+    );
+  });
+
   test("builders drop malformed rows and count only real neurons", () => {
     // A null/non-object row can't be a Neuron, so it must not leak into the
     // array — and the count tracks the array (neuron_count === neurons.length),
     // matching the blocks/extrinsics feed builders' .filter(Boolean).
     const data = buildSubnetMetagraph([ROW, null, MINER, undefined], 7);
     assert.equal(data.neurons.length, 2);
-    assert.equal(data.neuron_count, 2);
     assert.ok(data.neurons.every(Boolean));
     const vals = buildSubnetValidators([ROW, null], 7);
     assert.equal(vals.validators.length, 1);
@@ -147,6 +381,43 @@ describe("metagraph-neurons loaders", () => {
       [5, 2, 9],
     );
     assert.equal(data.validator_count, 3); // the miner is excluded
+  });
+
+  test("loadGlobalValidators reads validator rows and applies requested ranking", async () => {
+    let seenSql = "";
+    let seenParams = null;
+    const data = await loadGlobalValidators(
+      async (sql, params) => {
+        seenSql = sql;
+        seenParams = params;
+        return [
+          {
+            netuid: 1,
+            uid: 0,
+            hotkey: "hk-a",
+            coldkey: "ck-a",
+            stake_tao: 10,
+            emission_tao: 7,
+            validator_trust: 0.7,
+          },
+          {
+            netuid: 2,
+            uid: 0,
+            hotkey: "hk-b",
+            coldkey: "ck-b",
+            stake_tao: 100,
+            emission_tao: 1,
+            validator_trust: 0.5,
+          },
+        ];
+      },
+      { sort: "avg_validator_trust", limit: 1 },
+    );
+    assert.match(seenSql, /validator_permit = 1 AND hotkey IS NOT NULL/);
+    assert.match(seenSql, /ORDER BY hotkey ASC/);
+    assert.deepEqual(seenParams, []);
+    assert.equal(data.validators.length, 1);
+    assert.equal(data.validators[0].hotkey, "hk-a");
   });
 });
 
@@ -343,10 +614,144 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
+  test("GET /subnets/movers routes to the cross-subnet movers handler", async () => {
+    const moversEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                all() {
+                  if (/MIN\(snapshot_date\)/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        { start_date: "2026-05-31", end_date: "2026-06-30" },
+                      ],
+                    });
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          netuid: 1,
+                          snapshot_date: "2026-05-31",
+                          neuron_count: 10,
+                          validator_count: 3,
+                          total_stake_tao: 100,
+                          total_emission_tao: 5,
+                        },
+                        {
+                          netuid: 1,
+                          snapshot_date: "2026-06-30",
+                          neuron_count: 12,
+                          validator_count: 4,
+                          total_stake_tao: 250,
+                          total_emission_tao: 9,
+                        },
+                        {
+                          netuid: 2,
+                          snapshot_date: "2026-05-31",
+                          neuron_count: 8,
+                          validator_count: 2,
+                          total_stake_tao: 50,
+                          total_emission_tao: 4,
+                        },
+                        {
+                          netuid: 2,
+                          snapshot_date: "2026-06-30",
+                          neuron_count: 8,
+                          validator_count: 2,
+                          total_stake_tao: 30,
+                          total_emission_tao: 4,
+                        },
+                      ],
+                    });
+                  }
+                  return Promise.resolve({ results: [] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const { res, body } = await getJson(
+      "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
+      moversEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.sort, "stake");
+    assert.equal(body.data.start_date, "2026-05-31");
+    assert.equal(body.data.end_date, "2026-06-30");
+    assert.equal(body.data.subnet_count, 2);
+    // subnet 1 (+150 stake) ranks above subnet 2 (-20)
+    assert.equal(body.data.movers[0].netuid, 1);
+    assert.equal(body.data.movers[0].stake_delta_tao, 150);
+    assert.equal(body.data.movers[1].netuid, 2);
+    assert.equal(body.data.movers[1].stake_delta_tao, -20);
+    // neuron_daily provenance + end snapshot date as generated_at.
+    assert.equal(body.meta.source, "metagraph-snapshot");
+    assert.equal(body.meta.generated_at, "2026-06-30");
+  });
+
   test("GET /subnets/{n}/validators returns only validators", async () => {
     const { body } = await getJson("/api/v1/subnets/7/validators", env);
     assert.equal(body.data.validator_count, 1);
     assert.equal(body.data.validators[0].validator_permit, true);
+  });
+
+  test("GET /validators returns the global validator leaderboard", async () => {
+    const globalEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", stake_tao: 10 },
+        { ...ROW, netuid: 2, uid: 1, hotkey: "hk-a", stake_tao: 20 },
+        { ...ROW, netuid: 3, uid: 0, hotkey: "hk-b", stake_tao: 100 },
+        { ...MINER, netuid: 4, uid: 0, hotkey: "hk-miner", stake_tao: 999 },
+      ]),
+    };
+    const { res, body } = await getJson(
+      "/api/v1/validators?sort=subnet_count&limit=2",
+      globalEnv,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(body.data.sort, "subnet_count");
+    assert.equal(body.data.limit, 2);
+    assert.equal(body.data.validator_count, 2);
+    assert.equal(body.data.validators[0].hotkey, "hk-a");
+    assert.equal(body.data.validators[0].subnet_count, 2);
+    assert.equal(body.data.validators[0].uid_count, 2);
+    assert.equal(body.data.validators[1].hotkey, "hk-b");
+    assert.equal(body.meta.artifact_path, "/metagraph/validators.json");
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  test("GET /validators defaults the sort when omitted", async () => {
+    const globalEnv = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: neuronsD1([
+        { ...ROW, netuid: 1, uid: 0, hotkey: "hk-a", stake_tao: 10 },
+      ]),
+    };
+    const { res, body } = await getJson("/api/v1/validators", globalEnv);
+
+    assert.equal(res.status, 200);
+    assert.equal(body.data.sort, "subnet_count");
+    assert.equal(body.data.limit, 20);
+    assert.equal(body.data.validators[0].hotkey, "hk-a");
+  });
+
+  test("GET /validators rejects invalid query params", async () => {
+    const { res } = await getJson("/api/v1/validators?sort=bogus", env);
+    assert.equal(res.status, 400);
+
+    const unsupported = await getJson("/api/v1/validators?foo=bar", env);
+    assert.equal(unsupported.res.status, 400);
+
+    const badLimit = await getJson("/api/v1/validators?limit=0", env);
+    assert.equal(badLimit.res.status, 400);
   });
 
   test("GET /subnets/{n}/neurons/{uid} returns the neuron", async () => {

@@ -287,7 +287,10 @@ function incidentItems(incidents, netuid) {
             `${ongoing ? "is currently down" : `was down for ~${minutes}m`}` +
             `${inc.failed_samples ? `, ${inc.failed_samples} failed probes` : ""}.`,
         ),
-        timestamp: ended || started || new Date().toISOString(),
+        // Window filters (?since= / ?until=) key on when the incident *started*,
+        // not when it resolved — otherwise a resolved incident that began inside
+        // a bounded window vanishes from that window once ended_at moves past ?until=.
+        timestamp: started || ended || new Date().toISOString(),
         tags: [
           "incident",
           `sn${surface.netuid}`,

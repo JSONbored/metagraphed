@@ -4,6 +4,7 @@
 // the daily rollup, the prune, and the row→API shaping (#1347). Pure + exported
 // for tests; the Worker runs the D1 I/O.
 import {
+  DAY_PATTERN,
   FEED_PAGINATION,
   clampLimit,
   clampOffset,
@@ -103,8 +104,13 @@ export function formatAccountEvent(row) {
     event_kind: row.event_kind ?? null,
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
-    netuid: row.netuid ?? null,
-    uid: row.uid ?? null,
+    // Coerce netuid / uid (D1 INTEGER columns, can return as numeric strings)
+    // through toBlockNumber so a bare `?? null` pass-through never leaks the
+    // string form into the API payload. Same shape as the coercion applied to
+    // block_number / event_index / extrinsic_index directly below — and to the
+    // sibling formatters in blocks.mjs (#2435) and extrinsics.mjs (#2439).
+    netuid: toBlockNumber(row.netuid),
+    uid: toBlockNumber(row.uid),
     amount_tao: row.amount_tao ?? null,
     alpha_amount: row.alpha_amount ?? null,
     observed_at: toIso(row.observed_at),
@@ -236,16 +242,22 @@ export function eventInsertStatements(db, rows) {
 export const ACCOUNT_EVENT_COLUMNS =
   "block_number, event_index, event_kind, hotkey, coldkey, netuid, uid, amount_tao, alpha_amount, observed_at, extrinsic_index";
 
+// Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
+// must not pass through Boolean(), which treats any non-empty string as true.
+function toD1Flag(value) {
+  return Number(value) === 1;
+}
+
 // One neurons-table row (subset) → an AccountRegistration: where this hotkey is
 // currently registered + staked (the live cross-subnet footprint).
 export function formatRegistration(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    netuid: row.netuid ?? null,
-    uid: row.uid ?? null,
-    stake_tao: row.stake_tao ?? null,
-    validator_permit: Boolean(row.validator_permit),
-    active: Boolean(row.active),
+    netuid: toBlockNumber(row.netuid),
+    uid: toBlockNumber(row.uid),
+    stake_tao: toTaoOrNull(row.stake_tao),
+    validator_permit: toD1Flag(row.validator_permit),
+    active: toD1Flag(row.active),
   };
 }
 
@@ -363,8 +375,13 @@ export function formatAccountDay(row) {
   if (!row || typeof row !== "object") return null;
   return {
     day: row.day ?? null,
-    netuid: row.netuid ?? null,
-    event_count: row.event_count ?? null,
+    // Coerce netuid / event_count (D1 INTEGER columns, can return as numeric
+    // strings) through toBlockNumber so a bare `?? null` pass-through never
+    // leaks the string form into the API payload. Same shape as the coercion
+    // applied in formatAccountEvent above (#2481) and the sibling formatters
+    // in blocks.mjs (#2435) / extrinsics.mjs (#2439).
+    netuid: toBlockNumber(row.netuid),
+    event_count: toBlockNumber(row.event_count),
     event_kinds:
       typeof row.event_kinds === "string" && row.event_kinds.length > 0
         ? row.event_kinds.split(",").filter(Boolean)
@@ -503,7 +520,7 @@ export async function loadAccountSummary(d1, ss58) {
         kindUnion.paramsFor(ss58),
       ),
       d1(
-        `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC`,
+        `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC, netuid ASC`,
         [ss58],
       ),
       d1(
@@ -616,10 +633,21 @@ const ACCOUNT_DAY_COLUMNS =
 // rollup. ?netuid narrows to one subnet; ?from / ?to are YYYY-MM-DD bounds
 // (lexicographic on the TEXT `day` column). Newest day first. Clamps limit to
 // 1-1000 (default 100); clamps offset to 0-1 000 000. Null-safe on cold store.
+//
+// account_events_daily holds one row per (hotkey, day, netuid), so `day` alone
+// is not a total order — an account active on several subnets has multiple rows
+// per day. Ordering by `day DESC` only left same-day rows in an unspecified
+// order, which made offset paging non-deterministic (a page boundary inside a
+// day could drop or repeat a same-day row). Tie-break on `netuid DESC` so the
+// order is total, and expose the same `(day, netuid)` keyset cursor the REST
+// handler (handleAccountHistory) and the sibling tail loaders use, so callers
+// can page stable head-growing windows. A cursor takes precedence over offset;
+// a cursor that does not decode to a valid YYYY-MM-DD day is ignored (falls back
+// to the first page), preserving the never-throw contract.
 export async function loadAccountHistory(
   d1,
   ss58,
-  { netuid, from, to, limit, offset } = {},
+  { netuid, from, to, limit, offset, cursor } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -637,10 +665,32 @@ export async function loadAccountHistory(
     sql += " AND day <= ?";
     params.push(to);
   }
-  sql += " ORDER BY day DESC LIMIT ? OFFSET ?";
-  params.push(lim, off);
+  const cur = decodeCursor(cursor, 2);
+  const cursorDay = cur
+    ? String(cur[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+    : null;
+  const useCursor = Boolean(cursorDay && DAY_PATTERN.test(cursorDay));
+  if (useCursor) {
+    sql += " AND (day, netuid) < (?, ?)";
+    params.push(cursorDay, cur[1]);
+  }
+  sql += " ORDER BY day DESC, netuid DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
   const rows = await d1(sql, params);
-  return buildAccountHistory(rows, ss58, { limit: lim, offset: off });
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor =
+    last && typeof last.day === "string" && DAY_PATTERN.test(last.day)
+      ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
+      : null;
+  return buildAccountHistory(rows, ss58, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
 }
 
 // Extrinsics signed by this account, newest first. Matched by the extrinsic

@@ -257,6 +257,30 @@
         "https://github.com/macrocosm-os/macrocosmos-py"
       ],
       "url": "https://constellation.api.cloud.macrocosmos.ai/sn13.v1.Sn13Service/OnDemandData"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-dashboard",
+      "kind": "dashboard",
+      "name": "Data Universe dashboard (Hugging Face Space)",
+      "notes": "Official SN13 Data Universe dashboard hosted under the macrocosm-os Hugging Face organization. First-party dashboard complementing the third-party TaoMarketCap surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "since-2017-hub"
+      },
+      "source_urls": [
+        "https://huggingface.co/api/spaces/macrocosm-os/sn13-dashboard"
+      ],
+      "url": "https://huggingface.co/spaces/macrocosm-os/sn13-dashboard"
     }
   ],
   "website_url": "https://datauniverse.macrocosmos.ai/"

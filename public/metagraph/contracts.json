@@ -2,7 +2,7 @@
   "artifacts": [
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Public artifact contract metadata for metagraph.sh consumers.",
       "id": "contracts",
       "path": "/metagraph/contracts.json",
@@ -11,7 +11,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Provider/source registry.",
       "id": "providers",
       "path": "/metagraph/providers.json",
@@ -20,7 +20,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-provider detail payload.",
       "id": "provider-detail",
       "path": "/metagraph/providers/{slug}.json",
@@ -29,7 +29,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Endpoint resources for one provider or operator.",
       "id": "provider-endpoints",
       "path": "/metagraph/providers/{slug}/endpoints.json",
@@ -38,7 +38,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Clean API route index for metagraph.sh consumers.",
       "id": "api-index",
       "path": "/metagraph/api-index.json",
@@ -47,7 +47,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "OpenAPI 3.1 contract for the metagraph.sh backend API.",
       "id": "openapi",
       "path": "/metagraph/openapi.json",
@@ -56,7 +56,7 @@
     },
     {
       "content_type": "text/plain; charset=utf-8",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Generated TypeScript definitions for metagraph.sh backend consumers.",
       "id": "type-definitions",
       "path": "/metagraph/types.d.ts",
@@ -65,7 +65,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Reviewable generated artifact and subnet-change summary.",
       "id": "changelog",
       "path": "/metagraph/changelog.json",
@@ -74,7 +74,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "All active Finney subnets with compact registry metadata.",
       "id": "subnets",
       "path": "/metagraph/subnets.json",
@@ -83,7 +83,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Latest normalized all-subnet metagraph index with chain-native state and registry coverage metadata.",
       "id": "metagraph-latest",
       "path": "/metagraph/metagraph/latest.json",
@@ -92,7 +92,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet detail payload.",
       "id": "subnet-detail",
       "path": "/metagraph/subnets/{netuid}.json",
@@ -101,7 +101,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Composed per-subnet overview: profile + health + curation + gaps + counts.",
       "id": "subnet-overview",
       "path": "/metagraph/overview/{netuid}.json",
@@ -110,7 +110,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Public-safe subnet identity and completeness profiles.",
       "id": "profiles",
       "path": "/metagraph/profiles.json",
@@ -119,7 +119,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet public-safe profile detail.",
       "id": "profile-detail",
       "path": "/metagraph/profiles/{netuid}.json",
@@ -128,7 +128,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Curated public interface surfaces only.",
       "id": "surfaces",
       "path": "/metagraph/surfaces.json",
@@ -137,7 +137,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Deprecated surface display-id aliases mapped to stable surface keys for renamed surfaces.",
       "id": "surface-aliases",
       "path": "/metagraph/surface-aliases.json",
@@ -146,7 +146,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Curated public interface surfaces for one subnet.",
       "id": "surfaces-subnet",
       "path": "/metagraph/surfaces/{netuid}.json",
@@ -155,7 +155,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Generalized endpoint/resource registry derived from curated surfaces and probe observations.",
       "id": "endpoints",
       "path": "/metagraph/endpoints.json",
@@ -164,7 +164,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Generalized endpoint/resource registry for one subnet.",
       "id": "endpoints-subnet",
       "path": "/metagraph/endpoints/{netuid}.json",
@@ -173,7 +173,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Unpromoted candidate surfaces from public discovery.",
       "id": "candidates",
       "path": "/metagraph/candidates.json",
@@ -182,7 +182,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Unpromoted candidate surfaces for one subnet.",
       "id": "candidates-subnet",
       "path": "/metagraph/candidates/{netuid}.json",
@@ -191,7 +191,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Candidate surfaces queued for maintainer review.",
       "id": "review-queue",
       "path": "/metagraph/review-queue.json",
@@ -200,7 +200,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Compact search index for subnets, surfaces, and providers.",
       "id": "search",
       "path": "/metagraph/search.json",
@@ -209,7 +209,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Slim search index (the same documents as search.json without the per-document token blobs) for fast browser typeahead and listing.",
       "id": "search-index",
       "path": "/metagraph/search-index.json",
@@ -218,7 +218,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Registry coverage counts and source precedence.",
       "id": "coverage",
       "path": "/metagraph/coverage.json",
@@ -227,7 +227,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Machine-usable coverage depth scorecard with per-subnet readiness dimensions and a ranked enrichment queue.",
       "id": "coverage-depth",
       "path": "/metagraph/coverage-depth.json",
@@ -236,7 +236,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
       "id": "economics",
       "path": "/metagraph/economics.json",
@@ -245,7 +245,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends (no static file).",
       "id": "economics-trends",
       "path": "/metagraph/economics/trends.json",
@@ -254,7 +254,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Registry-wide summary: completeness rollup, top subnets, level counts, latest changes.",
       "id": "registry-summary",
       "path": "/metagraph/registry-summary.json",
@@ -263,7 +263,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Cross-network subnet lineage: maintainer-approved mainnet ↔ testnet pairs with reviewed match evidence.",
       "id": "lineage",
       "path": "/metagraph/lineage.json",
@@ -272,7 +272,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Index of captured live request/response fixtures (which surfaces carry a sanitized sample).",
       "id": "fixtures-index",
       "path": "/metagraph/fixtures.json",
@@ -281,7 +281,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Machine index of every AI resource: the copyable agent, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
       "id": "agent-resources",
       "path": "/metagraph/agent-resources.json",
@@ -290,7 +290,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "A captured, sanitized live request/response sample for one surface.",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",
@@ -299,7 +299,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Curation state and gaps for every active subnet.",
       "id": "curation",
       "path": "/metagraph/curation.json",
@@ -308,7 +308,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Missing public interface facets by subnet.",
       "id": "gaps",
       "path": "/metagraph/gaps.json",
@@ -317,7 +317,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Latest candidate verification snapshot.",
       "id": "verification",
       "path": "/metagraph/verification/latest.json",
@@ -326,7 +326,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Latest candidate verification snapshot for one subnet.",
       "id": "verification-subnet",
       "path": "/metagraph/verification/subnets/{netuid}.json",
@@ -335,7 +335,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Freshness and staleness summary for generated backend data.",
       "id": "freshness",
       "path": "/metagraph/freshness.json",
@@ -344,7 +344,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Upstream source and provider health summary.",
       "id": "source-health",
       "path": "/metagraph/source-health.json",
@@ -353,7 +353,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Compact hashes and counts for canonical source inputs.",
       "id": "source-snapshots",
       "path": "/metagraph/source-snapshots.json",
@@ -362,7 +362,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Public evidence ledger for subnet and surface claims.",
       "id": "evidence-ledger",
       "path": "/metagraph/evidence-ledger.json",
@@ -371,7 +371,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Public evidence ledger claims for one subnet.",
       "id": "evidence-subnet",
       "path": "/metagraph/evidence/{netuid}.json",
@@ -380,7 +380,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Latest surface health snapshot.",
       "id": "health-latest",
       "path": "/metagraph/health/latest.json",
@@ -389,7 +389,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Global and per-subnet health rollup.",
       "id": "health-summary",
       "path": "/metagraph/health/summary.json",
@@ -398,7 +398,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Compact daily health-history snapshot.",
       "id": "health-history",
       "path": "/metagraph/health/history/{date}.json",
@@ -407,7 +407,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet health payload for metagraph.sh consumers.",
       "id": "health-subnet",
       "path": "/metagraph/health/subnets/{netuid}.json",
@@ -416,7 +416,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Badge data contract for status rendering.",
       "id": "health-badge",
       "path": "/metagraph/health/badges/{netuid}.json",
@@ -425,7 +425,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Computed 7d/30d uptime + success-only latency trends (mean, p50/p95/p99 tail, and healthy-sample count) for one subnet's operational surfaces. Served live from D1 at /api/v1/subnets/{netuid}/health/trends (no static file).",
       "id": "health-trends",
       "path": "/metagraph/health/trends/{netuid}.json",
@@ -434,7 +434,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Compact all-subnet 7d/30d daily uptime + success-only latency trend matrix (mean + healthy-sample count). Served live from D1 at /api/v1/health/trends (no static file).",
       "id": "health-trends-bulk",
       "path": "/metagraph/health/trends.json",
@@ -443,7 +443,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Latency percentiles (p50/p95/p99 + avg/min/max) per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/percentiles (no static file).",
       "id": "health-percentiles",
       "path": "/metagraph/health/percentiles/{netuid}.json",
@@ -452,7 +452,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet, computed live from D1 at /api/v1/subnets/{netuid}/health/incidents (no static file).",
       "id": "health-incidents",
       "path": "/metagraph/health/incidents/{netuid}.json",
@@ -461,7 +461,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory (no static file).",
       "id": "subnet-trajectory",
       "path": "/metagraph/subnets/{netuid}/trajectory.json",
@@ -470,7 +470,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
@@ -479,7 +479,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
       "id": "subnet-concentration-history",
       "path": "/metagraph/subnets/{netuid}/concentration/history.json",
@@ -488,7 +488,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + Jaccard retention, UID deregistrations, and a 0-100 stability score — served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/turnover (no static file).",
       "id": "subnet-turnover",
       "path": "/metagraph/subnets/{netuid}/turnover.json",
@@ -497,7 +497,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
       "id": "subnet-stake-flow",
       "path": "/metagraph/subnets/{netuid}/stake-flow.json",
@@ -506,7 +506,25 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
+      "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+      "id": "subnet-movers",
+      "path": "/metagraph/subnets/movers.json",
+      "schema_ref": "#/components/schemas/SubnetMoversArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-30.11",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "id": "global-validators",
+      "path": "/metagraph/validators.json",
+      "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-30.11",
       "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
@@ -515,7 +533,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "A single neuron's metagraph state by UID, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/neurons/{uid} (no static file).",
       "id": "subnet-neuron",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
@@ -524,7 +542,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
@@ -533,7 +551,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
       "id": "subnet-events",
       "path": "/metagraph/subnets/{netuid}/events.json",
@@ -542,7 +560,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
@@ -551,7 +569,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
       "id": "subnet-history",
       "path": "/metagraph/subnets/{netuid}/history.json",
@@ -560,7 +578,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
@@ -569,7 +587,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events (no static file).",
       "id": "account-events",
       "path": "/metagraph/accounts/{ss58}/events.json",
@@ -578,7 +596,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
       "id": "account-history",
       "path": "/metagraph/accounts/{ss58}/history.json",
@@ -587,7 +605,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
       "id": "account-extrinsics",
       "path": "/metagraph/accounts/{ss58}/extrinsics.json",
@@ -596,7 +614,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
       "id": "account-transfers",
       "path": "/metagraph/accounts/{ss58}/transfers.json",
@@ -605,7 +623,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
       "id": "account-counterparties",
       "path": "/metagraph/accounts/{ss58}/counterparties.json",
@@ -614,7 +632,16 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
+      "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-flow (no static file).",
+      "id": "account-stake-flow",
+      "path": "/metagraph/accounts/{ss58}/stake-flow.json",
+      "schema_ref": "#/components/schemas/AccountStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-30.11",
       "description": "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
       "id": "account-subnets",
       "path": "/metagraph/accounts/{ss58}/subnets.json",
@@ -623,7 +650,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Live TAO balance (free+reserved, in TAO) for a finney account, queried from the RPC at request time with 60s KV cache. balance_tao is null on RPC failure. (#1818)",
       "id": "account-balance",
       "path": "/metagraph/accounts/{ss58}/balance.json",
@@ -632,7 +659,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
@@ -641,7 +668,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
@@ -650,7 +677,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "The extrinsics in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party extrinsics D1 tier at /api/v1/blocks/{ref}/extrinsics (no static file).",
       "id": "block-extrinsics",
       "path": "/metagraph/blocks/{ref}/extrinsics.json",
@@ -659,7 +686,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
       "id": "block-events",
       "path": "/metagraph/blocks/{ref}/events.json",
@@ -668,7 +695,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events (no static file). Distinct from the curated account-attributed event stream; empty before the all-events backfill runs.",
       "id": "chain-events-feed",
       "path": "/metagraph/chain-events.json",
@@ -677,7 +704,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
       "id": "block-chain-events",
       "path": "/metagraph/blocks/{ref}/chain-events.json",
@@ -686,7 +713,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Chain-activity aggregate (pallet.method event distribution over the most recent N blocks) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/chain-events/stats (no static file) and consumed by the get_chain_activity MCP tool.",
       "id": "chain-events-stats",
       "path": "/metagraph/chain-events/stats.json",
@@ -695,7 +722,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
@@ -704,7 +731,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-extrinsic detail (by 0x extrinsic_hash OR the composite <block_number>-<extrinsic_index> id) for the block explorer (#1345/#1848), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics/{hash} (no static file).",
       "id": "extrinsic-detail",
       "path": "/metagraph/extrinsics/{hash}.json",
@@ -713,7 +740,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window for the block explorer (#1987), computed live from the first-party chain D1 tiers at /api/v1/chain/activity (no static file).",
       "id": "chain-activity",
       "path": "/metagraph/chain/activity.json",
@@ -722,7 +749,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Extrinsic call-mix breakdown (count + share per call_module / call_function) over a 7d or 30d window for the block explorer (#1989), computed live from the first-party extrinsics D1 tier at /api/v1/chain/calls (no static file).",
       "id": "chain-calls",
       "path": "/metagraph/chain/calls.json",
@@ -731,7 +758,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Windowed most-active-account leaderboard (signers ranked by tx_count or total_fee_tao, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
       "id": "chain-signers",
       "path": "/metagraph/chain/signers.json",
@@ -740,7 +767,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
@@ -749,7 +776,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
@@ -758,7 +785,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window, served live from D1 at /api/v1/incidents (no static file).",
       "id": "global-incidents",
       "path": "/metagraph/incidents.json",
@@ -767,7 +794,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
       "id": "registry-leaderboards",
       "path": "/metagraph/registry/leaderboards.json",
@@ -776,7 +803,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Cross-subnet comparison — registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup placed side by side for the requested netuids in requested order — computed live from registry projections + the economics tier + D1 at /api/v1/compare (no static file).",
       "id": "compare",
       "path": "/metagraph/compare.json",
@@ -785,7 +812,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "RPC reverse-proxy usage analytics (request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets) over a 7d/30d window, computed live from the rpc_proxy_events telemetry at /api/v1/rpc/usage (no static file).",
       "id": "rpc-usage",
       "path": "/metagraph/rpc/usage.json",
@@ -794,7 +821,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Bittensor base-layer RPC endpoint registry and probe status.",
       "id": "rpc-endpoints",
       "path": "/metagraph/rpc-endpoints.json",
@@ -803,7 +830,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Endpoint pool scoring for future read-only RPC routing.",
       "id": "rpc-pools",
       "path": "/metagraph/rpc/pools.json",
@@ -812,7 +839,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Generalized endpoint pool scoring for future read-only routing.",
       "id": "endpoint-pools",
       "path": "/metagraph/endpoint-pools.json",
@@ -821,7 +848,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Probe-derived endpoint incident summary and active endpoint failures.",
       "id": "endpoint-incidents",
       "path": "/metagraph/endpoint-incidents.json",
@@ -830,7 +857,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Operational surfaces (RPC/WSS/subnet-api/SSE/data-artifact) probed live by the cron health prober; input list for the 15-minute scheduled prober.",
       "id": "operational-surfaces",
       "path": "/metagraph/operational-surfaces.json",
@@ -839,7 +866,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Compact index of subnets exposing callable services (subnet-api/openapi/sse/data-artifact) — the machine-readable 'which subnet does X + how to call it' index for AI agents.",
       "id": "agent-catalog",
       "path": "/metagraph/agent-catalog.json",
@@ -848,7 +875,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Per-subnet agent capability catalog: each callable service with its base URL, auth, machine-readable schema, and live-build health/eligibility.",
       "id": "agent-catalog-subnet",
       "path": "/metagraph/agent-catalog/{netuid}.json",
@@ -857,7 +884,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "OpenAPI schema snapshot/drift status.",
       "id": "schema-drift",
       "path": "/metagraph/schema-drift.json",
@@ -866,7 +893,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Index of captured machine-readable schemas.",
       "id": "schema-index",
       "path": "/metagraph/schemas/index.json",
@@ -875,7 +902,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Captured machine-readable OpenAPI/Swagger schema snapshot detail.",
       "id": "schema-snapshot",
       "path": "/metagraph/schemas/{surface_id}.json",
@@ -884,7 +911,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Adapter-backed public metrics by subnet slug.",
       "id": "adapter",
       "path": "/metagraph/adapters/{slug}.json",
@@ -893,7 +920,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "R2 upload manifest for generated artifact history.",
       "id": "r2-manifest",
       "path": "/metagraph/r2-manifest.json",
@@ -902,7 +929,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Maintainer curation and adapter candidate report.",
       "id": "review-curation",
       "path": "/metagraph/review/curation.json",
@@ -911,7 +938,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Subnet interface gap priorities.",
       "id": "review-gap-priorities",
       "path": "/metagraph/review/gap-priorities.json",
@@ -920,7 +947,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Interface gap priorities and enrichment queue for one subnet.",
       "id": "subnet-gaps",
       "path": "/metagraph/review/gaps/{netuid}.json",
@@ -929,7 +956,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Profile completeness and contributor targeting report.",
       "id": "review-profile-completeness",
       "path": "/metagraph/review/profile-completeness.json",
@@ -938,7 +965,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Subnets worth deeper adapter work.",
       "id": "review-adapter-candidates",
       "path": "/metagraph/review/adapter-candidates.json",
@@ -947,7 +974,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Prioritized all-subnet enrichment work queue for contributor-safe registry improvements.",
       "id": "review-enrichment-queue",
       "path": "/metagraph/review/enrichment-queue.json",
@@ -956,7 +983,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Detailed candidate evidence by missing or contributor-target surface kind for enrichment work.",
       "id": "review-enrichment-evidence",
       "path": "/metagraph/review/enrichment-evidence.json",
@@ -965,7 +992,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Contributor-oriented enrichment target pack grouped by submission kind, review route, and evidence action.",
       "id": "review-enrichment-targets",
       "path": "/metagraph/review/enrichment-targets.json",
@@ -974,7 +1001,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Public-safe maintainer review decision ledger.",
       "id": "review-decisions",
       "path": "/metagraph/review/maintainer-decisions.json",
@@ -983,7 +1010,7 @@
     },
     {
       "content_type": "application/json",
-      "contract_version": "2026-06-30.9",
+      "contract_version": "2026-06-30.11",
       "description": "Generated build summary.",
       "id": "build-summary",
       "path": "/metagraph/build-summary.json",
@@ -992,7 +1019,7 @@
     }
   ],
   "base_path": "/metagraph",
-  "contract_version": "2026-06-30.9",
+  "contract_version": "2026-06-30.11",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "name": "Metagraphed public backend artifact contract",
   "notes": [
