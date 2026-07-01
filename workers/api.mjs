@@ -2426,12 +2426,54 @@ async function handleApiRequest(
       liveEconomics?.data,
       Number(matched.params.netuid),
     );
+    const aliasTarget =
+      baseData.subnet && typeof baseData.subnet === "object"
+        ? baseData.subnet
+        : baseData;
     const aliasNames = await loadPreviouslyKnownAs(
       d1Runner(env),
       Number(matched.params.netuid),
-      baseData.native_name ?? baseData.name,
+      aliasTarget.native_name ?? aliasTarget.name,
+    );
+    if (baseData.subnet && typeof baseData.subnet === "object") {
+      baseData = {
+        ...baseData,
+        subnet: overlayPreviouslyKnownAs(baseData.subnet, aliasNames),
+      };
+    } else {
+      baseData = overlayPreviouslyKnownAs(baseData, aliasNames);
+    }
+  }
+  // Identity-history aliases are D1-backed and independent of the live health KV
+  // overlay — apply them whenever the catalog artifact is served (static or live).
+  if (
+    network.isDefault &&
+    matched.id === "agent-catalog-subnet" &&
+    baseData &&
+    typeof baseData === "object"
+  ) {
+    const aliasNames = await loadPreviouslyKnownAs(
+      d1Runner(env),
+      Number(matched.params.netuid),
+      baseData.name,
     );
     baseData = overlayPreviouslyKnownAs(baseData, aliasNames);
+  }
+  if (
+    network.isDefault &&
+    matched.id === "agent-catalog" &&
+    baseData?.subnets?.length
+  ) {
+    const aliasMap = await loadPreviouslyKnownAsForNetuids(
+      d1Runner(env),
+      baseData.subnets,
+    );
+    baseData = {
+      ...baseData,
+      subnets: baseData.subnets.map((entry) =>
+        overlayPreviouslyKnownAs(entry, aliasMap.get(entry.netuid) || []),
+      ),
+    };
   }
   const baseSource = live
     ? live.source || baseData?.health_source || "live-cron-prober"
@@ -3292,30 +3334,10 @@ async function liveHealthOverlay(env, matched, staticData) {
         await getLive(),
         Number(matched.params.netuid),
       );
-      if (data) {
-        const aliasNames = await loadPreviouslyKnownAs(
-          d1Runner(env),
-          Number(matched.params.netuid),
-          data.name,
-        );
-        data = overlayPreviouslyKnownAs(data, aliasNames);
-      }
       break;
     }
     case "agent-catalog": {
       data = overlayCatalogIndex(staticData, await getLive());
-      if (data?.subnets?.length) {
-        const aliasMap = await loadPreviouslyKnownAsForNetuids(
-          d1Runner(env),
-          data.subnets,
-        );
-        data = {
-          ...data,
-          subnets: data.subnets.map((entry) =>
-            overlayPreviouslyKnownAs(entry, aliasMap.get(entry.netuid) || []),
-          ),
-        };
-      }
       break;
     }
     default:
