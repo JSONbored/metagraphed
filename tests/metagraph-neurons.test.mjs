@@ -240,7 +240,12 @@ describe("metagraph-neurons builders", () => {
     assert.equal(empty.sort, "subnet_count");
     assert.equal(empty.limit, 20);
     assert.equal(empty.validator_count, 0);
+    assert.equal(empty.captured_at, null);
     assert.deepEqual(empty.validators, []);
+
+    const emptyRows = buildGlobalValidators([]);
+    assert.equal(emptyRows.captured_at, null);
+    assert.equal(emptyRows.validator_count, 0);
 
     const clamped = buildGlobalValidators(
       [{ ...ROW, netuid: 7, uid: 0, hotkey: "hk-a" }],
