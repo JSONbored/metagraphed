@@ -942,6 +942,81 @@
         },
         "additionalProperties": false
       },
+      "SubnetMoversArtifact": {
+        "type": "object",
+        "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "sort",
+          "subnet_count",
+          "movers"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "sort": {
+            "type": "string",
+            "enum": ["stake", "emission", "validators"]
+          },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "movers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "stake_start_tao",
+                "stake_end_tao",
+                "stake_delta_tao",
+                "stake_pct_change",
+                "emission_start_tao",
+                "emission_end_tao",
+                "emission_delta_tao",
+                "emission_pct_change",
+                "validators_start",
+                "validators_end",
+                "validators_delta",
+                "neurons_start",
+                "neurons_end",
+                "neurons_delta"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "stake_start_tao": { "type": "number" },
+                "stake_end_tao": { "type": "number" },
+                "stake_delta_tao": { "type": "number" },
+                "stake_pct_change": { "type": ["number", "null"] },
+                "emission_start_tao": { "type": "number" },
+                "emission_end_tao": { "type": "number" },
+                "emission_delta_tao": { "type": "number" },
+                "emission_pct_change": { "type": ["number", "null"] },
+                "validators_start": { "type": "integer", "minimum": 0 },
+                "validators_end": { "type": "integer", "minimum": 0 },
+                "validators_delta": { "type": "integer" },
+                "neurons_start": { "type": "integer", "minimum": 0 },
+                "neurons_end": { "type": "integer", "minimum": 0 },
+                "neurons_delta": { "type": "integer" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "GlobalIncidentsArtifact": {
         "type": "object",
         "description": "Recent cross-subnet downtime incidents reconstructed from probe history; lists only surfaces that had an incident in the window.",

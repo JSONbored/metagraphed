@@ -325,6 +325,34 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(seen, [1, 2])
         self.assertIn("cursor=2", captured_urls[1])
 
+    def test_next_cursor_is_defensive_against_malformed_pages(self):
+        # Mirrors _collection_rows' guards: a non-dict page, a null/absent meta,
+        # or a null/absent pagination must yield None (terminate), never raise.
+        self.assertEqual(
+            client._next_cursor({"meta": {"pagination": {"next_cursor": "c2"}}}),
+            "c2",
+        )
+        self.assertIsNone(client._next_cursor({"meta": None}))
+        self.assertIsNone(client._next_cursor({"meta": {"pagination": None}}))
+        self.assertIsNone(client._next_cursor({"meta": {}}))
+        self.assertIsNone(client._next_cursor({}))
+        self.assertIsNone(client._next_cursor(None))
+        self.assertIsNone(client._next_cursor([1, 2]))
+
+    def test_paginate_terminates_on_null_meta_without_raising(self):
+        # Regression: a 200 whose envelope carries meta: null crashed cursor
+        # extraction with AttributeError, while _collection_rows handled the same
+        # page. Pagination must yield the page and stop cleanly instead.
+        def fake_urlopen(request, timeout=None):
+            return _FakeResponse({"ok": True, "data": [1, 2], "meta": None})
+
+        with mock.patch("metagraphed.client._open_request", fake_urlopen):
+            pages = list(metagraphed_paginate("/api/v1/subnets"))
+            rows = metagraphed_fetch_all("/api/v1/subnets")
+
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(rows, [1, 2])
+
     def test_rpc_posts_jsonrpc_and_returns_result(self):
         captured = {}
 

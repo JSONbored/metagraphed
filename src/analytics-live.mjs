@@ -597,6 +597,8 @@ export async function loadChainFees(
        GROUP BY day`,
       dailyParams,
     ),
+    // Top-fee-payer leaderboard: tie-break on signer ASC so equal-fee signers
+    // have stable LIMIT membership (mirrors loadChainSigners in chain-query-loaders).
     d1(
       `SELECT signer,
               SUM(COALESCE(fee_tao, 0)) AS total_fee_tao,
@@ -605,7 +607,7 @@ export async function loadChainFees(
        FROM extrinsics
        WHERE observed_at >= ? AND signer IS NOT NULL${moduleClause}
        GROUP BY signer
-       ORDER BY total_fee_tao DESC
+       ORDER BY total_fee_tao DESC, signer ASC
        LIMIT ?`,
       payerParams,
     ),

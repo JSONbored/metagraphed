@@ -37,9 +37,11 @@ directories**:
   A surface can be `maintainer-reviewed` (human) yet `unknown` health (machine),
   and vice versa.
 
-A data contribution therefore edits **exactly one** `registry/subnets/<slug>.json`,
-appending surface(s) with `authority: "community"` and
-`review.state: "community-submitted"` — and nothing else.
+A data contribution therefore edits **exactly one** `registry/subnets/<slug>.json`.
+For an existing manifest, it appends surface(s) with `authority: "community"` and
+`review.state: "community-submitted"` — and nothing else. For a missing manifest,
+the same one-file contribution may create the required `subnet:new` scaffold and
+add the surface(s) to it.
 
 Base-layer network endpoints (`subtensor-rpc`/`subtensor-wss`/`archive`) are the
 one carve-out: maintainer-curated infra on `root.json` (netuid 0), not the

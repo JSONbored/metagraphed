@@ -154,7 +154,7 @@ export function overlaySubnetHealth(staticArtifact, liveCurrent, netuid) {
       kind: live.kind,
       provider: live.provider,
       url: live.url,
-      status: live.status,
+      status: normalizeProbeStatus(live.status),
       classification: live.classification,
       latency_ms: live.latency_ms,
       status_code: live.status_code,
@@ -220,7 +220,7 @@ export function mergeRpcEndpoints(staticArtifact, liveRpcPool) {
     if (!live) return endpoint;
     return {
       ...endpoint,
-      status: live.status,
+      status: normalizeProbeStatus(live.status),
       classification: live.classification,
       latency_ms: live.latency_ms,
       archive_support: live.archive_support ?? endpoint.archive_support,
@@ -264,7 +264,7 @@ export function overlayRpcPoolEligibility(pool, liveRpcPool) {
         (live.consecutive_failures || 0) >= POOL_SUSTAINED_DOWN_FAILURES;
       return {
         ...endpoint,
-        status: live.status,
+        status: normalizeProbeStatus(live.status),
         latency_ms: live.latency_ms ?? endpoint.latency_ms,
         latest_block: live.latest_block ?? endpoint.latest_block ?? null,
         health_source: "live-cron-prober",
@@ -1273,7 +1273,7 @@ function liveFromD1Rows(rows) {
     kind: r.kind,
     provider: r.provider,
     url: r.url,
-    status: r.status,
+    status: normalizeProbeStatus(r.status),
     classification: r.classification,
     latency_ms: Number.isFinite(r.latency_ms) ? r.latency_ms : null,
     status_code: Number.isInteger(r.status_code) ? r.status_code : null,

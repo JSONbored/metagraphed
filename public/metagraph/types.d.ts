@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/stake-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. */
+        get: operations["accountStakeFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/subnets": {
         parameters: {
             query?: never;
@@ -1602,6 +1619,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/movers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        get: operations["subnetMovers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/surfaces": {
         parameters: {
             query?: never;
@@ -1611,6 +1645,23 @@ export interface paths {
         };
         /** List curated public surfaces. */
         get: operations["surfaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/validators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier. */
+        get: operations["globalValidators"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1777,6 +1828,37 @@ export interface components {
             stake_tao?: number | null;
             uid?: number | null;
             validator_permit?: boolean;
+        };
+        /** @description One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet. */
+        AccountStakeFlowArtifact: {
+            address: string;
+            concentration: number | null;
+            /** @enum {string} */
+            direction: "accumulating" | "exiting" | "churning" | "idle";
+            dominant_netuid: number | null;
+            flow_ratio: number | null;
+            gross_flow_tao: number;
+            net_flow_tao: number;
+            schema_version: number;
+            stake_events: number;
+            subnet_count: number;
+            subnets: {
+                /** @enum {string} */
+                direction: "accumulating" | "exiting" | "churning" | "idle";
+                flow_ratio: number | null;
+                gross_flow_tao: number;
+                net_flow_tao: number;
+                netuid: number;
+                stake_events: number;
+                staked_tao: number;
+                unstake_events: number;
+                unstaked_tao: number;
+            }[];
+            total_staked_tao: number;
+            total_unstaked_tao: number;
+            unstake_events: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file). */
         AccountSubnetsArtifact: {
@@ -3049,6 +3131,42 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. */
+        GlobalValidatorEntry: {
+            avg_validator_trust: number | null;
+            coldkey: string | null;
+            coldkey_count: number;
+            hotkey: string;
+            latest_block_number: number | null;
+            /** Format: date-time */
+            latest_captured_at: string | null;
+            max_validator_trust: number | null;
+            subnet_count: number;
+            subnets: components["schemas"]["GlobalValidatorSubnet"][];
+            uid_count: number;
+        };
+        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets. */
+        GlobalValidatorsArtifact: {
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+            validator_count: number;
+            validators: components["schemas"]["GlobalValidatorEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
+        GlobalValidatorSubnet: {
+            emission_tao: number;
+            netuid: number;
+            stake_tao: number;
+            uid: number;
+            validator_trust: number | null;
+        };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
             label: string;
@@ -4181,7 +4299,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** @enum {unknown} */
-            status: "captured" | "error" | "not-found" | "too-large" | "unsafe";
+            status: "captured" | "error" | "not-captured" | "not-found" | "too-large" | "unsafe";
             subnet_slug?: string;
             surface_id: string;
             /** Format: uri */
@@ -4624,6 +4742,34 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots. */
+        SubnetMoversArtifact: {
+            end_date: string | null;
+            movers: {
+                emission_delta_tao: number;
+                emission_end_tao: number;
+                emission_pct_change: number | null;
+                emission_start_tao: number;
+                netuid: number;
+                neurons_delta: number;
+                neurons_end: number;
+                neurons_start: number;
+                stake_delta_tao: number;
+                stake_end_tao: number;
+                stake_pct_change: number | null;
+                stake_start_tao: number;
+                validators_delta: number;
+                validators_end: number;
+                validators_start: number;
+            }[];
+            schema_version: number;
+            /** @enum {string} */
+            sort: "stake" | "emission" | "validators";
+            start_date: string | null;
+            subnet_count: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         SubnetOverviewArtifact: components["schemas"]["ArtifactBase"] & ({
             counts: {
@@ -6051,6 +6197,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountStakeFlow: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "example",
+                     *         "concentration": 1,
+                     *         "direction": "accumulating",
+                     *         "dominant_netuid": 1,
+                     *         "flow_ratio": 0.6,
+                     *         "gross_flow_tao": 2.5,
+                     *         "net_flow_tao": 1.5,
+                     *         "schema_version": 1,
+                     *         "stake_events": 3,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "direction": "accumulating",
+                     *             "flow_ratio": 0.6,
+                     *             "gross_flow_tao": 2.5,
+                     *             "net_flow_tao": 1.5,
+                     *             "netuid": 1,
+                     *             "stake_events": 3,
+                     *             "staked_tao": 2,
+                     *             "unstake_events": 1,
+                     *             "unstaked_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "total_staked_tao": 2,
+                     *         "total_unstaked_tao": 0.5,
+                     *         "unstake_events": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountStakeFlowArtifact"];
                     };
                 };
             };
@@ -18290,6 +18565,133 @@ export interface operations {
             };
         };
     };
+    subnetMovers: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                sort?: "stake" | "emission" | "validators";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "end_date": "2026-06-01",
+                     *         "movers": [
+                     *           {
+                     *             "emission_delta_tao": 0.5,
+                     *             "emission_end_tao": 0.5,
+                     *             "emission_pct_change": 0.5,
+                     *             "emission_start_tao": 0.5,
+                     *             "netuid": 7,
+                     *             "neurons_delta": 1,
+                     *             "neurons_end": 1,
+                     *             "neurons_start": 1,
+                     *             "stake_delta_tao": 0.5,
+                     *             "stake_end_tao": 0.5,
+                     *             "stake_pct_change": 0.5,
+                     *             "stake_start_tao": 0.5,
+                     *             "validators_delta": 1,
+                     *             "validators_end": 1,
+                     *             "validators_start": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "sort": "stake",
+                     *         "start_date": "2026-06-01",
+                     *         "subnet_count": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetMoversArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     surfaces: {
         parameters: {
             query?: {
@@ -18367,6 +18769,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SurfacesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    globalValidators: {
+        parameters: {
+            query?: {
+                sort?: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "subnet_count",
+                     *         "validator_count": 1,
+                     *         "validators": [
+                     *           {
+                     *             "avg_validator_trust": 0.5,
+                     *             "coldkey": "example",
+                     *             "coldkey_count": 1,
+                     *             "hotkey": "example",
+                     *             "latest_block_number": 5000000,
+                     *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "max_validator_trust": 0.5,
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "emission_tao": 0.5,
+                     *                 "netuid": 7,
+                     *                 "stake_tao": 0.5,
+                     *                 "uid": 1,
+                     *                 "validator_trust": 0.5
+                     *               }
+                     *             ],
+                     *             "uid_count": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalValidatorsArtifact"];
                     };
                 };
             };

@@ -198,6 +198,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/movers?window=30d&sort=stake&limit=10",
+    (body) => {
+      assert.equal(body.data.window, "30d");
+      assert.equal(body.data.sort, "stake");
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(Array.isArray(body.data.movers), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);
@@ -234,6 +243,15 @@ const checks = [
     "/api/v1/subnets/7/validators",
     (body) => {
       assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
+    "/api/v1/validators?sort=uid_count&limit=3",
+    (body) => {
+      assert.equal(body.data.sort, "uid_count");
+      assert.equal(body.data.limit, 3);
       assert.equal(Array.isArray(body.data.validators), true);
       assert.equal(typeof body.data.validator_count, "number");
     },
@@ -290,6 +308,16 @@ const checks = [
     (body) => {
       assert.equal(Array.isArray(body.data.counterparties), true);
       assert.equal(typeof body.data.counterparty_count, "number");
+    },
+  ],
+  [
+    "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/stake-flow?window=30d",
+    (body) => {
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.net_flow_tao, "number");
+      assert.equal(typeof body.data.gross_flow_tao, "number");
+      assert.equal(Array.isArray(body.data.subnets), true);
+      assert.equal(typeof body.data.subnet_count, "number");
     },
   ],
   [

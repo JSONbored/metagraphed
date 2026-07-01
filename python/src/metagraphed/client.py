@@ -280,6 +280,19 @@ def _error_detail(error: "urllib.error.HTTPError") -> str:
     return f": {raw[:200]}"
 
 
+def _next_cursor(page: Any) -> Optional[Any]:
+    """Return a list page's ``meta.pagination.next_cursor``, or ``None``.
+
+    Defensive at every level (mirrors :func:`_collection_rows`): a non-dict page,
+    a null/absent ``meta``, or a null/absent ``pagination`` all yield ``None`` so
+    pagination terminates cleanly instead of raising ``AttributeError`` on an
+    envelope whose ``meta`` is ``null`` rather than an object.
+    """
+    meta = page.get("meta") if isinstance(page, dict) else None
+    pagination = meta.get("pagination") if isinstance(meta, dict) else None
+    return pagination.get("next_cursor") if isinstance(pagination, dict) else None
+
+
 def metagraphed_paginate(
     path: str,
     *,
@@ -310,14 +323,7 @@ def metagraphed_paginate(
             backoff=backoff,
         )
         yield page
-        pagination = (
-            page.get("meta", {}).get("pagination")
-            if isinstance(page, dict)
-            else None
-        )
-        cursor = (
-            pagination.get("next_cursor") if isinstance(pagination, dict) else None
-        )
+        cursor = _next_cursor(page)
         if cursor is None:
             return
 
