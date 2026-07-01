@@ -2898,6 +2898,23 @@ describe("handleBlock", () => {
     assert.equal(body.data.next_block_number, 1240);
   });
 
+  test("resolves neighbors when D1 returns a string-typed block_number", async () => {
+    const { env, captures } = dbWith({
+      blockDetail: blockRow({ block_number: "1234" }),
+      blockNeighbors: { prev: 1230, next: 1240 },
+    });
+    const body = await json(
+      await handleBlock(req(`/api/v1/blocks/1234`), env, "1234"),
+    );
+    const neighborParams = captures.params.find(
+      (p) => p.length === 2 && p[0] === 1234 && p[1] === 1234,
+    );
+    assert.ok(neighborParams, "neighbor anchor must bind as Number 1234");
+    assert.equal(body.data.block.block_number, 1234);
+    assert.equal(body.data.prev_block_number, 1230);
+    assert.equal(body.data.next_block_number, 1240);
+  });
+
   test("happy path resolves by 0x block_hash ref", async () => {
     const { env } = dbWith({ blockDetail: blockRow() });
     const body = await json(

@@ -78,6 +78,7 @@ import {
   BLOCK_READ_COLUMNS,
   buildBlock,
   buildBlockFeed,
+  formatBlock,
 } from "../../src/blocks.mjs";
 import {
   EXTRINSIC_READ_COLUMNS,
@@ -1374,8 +1375,11 @@ export async function handleBlock(request, env, ref) {
   // the block_number primary key instead of scanning the retained blocks table.
   let prev = null;
   let next = null;
-  const resolvedNumber = rows[0]?.block_number;
-  if (Number.isInteger(resolvedNumber)) {
+  // Coerce through formatBlock (same as loadBlock's toBlockNumber): D1 can return
+  // INTEGER block_number as a numeric string; Number.isInteger("1234") is false
+  // and would skip the neighbor lookup (#2506 fixed loadBlock only).
+  const resolvedNumber = formatBlock(rows[0])?.block_number ?? null;
+  if (resolvedNumber != null) {
     const nbr = await d1All(
       env,
       `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
