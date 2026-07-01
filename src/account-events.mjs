@@ -65,6 +65,7 @@ export const INGESTED_EVENT_KINDS = [
   ...INDEXED_EVENT_KINDS,
   "NetworkAdded",
   "NetworkRemoved",
+  "BurnSet",
   "DelegateAdded",
   "TakeDecreased",
   "TakeIncreased",
