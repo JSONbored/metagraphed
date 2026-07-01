@@ -1886,11 +1886,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). */
+        /** @description Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). The event aggregates (event_count, subnet_count, event_kinds, first_*) are computed over the account's most recent events, bounded for cost; when event_scan_capped is true they are a lower bound over that window, not all-time totals. */
         AccountSummaryArtifact: {
             activity?: components["schemas"]["AccountActivity"];
+            /** @description Number of account_events counted. A lower bound over the account's most recent events (not an all-time total) when event_scan_capped is true. */
             event_count: number;
+            /** @description Per-kind event counts over the counted events; a lower bound over the most recent events when event_scan_capped is true. */
             event_kinds?: components["schemas"]["AccountEventKindCount"][];
+            /** @description True when the event aggregates hit the newest-events scan cap: event_count / subnet_count / event_kinds are then a lower bound over the account's most recent events, not all-time totals, and first_block / first_seen_at are null. */
+            event_scan_capped?: boolean;
             first_block?: number | null;
             /** Format: date-time */
             first_seen_at?: string | null;
@@ -1901,6 +1905,7 @@ export interface components {
             registrations: components["schemas"]["AccountRegistration"][];
             schema_version: number;
             ss58: string;
+            /** @description Distinct subnets across the counted events. A lower bound over the most recent events when event_scan_capped is true. */
             subnet_count?: number;
         } & {
             [key: string]: unknown;
@@ -5591,6 +5596,7 @@ export interface operations {
                      *             "kind": "example"
                      *           }
                      *         ],
+                     *         "event_scan_capped": false,
                      *         "first_block": 5000000,
                      *         "first_seen_at": "2026-06-01T00:00:00.000Z",
                      *         "last_block": 5000000,

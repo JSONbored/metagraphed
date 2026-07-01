@@ -2425,9 +2425,10 @@ export const MCP_TOOLS = [
       "Fetch the native-TAO Balances.Transfer feed for one account by its SS58 address, " +
       "newest first: from address, to address, amount in TAO, and direction (sent/ " +
       "received). Filter by direction with direction='sent' or 'received'; omit for " +
-      "both sides. Page with limit (1-1000, default 100) / offset. This is the native " +
-      "chain-level TAO transfer feed only, NOT a full balance ledger — stake flows are " +
-      "separate events visible in get_account_events.",
+      "both sides. Optionally constrain block height with block_start/block_end " +
+      "(inclusive). Page with limit (1-1000, default 100) / offset, or follow " +
+      "next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/transfers.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2444,6 +2445,18 @@ export const MCP_TOOLS = [
             "or omit for both. Any other value is treated as both-sides.",
           enum: ["sent", "received"],
         },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
+        },
         limit: {
           type: "integer",
           description: "Max transfers to return (1-1000, default 100).",
@@ -2455,6 +2468,12 @@ export const MCP_TOOLS = [
           description: "Pagination offset. Default 0.",
           minimum: 0,
         },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
       },
       required: ["ss58"],
       additionalProperties: false,
@@ -2462,10 +2481,14 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const direction = optionalString(args, "direction");
+      const cursor = optionalString(args, "cursor");
       return loadAccountTransfers(mcpD1Runner(ctx), ss58, {
         direction: direction ?? undefined,
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
+        cursor: cursor ?? undefined,
       });
     },
   },
@@ -4811,6 +4834,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       transfer_count: { type: "integer" },
       limit: NULLABLE_INT,
       offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
       transfers: objectItems({
         block_number: NULLABLE_INT,
         event_index: NULLABLE_INT,

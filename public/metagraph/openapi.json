@@ -814,20 +814,26 @@
       },
       "AccountSummaryArtifact": {
         "additionalProperties": true,
-        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file).",
+        "description": "Cross-subnet activity summary for one account, by hotkey OR coldkey (#1347): event-history aggregates from the account_events tier joined to current registrations from the neurons tier. Served live from D1 at /api/v1/accounts/{ss58} (no static file). The event aggregates (event_count, subnet_count, event_kinds, first_*) are computed over the account's most recent events, bounded for cost; when event_scan_capped is true they are a lower bound over that window, not all-time totals.",
         "properties": {
           "activity": {
             "$ref": "#/components/schemas/AccountActivity"
           },
           "event_count": {
+            "description": "Number of account_events counted. A lower bound over the account's most recent events (not an all-time total) when event_scan_capped is true.",
             "minimum": 0,
             "type": "integer"
           },
           "event_kinds": {
+            "description": "Per-kind event counts over the counted events; a lower bound over the most recent events when event_scan_capped is true.",
             "items": {
               "$ref": "#/components/schemas/AccountEventKindCount"
             },
             "type": "array"
+          },
+          "event_scan_capped": {
+            "description": "True when the event aggregates hit the newest-events scan cap: event_count / subnet_count / event_kinds are then a lower bound over the account's most recent events, not all-time totals, and first_block / first_seen_at are null.",
+            "type": "boolean"
           },
           "first_block": {
             "type": [
@@ -874,6 +880,7 @@
             "type": "string"
           },
           "subnet_count": {
+            "description": "Distinct subnets across the counted events. A lower bound over the most recent events when event_scan_capped is true.",
             "minimum": 0,
             "type": "integer"
           }
@@ -15294,6 +15301,7 @@
                         "kind": "example"
                       }
                     ],
+                    "event_scan_capped": false,
                     "first_block": 5000000,
                     "first_seen_at": "2026-06-01T00:00:00.000Z",
                     "last_block": 5000000,

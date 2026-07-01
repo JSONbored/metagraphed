@@ -103,15 +103,20 @@ jobs:
           override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
           fail_ci_if_error: true
 
+      # override_branch is prefixed with the fork owner (owner:branch): Codecov only treats a branch
+      # string with a colon-separated prefix as "unprotected"/tokenless-eligible; a bare branch name
+      # looks like it could be a real (possibly protected) branch on the base repo and gets rejected with
+      # "Token required because branch is protected" even with zero token configuration anywhere.
+      # codecov-cli's own auto-detection never adds this prefix either (verified in its source), so it
+      # must be supplied explicitly. override_commit/override_pr are unaffected -- that check only
+      # inspects the branch string.
       - name: Upload coverage to Codecov (fork PR tokenless)
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage/lcov.info
           disable_search: true
-          # head.label is "forkowner:branch" — Codecov treats that as an
-          # unprotected branch so tokenless uploads work on protected repos.
-          override_branch: ${{ github.event.pull_request.head.label }}
+          override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: true
@@ -136,7 +141,7 @@ jobs:
           files: ./reports/junit/vitest.xml
           report_type: test_results
           disable_search: true
-          override_branch: ${{ github.event.pull_request.head.label }}
+          override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: false
