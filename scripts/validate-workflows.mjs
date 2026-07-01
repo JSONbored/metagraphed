@@ -110,7 +110,11 @@ for (const workflow of workflows) {
         workflowStepBlock(
           content,
           "Upload coverage to Codecov (fork PR tokenless)",
-        ).includes("fail_ci_if_error: true"),
+        ).includes("fail_ci_if_error: true") &&
+        workflowStepBlock(
+          content,
+          "Upload coverage to Codecov (fork PR tokenless)",
+        ).includes("github.event.pull_request.head.label"),
       workflow,
       "validate workflow must split Codecov coverage uploads into trusted-token and fork-tokenless paths",
     );

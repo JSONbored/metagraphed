@@ -109,7 +109,9 @@ jobs:
         with:
           files: ./coverage/lcov.info
           disable_search: true
-          override_branch: ${{ github.event.pull_request.head.ref }}
+          # head.label is "forkowner:branch" — Codecov treats that as an
+          # unprotected branch so tokenless uploads work on protected repos.
+          override_branch: ${{ github.event.pull_request.head.label }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: true
@@ -134,7 +136,7 @@ jobs:
           files: ./reports/junit/vitest.xml
           report_type: test_results
           disable_search: true
-          override_branch: ${{ github.event.pull_request.head.ref }}
+          override_branch: ${{ github.event.pull_request.head.label }}
           override_commit: ${{ github.event.pull_request.head.sha }}
           override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: false
