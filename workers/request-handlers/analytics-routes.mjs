@@ -167,11 +167,7 @@ export async function handleUptime(request, env, netuid, url) {
   }
   sql += " ORDER BY day DESC LIMIT ?";
   params.push(MAX_UPTIME_ROWS);
-  const rows = await d1All(
-    env,
-    sql,
-    params,
-  );
+  const rows = await d1All(env, sql, params);
   const healthMeta = await readHealthMetaKv(env);
   const data = formatUptime({
     netuid,

@@ -391,9 +391,7 @@ describe("handleUptime", () => {
       },
     };
 
-    await json(
-      await handleUptime(req("/"), env, NETUID, url("/?window=90d")),
-    );
+    await json(await handleUptime(req("/"), env, NETUID, url("/?window=90d")));
 
     assert.doesNotMatch(seen[0].sql, /HAVING SUM\(samples\) >= \?/);
     assert.equal(seen[0].params[0], NETUID);
