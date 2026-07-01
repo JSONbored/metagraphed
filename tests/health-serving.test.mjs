@@ -476,6 +476,14 @@ describe("summarizeRows / rollupStatus", () => {
     assert.equal(out.last_checked, "2026-06-11T00:05:00.000Z"); // latest
     assert.equal(out.last_ok, "2026-06-11T00:00:00.000Z"); // latest non-null
   });
+  test("avg_latency_ms counts ok probes only", () => {
+    const out = summarizeRows([
+      row("ok", { latency_ms: 100 }),
+      row("failed", { latency_ms: 9000 }),
+    ]);
+    assert.equal(out.avg_latency_ms, 100);
+    assert.equal(out.latency_sample_count, 1);
+  });
 });
 
 describe("OPERATIONAL_KINDS export", () => {

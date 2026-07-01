@@ -15,6 +15,7 @@ import {
 import {
   rollupSubnetStatus,
   normalizeProbeStatus,
+  okLatencyMs,
 } from "./health-probe-core.mjs";
 import { dailyLatencyColumns } from "./health-sql.mjs";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.mjs";
@@ -114,8 +115,10 @@ export function summarizeRows(rows) {
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
   const latencies = [];
   for (const row of rows) {
-    counts[normalizeProbeStatus(row.status)] += 1;
-    if (Number.isFinite(row.latency_ms)) latencies.push(row.latency_ms);
+    const status = normalizeProbeStatus(row.status);
+    counts[status] += 1;
+    const latency = okLatencyMs(status, row.latency_ms);
+    if (latency != null) latencies.push(latency);
   }
   return {
     status: rollupSubnetStatus({ ...counts, total: rows.length }),
