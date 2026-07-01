@@ -54,13 +54,13 @@ import {
 import {
   ACCOUNT_EVENT_COLUMNS,
   INGESTED_EVENT_KINDS,
-  buildAccountTransfers,
   buildAccountHistory,
   buildSubnetEvents,
   formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
   loadAccountExtrinsics,
+  loadAccountTransfers,
   loadAccountSubnets,
 } from "../../src/account-events.mjs";
 import {
@@ -900,61 +900,15 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
-  // sent => this account is the sender (hotkey=from); received => recipient
-  // (coldkey=to); default/all => either side. Keep the default read as two
-  // side-specific seeks rather than an OR predicate so D1 cannot satisfy only
-  // event_kind='Transfer' from the pair index and then filter all Transfer rows.
-  // Self-transfers are returned once, matching the old OR semantics.
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const blockRangeClause = `${blockStart.value != null ? " AND block_number >= ?" : ""}${blockEnd.value != null ? " AND block_number <= ?" : ""}`;
-  const cursorClause = useCursor
-    ? " AND (block_number, event_index) < (?, ?)"
-    : "";
-  const pushBlockRangeParams = (target) => {
-    if (blockStart.value != null) target.push(blockStart.value);
-    if (blockEnd.value != null) target.push(blockEnd.value);
-  };
-  const pushCursorParams = (target) => {
-    if (useCursor) target.push(cur[0], cur[1]);
-  };
-  let params;
-  let sql;
-  if (direction === "sent") {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause}`;
-  } else if (direction === "received") {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${blockRangeClause}${cursorClause}`;
-  } else {
-    params = [ss58];
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    params.push(ss58, ss58);
-    pushBlockRangeParams(params);
-    pushCursorParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${blockRangeClause}${cursorClause})`;
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  const data = buildAccountTransfers(rows, ss58, {
+  const normalizedDirection =
+    direction === "sent" || direction === "received" ? direction : undefined;
+  const data = await loadAccountTransfers(d1Runner(env), ss58, {
+    direction: normalizedDirection,
     limit,
     offset,
-    nextCursor,
-    direction,
+    cursor,
+    blockStart: blockStart.value,
+    blockEnd: blockEnd.value,
   });
   return envelopeResponse(
     request,

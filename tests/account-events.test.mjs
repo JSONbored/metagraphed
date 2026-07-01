@@ -608,6 +608,38 @@ test("loadAccountTransfers applies the block_start/block_end range to both sides
   ]);
 });
 
+test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
+  let captured;
+  const out = await loadAccountTransfers(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        {
+          block_number: 150,
+          event_index: 4,
+          hotkey: "5Hk",
+          coldkey: "5Other",
+          amount_tao: 1,
+          observed_at: 1,
+        },
+      ];
+    },
+    "5Hk",
+    {
+      blockStart: 100,
+      blockEnd: 900,
+      cursor: encodeCursor([200, 2]),
+      limit: 1,
+      offset: 99,
+      direction: "sent",
+    },
+  );
+  assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(captured.sql));
+  assert.ok(!/OFFSET/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", 100, 900, 200, 2, 1]);
+  assert.equal(out.next_cursor, encodeCursor([150, 4]));
+});
+
 test("loadAccountExtrinsics applies the block_start/block_end range as bound params", async () => {
   let captured;
   await loadAccountExtrinsics(

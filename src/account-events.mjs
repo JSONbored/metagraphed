@@ -744,38 +744,59 @@ export async function loadAccountExtrinsics(
 export async function loadAccountTransfers(
   d1,
   ss58,
-  { direction, limit, offset, blockStart, blockEnd } = {},
+  { direction, limit, offset, cursor, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  const rangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
-  const pushRangeParams = (params) => {
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const blockRangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
+  const cursorClause = useCursor
+    ? " AND (block_number, event_index) < (?, ?)"
+    : "";
+  const pushBlockRangeParams = (params) => {
     if (blockStart != null) params.push(blockStart);
     if (blockEnd != null) params.push(blockEnd);
+  };
+  const pushCursorParams = (params) => {
+    if (useCursor) params.push(cur[0], cur[1]);
   };
   let sql;
   let params;
   if (direction === "sent") {
     params = [ss58];
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause}`;
   } else if (direction === "received") {
     params = [ss58];
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${rangeClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${blockRangeClause}${cursorClause}`;
   } else {
     params = [ss58];
-    pushRangeParams(params);
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
     params.push(ss58, ss58);
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${rangeClause})`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${blockRangeClause}${cursorClause})`;
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(lim, off);
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
   const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
   return buildAccountTransfers(rows, ss58, {
     limit: lim,
     offset: off,
+    nextCursor,
     direction,
   });
 }
