@@ -285,17 +285,29 @@ export function formatAccountActivity(agg, modules) {
 
 export function buildAccountSummary(
   ss58,
-  { agg, kinds, registrations, recent, activity, modules } = {},
+  { agg, kinds, scanned, registrations, recent, activity, modules } = {},
 ) {
   const a = agg || {};
+  const eventCount = a.c ?? 0;
+  // event_count / subnet_count / event_kinds are aggregated over exactly the
+  // account's newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. `scanned` is a probe
+  // COUNT over CAP+1: when it exceeds CAP the account has more events than that
+  // window, so those totals are a lower bound and the window's MIN(block_number) /
+  // MIN(observed_at) are its floor, not the account's all-time first — flag it and
+  // null first_*. `> CAP` (not `>=`) means an account with EXACTLY CAP events is
+  // complete (the probe found no extra row), so its totals + first_* stay exact.
+  // last_* stay exact regardless (the newest events include the latest).
+  const eventScanCapped =
+    (scanned ?? eventCount) > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
   return {
     schema_version: 1,
     ss58,
-    event_count: a.c ?? 0,
+    event_count: eventCount,
     subnet_count: a.sc ?? 0,
-    first_block: toBlockNumber(a.fb),
+    event_scan_capped: eventScanCapped,
+    first_block: eventScanCapped ? null : toBlockNumber(a.fb),
     last_block: toBlockNumber(a.lb),
-    first_seen_at: toIso(a.fo),
+    first_seen_at: eventScanCapped ? null : toIso(a.fo),
     last_seen_at: toIso(a.lo),
     event_kinds: (kinds || [])
       .filter((k) => k && k.kind)
@@ -501,53 +513,103 @@ const REGISTRATION_COLUMNS = "netuid, uid, stake_tao, validator_permit, active";
 // high-volume signers on every unauthenticated request.
 export const ACCOUNT_ACTIVITY_RECENT_LIMIT = 1000;
 
+// Bound the account-summary EVENT aggregates the same way: a public, unauthenticated
+// GET /accounts/{ss58} must not aggregate a high-volume coldkey's entire 365-day
+// retained event history (EVENT_RETENTION_MS) on every request. Each key branch seeks
+// its own newest N through its feed index, then the union is re-sorted and capped to N,
+// so an aggregate over it sees exactly the account's newest N events — never up to 2N,
+// never the full history.
+export const ACCOUNT_EVENT_SUMMARY_SCAN_CAP = 5000;
+const SUMMARY_SCAN_COLUMNS =
+  "netuid, block_number, event_index, observed_at, event_kind";
+
+// A bounded, feed-ordered scan of the account's newest `limit` events (indexed
+// UNION-of-seeks, re-sorted and capped to `limit`). The summary aggregates over
+// the newest CAP; a probe over CAP+1 counts one extra row only to detect that the
+// account has more than CAP events (so an exactly-CAP account is not falsely
+// flagged, and the aggregate window stays exactly the documented CAP events).
+function accountEventBoundedScan(limit) {
+  // Each branch's ordered LIMIT seek is wrapped in a subquery: SQLite/D1 rejects
+  // an ORDER BY/LIMIT placed directly on a compound (UNION ALL) SELECT term, so
+  // the seek must be a nested SELECT, not a bare term.
+  const branch = (index, keyFilter) =>
+    `SELECT ${SUMMARY_SCAN_COLUMNS} FROM (` +
+    `SELECT ${SUMMARY_SCAN_COLUMNS} FROM account_events INDEXED BY ${index} ` +
+    `WHERE ${keyFilter} ORDER BY block_number DESC, event_index DESC LIMIT ?)`;
+  return {
+    sql:
+      `(SELECT ${SUMMARY_SCAN_COLUMNS} FROM (` +
+      branch(ACCOUNT_EVENT_HOTKEY_INDEX, "hotkey = ?") +
+      " UNION ALL " +
+      branch(
+        ACCOUNT_EVENT_COLDKEY_INDEX,
+        "coldkey = ? AND (hotkey IS NULL OR hotkey <> ?)",
+      ) +
+      ") ORDER BY block_number DESC, event_index DESC LIMIT ?)",
+    paramsFor(ss58) {
+      return [ss58, limit, ss58, ss58, limit, limit];
+    },
+  };
+}
+
 // Cross-subnet summary: event aggregates, per-kind counts, the 10 newest events,
 // current registrations, and bounded signing-activity aggregates from the extrinsics tier.
 export async function loadAccountSummary(d1, ss58) {
-  const aggUnion = accountEventIndexedUnion(
-    "netuid, block_number, observed_at",
-  );
-  const kindUnion = accountEventIndexedUnion("event_kind");
+  // Aggregate over exactly the newest CAP events; a probe over CAP+1 rows detects
+  // whether the account has more (so event_count/subnet_count/event_kinds are the
+  // documented CAP-event window and event_scan_capped trips only on real truncation).
+  const cap = ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
+  const windowScan = accountEventBoundedScan(cap);
+  const probeScan = accountEventBoundedScan(cap + 1);
   const recentUnion = accountEventIndexedUnion(ACCOUNT_EVENT_COLUMNS);
-  const [aggRows, kindRows, regRows, recentRows, activityRows, moduleRows] =
-    await Promise.all([
-      d1(
-        `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM ${aggUnion.sql}`,
-        aggUnion.paramsFor(ss58),
-      ),
-      d1(
-        `SELECT event_kind AS kind, COUNT(*) AS count FROM ${kindUnion.sql} GROUP BY event_kind ORDER BY count DESC, event_kind ASC`,
-        kindUnion.paramsFor(ss58),
-      ),
-      d1(
-        `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC, netuid ASC`,
-        [ss58],
-      ),
-      d1(
-        `SELECT * FROM ${recentUnion.sql} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
-        recentUnion.paramsFor(ss58),
-      ),
-      // Signing activity from the extrinsics tier, matched by signer and
-      // explicitly bounded to the newest rows before aggregation. The inner
-      // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_block,
-      // so the bound is an indexed LIMIT, not a sort-then-truncate over the
-      // signer's full retained history.
-      d1(
-        `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
-        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
-      ),
-      // Top call modules over the same bounded window. `count DESC` alone is not a
-      // total order, so when modules tie on count the trailing LIMIT 10 would keep
-      // an arbitrary subset (D1/SQLite group order is unspecified); call_module ASC
-      // makes both the membership and the ordering of the top-10 deterministic.
-      d1(
-        `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`,
-        [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
-      ),
-    ]);
+  const [
+    aggRows,
+    kindRows,
+    probeRows,
+    regRows,
+    recentRows,
+    activityRows,
+    moduleRows,
+  ] = await Promise.all([
+    d1(
+      `SELECT COUNT(*) AS c, COUNT(DISTINCT netuid) AS sc, MIN(block_number) AS fb, MAX(block_number) AS lb, MIN(observed_at) AS fo, MAX(observed_at) AS lo FROM ${windowScan.sql}`,
+      windowScan.paramsFor(ss58),
+    ),
+    d1(
+      `SELECT event_kind AS kind, COUNT(*) AS count FROM ${windowScan.sql} GROUP BY event_kind ORDER BY count DESC, event_kind ASC`,
+      windowScan.paramsFor(ss58),
+    ),
+    d1(`SELECT COUNT(*) AS n FROM ${probeScan.sql}`, probeScan.paramsFor(ss58)),
+    d1(
+      `SELECT ${REGISTRATION_COLUMNS} FROM neurons WHERE hotkey = ? ORDER BY stake_tao DESC, netuid ASC`,
+      [ss58],
+    ),
+    d1(
+      `SELECT * FROM ${recentUnion.sql} ORDER BY block_number DESC, event_index DESC LIMIT 10`,
+      recentUnion.paramsFor(ss58),
+    ),
+    // Signing activity from the extrinsics tier, matched by signer and
+    // explicitly bounded to the newest rows before aggregation. The inner
+    // signer-scoped, feed-ordered seek is served by idx_extrinsics_signer_block,
+    // so the bound is an indexed LIMIT, not a sort-then-truncate over the
+    // signer's full retained history.
+    d1(
+      `SELECT COUNT(*) AS tx_count, MAX(block_number) AS last_tx_block, MAX(observed_at) AS last_tx_at, SUM(fee_tao) AS total_fee_tao FROM (SELECT block_number, observed_at, fee_tao FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?)`,
+      [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
+    ),
+    // Top call modules over the same bounded window. `count DESC` alone is not a
+    // total order, so when modules tie on count the trailing LIMIT 10 would keep
+    // an arbitrary subset (D1/SQLite group order is unspecified); call_module ASC
+    // makes both the membership and the ordering of the top-10 deterministic.
+    d1(
+      `SELECT call_module, COUNT(*) AS count FROM (SELECT call_module FROM extrinsics WHERE signer = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?) GROUP BY call_module ORDER BY count DESC, call_module ASC LIMIT 10`,
+      [ss58, ACCOUNT_ACTIVITY_RECENT_LIMIT],
+    ),
+  ]);
   return buildAccountSummary(ss58, {
     agg: aggRows[0],
     kinds: kindRows,
+    scanned: probeRows[0]?.n,
     registrations: regRows,
     recent: recentRows,
     activity: activityRows[0],
@@ -744,38 +806,59 @@ export async function loadAccountExtrinsics(
 export async function loadAccountTransfers(
   d1,
   ss58,
-  { direction, limit, offset, blockStart, blockEnd } = {},
+  { direction, limit, offset, cursor, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  const rangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
-  const pushRangeParams = (params) => {
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const blockRangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;
+  const cursorClause = useCursor
+    ? " AND (block_number, event_index) < (?, ?)"
+    : "";
+  const pushBlockRangeParams = (params) => {
     if (blockStart != null) params.push(blockStart);
     if (blockEnd != null) params.push(blockEnd);
+  };
+  const pushCursorParams = (params) => {
+    if (useCursor) params.push(cur[0], cur[1]);
   };
   let sql;
   let params;
   if (direction === "sent") {
     params = [ss58];
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause}`;
   } else if (direction === "received") {
     params = [ss58];
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${rangeClause}`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ?${blockRangeClause}${cursorClause}`;
   } else {
     params = [ss58];
-    pushRangeParams(params);
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
     params.push(ss58, ss58);
-    pushRangeParams(params);
-    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${rangeClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${rangeClause})`;
+    pushBlockRangeParams(params);
+    pushCursorParams(params);
+    sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM (SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_hotkey WHERE event_kind = 'Transfer' AND hotkey = ?${blockRangeClause}${cursorClause} UNION ALL SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events INDEXED BY idx_account_events_coldkey WHERE event_kind = 'Transfer' AND coldkey = ? AND hotkey <> ?${blockRangeClause}${cursorClause})`;
   }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ? OFFSET ?";
-  params.push(lim, off);
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
   const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
   return buildAccountTransfers(rows, ss58, {
     limit: lim,
     offset: off,
+    nextCursor,
     direction,
   });
 }

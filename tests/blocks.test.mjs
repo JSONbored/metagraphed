@@ -144,6 +144,29 @@ test("formatBlock rejects a negative or non-integer block_number cell to null", 
   assert.equal(formatBlock({ block_number: "abc" }).block_number, null);
 });
 
+test("loadBlock resolves neighbors when D1 returns a string-typed block_number (#1853)", async () => {
+  // D1 can return the INTEGER block_number as a numeric string. The neighbor
+  // guard must coerce the resolved anchor (like formatBlock) before the MAX/MIN
+  // lookup — a bare Number.isInteger("1234") is false, which skipped the query
+  // and wrongly reported prev/next_block_number: null for a block that has
+  // neighbors. Regression for the missed sibling of the #2489 string-cell fix.
+  const d1 = async (sql, params) => {
+    if (/block_number = \?/.test(sql)) {
+      return [{ block_number: "1234", block_hash: "0xabc", observed_at: 1 }];
+    }
+    if (/MAX\(block_number\)/.test(sql)) {
+      // The anchor must be bound as a Number, not the raw "1234" string.
+      assert.deepEqual(params, [1234, 1234]);
+      return [{ prev: 1230, next: 1240 }];
+    }
+    return [];
+  };
+  const out = await loadBlock(d1, "1234");
+  assert.equal(out.block.block_number, 1234);
+  assert.equal(out.prev_block_number, 1230);
+  assert.equal(out.next_block_number, 1240);
+});
+
 test("buildBlock defaults a null/absent ref to null (regression)", () => {
   // A caller that passes no ref must get ref:null, never undefined — keeps the
   // detail artifact JSON-stable when the lookup key itself is missing.
