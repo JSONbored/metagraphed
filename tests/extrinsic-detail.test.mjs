@@ -249,6 +249,43 @@ describe("data-api-mcp", () => {
     );
   });
 
+  test("dataApiFetchJson preserves nested error.message on upstream 400", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              message:
+                "method filter requires pallet unless block is specified",
+            },
+          }),
+          { status: 400 },
+        ),
+    });
+    await assert.rejects(
+      () => dataApiFetchJson(ctx, "/api/v1/chain-events?method=x"),
+      (err) =>
+        err.code === "invalid_params" &&
+        /method filter requires pallet/.test(err.message),
+    );
+  });
+
+  test("dataApiFetchJson preserves a top-level message envelope on upstream 400", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({ message: "pallet and method must be valid" }),
+          { status: 400 },
+        ),
+    });
+    await assert.rejects(
+      () => dataApiFetchJson(ctx, "/api/v1/chain-events?pallet=bad"),
+      (err) =>
+        err.code === "invalid_params" &&
+        /pallet and method must be valid/.test(err.message),
+    );
+  });
+
   test("dataApiFetchJson uses a default 400 message when the body is not JSON", async () => {
     await assert.rejects(
       () =>
@@ -343,6 +380,46 @@ describe("data-api-mcp", () => {
     assert.equal(out.events[0].pallet, "Balances");
   });
 
+  // Exact JSON contract from workers/data-api.mjs GET /blocks/:n/chain-events
+  // (mirrors tests/data-api.test.mjs).
+  test("loadBlockChainEvents round-trips the DATA_API block chain-events contract", async () => {
+    const dataApiPayload = {
+      block_number: 123,
+      count: 1,
+      events: [
+        {
+          event_index: 0,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: { x: 1 },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 100,
+        },
+      ],
+    };
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json(dataApiPayload),
+    });
+    const out = await loadBlockChainEvents(ctx, 123);
+    assert.deepEqual(out.events, dataApiPayload.events);
+    assert.equal(out.event_count, 1);
+    assert.equal(typeof out.events[0].observed_at, "number");
+  });
+
+  test("loadBlockChainEvents accepts event_count when count is absent", async () => {
+    const ctx = dataApiCtx({
+      fetchImpl: async () =>
+        Response.json({
+          block_number: 55,
+          event_count: 2,
+          events: [{ event_index: 0 }, { event_index: 1 }],
+        }),
+    });
+    const out = await loadBlockChainEvents(ctx, 55);
+    assert.equal(out.event_count, 2);
+  });
+
   test("loadBlockChainEvents falls back to the requested block_number", async () => {
     const ctx = dataApiCtx({
       fetchImpl: async () => Response.json({ count: 0, events: [] }),
@@ -404,6 +481,35 @@ describe("data-api-mcp", () => {
     assert.equal(out.extrinsic_index, 3);
     assert.equal(out.limit, 50);
     assert.deepEqual(out.events, []);
+  });
+
+  // Exact JSON contract from workers/data-api.mjs GET /chain-events?block=&extrinsic=
+  test("loadExtrinsicChainEvents round-trips the DATA_API chain-events feed contract", async () => {
+    const dataApiPayload = {
+      count: 1,
+      next_before: 123,
+      next_cursor: "123.0",
+      events: [
+        {
+          block_number: 123,
+          event_index: 0,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: { x: 1 },
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 100,
+        },
+      ],
+    };
+    const ctx = dataApiCtx({
+      fetchImpl: async () => Response.json(dataApiPayload),
+    });
+    const out = await loadExtrinsicChainEvents(ctx, "5870000-3");
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "123.0");
+    assert.deepEqual(out.events, dataApiPayload.events);
+    assert.equal(typeof out.events[0].observed_at, "number");
   });
 
   test("loadExtrinsicChainEvents forwards limit and cursor", async () => {

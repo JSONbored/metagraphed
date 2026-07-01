@@ -18,6 +18,23 @@ function clampChainEventsLimit(value) {
   return Math.min(Math.max(Math.floor(n), 1), CHAIN_EVENTS_LIMIT_MAX);
 }
 
+// The data Worker returns `{ error: "..." }` on 400; some envelopes use
+// `{ error: { message } }` or a top-level `message` instead.
+function dataApiErrorMessage(body) {
+  if (typeof body?.error === "string" && body.error) return body.error;
+  if (typeof body?.error?.message === "string" && body.error.message)
+    return body.error.message;
+  if (typeof body?.message === "string" && body.message) return body.message;
+  return null;
+}
+
+// REST all-events routes use `count`; tolerate legacy/alternate `event_count`.
+function eventCountFromDataApi(data) {
+  if (data?.count != null) return data.count;
+  if (data?.event_count != null) return data.event_count;
+  return Array.isArray(data?.events) ? data.events.length : 0;
+}
+
 export async function dataApiFetchJson(ctx, pathAndQuery) {
   if (ctx.env?.DATA_RATE_LIMITER?.limit) {
     const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
@@ -54,7 +71,7 @@ export async function dataApiFetchJson(ctx, pathAndQuery) {
     let message = "Invalid request to the all-events data tier.";
     try {
       const body = await response.json();
-      if (typeof body?.error === "string" && body.error) message = body.error;
+      message = dataApiErrorMessage(body) ?? message;
     } catch {
       /* ignore */
     }
@@ -93,7 +110,7 @@ export async function loadBlockChainEvents(ctx, blockNumber) {
   return {
     schema_version: 1,
     block_number: data?.block_number ?? blockNumber,
-    event_count: data?.count ?? 0,
+    event_count: eventCountFromDataApi(data),
     events: Array.isArray(data?.events) ? data.events : [],
   };
 }
@@ -130,7 +147,7 @@ export async function loadExtrinsicChainEvents(
     block_number: blockNumber,
     extrinsic_index: extrinsicIndex,
     limit: lim,
-    event_count: data?.count ?? 0,
+    event_count: eventCountFromDataApi(data),
     next_cursor: data?.next_cursor ?? null,
     events: Array.isArray(data?.events) ? data.events : [],
   };

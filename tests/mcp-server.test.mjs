@@ -6278,6 +6278,40 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 });
 
 describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain_events)", () => {
+  // Exact upstream JSON from workers/data-api.mjs (see tests/data-api.test.mjs).
+  const DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD = {
+    block_number: 123,
+    count: 1,
+    events: [
+      {
+        event_index: 0,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: { x: 1 },
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 100,
+      },
+    ],
+  };
+  const DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD = {
+    count: 1,
+    next_before: 123,
+    next_cursor: "123.0",
+    events: [
+      {
+        block_number: 123,
+        event_index: 0,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: { x: 1 },
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 100,
+      },
+    ],
+  };
+
   function makeDataApi({ payload, status = 200 } = {}) {
     const calls = [];
     return {
@@ -6320,6 +6354,22 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.match(dataApi.calls[0].pathname, /\/blocks\/4200000\/chain-events$/);
   });
 
+  test("get_block_chain_events round-trips the DATA_API block chain-events contract", async () => {
+    const dataApi = makeDataApi({
+      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 123 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_number, 123);
+    assert.equal(out.event_count, 1);
+    assert.deepEqual(out.events, DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events);
+    assert.equal(typeof out.events[0].observed_at, "number");
+  });
+
   test("get_extrinsic_chain_events forwards block+extrinsic filters", async () => {
     const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
     const res = await callTool(
@@ -6332,6 +6382,27 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
     assert.equal(dataApi.calls[0].searchParams.get("limit"), "50");
     assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
+  test("get_extrinsic_chain_events round-trips the DATA_API chain-events feed contract", async () => {
+    const dataApi = makeDataApi({
+      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+    });
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "5870000-3" },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "123.0");
+    assert.deepEqual(
+      out.events,
+      DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD.events,
+    );
+    assert.equal(typeof out.events[0].observed_at, "number");
+    assert.equal(dataApi.calls[0].searchParams.get("block"), "5870000");
+    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
   });
 
   test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {
@@ -6403,23 +6474,11 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
         listToolDefinitions().find((t) => t.name === name).outputSchema,
       );
     const dataApi = makeDataApi({
-      payload: {
-        block_number: 4200000,
-        count: 1,
-        events: [
-          {
-            block_number: 4200000,
-            event_index: 0,
-            pallet: "System",
-            method: "ExtrinsicSuccess",
-            observed_at: 1,
-          },
-        ],
-      },
+      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
     });
     const blockRes = await callTool(
       "get_block_chain_events",
-      { block_number: 4200000 },
+      { block_number: 123 },
       { env: { DATA_API: dataApi } },
     );
     assert.ok(
@@ -6427,10 +6486,13 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
         blockRes.body.result.structuredContent,
       ),
     );
+    const extrinsicDataApi = makeDataApi({
+      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+    });
     const extrinsicRes = await callTool(
       "get_extrinsic_chain_events",
-      { ref: "4200000-3", limit: 10 },
-      { env: { DATA_API: dataApi } },
+      { ref: "5870000-3", limit: 10 },
+      { env: { DATA_API: extrinsicDataApi } },
     );
     assert.ok(
       validatorFor("get_extrinsic_chain_events")(
