@@ -163,6 +163,24 @@ describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
     assert.equal(isPrivateOrLocalHostname("8.8.8.8"), false);
   });
 
+  // isPrivateIpv4Octets was factored out of the inline IPv4 branch in this PR,
+  // so every one of its range clauses is new to the patch even though most of
+  // the ranges themselves predate this change. Exercise each clause true, not
+  // just the new CGNAT one, so patch/branch coverage reflects the real logic.
+  test("rejects every pre-existing private IPv4 range this guard already covered", () => {
+    assert.equal(isPrivateOrLocalHostname("0.1.2.3"), true); // 0.0.0.0/8
+    assert.equal(isPrivateOrLocalHostname("10.1.2.3"), true); // 10.0.0.0/8
+    assert.equal(isPrivateOrLocalHostname("127.0.0.1"), true); // 127.0.0.0/8
+    assert.equal(isPrivateOrLocalHostname("169.254.1.1"), true); // 169.254.0.0/16
+    assert.equal(isPrivateOrLocalHostname("172.16.0.1"), true); // 172.16.0.0/12
+    assert.equal(isPrivateOrLocalHostname("172.31.255.255"), true); // 172.16.0.0/12
+    assert.equal(isPrivateOrLocalHostname("192.168.1.1"), true); // 192.168.0.0/16
+    assert.equal(isPrivateOrLocalHostname("172.15.255.255"), false); // just below
+    assert.equal(isPrivateOrLocalHostname("172.32.0.0"), false); // just above
+    assert.equal(isPrivateOrLocalHostname("169.253.255.255"), false); // just below 169.254
+    assert.equal(isPrivateOrLocalHostname("192.167.1.1"), false); // first ok, second not 168
+  });
+
   // The WHATWG URL parser re-serializes an IPv4-mapped IPv6 literal into
   // hex-tail form — [::ffff:100.64.0.1] becomes hostname "::ffff:6440:1", NOT
   // the dotted "::ffff:100.64.0.1" string. Route the literal through the same
