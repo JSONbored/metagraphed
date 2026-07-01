@@ -683,6 +683,22 @@ test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {
   assert.equal(res.status, 400);
 });
 
+test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
+  const env = createLocalArtifactEnv();
+  for (const path of [
+    "/api/v1/chain/transfers?limit=abc1",
+    "/api/v1/chain/transfers?limit=001",
+    "/api/v1/chain/transfers?limit=999999",
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, path);
+  }
+});
+
 test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
   const captured = [];
   const env = {

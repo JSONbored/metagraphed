@@ -434,7 +434,10 @@ describe("sampleFromSchema", () => {
       (sum, party) => sum + party.volume_tao,
       0,
     );
-    assert.equal(topSendersVolume / sample.total_volume_tao, sample.top_sender_share);
+    assert.equal(
+      topSendersVolume / sample.total_volume_tao,
+      sample.top_sender_share,
+    );
 
     // A shape missing one leaderboard array is not a transfers artifact and is
     // left untouched (guard branch).
