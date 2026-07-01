@@ -219,8 +219,14 @@ export async function loadBlock(d1, ref) {
   const rows = await d1(sql, [param]);
   let prev = null;
   let next = null;
-  const resolvedNumber = rows[0]?.block_number;
-  if (Number.isInteger(resolvedNumber)) {
+  // Coerce the resolved anchor through the same helper formatBlock uses: D1 can
+  // return the INTEGER block_number as a numeric string, and a bare
+  // `Number.isInteger(rows[0]?.block_number)` guard is false for "1234", so the
+  // neighbor query would be skipped and a resolved block would wrongly report
+  // prev/next_block_number: null (breaking chain-walk nav #1853). Mirrors the
+  // string-cell coercion in formatBlock / account-events formatAccountDay (#2489).
+  const resolvedNumber = toBlockNumber(rows[0]?.block_number);
+  if (resolvedNumber !== null) {
     const nbr = await d1(
       `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
