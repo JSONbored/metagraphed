@@ -99,6 +99,44 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.source, "data-worker-postgres");
   });
 
+  test("forwards a GET to DATA_API for a HEAD chain-events probe (not a 405)", async () => {
+    // DATA_API is GET-only. A HEAD probe must still get the bodiless 200 that
+    // every other GET route returns for HEAD — not the data Worker's 405 — so
+    // the proxy forwards a GET on its behalf and envelopeResponse strips the body.
+    let forwardedMethod = null;
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events", {
+        method: "HEAD",
+      }),
+      {
+        ...env,
+        DATA_API: {
+          fetch(req) {
+            forwardedMethod = req.method;
+            if (req.method !== "GET") {
+              return new Response(
+                JSON.stringify({ error: "method not allowed" }),
+                {
+                  status: 405,
+                  headers: { "content-type": "application/json" },
+                },
+              );
+            }
+            return new Response(
+              JSON.stringify({ window_blocks: 500, groups: 0, activity: [] }),
+              { status: 200, headers: { "content-type": "application/json" } },
+            );
+          },
+        },
+      },
+      {},
+    );
+    assert.equal(forwardedMethod, "GET");
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), "");
+    assert.ok(response.headers.get("etag"));
+  });
+
   test("maps a DATA_API upstream error to a clean error envelope", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events"),
