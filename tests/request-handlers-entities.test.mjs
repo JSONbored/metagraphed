@@ -3350,6 +3350,20 @@ describe("handleExtrinsics", () => {
     );
   });
 
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?block_start=500&block_end=100"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("a valid recent window is NOT short-circuited and queries D1", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     const now = Date.now();
