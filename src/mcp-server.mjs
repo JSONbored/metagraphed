@@ -15,13 +15,6 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
-// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
-// different contract from the shared pagination-profile clamp used here.
-import {
-  FEED_PAGINATION,
-  clampLimit as clampPageLimit,
-  clampOffset,
-} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
@@ -100,10 +93,9 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
-  buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountSubnets,
   loadAccountHistory,
   loadAccountExtrinsics,
@@ -119,7 +111,6 @@ import {
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -584,44 +575,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
-// account_events filtered by netuid, newest first, optional kind filter, keyset
-// (cursor) pagination on (block_number, event_index) with offset as the
-// deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
-  const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
-  const resolvedOffset = clampOffset(offset);
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(resolvedLimit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(resolvedOffset);
-  }
-  const rows = await run(sql, params);
-  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: resolvedLimit,
-    offset: resolvedOffset,
-    nextCursor,
-  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -2147,7 +2100,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(ctx, netuid, {
+      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
         limit: args?.limit,
         offset: args?.offset,

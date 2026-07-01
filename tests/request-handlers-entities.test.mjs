@@ -2648,6 +2648,24 @@ describe("handleSubnetEvents", () => {
     assert.ok(captures.params.some((p) => p.includes(100) && p.includes(900)));
   });
 
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 500 })],
+    });
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleSubnetEvents(
       req(`/api/v1/subnets/${NETUID}/events`),
