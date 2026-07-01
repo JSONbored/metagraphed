@@ -2262,13 +2262,13 @@ describe("MCP get_chain_fees", () => {
     assert.equal(calls.length, 3);
     assert.equal(calls[0][1], "Balances"); // daily series
     assert.equal(calls[1][1], "Balances"); // top fee payers
-    // Median query: one UNION ALL block per UTC day (dayStart, dayEnd,
-    // call_module, LIMIT), so call_module repeats at index 2 of every block.
+    // Median query: the sample cap + call_module filter are bound ONCE
+    // (numbered ?1/?2 params) and reused across every UNION ALL day block,
+    // followed by a day-start/day-end pair per UTC day.
     const medianParams = calls[2];
-    assert.equal(medianParams.length % 4, 0);
-    for (let i = 2; i < medianParams.length; i += 4) {
-      assert.equal(medianParams[i], "Balances");
-    }
+    assert.equal(medianParams[0], 10000);
+    assert.equal(medianParams[1], "Balances");
+    assert.equal((medianParams.length - 2) % 2, 0);
   });
 
   test("rejects an invalid window", async () => {

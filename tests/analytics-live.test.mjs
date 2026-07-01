@@ -726,16 +726,18 @@ describe("loadChainFees", () => {
     // per-day-cap correctness proof).
     assert.match(calls[2].sql, /UNION ALL/);
     assert.doesNotMatch(calls[2].sql, /PARTITION BY day ORDER BY observed_at/);
+    // The sample cap + call_module filter are the same value in every day
+    // block, so they're bound ONCE (numbered ?1/?2 params, reused across every
+    // UNION ALL block) rather than re-bound per block — D1 caps a statement at
+    // 100 bound params, and a scoped 30-day window already needs a
+    // day-start/day-end pair per block.
+    assert.match(calls[2].sql, /call_module = \?2/);
+    assert.match(calls[2].sql, /LIMIT \?1/);
     const dayMs = 24 * 60 * 60 * 1000;
     const cutoff = now - 7 * dayMs;
-    const expectedMedianParams = [];
+    const expectedMedianParams = [10000, "SubtensorModule"];
     for (let dayStart = cutoff; dayStart < now; dayStart += dayMs) {
-      expectedMedianParams.push(
-        dayStart,
-        dayStart + dayMs,
-        "SubtensorModule",
-        10000,
-      );
+      expectedMedianParams.push(dayStart, dayStart + dayMs);
     }
     assert.deepEqual(calls[2].params, expectedMedianParams);
   });
@@ -758,13 +760,38 @@ describe("loadChainFees", () => {
     assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
     assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
+    assert.match(calls[2].sql, /LIMIT \?1/);
     const dayMs = 24 * 60 * 60 * 1000;
     const cutoff = now - 30 * dayMs;
-    const expectedMedianParams = [];
+    const expectedMedianParams = [10000];
     for (let dayStart = cutoff; dayStart < now; dayStart += dayMs) {
-      expectedMedianParams.push(dayStart, dayStart + dayMs, 10000);
+      expectedMedianParams.push(dayStart, dayStart + dayMs);
     }
     assert.deepEqual(calls[2].params, expectedMedianParams);
+  });
+
+  test("stays under D1's 100-bound-parameter limit for the worst-case scoped 30d window", async () => {
+    // Regression: binding the sample cap + call_module filter fresh per UNION
+    // ALL day block (rather than once via numbered ?N params, reused across
+    // blocks) would push a scoped 30-day window to 30 * 4 = 120 bound
+    // parameters — over D1's 100-parameter-per-statement limit — and the
+    // median query would be rejected before it ever ran against live D1.
+    const now = Date.UTC(2026, 5, 26);
+    const calls = [];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      return [];
+    };
+    await loadChainFees(run, {
+      window: "30d",
+      callModule: "SubtensorModule",
+      observedAt: OBSERVED_AT,
+      now,
+    });
+    assert.ok(
+      calls[2].params.length < 100,
+      `median query has ${calls[2].params.length} bound params, over D1's 100-param limit`,
+    );
   });
 
   test("treats empty call_module as unscoped", async () => {
@@ -779,12 +806,13 @@ describe("loadChainFees", () => {
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    // One UNION ALL block per UTC day, 3 params each (dayStart, dayEnd, LIMIT)
-    // when unscoped — the exact day count depends on the real `now` this test
+    // One shared LIMIT param, then a day-start/day-end pair per UTC day
+    // (unscoped) — the exact day count depends on the real `now` this test
     // runs at (a 7d window spans 7 or 8 UTC calendar days), so assert the
-    // per-block shape rather than a fixed total.
-    assert.equal(calls[2].params.length % 3, 0);
-    assert.ok(calls[2].params.length >= 3 * 7);
+    // shape rather than a fixed total.
+    assert.equal(calls[2].params[0], 10000);
+    assert.equal((calls[2].params.length - 1) % 2, 0);
+    assert.ok(calls[2].params.length >= 1 + 2 * 7);
   });
 
   test("bounds the median sample per day so a high-volume day cannot starve its window siblings", async () => {

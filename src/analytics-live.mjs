@@ -616,26 +616,44 @@ export async function loadChainFees(
   // idx_extrinsics_observed to stop after at most CHAIN_FEE_MEDIAN_SAMPLE_LIMIT
   // rows for that day, so total scanned rows is bounded by days * the cap
   // instead of the whole window.
+  //
+  // The sample cap and (optional) call_module filter are the SAME value in
+  // every day block, so they're bound ONCE via numbered (?N) parameters and
+  // reused across every UNION ALL block, rather than re-bound per block. D1
+  // caps a statement at 100 bound parameters; a scoped 30-day window already
+  // needs a day-start + day-end pair per block, and re-binding the cap/filter
+  // too would push a 30-day scoped window to 120+ params.
   const dayBoundaries = [];
   for (let dayStart = utcDayFloor(cutoff); dayStart < now; dayStart += DAY_MS) {
     dayBoundaries.push(dayStart);
   }
-  const medianDayBlockSql = `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                COALESCE(fee_tao, 0) AS fee_tao,
-                COALESCE(tip_tao, 0) AS tip_tao
-         FROM extrinsics
-         WHERE observed_at >= ? AND observed_at < ?${moduleClause}
-         ORDER BY observed_at
-         LIMIT ?`;
-  const medianParams = dayBoundaries.flatMap((dayStart) => {
-    const bounds = [
+  const medianLimitParam = 1;
+  const medianModuleParam = callModuleFilter ? 2 : null;
+  const medianFirstDayParam = callModuleFilter ? 3 : 2;
+  const medianModuleClause = callModuleFilter
+    ? ` AND call_module = ?${medianModuleParam}`
+    : "";
+  const medianDayBlocks = dayBoundaries.map((dayStart, i) => {
+    const startParam = medianFirstDayParam + i * 2;
+    const endParam = startParam + 1;
+    return `SELECT * FROM (
+           SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                  COALESCE(fee_tao, 0) AS fee_tao,
+                  COALESCE(tip_tao, 0) AS tip_tao
+           FROM extrinsics
+           WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}
+           ORDER BY observed_at
+           LIMIT ?${medianLimitParam}
+         )`;
+  });
+  const medianParams = [
+    CHAIN_FEE_MEDIAN_SAMPLE_LIMIT,
+    ...(callModuleFilter ? [callModuleFilter] : []),
+    ...dayBoundaries.flatMap((dayStart) => [
       Math.max(dayStart, cutoff),
       Math.min(dayStart + DAY_MS, now),
-    ];
-    return callModuleFilter
-      ? [...bounds, callModuleFilter, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT]
-      : [...bounds, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT];
-  });
+    ]),
+  ];
   const [dailyRows, payerRows, medianRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
@@ -663,7 +681,7 @@ export async function loadChainFees(
     ),
     d1(
       `WITH capped_samples AS (
-         ${dayBoundaries.map(() => `SELECT * FROM (${medianDayBlockSql})`).join("\n         UNION ALL\n         ")}
+         ${medianDayBlocks.join("\n         UNION ALL\n         ")}
        ),
        fee_ranked AS (
          SELECT day,
