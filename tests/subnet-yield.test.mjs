@@ -147,6 +147,20 @@ describe("buildSubnetYield", () => {
     assert.equal(d.neurons.find((n) => n.uid === 7).hotkey, null);
   });
 
+  test("reads validator_permit as SQLite 0/1: a numeric-string '0' stays a miner", () => {
+    const d = buildSubnetYield(
+      [
+        { uid: 0, validator_permit: "0", stake_tao: 10, emission_tao: 1 },
+        { uid: 1, validator_permit: 1, stake_tao: 10, emission_tao: 1 },
+      ],
+      7,
+    );
+    assert.equal(d.validator_count, 1);
+    assert.equal(d.miner_count, 1);
+    assert.equal(d.neurons.find((n) => n.uid === 0).role, "miner");
+    assert.equal(d.neurons.find((n) => n.uid === 1).role, "validator");
+  });
+
   test("rounds tao + yield to rao precision", () => {
     const d = buildSubnetYield(
       [neuron(0, { stake: 3, emission: 1 })], // yield 0.333333333

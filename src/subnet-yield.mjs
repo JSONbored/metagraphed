@@ -73,7 +73,9 @@ export function buildSubnetYield(rows, netuid) {
     }
     const stake = toNumber(row?.stake_tao);
     const emission = toNumber(row?.emission_tao);
-    const isValidator = Boolean(row?.validator_permit);
+    // Match the sibling neuron formatter's SQLite 0/1 convention: only an integer 1
+    // is a validator, so a numeric-string "0" cannot slip through as truthy.
+    const isValidator = Number(row?.validator_permit) === 1;
     totalStake += stake;
     totalEmission += emission;
     if (isValidator) validatorCount += 1;
