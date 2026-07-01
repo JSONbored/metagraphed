@@ -12,6 +12,11 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const TRANSFER_KIND = "Transfer";
+const TRANSFER_KIND_OBSERVED_INDEX = "idx_account_events_kind_observed";
+const TRANSFER_KIND_OBSERVED_HOTKEY_INDEX =
+  "idx_account_events_kind_observed_hotkey";
+const TRANSFER_KIND_OBSERVED_COLDKEY_INDEX =
+  "idx_account_events_kind_observed_coldkey";
 
 // Supported windows (label -> days), the same set the stake-flow route exposes so
 // per-subnet capital-movement analytics stay consistent. Unsupported labels are
@@ -148,14 +153,18 @@ export async function loadSubnetTransferVolume(
       NEURON_HOTKEYS_SUBQUERY +
       ") THEN coldkey END) AS unique_receivers, " +
       "MAX(observed_at) AS last_observed " +
-      "FROM account_events " +
+      "FROM account_events INDEXED BY " +
+      TRANSFER_KIND_OBSERVED_INDEX +
+      " " +
       "WHERE event_kind = ? AND observed_at >= ? AND " +
       TRANSFER_MEMBERSHIP_CLAUSE,
     [netuid, netuid, TRANSFER_KIND, cutoff, netuid, netuid],
   );
   const senders = await d1(
     "SELECT hotkey AS address, SUM(amount_tao) AS volume_tao, " +
-      "COUNT(*) AS transfer_count FROM account_events " +
+      "COUNT(*) AS transfer_count FROM account_events INDEXED BY " +
+      TRANSFER_KIND_OBSERVED_HOTKEY_INDEX +
+      " " +
       "WHERE event_kind = ? AND observed_at >= ? AND hotkey IN (" +
       NEURON_HOTKEYS_SUBQUERY +
       ") GROUP BY hotkey ORDER BY volume_tao DESC, hotkey ASC LIMIT ?",
@@ -163,7 +172,9 @@ export async function loadSubnetTransferVolume(
   );
   const receivers = await d1(
     "SELECT coldkey AS address, SUM(amount_tao) AS volume_tao, " +
-      "COUNT(*) AS transfer_count FROM account_events " +
+      "COUNT(*) AS transfer_count FROM account_events INDEXED BY " +
+      TRANSFER_KIND_OBSERVED_COLDKEY_INDEX +
+      " " +
       "WHERE event_kind = ? AND observed_at >= ? AND coldkey IN (" +
       NEURON_HOTKEYS_SUBQUERY +
       ") GROUP BY coldkey ORDER BY volume_tao DESC, coldkey ASC LIMIT ?",

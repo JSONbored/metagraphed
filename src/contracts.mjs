@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-07-01.4";
+export const CONTRACT_VERSION = "2026-07-01.5";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -2742,7 +2742,9 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
                 // Deterministic worked example (schema-valid, no live data) so
                 // Swagger UI + agents see a concrete response shape. Generated
                 // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
+                example: sampleFromSchema(responseSchema, componentSchemas, "", 0, null, {
+                  contractVersion: CONTRACT_VERSION,
+                }),
               },
             },
           },

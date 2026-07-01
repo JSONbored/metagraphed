@@ -5560,7 +5560,7 @@ export interface operations {
                      *       "data": {
                      *         "artifact_contracts": [
                      *           {
-                     *             "contract_version": "2026-06-29.1",
+                     *             "contract_version": "2026-07-01.5",
                      *             "id": "example",
                      *             "path": "/metagraph/example.json",
                      *             "schema_ref": "#/components/schemas/Example",
@@ -5568,7 +5568,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "base_path": "/api/v1",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "openapi_url": "/api/v1/openapi.json",
@@ -5605,7 +5605,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -5743,7 +5743,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -5847,7 +5847,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -5995,7 +5995,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6114,7 +6114,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6232,7 +6232,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6349,7 +6349,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6478,7 +6478,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6586,7 +6586,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6706,7 +6706,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6802,7 +6802,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "extensions": {
                      *           "example": {}
                      *         },
@@ -6817,7 +6817,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -6935,7 +6935,7 @@ export interface operations {
                      *         ],
                      *         "blocker_summary": {},
                      *         "callable_service_count": 1,
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -6951,7 +6951,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7067,7 +7067,7 @@ export interface operations {
                      *           "example"
                      *         ],
                      *         "completeness_score": 100,
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "integration_readiness": 1,
                      *         "name": "Example Subnet",
@@ -7095,7 +7095,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7190,7 +7190,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "copyable_agent": {
                      *           "description": "Example description.",
                      *           "title": "Example Subnet",
@@ -7226,7 +7226,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7346,7 +7346,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7460,7 +7460,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7570,7 +7570,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7685,7 +7685,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7800,7 +7800,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -7906,7 +7906,7 @@ export interface operations {
                      *         "artifact_count": 1,
                      *         "artifact_size_bytes": 1,
                      *         "candidate_count": 1,
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "provider_count": 1,
@@ -7918,7 +7918,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8039,7 +8039,7 @@ export interface operations {
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1
@@ -8047,7 +8047,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8164,7 +8164,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8273,7 +8273,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8388,7 +8388,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8505,7 +8505,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8679,7 +8679,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8805,7 +8805,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -8922,7 +8922,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9055,7 +9055,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9160,7 +9160,7 @@ export interface operations {
                      *             "example"
                      *           ]
                      *         },
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -9189,7 +9189,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9307,7 +9307,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9403,7 +9403,7 @@ export interface operations {
                      *       "data": {
                      *         "artifacts": [
                      *           {
-                     *             "contract_version": "2026-06-29.1",
+                     *             "contract_version": "2026-07-01.5",
                      *             "id": "example",
                      *             "path": "/metagraph/example.json",
                      *             "schema_ref": "#/components/schemas/Example",
@@ -9411,7 +9411,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "base_path": "/metagraph",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "name": "Example Subnet",
                      *         "notes": "Example description.",
@@ -9424,7 +9424,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9532,7 +9532,7 @@ export interface operations {
                      *           "score_distribution": {},
                      *           "scored_subnet_count": 1
                      *         },
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "curated_overlay_count": 1,
                      *         "curation_level_counts": {
                      *           "example": 1
@@ -9559,7 +9559,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9666,7 +9666,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "coverage_depth_version": 1,
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
@@ -9756,7 +9756,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9860,7 +9860,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "curation": [
                      *           {
                      *             "candidate_count": 1,
@@ -9893,7 +9893,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -9999,7 +9999,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "example",
                      *         "notes": "Example description.",
@@ -10039,7 +10039,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10148,7 +10148,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10256,7 +10256,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "incidents": [
                      *           {
@@ -10300,7 +10300,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10408,7 +10408,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "disabled_proxy_contract": {
                      *           "allowed_methods": [
                      *             "GET"
@@ -10474,7 +10474,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10583,7 +10583,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "endpoints": [
                      *           {
                      *             "auth_required": true,
@@ -10631,7 +10631,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10746,7 +10746,7 @@ export interface operations {
                      *             "support_summary": "Example description."
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1
@@ -10754,7 +10754,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10876,7 +10876,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -10997,7 +10997,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11092,7 +11092,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "candidate_count": 1,
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "coverage": [
                      *           {
                      *             "netuid": 7,
@@ -11119,7 +11119,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11213,7 +11213,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -11255,7 +11255,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11360,7 +11360,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "gaps": [
                      *           {
                      *             "coverage_level": "native-only",
@@ -11388,7 +11388,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11492,7 +11492,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "global": {},
                      *         "health_source": "probe-derived",
@@ -11514,7 +11514,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11623,7 +11623,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "date": "2026-06-01",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
@@ -11650,7 +11650,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11776,7 +11776,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -11898,7 +11898,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12000,7 +12000,7 @@ export interface operations {
                      *             "target_netuid": 7
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "graduated_subnet_count": 1,
                      *         "link_count": 1,
@@ -12024,7 +12024,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12130,7 +12130,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12239,7 +12239,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "profiles": [
@@ -12387,7 +12387,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12492,7 +12492,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "providers": [
@@ -12510,7 +12510,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12606,7 +12606,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "provider": {
@@ -12637,7 +12637,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12747,7 +12747,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "endpoints": [
                      *           {
                      *             "auth_required": true,
@@ -12801,7 +12801,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -12911,7 +12911,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13005,7 +13005,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "counts": {
                      *           "candidates": 1,
                      *           "endpoints": 1,
@@ -13034,7 +13034,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13170,7 +13170,7 @@ export interface operations {
                      *             "suggested_next_action": "example"
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -13189,7 +13189,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13297,7 +13297,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "entries": [
                      *           {
                      *             "candidate_evidence_by_kind": {},
@@ -13348,7 +13348,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13462,7 +13462,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "queue": [
@@ -13556,7 +13556,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13672,7 +13672,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "groups": [
                      *           {
@@ -13777,7 +13777,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -13882,7 +13882,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "priorities": [
@@ -13907,7 +13907,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14015,7 +14015,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "profiles": [
@@ -14104,7 +14104,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14213,7 +14213,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "endpoints": [
                      *           {
                      *             "chain": "bittensor",
@@ -14244,7 +14244,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14338,7 +14338,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "disabled_proxy_contract": {
                      *           "allowed_methods": [
                      *             "GET"
@@ -14404,7 +14404,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14542,7 +14542,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14636,7 +14636,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -14653,7 +14653,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14756,7 +14756,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "document_count": 1,
                      *         "documents": [
                      *           {
@@ -14776,7 +14776,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14879,7 +14879,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "document_count": 1,
                      *         "documents": [
                      *           {
@@ -14896,7 +14896,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -14990,7 +14990,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "providers": [
@@ -15021,7 +15021,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -15124,7 +15124,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -15150,7 +15150,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -15276,7 +15276,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "finney",
                      *         "notes": "Example description.",
@@ -15287,7 +15287,7 @@ export interface operations {
                      *           "method": "GET",
                      *           "package": "example",
                      *           "rpc_family": "example",
-                     *           "version": "2026-06-29.1"
+                     *           "version": "2026-07-01.5"
                      *         },
                      *         "subnets": [
                      *           {
@@ -15305,7 +15305,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -15431,7 +15431,7 @@ export interface operations {
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "economics": {
                      *           "alpha_in_pool": 0.5,
                      *           "alpha_out_pool": 0.5,
@@ -15584,7 +15584,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -15706,7 +15706,7 @@ export interface operations {
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1
@@ -15714,7 +15714,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -15890,7 +15890,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16001,7 +16001,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16111,7 +16111,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "endpoints": [
                      *           {
                      *             "auth_required": true,
@@ -16162,7 +16162,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16280,7 +16280,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16397,7 +16397,7 @@ export interface operations {
                      *             "support_summary": "Example description."
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1
@@ -16405,7 +16405,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16511,7 +16511,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "enrichment_queue": [
                      *           {
                      *             "adapter_score": 100,
@@ -16611,7 +16611,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16719,7 +16719,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "health_source": "probe-derived",
                      *         "name": "Example Subnet",
@@ -16755,7 +16755,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16879,7 +16879,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -16993,7 +16993,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17114,7 +17114,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17225,7 +17225,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17341,7 +17341,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17464,7 +17464,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17577,7 +17577,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17673,7 +17673,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "counts": {
                      *           "candidates": 1,
                      *           "endpoints": 1,
@@ -17870,7 +17870,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -17981,7 +17981,7 @@ export interface operations {
                      *             "url": "https://api.metagraph.sh/example"
                      *           }
                      *         ],
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "endpoints": [
                      *           {
                      *             "auth_required": true,
@@ -18242,7 +18242,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -18352,7 +18352,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -18458,7 +18458,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -18478,7 +18478,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -18589,7 +18589,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -18724,7 +18724,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -18867,7 +18867,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19001,7 +19001,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19115,7 +19115,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19250,7 +19250,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19377,7 +19377,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19482,7 +19482,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -19502,7 +19502,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",
@@ -19631,7 +19631,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "example",
                      *         "cache": "short",
-                     *         "contract_version": "2026-06-29.1",
+                     *         "contract_version": "2026-07-01.5",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "pagination": {
                      *           "collection": "example",

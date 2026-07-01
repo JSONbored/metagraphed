@@ -662,7 +662,8 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 // GET /api/v1/subnets/{netuid}/transfer-volume?window=7d|30d|90d&limit=20: native-TAO
 // Balances.Transfer volume for one subnet over the window — total volume + count,
 // distinct senders/receivers, top senders/receivers leaderboards, and the top
-// senders' share of total volume. Summed live from account_events (idx_account_events_netuid_kind).
+// senders' share of total volume. Summed live from account_events
+// (idx_account_events_kind_observed*).
 // Cold/absent store → 200 with zeroed totals + empty leaderboards (never 404).
 export async function handleSubnetTransferVolume(request, env, netuid, url) {
   const validationError = validateQueryParams(url, ["window", "limit"]);

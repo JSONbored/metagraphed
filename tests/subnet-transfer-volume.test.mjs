@@ -150,7 +150,7 @@ describe("loadSubnetTransferVolume", () => {
     });
     assert.equal(calls.length, 3);
     for (const { sql, params } of calls) {
-      assert.match(sql, /FROM account_events/);
+      assert.match(sql, /FROM account_events INDEXED BY idx_account_events_kind_observed/);
       assert.match(sql, /FROM neurons WHERE netuid = \?/);
       assert.ok(params.includes(7));
       assert.ok(params.includes(TRANSFER_KIND));
