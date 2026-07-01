@@ -285,6 +285,7 @@ EXTRACTORS = {
     "StakeRemoved": _stake,
     "StakeMoved": _moved,
     "AxonServed": _axon,
+    "PrometheusServed": _axon,  # [netuid, hotkey]
     "WeightsSet": _weights,
     "RootClaimed": _root,
     # Subnet lifecycle (#1816)

@@ -50,6 +50,7 @@ export const INDEXED_EVENT_KINDS = [
   "StakeRemoved",
   "StakeMoved",
   "AxonServed",
+  "PrometheusServed",
   "WeightsSet",
   "RootClaimed",
 ];

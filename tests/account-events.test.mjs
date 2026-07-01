@@ -4,6 +4,7 @@ import {
   ACCOUNT_EVENT_COLUMNS,
   EVENT_INSERT_COLUMNS,
   INDEXED_EVENT_KINDS,
+  INGESTED_EVENT_KINDS,
   EVENT_RETENTION_MS,
   formatAccountEvent,
   formatAccountDay,
@@ -100,9 +101,14 @@ test("INDEXED_EVENT_KINDS covers the core entity events", () => {
     "StakeRemoved",
     "WeightsSet",
     "AxonServed",
+    "PrometheusServed",
   ]) {
     assert.ok(INDEXED_EVENT_KINDS.includes(k), `missing ${k}`);
   }
+});
+
+test("INGESTED_EVENT_KINDS accepts PrometheusServed for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("PrometheusServed"));
 });
 
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
