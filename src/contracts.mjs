@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.12";
+export const CONTRACT_VERSION = "2026-07-01.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -947,6 +947,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetStakeFlowArtifact",
   ),
   artifact(
+    "subnet-transfer-volume",
+    "/metagraph/subnets/{netuid}/transfer-volume.json",
+    "Per-subnet native-TAO transfer analytics over a recent window (7d/30d/90d): total Balances.Transfer volume + count, distinct senders/receivers, top senders/receivers ranked by volume, and the top senders' share of total volume, summed live from the account_events stream at /api/v1/subnets/{netuid}/transfer-volume (no static file).",
+    "SubnetTransferVolumeArtifact",
+  ),
+  artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
     "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
@@ -1792,6 +1798,26 @@ export const API_ROUTES = [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-transfer-volume",
+    "GET",
+    "/api/v1/subnets/{netuid}/transfer-volume",
+    "/metagraph/subnets/{netuid}/transfer-volume.json",
+    "Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count, distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
       },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],

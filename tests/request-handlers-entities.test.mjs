@@ -22,6 +22,7 @@ import {
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
+  handleSubnetTransferVolume,
   handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
@@ -42,6 +43,7 @@ import {
   canonicalSubnetHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
+  canonicalSubnetTransferVolumeCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
 } from "../workers/request-handlers/entities.mjs";
@@ -206,6 +208,7 @@ function dbWith({
   turnoverBounds,
   turnoverRows,
   stakeFlow,
+  subnetTransferVolume,
   agg,
   kinds,
   registrations,
@@ -288,6 +291,27 @@ function dbWith({
                     /event_kind IN \(\?, \?\)/.test(sql)
                   ) {
                     return { results: stakeFlow || [] };
+                  }
+                  // Per-subnet transfer volume: totals aggregate (before the generic
+                  // netuid-only subnet-events match below).
+                  if (/COUNT\(DISTINCT hotkey\) AS unique_senders/.test(sql)) {
+                    return {
+                      results: subnetTransferVolume?.totals
+                        ? [subnetTransferVolume.totals]
+                        : [],
+                    };
+                  }
+                  if (
+                    /GROUP BY hotkey/.test(sql) &&
+                    /netuid = \? AND event_kind = \?/.test(sql)
+                  ) {
+                    return { results: subnetTransferVolume?.senders || [] };
+                  }
+                  if (
+                    /GROUP BY coldkey/.test(sql) &&
+                    /netuid = \? AND event_kind = \?/.test(sql)
+                  ) {
+                    return { results: subnetTransferVolume?.receivers || [] };
                   }
                   // Account summary aggregates (order matters).
                   if (/GROUP BY event_kind/.test(sql)) {
@@ -1516,6 +1540,127 @@ describe("handleSubnetStakeFlow", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/stake-flow?bogus=1");
+    });
+  });
+});
+
+describe("handleSubnetTransferVolume", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetTransferVolume(
+      req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/transfer-volume?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-retention window with 400", async () => {
+    const res = await handleSubnetTransferVolume(
+      req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/transfer-volume?window=1y`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-range limit with 400", async () => {
+    const res = await handleSubnetTransferVolume(
+      req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/transfer-volume?limit=0`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetTransferVolume,
+      req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/transfer-volume`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_volume_tao, 0);
+    assert.equal(body.data.transfer_count, 0);
+    assert.deepEqual(body.data.top_senders, []);
+    assert.deepEqual(body.data.top_receivers, []);
+    await assertValidComponent("SubnetTransferVolumeArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/transfer-volume.json`,
+    );
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("shapes totals + leaderboards, bound to netuid + Transfer kind", async () => {
+    const { env } = dbWith({
+      subnetTransferVolume: {
+        totals: {
+          transfer_count: 8,
+          total_volume_tao: 500,
+          unique_senders: 2,
+          unique_receivers: 3,
+          last_observed: 1717900000000,
+        },
+        senders: [
+          { address: "5SenderA", volume_tao: 300, transfer_count: 5 },
+          { address: "5SenderB", volume_tao: 100, transfer_count: 2 },
+        ],
+        receivers: [{ address: "5ReceiverA", volume_tao: 250, transfer_count: 4 }],
+      },
+    });
+    const body = await json(
+      await handleSubnetTransferVolume(
+        req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/transfer-volume?window=90d&limit=5`),
+      ),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.window, "90d");
+    assert.equal(body.data.total_volume_tao, 500);
+    assert.equal(body.data.transfer_count, 8);
+    assert.equal(body.data.top_sender_share, 0.8);
+    assert.equal(body.data.top_senders.length, 2);
+    assert.equal(body.data.top_receivers[0].address, "5ReceiverA");
+    await assertValidComponent("SubnetTransferVolumeArtifact", body.data);
+    assert.equal(
+      body.meta.generated_at,
+      new Date(1717900000000).toISOString(),
+    );
+  });
+
+  describe("canonicalSubnetTransferVolumeCachePath", () => {
+    test("canonicalizes omitted window and limit to one cache key", () => {
+      const omitted = canonicalSubnetTransferVolumeCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/transfer-volume"),
+      );
+      const explicit = canonicalSubnetTransferVolumeCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/transfer-volume?window=30d&limit=20",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(
+        omitted,
+        "/api/v1/subnets/7/transfer-volume?window=30d&limit=20",
+      );
+    });
+
+    test("passes an invalid window through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetTransferVolumeCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/transfer-volume?window=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/transfer-volume?window=bogus");
     });
   });
 });

@@ -1568,6 +1568,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/transfer-volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count, distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream. */
+        get: operations["subnetTransferVolume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/turnover": {
         parameters: {
             query?: never;
@@ -5052,6 +5069,26 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One account's native-TAO transfer volume within a subnet over a window. */
+        SubnetTransferParty: {
+            address: string;
+            transfer_count: number;
+            volume_tao: number;
+        };
+        /** @description Per-subnet native-TAO transfer analytics over a 7d/30d/90d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/subnets/{netuid}/transfer-volume (no static file); zeros + empty leaderboards when cold. */
+        SubnetTransferVolumeArtifact: {
+            netuid: number;
+            schema_version: number;
+            top_receivers: components["schemas"]["SubnetTransferParty"][];
+            top_sender_share: number | null;
+            top_senders: components["schemas"]["SubnetTransferParty"][];
+            total_volume_tao: number;
+            transfer_count: number;
+            unique_receivers: number;
+            unique_senders: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description Validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots, computed live from the neuron_daily D1 rollup. */
         SubnetTurnoverArtifact: {
@@ -18179,6 +18216,131 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetTransferVolume: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "top_receivers": [
+                     *           {
+                     *             "address": "example",
+                     *             "transfer_count": 1,
+                     *             "volume_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "top_sender_share": 0.5,
+                     *         "top_senders": [
+                     *           {
+                     *             "address": "example",
+                     *             "transfer_count": 1,
+                     *             "volume_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "total_volume_tao": 0.5,
+                     *         "transfer_count": 1,
+                     *         "unique_receivers": 1,
+                     *         "unique_senders": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetTransferVolumeArtifact"];
                     };
                 };
             };
