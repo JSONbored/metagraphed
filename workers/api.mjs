@@ -76,6 +76,7 @@ import {
   canonicalSubnetStakeFlowCachePath,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
+  handleGlobalValidators,
   canonicalSubnetMetagraphCachePath,
   handleAccount,
   handleAccountHistory,
@@ -84,6 +85,7 @@ import {
   handleAccountExtrinsics,
   handleAccountTransfers,
   handleAccountCounterparties,
+  handleAccountStakeFlow,
   handleAccountSubnets,
   handleBlocks,
   handleBlock,
@@ -210,6 +212,7 @@ import {
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
   ACCOUNT_TRANSFERS_PATH_PATTERN,
   ACCOUNT_COUNTERPARTIES_PATH_PATTERN,
+  ACCOUNT_STAKE_FLOW_PATH_PATTERN,
   ACCOUNT_PATH_PATTERN,
   ACCOUNT_SUBNETS_PATH_PATTERN,
   BLOCK_DETAIL_PATH_PATTERN,
@@ -1149,6 +1152,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     );
   }
 
+  // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
+  // dispatched before subnet routing so the top-level collection stays unambiguous.
+  if (url.pathname === "/api/v1/validators") {
+    return handleGlobalValidators(request, env, url);
+  }
+
   // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug
   // resolution so "movers" is never treated as a slug): every subnet ranked by its
   // stake/emission/validator change over the window, from the neuron_daily rollup.
@@ -1501,6 +1510,17 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    const accountStakeFlowMatch = ACCOUNT_STAKE_FLOW_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountStakeFlowMatch) {
+      return handleAccountStakeFlow(
+        request,
+        env,
+        accountStakeFlowMatch[1],
+        resolved.url,
+      );
+    }
     const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1615,6 +1635,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/ask" ||
     pathname === "/api/v1/graphql" ||
     pathname === "/api/v1/search/semantic" ||
+    pathname === "/api/v1/validators" ||
     pathname === "/api/v1/registry/leaderboards" ||
     pathname === "/api/v1/compare" ||
     pathname === "/api/v1/subnets/movers" ||

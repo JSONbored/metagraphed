@@ -11,8 +11,9 @@ import { formatRpcUsage } from "./health-serving.mjs";
 
 // RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,
 // failover + error rate, cache-hit rate, per-endpoint distribution, and bounded
-// time buckets. `d1` is a (sql, params) => rows runner — d1Runner(env) in the
-// Worker, mcpD1Runner(ctx) in the MCP server.
+// time buckets. Endpoint/network leaderboards tie-break on their GROUP BY keys
+// so tied request counts keep stable LIMIT membership. `d1` is a (sql, params) =>
+// rows runner — d1Runner(env) in the Worker, mcpD1Runner(ctx) in the MCP server.
 export async function loadRpcUsage(
   d1,
   { window = "7d", observedAt = null, now = Date.now() } = {},
@@ -54,7 +55,7 @@ export async function loadRpcUsage(
          FROM rpc_proxy_events
          WHERE observed_at >= ? AND endpoint_id IS NOT NULL
          GROUP BY endpoint_id, provider
-         ORDER BY requests DESC
+         ORDER BY requests DESC, endpoint_id ASC, provider ASC
          LIMIT 50`,
         [since],
       ),
@@ -65,7 +66,7 @@ export async function loadRpcUsage(
          FROM rpc_proxy_events
          WHERE observed_at >= ?
          GROUP BY network
-         ORDER BY requests DESC`,
+         ORDER BY requests DESC, network ASC`,
         [since],
       ),
       d1(

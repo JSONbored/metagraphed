@@ -91,6 +91,26 @@ describe("formatAccountDay", () => {
     assert.equal(formatAccountDay(null), null);
     assert.equal(formatAccountDay("x"), null);
   });
+
+  test("formatAccountDay coerces string-typed netuid and event_count cells to Numbers", () => {
+    // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
+    // `?? null` pass-through this replaced would have leaked strings into the API
+    // payload. Mirrors the coercion in formatAccountEvent (#2481), blocks.mjs
+    // (#2435), and extrinsics.mjs (#2439).
+    const out = formatAccountDay({ netuid: "7", event_count: "42" });
+    assert.equal(out.netuid, 7);
+    assert.equal(typeof out.netuid, "number");
+    assert.equal(out.event_count, 42);
+    assert.equal(typeof out.event_count, "number");
+  });
+
+  test("formatAccountDay rejects non-integer or negative netuid/event_count cells to null", () => {
+    // Guard the toBlockNumber helper for these fields: netuids are never negative
+    // on-chain, and counts are non-negative integers.
+    assert.equal(formatAccountDay({ netuid: -1 }).netuid, null);
+    assert.equal(formatAccountDay({ event_count: 1.5 }).event_count, null);
+    assert.equal(formatAccountDay({ netuid: "abc" }).netuid, null);
+  });
 });
 
 describe("buildAccountHistory", () => {
