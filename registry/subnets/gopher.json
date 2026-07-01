@@ -129,45 +129,22 @@
       "authority": "community",
       "auth_required": true,
       "public_safe": true,
-      "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only endpoint; recurring read probes are disabled.",
+      "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only endpoint; recurring read probes are intentionally disabled.",
       "source_urls": [
         "https://github.com/gopher-lab/gopher-client/blob/main/README.md",
         "https://developers.gopher-ai.com/docs/data/intro",
-        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go",
-        "https://data.gopher-ai.com/endpoints"
-      ],
-      "review": {
-        "state": "community-submitted",
-        "submitted_by": "claytonlin1110"
-      },
-      "notes": "Official SN42 Gopher Data API for real-time search and scrape jobs (Twitter, TikTok, Reddit, web, and related sources)."
-    },
-    {
-      "id": "sn-42-gopher-ai-openapi",
-      "name": "Gopher Data API OpenAPI",
-      "kind": "openapi",
-      "url": "https://data.gopher-ai.com/endpoints",
-      "provider": "gopher-ai",
-      "authority": "community",
-      "auth_required": false,
-      "public_safe": true,
-      "schema_status": "machine-readable",
-      "schema_url": "https://data.gopher-ai.com/openapi.json",
-      "source_urls": [
-        "https://developers.gopher-ai.com/docs/data/intro",
-        "https://developers.gopher-ai.com/docs/data/endpoints"
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go"
       ],
       "probe": {
-        "enabled": true,
-        "method": "GET",
-        "expect": "any",
-        "timeout_ms": 10000
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
       },
       "review": {
         "state": "community-submitted",
         "submitted_by": "claytonlin1110"
       },
-      "notes": "Interactive Swagger UI for the Gopher Data API at data.gopher-ai.com/endpoints, linked from the official developer data endpoints documentation."
+      "notes": "Official SN42 Gopher Data API for real-time search and scrape jobs (Twitter, TikTok, Reddit, web, and related sources). Documented POST /v1/search/live on data.gopher-ai.com/api in gopher-client and gopher-mcp-server."
     }
   ]
 }
