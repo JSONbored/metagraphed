@@ -220,7 +220,7 @@ function normalizeSubnetYieldSample(out) {
       stake_tao: 10,
       emission_tao: 2,
       yield: 0.2,
-      vs_median: "at",
+      vs_median: "below",
     },
   ];
   out.neuron_count = 2;
@@ -230,7 +230,8 @@ function normalizeSubnetYieldSample(out) {
   out.total_emission_tao = 4;
   out.subnet_yield = 0.266666667;
   out.mean_yield = 0.3;
-  out.median_yield = 0.2;
+  // Conventional median of the two yields [0.2, 0.4] -> (0.2 + 0.4) / 2.
+  out.median_yield = 0.3;
   out.p25_yield = 0.2;
   out.p75_yield = 0.4;
   out.p90_yield = 0.4;

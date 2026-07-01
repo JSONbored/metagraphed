@@ -68,24 +68,46 @@ describe("buildSubnetYield", () => {
     assert.equal(u3.role, "miner");
   });
 
-  test("computes mean + nearest-rank percentiles over the defined yields", () => {
+  test("computes mean, conventional median, and nearest-rank percentiles", () => {
     const d = buildSubnetYield(set, 7);
     assert.equal(d.mean_yield, 0.25); // (0.1+0.2+0.3+0.4)/4
-    assert.equal(d.median_yield, 0.2); // p50 nearest-rank
-    assert.equal(d.p25_yield, 0.1);
+    assert.equal(d.median_yield, 0.25); // even count -> (0.2+0.3)/2
+    assert.equal(d.p25_yield, 0.1); // p25/p75/p90 stay nearest-rank
     assert.equal(d.p75_yield, 0.3);
     assert.equal(d.p90_yield, 0.4);
   });
 
   test("labels each UID above/below/at the median and ranks by yield desc", () => {
-    const d = buildSubnetYield(set, 7);
+    // Odd count so the median is a real UID's yield, exercising all three labels.
+    const d = buildSubnetYield(
+      [
+        neuron(0, { stake: 10, emission: 1 }), // yield 0.1
+        neuron(1, { stake: 10, emission: 2 }), // yield 0.2 (== median)
+        neuron(2, { stake: 10, emission: 3 }), // yield 0.3
+      ],
+      7,
+    );
+    assert.equal(d.median_yield, 0.2); // odd count -> middle value
     assert.deepEqual(
       d.neurons.map((n) => n.uid),
-      [3, 2, 1, 0], // yield desc
+      [2, 1, 0], // yield desc
     );
     assert.equal(d.neurons.find((n) => n.uid === 0).vs_median, "below");
     assert.equal(d.neurons.find((n) => n.uid === 1).vs_median, "at");
-    assert.equal(d.neurons.find((n) => n.uid === 3).vs_median, "above");
+    assert.equal(d.neurons.find((n) => n.uid === 2).vs_median, "above");
+  });
+
+  test("median averages the two middle values for an even count (not lower-middle)", () => {
+    const d = buildSubnetYield(
+      [
+        neuron(0, { stake: 10, emission: 2 }), // yield 0.2
+        neuron(1, { stake: 10, emission: 4 }), // yield 0.4
+      ],
+      7,
+    );
+    assert.equal(d.median_yield, 0.3); // (0.2 + 0.4) / 2, not the lower-middle 0.2
+    assert.equal(d.neurons.find((n) => n.uid === 0).vs_median, "below"); // 0.2 < 0.3
+    assert.equal(d.neurons.find((n) => n.uid === 1).vs_median, "above"); // 0.4 > 0.3
   });
 
   test("zero-stake UIDs get a null yield, are excluded from the distribution, and sink last", () => {

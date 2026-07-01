@@ -44,12 +44,24 @@ function computeYieldValue(emission, stake) {
 }
 
 // Nearest-rank percentile of an ascending numeric array (deterministic, no interpolation
-// ambiguity). Null on an empty set.
+// ambiguity), used for the p25/p75/p90 spread. Null on an empty set.
 function percentile(ascending, p) {
   if (ascending.length === 0) return null;
   const rank = Math.ceil((p / 100) * ascending.length) - 1;
   const index = Math.min(ascending.length - 1, Math.max(0, rank));
   return ascending[index];
+}
+
+// Conventional median of an ascending array: the middle value for an odd count, the
+// average of the two middle values for an even count (so [0.2, 0.4] -> 0.3, not the
+// lower-middle a nearest-rank p50 would give). Null on an empty set.
+function median(ascending) {
+  const n = ascending.length;
+  if (n === 0) return null;
+  const mid = Math.floor(n / 2);
+  return n % 2 === 1
+    ? ascending[mid]
+    : round9((ascending[mid - 1] + ascending[mid]) / 2);
 }
 
 // Shape a subnet's neuron rows into a yield distribution scorecard. `rows` is the
@@ -94,7 +106,7 @@ export function buildSubnetYield(rows, netuid) {
     .map((n) => n.yield)
     .filter((y) => y != null)
     .sort((a, b) => a - b);
-  const medianYield = percentile(definedYields, 50);
+  const medianYield = median(definedYields);
   const meanYield =
     definedYields.length > 0
       ? round9(

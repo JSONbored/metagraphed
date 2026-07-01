@@ -18408,7 +18408,7 @@ export interface operations {
                      *         "block_number": 5000000,
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "mean_yield": 0.3,
-                     *         "median_yield": 0.2,
+                     *         "median_yield": 0.3,
                      *         "miner_count": 1,
                      *         "netuid": 7,
                      *         "neuron_count": 2,
@@ -18428,7 +18428,7 @@ export interface operations {
                      *             "role": "validator",
                      *             "stake_tao": 10,
                      *             "uid": 0,
-                     *             "vs_median": "at",
+                     *             "vs_median": "below",
                      *             "yield": 0.2
                      *           }
                      *         ],
