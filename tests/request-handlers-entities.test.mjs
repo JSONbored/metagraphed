@@ -1742,6 +1742,28 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("rejects a non-integer netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("rejects a negative netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=-1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
