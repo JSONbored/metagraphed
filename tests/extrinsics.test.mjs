@@ -900,8 +900,8 @@ test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
     callModule: "SubtensorModule",
     callFunction: "add_stake",
     success: false,
-    blockStart: 100,
-    blockEnd: 200,
+    blockStart: 1200,
+    blockEnd: 1300,
     from: fromMs,
     to: toMs,
     nowMs: toMs,
@@ -924,6 +924,7 @@ test("loadExtrinsics short-circuits impossible time ranges before D1", async () 
   const capture = [];
   const d1 = recordingExtrinsicsD1(capture);
   const nowMs = 1_800_000_000_000;
+  assert.equal(typeof EXTRINSIC_RETENTION_MS, "number");
   const floor = nowMs - EXTRINSIC_RETENTION_MS;
   const empty = await loadExtrinsics(d1, {
     from: nowMs + DAY_MS + 1,
@@ -940,6 +941,15 @@ test("loadExtrinsics short-circuits impossible time ranges before D1", async () 
   capture.length = 0;
   const inverted = await loadExtrinsics(d1, { from: 200, to: 100, nowMs });
   assert.equal(inverted.extrinsic_count, 0);
+  assert.equal(capture.length, 0);
+
+  capture.length = 0;
+  const invertedBlockRange = await loadExtrinsics(d1, {
+    blockStart: 200,
+    blockEnd: 100,
+    nowMs,
+  });
+  assert.equal(invertedBlockRange.extrinsic_count, 0);
   assert.equal(capture.length, 0);
 });
 

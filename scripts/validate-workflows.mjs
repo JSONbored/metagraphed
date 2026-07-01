@@ -111,10 +111,14 @@ for (const workflow of workflows) {
           content,
           "Upload coverage to Codecov (fork PR tokenless)",
         ).includes("fail_ci_if_error: true") &&
-        workflowStepBlock(
+        forkCodecovStepUsesHeadLabel(
           content,
           "Upload coverage to Codecov (fork PR tokenless)",
-        ).includes("github.event.pull_request.head.label"),
+        ) &&
+        forkCodecovStepUsesHeadLabel(
+          content,
+          "Upload Vitest results to Codecov (fork PR tokenless)",
+        ),
       workflow,
       "validate workflow must split Codecov coverage uploads into trusted-token and fork-tokenless paths",
     );
@@ -274,6 +278,13 @@ function workflowStepBlock(content, stepName) {
   if (start === -1) return "";
   const next = content.indexOf("\n      - name:", start + marker.length);
   return content.slice(start, next === -1 ? undefined : next);
+}
+
+function forkCodecovStepUsesHeadLabel(content, stepName) {
+  const block = workflowStepBlock(content, stepName);
+  return /override_branch:\s*\$\{\{\s*github\.event\.pull_request\.head\.label\s*\}\}/.test(
+    block,
+  );
 }
 
 function stepBlock(content, stepName) {

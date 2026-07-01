@@ -254,6 +254,7 @@ export async function loadExtrinsics(
   const off = clampOffset(offset);
   const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
   if (
+    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
     (from != null && from > nowMs + DAY_MS) ||
     (to != null && to < observedFloorMs) ||
     (from != null && to != null && from > to)
