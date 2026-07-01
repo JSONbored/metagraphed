@@ -2163,8 +2163,56 @@ describe("handleAccountCounterparties", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(body.error.message, "limit must be an integer from 1 to 100.");
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("accepts limit=100 at the documented upper bound", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 1_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 150);
+    assert.equal(body.data.counterparties.length, 100);
+  });
+
+  test("defaults limit to 20 when absent in list mode", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 30 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 2_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 30);
+    assert.equal(body.data.counterparties.length, 20);
   });
 
   test("returns schema-stable empty rollup on cold D1", async () => {
@@ -2241,8 +2289,38 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(body.error.message, "limit must be an integer from 1 to 100.");
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("defaults limit to 50 when absent in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 80 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 80);
+    assert.equal(body.data.relationship.transfers.length, 50);
   });
 
   test("returns schema-stable empty pair detail on cold D1", async () => {

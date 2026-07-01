@@ -2036,15 +2036,30 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100).",
+    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "counterparty",
-        schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
+        schema: {
+          type: "string",
+          pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
+          description:
+            "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58.",
+        },
       },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          default: 20,
+          description:
+            "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
+        },
+      },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
