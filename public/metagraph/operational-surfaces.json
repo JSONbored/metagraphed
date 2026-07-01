@@ -1,5 +1,5 @@
 {
-  "contract_version": "2026-06-30.12",
+  "contract_version": "2026-06-30.14",
   "generated_at": "1970-01-01T00:00:00.000Z",
   "kinds": [
     "archive",
@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 78,
+  "surface_count": 79,
   "surfaces": [
     {
       "auth_required": false,
@@ -1217,6 +1217,24 @@
       "surface_id": "sn-79-mvtrx-paper",
       "surface_key": "srf-0c31e228973cafd3",
       "url": "https://simulate.trading/taos-im-paper"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "kind": "data-artifact",
+      "netuid": 85,
+      "probe": {
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "subnet_name": "Vidaio",
+      "subnet_slug": "sn-85",
+      "surface_id": "sn-85-vidaio-video-samples",
+      "surface_key": "srf-6ca934641c307e44",
+      "url": "https://raw.githubusercontent.com/vidaio-subnet/vidaio-subnet/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
     },
     {
       "auth_required": false,

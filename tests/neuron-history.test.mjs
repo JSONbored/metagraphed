@@ -80,7 +80,8 @@ describe("parseHistoryWindow", () => {
   test("rejects an unsupported window (NOT silently coerced like analyticsWindow)", () => {
     assert.deepEqual(parseHistoryWindow("400d").error, {
       parameter: "window",
-      message: "window must be one of: 7d, 30d, 90d, 1y, all",
+      message:
+        '"400d" is not a supported window. Supported: 7d, 30d, 90d, 1y, all.',
     });
     assert.equal(parseHistoryWindow("bogus").error.parameter, "window");
   });
@@ -521,7 +522,7 @@ describe("history endpoints (via the Worker dispatch)", () => {
     assert.equal(body.error.code, "invalid_query");
     assert.equal(
       body.error.message,
-      "window must be one of: 7d, 30d, 90d, 1y, all",
+      '"400d" is not a supported window. Supported: 7d, 30d, 90d, 1y, all.',
     );
     assert.equal(body.meta.parameter, "window");
   });

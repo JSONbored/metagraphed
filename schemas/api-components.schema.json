@@ -2802,6 +2802,68 @@
         ],
         "type": "object"
       },
+      "ChainConcentrationArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emission": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "entity_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entity_emission": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "entity_stake": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "uids_per_entity": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "validator_stake": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "entity_count",
+          "uids_per_entity",
+          "captured_at",
+          "stake",
+          "emission",
+          "entity_stake",
+          "entity_emission",
+          "validator_stake"
+        ],
+        "type": "object"
+      },
       "ChainEvent": {
         "additionalProperties": false,
         "description": "One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer.",
@@ -3165,6 +3227,96 @@
         ],
         "type": "object"
       },
+      "ChainTransferParty": {
+        "additionalProperties": false,
+        "description": "One account on a chain-transfers leaderboard: its total transfer volume and count over the window.",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "volume_tao": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "address",
+          "volume_tao",
+          "transfer_count"
+        ],
+        "type": "object"
+      },
+      "ChainTransfersArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide native-TAO transfer analytics over a 7d/30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/chain/transfers (no static file); zeros + empty leaderboards when cold.",
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "top_receivers": {
+            "items": {
+              "$ref": "#/components/schemas/ChainTransferParty"
+            },
+            "type": "array"
+          },
+          "top_sender_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_senders": {
+            "items": {
+              "$ref": "#/components/schemas/ChainTransferParty"
+            },
+            "type": "array"
+          },
+          "total_volume_tao": {
+            "type": "number"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unique_receivers": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unique_senders": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "total_volume_tao",
+          "transfer_count",
+          "unique_senders",
+          "unique_receivers",
+          "top_sender_share",
+          "top_senders",
+          "top_receivers"
+        ],
+        "type": "object"
+      },
       "ChangelogArtifact": {
         "allOf": [
           {
@@ -3491,6 +3643,86 @@
           "found"
         ],
         "type": "object"
+      },
+      "ConcentrationMetrics": {
+        "additionalProperties": true,
+        "description": "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column).",
+        "properties": {
+          "entropy": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "entropy_normalized": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "gini": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hhi": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hhi_normalized": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "holders": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nakamoto_coefficient": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "top_10pct_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_1pct_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_20pct_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_5pct_share": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
       },
       "ContractsArtifact": {
         "allOf": [
