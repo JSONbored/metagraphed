@@ -460,7 +460,7 @@
       "id": "subnet-identity-history",
       "path": "/metagraph/subnets/{netuid}/identity-history.json",
       "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-06-30.12",
