@@ -3,7 +3,7 @@
   "skills": [
     {
       "description": "The bittensor agent skill.",
-      "digest": "sha256:a406d66075804cbc5dbeae4c7c089e8f93ad66cc5221a4951e0d9260ce8831e3",
+      "digest": "sha256:202192843c32bc7efdc7313d1b78974014ae64b4f6b6c5b8823de49775bde4b2",
       "name": "bittensor",
       "type": "skill-md",
       "url": "https://api.metagraph.sh/skills/bittensor/SKILL.md"
