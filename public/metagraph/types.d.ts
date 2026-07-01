@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/stake-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. */
+        get: operations["accountStakeFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/subnets": {
         parameters: {
             query?: never;
@@ -1602,6 +1619,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/yield": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. */
+        get: operations["subnetYield"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/movers": {
         parameters: {
             query?: never;
@@ -1628,6 +1662,23 @@ export interface paths {
         };
         /** List curated public surfaces. */
         get: operations["surfaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/validators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier. */
+        get: operations["globalValidators"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1794,6 +1845,37 @@ export interface components {
             stake_tao?: number | null;
             uid?: number | null;
             validator_permit?: boolean;
+        };
+        /** @description One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet. */
+        AccountStakeFlowArtifact: {
+            address: string;
+            concentration: number | null;
+            /** @enum {string} */
+            direction: "accumulating" | "exiting" | "churning" | "idle";
+            dominant_netuid: number | null;
+            flow_ratio: number | null;
+            gross_flow_tao: number;
+            net_flow_tao: number;
+            schema_version: number;
+            stake_events: number;
+            subnet_count: number;
+            subnets: {
+                /** @enum {string} */
+                direction: "accumulating" | "exiting" | "churning" | "idle";
+                flow_ratio: number | null;
+                gross_flow_tao: number;
+                net_flow_tao: number;
+                netuid: number;
+                stake_events: number;
+                staked_tao: number;
+                unstake_events: number;
+                unstaked_tao: number;
+            }[];
+            total_staked_tao: number;
+            total_unstaked_tao: number;
+            unstake_events: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file). */
         AccountSubnetsArtifact: {
@@ -3065,6 +3147,42 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. */
+        GlobalValidatorEntry: {
+            avg_validator_trust: number | null;
+            coldkey: string | null;
+            coldkey_count: number;
+            hotkey: string;
+            latest_block_number: number | null;
+            /** Format: date-time */
+            latest_captured_at: string | null;
+            max_validator_trust: number | null;
+            subnet_count: number;
+            subnets: components["schemas"]["GlobalValidatorSubnet"][];
+            uid_count: number;
+        };
+        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets. */
+        GlobalValidatorsArtifact: {
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+            validator_count: number;
+            validators: components["schemas"]["GlobalValidatorEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
+        GlobalValidatorSubnet: {
+            emission_tao: number;
+            netuid: number;
+            stake_tao: number;
+            uid: number;
+            validator_trust: number | null;
         };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
@@ -4985,6 +5103,36 @@ export interface components {
             [key: string]: unknown;
         };
         SubnetVerificationArtifact: components["schemas"]["VerificationArtifact"];
+        /** @description Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file). */
+        SubnetYieldArtifact: {
+            block_number: number | null;
+            /** Format: date-time */
+            captured_at: string | null;
+            mean_yield: number | null;
+            median_yield: number | null;
+            miner_count: number;
+            netuid: number;
+            neuron_count: number;
+            neurons: {
+                emission_tao: number;
+                hotkey: string | null;
+                /** @enum {string} */
+                role: "validator" | "miner";
+                stake_tao: number;
+                uid: number;
+                /** @enum {string|null} */
+                vs_median: "above" | "below" | "at" | null;
+                yield: number | null;
+            }[];
+            p25_yield: number | null;
+            p75_yield: number | null;
+            p90_yield: number | null;
+            schema_version: number;
+            subnet_yield: number | null;
+            total_emission_tao: number;
+            total_stake_tao: number;
+            validator_count: number;
+        };
         SuccessEnvelope: {
             data: {
                 [key: string]: unknown;
@@ -6096,6 +6244,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountStakeFlow: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "example",
+                     *         "concentration": 1,
+                     *         "direction": "accumulating",
+                     *         "dominant_netuid": 1,
+                     *         "flow_ratio": 0.6,
+                     *         "gross_flow_tao": 2.5,
+                     *         "net_flow_tao": 1.5,
+                     *         "schema_version": 1,
+                     *         "stake_events": 3,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "direction": "accumulating",
+                     *             "flow_ratio": 0.6,
+                     *             "gross_flow_tao": 2.5,
+                     *             "net_flow_tao": 1.5,
+                     *             "netuid": 1,
+                     *             "stake_events": 3,
+                     *             "staked_tao": 2,
+                     *             "unstake_events": 1,
+                     *             "unstaked_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "total_staked_tao": 2,
+                     *         "total_unstaked_tao": 0.5,
+                     *         "unstake_events": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountStakeFlowArtifact"];
                     };
                 };
             };
@@ -18335,6 +18612,141 @@ export interface operations {
             };
         };
     };
+    subnetYield: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "mean_yield": 0.3,
+                     *         "median_yield": 0.3,
+                     *         "miner_count": 1,
+                     *         "netuid": 7,
+                     *         "neuron_count": 2,
+                     *         "neurons": [
+                     *           {
+                     *             "emission_tao": 2,
+                     *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "role": "miner",
+                     *             "stake_tao": 5,
+                     *             "uid": 1,
+                     *             "vs_median": "above",
+                     *             "yield": 0.4
+                     *           },
+                     *           {
+                     *             "emission_tao": 2,
+                     *             "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "role": "validator",
+                     *             "stake_tao": 10,
+                     *             "uid": 0,
+                     *             "vs_median": "below",
+                     *             "yield": 0.2
+                     *           }
+                     *         ],
+                     *         "p25_yield": 0.2,
+                     *         "p75_yield": 0.4,
+                     *         "p90_yield": 0.4,
+                     *         "schema_version": 1,
+                     *         "subnet_yield": 0.266666667,
+                     *         "total_emission_tao": 4,
+                     *         "total_stake_tao": 15,
+                     *         "validator_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetYieldArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetMovers: {
         parameters: {
             query?: {
@@ -18539,6 +18951,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SurfacesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    globalValidators: {
+        parameters: {
+            query?: {
+                sort?: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "subnet_count",
+                     *         "validator_count": 1,
+                     *         "validators": [
+                     *           {
+                     *             "avg_validator_trust": 0.5,
+                     *             "coldkey": "example",
+                     *             "coldkey_count": 1,
+                     *             "hotkey": "example",
+                     *             "latest_block_number": 5000000,
+                     *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "max_validator_trust": 0.5,
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "emission_tao": 0.5,
+                     *                 "netuid": 7,
+                     *                 "stake_tao": 0.5,
+                     *                 "uid": 1,
+                     *                 "validator_trust": 0.5
+                     *               }
+                     *             ],
+                     *             "uid_count": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalValidatorsArtifact"];
                     };
                 };
             };

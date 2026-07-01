@@ -13,6 +13,7 @@ import { encodeCursor } from "../src/cursor.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   handleSubnetMetagraph,
+  handleSubnetYield,
   handleNeuron,
   handleSubnetValidators,
   handleNeuronHistory,
@@ -28,6 +29,7 @@ import {
   handleAccountExtrinsics,
   handleAccountTransfers,
   handleAccountCounterparties,
+  handleAccountStakeFlow,
   handleAccountSubnets,
   handleSubnetEvents,
   handleAccountBalance,
@@ -569,6 +571,78 @@ describe("handleSubnetMetagraph", () => {
     );
     assert.ok(metagraphSql);
     assert.ok(!/validator_permit = 1/.test(metagraphSql));
+  });
+});
+
+describe("handleSubnetYield", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetYield(
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+  });
+
+  test("returns schema-stable empty payload on cold/unbound D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetYield,
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.subnet_yield, null);
+    assert.deepEqual(body.data.neurons, []);
+    assert.equal(body.data.captured_at, null);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/yield.json`,
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  test("computes per-UID yield, role split, and ranking from mocked D1 rows", async () => {
+    const { env, captures } = dbWith({
+      neurons: [
+        neuronRow({
+          uid: 0,
+          validator_permit: 1,
+          stake_tao: 100,
+          emission_tao: 2,
+        }), // yield 0.02
+        neuronRow({
+          uid: 1,
+          validator_permit: 0,
+          stake_tao: 100,
+          emission_tao: 5,
+        }), // yield 0.05
+      ],
+    });
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.validator_count, 1);
+    assert.equal(body.data.miner_count, 1);
+    assert.equal(body.data.subnet_yield, 0.035); // 7/200
+    assert.equal(body.data.neurons[0].uid, 1); // higher yield ranks first
+    assert.equal(body.data.neurons[0].yield, 0.05);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.ok(
+      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
   });
 });
 
@@ -2242,6 +2316,109 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       SS58,
     ]);
     await assertValidComponent("AccountCounterpartiesArtifact", body.data);
+  });
+});
+
+describe("handleAccountStakeFlow", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported window with 400", async () => {
+    const res = await handleAccountStakeFlow(
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow?window=1y`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleAccountStakeFlow,
+      req(`/api/v1/accounts/${SS58}/stake-flow`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/stake-flow`),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.net_flow_tao, 0);
+    assert.equal(body.data.subnet_count, 0);
+    assert.equal(body.data.concentration, null);
+    assert.equal(body.data.dominant_netuid, null);
+    await assertValidComponent("AccountStakeFlowArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/accounts/${SS58}/stake-flow.json`,
+    );
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("folds per-subnet flow + totals, bound to the hotkey + both stake kinds", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          netuid: 1,
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717900000000,
+        },
+        {
+          netuid: 1,
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717000000000,
+        },
+        {
+          netuid: 7,
+          event_kind: "StakeAdded",
+          total_tao: 10,
+          event_count: 1,
+          last_observed: 1717500000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleAccountStakeFlow(
+        req(`/api/v1/accounts/${SS58}/stake-flow`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/stake-flow?window=90d`),
+      ),
+    );
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.window, "90d");
+    assert.equal(body.data.total_staked_tao, 210);
+    assert.equal(body.data.total_unstaked_tao, 50);
+    assert.equal(body.data.net_flow_tao, 160);
+    assert.equal(body.data.subnet_count, 2);
+    // subnet 1 has the most gross flow (250) so it leads + is dominant
+    assert.equal(body.data.subnets[0].netuid, 1);
+    assert.equal(body.data.dominant_netuid, 1);
+    await assertValidComponent("AccountStakeFlowArtifact", body.data);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events INDEXED BY idx_account_events_hotkey WHERE hotkey = \?/.test(
+        s,
+      ),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], SS58);
+    assert.equal(captures.params[idx][1], "StakeAdded");
+    assert.equal(captures.params[idx][2], "StakeRemoved");
+    // newest event across all rows, ISO
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 });
 

@@ -666,7 +666,7 @@ describe("loadChainFees", () => {
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
     ]);
-    assert.match(calls[1].sql, /ORDER BY total_fee_tao DESC/);
+    assert.match(calls[1].sql, /ORDER BY total_fee_tao DESC, signer ASC/);
     assert.deepEqual(calls[1].params, [
       now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
@@ -716,6 +716,51 @@ describe("loadChainFees", () => {
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
     assert.equal(calls[2].params.length, 1);
+  });
+
+  test("loadChainFees tie-breaks top_fee_payers for stable LIMIT membership", async () => {
+    const captured = [];
+    const signerA = "5FHneW46xGXgs5mUive6eigkdRD2AYN6fy8616ckdp26RGGj";
+    const signerB = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const run = async (sql, params) => {
+      captured.push({ sql, params });
+      if (/ROW_NUMBER\(\) OVER/.test(sql)) return [];
+      if (/GROUP BY day/.test(sql)) return [];
+      if (/GROUP BY signer/.test(sql)) {
+        // Simulate D1 honoring ORDER BY total_fee_tao DESC, signer ASC.
+        const rows = [
+          {
+            signer: signerA,
+            total_fee_tao: 5,
+            total_tip_tao: 0,
+            extrinsic_count: 2,
+          },
+          {
+            signer: signerB,
+            total_fee_tao: 5,
+            total_tip_tao: 0,
+            extrinsic_count: 3,
+          },
+        ];
+        const lim = params[params.length - 1];
+        return rows.slice(0, lim);
+      }
+      return [];
+    };
+    const { data } = await loadChainFees(run, {
+      window: "7d",
+      limit: 1,
+      observedAt: OBSERVED_AT,
+      now: Date.UTC(2026, 5, 26),
+    });
+    const payerSql = captured.find((c) => /GROUP BY signer/.test(c.sql));
+    assert.match(
+      payerSql.sql,
+      /ORDER BY total_fee_tao DESC, signer ASC\s+LIMIT \?/,
+    );
+    assert.equal(data.top_fee_payers.length, 1);
+    assert.equal(data.top_fee_payers[0].signer, signerA);
+    assert.equal(data.top_fee_payers[0].total_fee_tao, 5);
   });
 
   test("falls back to 7d for an unknown window label", async () => {

@@ -37,6 +37,12 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          # Pin to the contributor's actual pushed commit, not GitHub's default
+          # refs/pull/:N/merge preview -- keeps CI deterministic for a given sha
+          # (a PR can't start failing just because main moved) and matches what
+          # Codecov's patch status is measuring. See the coverage upload steps
+          # below for why this specifically also fixes commit attribution.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -71,24 +77,66 @@ jobs:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
         run: npm run test:ci
 
+      - name: Verify coverage report exists
+        run: test -s coverage/lcov.info
+
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
-      # local backstop. Runs on PRs AND main pushes (main = the comparison base);
-      # the upload failing never fails CI (the gate is Codecov's own status).
+      # local backstop. Same-repo PRs and main pushes use the repository token;
+      # fork PRs use Codecov's public-repo tokenless upload path instead.
+      # Missing coverage or upload errors fail the test job.
+      #
+      # Explicit override_branch/commit/pr on BOTH paths below: GITHUB_SHA is the
+      # ephemeral refs/pull/:N/merge commit on pull_request events, and the
+      # checkout step above pins to the real head sha instead (so tests run the
+      # contributor's actual commit) -- so auto-detection would otherwise attach
+      # the report to a merge sha that never appears in the PR's own checks list.
       - name: Upload coverage to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: false
+          disable_search: true
+          override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
+          fail_ci_if_error: true
+
+      - name: Upload coverage to Codecov (fork PR tokenless)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          override_branch: ${{ github.event.pull_request.head.ref }}
+          override_commit: ${{ github.event.pull_request.head.sha }}
+          override_pr: ${{ github.event.pull_request.number }}
+          fail_ci_if_error: true
 
       - name: Upload Vitest results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./reports/junit/vitest.xml
           report_type: test_results
+          disable_search: true
+          override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
+          fail_ci_if_error: false
+
+      - name: Upload Vitest results to Codecov (fork PR tokenless)
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./reports/junit/vitest.xml
+          report_type: test_results
+          disable_search: true
+          override_branch: ${{ github.event.pull_request.head.ref }}
+          override_commit: ${{ github.event.pull_request.head.sha }}
+          override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: false
 
       # The two filesystem-mutating artifact writers, run serially LAST so they
@@ -107,6 +155,9 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
+          # Same pin as the `test` job's checkout -- keep both jobs testing the
+          # identical commit.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       # Compute the deletion-filtered list of files this PR submits, inline in the
       # trusted workflow (PR contents are untrusted). It feeds ONLY the

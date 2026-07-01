@@ -759,7 +759,16 @@ const rootValue = {
     // and bundles surfaces/endpoints, so those resolve from this one read;
     // economics is overlaid live at serve time, so it loads lazily.
     const identity = data.subnet ?? data;
-    return subnetNode(identity, {
+    // The detail artifact omits the list artifact's computed registry metrics
+    // (integration_readiness, official_surface_count, gap_count, first_party),
+    // so without this backfill the single-subnet path returns them null while
+    // `subnets` populates them. Read the matching subnets.json row — memoized and
+    // shared per request, so at most one extra read; the detail identity still
+    // wins on any shared key.
+    const listRow = (
+      await loadRows(context, ARTIFACT.subnets, "subnets", netuid)
+    )[0];
+    return subnetNode(listRow ? { ...listRow, ...identity } : identity, {
       surfaces: data.surfaces,
       endpoints: data.endpoints,
     });

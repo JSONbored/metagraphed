@@ -53,6 +53,8 @@ export const SUBNET_TURNOVER_PATH_PATTERN =
 // account_events tier, no static file.
 export const SUBNET_STAKE_FLOW_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/stake-flow$/;
+// Per-UID emission yield distribution over the current neurons snapshot, no static file.
+export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
@@ -98,6 +100,10 @@ export const ACCOUNT_TRANSFERS_PATH_PATTERN =
 // account_events Transfers into per-counterparty sent/received/net.
 export const ACCOUNT_COUNTERPARTIES_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/counterparties$/;
+// Per-account stake flow: aggregates the account's account_events StakeAdded/StakeRemoved
+// per subnet into a net/gross flow + concentration scorecard over a 7d/30d/90d window.
+export const ACCOUNT_STAKE_FLOW_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})\/stake-flow$/;
 // Live TAO balance query (#1818): captures any non-slash segment; the handler
 // applies a stricter ^5[a-zA-Z0-9]{46,47}$ guard before making the RPC call.
 export const ACCOUNT_BALANCE_PATH_PATTERN =

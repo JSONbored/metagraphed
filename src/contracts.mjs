@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.10";
+export const CONTRACT_VERSION = "2026-06-30.12";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -953,6 +953,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetMoversArtifact",
   ),
   artifact(
+    "global-validators",
+    "/metagraph/validators.json",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "GlobalValidatorsArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -969,6 +975,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/validators.json",
     "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
     "SubnetValidatorsArtifact",
+  ),
+  artifact(
+    "subnet-yield",
+    "/metagraph/subnets/{netuid}/yield.json",
+    "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+    "SubnetYieldArtifact",
   ),
   artifact(
     "subnet-events",
@@ -1023,6 +1035,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/accounts/{ss58}/counterparties.json",
     "Per-counterparty fund-flow rollup for one account, with optional ?counterparty=<ss58> relationship evidence — native-TAO transfers from the account_events D1 tier at /api/v1/accounts/{ss58}/counterparties (no static file).",
     "AccountCounterpartiesArtifact",
+  ),
+  artifact(
+    "account-stake-flow",
+    "/metagraph/accounts/{ss58}/stake-flow.json",
+    "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-flow (no static file).",
+    "AccountStakeFlowArtifact",
   ),
   artifact(
     "account-subnets",
@@ -1803,6 +1821,34 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "global-validators",
+    "GET",
+    "/api/v1/validators",
+    "/metagraph/validators.json",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+    "short",
+    ["validators", "analytics"],
+    [
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "subnet_count",
+            "uid_count",
+            "avg_validator_trust",
+            "max_validator_trust",
+          ],
+        },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ],
+    [],
+  ),
+  route(
     "subnet-metagraph",
     "GET",
     "/api/v1/subnets/{netuid}/metagraph",
@@ -1833,6 +1879,17 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/validators",
     "/metagraph/subnets/{netuid}/validators.json",
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-yield",
+    "GET",
+    "/api/v1/subnets/{netuid}/yield",
+    "/metagraph/subnets/{netuid}/yield.json",
+    "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -1988,6 +2045,22 @@ export const API_ROUTES = [
         schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-stake-flow",
+    "GET",
+    "/api/v1/accounts/{ss58}/stake-flow",
+    "/metagraph/accounts/{ss58}/stake-flow.json",
+    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),

@@ -40,10 +40,16 @@ import {
   validateQueryParams,
 } from "./analytics.mjs";
 import {
+  loadGlobalValidators,
   loadSubnetMetagraph,
   loadSubnetValidators,
   loadNeuron,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
+import { loadSubnetYield } from "../../src/subnet-yield.mjs";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -99,6 +105,7 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../../src/stake-flow.mjs";
+import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
@@ -182,6 +189,28 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
   );
 }
 
+// GET /api/v1/subnets/{netuid}/yield: per-UID emission yield (emission/stake) over the
+// current neurons snapshot, ranked, with a distribution summary (subnet aggregate yield,
+// mean, p25/median/p75/p90), a validator/miner split, and a per-UID vs-median label.
+// neurons-tier (source "metagraph-snapshot"). Cold/absent store → schema-stable empties.
+export async function handleSubnetYield(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadSubnetYield(d1Runner(env), netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/yield.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
 export async function handleNeuron(request, env, netuid, uid) {
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
   // tiers (health/economics never 404 on a cold store).
@@ -211,6 +240,49 @@ export async function handleSubnetValidators(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators?sort=subnet_count|uid_count|avg_validator_trust|max_validator_trust&limit=20:
+// network-wide validator/operator leaderboard from the current neurons snapshot. This
+// groups validator-permit UID rows by public identity, so consumers can see cross-subnet
+// operator footprint rather than only one subnet at a time. Stake/emission values stay
+// scoped to each membership row because those source units are not globally aggregated.
+// Cold/absent D1 returns a schema-stable empty list.
+export async function handleGlobalValidators(request, env, url) {
+  const validationError = validateQueryParams(url, ["sort", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const sortParam =
+    url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
+  if (!GLOBAL_VALIDATOR_SORTS.includes(sortParam)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
+        ", ",
+      )}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    min: 1,
+    max: GLOBAL_VALIDATOR_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadGlobalValidators(d1Runner(env), {
+    sort: sortParam,
+    limit: limit.value,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/validators.json",
         data.captured_at,
       ),
     },
@@ -604,6 +676,44 @@ async function accountMeta(env, artifactPath, generatedAt) {
     published_at: await publishedAt(env),
     source: "chain-events",
   };
+}
+
+// GET /api/v1/accounts/{ss58}/stake-flow: the account's StakeAdded/StakeRemoved flow
+// per subnet over a 7d/30d/90d window — net + gross flow, an HHI concentration of where
+// its flow is focused, and a direction label. account_events-derived (source
+// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountStakeFlow(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
+  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        STAKE_FLOW_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const { data, generatedAt } = await loadAccountStakeFlow(
+    d1Runner(env),
+    ss58,
+    {
+      windowLabel: windowParam,
+    },
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
 }
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates

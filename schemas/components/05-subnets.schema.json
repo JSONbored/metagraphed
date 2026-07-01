@@ -1423,6 +1423,161 @@
           }
         }
       },
+      "SubnetYieldArtifact": {
+        "type": "object",
+        "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+        "required": [
+          "schema_version",
+          "netuid",
+          "captured_at",
+          "block_number",
+          "neuron_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "subnet_yield",
+          "mean_yield",
+          "median_yield",
+          "p25_yield",
+          "p75_yield",
+          "p90_yield",
+          "neurons"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "miner_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number" },
+          "total_emission_tao": { "type": "number" },
+          "subnet_yield": { "type": ["number", "null"] },
+          "mean_yield": { "type": ["number", "null"] },
+          "median_yield": { "type": ["number", "null"] },
+          "p25_yield": { "type": ["number", "null"] },
+          "p75_yield": { "type": ["number", "null"] },
+          "p90_yield": { "type": ["number", "null"] },
+          "neurons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "uid",
+                "hotkey",
+                "role",
+                "stake_tao",
+                "emission_tao",
+                "yield",
+                "vs_median"
+              ],
+              "properties": {
+                "uid": { "type": "integer", "minimum": 0 },
+                "hotkey": { "type": ["string", "null"] },
+                "role": { "type": "string", "enum": ["validator", "miner"] },
+                "stake_tao": { "type": "number" },
+                "emission_tao": { "type": "number" },
+                "yield": { "type": ["number", "null"] },
+                "vs_median": {
+                  "type": ["string", "null"],
+                  "enum": ["above", "below", "at", null]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "GlobalValidatorSubnet": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
+        "required": [
+          "netuid",
+          "uid",
+          "stake_tao",
+          "emission_tao",
+          "validator_trust"
+        ],
+        "properties": {
+          "netuid": { "type": "integer", "minimum": 0 },
+          "uid": { "type": "integer", "minimum": 0 },
+          "stake_tao": { "type": "number", "minimum": 0 },
+          "emission_tao": { "type": "number", "minimum": 0 },
+          "validator_trust": { "type": ["number", "null"] }
+        }
+      },
+      "GlobalValidatorEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot.",
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "uid_count",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "latest_captured_at",
+          "latest_block_number",
+          "subnets"
+        ],
+        "properties": {
+          "hotkey": { "type": "string" },
+          "coldkey": { "type": ["string", "null"] },
+          "coldkey_count": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "uid_count": { "type": "integer", "minimum": 0 },
+          "avg_validator_trust": { "type": ["number", "null"] },
+          "max_validator_trust": { "type": ["number", "null"] },
+          "latest_captured_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "latest_block_number": { "type": ["integer", "null"] },
+          "subnets": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "$ref": "#/components/schemas/GlobalValidatorSubnet" }
+          }
+        }
+      },
+      "GlobalValidatorsArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets.",
+        "required": [
+          "schema_version",
+          "sort",
+          "limit",
+          "validator_count",
+          "validators"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "subnet_count",
+              "uid_count",
+              "avg_validator_trust",
+              "max_validator_trust"
+            ]
+          },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "captured_at": { "type": ["string", "null"], "format": "date-time" },
+          "block_number": { "type": ["integer", "null"] },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "validators": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GlobalValidatorEntry" }
+          }
+        }
+      },
       "NeuronHistoryArtifact": {
         "type": "object",
         "additionalProperties": true,
@@ -1882,6 +2037,82 @@
             }
           }
         }
+      },
+      "AccountStakeFlowArtifact": {
+        "type": "object",
+        "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "gross_flow_tao",
+          "flow_ratio",
+          "direction",
+          "stake_events",
+          "unstake_events",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_staked_tao": { "type": "number" },
+          "total_unstaked_tao": { "type": "number" },
+          "net_flow_tao": { "type": "number" },
+          "gross_flow_tao": { "type": "number" },
+          "flow_ratio": { "type": ["number", "null"] },
+          "direction": {
+            "type": "string",
+            "enum": ["accumulating", "exiting", "churning", "idle"]
+          },
+          "stake_events": { "type": "integer", "minimum": 0 },
+          "unstake_events": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "staked_tao",
+                "unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "flow_ratio",
+                "direction",
+                "stake_events",
+                "unstake_events"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "staked_tao": { "type": "number" },
+                "unstaked_tao": { "type": "number" },
+                "net_flow_tao": { "type": "number" },
+                "gross_flow_tao": { "type": "number" },
+                "flow_ratio": { "type": ["number", "null"] },
+                "direction": {
+                  "type": "string",
+                  "enum": ["accumulating", "exiting", "churning", "idle"]
+                },
+                "stake_events": { "type": "integer", "minimum": 0 },
+                "unstake_events": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "AccountSubnetsArtifact": {
         "type": "object",

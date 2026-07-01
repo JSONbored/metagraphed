@@ -26,6 +26,7 @@ from .client import (
     _default_headers,
     _interpolate,
     _jsonrpc_result,
+    _next_cursor,
 )
 from .models import AgentCatalogSubnet, Endpoint, Provider, Subnet, Surface
 
@@ -196,16 +197,7 @@ class AsyncMetagraphedClient:
                 path, path_params=path_params, query=page_query, headers=headers
             )
             yield page
-            pagination = (
-                page.get("meta", {}).get("pagination")
-                if isinstance(page, dict)
-                else None
-            )
-            cursor = (
-                pagination.get("next_cursor")
-                if isinstance(pagination, dict)
-                else None
-            )
+            cursor = _next_cursor(page)
             if cursor is None:
                 return
 

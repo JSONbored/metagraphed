@@ -307,3 +307,49 @@ test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404
   assert.equal(body.data.transfer_count, 0);
   assert.equal(Array.isArray(body.data.transfers), true);
 });
+
+test("GET /accounts/{ss58}/stake-flow routes to the per-account stake-flow handler", async () => {
+  const env = dbWith({
+    events: [
+      {
+        netuid: 1,
+        event_kind: "StakeAdded",
+        total_tao: 80,
+        event_count: 2,
+        last_observed: 1750009000000,
+      },
+      {
+        netuid: 1,
+        event_kind: "StakeRemoved",
+        total_tao: 20,
+        event_count: 1,
+        last_observed: 1750000000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/stake-flow?window=30d`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.window, "30d");
+  assert.equal(body.data.net_flow_tao, 60);
+  assert.equal(body.data.subnets[0].netuid, 1);
+  assert.equal(body.meta.source, "chain-events");
+});
+
+test("GET /accounts/{ss58}/stake-flow is schema-stable when D1 is cold (never 404)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/stake-flow`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.address, SS58);
+  assert.equal(body.data.subnet_count, 0);
+  assert.equal(Array.isArray(body.data.subnets), true);
+});

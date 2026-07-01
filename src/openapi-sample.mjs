@@ -188,9 +188,108 @@ function normalizeAccountCounterpartiesSample(out) {
   return out;
 }
 
+function normalizeSubnetYieldSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !("subnet_yield" in out) ||
+    !("median_yield" in out) ||
+    !("p25_yield" in out) ||
+    !Array.isArray(out.neurons)
+  ) {
+    return out;
+  }
+  // A two-neuron, internally consistent worked example: a validator earning 0.2 and a
+  // miner earning 0.4 emission-per-stake. The derived distribution (subnet aggregate
+  // 4/15, mean 0.3, median/percentiles) and the per-UID vs-median labels all line up —
+  // the generic per-field generator cannot satisfy yield = emission/stake on its own.
+  out.neurons = [
+    {
+      uid: 1,
+      hotkey: SAMPLE_SS58,
+      role: "miner",
+      stake_tao: 5,
+      emission_tao: 2,
+      yield: 0.4,
+      vs_median: "above",
+    },
+    {
+      uid: 0,
+      hotkey: SAMPLE_SS58,
+      role: "validator",
+      stake_tao: 10,
+      emission_tao: 2,
+      yield: 0.2,
+      vs_median: "below",
+    },
+  ];
+  out.neuron_count = 2;
+  out.validator_count = 1;
+  out.miner_count = 1;
+  out.total_stake_tao = 15;
+  out.total_emission_tao = 4;
+  out.subnet_yield = 0.266666667;
+  out.mean_yield = 0.3;
+  // Conventional median of the two yields [0.2, 0.4] -> (0.2 + 0.4) / 2.
+  out.median_yield = 0.3;
+  out.p25_yield = 0.2;
+  out.p75_yield = 0.4;
+  out.p90_yield = 0.4;
+  return out;
+}
+
+function normalizeAccountStakeFlowSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    typeof out.gross_flow_tao !== "number" ||
+    !Array.isArray(out.subnets) ||
+    !("concentration" in out) ||
+    !("dominant_netuid" in out)
+  ) {
+    return out;
+  }
+  // A single-subnet, internally consistent worked example: 2.0 TAO in, 0.5 out, so
+  // net 1.5 / gross 2.5 / ratio 0.6 reads "accumulating", and the account totals, the
+  // HHI concentration (one subnet -> 1), and the dominant subnet all line up. The
+  // generic per-field generator cannot satisfy these cross-field invariants on its own.
+  const staked = 2;
+  const unstaked = 0.5;
+  const net = staked - unstaked;
+  const gross = staked + unstaked;
+  const ratio = Math.round((net / gross) * 10000) / 10000;
+  out.subnets = [
+    {
+      netuid: 1,
+      staked_tao: staked,
+      unstaked_tao: unstaked,
+      net_flow_tao: net,
+      gross_flow_tao: gross,
+      flow_ratio: ratio,
+      direction: "accumulating",
+      stake_events: 3,
+      unstake_events: 1,
+    },
+  ];
+  out.total_staked_tao = staked;
+  out.total_unstaked_tao = unstaked;
+  out.net_flow_tao = net;
+  out.gross_flow_tao = gross;
+  out.flow_ratio = ratio;
+  out.direction = "accumulating";
+  out.stake_events = 3;
+  out.unstake_events = 1;
+  out.subnet_count = 1;
+  out.concentration = 1;
+  out.dominant_netuid = 1;
+  return out;
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
+  normalizeAccountStakeFlowSample(out);
+  normalizeSubnetYieldSample(out);
   return out;
 }
 
