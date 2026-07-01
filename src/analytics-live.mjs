@@ -64,11 +64,24 @@ export function growthRowsFromSamples(growthSamples) {
   const growthByNetuid = new Map();
   for (const row of growthSamples || []) {
     const entry = growthByNetuid.get(row.netuid) || {
-      first: undefined,
-      last: undefined,
+      first: null,
+      last: null,
     };
-    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
-    entry.last = row.completeness_score ?? null;
+    // Latch the window's first and last *non-null* completeness scores. Rows
+    // arrive ordered by (netuid, snapshot_date), so a subnet whose earliest
+    // in-window snapshot has no score yet (completeness_score is a nullable
+    // INTEGER) must not have `first` pinned to null: the old `=== undefined`
+    // guard fired on the first row regardless, so a leading NULL froze `first`
+    // at null for the whole subnet, collapsing its delta to null. That silently
+    // dropped a genuinely fast-growing subnet from the "fastest-growing"
+    // leaderboard, which filters out null deltas. Skipping NULL scores here
+    // makes `first`/`last` the first/last real scores (a trailing NULL no
+    // longer poisons `last` either); an all-NULL subnet still yields null.
+    const score = row.completeness_score ?? null;
+    if (score != null) {
+      if (entry.first == null) entry.first = score;
+      entry.last = score;
+    }
     growthByNetuid.set(row.netuid, entry);
   }
   return [...growthByNetuid.entries()].map(([netuid, entry]) => ({
