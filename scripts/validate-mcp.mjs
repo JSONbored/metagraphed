@@ -398,6 +398,16 @@ assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,
   "get_account_balance must return ss58 + balance_tao (null on cold RPC)",
 );
+const accountStakeFlow = await callOk("get_account_stake_flow", {
+  ss58: SS58,
+  window: "30d",
+});
+assert.ok(
+  Array.isArray(accountStakeFlow.subnets) &&
+    accountStakeFlow.address === SS58 &&
+    accountStakeFlow.window === "30d",
+  "get_account_stake_flow must return the AccountStakeFlowArtifact shape",
+);
 
 // Derive a real surface_id with a captured schema so get_api_schema resolves.
 const schemaService = apis.services.find((service) => service.schema_artifact);

@@ -2293,6 +2293,106 @@ describe("MCP get_rpc_usage", () => {
   });
 });
 
+describe("MCP get_account_stake_flow", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function accountStakeFlowD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                all() {
+                  return Promise.resolve({
+                    results:
+                      /FROM account_events/.test(sql) &&
+                      /GROUP BY netuid, event_kind/.test(sql)
+                        ? rows
+                        : [],
+                  });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("folds StakeAdded vs StakeRemoved into per-subnet net flow", async () => {
+    const capture = [];
+    const env = accountStakeFlowD1(
+      [
+        {
+          netuid: 1,
+          event_kind: "StakeAdded",
+          total_tao: 100,
+          event_count: 2,
+          last_observed: 5000,
+        },
+        {
+          netuid: 1,
+          event_kind: "StakeRemoved",
+          total_tao: 30,
+          event_count: 1,
+          last_observed: 6000,
+        },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58, window: "7d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "7d");
+    assert.equal(out.net_flow_tao, 70);
+    assert.equal(out.direction, "accumulating");
+    assert.equal(out.subnet_count, 1);
+    assert.equal(out.subnets[0].netuid, 1);
+    const q = capture[0];
+    assert.match(q.sql, /WHERE hotkey = \?/);
+    assert.match(q.sql, /GROUP BY netuid, event_kind/);
+    assert.equal(q.params[0], SS58);
+    assert.equal(q.params[1], "StakeAdded");
+    assert.equal(q.params[2], "StakeRemoved");
+  });
+
+  test("defaults to the 30d window", async () => {
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58 },
+      { env: accountStakeFlowD1() },
+    );
+    assert.equal(res.body.result.structuredContent.window, "30d");
+  });
+
+  test("degrades to schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_flow", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.net_flow_tao, 0);
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.concentration, null);
+    assert.equal(out.dominant_netuid, null);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58, window: "1y" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+});
+
 describe("MCP get_account_counterparties", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const CP = "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy";

@@ -110,6 +110,11 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
+import {
+  DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_FLOW_WINDOWS,
+  loadAccountStakeFlow,
+} from "./account-stake-flow.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
@@ -146,7 +151,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.14.0";
+export const MCP_SERVER_VERSION = "1.15.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -227,7 +232,9 @@ export const MCP_INSTRUCTIONS =
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
-  "get_account_events returns its chain-event history (optional kind filter), and " +
+  "get_account_events returns its chain-event history (optional kind filter), " +
+  "get_account_stake_flow its StakeAdded vs StakeRemoved flow per subnet over a " +
+  "7d/30d/90d window (net/gross flow, direction, concentration), and " +
   "get_account_subnets the subnets where it is registered. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
@@ -2482,6 +2489,53 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_account_stake_flow",
+    title: "Get an account's stake flow scorecard",
+    description:
+      "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent " +
+      "window: per-subnet net and gross TAO flow with a direction label " +
+      "(accumulating/exiting/churning/idle), plus account totals, an HHI " +
+      "concentration of where the flow is focused, and the dominant subnet. " +
+      "Window is 7d, 30d (default), or 90d. Hotkey-attributed only (same as the " +
+      "REST route). Use it to see whether an account is net staking in or exiting " +
+      "across subnets — a recent-capital-movement signal alongside get_account " +
+      "(current registrations) and get_account_events (raw event feed). Mirrors " +
+      "GET /api/v1/accounts/{ss58}/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: ["7d", "30d", "90d"],
+          description: "Lookback window (default 30d).",
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${Object.keys(STAKE_FLOW_WINDOWS).join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountStakeFlow(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
+      });
+      return data;
+    },
+  },
+  {
     name: "get_account_counterparties",
     title: "Rank an account's transfer counterparties",
     description:
@@ -4064,6 +4118,36 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const STAKE_FLOW_DIRECTION = {
+  type: "string",
+  enum: ["accumulating", "exiting", "churning", "idle"],
+};
+const ACCOUNT_STAKE_FLOW_SUBNET_ITEM = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "netuid",
+    "staked_tao",
+    "unstaked_tao",
+    "net_flow_tao",
+    "gross_flow_tao",
+    "flow_ratio",
+    "direction",
+    "stake_events",
+    "unstake_events",
+  ],
+  properties: {
+    netuid: { type: "integer", minimum: 0 },
+    staked_tao: { type: "number" },
+    unstaked_tao: { type: "number" },
+    net_flow_tao: { type: "number" },
+    gross_flow_tao: { type: "number" },
+    flow_ratio: { type: ["number", "null"] },
+    direction: STAKE_FLOW_DIRECTION,
+    stake_events: { type: "integer", minimum: 0 },
+    unstake_events: { type: "integer", minimum: 0 },
+  },
+};
 // Shared block item shape for list_blocks (each block in the feed).
 const BLOCK_ITEM = {
   block_number: NULLABLE_INT,
@@ -4732,6 +4816,50 @@ const TOOL_OUTPUT_SCHEMAS = {
         direction: NULLABLE_STRING,
         observed_at: NULLABLE_STRING,
       }),
+    },
+  },
+  get_account_stake_flow: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "address",
+      "window",
+      "total_staked_tao",
+      "total_unstaked_tao",
+      "net_flow_tao",
+      "gross_flow_tao",
+      "flow_ratio",
+      "direction",
+      "stake_events",
+      "unstake_events",
+      "subnet_count",
+      "concentration",
+      "dominant_netuid",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: {
+        type: ["string", "null"],
+        enum: ["7d", "30d", "90d", null],
+      },
+      total_staked_tao: { type: "number" },
+      total_unstaked_tao: { type: "number" },
+      net_flow_tao: { type: "number" },
+      gross_flow_tao: { type: "number" },
+      flow_ratio: { type: ["number", "null"] },
+      direction: STAKE_FLOW_DIRECTION,
+      stake_events: { type: "integer", minimum: 0 },
+      unstake_events: { type: "integer", minimum: 0 },
+      subnet_count: { type: "integer", minimum: 0 },
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: { type: ["integer", "null"], minimum: 0 },
+      subnets: {
+        type: "array",
+        items: ACCOUNT_STAKE_FLOW_SUBNET_ITEM,
+      },
     },
   },
   get_account_counterparties: {
