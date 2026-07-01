@@ -1,6 +1,6 @@
 {
   "artifact_count": 6,
-  "artifact_size_bytes": 2242720,
+  "artifact_size_bytes": 2245483,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -25,8 +25,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "d07e8e13732166d22637d558790b32912da6dea14b9f7ca7fd240a53cd1e56b6",
-      "size_bytes": 1096339,
+      "sha256": "a973343aa540ec0efee006129469e19bae29d93377df8e9a482aab78a60ad290",
+      "size_bytes": 1097427,
       "storage_tier": "dual"
     },
     {
@@ -34,8 +34,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/operational-surfaces.json",
       "latest_key": "latest/operational-surfaces.json",
       "path": "/metagraph/operational-surfaces.json",
-      "sha256": "fbb8251e3c472306361237cd4ff781d374c2375a82caf357e15c48e8e19f6d4b",
-      "size_bytes": 40016,
+      "sha256": "7b9bc7d975093be1fd06a461524e8fc27123dbed8221bdcaf70f9914706d60a5",
+      "size_bytes": 40619,
       "storage_tier": "dual"
     },
     {
@@ -52,8 +52,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "25a86a3dca5e39ff00b7b5c298ca54401a82b807e586d494901ca90051a49ba0",
-      "size_bytes": 837445,
+      "sha256": "b6ea7f14a6ad287114813e8ae0792a47edf65ffe9212d5cdbf2dbb5437526904",
+      "size_bytes": 838517,
       "storage_tier": "dual"
     }
   ],
@@ -61,7 +61,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-30.13",
   "full_artifact_count": 2261,
-  "full_artifact_size_bytes": 40400476,
+  "full_artifact_size_bytes": 40424280,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -83,7 +83,7 @@
     "r2": 2255
   },
   "storage_tier_size_bytes": {
-    "dual": 2242720,
-    "r2": 38157756
+    "dual": 2245483,
+    "r2": 38178797
   }
 }
