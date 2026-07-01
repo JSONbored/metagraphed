@@ -26,9 +26,9 @@
     "@sentry/browser": "^10.60.0",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-router": "^1.168.25",
-    "@tanstack/react-start": "^1.167.50",
-    "@tanstack/router-plugin": "^1.167.28",
+    "@tanstack/react-router": "^1.170.16",
+    "@tanstack/react-start": "^1.168.26",
+    "@tanstack/router-plugin": "^1.168.18",
     "@tanstack/zod-adapter": "^1.167.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -66,7 +66,7 @@
   },
   "overrides": {
     "@babel/core": "^7.29.7",
-    "@tanstack/start-server-core": "1.167.30",
+    "@tanstack/start-server-core": "1.169.15",
     "esbuild": "^0.28.1",
     "js-yaml": "^4.2.0"
   }
