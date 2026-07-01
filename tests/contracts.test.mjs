@@ -192,9 +192,7 @@ describe("public contract registry", () => {
       true,
     );
     assert.equal(
-      endpointParameters.some(
-        (parameter) => parameter.name === "max_score",
-      ),
+      endpointParameters.some((parameter) => parameter.name === "max_score"),
       true,
     );
 
