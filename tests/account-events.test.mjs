@@ -777,6 +777,57 @@ test("buildAccountSummary defaults a missing event-kind count to 0", () => {
   assert.deepEqual(out.event_kinds, [{ kind: "StakeAdded", count: 0 }]);
 });
 
+test("buildAccountSummary coerces D1 numeric-string aggregates to integers", () => {
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "42", sc: "3", fb: "100", lb: "200" },
+    scanned: "42",
+    kinds: [{ kind: "Transfer", count: "7" }],
+    activity: { tx_count: "9", last_tx_block: "500" },
+    modules: [{ call_module: "Balances", count: "4" }],
+  });
+  assert.equal(out.event_count, 42);
+  assert.equal(out.subnet_count, 3);
+  assert.equal(out.first_block, 100);
+  assert.equal(out.last_block, 200);
+  assert.equal(out.event_scan_capped, false);
+  assert.deepEqual(out.event_kinds, [{ kind: "Transfer", count: 7 }]);
+  assert.equal(out.activity.tx_count, 9);
+  assert.equal(out.activity.last_tx_block, 500);
+  assert.deepEqual(out.activity.modules_called, [
+    { call_module: "Balances", count: 4 },
+  ]);
+});
+
+test("buildAccountSummary rejects junk D1 count cells to 0/null", () => {
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "nope", sc: "-1" },
+    kinds: [{ kind: "Transfer", count: "abc" }],
+    activity: { tx_count: "x" },
+    modules: [{ call_module: "Balances", count: null }],
+  });
+  assert.equal(out.event_count, 0);
+  assert.equal(out.subnet_count, 0);
+  assert.deepEqual(out.event_kinds, [{ kind: "Transfer", count: 0 }]);
+  assert.equal(out.activity.tx_count, 0);
+  assert.equal(out.activity.modules_called[0].count, 0);
+});
+
+test("buildAccountSummary coerces a string scanned probe for the cap flag", () => {
+  const capped = buildAccountSummary("5Hk", {
+    agg: { c: 100 },
+    scanned: String(ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1),
+  });
+  assert.equal(capped.event_scan_capped, true);
+  assert.equal(capped.first_block, null);
+});
+
+test("buildAccountSummary uses coerced event_count when scanned is omitted", () => {
+  const out = buildAccountSummary("5Hk", { agg: { c: "12", sc: "2" } });
+  assert.equal(out.event_count, 12);
+  assert.equal(out.subnet_count, 2);
+  assert.equal(out.event_scan_capped, false);
+});
+
 test("buildAccountEvents defaults rows/limit/offset when called bare", () => {
   // No rows array + no options object → an empty, schema-stable feed with
   // null pagination markers (exercises the rows||[] and ?? null defaults).
