@@ -429,6 +429,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/transfers?window=7d&limit=5",
+    (body) => {
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(Array.isArray(body.data.top_senders), true);
+      assert.equal(Array.isArray(body.data.top_receivers), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);

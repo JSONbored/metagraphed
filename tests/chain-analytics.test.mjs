@@ -609,6 +609,80 @@ test("GET /api/v1/chain/signers rejects unsupported sort values", async () => {
   assert.equal(body.meta.parameter, "sort");
 });
 
+test("GET /api/v1/chain/transfers aggregates volume + ranks senders/receivers", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return {
+              all: () => {
+                if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        transfer_count: 10,
+                        total_volume_tao: 100,
+                        unique_senders: 4,
+                        unique_receivers: 6,
+                      },
+                    ],
+                  });
+                }
+                if (/GROUP BY hotkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      { address: "5Sa", volume_tao: 80, transfer_count: 5 },
+                    ],
+                  });
+                }
+                if (/GROUP BY coldkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      { address: "5Rx", volume_tao: 60, transfer_count: 4 },
+                    ],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfers?window=7d&limit=5",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.window, "7d");
+  assert.equal(body.data.total_volume_tao, 100);
+  assert.equal(body.data.top_senders[0].address, "5Sa");
+  assert.equal(body.data.top_receivers[0].address, "5Rx");
+  assert.equal(body.data.top_sender_share, 0.8); // 80 / 100
+  assert.equal(body.meta.source, "live-cron-prober");
+  const senders = captured.find((c) => /GROUP BY hotkey/.test(c.sql));
+  assert.match(senders.sql, /event_kind = \?/);
+  assert.equal(senders.params.at(-1), 5); // limit
+});
+
+test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=1y"),
+    createLocalArtifactEnv(),
+    {},
+  );
+  assert.equal(res.status, 400);
+});
+
 test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
   const captured = [];
   const env = {

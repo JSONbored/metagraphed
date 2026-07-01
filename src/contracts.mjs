@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.11";
+export const CONTRACT_VERSION = "2026-06-30.12";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1119,6 +1119,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/signers.json",
     "Windowed most-active-account leaderboard (signers ranked by tx_count or total_fee_tao, with fees/tips + newest block) over a 7d or 30d window for the block explorer (#1990), computed live from the first-party extrinsics D1 tier at /api/v1/chain/signers (no static file).",
     "ChainSignersArtifact",
+  ),
+  artifact(
+    "chain-transfers",
+    "/metagraph/chain/transfers.json",
+    "Network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume (a concentration signal), computed live from the account_events Transfer feed at /api/v1/chain/transfers (no static file).",
+    "ChainTransfersArtifact",
   ),
   artifact(
     "chain-fees",
@@ -2267,6 +2273,20 @@ export const API_ROUTES = [
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "call_module", schema: { type: "string", maxLength: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-transfers",
+    "GET",
+    "/api/v1/chain/transfers",
+    "/metagraph/chain/transfers.json",
+    "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
     ],
     [],
   ),

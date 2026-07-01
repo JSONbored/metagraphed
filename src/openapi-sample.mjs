@@ -235,10 +235,41 @@ function normalizeAccountStakeFlowSample(out) {
   return out;
 }
 
+function normalizeChainTransfersSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !("top_sender_share" in out) ||
+    !Array.isArray(out.top_senders) ||
+    !Array.isArray(out.top_receivers) ||
+    typeof out.total_volume_tao !== "number"
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: two senders moving 60 + 20 of a 100 total,
+  // so top_sender_share = 80/100 = 0.8. The generic per-field generator cannot derive the
+  // share from the leaderboard on its own.
+  out.total_volume_tao = 100;
+  out.transfer_count = 12;
+  out.unique_senders = 5;
+  out.unique_receivers = 7;
+  out.top_sender_share = 0.8;
+  out.top_senders = [
+    { address: SAMPLE_SS58, volume_tao: 60, transfer_count: 3 },
+    { address: SAMPLE_COUNTERPARTY_SS58, volume_tao: 20, transfer_count: 2 },
+  ];
+  out.top_receivers = [
+    { address: SAMPLE_COUNTERPARTY_SS58, volume_tao: 55, transfer_count: 4 },
+    { address: SAMPLE_SS58, volume_tao: 30, transfer_count: 2 },
+  ];
+  return out;
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);
+  normalizeChainTransfersSample(out);
   return out;
 }
 
