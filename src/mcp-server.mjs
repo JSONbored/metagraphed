@@ -2187,11 +2187,11 @@ export const MCP_TOOLS = [
     description:
       "Fetch the paginated first-party chain-event history for one account by its " +
       "SS58 address (hotkey OR coldkey), newest first: each event's kind, block, " +
-      "subnet, UID, amount, and timestamp. Optionally filter by event kind (e.g. " +
-      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet) and page " +
-      "with limit (1-1000, default 100) / offset, or follow next_cursor for stable " +
-      "keyset pagination. Use it to trace exactly what a wallet has done over time. " +
-      "Events are decoded directly from the chain.",
+      "Subnet, UID, amount, and timestamp. Optionally filter by event kind (e.g. " +
+      "StakeAdded, StakeRemoved, NeuronRegistered, AxonServed, WeightsSet). " +
+      "Optionally constrain block height with block_start/block_end (inclusive). " +
+      "Page with limit (1-1000, default 100) / offset, or follow next_cursor for stable " +
+      "keyset pagination. Mirrors GET /api/v1/accounts/{ss58}/events.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2206,6 +2206,18 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
             "Omit for all kinds; an unknown kind simply matches nothing.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2233,6 +2245,8 @@ export const MCP_TOOLS = [
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
         kind,
