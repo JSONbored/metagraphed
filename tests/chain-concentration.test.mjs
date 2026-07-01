@@ -85,14 +85,16 @@ describe("buildChainConcentration", () => {
     assert.equal(out.stake.holders, 2);
   });
 
-  test("coerces string-typed netuid cells and ignores blank/null ones", () => {
+  test("coerces string netuid cells and rejects blank/null/invalid ones", () => {
     const out = buildChainConcentration([
       { stake_tao: 1, coldkey: "a", netuid: "5" }, // numeric string from D1
       { stake_tao: 1, coldkey: "b", netuid: 5 }, // same subnet, not double-counted
       { stake_tao: 1, coldkey: "c", netuid: null }, // never counts as subnet 0
       { stake_tao: 1, coldkey: "d" }, // missing netuid entirely
+      { stake_tao: 1, coldkey: "e", netuid: -3 }, // negative -> rejected by the >=0 guard
+      { stake_tao: 1, coldkey: "f", netuid: "x" }, // non-numeric -> NaN, rejected by isInteger
     ]);
-    assert.equal(out.subnet_count, 1); // only subnet 5
+    assert.equal(out.subnet_count, 1); // still only subnet 5
   });
 
   test("is schema-stable-zero on a cold store (no rows)", () => {
