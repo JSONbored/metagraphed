@@ -500,6 +500,23 @@ describe("list-query pagination Link header", () => {
     assert.equal(links.prev.searchParams.get("cursor"), "2");
   });
 
+  test("single incomplete page emits no Link header", () => {
+    const url = query("/api/v1/subnets?sort=netuid&limit=10");
+    const data = {
+      subnets: Array.from({ length: 5 }, (_, i) => ({ netuid: i })),
+    };
+    const { meta } = applyQueryFilters(data, url, "subnets");
+
+    assert.equal(meta.pagination.cursor, 0);
+    assert.equal(meta.pagination.next_cursor, null);
+    assert.equal(
+      paginationLinkHeader(url, meta.pagination, {
+        queryCollection: "subnets",
+      }),
+      null,
+    );
+  });
+
   test("last points at the final page when total is a multiple of limit", () => {
     // limit=1 makes total (5) an exact multiple of limit — the only case where
     // the `(total - 1)` correction matters. last must be 4 (the final row), not
@@ -721,5 +738,25 @@ describe("list-query paginationLinkHeader canonicalization", () => {
     const next = new URL(header.match(/<([^>]+)>;\s*rel="next"/)[1]);
     assert.equal(next.searchParams.has("utm"), false);
     assert.equal(next.searchParams.get("sort"), "netuid");
+  });
+
+  test("canonicalizes unordered duplicate params in page links", () => {
+    const header = paginationLinkHeader(
+      pagedUrl(
+        "/api/v1/subnets?order=desc&sort=tempo&netuid=7&sort=netuid&limit=2&utm=evil&cursor=0&netuid=8",
+      ),
+      meta,
+      { queryCollection: "subnets" },
+    );
+    const links = parseLink(header);
+
+    assert.equal(
+      links.next.search,
+      "?limit=2&cursor=2&sort=tempo&order=desc&netuid=7",
+    );
+    assert.equal(
+      links.last.search,
+      "?limit=2&cursor=4&sort=tempo&order=desc&netuid=7",
+    );
   });
 });

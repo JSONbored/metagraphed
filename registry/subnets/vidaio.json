@@ -100,6 +100,30 @@
       "schema_url": "https://api.vidaio.io/openapi.json",
       "source_urls": ["https://vidaio.io/"],
       "url": "https://api.vidaio.io/openapi.json"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-85-vidaio-video-samples",
+      "kind": "data-artifact",
+      "name": "Vidaio scheduler video samples",
+      "notes": "Official source repository YAML listing public synthetic video samples used by the Vidaio scheduler.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "vidaio",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dragunovx16"
+      },
+      "source_urls": [
+        "https://github.com/vidaio-subnet/vidaio-subnet/blob/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
+      ],
+      "url": "https://raw.githubusercontent.com/vidaio-subnet/vidaio-subnet/b5d60ba7e2f6f9620075558f8d9098a3b2242109/services/video_scheduler/video_samples.yaml"
     }
   ],
   "website_url": "https://vidaio.io/"

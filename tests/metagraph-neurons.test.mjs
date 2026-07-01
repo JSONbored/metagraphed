@@ -499,6 +499,22 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.neurons[0].uid, 0);
   });
 
+  test("GET /subnets/{n}/yield routes to the emission-yield handler", async () => {
+    const { res, body } = await getJson("/api/v1/subnets/7/yield", env);
+    assert.equal(res.status, 200);
+    assert.equal(body.data.netuid, 7);
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(Array.isArray(body.data.neurons), true);
+    assert.equal(typeof body.data.validator_count, "number");
+    // ranked by yield desc, so the per-UID yields are non-increasing
+    const ys = body.data.neurons.map((n) => n.yield).filter((y) => y != null);
+    assert.deepEqual(
+      ys,
+      [...ys].sort((a, b) => b - a),
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
   test("GET /subnets/{n}/concentration computes per-UID, entity, and validator metrics", async () => {
     const { res, body } = await getJson("/api/v1/subnets/7/concentration", env);
     assert.equal(res.status, 200);

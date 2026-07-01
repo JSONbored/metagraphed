@@ -5725,6 +5725,59 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.ok(!/hotkey = \?/.test(q.sql), "received must not match hotkey");
   });
 
+  test("get_account_transfers applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = tailD1(
+      {
+        transfers: [
+          {
+            block_number: 150,
+            event_index: 4,
+            event_kind: "Transfer",
+            hotkey: SS58,
+            coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+            amount_tao: 10.5,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_transfers",
+      {
+        ss58: SS58,
+        direction: "sent",
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.transfer_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_account_transfers rejects a non-integer block_end", async () => {
+    const res = await callTool(
+      "get_account_transfers",
+      { ss58: SS58, block_end: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_end/i);
+  });
+
   test("get_account_transfers degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_transfers", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
