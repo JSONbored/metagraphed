@@ -1148,6 +1148,13 @@
                       "minimum": 0,
                       "type": "integer"
                     },
+                    "previously_known_as": {
+                      "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
                     "readiness": {
                       "$ref": "#/components/schemas/IntegrationReadiness"
                     },
@@ -1226,6 +1233,13 @@
               "netuid": {
                 "minimum": 0,
                 "type": "integer"
+              },
+              "previously_known_as": {
+                "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               "readiness": {
                 "$ref": "#/components/schemas/IntegrationReadiness"
@@ -11796,6 +11810,13 @@
             "minimum": 0,
             "type": "integer"
           },
+          "previously_known_as": {
+            "description": "Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "probed_surface_count": {
             "minimum": 0,
             "type": "integer"
@@ -12280,6 +12301,131 @@
           "netuid",
           "point_count",
           "points"
+        ],
+        "type": "object"
+      },
+      "SubnetIdentityHistoryArtifact": {
+        "additionalProperties": true,
+        "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetIdentityHistoryEntry"
+            },
+            "type": "array"
+          },
+          "entry_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offset": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "entry_count",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "SubnetIdentityHistoryEntry": {
+        "additionalProperties": false,
+        "description": "One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data.",
+        "properties": {
+          "block_number": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "discord": {
+            "maxLength": 200,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "github_repo": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity_hash": {
+            "type": "string"
+          },
+          "logo_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_url": {
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "symbol": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "observed_at",
+          "identity_hash"
         ],
         "type": "object"
       },

@@ -72,6 +72,8 @@ export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/;
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;
+export const SUBNET_IDENTITY_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/identity-history$/;
 // Account entity routes (#1347): computed live from the account_events + neurons
 // D1 tiers. SS58 addresses are base58 (no 0/O/I/l), 47-48 chars.
 // A bare, anchored SS58 address — the same shape the route patterns capture,

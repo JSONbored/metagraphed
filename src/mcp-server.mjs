@@ -109,6 +109,7 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
+import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { decodeCursor, encodeCursor } from "./cursor.mjs";
@@ -552,6 +553,18 @@ async function loadSubnetHistory(ctx, netuid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildSubnetHistory(rows, netuid, { window: label });
+}
+
+async function loadSubnetIdentityHistoryTool(
+  ctx,
+  netuid,
+  { limit, offset, cursor },
+) {
+  return loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
 }
 
 // One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
@@ -2026,6 +2039,49 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetHistory(ctx, netuid, requireHistoryWindow(args));
+    },
+  },
+  {
+    name: "get_subnet_identity_history",
+    title: "Get a subnet's on-chain identity history",
+    description:
+      "Fetch the append-only on-chain identity timeline for one subnet (#1647): " +
+      "each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked " +
+      "field changed (name, symbol, description, repo, website, discord, logo). " +
+      "Newest first. Page with limit (1-1000, default 100) / offset, or follow " +
+      "next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetIdentityHistoryTool(ctx, netuid, {
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: args?.cursor,
+      });
     },
   },
   {
@@ -4707,6 +4763,31 @@ const TOOL_OUTPUT_SCHEMAS = {
         validator_count: NULLABLE_INT,
         total_stake_tao: ANY,
         total_emission_tao: ANY,
+      }),
+    },
+  },
+  get_subnet_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["schema_version", "netuid", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        subnet_name: NULLABLE_STRING,
+        symbol: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        github_repo: NULLABLE_STRING,
+        subnet_url: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        logo_url: NULLABLE_STRING,
+        identity_hash: { type: "string" },
       }),
     },
   },

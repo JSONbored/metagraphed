@@ -116,6 +116,7 @@ import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
+import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -367,6 +368,35 @@ export async function handleSubnetHistory(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/history.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/identity-history (#1647): append-only on-chain
+// identity timeline, newest first. Cold/absent store → schema-stable zero.
+export async function handleSubnetIdentityHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const data = await loadSubnetIdentityHistory(d1Runner(env), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/identity-history.json`,
+        data.entries[0]?.observed_at ?? null,
       ),
     },
     "short",

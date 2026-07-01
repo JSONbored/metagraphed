@@ -6531,7 +6531,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // parity loaders' WHERE/GROUP-BY clauses get realistic rows. `capture` records
   // each bound (sql, params) so a test can assert what reached the query.
   function parityD1(
-    { dailyAgg, dailyRows, concentrationRows, events } = {},
+    { dailyAgg, dailyRows, concentrationRows, events, identityHistory } = {},
     capture = [],
   ) {
     return {
@@ -6555,6 +6555,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
                   }
                   if (/FROM account_events/.test(sql))
                     return Promise.resolve({ results: events || [] });
+                  if (/FROM subnet_identity_history/.test(sql))
+                    return Promise.resolve({ results: identityHistory || [] });
                   return Promise.resolve({ results: [] });
                 },
               };
@@ -6632,6 +6634,36 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_subnet_identity_history returns the append-only identity timeline", async () => {
+    const env = parityD1({
+      identityHistory: [
+        {
+          id: 2,
+          block_number: 100,
+          observed_at: 1_700_000_000_000,
+          subnet_name: "MIAO",
+          symbol: "α",
+          description: "sound AI",
+          github_repo: null,
+          subnet_url: null,
+          discord: null,
+          logo_url: null,
+          identity_hash: "hash-1",
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_subnet_identity_history",
+      { netuid: 86, limit: 10 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 86);
+    assert.equal(out.entry_count, 1);
+    assert.equal(out.entries[0].subnet_name, "MIAO");
+    assert.equal(out.limit, 10);
   });
 
   test("get_neuron_history returns one UID's per-day series", async () => {

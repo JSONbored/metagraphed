@@ -20,6 +20,7 @@ import {
   handleSubnetValidators,
   handleNeuronHistory,
   handleSubnetHistory,
+  handleSubnetIdentityHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
@@ -198,6 +199,23 @@ function accountDayRow(overrides = {}) {
   };
 }
 
+function identityHistoryRow(overrides = {}) {
+  return {
+    id: 10,
+    block_number: 100,
+    observed_at: OBSERVED_AT,
+    subnet_name: "MIAO",
+    symbol: "α",
+    description: "old",
+    github_repo: null,
+    subnet_url: null,
+    discord: null,
+    logo_url: null,
+    identity_hash: "abc",
+    ...overrides,
+  };
+}
+
 // A D1 mock that routes SQL by regex patterns (order-sensitive: specific first).
 // Named buckets let each handler test supply only the rows it needs.
 function dbWith({
@@ -213,6 +231,7 @@ function dbWith({
   registrations,
   accountEvents,
   accountEventsDaily,
+  subnetIdentityHistory,
   transfers,
   relationshipTransfers,
   subnetEvents,
@@ -307,6 +326,10 @@ function dbWith({
                   // Account per-day rollup (#1854).
                   if (/FROM account_events_daily/.test(sql)) {
                     return { results: accountEventsDaily || [] };
+                  }
+                  // Subnet on-chain identity history (#1647).
+                  if (/FROM subnet_identity_history/.test(sql)) {
+                    return { results: subnetIdentityHistory || [] };
                   }
                   // Extrinsic-emitted events embed (#1849) — before generic events.
                   if (
@@ -916,6 +939,48 @@ describe("handleSubnetHistory", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+  });
+});
+
+describe("handleSubnetIdentityHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetIdentityHistory(
+      req(`/api/v1/subnets/${NETUID}/identity-history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/identity-history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty entries on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetIdentityHistory,
+      req(`/api/v1/subnets/${NETUID}/identity-history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/identity-history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
+  });
+
+  test("happy path returns identity timeline rows", async () => {
+    const { env } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    const body = await json(
+      await handleSubnetIdentityHistory(
+        req(`/api/v1/subnets/${NETUID}/identity-history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/identity-history?limit=20`),
+      ),
+    );
+    assert.equal(body.data.entry_count, 1);
+    assert.equal(body.data.entries[0].subnet_name, "MIAO");
+    assert.equal(body.data.limit, 20);
   });
 });
 
@@ -3908,6 +3973,16 @@ describe("query-param guard matrix (#1900)", () => {
           emptyEnv(),
           NETUID,
           url(`/api/v1/subnets/${NETUID}/history?foo=bar`),
+        ),
+    },
+    {
+      name: "handleSubnetIdentityHistory",
+      run: () =>
+        handleSubnetIdentityHistory(
+          req(`/api/v1/subnets/${NETUID}/identity-history`),
+          emptyEnv(),
+          NETUID,
+          url(`/api/v1/subnets/${NETUID}/identity-history?foo=bar`),
         ),
     },
     {

@@ -457,6 +457,13 @@
     },
     {
       "contract_version": "2026-06-30.13",
+      "id": "subnet-identity-history",
+      "path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-30.13",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "schema_ref": "#/components/schemas/AccountSummaryArtifact",
@@ -4605,6 +4612,40 @@
               "1y",
               "all"
             ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "cache": "short",
+      "description": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "id": "subnet-identity-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/identity-history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
             "type": "string"
           }
         }

@@ -988,7 +988,12 @@
                       "items": { "type": "string" }
                     },
                     "base_url": { "type": ["string", "null"] },
-                    "health": { "type": "string" }
+                    "health": { "type": "string" },
+                    "previously_known_as": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name."
+                    }
                   },
                   "additionalProperties": true
                 }
@@ -1073,6 +1078,11 @@
               "netuid": { "type": "integer", "minimum": 0 },
               "slug": { "type": "string" },
               "name": { "type": "string" },
+              "previously_known_as": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name."
+              },
               "categories": {
                 "type": "array",
                 "items": { "type": "string" }
