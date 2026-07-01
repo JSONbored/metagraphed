@@ -167,3 +167,33 @@ test("GET /accounts/{ss58}/history ignores a malformed cursor (first page)", asy
   assert.ok(/OFFSET/.test(sql));
   assert.ok(!/\(day, netuid\) </.test(sql));
 });
+
+test("GET /accounts/{ss58}/history exposes x-metagraph-artifact-source on both the normal and inverted-range short-circuit paths (#2618)", async () => {
+  // The normal path stamps meta.source and exposes the CORS header; the inverted
+  // from>to short-circuit stamps the same meta.source, so it must expose the
+  // header too — it must not be dropped just because the range is empty.
+  const normal = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/history`),
+    dbWith({ days: [DAY] }),
+    {},
+  );
+  assert.equal(
+    normal.headers.get("x-metagraph-artifact-source"),
+    "chain-events",
+  );
+
+  const { env, captured } = dbCapture([DAY]);
+  const inverted = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
+    env,
+    {},
+  );
+  assert.equal(inverted.status, 200);
+  assert.equal((await inverted.json()).data.day_count, 0);
+  // Short-circuited before D1 — no account_events_daily scan.
+  assert.ok(!captured.some((q) => /FROM account_events_daily/.test(q.sql)));
+  assert.equal(
+    inverted.headers.get("x-metagraph-artifact-source"),
+    "chain-events",
+  );
+});

@@ -836,7 +836,11 @@ export async function handleAccountHistory(request, env, ss58, url) {
       offset,
       nextCursor: null,
     });
-    return envelopeResponse(
+    // Use the account envelope so this short-circuit exposes the
+    // x-metagraph-artifact-source header too — the normal path below does (#2618),
+    // and the payload stamps the same meta.source, so a browser must not lose the
+    // CORS-exposed header just because the range was inverted.
+    return accountEnvelopeResponse(
       request,
       {
         data,
