@@ -457,6 +457,22 @@ test("GET /blocks/{ref} emits nearest stored prev/next neighbors (#1853)", async
   assert.equal(body.data.next_block_number, 1240);
 });
 
+test("GET /blocks/{ref} resolves neighbors when D1 returns block_number as a string (#1853)", async () => {
+  // D1 can return the INTEGER block_number as a numeric string. The REST detail
+  // handler must coerce the resolved anchor before the MAX/MIN neighbor lookup —
+  // a bare Number.isInteger("1234") is false, which skipped the query and wrongly
+  // reported prev/next_block_number: null for a block that has neighbors.
+  const env = dbWith({
+    detail: { block_number: "1234", block_hash: "0xabc", observed_at: 1 },
+    neighbors: { prev: 1230, next: 1240 },
+  });
+  const res = await handleRequest(req("/api/v1/blocks/1234"), env, {});
+  const body = await res.json();
+  assert.equal(body.data.block.block_number, 1234);
+  assert.equal(body.data.prev_block_number, 1230);
+  assert.equal(body.data.next_block_number, 1240);
+});
+
 test("GET /blocks/{ref} nulls neighbors at a window edge (#1853)", async () => {
   const env = dbWith({
     detail: { block_number: 1, block_hash: "0x1", observed_at: 1 },

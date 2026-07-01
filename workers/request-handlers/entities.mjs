@@ -1397,8 +1397,15 @@ export async function handleBlock(request, env, ref) {
   // the block_number primary key instead of scanning the retained blocks table.
   let prev = null;
   let next = null;
-  const resolvedNumber = rows[0]?.block_number;
-  if (Number.isInteger(resolvedNumber)) {
+  // D1 can return the INTEGER block_number as a numeric string, and a bare
+  // Number.isInteger(rows[0]?.block_number) guard is false for "1234" — which
+  // would skip the neighbor query and make a resolved block wrongly report
+  // prev/next_block_number: null. Coerce the anchor first (mirrors formatBlock's
+  // toBlockNumber, and the string-cell fix applied to account-events #2489).
+  const resolvedRaw = Number(rows[0]?.block_number);
+  const resolvedNumber =
+    Number.isInteger(resolvedRaw) && resolvedRaw >= 0 ? resolvedRaw : null;
+  if (resolvedNumber !== null) {
     const nbr = await d1All(
       env,
       `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
