@@ -72,6 +72,65 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.is_immunity_period, false);
   });
 
+  test("formatNeuron coerces string-typed numeric cells to Numbers", () => {
+    // D1 can surface an INTEGER/REAL column as a numeric string ("0.5" not 0.5);
+    // the bare `?? null` pass-through this replaced would have leaked strings into
+    // the API payload. Mirrors blocks.mjs (#2435) / extrinsics.mjs (#2439).
+    const n = formatNeuron({
+      uid: "0",
+      rank: "1",
+      trust: "0.5",
+      validator_trust: "0.99",
+      consensus: "0.4",
+      incentive: "0.1",
+      dividends: "0.2",
+      emission_tao: "22.1",
+      stake_tao: "1000.5",
+      registered_at_block: "6702485",
+    });
+    assert.equal(n.uid, 0);
+    assert.equal(typeof n.uid, "number");
+    assert.equal(n.rank, 1);
+    assert.equal(n.trust, 0.5);
+    assert.equal(typeof n.trust, "number");
+    assert.equal(n.stake_tao, 1000.5);
+    assert.equal(typeof n.stake_tao, "number");
+    assert.equal(n.registered_at_block, 6702485);
+    assert.equal(typeof n.registered_at_block, "number");
+  });
+
+  test("formatNeuron coerces string-typed 0/1 flag cells to booleans", () => {
+    // Boolean("0") is truthy, so a string "0" flag cell would wrongly read true;
+    // the numeric compare in flagCell keeps it false.
+    const n = formatNeuron({ active: "1", validator_permit: "0" });
+    assert.equal(n.active, true);
+    assert.equal(n.validator_permit, false);
+    assert.equal(n.is_immunity_period, false);
+  });
+
+  test("formatNeuron nulls a non-finite or negative int cell", () => {
+    // Guard rails on the coercion: a junk uid/block must not leak NaN or a
+    // fractional/negative integer into a field the schema types as an int.
+    const n = formatNeuron({
+      uid: "abc",
+      registered_at_block: -1,
+      rank: "not-a-number",
+    });
+    assert.equal(n.uid, null);
+    assert.equal(n.registered_at_block, null);
+    assert.equal(n.rank, null);
+  });
+
+  test("buildNeuronDetail coerces a string block_number cell", () => {
+    const d = buildNeuronDetail(
+      { ...ROW, block_number: "8454388", registered_at_block: "6702485" },
+      12,
+    );
+    assert.equal(d.block_number, 8454388);
+    assert.equal(typeof d.block_number, "number");
+    assert.equal(d.neuron.registered_at_block, 6702485);
+  });
+
   test("buildSubnetMetagraph stamps count + ISO captured_at", () => {
     const data = buildSubnetMetagraph([ROW, MINER], 7);
     assert.equal(data.netuid, 7);

@@ -75,26 +75,47 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
-// One D1 row → a clean Neuron object. SQLite stores booleans as 0/1 INTEGER, so
-// coerce the flag columns back to real booleans for the API.
+// D1 can surface an INTEGER/REAL column as a numeric string; coerce so the API
+// never leaks a string into a numeric field — the same fix already applied to
+// blocks.mjs (#2435), extrinsics.mjs (#2439), and account-events.mjs. These
+// PRESERVE null (a missing/null cell stays null), unlike the null→0 aggregation
+// helpers (nonNegativeInt / nullableNumber) used by buildGlobalValidators.
+function intCell(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+function numberCell(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+// SQLite stores booleans as 0/1 INTEGER, which D1 can surface as "0"/"1" strings.
+// Boolean("0") is truthy, so compare the numeric value instead of using Boolean().
+function flagCell(value) {
+  return Number(value) === 1;
+}
+
+// One D1 row → a clean Neuron object: every numeric column is coerced from a
+// possible string cell, and the 0/1 INTEGER flag columns become real booleans.
 export function formatNeuron(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    uid: row.uid ?? null,
+    uid: intCell(row.uid),
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
-    active: Boolean(row.active),
-    validator_permit: Boolean(row.validator_permit),
-    rank: row.rank ?? null,
-    trust: row.trust ?? null,
-    validator_trust: row.validator_trust ?? null,
-    consensus: row.consensus ?? null,
-    incentive: row.incentive ?? null,
-    dividends: row.dividends ?? null,
-    emission_tao: row.emission_tao ?? null,
-    stake_tao: row.stake_tao ?? null,
-    registered_at_block: row.registered_at_block ?? null,
-    is_immunity_period: Boolean(row.is_immunity_period),
+    active: flagCell(row.active),
+    validator_permit: flagCell(row.validator_permit),
+    rank: numberCell(row.rank),
+    trust: numberCell(row.trust),
+    validator_trust: numberCell(row.validator_trust),
+    consensus: numberCell(row.consensus),
+    incentive: numberCell(row.incentive),
+    dividends: numberCell(row.dividends),
+    emission_tao: numberCell(row.emission_tao),
+    stake_tao: numberCell(row.stake_tao),
+    registered_at_block: intCell(row.registered_at_block),
+    is_immunity_period: flagCell(row.is_immunity_period),
     axon: row.axon ?? null,
   };
 }
@@ -104,7 +125,7 @@ function snapshotStamp(rows) {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
-    block_number: first.block_number ?? null,
+    block_number: intCell(first.block_number),
   };
 }
 
@@ -142,7 +163,7 @@ export function buildNeuronDetail(row, netuid) {
     schema_version: 1,
     netuid,
     captured_at: toIso(row?.captured_at),
-    block_number: row?.block_number ?? null,
+    block_number: intCell(row?.block_number),
     neuron: formatNeuron(row),
   };
 }
