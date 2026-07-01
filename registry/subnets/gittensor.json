@@ -397,6 +397,28 @@
       },
       "source_urls": ["https://api.gittensor.io/swagger-json"],
       "url": "https://api.gittensor.io/prs"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-74-gittensor-data-artifact-api-gittensor-io-6",
+      "kind": "data-artifact",
+      "name": "Gittensor TAO and Alpha token prices",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "gittensor",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "carlh7777"
+      },
+      "source_urls": ["https://api.gittensor.io/swagger"],
+      "url": "https://api.gittensor.io/dash/prices"
     }
   ],
   "website_url": "https://gittensor.io/"
