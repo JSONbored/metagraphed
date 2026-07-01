@@ -607,66 +607,7 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  // Median sampling: cap per UTC calendar day, one "WHERE observed_at in
-  // [dayStart, dayEnd) ... LIMIT ?" block per day (UNION ALL'd below) instead
-  // of a single query over the whole window — a day-partitioned ROW_NUMBER()
-  // OVER still has to sort the FULL matching set before any per-partition
-  // filter can trim it, reintroducing the unbounded-scan cost the cap exists
-  // to remove. Bounding by CALENDAR DAY (not by the request's `window` size)
-  // matters because a day's real extrinsic volume is a property of actual
-  // chain throughput, not something a caller can inflate by requesting a
-  // bigger window — unlike the pre-cap behavior, where the window parameter
-  // directly multiplied the sort cost.
-  //
-  // The sample is ORDER BY RANDOM() rather than ORDER BY observed_at: capping
-  // to the chronologically-EARLIEST rows would silently bias the median
-  // toward however fees/tips look at the start of a high-volume day (a real
-  // risk for a congestion-priced fee market, where fees plausibly trend with
-  // time of day) instead of the day's true distribution. A random subsample
-  // costs a per-day sort (RANDOM() can't use idx_extrinsics_observed to
-  // short-circuit), but that cost is bounded by one calendar day's real
-  // extrinsic count, not by the multi-day window the original vulnerability
-  // let a caller inflate — and it keeps the median statistically
-  // representative of the whole day instead of systematically skewed.
-  //
-  // The sample cap and (optional) call_module filter are the SAME value in
-  // every day block, so they're bound ONCE via numbered (?N) parameters and
-  // reused across every UNION ALL block, rather than re-bound per block. D1
-  // caps a statement at 100 bound parameters; a scoped 30-day window already
-  // needs a day-start + day-end pair per block, and re-binding the cap/filter
-  // too would push a 30-day scoped window to 120+ params.
-  const dayBoundaries = [];
-  for (let dayStart = utcDayFloor(cutoff); dayStart < now; dayStart += DAY_MS) {
-    dayBoundaries.push(dayStart);
-  }
-  const medianLimitParam = 1;
-  const medianModuleParam = callModuleFilter ? 2 : null;
-  const medianFirstDayParam = callModuleFilter ? 3 : 2;
-  const medianModuleClause = callModuleFilter
-    ? ` AND call_module = ?${medianModuleParam}`
-    : "";
-  const medianDayBlocks = dayBoundaries.map((dayStart, i) => {
-    const startParam = medianFirstDayParam + i * 2;
-    const endParam = startParam + 1;
-    return `SELECT * FROM (
-           SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                  COALESCE(fee_tao, 0) AS fee_tao,
-                  COALESCE(tip_tao, 0) AS tip_tao
-           FROM extrinsics
-           WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}
-           ORDER BY RANDOM()
-           LIMIT ?${medianLimitParam}
-         )`;
-  });
-  const medianParams = [
-    CHAIN_FEE_MEDIAN_SAMPLE_LIMIT,
-    ...(callModuleFilter ? [callModuleFilter] : []),
-    ...dayBoundaries.flatMap((dayStart) => [
-      Math.max(dayStart, cutoff),
-      Math.min(dayStart + DAY_MS, now),
-    ]),
-  ];
-  const [dailyRows, payerRows, medianRows] = await Promise.all([
+  const [dailyRows, payerRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
               COUNT(*) AS extrinsic_count,
@@ -691,8 +632,55 @@ export async function loadChainFees(
        LIMIT ?`,
       payerParams,
     ),
-    d1(
-      `WITH capped_samples AS (
+  ]);
+  // Exact per-day medians, but ONLY for days whose extrinsic_count (from the
+  // daily aggregate above, already computed) is within the sample cap. A day
+  // over the cap gets an honest null median instead of one approximated from
+  // a subsample — every capping strategy tried here (chronological-first,
+  // random, bucketed) trades exactness for a DIFFERENT bias, and the daily
+  // aggregate already tells us for free which days are cheap enough to
+  // compute exactly. Each included day's own [dayStart, dayEnd) range is an
+  // index-terminated scan (idx_extrinsics_observed) bounded to that day's
+  // ALREADY-VERIFIED-small row count — an over-cap day's rows are never
+  // touched by the median query at all, so total rows scanned is capped by
+  // (verified-safe days) * CHAIN_FEE_MEDIAN_SAMPLE_LIMIT, a hard ceiling
+  // fixed before the query runs, not an approximation of one.
+  const safeDayCounts = new Map(
+    dailyRows.map((row) => [row.day, Number(row.extrinsic_count)]),
+  );
+  const safeDayBoundaries = [];
+  for (let dayStart = utcDayFloor(cutoff); dayStart < now; dayStart += DAY_MS) {
+    const dayLabel = new Date(dayStart).toISOString().slice(0, 10);
+    const count = safeDayCounts.get(dayLabel);
+    if (count !== undefined && count <= CHAIN_FEE_MEDIAN_SAMPLE_LIMIT) {
+      safeDayBoundaries.push(dayStart);
+    }
+  }
+  let medianRows = [];
+  if (safeDayBoundaries.length > 0) {
+    const medianModuleParam = callModuleFilter ? 1 : null;
+    const medianFirstDayParam = callModuleFilter ? 2 : 1;
+    const medianModuleClause = callModuleFilter
+      ? ` AND call_module = ?${medianModuleParam}`
+      : "";
+    const medianDayBlocks = safeDayBoundaries.map((dayStart, i) => {
+      const startParam = medianFirstDayParam + i * 2;
+      const endParam = startParam + 1;
+      return `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao,
+                COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}`;
+    });
+    const medianParams = [
+      ...(callModuleFilter ? [callModuleFilter] : []),
+      ...safeDayBoundaries.flatMap((dayStart) => [
+        Math.max(dayStart, cutoff),
+        Math.min(dayStart + DAY_MS, now),
+      ]),
+    ];
+    medianRows = await d1(
+      `WITH samples AS (
          ${medianDayBlocks.join("\n         UNION ALL\n         ")}
        ),
        fee_ranked AS (
@@ -700,7 +688,7 @@ export async function loadChainFees(
                 fee_tao,
                 ROW_NUMBER() OVER (PARTITION BY day ORDER BY fee_tao) AS rn,
                 COUNT(*) OVER (PARTITION BY day) AS cnt
-         FROM capped_samples
+         FROM samples
        ),
        fee_medians AS (
          SELECT day, AVG(fee_tao) AS median_fee_tao
@@ -713,7 +701,7 @@ export async function loadChainFees(
                 tip_tao,
                 ROW_NUMBER() OVER (PARTITION BY day ORDER BY tip_tao) AS rn,
                 COUNT(*) OVER (PARTITION BY day) AS cnt
-         FROM capped_samples
+         FROM samples
        ),
        tip_medians AS (
          SELECT day, AVG(tip_tao) AS median_tip_tao
@@ -727,8 +715,8 @@ export async function loadChainFees(
        FROM fee_medians
        JOIN tip_medians USING (day)`,
       medianParams,
-    ),
-  ]);
+    );
+  }
   const data = buildChainFees({
     window: windowLabel,
     observedAt,
