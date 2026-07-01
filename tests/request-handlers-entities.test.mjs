@@ -1910,6 +1910,21 @@ describe("handleAccountExtrinsics", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("happy path returns signer-matched extrinsics", async () => {
     const { env } = dbWith({ extrinsics: [extrinsicRow()] });
     const body = await json(
