@@ -516,6 +516,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-30.11",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "id": "global-validators",
+      "path": "/metagraph/validators.json",
+      "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-30.11",
       "description": "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",

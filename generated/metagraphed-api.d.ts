@@ -1653,6 +1653,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier. */
+        get: operations["globalValidators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3113,6 +3130,42 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot. */
+        GlobalValidatorEntry: {
+            avg_validator_trust: number | null;
+            coldkey: string | null;
+            coldkey_count: number;
+            hotkey: string;
+            latest_block_number: number | null;
+            /** Format: date-time */
+            latest_captured_at: string | null;
+            max_validator_trust: number | null;
+            subnet_count: number;
+            subnets: components["schemas"]["GlobalValidatorSubnet"][];
+            uid_count: number;
+        };
+        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets. */
+        GlobalValidatorsArtifact: {
+            block_number?: number | null;
+            /** Format: date-time */
+            captured_at?: string | null;
+            limit: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+            validator_count: number;
+            validators: components["schemas"]["GlobalValidatorEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint. */
+        GlobalValidatorSubnet: {
+            emission_tao: number;
+            netuid: number;
+            stake_tao: number;
+            uid: number;
+            validator_trust: number | null;
         };
         HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
             color: string;
@@ -18716,6 +18769,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SurfacesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    globalValidators: {
+        parameters: {
+            query?: {
+                sort?: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "block_number": 5000000,
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "subnet_count",
+                     *         "validator_count": 1,
+                     *         "validators": [
+                     *           {
+                     *             "avg_validator_trust": 0.5,
+                     *             "coldkey": "example",
+                     *             "coldkey_count": 1,
+                     *             "hotkey": "example",
+                     *             "latest_block_number": 5000000,
+                     *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "max_validator_trust": 0.5,
+                     *             "subnet_count": 1,
+                     *             "subnets": [
+                     *               {
+                     *                 "emission_tao": 0.5,
+                     *                 "netuid": 7,
+                     *                 "stake_tao": 0.5,
+                     *                 "uid": 1,
+                     *                 "validator_trust": 0.5
+                     *               }
+                     *             ],
+                     *             "uid_count": 1
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["GlobalValidatorsArtifact"];
                     };
                 };
             };

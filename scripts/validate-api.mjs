@@ -248,6 +248,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/validators?sort=uid_count&limit=3",
+    (body) => {
+      assert.equal(body.data.sort, "uid_count");
+      assert.equal(body.data.limit, 3);
+      assert.equal(Array.isArray(body.data.validators), true);
+      assert.equal(typeof body.data.validator_count, "number");
+    },
+  ],
+  [
     "/api/v1/subnets/7/events",
     (body) => {
       assert.equal(body.data.netuid, 7);

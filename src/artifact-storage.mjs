@@ -15,6 +15,8 @@ export const R2_ONLY_PATTERNS = [
   // Global cross-subnet incident ledger, computed live from D1 at
   // /api/v1/incidents — never written as a file.
   /^incidents\.json$/,
+  // Global validator/operator leaderboard, computed live from the neurons D1 tier.
+  /^validators\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,

@@ -40,9 +40,14 @@ import {
   validateQueryParams,
 } from "./analytics.mjs";
 import {
+  loadGlobalValidators,
   loadSubnetMetagraph,
   loadSubnetValidators,
   loadNeuron,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.mjs";
 import {
   buildNeuronHistory,
@@ -215,6 +220,49 @@ export async function handleSubnetValidators(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/validators.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators?sort=subnet_count|uid_count|avg_validator_trust|max_validator_trust&limit=20:
+// network-wide validator/operator leaderboard from the current neurons snapshot. This
+// groups validator-permit UID rows by public identity, so consumers can see cross-subnet
+// operator footprint rather than only one subnet at a time. Stake/emission values stay
+// scoped to each membership row because those source units are not globally aggregated.
+// Cold/absent D1 returns a schema-stable empty list.
+export async function handleGlobalValidators(request, env, url) {
+  const validationError = validateQueryParams(url, ["sort", "limit"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const sortParam =
+    url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
+  if (!GLOBAL_VALIDATOR_SORTS.includes(sortParam)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
+        ", ",
+      )}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    min: 1,
+    max: GLOBAL_VALIDATOR_LIMIT_MAX,
+  });
+  if (limit.error) return analyticsQueryError(limit.error);
+  const data = await loadGlobalValidators(d1Runner(env), {
+    sort: sortParam,
+    limit: limit.value,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/validators.json",
         data.captured_at,
       ),
     },

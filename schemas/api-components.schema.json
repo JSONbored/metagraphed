@@ -5862,6 +5862,168 @@
         ],
         "type": "object"
       },
+      "GlobalValidatorEntry": {
+        "additionalProperties": false,
+        "description": "One validator/operator row grouped by public identity across every current validator-permit UID in the neurons snapshot.",
+        "properties": {
+          "avg_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "coldkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hotkey": {
+            "type": "string"
+          },
+          "latest_block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "latest_captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalValidatorSubnet"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "uid_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "coldkey",
+          "coldkey_count",
+          "subnet_count",
+          "uid_count",
+          "avg_validator_trust",
+          "max_validator_trust",
+          "latest_captured_at",
+          "latest_block_number",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "GlobalValidatorsArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets.",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "subnet_count",
+              "uid_count",
+              "avg_validator_trust",
+              "max_validator_trust"
+            ],
+            "type": "string"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validators": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalValidatorEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "sort",
+          "limit",
+          "validator_count",
+          "validators"
+        ],
+        "type": "object"
+      },
+      "GlobalValidatorSubnet": {
+        "additionalProperties": false,
+        "description": "One current subnet membership for a validator identity in the network-wide validator leaderboard. Stake and emission values stay scoped to this subnet membership because source units are not aggregated across subnets. The global leaderboard returns at most the top ten memberships per identity, ranked by membership stake, while subnet_count/uid_count describe the full footprint.",
+        "properties": {
+          "emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stake_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "uid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_trust": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "netuid",
+          "uid",
+          "stake_tao",
+          "emission_tao",
+          "validator_trust"
+        ],
+        "type": "object"
+      },
       "HealthBadgeArtifact": {
         "allOf": [
           {

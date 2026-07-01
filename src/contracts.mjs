@@ -953,6 +953,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetMoversArtifact",
   ),
   artifact(
+    "global-validators",
+    "/metagraph/validators.json",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "GlobalValidatorsArtifact",
+  ),
+  artifact(
     "subnet-metagraph",
     "/metagraph/subnets/{netuid}/metagraph.json",
     "Per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/metagraph (no static file).",
@@ -1800,6 +1806,34 @@ export const API_ROUTES = [
       {
         name: "sort",
         schema: { type: "string", enum: ["stake", "emission", "validators"] },
+      },
+      {
+        name: "limit",
+        schema: { type: "integer", minimum: 1, maximum: 100 },
+      },
+    ],
+    [],
+  ),
+  route(
+    "global-validators",
+    "GET",
+    "/api/v1/validators",
+    "/metagraph/validators.json",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+    "short",
+    ["validators", "analytics"],
+    [
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "subnet_count",
+            "uid_count",
+            "avg_validator_trust",
+            "max_validator_trust",
+          ],
+        },
       },
       {
         name: "limit",

@@ -401,6 +401,13 @@
     },
     {
       "contract_version": "2026-06-30.11",
+      "id": "global-validators",
+      "path": "/metagraph/validators.json",
+      "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-30.11",
       "id": "subnet-metagraph",
       "path": "/metagraph/subnets/{netuid}/metagraph.json",
       "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
@@ -4384,6 +4391,39 @@
               "stake",
               "emission",
               "validators"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/validators.json",
+      "cache": "short",
+      "description": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+      "id": "global-validators",
+      "method": "GET",
+      "path": "/api/v1/validators",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "subnet_count",
+              "uid_count",
+              "avg_validator_trust",
+              "max_validator_trust"
             ],
             "type": "string"
           }
