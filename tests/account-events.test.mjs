@@ -662,6 +662,22 @@ test("loadAccountExtrinsics applies the block_start/block_end range as bound par
   assert.deepEqual(captured.params, ["5Hk", 100, 900, 100, 0]);
 });
 
+test("loadAccountExtrinsics short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountExtrinsics(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.extrinsic_count, 0);
+  assert.deepEqual(out.extrinsics, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountExtrinsics emits next_cursor for a full page", async () => {
   const out = await loadAccountExtrinsics(
     async () => [
