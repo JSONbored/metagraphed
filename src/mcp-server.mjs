@@ -590,7 +590,11 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
 // account_events filtered by netuid, newest first, optional kind filter, keyset
 // (cursor) pagination on (block_number, event_index) with offset as the
 // deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
+async function loadSubnetEvents(
+  ctx,
+  netuid,
+  { kind, limit, offset, cursor, blockStart, blockEnd },
+) {
   const run = mcpD1Runner(ctx);
   const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
   const resolvedOffset = clampOffset(offset);
@@ -601,6 +605,16 @@ async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
   if (kind) {
     sql += " AND event_kind = ?";
     params.push(kind);
+  }
+  // Optional inclusive block-height range — parity with the REST route
+  // (handleSubnetEvents) and the sibling get_account_events MCP tool.
+  if (blockStart != null) {
+    sql += " AND block_number >= ?";
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    sql += " AND block_number <= ?";
+    params.push(blockEnd);
   }
   if (useCursor) {
     sql += " AND (block_number, event_index) < (?, ?)";
@@ -2108,7 +2122,8 @@ export const MCP_TOOLS = [
       "Fetch the paginated first-party chain-event stream for one subnet by its " +
       "netuid, newest first: each event's kind, block, UID, hot/cold keys, " +
       "amount, and timestamp. Optionally filter by event kind (e.g. StakeAdded, " +
-      "NeuronRegistered, AxonServed, WeightsSet) and page with limit (1-1000, " +
+      "NeuronRegistered, AxonServed, WeightsSet), constrain block height with " +
+      "block_start/block_end (inclusive), and page with limit (1-1000, " +
       "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
       "Use it to watch what is happening on one subnet right now. Events are " +
       "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
@@ -2121,6 +2136,18 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
             "Omit for all kinds; an unknown kind simply matches nothing.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2152,6 +2179,8 @@ export const MCP_TOOLS = [
         limit: args?.limit,
         offset: args?.offset,
         cursor,
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
       });
     },
   },
