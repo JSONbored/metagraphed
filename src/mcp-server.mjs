@@ -36,6 +36,13 @@ import {
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
 import {
+  loadChainTransfers,
+  CHAIN_TRANSFER_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_LIMIT_MAX,
+  CHAIN_TRANSFER_WINDOWS,
+  DEFAULT_CHAIN_TRANSFER_WINDOW,
+} from "./chain-transfers.mjs";
+import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
@@ -147,7 +154,11 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.15.0";
+export const MCP_SERVER_VERSION = "1.16.0";
+
+// Window labels accepted by get_chain_transfers — derived from the loader constant
+// so input/output schemas and runtime validation cannot drift.
+const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -234,7 +245,8 @@ export const MCP_INSTRUCTIONS =
   "get_account_subnets the subnets where it is registered. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
-  "fee/tip market series plus top payers, get_network_activity the daily " +
+  "fee/tip market series plus top payers, get_chain_transfers network-wide " +
+  "native-TAO transfer volume plus top senders/receivers, get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
   "list_chain_events the raw recent decoded event feed (filterable by " +
@@ -3218,6 +3230,55 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_transfers",
+    title: "Get network-wide native-TAO transfer analytics",
+    description:
+      "Fetch network-wide Balances.Transfer analytics over the requested window " +
+      "(7d or 30d): total transfer volume and count, distinct senders/receivers, " +
+      "the top senders and receivers ranked by volume, and the top senders' share " +
+      "of total volume (a concentration signal). The network-level companion of " +
+      "get_account_transfers and get_account_counterparties. Mirrors " +
+      "GET /api/v1/chain/transfers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_TRANSFER_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_TRANSFER_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max top senders/receivers to return (1-${CHAIN_TRANSFER_LIMIT_MAX}, default ${CHAIN_TRANSFER_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_TRANSFER_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
+      if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_TRANSFER_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_TRANSFER_LIMIT_DEFAULT,
+        CHAIN_TRANSFER_LIMIT_MAX,
+      );
+      return loadChainTransfers(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_TRANSFER_WINDOWS[window],
+        observedAt: await mcpObservedAt(ctx),
+        limit,
+      });
+    },
+  },
+  {
     name: "get_network_activity",
     title: "Get daily network-activity aggregates",
     description:
@@ -4215,6 +4276,16 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const CHAIN_TRANSFER_PARTY_ITEM = {
+  type: "object",
+  additionalProperties: false,
+  required: ["address", "volume_tao", "transfer_count"],
+  properties: {
+    address: { type: "string" },
+    volume_tao: { type: "number" },
+    transfer_count: { type: "integer", minimum: 0 },
+  },
+};
 // Shared block item shape for list_blocks (each block in the feed).
 const BLOCK_ITEM = {
   block_number: NULLABLE_INT,
@@ -5112,6 +5183,43 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_tip_tao: { type: ["number", "null"] },
         extrinsic_count: NULLABLE_INT,
       }),
+    },
+  },
+  get_chain_transfers: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "window",
+      "observed_at",
+      "total_volume_tao",
+      "transfer_count",
+      "unique_senders",
+      "unique_receivers",
+      "top_sender_share",
+      "top_senders",
+      "top_receivers",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: {
+        type: ["string", "null"],
+        enum: [...CHAIN_TRANSFER_WINDOW_KEYS, null],
+      },
+      observed_at: NULLABLE_STRING,
+      total_volume_tao: { type: "number" },
+      transfer_count: { type: "integer", minimum: 0 },
+      unique_senders: { type: "integer", minimum: 0 },
+      unique_receivers: { type: "integer", minimum: 0 },
+      top_sender_share: { type: ["number", "null"] },
+      top_senders: {
+        type: "array",
+        items: CHAIN_TRANSFER_PARTY_ITEM,
+      },
+      top_receivers: {
+        type: "array",
+        items: CHAIN_TRANSFER_PARTY_ITEM,
+      },
     },
   },
   get_network_activity: {

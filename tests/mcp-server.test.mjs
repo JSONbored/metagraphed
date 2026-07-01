@@ -2109,6 +2109,93 @@ describe("MCP get_chain_fees", () => {
   });
 });
 
+describe("MCP get_chain_transfers", () => {
+  function chainTransfersD1(
+    {
+      totals = {
+        transfer_count: 10,
+        total_volume_tao: 100,
+        unique_senders: 4,
+        unique_receivers: 6,
+      },
+      senders = [{ address: "5Sa", volume_tao: 80, transfer_count: 5 }],
+      receivers = [{ address: "5Rx", volume_tao: 60, transfer_count: 4 }],
+    } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                    return { results: [totals] };
+                  }
+                  if (/GROUP BY hotkey/.test(sql)) {
+                    return { results: senders };
+                  }
+                  if (/GROUP BY coldkey/.test(sql)) {
+                    return { results: receivers };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("aggregates volume and ranks top senders/receivers", async () => {
+    const capture = [];
+    const env = chainTransfersD1({}, capture);
+    const res = await callTool(
+      "get_chain_transfers",
+      { window: "7d", limit: 5 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.total_volume_tao, 100);
+    assert.equal(out.top_senders[0].address, "5Sa");
+    assert.equal(out.top_receivers[0].address, "5Rx");
+    assert.equal(out.top_sender_share, 0.8);
+    const senders = capture.find((c) => /GROUP BY hotkey/.test(c.sql));
+    assert.match(senders.sql, /event_kind = \?/);
+    assert.equal(senders.params.at(-1), 5);
+  });
+
+  test("defaults to the 7d window", async () => {
+    const res = await callTool(
+      "get_chain_transfers",
+      {},
+      { env: chainTransfersD1() },
+    );
+    assert.equal(res.body.result.structuredContent.window, "7d");
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_transfers", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("degrades to schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_transfers", { window: "30d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.top_sender_share, null);
+    assert.deepEqual(out.top_senders, []);
+    assert.deepEqual(out.top_receivers, []);
+  });
+});
+
 describe("MCP get_network_activity", () => {
   test("merges extrinsics + blocks tiers from D1", async () => {
     const env = {
