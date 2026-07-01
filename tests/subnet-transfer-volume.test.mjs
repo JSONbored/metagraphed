@@ -57,6 +57,18 @@ describe("buildSubnetTransferVolume", () => {
     assert.equal(data.top_receivers[0].volume_tao, 400);
   });
 
+  test("clamps top_sender_share to 1 when rounded party totals exceed the total", () => {
+    const data = buildSubnetTransferVolume({
+      netuid: 1,
+      totals: { total_volume_tao: 1.0 },
+      senders: [
+        { address: "5A", volume_tao: 0.6, transfer_count: 1 },
+        { address: "5B", volume_tao: 0.5, transfer_count: 1 },
+      ],
+    });
+    assert.equal(data.top_sender_share, 1);
+  });
+
   test("drops leaderboard rows with a missing address", () => {
     const data = buildSubnetTransferVolume({
       netuid: 1,
@@ -95,7 +107,7 @@ describe("buildSubnetTransferVolume", () => {
 });
 
 describe("loadSubnetTransferVolume", () => {
-  test("queries account_events for Transfer rows scoped to netuid + window cutoff", async () => {
+  test("attributes Transfer rows via the neurons snapshot, not a netuid column", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     const calls = [];
@@ -127,11 +139,12 @@ describe("loadSubnetTransferVolume", () => {
     assert.equal(calls.length, 3);
     for (const { sql, params } of calls) {
       assert.match(sql, /FROM account_events/);
-      assert.match(sql, /netuid = \?/);
-      assert.equal(params[0], 7);
-      assert.equal(params[1], TRANSFER_KIND);
-      assert.equal(params[2], Date.now() - 30 * DAY_MS);
+      assert.match(sql, /FROM neurons WHERE netuid = \?/);
+      assert.equal(params[0], TRANSFER_KIND);
+      assert.equal(params[1], Date.now() - 30 * DAY_MS);
+      assert.ok(params.includes(7));
     }
+    assert.doesNotMatch(calls[0].sql, /netuid = \? AND event_kind/);
     assert.equal(data.netuid, 7);
     assert.equal(data.window, "30d");
     assert.equal(data.total_volume_tao, 250);
@@ -145,17 +158,17 @@ describe("loadSubnetTransferVolume", () => {
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     const calls = [];
     const d1 = async (sql, params) => {
-      calls.push(params);
+      calls.push({ sql, params });
       if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return [{}];
       return [];
     };
     const { data } = await loadSubnetTransferVolume(d1, 1, {});
     assert.equal(data.window, DEFAULT_SUBNET_TRANSFER_VOLUME_WINDOW);
     assert.equal(
-      calls[0][2],
+      calls[0].params[1],
       Date.now() - SUBNET_TRANSFER_VOLUME_WINDOWS["30d"] * DAY_MS,
     );
-    assert.equal(calls[1][3], SUBNET_TRANSFER_LIMIT_DEFAULT);
+    assert.equal(calls[1].params[3], SUBNET_TRANSFER_LIMIT_DEFAULT);
     vi.useRealTimers();
   });
 
@@ -170,7 +183,26 @@ describe("loadSubnetTransferVolume", () => {
     assert.equal(generatedAt, null);
   });
 
-  test("an unknown window label falls back to the default cutoff", async () => {
+  test("a null MAX(observed_at) leaves generated_at null (not epoch zero)", async () => {
+    const d1 = async (sql) => {
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+        return [
+          {
+            transfer_count: 0,
+            total_volume_tao: 0,
+            unique_senders: 0,
+            unique_receivers: 0,
+            last_observed: null,
+          },
+        ];
+      }
+      return [];
+    };
+    const { generatedAt } = await loadSubnetTransferVolume(d1, 7, {});
+    assert.equal(generatedAt, null);
+  });
+
+  test("an unknown window label is normalized to the default in the artifact", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     let captured;
@@ -178,24 +210,42 @@ describe("loadSubnetTransferVolume", () => {
       if (/COUNT\(DISTINCT hotkey\)/.test(sql)) captured = params;
       return [];
     };
-    await loadSubnetTransferVolume(d1, 7, { windowLabel: "bogus" });
+    const { data } = await loadSubnetTransferVolume(d1, 7, {
+      windowLabel: "bogus",
+    });
+    assert.equal(data.window, DEFAULT_SUBNET_TRANSFER_VOLUME_WINDOW);
     assert.equal(
-      captured[2],
+      captured[1],
       Date.now() - SUBNET_TRANSFER_VOLUME_WINDOWS["30d"] * DAY_MS,
     );
     vi.useRealTimers();
   });
 
-  test("caps the leaderboard limit at 100", async () => {
+  test("coerces and caps a fractional direct-call limit before binding LIMIT", async () => {
     const limits = [];
     const d1 = async (sql, params) => {
       if (/GROUP BY hotkey/.test(sql) || /GROUP BY coldkey/.test(sql)) {
-        limits.push(params[3]);
+        limits.push(params.at(-1));
+      }
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return [{}];
+      return [];
+    };
+    await loadSubnetTransferVolume(d1, 7, { limit: 12.9 });
+    assert.deepEqual(limits, [12, 12]);
+  });
+
+  test("caps the leaderboard limit at 100 and falls back on NaN", async () => {
+    const limits = [];
+    const d1 = async (sql, params) => {
+      if (/GROUP BY hotkey/.test(sql) || /GROUP BY coldkey/.test(sql)) {
+        limits.push(params.at(-1));
       }
       if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return [{}];
       return [];
     };
     await loadSubnetTransferVolume(d1, 7, { limit: 500 });
     assert.deepEqual(limits, [100, 100]);
+    await loadSubnetTransferVolume(d1, 7, { limit: "nope" });
+    assert.deepEqual(limits, [100, 100, 20, 20]);
   });
 });

@@ -303,13 +303,13 @@ function dbWith({
                   }
                   if (
                     /GROUP BY hotkey/.test(sql) &&
-                    /netuid = \? AND event_kind = \?/.test(sql)
+                    /FROM neurons WHERE netuid = \?/.test(sql)
                   ) {
                     return { results: subnetTransferVolume?.senders || [] };
                   }
                   if (
                     /GROUP BY coldkey/.test(sql) &&
-                    /netuid = \? AND event_kind = \?/.test(sql)
+                    /FROM neurons WHERE netuid = \?/.test(sql)
                   ) {
                     return { results: subnetTransferVolume?.receivers || [] };
                   }
@@ -1598,7 +1598,7 @@ describe("handleSubnetTransferVolume", () => {
     assert.equal(body.meta.generated_at, null);
   });
 
-  test("shapes totals + leaderboards, bound to netuid + Transfer kind", async () => {
+  test("shapes totals + leaderboards, bound to Transfer + neurons membership", async () => {
     const { env } = dbWith({
       subnetTransferVolume: {
         totals: {
@@ -1661,6 +1661,24 @@ describe("handleSubnetTransferVolume", () => {
         ),
       );
       assert.equal(path, "/api/v1/subnets/7/transfer-volume?window=bogus");
+    });
+
+    test("passes an invalid limit through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetTransferVolumeCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/transfer-volume?limit=0",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/transfer-volume?limit=0");
+    });
+
+    test("passes an unsupported query param through unchanged (validation error)", () => {
+      const path = canonicalSubnetTransferVolumeCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/transfer-volume?bogus=1",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/transfer-volume?bogus=1");
     });
   });
 });

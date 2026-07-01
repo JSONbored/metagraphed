@@ -1575,7 +1575,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count, distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream. */
+        /** Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count among accounts currently registered on the subnet (Transfer rows carry no netuid — attribution joins the neurons snapshot), distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream. */
         get: operations["subnetTransferVolume"];
         put?: never;
         post?: never;
@@ -5076,7 +5076,7 @@ export interface components {
             transfer_count: number;
             volume_tao: number;
         };
-        /** @description Per-subnet native-TAO transfer analytics over a 7d/30d/90d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/subnets/{netuid}/transfer-volume (no static file); zeros + empty leaderboards when cold. */
+        /** @description Per-subnet native-TAO transfer analytics over a 7d/30d/90d window: total Balances.Transfer volume + count among accounts currently registered on the subnet (via the neurons snapshot), distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/subnets/{netuid}/transfer-volume (no static file); zeros + empty leaderboards when cold. */
         SubnetTransferVolumeArtifact: {
             netuid: number;
             schema_version: number;

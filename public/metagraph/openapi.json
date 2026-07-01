@@ -13795,7 +13795,7 @@
       },
       "SubnetTransferVolumeArtifact": {
         "additionalProperties": false,
-        "description": "Per-subnet native-TAO transfer analytics over a 7d/30d/90d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/subnets/{netuid}/transfer-volume (no static file); zeros + empty leaderboards when cold.",
+        "description": "Per-subnet native-TAO transfer analytics over a 7d/30d/90d window: total Balances.Transfer volume + count among accounts currently registered on the subnet (via the neurons snapshot), distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/subnets/{netuid}/transfer-volume (no static file); zeros + empty leaderboards when cold.",
         "properties": {
           "netuid": {
             "minimum": 0,
@@ -15193,7 +15193,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-07-01.1"
+    "version": "2026-07-01.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -34509,7 +34509,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count, distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream.",
+        "summary": "Fetch per-subnet native-TAO transfer analytics over a recent window: total Balances.Transfer volume + count among accounts currently registered on the subnet (Transfer rows carry no netuid — attribution joins the neurons snapshot), distinct senders/receivers, top senders and receivers ranked by outgoing/incoming volume, and the top senders' share of total volume as a concentration signal. Windows (7d/30d/90d) are bounded by the account_events retention; ?limit caps each leaderboard (default 20, max 100). Summed live from the account_events stream.",
         "tags": [
           "subnets",
           "analytics"
@@ -35773,7 +35773,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-07-01.1",
+    "contract_version": "2026-07-01.2",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

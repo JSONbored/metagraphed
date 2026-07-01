@@ -329,6 +329,46 @@ describe("analytics edge cache", () => {
     assert.equal(cache.store.size, 1);
   });
 
+  test("transfer-volume canonicalizes omitted window and limit to the same cache key", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = analyticsEnv(queries);
+
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/transfer-volume"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    const hit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/transfer-volume?window=30d&limit=20",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss,
+      "explicit ?window=30d&limit=20 must be a cache HIT (no D1 queries)",
+    );
+
+    assert.deepEqual(cache.putKeys, [
+      expectedKey(
+        "subnet-transfer-volume",
+        "/api/v1/subnets/7/transfer-volume",
+        "?window=30d&limit=20",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
+  });
+
   test("chain-activity canonicalizes omitted and explicit default window to the same cache key", async () => {
     originalCaches = globalThis.caches;
     const cache = mockCaches();

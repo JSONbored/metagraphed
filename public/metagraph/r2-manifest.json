@@ -1,14 +1,14 @@
 {
   "artifact_count": 6,
-  "artifact_size_bytes": 2244760,
+  "artifact_size_bytes": 2245366,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/2026-06-18T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "c7ccba545810f0bcee47b749f90fbee75e34299fa9b383a4319aa868d3487c17",
-      "size_bytes": 181769,
+      "sha256": "b4a3b335697e5ca201359a3ce596f165207d3eb52f52dedf259f7e5473500a5f",
+      "size_bytes": 181894,
       "storage_tier": "dual"
     },
     {
@@ -16,8 +16,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "d31c04b0673ac9ffb668b441faa492fbdb23a341dae87c2825ed9f3f5280f7db",
-      "size_bytes": 49823,
+      "sha256": "83169a2edeab4cacd6f0cd2bd44d360e9d064367d622594ca99093a59ef026f7",
+      "size_bytes": 49900,
       "storage_tier": "dual"
     },
     {
@@ -25,8 +25,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/openapi.json",
       "latest_key": "latest/openapi.json",
       "path": "/metagraph/openapi.json",
-      "sha256": "b46c3890d11a1cb1c39dd9a71e3725cdc78dfb6c49844b92a599eea875e6b3b3",
-      "size_bytes": 1097257,
+      "sha256": "328a4f834608667d120f2804ab90cc3607ab0abe791d513ef865f6f890b8dcca",
+      "size_bytes": 1097459,
       "storage_tier": "dual"
     },
     {
@@ -34,7 +34,7 @@
       "key": "runs/2026-06-18T00-00-00-000Z/operational-surfaces.json",
       "latest_key": "latest/operational-surfaces.json",
       "path": "/metagraph/operational-surfaces.json",
-      "sha256": "47146a39e69ac2cd10cf66e9ea9d635ab973df35c0c05ac8714c5ccfee116cbc",
+      "sha256": "8279d74c89531c8df508c4aa8f29a325f42d23af362332a31a88bea0b383ed74",
       "size_bytes": 40618,
       "storage_tier": "dual"
     },
@@ -52,16 +52,16 @@
       "key": "runs/2026-06-18T00-00-00-000Z/types.d.ts",
       "latest_key": "latest/types.d.ts",
       "path": "/metagraph/types.d.ts",
-      "sha256": "4585a876ad21ddf4c0dde65a0ed422bbadaa33244c7946df205c704f9faf299a",
-      "size_bytes": 838016,
+      "sha256": "2e2849011876ae39e0e015836857f4c45eca974a2c9bed6a2f4dba6355b3ca8e",
+      "size_bytes": 838218,
       "storage_tier": "dual"
     }
   ],
   "bucket_binding": "METAGRAPH_ARCHIVE",
   "bucket_name": "metagraphed-artifacts",
-  "contract_version": "2026-07-01.1",
+  "contract_version": "2026-07-01.2",
   "full_artifact_count": 2261,
-  "full_artifact_size_bytes": 40422383,
+  "full_artifact_size_bytes": 40422989,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -83,7 +83,7 @@
     "r2": 2255
   },
   "storage_tier_size_bytes": {
-    "dual": 2244760,
+    "dual": 2245366,
     "r2": 38177623
   }
 }
