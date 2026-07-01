@@ -674,6 +674,7 @@ test("loadAccountExtrinsics short-circuits an inverted block range before D1", a
   );
   assert.equal(out.extrinsic_count, 0);
   assert.deepEqual(out.extrinsics, []);
+  assert.equal(out.next_cursor, null);
   assert.equal(called, false);
 });
 

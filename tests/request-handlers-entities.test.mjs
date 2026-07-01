@@ -1917,11 +1917,14 @@ describe("handleAccountExtrinsics", () => {
         req(`/api/v1/accounts/${SS58}/extrinsics`),
         env,
         SS58,
-        url(`/api/v1/accounts/${SS58}/extrinsics?block_start=500&block_end=100`),
+        url(
+          `/api/v1/accounts/${SS58}/extrinsics?block_start=500&block_end=100`,
+        ),
       ),
     );
     assert.equal(body.data.extrinsic_count, 0);
     assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(body.data.next_cursor, null);
     assert.equal(captures.sql.length, 0);
   });
 
