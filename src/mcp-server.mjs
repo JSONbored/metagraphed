@@ -146,7 +146,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.14.0";
+export const MCP_SERVER_VERSION = "1.15.0";
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -799,6 +799,17 @@ function optionalBoolean(args, key) {
     throw toolError("invalid_params", `Argument \`${key}\` must be a boolean.`);
   }
   return value;
+}
+
+function optionalSuccessFilter(args) {
+  const value = args?.success;
+  if (value === undefined || value === null) return undefined;
+  if (value === true) return true;
+  if (value === false) return false;
+  throw toolError(
+    "invalid_params",
+    "Argument `success` must be a boolean when provided.",
+  );
 }
 
 function requireString(args, key) {
@@ -2414,9 +2425,10 @@ export const MCP_TOOLS = [
       "Fetch the native-TAO Balances.Transfer feed for one account by its SS58 address, " +
       "newest first: from address, to address, amount in TAO, and direction (sent/ " +
       "received). Filter by direction with direction='sent' or 'received'; omit for " +
-      "both sides. Page with limit (1-1000, default 100) / offset. This is the native " +
-      "chain-level TAO transfer feed only, NOT a full balance ledger — stake flows are " +
-      "separate events visible in get_account_events.",
+      "both sides. Optionally constrain block height with block_start/block_end " +
+      "(inclusive). Page with limit (1-1000, default 100) / offset, or follow " +
+      "next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/transfers.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2433,6 +2445,18 @@ export const MCP_TOOLS = [
             "or omit for both. Any other value is treated as both-sides.",
           enum: ["sent", "received"],
         },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
+        },
         limit: {
           type: "integer",
           description: "Max transfers to return (1-1000, default 100).",
@@ -2444,6 +2468,12 @@ export const MCP_TOOLS = [
           description: "Pagination offset. Default 0.",
           minimum: 0,
         },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor; takes " +
+            "precedence over offset for stable deep pagination.",
+        },
       },
       required: ["ss58"],
       additionalProperties: false,
@@ -2451,10 +2481,14 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const direction = optionalString(args, "direction");
+      const cursor = optionalString(args, "cursor");
       return loadAccountTransfers(mcpD1Runner(ctx), ss58, {
         direction: direction ?? undefined,
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
+        cursor: cursor ?? undefined,
       });
     },
   },
@@ -2531,12 +2565,60 @@ export const MCP_TOOLS = [
     description:
       "Fetch the recent-block feed (newest first) from the chain block-explorer tier: " +
       "block number, hash, parent hash, author, extrinsic count, event count, and " +
-      "timestamp. Page with limit (1-100, default 50) / offset, or follow next_cursor " +
-      "for stable keyset pagination. Useful for scanning recent chain activity or " +
-      "finding a block to inspect with get_block.",
+      "timestamp. Optionally filter by author (SS58), spec_version, block_start/" +
+      "block_end (inclusive height range), from/to (observed_at epoch-ms range), " +
+      "min_extrinsics, or min_events. Page with limit (1-100, default 50) / offset, " +
+      "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/blocks.",
     inputSchema: {
       type: "object",
       properties: {
+        author: {
+          type: "string",
+          description:
+            "Optional block author SS58 address filter. Omit for all authors.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        spec_version: {
+          type: "integer",
+          description: "Optional runtime spec_version filter. Omit for all.",
+          minimum: 0,
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description:
+            "Optional observed_at lower bound (epoch ms). Omit for no lower limit.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description:
+            "Optional observed_at upper bound (epoch ms). Omit for no upper limit.",
+          minimum: 0,
+        },
+        min_extrinsics: {
+          type: "integer",
+          description:
+            "Optional minimum extrinsic_count per block. Omit for no floor.",
+          minimum: 0,
+        },
+        min_events: {
+          type: "integer",
+          description:
+            "Optional minimum event_count per block. Omit for no floor.",
+          minimum: 0,
+        },
         limit: {
           type: "integer",
           description: "Max blocks to return (1-100, default 50).",
@@ -2560,7 +2642,17 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const cursor = optionalString(args, "cursor");
+      const author = optionalString(args, "author");
       return loadBlocks(mcpD1Runner(ctx), {
+        author: author ?? undefined,
+        specVersion: optionalNonNegativeInt(args, "spec_version") ?? undefined,
+        blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
+        blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
+        from: optionalNonNegativeInt(args, "from") ?? undefined,
+        to: optionalNonNegativeInt(args, "to") ?? undefined,
+        minExtrinsics:
+          optionalNonNegativeInt(args, "min_extrinsics") ?? undefined,
+        minEvents: optionalNonNegativeInt(args, "min_events") ?? undefined,
         limit: args?.limit,
         offset: args?.offset,
         cursor: cursor ?? undefined,
@@ -2682,13 +2774,20 @@ export const MCP_TOOLS = [
     title: "List extrinsics with optional filters",
     description:
       "Fetch the extrinsic feed (newest first) from the chain extrinsic tier, with " +
-      "optional filters: signer (SS58 address), call_module (e.g. 'SubtensorModule'), " +
-      "call_function (e.g. 'set_weights'). Page with limit (1-100, default 50) / " +
-      "offset, or follow next_cursor for stable keyset pagination. Useful for finding " +
-      "specific on-chain calls or all extrinsics from one wallet.",
+      "optional filters: block (exact height), signer (SS58 address), call_module " +
+      "(e.g. 'SubtensorModule'), call_function (e.g. 'set_weights'), success " +
+      "(true|false), block_start/block_end (inclusive height range), and from/to " +
+      "(observed_at epoch-ms range). Page with limit (1-100, default 50) / offset, " +
+      "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/extrinsics.",
     inputSchema: {
       type: "object",
       properties: {
+        block: {
+          type: "integer",
+          description:
+            "Optional exact block_number filter. Omit for all blocks.",
+          minimum: 0,
+        },
         signer: {
           type: "string",
           description:
@@ -2704,6 +2803,36 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional call function filter, e.g. 'set_weights'. Omit for all.",
+        },
+        success: {
+          type: "boolean",
+          description:
+            "Optional success filter: true for succeeded extrinsics only, false " +
+            "for failed only. Omit for all.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
+        },
+        from: {
+          type: "integer",
+          description:
+            "Optional observed_at lower bound (epoch ms). Omit for no lower limit.",
+          minimum: 0,
+        },
+        to: {
+          type: "integer",
+          description:
+            "Optional observed_at upper bound (epoch ms). Omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2732,9 +2861,15 @@ export const MCP_TOOLS = [
       const callFunction = optionalString(args, "call_function");
       const cursor = optionalString(args, "cursor");
       return loadExtrinsics(mcpD1Runner(ctx), {
+        block: optionalNonNegativeInt(args, "block") ?? undefined,
         signer: signer ?? undefined,
         callModule: callModule ?? undefined,
         callFunction: callFunction ?? undefined,
+        success: optionalSuccessFilter(args),
+        blockStart: optionalNonNegativeInt(args, "block_start") ?? undefined,
+        blockEnd: optionalNonNegativeInt(args, "block_end") ?? undefined,
+        from: optionalNonNegativeInt(args, "from") ?? undefined,
+        to: optionalNonNegativeInt(args, "to") ?? undefined,
         limit: args?.limit,
         offset: args?.offset,
         cursor: cursor ?? undefined,
@@ -4699,6 +4834,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       transfer_count: { type: "integer" },
       limit: NULLABLE_INT,
       offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
       transfers: objectItems({
         block_number: NULLABLE_INT,
         event_index: NULLABLE_INT,

@@ -4,6 +4,7 @@
 // + blocks, NOT Taostats. This module holds the load contract, the row→API
 // shaping, and the retention prune. Pure + exported for tests; the Worker runs
 // the D1 I/O.
+import { DAY_MS } from "../workers/config.mjs";
 import {
   BLOCK_PAGINATION,
   clampLimit,
@@ -140,7 +141,11 @@ export function formatExtrinsic(row) {
     call_module: row.call_module ?? null,
     call_function: row.call_function ?? null,
     call_args,
-    success: row.success == null ? null : row.success === 1,
+    // D1 can return the `success` INTEGER column as a numeric string ("1"/"0"),
+    // same as block_number/extrinsic_index above — a bare `=== 1` would leave a
+    // successful extrinsic mislabeled false. Number()-coerce first, mirroring
+    // toD1Flag in account-events.mjs (#2487).
+    success: row.success == null ? null : Number(row.success) === 1,
     fee_tao: row.fee_tao ?? null,
     tip_tao: row.tip_tao ?? null,
     observed_at: toIso(row.observed_at),
@@ -227,27 +232,91 @@ export function buildBlockExtrinsics(
 // (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
 
 // Filtered extrinsic feed (newest first) with keyset cursor support (#1851).
-// Supported filters: signer, callModule, callFunction. A cursor takes precedence
-// over offset when present — uses a (block_number, extrinsic_index) row-value seek.
+// Supported filters mirror GET /api/v1/extrinsics (#1846): signer, callModule,
+// callFunction, block, blockStart/blockEnd, from/to (observed_at epoch-ms), and
+// success (true|false only; omit for no filter). A cursor takes precedence over
+// offset when present — uses a (block_number, extrinsic_index) row-value seek.
 export async function loadExtrinsics(
   d1,
-  { signer, callModule, callFunction, limit, offset, cursor } = {},
+  {
+    signer,
+    callModule,
+    callFunction,
+    block,
+    blockStart,
+    blockEnd,
+    from,
+    to,
+    success,
+    limit,
+    offset,
+    cursor,
+    nowMs = Date.now(),
+  } = {},
 ) {
   const lim = clampLimit(limit, BLOCK_PAGINATION);
   const off = clampOffset(offset);
+  const observedFloorMs = nowMs - EXTRINSIC_RETENTION_MS;
+  if (
+    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
+    (from != null && from > nowMs + DAY_MS) ||
+    (to != null && to < observedFloorMs) ||
+    (from != null && to != null && from > to)
+  ) {
+    return buildExtrinsicFeed([], {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const conds = [];
   const params = [];
-  if (signer) {
+  const hasBlockFilter = block != null;
+  const hasSignerFilter = Boolean(signer);
+  const hasCallModuleFilter = Boolean(callModule);
+  const hasCallFunctionFilter = Boolean(callFunction);
+  const hasEqualityFilter =
+    hasSignerFilter || hasCallModuleFilter || hasCallFunctionFilter;
+  if (hasBlockFilter) {
+    conds.push("block_number = ?");
+    params.push(block);
+  }
+  if (hasSignerFilter) {
     conds.push("signer = ?");
     params.push(signer);
   }
-  if (callModule) {
+  if (hasCallModuleFilter) {
     conds.push("call_module = ?");
     params.push(callModule);
   }
-  if (callFunction) {
+  if (hasCallFunctionFilter) {
     conds.push("call_function = ?");
     params.push(callFunction);
+  }
+  const hasSuccessFilter = success === true || success === false;
+  if (success === true) {
+    conds.push("success = ?");
+    params.push(1);
+  } else if (success === false) {
+    conds.push("success = ?");
+    params.push(0);
+  }
+  const hasBlockRangeFilter = blockStart != null || blockEnd != null;
+  if (blockStart != null) {
+    conds.push("block_number >= ?");
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    conds.push("block_number <= ?");
+    params.push(blockEnd);
+  }
+  if (from != null) {
+    conds.push("observed_at >= ?");
+    params.push(from);
+  }
+  if (to != null) {
+    conds.push("observed_at <= ?");
+    params.push(to);
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
@@ -255,7 +324,32 @@ export async function loadExtrinsics(
     conds.push("(block_number, extrinsic_index) < (?, ?)");
     params.push(cur[0], cur[1]);
   }
+  const effectiveFromMs = from ?? observedFloorMs;
+  const effectiveToMs = to ?? nowMs + DAY_MS;
+  const hasNarrowObservedWindow =
+    (from != null || to != null) && effectiveToMs - effectiveFromMs <= DAY_MS;
+  const forceObservedOrderIndex =
+    hasNarrowObservedWindow &&
+    !hasBlockFilter &&
+    !hasEqualityFilter &&
+    !hasSuccessFilter &&
+    !hasBlockRangeFilter &&
+    !useCursor;
+  const forceModuleIndex =
+    hasCallModuleFilter &&
+    !forceObservedOrderIndex &&
+    !hasBlockFilter &&
+    !hasBlockRangeFilter &&
+    !hasSignerFilter &&
+    !hasCallFunctionFilter &&
+    !hasSuccessFilter &&
+    from == null &&
+    to == null &&
+    !useCursor;
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics`;
+  if (forceObservedOrderIndex)
+    sql += " INDEXED BY idx_extrinsics_observed_order";
+  else if (forceModuleIndex) sql += " INDEXED BY idx_extrinsics_module_block";
   if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
   sql += " ORDER BY block_number DESC, extrinsic_index DESC LIMIT ?";
   params.push(lim);

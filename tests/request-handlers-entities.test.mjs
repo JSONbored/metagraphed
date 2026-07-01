@@ -13,6 +13,7 @@ import { encodeCursor } from "../src/cursor.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   handleSubnetMetagraph,
+  handleSubnetYield,
   handleNeuron,
   handleSubnetValidators,
   handleNeuronHistory,
@@ -570,6 +571,78 @@ describe("handleSubnetMetagraph", () => {
     );
     assert.ok(metagraphSql);
     assert.ok(!/validator_permit = 1/.test(metagraphSql));
+  });
+});
+
+describe("handleSubnetYield", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetYield(
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+  });
+
+  test("returns schema-stable empty payload on cold/unbound D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetYield,
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.subnet_yield, null);
+    assert.deepEqual(body.data.neurons, []);
+    assert.equal(body.data.captured_at, null);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/yield.json`,
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  test("computes per-UID yield, role split, and ranking from mocked D1 rows", async () => {
+    const { env, captures } = dbWith({
+      neurons: [
+        neuronRow({
+          uid: 0,
+          validator_permit: 1,
+          stake_tao: 100,
+          emission_tao: 2,
+        }), // yield 0.02
+        neuronRow({
+          uid: 1,
+          validator_permit: 0,
+          stake_tao: 100,
+          emission_tao: 5,
+        }), // yield 0.05
+      ],
+    });
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.validator_count, 1);
+    assert.equal(body.data.miner_count, 1);
+    assert.equal(body.data.subnet_yield, 0.035); // 7/200
+    assert.equal(body.data.neurons[0].uid, 1); // higher yield ranks first
+    assert.equal(body.data.neurons[0].yield, 0.05);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.ok(
+      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
   });
 });
 
