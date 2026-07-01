@@ -237,6 +237,52 @@ test("formatExtrinsic rejects negative or non-integer chain-position cells to nu
   );
 });
 
+test("formatExtrinsic coerces D1 numeric-string fee/tip/success cells", () => {
+  const out = formatExtrinsic({
+    block_number: "1000",
+    extrinsic_index: "4",
+    fee_tao: "0.0125",
+    tip_tao: "0.5",
+    success: "1",
+    observed_at: "1750000000000",
+  });
+  assert.equal(typeof out.fee_tao, "number");
+  assert.equal(typeof out.tip_tao, "number");
+  assert.equal(out.fee_tao, 0.0125);
+  assert.equal(out.tip_tao, 0.5);
+  assert.equal(out.success, true);
+  assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatExtrinsic drops invalid fee/tip cells and string zero success", () => {
+  const out = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    fee_tao: "not-a-number",
+    tip_tao: null,
+    success: "0",
+  });
+  assert.equal(out.fee_tao, null);
+  assert.equal(out.tip_tao, null);
+  assert.equal(out.success, false);
+});
+
+test("buildExtrinsicFeed keeps coerced extrinsic types from formatExtrinsic", () => {
+  const feed = buildExtrinsicFeed([
+    {
+      block_number: "2000",
+      extrinsic_index: "1",
+      fee_tao: "0.001",
+      success: "1",
+      observed_at: "1750000000000",
+    },
+  ]);
+  const ext = feed.extrinsics[0];
+  assert.equal(typeof ext.block_number, "number");
+  assert.equal(typeof ext.fee_tao, "number");
+  assert.equal(ext.success, true);
+});
+
 test("buildExtrinsic wraps a row + is schema-stable when absent (#1345)", () => {
   const hash = `0x${"a".repeat(64)}`;
   const out = buildExtrinsic(

@@ -36,7 +36,19 @@ export const EXTRINSIC_INSERT_COLUMNS = [
 ];
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  const n = Number(ms);
+  return Number.isFinite(n) ? new Date(n).toISOString() : null;
+}
+
+function toTaoOrNull(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
+}
+
+function toExtrinsicSuccess(value) {
+  if (value == null) return null;
+  return Number(value) === 1;
 }
 
 // Coerce a chain-position cell (block_number / extrinsic_index) to a
@@ -140,9 +152,9 @@ export function formatExtrinsic(row) {
     call_module: row.call_module ?? null,
     call_function: row.call_function ?? null,
     call_args,
-    success: row.success == null ? null : row.success === 1,
-    fee_tao: row.fee_tao ?? null,
-    tip_tao: row.tip_tao ?? null,
+    success: toExtrinsicSuccess(row.success),
+    fee_tao: toTaoOrNull(row.fee_tao),
+    tip_tao: toTaoOrNull(row.tip_tao),
     observed_at: toIso(row.observed_at),
   };
 }
