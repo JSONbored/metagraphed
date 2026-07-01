@@ -532,7 +532,7 @@ async function loadChainEventsFeed(
 async function requireDataTierRateLimit(ctx) {
   if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
   const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
-    key: `data:${ctx.clientIp || "anonymous"}`,
+    key: `data:${ctx.clientIp}`,
   });
   if (!success) {
     throw toolError(
@@ -543,7 +543,7 @@ async function requireDataTierRateLimit(ctx) {
 }
 
 function chainSignersCacheKey({ label, limit, callModule, sort }) {
-  return JSON.stringify([label, limit, callModule || "", sort || ""]);
+  return JSON.stringify([label, limit, callModule || "", sort]);
 }
 
 async function loadMcpChainSigners(ctx, options) {
