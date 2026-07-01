@@ -11,6 +11,7 @@ import { JSON_CONTENT_TYPE } from "./config.mjs";
 // Access-Control-Expose-Headers, so this canonical list is exposed on every
 // CORS-open response. Keep in sync as new client-facing headers are added.
 const X_METAGRAPH_STALE_CONTRACT_HEADER = "x-metagraph-stale-contract";
+export const X_METAGRAPH_ARTIFACT_SOURCE_HEADER = "x-metagraph-artifact-source";
 
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
@@ -27,7 +28,7 @@ const EXPOSED_RESPONSE_HEADERS = [
   "x-metagraph-events",
   "x-metagraph-health",
   "x-metagraph-cache-profile",
-  "x-metagraph-artifact-source",
+  X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
   "x-metagraph-storage-tier",
   "x-metagraph-error-code",
   "x-metagraph-rpc-cache",

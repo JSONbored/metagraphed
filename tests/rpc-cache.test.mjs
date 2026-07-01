@@ -160,6 +160,48 @@ describe("RPC response cache flow", () => {
     });
   });
 
+  test("a null result (block not produced yet) is never cached", async () => {
+    // chain_getBlockHash(N) returns result:null until block N exists. Caching
+    // that under the 3600s block-read TTL would replay the stale null after the
+    // block is produced. The first (null) call must not be cached, so the second
+    // call re-queries upstream and returns the now-available real hash.
+    const cache = makeCache();
+    let fetchCount = 0;
+    const fetchImpl = async () => {
+      fetchCount += 1;
+      const result = fetchCount === 1 ? null : "0xrealhash";
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+        status: 200,
+      });
+    };
+    await withGlobals({ cache, fetchImpl }, async () => {
+      const waits = [];
+      const ctx = { waitUntil: (p) => waits.push(p) };
+      const r1 = await handleRequest(
+        reqFor("chain_getBlockHash", [999999999]),
+        env,
+        ctx,
+      );
+      assert.equal(r1.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal((await r1.json()).result, null);
+      await Promise.all(waits);
+      assert.equal(cache.store.size, 0, "a null result must never be cached");
+
+      const r2 = await handleRequest(
+        reqFor("chain_getBlockHash", [999999999]),
+        env,
+        ctx,
+      );
+      assert.equal(r2.headers.get("x-metagraph-rpc-cache"), "miss");
+      assert.equal(
+        fetchCount,
+        2,
+        "second call must re-query upstream, not replay null",
+      );
+      assert.equal((await r2.json()).result, "0xrealhash");
+    });
+  });
+
   test("cache hits preserve the current request id (no cross-caller replay)", async () => {
     const cache = makeCache();
     let fetchCount = 0;

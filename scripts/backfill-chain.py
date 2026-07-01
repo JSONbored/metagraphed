@@ -110,6 +110,17 @@ def _flush(conn, decoded_batch):
             rows["account_events"],
             "block_number, event_index",
         )
+        # The generic all-events tier (ADR 0013): rows_from_decoded produces it and
+        # the live indexer upserts it too, so a backfilled range must fill it or the
+        # deep-history /api/v1/chain-events reads are silently empty (schema drift the
+        # module docstring promises against). Same conflict key as account_events.
+        ic._upsert(
+            conn,
+            "chain_events",
+            ic.CHAIN_EVENT_COLS,
+            rows["chain_events"],
+            "block_number, event_index",
+        )
 
 
 def run():

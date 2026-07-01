@@ -10,9 +10,12 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { MOVERS_WINDOWS } from "../src/movers.mjs";
+import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   handleSubnetMetagraph,
+  handleSubnetYield,
   handleNeuron,
   handleSubnetValidators,
   handleNeuronHistory,
@@ -570,6 +573,78 @@ describe("handleSubnetMetagraph", () => {
     );
     assert.ok(metagraphSql);
     assert.ok(!/validator_permit = 1/.test(metagraphSql));
+  });
+});
+
+describe("handleSubnetYield", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetYield(
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+  });
+
+  test("returns schema-stable empty payload on cold/unbound D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetYield,
+      req(`/api/v1/subnets/${NETUID}/yield`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/yield`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.subnet_yield, null);
+    assert.deepEqual(body.data.neurons, []);
+    assert.equal(body.data.captured_at, null);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.equal(
+      body.meta.artifact_path,
+      `/metagraph/subnets/${NETUID}/yield.json`,
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
+  });
+
+  test("computes per-UID yield, role split, and ranking from mocked D1 rows", async () => {
+    const { env, captures } = dbWith({
+      neurons: [
+        neuronRow({
+          uid: 0,
+          validator_permit: 1,
+          stake_tao: 100,
+          emission_tao: 2,
+        }), // yield 0.02
+        neuronRow({
+          uid: 1,
+          validator_permit: 0,
+          stake_tao: 100,
+          emission_tao: 5,
+        }), // yield 0.05
+      ],
+    });
+    const body = await json(
+      await handleSubnetYield(
+        req(`/api/v1/subnets/${NETUID}/yield`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/yield`),
+      ),
+    );
+    assert.equal(body.data.neuron_count, 2);
+    assert.equal(body.data.validator_count, 1);
+    assert.equal(body.data.miner_count, 1);
+    assert.equal(body.data.subnet_yield, 0.035); // 7/200
+    assert.equal(body.data.neurons[0].uid, 1); // higher yield ranks first
+    assert.equal(body.data.neurons[0].yield, 0.05);
+    await assertValidComponent("SubnetYieldArtifact", body.data);
+    assert.ok(
+      captures.sql.some((s) => /FROM neurons WHERE netuid = \?/.test(s)),
+    );
+    assert.equal(body.meta.source, "metagraph-snapshot");
   });
 });
 
@@ -1459,12 +1534,17 @@ describe("handleSubnetMovers", () => {
   });
 
   test("rejects an unsupported window with 400", async () => {
-    await errorJson(
+    const body = await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
         emptyEnv(),
         url("/api/v1/subnets/movers?window=1y"),
       ),
+    );
+    assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("1y", MOVERS_WINDOWS),
     );
   });
 
@@ -1546,6 +1626,43 @@ describe("handleAccount", () => {
     assert.deepEqual(body.data.registrations, []);
     assert.equal(body.data.activity.tx_count, 0);
     assert.equal(body.meta.source, "chain-events");
+  });
+
+  test("exposes x-metagraph-artifact-source matching meta.source", async () => {
+    const res = await handleAccount(
+      req(`/api/v1/accounts/${SS58}`),
+      emptyEnv(),
+      SS58,
+    );
+    const body = await json(res);
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(
+      res.headers.get("x-metagraph-artifact-source"),
+      body.meta.source,
+    );
+  });
+
+  test("304 still carries x-metagraph-artifact-source", async () => {
+    const first = await handleAccount(
+      req(`/api/v1/accounts/${SS58}`),
+      emptyEnv(),
+      SS58,
+    );
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    const second = await handleAccount(
+      new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}`, {
+        headers: { "if-none-match": etag },
+      }),
+      emptyEnv(),
+      SS58,
+    );
+    assert.equal(second.status, 304);
+    assert.equal(
+      second.headers.get("x-metagraph-artifact-source"),
+      "chain-events",
+    );
+    assert.equal(second.headers.get("etag"), etag);
   });
 
   test("happy path aggregates account_events + neurons + extrinsics activity", async () => {
@@ -1768,6 +1885,21 @@ describe("handleAccountHistory", () => {
     assert.ok(/netuid = \?/.test(sql));
     assert.ok(captures.params.some((p) => p.includes(NETUID)));
   });
+
+  test("short-circuits an inverted from>to date window before D1", async () => {
+    const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
+    const body = await json(
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
+      ),
+    );
+    assert.equal(body.data.day_count, 0);
+    assert.deepEqual(body.data.days, []);
+    assert.equal(captures.sql.length, 0);
+  });
 });
 
 describe("handleAccountExtrinsics", () => {
@@ -1813,6 +1945,24 @@ describe("handleAccountExtrinsics", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
+    const body = await json(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/extrinsics?block_start=500&block_end=100`,
+        ),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("happy path returns signer-matched extrinsics", async () => {
@@ -1933,6 +2083,22 @@ describe("handleAccountTransfers", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ transfers: [transferEventRow()] });
+    const body = await json(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/transfers?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.transfer_count, 0);
+    assert.deepEqual(body.data.transfers, []);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("returns schema-stable empty transfers on cold D1", async () => {
@@ -2845,6 +3011,55 @@ describe("handleBlock", () => {
     assert.ok(idx !== -1, "expected a block_hash lookup");
     assert.equal(captures.params[idx][0], lowerHash);
   });
+
+  test("uses the static cache profile when the block resolves", async () => {
+    const { env } = dbWith({
+      blockDetail: blockRow(),
+      blockNeighbors: { prev: 1230, next: 1240 },
+    });
+    const res = await handleBlock(
+      req(`/api/v1/blocks/${BLOCK_NUM}`),
+      env,
+      String(BLOCK_NUM),
+    );
+    assert.match(res.headers.get("cache-control"), /max-age=600/);
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "static");
+  });
+
+  test("keeps the short cache profile when the block is unknown", async () => {
+    const res = await handleBlock(
+      req(`/api/v1/blocks/${BLOCK_NUM}`),
+      emptyEnv(),
+      String(BLOCK_NUM),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("cache-control"), /max-age=60/);
+    assert.equal(res.headers.get("x-metagraph-cache-profile"), "short");
+  });
+
+  test("still emits a 304 for a resolved block when If-None-Match matches", async () => {
+    const { env } = dbWith({
+      blockDetail: blockRow(),
+      blockNeighbors: { prev: 1230, next: 1240 },
+    });
+    const first = await handleBlock(
+      req(`/api/v1/blocks/${BLOCK_NUM}`),
+      env,
+      String(BLOCK_NUM),
+    );
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    const second = await handleBlock(
+      new Request(`https://api.metagraph.sh/api/v1/blocks/${BLOCK_NUM}`, {
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      String(BLOCK_NUM),
+    );
+    assert.equal(second.status, 304);
+    assert.match(second.headers.get("cache-control"), /max-age=600/);
+    assert.equal(second.headers.get("etag"), etag);
+  });
 });
 
 describe("handleBlockExtrinsics", () => {
@@ -3275,6 +3490,20 @@ describe("handleExtrinsics", () => {
       captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
       0,
     );
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?block_start=500&block_end=100"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("a valid recent window is NOT short-circuited and queries D1", async () => {

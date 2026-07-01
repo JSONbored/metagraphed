@@ -248,6 +248,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/yield",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.neurons), true);
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.validator_count, "number");
+      assert.equal(typeof body.data.miner_count, "number");
+    },
+  ],
+  [
     "/api/v1/validators?sort=uid_count&limit=3",
     (body) => {
       assert.equal(body.data.sort, "uid_count");
@@ -429,11 +439,34 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/transfers?window=7d&limit=5",
+    (body) => {
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(Array.isArray(body.data.top_senders), true);
+      assert.equal(Array.isArray(body.data.top_receivers), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);
       assert.equal(Array.isArray(body.data.top_fee_payers), true);
       assert.equal(typeof body.data.day_count, "number");
+    },
+  ],
+  [
+    "/api/v1/chain/concentration",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.entity_count, "number");
+      // each lens is a metrics object or null on a cold store.
+      assert.equal(
+        body.data.stake === null || typeof body.data.stake === "object",
+        true,
+      );
     },
   ],
   [

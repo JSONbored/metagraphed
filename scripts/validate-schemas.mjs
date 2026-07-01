@@ -32,6 +32,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-turnover",
   "subnet-stake-flow",
   "subnet-movers",
+  "subnet-yield",
   "global-validators",
   "subnet-uptime",
   "subnet-metagraph",
@@ -59,6 +60,8 @@ const COMPUTED_ARTIFACTS = new Set([
   "chain-calls",
   "chain-signers",
   "chain-fees",
+  "chain-transfers",
+  "chain-concentration",
   // Postgres-backed all-events tier (ADR 0013): served live by the data Worker,
   // never written as files.
   "chain-events-feed",
