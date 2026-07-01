@@ -27,13 +27,17 @@ export const DEFAULT_HISTORY_WINDOW = "30d";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
+export function unsupportedWindowMessage(value, windows) {
+  return `"${value}" is not a supported window. Supported: ${Object.keys(windows).join(", ")}.`;
+}
+
 export function parseHistoryWindow(value) {
   const v = typeof value === "string" && value ? value : DEFAULT_HISTORY_WINDOW;
   if (!Object.prototype.hasOwnProperty.call(HISTORY_WINDOWS, v)) {
     return {
       error: {
         parameter: "window",
-        message: `window must be one of: ${Object.keys(HISTORY_WINDOWS).join(", ")}`,
+        message: unsupportedWindowMessage(v, HISTORY_WINDOWS),
       },
     };
   }

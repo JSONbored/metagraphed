@@ -138,6 +138,46 @@ describe("analytics-live projections", () => {
       ],
     );
   });
+
+  test("growthRowsFromSamples ignores a leading null score when latching first", () => {
+    // A subnet not yet profiled on its earliest in-window day emits a NULL
+    // completeness_score first; `first` must latch the first *real* score, not
+    // the NULL, so its growth still counts. Regression for the "fastest-growing"
+    // leaderboard silently dropping such subnets.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 9, completeness_score: null },
+        { netuid: 9, completeness_score: 10 },
+        { netuid: 9, completeness_score: 90 },
+      ]),
+      [{ netuid: 9, delta: 80 }],
+    );
+  });
+
+  test("growthRowsFromSamples ignores a trailing null score when latching last", () => {
+    // Symmetric guard: a NULL on the newest day must not pin `last` to null and
+    // collapse the delta — `last` latches the last real score.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 4, completeness_score: 50 },
+        { netuid: 4, completeness_score: 70 },
+        { netuid: 4, completeness_score: null },
+      ]),
+      [{ netuid: 4, delta: 20 }],
+    );
+  });
+
+  test("growthRowsFromSamples treats a zero first score as a real sample", () => {
+    // completeness_score 0 is a valid score, not "missing" — it must anchor the
+    // delta so a 0→60 climb reads as +60, not null.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 7, completeness_score: 0 },
+        { netuid: 7, completeness_score: 60 },
+      ]),
+      [{ netuid: 7, delta: 60 }],
+    );
+  });
 });
 
 describe("analytics-live loaders", () => {

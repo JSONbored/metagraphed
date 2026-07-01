@@ -10,6 +10,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { MOVERS_WINDOWS } from "../src/movers.mjs";
+import { unsupportedWindowMessage } from "../src/neuron-history.mjs";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   handleSubnetMetagraph,
@@ -1532,12 +1534,17 @@ describe("handleSubnetMovers", () => {
   });
 
   test("rejects an unsupported window with 400", async () => {
-    await errorJson(
+    const body = await errorJson(
       await handleSubnetMovers(
         req("/api/v1/subnets/movers"),
         emptyEnv(),
         url("/api/v1/subnets/movers?window=1y"),
       ),
+    );
+    assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("1y", MOVERS_WINDOWS),
     );
   });
 
@@ -1840,6 +1847,21 @@ describe("handleAccountHistory", () => {
     const sql = captures.sql.find((s) => /account_events_daily/.test(s));
     assert.ok(/netuid = \?/.test(sql));
     assert.ok(captures.params.some((p) => p.includes(NETUID)));
+  });
+
+  test("short-circuits an inverted from>to date window before D1", async () => {
+    const { env, captures } = dbWith({ accountEventsDaily: [accountDayRow()] });
+    const body = await json(
+      await handleAccountHistory(
+        req(`/api/v1/accounts/${SS58}/history`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/history?from=2026-06-30&to=2026-06-01`),
+      ),
+    );
+    assert.equal(body.data.day_count, 0);
+    assert.deepEqual(body.data.days, []);
+    assert.equal(captures.sql.length, 0);
   });
 });
 
@@ -3348,6 +3370,20 @@ describe("handleExtrinsics", () => {
       captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
       0,
     );
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const body = await json(
+      await handleExtrinsics(
+        req("/api/v1/extrinsics"),
+        env,
+        url("/api/v1/extrinsics?block_start=500&block_end=100"),
+      ),
+    );
+    assert.equal(body.data.extrinsic_count, 0);
+    assert.deepEqual(body.data.extrinsics, []);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("a valid recent window is NOT short-circuited and queries D1", async () => {

@@ -45,6 +45,7 @@ import {
   handleChainCalls,
   handleChainFees,
   handleChainSigners,
+  handleChainTransfers,
   handleGlobalIncidents,
   loadGlobalIncidentsLedger,
   handleHealthIncidents,
@@ -852,7 +853,16 @@ async function handleChainEventsProxy(request, env, url) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  // DATA_API is GET-only (it 405s any other method), so a HEAD probe must be
+  // forwarded as a GET or it would return a 405 error envelope instead of the
+  // bodiless 200 that HEAD yields on every other GET route (and that this route's
+  // own CORS preflight advertises). envelopeResponse(request, …) below still
+  // strips the body for HEAD, so the client gets the correct empty 200.
+  const upstream = await env.DATA_API.fetch(
+    request.method === "HEAD"
+      ? new Request(request.url, { method: "GET", headers: request.headers })
+      : request,
+  );
   let body;
   try {
     body = await upstream.json();
@@ -1601,6 +1611,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/fees") {
       return handleChainFees(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/transfers") {
+      return handleChainTransfers(request, env, resolved.url, ctx);
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1659,6 +1672,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/calls" ||
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
+    pathname === "/api/v1/chain/transfers" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
