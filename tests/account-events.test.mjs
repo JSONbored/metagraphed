@@ -112,6 +112,10 @@ test("INGESTED_EVENT_KINDS accepts PrometheusServed for kind filters", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("PrometheusServed"));
 });
 
+test("INGESTED_EVENT_KINDS accepts BurnSet (subnet registration cost) for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("BurnSet"));
+});
+
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,
