@@ -60,7 +60,15 @@ export function scoreFromStats({
             (avgLatencyMs - LATENCY_FREE_MS) * LATENCY_PENALTY_PER_MS,
           ),
         );
-  const score = Math.max(0, Math.round(uptimeScore - latencyPenalty));
+  // Anti-overstatement clamp, the same guard this file already applies to the
+  // displayed `uptime_ratio` (displayUptimeRatio above) and the turnover
+  // `stability_score`/retention composite (#2299): a sub-perfect uptime ratio in
+  // [0.995, 1) rounds up — `Math.round(99.5) === 100` — which would headline a
+  // flawless `score: 100` (grade A) for a surface that actually had downtime,
+  // contradicting its own sub-1 `uptime_ratio`. Only a genuine okCount === samples
+  // ratio (exactly 1) keeps the perfect 100; gradeFor(99) is still "A".
+  let score = Math.max(0, Math.round(uptimeScore - latencyPenalty));
+  if (score >= 100 && uptimeRatio < 1) score = 99;
   return {
     score,
     grade: gradeFor(score),

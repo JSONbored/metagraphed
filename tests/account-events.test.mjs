@@ -134,6 +134,27 @@ test("formatAccountEvent is null-safe on junk + sparse rows", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
+  // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
+  // `?? null` pass-through this replaced would have leaked strings into the API
+  // payload. Mirrors the coercion in blocks.mjs (#2435) and extrinsics.mjs
+  // (#2439) — and the block_number / event_index / extrinsic_index coercion
+  // already applied in this same function.
+  const out = formatAccountEvent({ netuid: "7", uid: "42", block_number: 1 });
+  assert.equal(out.netuid, 7);
+  assert.equal(typeof out.netuid, "number");
+  assert.equal(out.uid, 42);
+  assert.equal(typeof out.uid, "number");
+});
+
+test("formatAccountEvent rejects non-integer or negative netuid/uid cells to null", () => {
+  // Guard the toBlockNumber helper for these fields: netuids are never negative
+  // on-chain, and a uid above Number.MAX_SAFE_INTEGER would lose precision.
+  assert.equal(formatAccountEvent({ netuid: -1 }).netuid, null);
+  assert.equal(formatAccountEvent({ uid: 1.5 }).uid, null);
+  assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
+});
+
 test("utcDayBounds returns the UTC day window", () => {
   const b = utcDayBounds(Date.UTC(2026, 5, 21, 14, 30, 0));
   assert.equal(b.date, "2026-06-21");
@@ -250,6 +271,67 @@ test("formatRegistration coerces flags + is null-safe (#1347)", () => {
   assert.equal(r.validator_permit, true);
   assert.equal(r.active, false);
   assert.equal(formatRegistration(null), null);
+});
+
+test("formatRegistration coerces D1 numeric-string cells to schema types", () => {
+  const out = formatRegistration({
+    netuid: "7",
+    uid: "3",
+    stake_tao: "100.5",
+    validator_permit: 1,
+    active: 1,
+  });
+  assert.equal(typeof out.netuid, "number");
+  assert.equal(typeof out.uid, "number");
+  assert.equal(typeof out.stake_tao, "number");
+  assert.equal(out.netuid, 7);
+  assert.equal(out.uid, 3);
+  assert.equal(out.stake_tao, 100.5);
+});
+
+test("formatRegistration coerces D1 string flag cells to booleans", () => {
+  const out = formatRegistration({
+    netuid: 1,
+    uid: 0,
+    stake_tao: null,
+    validator_permit: "0",
+    active: "1",
+  });
+  assert.equal(out.validator_permit, false);
+  assert.equal(out.active, true);
+});
+
+test("formatRegistration drops invalid netuid and uid cells instead of leaking strings", () => {
+  const out = formatRegistration({
+    netuid: "not-a-netuid",
+    uid: "-1",
+    stake_tao: "not-a-number",
+    validator_permit: 0,
+    active: 0,
+  });
+  assert.equal(out.netuid, null);
+  assert.equal(out.uid, null);
+  assert.equal(out.stake_tao, null);
+});
+
+test("buildAccountSummary and buildAccountSubnets keep coerced registration types", () => {
+  const row = {
+    netuid: "14",
+    uid: "2",
+    stake_tao: "12.25",
+    validator_permit: 1,
+    active: 1,
+  };
+  const summary = buildAccountSummary("5Hk", { registrations: [row] });
+  const subnets = buildAccountSubnets([row], "5Hk");
+  for (const reg of [summary.registrations[0], subnets.subnets[0]]) {
+    assert.equal(typeof reg.netuid, "number");
+    assert.equal(typeof reg.uid, "number");
+    assert.equal(typeof reg.stake_tao, "number");
+    assert.equal(reg.netuid, 14);
+    assert.equal(reg.uid, 2);
+    assert.equal(reg.stake_tao, 12.25);
+  }
 });
 
 test("buildAccountSummary joins aggregates + registrations (#1347)", () => {
@@ -730,6 +812,11 @@ test("loadAccountSummary tie-breaks leaderboard aggregates for stable output", a
       modules.sql,
     ),
   );
+  const regs = calls.find((c) => /FROM neurons WHERE hotkey = \?/.test(c.sql));
+  assert.ok(
+    /ORDER BY stake_tao DESC, netuid ASC/.test(regs.sql),
+    "registration list must tie-break equal stakes by netuid",
+  );
 });
 
 test("loadAccountSummary uses indexed union seeks for account_events (#2059)", async () => {
@@ -983,7 +1070,12 @@ test("loadAccountHistory binds netuid/from/to filters and clamps pagination", as
   assert.ok(/AND netuid = \?/.test(captured.sql));
   assert.ok(/AND day >= \?/.test(captured.sql));
   assert.ok(/AND day <= \?/.test(captured.sql));
-  assert.ok(/ORDER BY day DESC LIMIT \? OFFSET \?/.test(captured.sql));
+  // Same-day rows are tie-broken on netuid so the order is total; no cursor →
+  // offset paging.
+  assert.ok(
+    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
+  );
+  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
   // limit 0 is below the floor → clamps to 1; offset 5 passes through.
   assert.deepEqual(captured.params, [
     "5Hk",
@@ -993,6 +1085,49 @@ test("loadAccountHistory binds netuid/from/to filters and clamps pagination", as
     1,
     5,
   ]);
+});
+
+test("loadAccountHistory applies a (day, netuid) keyset cursor and drops offset", async () => {
+  let captured;
+  const out = await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        { day: "2026-06-20", netuid: 3, event_count: 2, event_kinds: "" },
+        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
+      ];
+    },
+    "5Hk",
+    { limit: 2, offset: 99, cursor: encodeCursor([20260624, 7]) },
+  );
+  // Cursor path: keyset predicate present, OFFSET dropped, day re-hyphenated.
+  assert.ok(/AND \(day, netuid\) < \(\?, \?\)/.test(captured.sql));
+  assert.ok(/ORDER BY day DESC, netuid DESC LIMIT \?/.test(captured.sql));
+  assert.ok(!/OFFSET/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", "2026-06-24", 7, 2]);
+  // A full page (rows.length === limit) yields a next_cursor from the last row.
+  assert.deepEqual(out.next_cursor, encodeCursor([20260620, 1]));
+});
+
+test("loadAccountHistory ignores a malformed cursor and emits no next_cursor on a short page", async () => {
+  let captured;
+  const out = await loadAccountHistory(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        { day: "2026-06-20", netuid: 1, event_count: 5, event_kinds: "" },
+      ];
+    },
+    "5Hk",
+    { limit: 50, cursor: "not-a-valid-cursor" },
+  );
+  // Malformed cursor → first page (offset path), no keyset predicate, no throw.
+  assert.ok(!/\(day, netuid\) < /.test(captured.sql));
+  assert.ok(
+    /ORDER BY day DESC, netuid DESC LIMIT \? OFFSET \?/.test(captured.sql),
+  );
+  // Short page (rows.length < limit) → no next_cursor.
+  assert.equal(out.next_cursor, null);
 });
 
 test("loadAccountHistory ignores a non-integer netuid filter", async () => {

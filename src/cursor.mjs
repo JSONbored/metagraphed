@@ -12,14 +12,31 @@
 // over D1. Callers should treat the token as opaque. Exposed as `?cursor=` + a
 // `next_cursor` body field.
 
-// Encode an array of non-negative SAFE integers into a cursor token. Returns null
-// for an empty/invalid input (the caller then emits no next_cursor). Parts must be
-// safe integers — a value above Number.MAX_SAFE_INTEGER can't survive the
-// Number()/round-trip the decoder performs, so it is not a representable cursor.
+// Normalize one cursor part: non-negative safe integers, or D1-style numeric
+// strings (decodeCursor accepts `/^\d+$/` segments; encode must be symmetric).
+function cursorPart(value) {
+  if (Number.isSafeInteger(value) && value >= 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    const n = Number(value);
+    if (Number.isSafeInteger(n) && n >= 0) return n;
+  }
+  return null;
+}
+
+// Encode cursor parts into a dot-joined token. Each part may be a non-negative
+// safe integer or a digit string that normalizes to one (D1 INTEGER columns often
+// arrive as strings). Returns null for empty/invalid input (no next_cursor).
+// Values above Number.MAX_SAFE_INTEGER are rejected — they cannot survive the
+// Number() round-trip the decoder performs.
 export function encodeCursor(parts) {
   if (!Array.isArray(parts) || parts.length === 0) return null;
-  if (parts.some((p) => !Number.isSafeInteger(p) || p < 0)) return null;
-  return parts.join(".");
+  const normalized = [];
+  for (const part of parts) {
+    const n = cursorPart(part);
+    if (n == null) return null;
+    normalized.push(n);
+  }
+  return normalized.join(".");
 }
 
 // Decode a cursor token back to exactly `arity` non-negative integers. Returns

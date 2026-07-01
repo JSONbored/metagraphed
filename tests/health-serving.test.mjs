@@ -142,6 +142,26 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.endpoints.find((e) => e.id === "b").status, "ok"); // no live → static
   });
 
+  test("folds unrecognized live status into unknown on the endpoint row", () => {
+    const stat = {
+      schema_version: 1,
+      endpoints: [{ id: "a", status: "ok", health_source: "probe-derived" }],
+    };
+    const live = {
+      last_run_at: "r",
+      endpoints: [
+        {
+          id: "a",
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+        },
+      ],
+    };
+    const a = mergeRpcEndpoints(stat, live).endpoints.find((e) => e.id === "a");
+    assert.equal(a.status, "unknown");
+  });
+
   test("a failing endpoint's observed_at is the sweep time, not its stale last_ok", () => {
     const stat = {
       schema_version: 1,
@@ -224,6 +244,21 @@ describe("overlayRpcPoolEligibility", () => {
     const out = overlayRpcPoolEligibility(pool, live);
     assert.equal(out.endpoints.find((e) => e.id === "a").pool_eligible, false);
     assert.equal(out.endpoints.find((e) => e.id === "b").pool_eligible, true);
+  });
+
+  test("folds unrecognized live status into unknown on the pool endpoint row", () => {
+    const live = {
+      endpoints: [
+        {
+          id: "a",
+          status: "throttled",
+          classification: "rate-limited",
+          consecutive_failures: 0,
+        },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(pool, live);
+    assert.equal(out.endpoints.find((e) => e.id === "a").status, "unknown");
   });
 
   test("returns the static pool unchanged when live is cold", () => {
@@ -500,6 +535,30 @@ describe("overlaySubnetHealth (additional paths)", () => {
     assert.equal(pushed.status_code, 200);
     assert.equal(pushed.observed_by, "live-cron-prober");
     assert.equal(out.summary.status, "ok");
+  });
+
+  test("folds unrecognized live status into unknown on each surface row", () => {
+    const live = {
+      last_run_at: "2026-06-13T00:00:00.000Z",
+      surfaces: [
+        {
+          surface_id: "sn7-api",
+          netuid: 7,
+          kind: "subnet-api",
+          provider: "prov",
+          url: "https://api",
+          status: "throttled",
+          classification: "rate-limited",
+          latency_ms: 120,
+          last_checked: "2026-06-13T00:00:00.000Z",
+          last_ok: "2026-06-13T00:00:00.000Z",
+        },
+      ],
+    };
+    const out = overlaySubnetHealth(null, live, 7);
+    assert.equal(out.surfaces[0].status, "unknown");
+    assert.equal(out.summary.status, "unknown");
+    assert.equal(out.summary.unknown_count, 1);
   });
 
   test("static artifact without a surfaces array → treated as empty, live pushed", () => {
@@ -1303,6 +1362,8 @@ describe("resolveLiveHealth (KV → D1 → null)", () => {
     assert.equal(live.summary.status_counts.unknown, 1);
     assert.equal(live.summary.status_counts.throttled, undefined);
     assert.equal(live.summary.surface_count, 1);
+    assert.equal(live.surfaces[0].status, "unknown");
+    assert.equal(live.subnets[0].status, "unknown");
   });
 
   test("does not return stale D1-only surface_status rows", async () => {
@@ -2537,6 +2598,28 @@ describe("computeReliability (score from uptime history)", () => {
       scoreFromStats({ samples: 10000, okCount: 9983, avgLatencyMs: null })
         .uptime_ratio,
       0.9983,
+    );
+  });
+
+  test("a sub-perfect ratio that rounds to 100 is not reported as a perfect score", () => {
+    // 199/200 = 0.995 uptime, zero latency penalty → uptimeScore 99.5, and
+    // `Math.round(99.5) === 100`, which would otherwise headline a flawless
+    // score: 100 / grade A for a surface that actually had downtime — directly
+    // contradicting its own sub-1 uptime_ratio. Clamp the would-be-100 score to
+    // 99 (still grade A), mirroring the uptime_ratio and turnover guards.
+    const subPerfect = scoreFromStats({
+      samples: 200,
+      okCount: 199,
+      avgLatencyMs: 100,
+    });
+    assert.equal(subPerfect.score, 99);
+    assert.equal(subPerfect.grade, "A");
+    assert.equal(subPerfect.uptime_ratio, 0.995);
+    // a genuine okCount === samples window with no latency penalty still reports
+    // the perfect 100.
+    assert.equal(
+      scoreFromStats({ samples: 200, okCount: 200, avgLatencyMs: 100 }).score,
+      100,
     );
   });
 

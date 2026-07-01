@@ -8,6 +8,11 @@ import {
 } from "../src/artifact-storage.mjs";
 import { artifactFilePath } from "./lib.mjs";
 
+// Generated artifacts like openapi.json now exceed Node's default 1 MB
+// execFileSync buffer, so git reads must allow plenty of headroom or the
+// output overflows and throws ENOBUFS.
+const GIT_OUTPUT_MAX_BUFFER = 64 * 1024 * 1024;
+
 function main() {
   const changedFilesPath = valueAfter("--changed-files") || "changed-files.txt";
   const artifactRoot = valueAfter("--artifact-root") || "public/metagraph";
@@ -186,6 +191,7 @@ function gitShow(ref) {
   return execFileSync("git", ["show", ref], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    maxBuffer: GIT_OUTPUT_MAX_BUFFER,
   });
 }
 
@@ -194,9 +200,13 @@ function gitDiffsFromHead(file) {
     execFileSync("git", ["diff", "--exit-code", "--", file], {
       encoding: "utf8",
       stdio: "pipe",
+      maxBuffer: GIT_OUTPUT_MAX_BUFFER,
     });
     return false;
-  } catch {
+  } catch (error) {
+    if (error.code === "ENOBUFS") {
+      throw error;
+    }
     return true;
   }
 }
