@@ -2026,6 +2026,42 @@ describe("MCP get_chain_signers", () => {
     assert.equal(d1Calls, 0);
   });
 
+  test("proceeds to the D1 signers aggregation when the data-tier limiter allows the request", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 1);
+  });
+
   test("coalesces identical batched signers calls into one D1 query", async () => {
     let d1Calls = 0;
     const env = {
