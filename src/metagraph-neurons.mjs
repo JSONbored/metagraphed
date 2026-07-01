@@ -75,26 +75,38 @@ function round(value, dp = 6) {
   return Math.round(value * factor) / factor;
 }
 
-// One D1 row → a clean Neuron object. SQLite stores booleans as 0/1 INTEGER, so
-// coerce the flag columns back to real booleans for the API.
+function toTaoOrNull(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * RAO_PER_TAO) / RAO_PER_TAO : null;
+}
+
+// D1 stores flags as 0/1 INTEGER; numeric strings like "0" must not pass through
+// Boolean(), which treats any non-empty string as true.
+function toD1Flag(value) {
+  return Number(value) === 1;
+}
+
+// One D1 row → a clean Neuron object. D1 INTEGER/REAL cells can arrive as numeric
+// strings, so normalize every scalar before it reaches the public Neuron contract.
 export function formatNeuron(row) {
   if (!row || typeof row !== "object") return null;
   return {
-    uid: row.uid ?? null,
+    uid: nonNegativeInt(row.uid),
     hotkey: row.hotkey ?? null,
     coldkey: row.coldkey ?? null,
-    active: Boolean(row.active),
-    validator_permit: Boolean(row.validator_permit),
-    rank: row.rank ?? null,
-    trust: row.trust ?? null,
-    validator_trust: row.validator_trust ?? null,
-    consensus: row.consensus ?? null,
-    incentive: row.incentive ?? null,
-    dividends: row.dividends ?? null,
-    emission_tao: row.emission_tao ?? null,
-    stake_tao: row.stake_tao ?? null,
-    registered_at_block: row.registered_at_block ?? null,
-    is_immunity_period: Boolean(row.is_immunity_period),
+    active: toD1Flag(row.active),
+    validator_permit: toD1Flag(row.validator_permit),
+    rank: nullableNumber(row.rank),
+    trust: nullableNumber(row.trust),
+    validator_trust: nullableNumber(row.validator_trust),
+    consensus: nullableNumber(row.consensus),
+    incentive: nullableNumber(row.incentive),
+    dividends: nullableNumber(row.dividends),
+    emission_tao: toTaoOrNull(row.emission_tao),
+    stake_tao: toTaoOrNull(row.stake_tao),
+    registered_at_block: nonNegativeInt(row.registered_at_block),
+    is_immunity_period: toD1Flag(row.is_immunity_period),
     axon: row.axon ?? null,
   };
 }
@@ -104,7 +116,7 @@ function snapshotStamp(rows) {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
-    block_number: first.block_number ?? null,
+    block_number: nonNegativeInt(first.block_number),
   };
 }
 

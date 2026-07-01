@@ -72,6 +72,55 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.is_immunity_period, false);
   });
 
+  test("formatNeuron coerces D1 numeric-string cells to schema types", () => {
+    const n = formatNeuron({
+      uid: "5",
+      hotkey: "5Hk1",
+      active: 1,
+      validator_permit: 1,
+      rank: "2",
+      trust: "0.5",
+      validator_trust: "0.99",
+      consensus: "0.4",
+      incentive: "0.1",
+      dividends: "0.2",
+      emission_tao: "22.1",
+      stake_tao: "1000.5",
+      registered_at_block: "6702485",
+      is_immunity_period: 0,
+      axon: null,
+    });
+    assert.equal(typeof n.uid, "number");
+    assert.equal(typeof n.rank, "number");
+    assert.equal(typeof n.stake_tao, "number");
+    assert.equal(typeof n.registered_at_block, "number");
+    assert.equal(n.uid, 5);
+    assert.equal(n.stake_tao, 1000.5);
+    assert.equal(n.registered_at_block, 6702485);
+  });
+
+  test("formatNeuron coerces D1 string flag cells to booleans", () => {
+    const n = formatNeuron({
+      uid: 0,
+      active: "0",
+      validator_permit: "1",
+      is_immunity_period: "0",
+    });
+    assert.equal(n.active, false);
+    assert.equal(n.validator_permit, true);
+    assert.equal(n.is_immunity_period, false);
+  });
+
+  test("buildSubnetMetagraph coerces string-typed snapshot block_number", () => {
+    const data = buildSubnetMetagraph(
+      [{ ...ROW, block_number: "8454388", captured_at: 1750000000000 }],
+      7,
+    );
+    assert.equal(typeof data.block_number, "number");
+    assert.equal(data.block_number, 8454388);
+    assert.equal(typeof data.neurons[0].uid, "number");
+  });
+
   test("buildSubnetMetagraph stamps count + ISO captured_at", () => {
     const data = buildSubnetMetagraph([ROW, MINER], 7);
     assert.equal(data.netuid, 7);
