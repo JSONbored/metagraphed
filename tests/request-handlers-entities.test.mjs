@@ -1764,6 +1764,17 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "netuid");
   });
 
+  test("rejects a netuid above Number.MAX_SAFE_INTEGER with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=9007199254740992`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
