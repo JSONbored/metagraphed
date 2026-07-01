@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  isPrivateOrLocalHostname,
   orderSafeRpcEndpoints,
   selectSafeRpcEndpoint,
   weightedPickEndpoint,
@@ -137,5 +138,20 @@ describe("orderSafeRpcEndpoints — block-height routing", () => {
     const { endpoints } = orderSafeRpcEndpoints(pool, () => 0, opts);
     // null-block endpoint isn't demoted (can't judge) — both stay in the pool.
     assert.equal(endpoints.length, 2);
+  });
+});
+
+describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
+  test("rejects the 100.64.0.0/10 CGNAT range, dotted and ::ffff:-mapped", () => {
+    assert.equal(isPrivateOrLocalHostname("100.64.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("100.100.0.1"), true);
+    assert.equal(isPrivateOrLocalHostname("100.127.255.255"), true);
+    assert.equal(isPrivateOrLocalHostname("::ffff:100.64.0.1"), true);
+  });
+
+  test("does not reject public addresses just outside the CGNAT range", () => {
+    assert.equal(isPrivateOrLocalHostname("100.63.255.255"), false);
+    assert.equal(isPrivateOrLocalHostname("100.128.0.0"), false);
+    assert.equal(isPrivateOrLocalHostname("8.8.8.8"), false);
   });
 });

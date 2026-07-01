@@ -1000,7 +1000,12 @@ function isSafeRpcEndpointUrl(value) {
   return !isPrivateOrLocalHostname(parsed.hostname);
 }
 
-function isPrivateOrLocalHostname(hostname) {
+// Exported for direct unit testing: TRUSTED_RPC_UPSTREAM_ORIGINS is a fixed set
+// of registered domains, so no currently-configured origin can ever reach the
+// private-IP branches below through isSafeRpcEndpointUrl alone — this is
+// defense in depth against a future origin entry resolving privately, the same
+// posture health-probe-core.mjs's isUnsafePublicUrl documents for its guard.
+export function isPrivateOrLocalHostname(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost")) {
     return true;
@@ -1015,7 +1020,10 @@ function isPrivateOrLocalHostname(hostname) {
       first === 127 ||
       (first === 169 && second === 254) ||
       (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168)
+      (first === 192 && second === 168) ||
+      // 100.64.0.0/10 CGNAT — the webhook, build, and health-probe SSRF guards
+      // already block this range (#2312/#2313); keep this guard at parity.
+      (first === 100 && second >= 64 && second <= 127)
     );
   }
 
@@ -1029,7 +1037,8 @@ function isPrivateOrLocalHostname(hostname) {
     host.startsWith("::ffff:10.") ||
     host.startsWith("::ffff:169.254.") ||
     host.startsWith("::ffff:192.168.") ||
-    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    /^::ffff:100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)
   );
 }
 
