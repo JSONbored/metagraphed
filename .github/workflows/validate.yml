@@ -71,24 +71,48 @@ jobs:
           VITEST_JUNIT_PATH: reports/junit/vitest.xml
         run: npm run test:ci
 
+      - name: Verify coverage report exists
+        run: test -s coverage/lcov.info
+
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
-      # local backstop. Runs on PRs AND main pushes (main = the comparison base);
-      # the upload failing never fails CI (the gate is Codecov's own status).
+      # local backstop. Same-repo PRs and main pushes use the repository token;
+      # fork PRs use Codecov's public-repo tokenless upload path instead.
+      # Missing coverage or upload errors fail the test job.
       - name: Upload coverage to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
-          fail_ci_if_error: false
+          disable_search: true
+          fail_ci_if_error: true
+
+      - name: Upload coverage to Codecov (fork PR tokenless)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
 
       - name: Upload Vitest results to Codecov
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./reports/junit/vitest.xml
           report_type: test_results
+          disable_search: true
+          fail_ci_if_error: false
+
+      - name: Upload Vitest results to Codecov (fork PR tokenless)
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./reports/junit/vitest.xml
+          report_type: test_results
+          disable_search: true
           fail_ci_if_error: false
 
       # The two filesystem-mutating artifact writers, run serially LAST so they
