@@ -73,4 +73,24 @@ describe("loadRpcUsage", () => {
     assert.equal(data.window, "7d");
     assert.equal(data.bucket_granularity, "1h");
   });
+
+  test("tie-breaks endpoint and network leaderboards for stable output", async () => {
+    const captured = [];
+    const d1 = async (sql) => {
+      captured.push(sql);
+      return [];
+    };
+    await loadRpcUsage(d1, { now: 1_700_000_000_000 });
+
+    const endpoints = captured.find((sql) => /GROUP BY endpoint_id/.test(sql));
+    const networks = captured.find((sql) => /GROUP BY network/.test(sql));
+    assert.match(
+      endpoints,
+      /GROUP BY endpoint_id, provider[\s\S]*ORDER BY requests DESC, endpoint_id ASC, provider ASC\s+LIMIT 50/,
+    );
+    assert.match(
+      networks,
+      /GROUP BY network[\s\S]*ORDER BY requests DESC, network ASC/,
+    );
+  });
 });
