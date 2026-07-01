@@ -117,6 +117,7 @@ import {
   handleRpcProxyRequest,
   handleRpcUsage,
   handleSurfaceVerify,
+  isPrivateOrLocalHostname,
   isRpcEndpointEjected,
   orderSafeRpcEndpoints,
   proxyWithFailover,
@@ -359,6 +360,7 @@ export {
 // module (their public test surface is api.mjs, not the new file).
 export {
   classifyUpstreamAttempt,
+  isPrivateOrLocalHostname,
   isRpcEndpointEjected,
   orderSafeRpcEndpoints,
   proxyWithFailover,

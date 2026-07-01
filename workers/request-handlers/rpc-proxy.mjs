@@ -49,6 +49,7 @@ import {
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../../src/health-prober.mjs";
+import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.mjs";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.mjs";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.mjs";
 import {
@@ -1000,7 +1001,29 @@ function isSafeRpcEndpointUrl(value) {
   return !isPrivateOrLocalHostname(parsed.hostname);
 }
 
-function isPrivateOrLocalHostname(hostname) {
+// Shared IPv4 private/CGNAT-range predicate — applied both to a bare IPv4
+// hostname and to the v4 address embedded in an IPv4-mapped/compatible/6to4/
+// NAT64 IPv6 literal (see below). [first, second] are the leading two octets.
+function isPrivateIpv4Octets([first, second]) {
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    // 100.64.0.0/10 CGNAT — the webhook, build, and health-probe SSRF guards
+    // already block this range (#2312/#2313); keep this guard at parity.
+    (first === 100 && second >= 64 && second <= 127)
+  );
+}
+
+// Exported for direct unit testing: TRUSTED_RPC_UPSTREAM_ORIGINS is a fixed set
+// of registered domains, so no currently-configured origin can ever reach the
+// private-IP branches below through isSafeRpcEndpointUrl alone — this is
+// defense in depth against a future origin entry resolving privately, the same
+// posture health-probe-core.mjs's isUnsafePublicUrl documents for its guard.
+export function isPrivateOrLocalHostname(hostname) {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".localhost")) {
     return true;
@@ -1008,29 +1031,28 @@ function isPrivateOrLocalHostname(hostname) {
 
   const ipv4 = parseIpv4Address(host);
   if (ipv4) {
-    const [first, second] = ipv4;
-    return (
-      first === 0 ||
-      first === 10 ||
-      first === 127 ||
-      (first === 169 && second === 254) ||
-      (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168)
-    );
+    return isPrivateIpv4Octets(ipv4);
   }
 
-  return (
+  if (
     host === "::" ||
     host === "::1" ||
     host.startsWith("fc") ||
     host.startsWith("fd") ||
-    host.startsWith("fe80") ||
-    host.startsWith("::ffff:127.") ||
-    host.startsWith("::ffff:10.") ||
-    host.startsWith("::ffff:169.254.") ||
-    host.startsWith("::ffff:192.168.") ||
-    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-  );
+    host.startsWith("fe80")
+  ) {
+    return true;
+  }
+
+  // The WHATWG URL parser re-serializes an IPv4-mapped/compatible/6to4/NAT64
+  // IPv6 literal into hex-tail form (e.g. the bracketed literal for
+  // ::ffff:100.64.0.1 becomes ::ffff:6440:1 in `new URL(...).hostname`), so a
+  // dotted-quad string-prefix match against that value never fires on the real
+  // request path. Parse the embedded v4 the same way src/webhooks.mjs and
+  // src/health-probe-core.mjs already do (via the shared src/ip-safety.mjs
+  // leaf) and re-check it against the same private-range policy.
+  const embedded = ipv6EmbeddedIpv4(host);
+  return embedded ? isPrivateIpv4Octets(embedded) : false;
 }
 
 function parseIpv4Address(host) {
