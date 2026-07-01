@@ -717,15 +717,21 @@ describe("loadChainFees", () => {
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
-    // The sample cap must be a per-day, index-bounded scan (WHERE observed_at
-    // in [dayStart, dayEnd) ORDER BY observed_at LIMIT ?), one UNION ALL block
-    // per UTC day — NOT a ROW_NUMBER() OVER a day partition. A window function
-    // still has to sort the FULL matching set before any per-partition filter
-    // can trim it, which reintroduces the unbounded-scan cost the cap exists
-    // to remove (see the loadChainFees regression test below for the
-    // per-day-cap correctness proof).
+    // The sample cap must be a per-day scan (WHERE observed_at in [dayStart,
+    // dayEnd) ... LIMIT ?), one UNION ALL block per UTC day — NOT a
+    // ROW_NUMBER() OVER a day partition. A window function still has to sort
+    // the FULL matching set before any per-partition filter can trim it,
+    // which reintroduces the unbounded-scan cost the cap exists to remove
+    // (see the loadChainFees regression test below for the per-day-cap
+    // correctness proof).
     assert.match(calls[2].sql, /UNION ALL/);
     assert.doesNotMatch(calls[2].sql, /PARTITION BY day ORDER BY observed_at/);
+    // The per-day sample is randomized, not the chronologically-earliest
+    // rows — capping to "earliest by observed_at" would silently bias the
+    // median toward however fees look at the start of a high-volume day
+    // instead of the day's true distribution (see the bias regression test
+    // below).
+    assert.match(calls[2].sql, /ORDER BY RANDOM\(\)/);
     // The sample cap + call_module filter are the same value in every day
     // block, so they're bound ONCE (numbered ?1/?2 params, reused across every
     // UNION ALL block) rather than re-bound per block — D1 caps a statement at
@@ -871,6 +877,70 @@ describe("loadChainFees", () => {
     assert.equal(byDay["2026-06-01"].median_fee_tao, 1);
     assert.equal(byDay["2026-06-02"].median_fee_tao, 2);
     assert.equal(byDay["2026-06-02"].median_tip_tao, 0.2);
+  });
+
+  test("a random per-day sample avoids the chronological-cap bias for a high-volume day", async () => {
+    // Regression for capping to the chronologically-EARLIEST rows (ORDER BY
+    // observed_at LIMIT n): a day with a real fee/tip trend over time (very
+    // plausible for a congestion-priced fee market) would have its median
+    // silently pulled toward whatever fees looked like at the START of the
+    // day instead of the day's true distribution. Construct a day where the
+    // first half (chronologically) pays a low fee and the back half pays a
+    // high fee, exceeding the sample cap by a small margin — the
+    // chronological-first-N sample would keep EVERY low-fee row and only
+    // part of the high-fee rows, pulling the computed median down to the
+    // boundary between the two fee levels even though the true day median
+    // sits solidly in the high-fee bucket. A random sample (dropping ~1% of
+    // rows arbitrarily) overwhelmingly preserves the true balance instead.
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number    INTEGER NOT NULL,
+        extrinsic_index INTEGER NOT NULL,
+        extrinsic_hash  TEXT,
+        signer          TEXT,
+        call_module     TEXT,
+        call_function   TEXT,
+        success         INTEGER,
+        observed_at     INTEGER NOT NULL,
+        fee_tao         REAL,
+        tip_tao         REAL,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+    `);
+    const insert = db.prepare(
+      "INSERT INTO extrinsics (block_number, extrinsic_index, observed_at, fee_tao, tip_tao) VALUES (?, ?, ?, ?, ?)",
+    );
+    const dayMs = 24 * 60 * 60 * 1000;
+    const dayStart = Date.UTC(2026, 5, 1);
+    const lowFeeCount = 5000; // first half of the day, chronologically
+    const highFeeCount = 5100; // second half — pushes the day to 10100 rows,
+    // 100 over CHAIN_FEE_MEDIAN_SAMPLE_LIMIT (10000)
+    let block = 0;
+    for (let i = 0; i < lowFeeCount; i += 1) {
+      insert.run(block, 0, dayStart + i, 0, 0);
+      block += 1;
+    }
+    for (let i = 0; i < highFeeCount; i += 1) {
+      insert.run(block, 0, dayStart + lowFeeCount + i, 1000, 100);
+      block += 1;
+    }
+    const run = async (sql, params) => db.prepare(sql).all(...params);
+    const { data } = await loadChainFees(run, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+      now: dayStart + lowFeeCount + highFeeCount + dayMs,
+    });
+    const day = data.daily.find((d) => d.day === "2026-06-01");
+    assert.ok(day, "the over-cap day must still report a day");
+    // True day median: 5100 of 10100 rows (a majority) pay fee_tao=1000, so
+    // the median falls solidly in the high-fee bucket. The old
+    // chronological-first-10000 sample would keep all 5000 low-fee rows plus
+    // only 5000 of the 5100 high-fee rows, landing exactly on the 0/1000
+    // boundary (median 500) instead.
+    assert.equal(day.median_fee_tao, 1000);
+    assert.equal(day.median_tip_tao, 100);
   });
 
   test("loadChainFees tie-breaks top_fee_payers for stable LIMIT membership", async () => {

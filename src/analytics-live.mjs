@@ -607,15 +607,27 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  // Median sampling: cap per UTC calendar day via a bounded, index-assisted
-  // (observed_at) scan per day rather than a ROW_NUMBER() OVER a day
-  // partition — a window function still has to sort the FULL matching set
-  // before any per-partition WHERE can trim it, so it reintroduces the
-  // unbounded-scan cost the cap exists to remove. One "WHERE observed_at in
-  // [dayStart, dayEnd) ORDER BY observed_at LIMIT ?" block per day lets D1 use
-  // idx_extrinsics_observed to stop after at most CHAIN_FEE_MEDIAN_SAMPLE_LIMIT
-  // rows for that day, so total scanned rows is bounded by days * the cap
-  // instead of the whole window.
+  // Median sampling: cap per UTC calendar day, one "WHERE observed_at in
+  // [dayStart, dayEnd) ... LIMIT ?" block per day (UNION ALL'd below) instead
+  // of a single query over the whole window — a day-partitioned ROW_NUMBER()
+  // OVER still has to sort the FULL matching set before any per-partition
+  // filter can trim it, reintroducing the unbounded-scan cost the cap exists
+  // to remove. Bounding by CALENDAR DAY (not by the request's `window` size)
+  // matters because a day's real extrinsic volume is a property of actual
+  // chain throughput, not something a caller can inflate by requesting a
+  // bigger window — unlike the pre-cap behavior, where the window parameter
+  // directly multiplied the sort cost.
+  //
+  // The sample is ORDER BY RANDOM() rather than ORDER BY observed_at: capping
+  // to the chronologically-EARLIEST rows would silently bias the median
+  // toward however fees/tips look at the start of a high-volume day (a real
+  // risk for a congestion-priced fee market, where fees plausibly trend with
+  // time of day) instead of the day's true distribution. A random subsample
+  // costs a per-day sort (RANDOM() can't use idx_extrinsics_observed to
+  // short-circuit), but that cost is bounded by one calendar day's real
+  // extrinsic count, not by the multi-day window the original vulnerability
+  // let a caller inflate — and it keeps the median statistically
+  // representative of the whole day instead of systematically skewed.
   //
   // The sample cap and (optional) call_module filter are the SAME value in
   // every day block, so they're bound ONCE via numbered (?N) parameters and
@@ -642,7 +654,7 @@ export async function loadChainFees(
                   COALESCE(tip_tao, 0) AS tip_tao
            FROM extrinsics
            WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}
-           ORDER BY observed_at
+           ORDER BY RANDOM()
            LIMIT ?${medianLimitParam}
          )`;
   });
