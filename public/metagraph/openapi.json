@@ -13997,6 +13997,164 @@
       "SubnetVerificationArtifact": {
         "$ref": "#/components/schemas/VerificationArtifact"
       },
+      "SubnetYieldArtifact": {
+        "additionalProperties": false,
+        "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mean_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "emission_tao": {
+                  "type": "number"
+                },
+                "hotkey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "role": {
+                  "enum": [
+                    "validator",
+                    "miner"
+                  ],
+                  "type": "string"
+                },
+                "stake_tao": {
+                  "type": "number"
+                },
+                "uid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "vs_median": {
+                  "enum": [
+                    "above",
+                    "below",
+                    "at",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "yield": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "uid",
+                "hotkey",
+                "role",
+                "stake_tao",
+                "emission_tao",
+                "yield",
+                "vs_median"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "p25_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p90_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "captured_at",
+          "block_number",
+          "neuron_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "subnet_yield",
+          "mean_yield",
+          "median_yield",
+          "p25_yield",
+          "p75_yield",
+          "p90_yield",
+          "neurons"
+        ],
+        "type": "object"
+      },
       "SuccessEnvelope": {
         "additionalProperties": false,
         "properties": {
@@ -14935,7 +15093,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-06-30.11"
+    "version": "2026-06-30.12"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -34591,6 +34749,168 @@
         ]
       }
     },
+    "/api/v1/subnets/{netuid}/yield": {
+      "get": {
+        "operationId": "subnetYield",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "block_number": 5000000,
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "mean_yield": 0.3,
+                    "median_yield": 0.3,
+                    "miner_count": 1,
+                    "netuid": 7,
+                    "neuron_count": 2,
+                    "neurons": [
+                      {
+                        "emission_tao": 2,
+                        "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        "role": "miner",
+                        "stake_tao": 5,
+                        "uid": 1,
+                        "vs_median": "above",
+                        "yield": 0.4
+                      },
+                      {
+                        "emission_tao": 2,
+                        "hotkey": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        "role": "validator",
+                        "stake_tao": 10,
+                        "uid": 0,
+                        "vs_median": "below",
+                        "yield": 0.2
+                      }
+                    ],
+                    "p25_yield": 0.2,
+                    "p75_yield": 0.4,
+                    "p90_yield": 0.4,
+                    "schema_version": 1,
+                    "subnet_yield": 0.266666667,
+                    "total_emission_tao": 4,
+                    "total_stake_tao": 15,
+                    "validator_count": 1
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetYieldArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/subnets/movers": {
       "get": {
         "operationId": "subnetMovers",
@@ -35180,7 +35500,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-06-30.11",
+    "contract_version": "2026-06-30.12",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

@@ -13975,6 +13975,164 @@
       "SubnetVerificationArtifact": {
         "$ref": "#/components/schemas/VerificationArtifact"
       },
+      "SubnetYieldArtifact": {
+        "additionalProperties": false,
+        "description": "Per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low, with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90), a validator/miner split, and a per-UID above/below-median label, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/yield (no static file).",
+        "properties": {
+          "block_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "captured_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mean_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neurons": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "emission_tao": {
+                  "type": "number"
+                },
+                "hotkey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "role": {
+                  "enum": [
+                    "validator",
+                    "miner"
+                  ],
+                  "type": "string"
+                },
+                "stake_tao": {
+                  "type": "number"
+                },
+                "uid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "vs_median": {
+                  "enum": [
+                    "above",
+                    "below",
+                    "at",
+                    null
+                  ],
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "yield": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "uid",
+                "hotkey",
+                "role",
+                "stake_tao",
+                "emission_tao",
+                "yield",
+                "vs_median"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "p25_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p90_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "captured_at",
+          "block_number",
+          "neuron_count",
+          "validator_count",
+          "miner_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "subnet_yield",
+          "mean_yield",
+          "median_yield",
+          "p25_yield",
+          "p75_yield",
+          "p90_yield",
+          "neurons"
+        ],
+        "type": "object"
+      },
       "SuccessEnvelope": {
         "additionalProperties": false,
         "properties": {
