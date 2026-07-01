@@ -263,6 +263,36 @@ describe("public contract registry", () => {
     }
   });
 
+  test("API index preserves array-form route query parameters without inventing a collection", () => {
+    const fakeRoute = {
+      id: "test-array-query-parameters",
+      method: "GET",
+      path: "/api/v1/test-array-query-parameters",
+      artifact_path: "/metagraph/test-array-query-parameters.json",
+      description: "Synthetic route for array-form query parameter coverage.",
+      cache: null,
+      tags: ["test"],
+      query_collection: null,
+      query_filter_names: [],
+      query_parameters: [{ name: "plain", schema: { type: "string" } }],
+      path_parameters: [],
+    };
+    const routeCount = API_ROUTES.length;
+
+    API_ROUTES.push(fakeRoute);
+    try {
+      const apiIndex = buildApiIndexArtifact("1970-01-01T00:00:00.000Z", {
+        artifacts: [],
+      });
+      const route = apiIndex.routes.find((entry) => entry.id === fakeRoute.id);
+      assert.equal(route.query_collection, null);
+      assert.deepEqual(route.query_filter_names, []);
+      assert.deepEqual(route.query_parameters, fakeRoute.query_parameters);
+    } finally {
+      API_ROUTES.length = routeCount;
+    }
+  });
+
   test("requires canonical component schemas before building OpenAPI", () => {
     assert.throws(
       () => buildOpenApiArtifact("1970-01-01T00:00:00.000Z", null),
