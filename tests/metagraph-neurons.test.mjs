@@ -418,6 +418,11 @@ describe("metagraph-neurons builders", () => {
     assert.equal(typeof detail.captured_at, "string");
     assert.equal(detail.neuron.stake_tao, null);
   });
+
+  test("buildNeuronDetail keeps null captured_at on a sparse row", () => {
+    const detail = buildNeuronDetail({ ...ROW, captured_at: null }, 7);
+    assert.equal(detail.captured_at, null);
+  });
 });
 
 describe("metagraph-neurons loaders", () => {
