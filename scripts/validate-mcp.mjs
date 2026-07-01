@@ -471,6 +471,13 @@ assert.ok(
     Array.isArray(transfersCold.top_receivers),
   "get_chain_transfers must return window + top_senders[] + top_receivers[] on cold D1",
 );
+const chainConcentrationCold = await callOk("get_chain_concentration", {});
+assert.ok(
+  chainConcentrationCold.neuron_count === 0 &&
+    chainConcentrationCold.subnet_count === 0 &&
+    chainConcentrationCold.stake === null,
+  "get_chain_concentration must return schema-stable null blocks on cold D1",
+);
 const networkActivityCold = await callOk("get_network_activity", {
   window: "7d",
 });

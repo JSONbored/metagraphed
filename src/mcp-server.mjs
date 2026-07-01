@@ -27,6 +27,7 @@ import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
+  loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "./concentration.mjs";
 import {
@@ -154,7 +155,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.16.0";
+export const MCP_SERVER_VERSION = "1.17.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -225,6 +226,7 @@ export const MCP_INSTRUCTIONS =
   "incidents, " +
   "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
+  "get_chain_concentration the same lenses network-wide across every subnet, " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
   "boundary snapshots, get_subnet_yield per-UID emission-per-stake return " +
@@ -1710,6 +1712,26 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_chain_concentration",
+    title: "Get network-wide stake/emission concentration",
+    description:
+      "Fetch network-wide stake and emission decentralization metrics aggregated " +
+      "across every subnet's neurons: Gini, HHI, Nakamoto coefficient, " +
+      "top-percentile shares, and entropy over per-UID, per-entity (coldkey " +
+      "collapsed across subnets), and validator-only consensus-power " +
+      "distributions. Snapshot-based (no time window). Use it to see whether " +
+      "capital and emissions are broadly distributed or captured network-wide. " +
+      "Mirrors GET /api/v1/chain/concentration.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainConcentration(mcpD1Runner(ctx));
     },
   },
   {
@@ -4641,6 +4663,36 @@ const TOOL_OUTPUT_SCHEMAS = {
       netuid: { type: "integer" },
       neuron_count: { type: "integer" },
       entity_count: { type: "integer" },
+      uids_per_entity: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      stake: { type: ["object", "null"] },
+      emission: { type: ["object", "null"] },
+      entity_stake: { type: ["object", "null"] },
+      entity_emission: { type: ["object", "null"] },
+      validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_chain_concentration: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "schema_version",
+      "subnet_count",
+      "neuron_count",
+      "entity_count",
+      "uids_per_entity",
+      "captured_at",
+      "stake",
+      "emission",
+      "entity_stake",
+      "entity_emission",
+      "validator_stake",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer", minimum: 0 },
+      neuron_count: { type: "integer", minimum: 0 },
+      entity_count: { type: "integer", minimum: 0 },
       uids_per_entity: { type: ["number", "null"] },
       captured_at: NULLABLE_STRING,
       stake: { type: ["object", "null"] },

@@ -4506,6 +4506,50 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.stake.holders, 2);
   });
 
+  test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_chain_concentration", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.stake, null);
+    assert.equal(out.emission, null);
+  });
+
+  test("get_chain_concentration aggregates neurons across all subnets", async () => {
+    const res = await callTool(
+      "get_chain_concentration",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                ...ROW,
+                netuid: 1,
+                stake_tao: 10,
+                emission_tao: 1,
+                coldkey: "ck-a",
+              },
+              {
+                ...MINER,
+                netuid: 2,
+                stake_tao: 20,
+                emission_tao: 2,
+                coldkey: "ck-b",
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.entity_count, 2);
+    assert.equal(out.stake.holders, 2);
+    assert.equal(out.stake.total, 30);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",
