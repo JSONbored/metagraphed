@@ -13,10 +13,13 @@ function toCount(value) {
 
 // Round a ratio to 4 dp without trailing float noise (0.99186… → 0.9919).
 // Sub-perfect ratios that would round up to 1.0 are clamped to 0.9999 so a
-// near-perfect day is never reported as a perfect success rate.
+// near-perfect day is never reported as a perfect success rate. Ratios above
+// 1.0 (stale aggregates where successful_extrinsics > extrinsic_count) cap at
+// 1.0 so the payload never reports an impossible >100% success rate.
 function round4(value) {
-  const rounded = Math.round(value * 1e4) / 1e4;
-  return rounded >= 1 && value < 1 ? 0.9999 : rounded;
+  const bounded = value > 1 ? 1 : value;
+  const rounded = Math.round(bounded * 1e4) / 1e4;
+  return rounded >= 1 && bounded < 1 ? 0.9999 : rounded;
 }
 
 // Coerce a D1 fee/tip cell (TAO float, numeric string, or null) to a finite

@@ -116,6 +116,20 @@ test("success_rate clamps a sub-perfect ratio that rounds to 1.0", () => {
   assert.equal(d.success_rate, 0.9999); // 99_999/100_000 = 0.99999 → not 1
 });
 
+test("success_rate caps an over-100% ratio at 1.0 when counts disagree", () => {
+  const [d] = buildChainActivity({
+    window: "7d",
+    extrinsicRows: [
+      {
+        day: "2026-06-25",
+        extrinsic_count: 100,
+        successful_extrinsics: 105,
+      },
+    ],
+  }).days;
+  assert.equal(d.success_rate, 1);
+});
+
 test("a day with zero extrinsics reports success_rate null, never NaN", () => {
   const out = buildChainActivity({
     window: "7d",
