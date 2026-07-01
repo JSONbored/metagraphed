@@ -1988,6 +1988,184 @@ describe("MCP get_chain_signers", () => {
     assert.equal(out.signer_count, 0);
     assert.deepEqual(out.signers, []);
   });
+
+  test("applies the data-tier limiter before the D1 signers aggregation", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: false };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 0);
+  });
+
+  test("proceeds to the D1 signers aggregation when the data-tier limiter allows the request", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("coalesces identical batched signers calls into one D1 query", async () => {
+    let d1Calls = 0;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("returns an empty leaderboard when the signers D1 query times out", async () => {
+    const env = {
+      METAGRAPH_D1_TIMEOUT_MS: "1",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return new Promise(() => {});
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool("get_chain_signers", {}, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.signer_count, 0);
+    assert.deepEqual(out.signers, []);
+  });
+
+  test("a batch of identical signers calls shares one limiter charge, not one per duplicate", async () => {
+    let d1Calls = 0;
+    let limiterCalls = 0;
+    const env = {
+      DATA_RATE_LIMITER: {
+        async limit() {
+          limiterCalls += 1;
+          return { success: false };
+        },
+      },
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2), message(3)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 3);
+    for (const entry of res.body) {
+      assert.equal(entry.result.isError, true);
+      assert.match(entry.result.content[0].text, /Too many data API requests/);
+    }
+    assert.equal(
+      limiterCalls,
+      1,
+      "identical batched calls must share a single limiter charge",
+    );
+    assert.equal(d1Calls, 0);
+  });
 });
 
 describe("MCP get_chain_fees", () => {
