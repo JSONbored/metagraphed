@@ -65,6 +65,7 @@ export const R2_ONLY_PATTERNS = [
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/extrinsics\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/transfers\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/counterparties\.json$/,
+  /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/stake-flow\.json$/,
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/subnets\.json$/,
   // Live TAO balance query (#1818): computed from RPC at request time, never a static file.
   /^accounts\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{ss58\})\/balance\.json$/,

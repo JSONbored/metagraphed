@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.11";
+export const CONTRACT_VERSION = "2026-06-30.12";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1031,6 +1031,12 @@ export const PUBLIC_ARTIFACTS = [
     "AccountCounterpartiesArtifact",
   ),
   artifact(
+    "account-stake-flow",
+    "/metagraph/accounts/{ss58}/stake-flow.json",
+    "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier at /api/v1/accounts/{ss58}/stake-flow (no static file).",
+    "AccountStakeFlowArtifact",
+  ),
+  artifact(
     "account-subnets",
     "/metagraph/accounts/{ss58}/subnets.json",
     "The subnets where an account's hotkey is currently registered, served live from the neurons D1 tier at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -2005,6 +2011,22 @@ export const API_ROUTES = [
         schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [{ name: "ss58", schema: { type: "string" } }],
+  ),
+  route(
+    "account-stake-flow",
+    "GET",
+    "/api/v1/accounts/{ss58}/stake-flow",
+    "/metagraph/accounts/{ss58}/stake-flow.json",
+    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
+    "short",
+    ["accounts", "analytics"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),

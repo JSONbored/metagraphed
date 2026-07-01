@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{ss58}/stake-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. */
+        get: operations["accountStakeFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{ss58}/subnets": {
         parameters: {
             query?: never;
@@ -1811,6 +1828,37 @@ export interface components {
             stake_tao?: number | null;
             uid?: number | null;
             validator_permit?: boolean;
+        };
+        /** @description One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet. */
+        AccountStakeFlowArtifact: {
+            address: string;
+            concentration: number | null;
+            /** @enum {string} */
+            direction: "accumulating" | "exiting" | "churning" | "idle";
+            dominant_netuid: number | null;
+            flow_ratio: number | null;
+            gross_flow_tao: number;
+            net_flow_tao: number;
+            schema_version: number;
+            stake_events: number;
+            subnet_count: number;
+            subnets: {
+                /** @enum {string} */
+                direction: "accumulating" | "exiting" | "churning" | "idle";
+                flow_ratio: number | null;
+                gross_flow_tao: number;
+                net_flow_tao: number;
+                netuid: number;
+                stake_events: number;
+                staked_tao: number;
+                unstake_events: number;
+                unstaked_tao: number;
+            }[];
+            total_staked_tao: number;
+            total_unstaked_tao: number;
+            unstake_events: number;
+            /** @enum {string|null} */
+            window: "7d" | "30d" | "90d" | null;
         };
         /** @description Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file). */
         AccountSubnetsArtifact: {
@@ -6143,6 +6191,135 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accountStakeFlow: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                ss58: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "address": "example",
+                     *         "concentration": 1,
+                     *         "direction": "accumulating",
+                     *         "dominant_netuid": 1,
+                     *         "flow_ratio": 0.6,
+                     *         "gross_flow_tao": 2.5,
+                     *         "net_flow_tao": 1.5,
+                     *         "schema_version": 1,
+                     *         "stake_events": 3,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "direction": "accumulating",
+                     *             "flow_ratio": 0.6,
+                     *             "gross_flow_tao": 2.5,
+                     *             "net_flow_tao": 1.5,
+                     *             "netuid": 1,
+                     *             "stake_events": 3,
+                     *             "staked_tao": 2,
+                     *             "unstake_events": 1,
+                     *             "unstaked_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "total_staked_tao": 2,
+                     *         "total_unstaked_tao": 0.5,
+                     *         "unstake_events": 1,
+                     *         "window": "7d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AccountStakeFlowArtifact"];
                     };
                 };
             };

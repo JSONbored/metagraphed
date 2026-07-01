@@ -616,6 +616,159 @@
         ],
         "type": "object"
       },
+      "AccountStakeFlowArtifact": {
+        "additionalProperties": false,
+        "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "concentration": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "accumulating",
+              "exiting",
+              "churning",
+              "idle"
+            ],
+            "type": "string"
+          },
+          "dominant_netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "flow_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "gross_flow_tao": {
+            "type": "number"
+          },
+          "net_flow_tao": {
+            "type": "number"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "accumulating",
+                    "exiting",
+                    "churning",
+                    "idle"
+                  ],
+                  "type": "string"
+                },
+                "flow_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "gross_flow_tao": {
+                  "type": "number"
+                },
+                "net_flow_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "staked_tao": {
+                  "type": "number"
+                },
+                "unstake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "unstaked_tao": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "netuid",
+                "staked_tao",
+                "unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "flow_ratio",
+                "direction",
+                "stake_events",
+                "unstake_events"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_staked_tao": {
+            "type": "number"
+          },
+          "total_unstaked_tao": {
+            "type": "number"
+          },
+          "unstake_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "gross_flow_tao",
+          "flow_ratio",
+          "direction",
+          "stake_events",
+          "unstake_events",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "AccountSubnetsArtifact": {
         "additionalProperties": true,
         "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",

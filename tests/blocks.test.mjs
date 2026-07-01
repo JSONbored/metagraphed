@@ -387,6 +387,36 @@ test("GET /blocks?cursor= seeks by keyset + emits next_cursor (#1851)", async ()
   assert.equal(body.data.next_cursor, encodeCursor([150]));
 });
 
+test("GET /blocks emits next_cursor when D1 returns numeric-string block_number", async () => {
+  const env = {
+    METAGRAPH_HEALTH_DB: {
+      prepare() {
+        return {
+          bind() {
+            return {
+              async all() {
+                return {
+                  results: [
+                    {
+                      block_number: "150",
+                      block_hash: "0x150",
+                      observed_at: 1,
+                    },
+                  ],
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(req("/api/v1/blocks?limit=1"), env, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.next_cursor, encodeCursor([150]));
+});
+
 test("GET /blocks emits next_cursor:null when the page is not full (#1851)", async () => {
   const env = dbWith({
     feed: [{ block_number: 9, block_hash: "0x9", observed_at: 1 }],

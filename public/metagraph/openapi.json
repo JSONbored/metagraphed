@@ -630,6 +630,159 @@
         ],
         "type": "object"
       },
+      "AccountStakeFlowArtifact": {
+        "additionalProperties": false,
+        "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "concentration": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "direction": {
+            "enum": [
+              "accumulating",
+              "exiting",
+              "churning",
+              "idle"
+            ],
+            "type": "string"
+          },
+          "dominant_netuid": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "flow_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "gross_flow_tao": {
+            "type": "number"
+          },
+          "net_flow_tao": {
+            "type": "number"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stake_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "accumulating",
+                    "exiting",
+                    "churning",
+                    "idle"
+                  ],
+                  "type": "string"
+                },
+                "flow_ratio": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "gross_flow_tao": {
+                  "type": "number"
+                },
+                "net_flow_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "staked_tao": {
+                  "type": "number"
+                },
+                "unstake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "unstaked_tao": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "netuid",
+                "staked_tao",
+                "unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "flow_ratio",
+                "direction",
+                "stake_events",
+                "unstake_events"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "total_staked_tao": {
+            "type": "number"
+          },
+          "total_unstaked_tao": {
+            "type": "number"
+          },
+          "unstake_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "gross_flow_tao",
+          "flow_ratio",
+          "direction",
+          "stake_events",
+          "unstake_events",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "AccountSubnetsArtifact": {
         "additionalProperties": true,
         "description": "Subnets where this account's hotkey is currently registered (#1347), from the neurons D1 tier (the cross-subnet footprint). Served live at /api/v1/accounts/{ss58}/subnets (no static file).",
@@ -14778,7 +14931,7 @@
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-06-30.11"
+    "version": "2026-06-30.12"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -15974,6 +16127,172 @@
           }
         },
         "summary": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+        "tags": [
+          "accounts",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/accounts/{ss58}/stake-flow": {
+      "get": {
+        "operationId": "accountStakeFlow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ss58",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "address": "example",
+                    "concentration": 1,
+                    "direction": "accumulating",
+                    "dominant_netuid": 1,
+                    "flow_ratio": 0.6,
+                    "gross_flow_tao": 2.5,
+                    "net_flow_tao": 1.5,
+                    "schema_version": 1,
+                    "stake_events": 3,
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "direction": "accumulating",
+                        "flow_ratio": 0.6,
+                        "gross_flow_tao": 2.5,
+                        "net_flow_tao": 1.5,
+                        "netuid": 1,
+                        "stake_events": 3,
+                        "staked_tao": 2,
+                        "unstake_events": 1,
+                        "unstaked_tao": 0.5
+                      }
+                    ],
+                    "total_staked_tao": 2,
+                    "total_unstaked_tao": 0.5,
+                    "unstake_events": 1,
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountStakeFlowArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
         "tags": [
           "accounts",
           "analytics"
@@ -34849,7 +35168,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-06-30.11",
+    "contract_version": "2026-06-30.12",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

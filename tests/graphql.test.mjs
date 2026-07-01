@@ -527,6 +527,49 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.equal(body.data.subnet.name, "Tao Subnet");
   });
 
+  test("subnet backfills the list-only computed metrics the detail artifact omits", async () => {
+    // The detail artifact omits integration_readiness/official_surface_count/
+    // gap_count/first_party, which only the list artifact computes. Without the
+    // backfill the single-subnet path returns them null while `subnets` does not.
+    const env = fixtureEnv({
+      "/metagraph/subnets/7.json": {
+        netuid: 7,
+        name: "Detail Name",
+        slug: "x",
+      },
+      "/metagraph/subnets.json": {
+        subnets: [
+          {
+            netuid: 7,
+            name: "List Name",
+            integration_readiness: 86,
+            official_surface_count: 0,
+            gap_count: 0,
+            first_party: false,
+          },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ subnet(netuid: 7) {
+        name
+        integration_readiness
+        official_surface_count
+        gap_count
+        first_party
+      } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    const s = body.data.subnet;
+    assert.equal(s.integration_readiness, 86);
+    assert.equal(s.official_surface_count, 0);
+    assert.equal(s.gap_count, 0);
+    assert.equal(s.first_party, false);
+    // The detail artifact stays authoritative for identity on shared keys.
+    assert.equal(s.name, "Detail Name");
+  });
+
   test("providers normalises missing netuids to empty array", async () => {
     const env = fixtureEnv({
       "/metagraph/providers.json": {

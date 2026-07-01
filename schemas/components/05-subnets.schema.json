@@ -1951,6 +1951,82 @@
           }
         }
       },
+      "AccountStakeFlowArtifact": {
+        "type": "object",
+        "description": "One account's StakeAdded vs StakeRemoved flow per subnet over a recent window, summed live from the account_events stream: per-subnet net/gross flow with a direction label, plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet.",
+        "required": [
+          "schema_version",
+          "address",
+          "window",
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "gross_flow_tao",
+          "flow_ratio",
+          "direction",
+          "stake_events",
+          "unstake_events",
+          "subnet_count",
+          "concentration",
+          "dominant_netuid",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "address": { "type": "string" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_staked_tao": { "type": "number" },
+          "total_unstaked_tao": { "type": "number" },
+          "net_flow_tao": { "type": "number" },
+          "gross_flow_tao": { "type": "number" },
+          "flow_ratio": { "type": ["number", "null"] },
+          "direction": {
+            "type": "string",
+            "enum": ["accumulating", "exiting", "churning", "idle"]
+          },
+          "stake_events": { "type": "integer", "minimum": 0 },
+          "unstake_events": { "type": "integer", "minimum": 0 },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "concentration": { "type": ["number", "null"] },
+          "dominant_netuid": { "type": ["integer", "null"], "minimum": 0 },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "staked_tao",
+                "unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "flow_ratio",
+                "direction",
+                "stake_events",
+                "unstake_events"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "staked_tao": { "type": "number" },
+                "unstaked_tao": { "type": "number" },
+                "net_flow_tao": { "type": "number" },
+                "gross_flow_tao": { "type": "number" },
+                "flow_ratio": { "type": ["number", "null"] },
+                "direction": {
+                  "type": "string",
+                  "enum": ["accumulating", "exiting", "churning", "idle"]
+                },
+                "stake_events": { "type": "integer", "minimum": 0 },
+                "unstake_events": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "AccountSubnetsArtifact": {
         "type": "object",
         "additionalProperties": true,

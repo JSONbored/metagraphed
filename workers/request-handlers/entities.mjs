@@ -101,6 +101,7 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
 } from "../../src/stake-flow.mjs";
+import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
@@ -630,6 +631,44 @@ async function accountMeta(env, artifactPath, generatedAt) {
     published_at: await publishedAt(env),
     source: "chain-events",
   };
+}
+
+// GET /api/v1/accounts/{ss58}/stake-flow: the account's StakeAdded/StakeRemoved flow
+// per subnet over a 7d/30d/90d window — net + gross flow, an HHI concentration of where
+// its flow is focused, and a direction label. account_events-derived (source
+// "chain-events"). Cold/absent store → schema-stable zeros (never 404).
+export async function handleAccountStakeFlow(request, env, ss58, url) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
+  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${windowParam}" is not a supported window. Supported: ${Object.keys(
+        STAKE_FLOW_WINDOWS,
+      ).join(", ")}.`,
+    });
+  }
+  const { data, generatedAt } = await loadAccountStakeFlow(
+    d1Runner(env),
+    ss58,
+    {
+      windowLabel: windowParam,
+    },
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        `/metagraph/accounts/${ss58}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
 }
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
