@@ -5725,6 +5725,59 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.ok(!/hotkey = \?/.test(q.sql), "received must not match hotkey");
   });
 
+  test("get_account_transfers applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = tailD1(
+      {
+        transfers: [
+          {
+            block_number: 150,
+            event_index: 4,
+            event_kind: "Transfer",
+            hotkey: SS58,
+            coldkey: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+            amount_tao: 10.5,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_account_transfers",
+      {
+        ss58: SS58,
+        direction: "sent",
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.transfer_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /event_kind = 'Transfer'/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [SS58, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_account_transfers rejects a non-integer block_end", async () => {
+    const res = await callTool(
+      "get_account_transfers",
+      { ss58: SS58, block_end: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_end/i);
+  });
+
   test("get_account_transfers degrades to empty payload on cold D1", async () => {
     const res = await callTool("get_account_transfers", { ss58: SS58 });
     assert.equal(res.body.result.isError, false);
@@ -5957,6 +6010,56 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.deepEqual(res.body.result.structuredContent.blocks, []);
   });
 
+  test("list_blocks applies REST filter parity (author, ranges, count floors)", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [] }, capture);
+    await callTool(
+      "list_blocks",
+      {
+        author: BLOCK_ROW.author,
+        spec_version: 207,
+        block_start: 100,
+        block_end: 200,
+        from: 1_000,
+        to: 2_000,
+        min_extrinsics: 1,
+        min_events: 5,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM blocks/.test(c.sql));
+    assert.ok(/author = \?/.test(q.sql));
+    assert.ok(/spec_version = \?/.test(q.sql));
+    assert.ok(/extrinsic_count >= \?/.test(q.sql));
+    assert.ok(/event_count >= \?/.test(q.sql));
+    assert.ok(q.params.includes(BLOCK_ROW.author));
+  });
+
+  test("list_blocks short-circuits impossible count floors without querying D1", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [BLOCK_ROW] }, capture);
+    const res = await callTool(
+      "list_blocks",
+      { min_events: 9_007_199_254_740_991 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.block_count, 0);
+    assert.equal(capture.filter((c) => /FROM blocks/.test(c.sql)).length, 0);
+  });
+
+  test("list_blocks ANDs cursor with filters", async () => {
+    const capture = [];
+    const env = chainD1({ blocks: [] }, capture);
+    await callTool(
+      "list_blocks",
+      { author: BLOCK_ROW.author, cursor: "4200000" },
+      { env },
+    );
+    const q = capture.find((c) => /FROM blocks/.test(c.sql));
+    assert.ok(/author = \? AND block_number < \?/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+  });
+
   test("get_block returns block detail with prev/next neighbors", async () => {
     const capture = [];
     const env = chainD1(
@@ -6122,6 +6225,64 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+  });
+
+  test("list_extrinsics applies REST filter parity (block, success, ranges)", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    const toMs = Date.now();
+    const fromMs = toMs - 60_000;
+    await callTool(
+      "list_extrinsics",
+      {
+        block: 4200000,
+        signer: EXTRINSIC_ROW.signer,
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        success: true,
+        block_start: 100,
+        block_end: 200,
+        from: fromMs,
+        to: toMs,
+      },
+      { env },
+    );
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/block_number = \?/.test(q.sql));
+    assert.ok(/success = \?/.test(q.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/observed_at >= \?/.test(q.sql));
+    assert.ok(q.params.includes(1));
+  });
+
+  test("list_extrinsics short-circuits impossible time ranges without querying D1", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [EXTRINSIC_ROW] }, capture);
+    const res = await callTool(
+      "list_extrinsics",
+      { from: 200, to: 100 },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
+    assert.equal(
+      capture.filter((c) => /FROM extrinsics/.test(c.sql)).length,
+      0,
+    );
+  });
+
+  test("list_extrinsics rejects a non-boolean success filter", async () => {
+    const res = await callTool("list_extrinsics", { success: "maybe" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /success/);
+  });
+
+  test("list_extrinsics binds success=false as 0", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    await callTool("list_extrinsics", { success: false }, { env });
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/success = \?/.test(q.sql));
+    assert.ok(q.params.includes(0));
   });
 
   test("get_extrinsic returns extrinsic detail by 0x hash", async () => {

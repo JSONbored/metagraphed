@@ -11,10 +11,12 @@ import {
   extrinsicInsertStatements,
   formatExtrinsic,
   loadExtrinsic,
+  loadExtrinsics,
   pruneExtrinsics,
   validExtrinsicRows,
 } from "../src/extrinsics.mjs";
 import { encodeCursor } from "../src/cursor.mjs";
+import { DAY_MS } from "../workers/config.mjs";
 
 // ---- Pure module (#1345) ---------------------------------------------------
 
@@ -876,4 +878,120 @@ test("loadExtrinsic lowercases a mixed-case 0x extrinsic_hash before binding (#2
     true,
     "the hash bind parameter must be lowercased",
   );
+});
+
+// ---- loadExtrinsics filters (shared REST + MCP list_extrinsics) ------------
+
+function recordingExtrinsicsD1(capture = []) {
+  return async (sql, params) => {
+    capture.push({ sql, params });
+    return [];
+  };
+}
+
+test("loadExtrinsics applies the conjunctive filter set (#1846)", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  const toMs = 1_800_000_000_000;
+  const fromMs = toMs - 60_000;
+  await loadExtrinsics(d1, {
+    block: 1234,
+    signer: "5Signer",
+    callModule: "SubtensorModule",
+    callFunction: "add_stake",
+    success: false,
+    blockStart: 1200,
+    blockEnd: 1300,
+    from: fromMs,
+    to: toMs,
+    nowMs: toMs,
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/block_number = \?/.test(sql));
+  assert.ok(/signer = \?/.test(sql));
+  assert.ok(/call_module = \?/.test(sql));
+  assert.ok(/call_function = \?/.test(sql));
+  assert.ok(/success = \?/.test(sql));
+  assert.ok(/block_number >= \?/.test(sql));
+  assert.ok(/block_number <= \?/.test(sql));
+  assert.ok(/observed_at >= \?/.test(sql));
+  assert.ok(/observed_at <= \?/.test(sql));
+  assert.ok(params.includes(0));
+  assert.ok(params.includes("5Signer"));
+});
+
+test("loadExtrinsics short-circuits impossible time ranges before D1", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  const nowMs = 1_800_000_000_000;
+  assert.equal(typeof EXTRINSIC_RETENTION_MS, "number");
+  const floor = nowMs - EXTRINSIC_RETENTION_MS;
+  const empty = await loadExtrinsics(d1, {
+    from: nowMs + DAY_MS + 1,
+    nowMs,
+  });
+  assert.equal(empty.extrinsic_count, 0);
+  assert.equal(capture.length, 0);
+
+  capture.length = 0;
+  const expired = await loadExtrinsics(d1, { to: floor - 1, nowMs });
+  assert.equal(expired.extrinsic_count, 0);
+  assert.equal(capture.length, 0);
+
+  capture.length = 0;
+  const inverted = await loadExtrinsics(d1, { from: 200, to: 100, nowMs });
+  assert.equal(inverted.extrinsic_count, 0);
+  assert.equal(capture.length, 0);
+
+  capture.length = 0;
+  const invertedBlockRange = await loadExtrinsics(d1, {
+    blockStart: 200,
+    blockEnd: 100,
+    nowMs,
+  });
+  assert.equal(invertedBlockRange.extrinsic_count, 0);
+  assert.equal(capture.length, 0);
+});
+
+test("loadExtrinsics binds success=true as 1 and omits success when unset", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(d1, { success: true });
+  assert.ok(/success = \?/.test(capture[0].sql));
+  assert.ok(capture[0].params.includes(1));
+
+  capture.length = 0;
+  await loadExtrinsics(d1, {});
+  assert.ok(!/success = \?/.test(capture[0].sql));
+});
+
+test("loadExtrinsics forces observed_at index for a narrow time-only window", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  const nowMs = 1_800_000_000_000;
+  const fromMs = nowMs - 60_000;
+  await loadExtrinsics(d1, { from: fromMs, to: nowMs, nowMs });
+  assert.ok(/INDEXED BY idx_extrinsics_observed_order/.test(capture[0].sql));
+});
+
+test("loadExtrinsics forces module index for a call_module-only scan", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(d1, { callModule: "SubtensorModule" });
+  assert.ok(/INDEXED BY idx_extrinsics_module_block/.test(capture[0].sql));
+});
+
+test("loadExtrinsics ANDs keyset cursor with filters and drops OFFSET", async () => {
+  const capture = [];
+  const d1 = recordingExtrinsicsD1(capture);
+  await loadExtrinsics(d1, {
+    signer: "5Signer",
+    cursor: encodeCursor([4200000, 3]),
+  });
+  const { sql, params } = capture[0];
+  assert.ok(/signer = \?/.test(sql));
+  assert.ok(/\(block_number, extrinsic_index\) < \(\?, \?\)/.test(sql));
+  assert.ok(!/OFFSET/.test(sql));
+  assert.ok(params.includes(4200000));
+  assert.ok(params.includes(3));
 });

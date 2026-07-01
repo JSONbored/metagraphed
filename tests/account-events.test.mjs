@@ -17,6 +17,7 @@ import {
   loadAccountExtrinsics,
   loadAccountSubnets,
   ACCOUNT_ACTIVITY_RECENT_LIMIT,
+  ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
   eventInsertStatements,
   utcDayBounds,
   rollupAccountEventsDaily,
@@ -608,6 +609,38 @@ test("loadAccountTransfers applies the block_start/block_end range to both sides
   ]);
 });
 
+test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
+  let captured;
+  const out = await loadAccountTransfers(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [
+        {
+          block_number: 150,
+          event_index: 4,
+          hotkey: "5Hk",
+          coldkey: "5Other",
+          amount_tao: 1,
+          observed_at: 1,
+        },
+      ];
+    },
+    "5Hk",
+    {
+      blockStart: 100,
+      blockEnd: 900,
+      cursor: encodeCursor([200, 2]),
+      limit: 1,
+      offset: 99,
+      direction: "sent",
+    },
+  );
+  assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(captured.sql));
+  assert.ok(!/OFFSET/.test(captured.sql));
+  assert.deepEqual(captured.params, ["5Hk", 100, 900, 200, 2, 1]);
+  assert.equal(out.next_cursor, encodeCursor([150, 4]));
+});
+
 test("loadAccountExtrinsics applies the block_start/block_end range as bound params", async () => {
   let captured;
   await loadAccountExtrinsics(
@@ -792,6 +825,104 @@ test("loadAccountSummary bounds signing activity before aggregating", async () =
   assert.deepEqual(modules.params, ["5Hk", ACCOUNT_ACTIVITY_RECENT_LIMIT]);
 });
 
+test("loadAccountSummary bounds the event aggregates to the newest N events", async () => {
+  // The event COUNT/MIN/MAX aggregate and the per-kind GROUP BY must aggregate
+  // over a bounded newest-N union, not the account's full 365-day retained
+  // history (parity with the extrinsics activity cap above) — a high-volume
+  // coldkey otherwise forces a full-history scan on every unauthenticated request.
+  const calls = [];
+  await loadAccountSummary(async (sql, params) => {
+    calls.push({ sql, params });
+    return [];
+  }, "5Hk");
+
+  const agg = calls.find((c) => /MIN\(block_number\) AS fb/.test(c.sql));
+  const kinds = calls.find((c) => /GROUP BY event_kind/.test(c.sql));
+  const probe = calls.find((c) => /SELECT COUNT\(\*\) AS n FROM/.test(c.sql));
+  // The two aggregates run over exactly the newest CAP events...
+  const cap = ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
+  for (const q of [agg, kinds]) {
+    // Each key branch is a feed-ordered, indexed LIMIT seek...
+    assert.match(
+      q.sql,
+      /INDEXED BY idx_account_events_hotkey[\s\S]*ORDER BY block_number DESC, event_index DESC LIMIT \?/,
+    );
+    assert.match(q.sql, /INDEXED BY idx_account_events_coldkey/);
+    assert.match(q.sql, /UNION ALL/);
+    // Each ordered-LIMIT seek is subquery-wrapped: SQLite/D1 rejects an
+    // ORDER BY/LIMIT placed directly on a UNION ALL term, so the branch must end
+    // `LIMIT ?)` (closed subquery), never a bare `LIMIT ? UNION ALL`.
+    assert.doesNotMatch(q.sql, /LIMIT \? UNION ALL/);
+    assert.match(q.sql, /LIMIT \?\) UNION ALL/);
+    // ...and the union itself is re-sorted and capped to N.
+    assert.match(
+      q.sql,
+      /\) ORDER BY block_number DESC, event_index DESC LIMIT \?\)/,
+    );
+    assert.deepEqual(q.params, ["5Hk", cap, "5Hk", "5Hk", cap, cap]);
+  }
+  // ...and a separate probe scans CAP+1 only to detect truncation.
+  assert.deepEqual(probe.params, [
+    "5Hk",
+    cap + 1,
+    "5Hk",
+    "5Hk",
+    cap + 1,
+    cap + 1,
+  ]);
+});
+
+test("buildAccountSummary nulls all-time first_* when the event scan is capped", async () => {
+  // The probe (scanned) found a row past the cap, so the account genuinely has
+  // more than CAP events: the aggregate window (agg.c === CAP) is a lower bound and
+  // MIN(block)/MIN(observed) are its floor, not the account's true first — null them.
+  const capped = buildAccountSummary("5Hk", {
+    agg: {
+      c: ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+      sc: 3,
+      fb: 100,
+      lb: 900,
+      fo: 1000,
+      lo: 9000,
+    },
+    scanned: ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1,
+  });
+  // event_count is exactly the CAP window (not CAP+1); event_scan_capped labels it
+  // so a consumer never reads it as an all-time total.
+  assert.equal(capped.event_count, ACCOUNT_EVENT_SUMMARY_SCAN_CAP);
+  assert.equal(capped.event_scan_capped, true);
+  assert.equal(capped.first_block, null);
+  assert.equal(capped.first_seen_at, null);
+  // last_* stay exact — the newest events include the latest.
+  assert.equal(capped.last_block, 900);
+
+  // Boundary: an account with EXACTLY CAP events — the probe found no extra row
+  // (scanned === CAP) — is complete, so not capped and first_* are the true first.
+  const exactlyCap = buildAccountSummary("5Hk", {
+    agg: {
+      c: ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+      sc: 3,
+      fb: 100,
+      lb: 900,
+      fo: 1000,
+    },
+    scanned: ACCOUNT_EVENT_SUMMARY_SCAN_CAP,
+  });
+  assert.equal(exactlyCap.event_scan_capped, false);
+  assert.equal(exactlyCap.first_block, 100);
+  assert.ok(exactlyCap.first_seen_at);
+
+  // Well under the cap the aggregate spans the account's full history, so the
+  // totals are exact all-time values and first_* are reported.
+  const full = buildAccountSummary("5Hk", {
+    agg: { c: 10, sc: 2, fb: 100, lb: 900, fo: 1000, lo: 9000 },
+    scanned: 10,
+  });
+  assert.equal(full.event_scan_capped, false);
+  assert.equal(full.first_block, 100);
+  assert.ok(full.first_seen_at);
+});
+
 test("loadAccountSummary tie-breaks leaderboard aggregates for stable output", async () => {
   const calls = [];
   await loadAccountSummary(async (sql) => {
@@ -829,7 +960,9 @@ test("loadAccountSummary uses indexed union seeks for account_events (#2059)", a
   const eventReads = calls.filter((c) =>
     /idx_account_events_hotkey/.test(c.sql),
   );
-  assert.equal(eventReads.length, 3);
+  // The four account_events reads: aggregate + per-kind (newest CAP), the CAP+1
+  // truncation probe, and the newest-10 recent-events list.
+  assert.equal(eventReads.length, 4);
   for (const { sql } of eventReads) {
     assert.doesNotMatch(sql, /hotkey = \? OR coldkey = \?/);
     assert.match(sql, /INDEXED BY idx_account_events_hotkey/);
