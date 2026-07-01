@@ -717,18 +717,27 @@ describe("loadChainFees", () => {
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
-    // The sample cap must be applied per day (via a day-partitioned row number),
-    // not as a single global LIMIT ahead of the day partition — a global LIMIT
-    // silently truncates or drops later days once a window has >10000 matching
-    // extrinsics (see the loadChainFees regression test below).
-    assert.match(calls[2].sql, /PARTITION BY day ORDER BY observed_at/);
-    assert.match(calls[2].sql, /day_rn <= \?/);
-    assert.doesNotMatch(calls[2].sql, /samples\s*\n\s*LIMIT \?/);
-    assert.deepEqual(calls[2].params, [
-      now - 7 * 24 * 60 * 60 * 1000,
-      "SubtensorModule",
-      10000,
-    ]);
+    // The sample cap must be a per-day, index-bounded scan (WHERE observed_at
+    // in [dayStart, dayEnd) ORDER BY observed_at LIMIT ?), one UNION ALL block
+    // per UTC day — NOT a ROW_NUMBER() OVER a day partition. A window function
+    // still has to sort the FULL matching set before any per-partition filter
+    // can trim it, which reintroduces the unbounded-scan cost the cap exists
+    // to remove (see the loadChainFees regression test below for the
+    // per-day-cap correctness proof).
+    assert.match(calls[2].sql, /UNION ALL/);
+    assert.doesNotMatch(calls[2].sql, /PARTITION BY day ORDER BY observed_at/);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = now - 7 * dayMs;
+    const expectedMedianParams = [];
+    for (let dayStart = cutoff; dayStart < now; dayStart += dayMs) {
+      expectedMedianParams.push(
+        dayStart,
+        dayStart + dayMs,
+        "SubtensorModule",
+        10000,
+      );
+    }
+    assert.deepEqual(calls[2].params, expectedMedianParams);
   });
 
   test("omits call_module from SQL params when unscoped", async () => {
@@ -749,7 +758,13 @@ describe("loadChainFees", () => {
     assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
     assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000, 10000]);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const cutoff = now - 30 * dayMs;
+    const expectedMedianParams = [];
+    for (let dayStart = cutoff; dayStart < now; dayStart += dayMs) {
+      expectedMedianParams.push(dayStart, dayStart + dayMs, 10000);
+    }
+    assert.deepEqual(calls[2].params, expectedMedianParams);
   });
 
   test("treats empty call_module as unscoped", async () => {
@@ -764,7 +779,12 @@ describe("loadChainFees", () => {
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.equal(calls[2].params.length, 2);
+    // One UNION ALL block per UTC day, 3 params each (dayStart, dayEnd, LIMIT)
+    // when unscoped — the exact day count depends on the real `now` this test
+    // runs at (a 7d window spans 7 or 8 UTC calendar days), so assert the
+    // per-block shape rather than a fixed total.
+    assert.equal(calls[2].params.length % 3, 0);
+    assert.ok(calls[2].params.length >= 3 * 7);
   });
 
   test("bounds the median sample per day so a high-volume day cannot starve its window siblings", async () => {

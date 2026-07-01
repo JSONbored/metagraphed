@@ -578,6 +578,12 @@ export async function loadChainCalls(
 
 const CHAIN_FEE_MEDIAN_SAMPLE_LIMIT = 10000;
 
+// Floor to the start of the UTC calendar day a timestamp falls in (matches the
+// `strftime('%Y-%m-%d', ..., 'unixepoch')` day bucketing used below).
+function utcDayFloor(ms) {
+  return Math.floor(ms / DAY_MS) * DAY_MS;
+}
+
 // Fee/tip market analytics (#1988): per-UTC-day fee series with bounded
 // request-time medians plus a windowed top-fee-payer list. Mirrors REST
 // handleChainFees and get_chain_fees MCP (#2423).
@@ -601,9 +607,35 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  const medianParams = callModuleFilter
-    ? [cutoff, callModuleFilter, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT]
-    : [cutoff, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT];
+  // Median sampling: cap per UTC calendar day via a bounded, index-assisted
+  // (observed_at) scan per day rather than a ROW_NUMBER() OVER a day
+  // partition — a window function still has to sort the FULL matching set
+  // before any per-partition WHERE can trim it, so it reintroduces the
+  // unbounded-scan cost the cap exists to remove. One "WHERE observed_at in
+  // [dayStart, dayEnd) ORDER BY observed_at LIMIT ?" block per day lets D1 use
+  // idx_extrinsics_observed to stop after at most CHAIN_FEE_MEDIAN_SAMPLE_LIMIT
+  // rows for that day, so total scanned rows is bounded by days * the cap
+  // instead of the whole window.
+  const dayBoundaries = [];
+  for (let dayStart = utcDayFloor(cutoff); dayStart < now; dayStart += DAY_MS) {
+    dayBoundaries.push(dayStart);
+  }
+  const medianDayBlockSql = `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao,
+                COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics
+         WHERE observed_at >= ? AND observed_at < ?${moduleClause}
+         ORDER BY observed_at
+         LIMIT ?`;
+  const medianParams = dayBoundaries.flatMap((dayStart) => {
+    const bounds = [
+      Math.max(dayStart, cutoff),
+      Math.min(dayStart + DAY_MS, now),
+    ];
+    return callModuleFilter
+      ? [...bounds, callModuleFilter, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT]
+      : [...bounds, CHAIN_FEE_MEDIAN_SAMPLE_LIMIT];
+  });
   const [dailyRows, payerRows, medianRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
@@ -630,24 +662,8 @@ export async function loadChainFees(
       payerParams,
     ),
     d1(
-      `WITH samples AS (
-         SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
-                observed_at,
-                COALESCE(fee_tao, 0) AS fee_tao,
-                COALESCE(tip_tao, 0) AS tip_tao
-         FROM extrinsics
-         WHERE observed_at >= ?${moduleClause}
-       ),
-       capped_samples AS (
-         SELECT day, fee_tao, tip_tao
-         FROM (
-           SELECT day,
-                  fee_tao,
-                  tip_tao,
-                  ROW_NUMBER() OVER (PARTITION BY day ORDER BY observed_at) AS day_rn
-           FROM samples
-         )
-         WHERE day_rn <= ?
+      `WITH capped_samples AS (
+         ${dayBoundaries.map(() => `SELECT * FROM (${medianDayBlockSql})`).join("\n         UNION ALL\n         ")}
        ),
        fee_ranked AS (
          SELECT day,

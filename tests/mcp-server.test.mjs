@@ -2235,14 +2235,14 @@ describe("MCP get_chain_fees", () => {
   });
 
   test("scopes every chain-fees query by call_module", async () => {
-    const modules = [];
+    const calls = [];
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           return {
             bind(...params) {
               if (sql.includes("call_module = ?")) {
-                modules.push(params[1]);
+                calls.push(params);
               }
               return {
                 async all() {
@@ -2259,7 +2259,16 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.deepEqual(modules, ["Balances", "Balances", "Balances"]);
+    assert.equal(calls.length, 3);
+    assert.equal(calls[0][1], "Balances"); // daily series
+    assert.equal(calls[1][1], "Balances"); // top fee payers
+    // Median query: one UNION ALL block per UTC day (dayStart, dayEnd,
+    // call_module, LIMIT), so call_module repeats at index 2 of every block.
+    const medianParams = calls[2];
+    assert.equal(medianParams.length % 4, 0);
+    for (let i = 2; i < medianParams.length; i += 4) {
+      assert.equal(medianParams[i], "Balances");
+    }
   });
 
   test("rejects an invalid window", async () => {
