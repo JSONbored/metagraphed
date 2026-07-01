@@ -47,7 +47,8 @@ const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  const n = Number(ms);
+  return Number.isFinite(n) ? new Date(n).toISOString() : null;
 }
 
 function numberOrZero(value) {
@@ -154,7 +155,7 @@ export function buildNeuronDetail(row, netuid) {
     schema_version: 1,
     netuid,
     captured_at: toIso(row?.captured_at),
-    block_number: row?.block_number ?? null,
+    block_number: nonNegativeInt(row?.block_number),
     neuron: formatNeuron(row),
   };
 }

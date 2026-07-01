@@ -113,11 +113,18 @@ describe("metagraph-neurons builders", () => {
 
   test("buildSubnetMetagraph coerces string-typed snapshot block_number", () => {
     const data = buildSubnetMetagraph(
-      [{ ...ROW, block_number: "8454388", captured_at: 1750000000000 }],
+      [
+        {
+          ...ROW,
+          block_number: "8454388",
+          captured_at: "1750000000000",
+        },
+      ],
       7,
     );
     assert.equal(typeof data.block_number, "number");
     assert.equal(data.block_number, 8454388);
+    assert.equal(typeof data.captured_at, "string");
     assert.equal(typeof data.neurons[0].uid, "number");
   });
 
@@ -389,6 +396,22 @@ describe("metagraph-neurons builders", () => {
   test("buildNeuronDetail returns neuron:null for a cold/absent row", () => {
     assert.equal(buildNeuronDetail(null, 7).neuron, null);
     assert.equal(buildNeuronDetail(ROW, 7).neuron.uid, 0);
+  });
+
+  test("buildNeuronDetail coerces string-typed snapshot metadata cells", () => {
+    const detail = buildNeuronDetail(
+      {
+        ...ROW,
+        block_number: "8454388",
+        captured_at: "1750000000000",
+        stake_tao: "not-a-number",
+      },
+      7,
+    );
+    assert.equal(typeof detail.block_number, "number");
+    assert.equal(detail.block_number, 8454388);
+    assert.equal(typeof detail.captured_at, "string");
+    assert.equal(detail.neuron.stake_tao, null);
   });
 });
 
