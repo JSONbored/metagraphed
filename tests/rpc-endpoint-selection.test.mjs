@@ -142,6 +142,15 @@ describe("orderSafeRpcEndpoints — block-height routing", () => {
 });
 
 describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
+  test("rejects localhost and its subdomains", () => {
+    assert.equal(isPrivateOrLocalHostname("localhost"), true);
+    assert.equal(isPrivateOrLocalHostname("foo.localhost"), true);
+    assert.equal(
+      isPrivateOrLocalHostname("bittensor-finney.api.onfinality.io"),
+      false,
+    );
+  });
+
   test("rejects the 100.64.0.0/10 CGNAT range as a plain dotted IPv4 hostname", () => {
     assert.equal(isPrivateOrLocalHostname("100.64.0.1"), true);
     assert.equal(isPrivateOrLocalHostname("100.100.0.1"), true);
@@ -169,6 +178,18 @@ describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
 
   test("still rejects the dotted-quad ::ffff: form directly (non-URL callers)", () => {
     assert.equal(isPrivateOrLocalHostname("::ffff:100.64.0.1"), true);
+  });
+
+  test("rejects native (non-v4-mapped) unique-local and link-local IPv6 literals", () => {
+    assert.equal(isPrivateOrLocalHostname("::1"), true);
+    assert.equal(isPrivateOrLocalHostname("::"), true);
+    assert.equal(isPrivateOrLocalHostname("fc00::1"), true);
+    assert.equal(isPrivateOrLocalHostname("fd12::1"), true);
+    assert.equal(isPrivateOrLocalHostname("fe80::1"), true);
+  });
+
+  test("does not reject a public IPv6 literal with no embedded v4", () => {
+    assert.equal(isPrivateOrLocalHostname("2606:4700:4700::1111"), false);
   });
 
   test("rejects IPv4-mapped/compatible/6to4/NAT64 forms of the other private ranges too", () => {
