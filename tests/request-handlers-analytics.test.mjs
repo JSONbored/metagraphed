@@ -13,6 +13,10 @@ import {
   handleHealthPercentiles,
   handleHealthIncidents,
   handleGlobalIncidents,
+  handleChainCalls,
+  handleChainSigners,
+  handleChainTransfers,
+  handleChainFees,
   validateQueryParams,
   analyticsWindow,
   d1All,
@@ -131,6 +135,57 @@ function rowsForSql(sql) {
         p95: 500,
       },
     ];
+  }
+  if (sql.includes("FROM extrinsics")) {
+    if (sql.includes("COUNT(*) AS total") && !sql.includes("GROUP BY")) {
+      return [{ total: 10 }];
+    }
+    if (sql.includes("GROUP BY signer")) {
+      return [
+        {
+          signer: "5FHneW46xGXgs5mUive6eigkdRD2AYN6fy8616ckdp26RGGj",
+          tx_count: 3,
+          total_fee_tao: 1,
+          total_tip_tao: 0,
+          extrinsic_count: 3,
+          last_tx_block: 100,
+        },
+      ];
+    }
+    if (sql.includes("GROUP BY day")) {
+      return [
+        {
+          day: "2026-06-01",
+          extrinsic_count: 5,
+          total_fee_tao: 2,
+          total_tip_tao: 0.5,
+        },
+      ];
+    }
+    if (sql.includes("GROUP BY call_module")) {
+      return [{ call_module: "Balances", count: 4 }];
+    }
+    if (sql.includes("ROW_NUMBER() OVER")) {
+      return [{ day: "2026-06-01", median_fee_tao: 0.1, median_tip_tao: 0.01 }];
+    }
+  }
+  if (sql.includes("FROM account_events")) {
+    if (sql.includes("GROUP BY hotkey")) {
+      return [{ address: "5Ffrom", volume_tao: 10, transfer_count: 2 }];
+    }
+    if (sql.includes("GROUP BY coldkey")) {
+      return [{ address: "5Fto", volume_tao: 8, transfer_count: 1 }];
+    }
+    if (sql.includes("COUNT(*) AS transfer_count")) {
+      return [
+        {
+          transfer_count: 3,
+          total_volume_tao: 18,
+          unique_senders: 2,
+          unique_receivers: 1,
+        },
+      ];
+    }
   }
   return [];
 }
@@ -331,37 +386,160 @@ describe("validateQueryParams", () => {
 });
 
 describe("canonicalAnalyticsCacheRoute", () => {
-  test("normalizes decoded query values for cache keys", () => {
-    const plain = url(
-      "/api/v1/chain/signers?call_module=Balances&limit=10&window=30d&sort=total_fee_tao",
+  test("canonicalizes resolved window/limit/sort for chain signers", () => {
+    const bare = url("/api/v1/chain/signers");
+    const explicit = url(
+      "/api/v1/chain/signers?window=7d&sort=tx_count&limit=50",
     );
-    const encoded = url(
-      "/api/v1/chain/signers?limit=10&call_module=%42alances&sort=total_fee_tao&window=30d",
-    );
-
+    const key = canonicalAnalyticsCacheRoute(bare, {
+      window: DEFAULT_ANALYTICS_WINDOW,
+      extras: { limit: 50, sort: "tx_count" },
+    });
     assert.equal(
-      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module", "sort"]),
-      "/api/v1/chain/signers?window=30d&limit=10&call_module=Balances&sort=total_fee_tao",
+      key,
+      `/api/v1/chain/signers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=50&sort=tx_count`,
     );
     assert.equal(
-      canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module", "sort"]),
-      canonicalAnalyticsCacheRoute(plain, ["limit", "call_module", "sort"]),
+      canonicalAnalyticsCacheRoute(explicit, {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { limit: 50, sort: "tx_count" },
+      }),
+      key,
     );
   });
 
-  test("includes the chain calls grouping and module filter in canonical order", () => {
+  test("includes optional call_module when scoped", () => {
+    const requestUrl = url(
+      "/api/v1/chain/signers?call_module=Balances&limit=10&window=30d&sort=total_fee_tao",
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(requestUrl, {
+        window: "30d",
+        extras: {
+          limit: 10,
+          sort: "total_fee_tao",
+          call_module: "Balances",
+        },
+      }),
+      "/api/v1/chain/signers?window=30d&limit=10&sort=total_fee_tao&call_module=Balances",
+    );
+  });
+
+  test("includes resolved group_by and limit for chain calls", () => {
+    const bare = url("/api/v1/chain/calls");
+    const explicit = url(
+      "/api/v1/chain/calls?window=7d&group_by=module&limit=50",
+    );
+    const key = canonicalAnalyticsCacheRoute(bare, {
+      window: DEFAULT_ANALYTICS_WINDOW,
+      extras: { group_by: "module", limit: 50 },
+    });
+    assert.equal(
+      key,
+      `/api/v1/chain/calls?window=${DEFAULT_ANALYTICS_WINDOW}&group_by=module&limit=50`,
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(explicit, {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { group_by: "module", limit: 50 },
+      }),
+      key,
+    );
+  });
+
+  test("includes call_module filter for scoped chain calls", () => {
     const requestUrl = url(
       "/api/v1/chain/calls?call_module=SubtensorModule&limit=10&group_by=module_function&window=30d",
     );
 
     assert.equal(
-      canonicalAnalyticsCacheRoute(requestUrl, [
-        "group_by",
-        "limit",
-        "call_module",
-      ]),
+      canonicalAnalyticsCacheRoute(requestUrl, {
+        window: "30d",
+        extras: {
+          group_by: "module_function",
+          limit: 10,
+          call_module: "SubtensorModule",
+        },
+      }),
       "/api/v1/chain/calls?window=30d&group_by=module_function&limit=10&call_module=SubtensorModule",
     );
+  });
+
+  test("canonicalizes default limit for chain transfers and fees", () => {
+    assert.equal(
+      canonicalAnalyticsCacheRoute(url("/api/v1/chain/transfers"), {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { limit: 25 },
+      }),
+      `/api/v1/chain/transfers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(url("/api/v1/chain/fees"), {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { limit: 25 },
+      }),
+      `/api/v1/chain/fees?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+  });
+});
+
+describe("chain analytics handlers", () => {
+  test("handleChainSigners serves bare and scoped requests", async () => {
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const bare = await handleChainSigners(
+      req("/api/v1/chain/signers"),
+      env,
+      url("/api/v1/chain/signers"),
+      ctx,
+    );
+    await json(bare);
+    const scoped = await handleChainSigners(
+      req(
+        "/api/v1/chain/signers?call_module=Balances&limit=10&sort=total_fee_tao",
+      ),
+      env,
+      url(
+        "/api/v1/chain/signers?call_module=Balances&limit=10&sort=total_fee_tao",
+      ),
+      ctx,
+    );
+    const body = await json(scoped);
+    assert.equal(body.data.signers.length, 1);
+    assert.ok(queries.some((q) => /GROUP BY signer/.test(q.sql)));
+  });
+
+  test("handleChainCalls, transfers, and fees return schema-stable payloads", async () => {
+    const queries = [];
+    const env = analyticsEnv(queries);
+    const calls = await json(
+      await handleChainCalls(
+        req("/api/v1/chain/calls"),
+        env,
+        url("/api/v1/chain/calls"),
+        ctx,
+      ),
+    );
+    assert.equal(calls.data.schema_version, 1);
+    const signers = await json(
+      await handleChainTransfers(
+        req("/api/v1/chain/transfers"),
+        env,
+        url("/api/v1/chain/transfers"),
+        ctx,
+      ),
+    );
+    assert.equal(signers.data.schema_version, 1);
+    const fees = await json(
+      await handleChainFees(
+        req("/api/v1/chain/fees?call_module=Balances"),
+        env,
+        url("/api/v1/chain/fees?call_module=Balances"),
+        ctx,
+      ),
+    );
+    assert.equal(fees.data.schema_version, 1);
+    assert.ok(queries.some((q) => /call_module = \?/.test(q.sql)));
   });
 });
 
