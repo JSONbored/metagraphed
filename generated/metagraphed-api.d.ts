@@ -2176,6 +2176,14 @@ export interface components {
             description?: string;
             id: string;
             path: string;
+            query_contract?: {
+                collection: string;
+                data_key: string | null;
+                filter_names: string[];
+                query_parameters: components["schemas"]["ApiQueryParameter"][];
+                range_filters: string[];
+                sort_fields: string[];
+            } | null;
             schema_ref: string | null;
             /** @enum {unknown} */
             storage_tier: "dual" | "git" | "r2";
@@ -10122,6 +10130,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12284,6 +12296,10 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13752,6 +13768,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15648,6 +15668,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;

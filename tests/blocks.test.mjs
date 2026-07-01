@@ -15,6 +15,7 @@ import {
   buildBlockFeed,
   formatBlock,
   loadBlock,
+  loadBlocks,
   pruneBlocks,
   validBlockRows,
 } from "../src/blocks.mjs";
@@ -167,6 +168,46 @@ test("loadBlock resolves neighbors when D1 returns a string-typed block_number (
   assert.equal(out.next_block_number, 1240);
 });
 
+test("loadBlocks uses cursor pagination when a cursor is present", async () => {
+  const seen = [];
+  const d1 = async (sql, params) => {
+    seen.push({ sql, params });
+    return [
+      { block_number: 9, block_hash: "0x9", observed_at: 1 },
+      { block_number: 8, block_hash: "0x8", observed_at: 1 },
+    ];
+  };
+
+  const out = await loadBlocks(d1, {
+    limit: 2,
+    offset: 50,
+    cursor: encodeCursor([10]),
+  });
+
+  assert.match(seen[0].sql, /WHERE block_number < \?/);
+  assert.deepEqual(seen[0].params, [10, 2]);
+  assert.equal(out.limit, 2);
+  assert.equal(out.offset, 50);
+  assert.equal(out.blocks[0].block_number, 9);
+  assert.equal(out.next_cursor, encodeCursor([8]));
+});
+
+test("loadBlocks uses offset pagination without a cursor and omits next_cursor on a short page", async () => {
+  const seen = [];
+  const d1 = async (sql, params) => {
+    seen.push({ sql, params });
+    return [{ block_number: 7, block_hash: "0x7", observed_at: 1 }];
+  };
+
+  const out = await loadBlocks(d1, { limit: 2, offset: 3 });
+
+  assert.match(seen[0].sql, /LIMIT \? OFFSET \?/);
+  assert.deepEqual(seen[0].params, [2, 3]);
+  assert.equal(out.limit, 2);
+  assert.equal(out.offset, 3);
+  assert.equal(out.blocks[0].block_number, 7);
+  assert.equal(out.next_cursor, null);
+});
 test("buildBlock defaults a null/absent ref to null (regression)", () => {
   // A caller that passes no ref must get ref:null, never undefined — keeps the
   // detail artifact JSON-stable when the lookup key itself is missing.

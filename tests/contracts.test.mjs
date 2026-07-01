@@ -185,6 +185,23 @@ describe("public contract registry", () => {
         .schema.enum.includes("score"),
       true,
     );
+    const endpointContract = contracts.artifacts.find(
+      (artifact) => artifact.id === "endpoints",
+    ).query_contract;
+    assert.equal(endpointContract.collection, "endpoints");
+    assert.deepEqual(endpointContract.range_filters, ["latency_ms", "score"]);
+    assert.equal(
+      endpointContract.query_parameters.some(
+        (parameter) => parameter.name === "min_latency_ms",
+      ),
+      true,
+    );
+    assert.equal(
+      endpointContract.query_parameters.some(
+        (parameter) => parameter.name === "max_score",
+      ),
+      true,
+    );
 
     const incidentParameters =
       openapi.paths["/api/v1/endpoint-incidents"].get.parameters;
@@ -198,6 +215,52 @@ describe("public contract registry", () => {
         .enum,
       ["active", "resolved"],
     );
+  });
+
+  test("contracts artifact leaves query_contract null for non-route artifacts", () => {
+    const contracts = buildContractsArtifact("1970-01-01T00:00:00.000Z");
+    const typeDefinitions = contracts.artifacts.find(
+      (artifact) => artifact.id === "type-definitions",
+    );
+    assert.equal(typeDefinitions.query_contract, null);
+  });
+
+  test("contracts artifact omits query_contract when a route's query collection metadata is absent", () => {
+    const fakeRoute = {
+      id: "test-missing-query-collection",
+      method: "GET",
+      path: "/api/v1/test-missing-query-collection",
+      artifact_path: "/metagraph/test-missing-query-collection.json",
+      description: "Synthetic route for query-contract fallback coverage.",
+      cache: null,
+      tags: ["test"],
+      query_collection: "missing-query-collection",
+      query_filter_names: null,
+      query_parameters: null,
+      path_parameters: [],
+    };
+    const fakeArtifact = {
+      id: "test-missing-query-collection",
+      path: fakeRoute.artifact_path,
+      description: fakeRoute.description,
+      schema_ref: null,
+      storage_tier: "r2",
+    };
+    const routeCount = API_ROUTES.length;
+    const artifactCount = PUBLIC_ARTIFACTS.length;
+
+    API_ROUTES.push(fakeRoute);
+    PUBLIC_ARTIFACTS.push(fakeArtifact);
+    try {
+      const contracts = buildContractsArtifact("1970-01-01T00:00:00.000Z");
+      const entry = contracts.artifacts.find(
+        (artifact) => artifact.id === fakeArtifact.id,
+      );
+      assert.equal(entry.query_contract, null);
+    } finally {
+      API_ROUTES.length = routeCount;
+      PUBLIC_ARTIFACTS.length = artifactCount;
+    }
   });
 
   test("requires canonical component schemas before building OpenAPI", () => {

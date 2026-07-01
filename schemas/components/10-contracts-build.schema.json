@@ -27,6 +27,50 @@
           "id": {
             "type": "string"
           },
+          "query_contract": {
+            "type": ["object", "null"],
+            "required": [
+              "collection",
+              "data_key",
+              "filter_names",
+              "query_parameters",
+              "range_filters",
+              "sort_fields"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "data_key": {
+                "type": ["string", "null"]
+              },
+              "filter_names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "query_parameters": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiQueryParameter"
+                }
+              },
+              "range_filters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sort_fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
           "path": {
             "type": "string",
             "pattern": "^/metagraph/"

@@ -467,6 +467,92 @@ describe("list-query integration_readiness (#2085)", () => {
   });
 });
 
+describe("list-query endpoints range filters (#2577)", () => {
+  const data = {
+    endpoints: [
+      { id: "fast", latency_ms: 50, score: 99 },
+      { id: "mid", latency_ms: 200, score: 80 },
+      { id: "slow", latency_ms: 800, score: 60 },
+      { id: "missing-latency", score: 70 },
+      { id: "missing-score", latency_ms: 120 },
+      { id: "bad-latency", latency_ms: "150", score: 50 },
+    ],
+  };
+  const ids = (result) => result.data.endpoints.map((row) => row.id);
+
+  test("max_latency_ms keeps rows <= the bound and drops non-numeric latency rows", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?max_latency_ms=200"),
+      "endpoints",
+    );
+
+    assert.deepEqual(ids(result), ["fast", "mid", "missing-score"]);
+  });
+
+  test("min_latency_ms keeps rows >= the bound and drops non-numeric latency rows", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_latency_ms=120"),
+      "endpoints",
+    );
+
+    assert.deepEqual(ids(result), ["mid", "slow", "missing-score"]);
+  });
+
+  test("score range filters apply inclusively on numeric score rows", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_score=70&max_score=80"),
+      "endpoints",
+    );
+
+    assert.deepEqual(ids(result), ["mid", "missing-latency"]);
+  });
+
+  test("contradictory endpoint range bounds return a 400", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_latency_ms=300&max_latency_ms=200"),
+      "endpoints",
+    );
+
+    assert.equal(result.error.parameter, "min_latency_ms");
+    assert.match(
+      result.error.message,
+      /must not be greater than max_latency_ms/,
+    );
+  });
+
+  test("contradictory endpoint score bounds return a 400", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_score=90&max_score=80"),
+      "endpoints",
+    );
+
+    assert.equal(result.error.parameter, "min_score");
+    assert.match(result.error.message, /must not be greater than max_score/);
+  });
+
+  test("absent endpoint range filters leave the collection unfiltered", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints"),
+      "endpoints",
+    );
+
+    assert.deepEqual(ids(result), [
+      "fast",
+      "mid",
+      "slow",
+      "missing-latency",
+      "missing-score",
+      "bad-latency",
+    ]);
+  });
+});
+
 describe("list-query pagination Link header", () => {
   test("first page: next + last only (no earlier page exists)", () => {
     const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&limit=2"));

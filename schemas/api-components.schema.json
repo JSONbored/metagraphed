@@ -1842,6 +1842,56 @@
             "pattern": "^/metagraph/",
             "type": "string"
           },
+          "query_contract": {
+            "additionalProperties": false,
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "data_key": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "filter_names": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "query_parameters": {
+                "items": {
+                  "$ref": "#/components/schemas/ApiQueryParameter"
+                },
+                "type": "array"
+              },
+              "range_filters": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "sort_fields": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "collection",
+              "data_key",
+              "filter_names",
+              "query_parameters",
+              "range_filters",
+              "sort_fields"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "schema_ref": {
             "pattern": "^#/components/schemas/[A-Za-z0-9]+$",
             "type": [

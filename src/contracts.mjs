@@ -231,6 +231,7 @@ export const API_QUERY_COLLECTIONS = {
       "score",
       "status",
     ],
+    rangeFilters: ["latency_ms", "score"],
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -2553,6 +2554,9 @@ export const API_ROUTES = [
 ];
 
 export function buildContractsArtifact(generatedAt) {
+  const routeByArtifactPath = new Map(
+    API_ROUTES.map((route) => [route.artifact_path, route]),
+  );
   return {
     schema_version: SCHEMA_VERSION,
     contract_version: CONTRACT_VERSION,
@@ -2569,17 +2573,21 @@ export function buildContractsArtifact(generatedAt) {
       "Candidate surfaces are discovery records only and are not published as verified registry surfaces.",
       "Health and schema artifacts are operational observations, not protocol authority.",
     ],
-    artifacts: PUBLIC_ARTIFACTS.map((entry) => ({
-      id: entry.id,
-      path: entry.path,
-      description: entry.description,
-      content_type: artifactContentType(entry.path),
-      schema_ref: entry.schema_ref
-        ? `#/components/schemas/${entry.schema_ref}`
-        : null,
-      contract_version: CONTRACT_VERSION,
-      storage_tier: entry.storage_tier,
-    })),
+    artifacts: PUBLIC_ARTIFACTS.map((entry) => {
+      const routeEntry = routeByArtifactPath.get(entry.path);
+      return {
+        id: entry.id,
+        path: entry.path,
+        description: entry.description,
+        content_type: artifactContentType(entry.path),
+        schema_ref: entry.schema_ref
+          ? `#/components/schemas/${entry.schema_ref}`
+          : null,
+        contract_version: CONTRACT_VERSION,
+        storage_tier: entry.storage_tier,
+        query_contract: routeEntry ? buildRouteQueryContract(routeEntry) : null,
+      };
+    }),
   };
 }
 
@@ -2772,6 +2780,24 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
       notes:
         "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     },
+  };
+}
+
+function buildRouteQueryContract(routeEntry) {
+  if (!routeEntry?.query_collection) {
+    return null;
+  }
+  const collection = API_QUERY_COLLECTIONS[routeEntry.query_collection];
+  if (!collection) {
+    return null;
+  }
+  return {
+    collection: routeEntry.query_collection,
+    data_key: collection.data_key,
+    filter_names: routeEntry.query_filter_names || [],
+    range_filters: collection.range_filters || [],
+    sort_fields: collection.sort_fields || [],
+    query_parameters: routeEntry.query_parameters || [],
   };
 }
 
