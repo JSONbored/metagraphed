@@ -429,6 +429,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/concentration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across every subnet's neurons — per-UID, per-entity (coldkeys collapsed across subnets to the true network control distribution), and validator-only consensus power. Computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainConcentration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -2441,6 +2458,97 @@ export interface components {
             schema_version: number;
             total_extrinsics: number;
             window: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Network-wide stake & emission concentration / decentralization metrics aggregated across EVERY subnet's neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake/emission), per-entity (entity_stake/entity_emission — coldkeys collapsed ACROSS subnets so an operator's many hotkeys network-wide count as one holder, the true network control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans. */
+        ChainConcentrationArtifact: {
+            captured_at?: string | null;
+            emission: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_count: number;
+            entity_emission?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            entity_stake?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            neuron_count: number;
+            schema_version: number;
+            stake: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            subnet_count: number;
+            uids_per_entity?: number | null;
+            validator_stake?: ({
+                entropy?: number | null;
+                entropy_normalized?: number | null;
+                gini?: number | null;
+                hhi?: number | null;
+                hhi_normalized?: number | null;
+                holders?: number;
+                nakamoto_coefficient?: number | null;
+                top_10pct_share?: number | null;
+                top_1pct_share?: number | null;
+                top_20pct_share?: number | null;
+                top_5pct_share?: number | null;
+                total?: number | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
         } & {
             [key: string]: unknown;
         };
@@ -8443,6 +8551,180 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainCallsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainConcentration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_count": 1,
+                     *         "entity_emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "neuron_count": 1,
+                     *         "schema_version": 1,
+                     *         "stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "subnet_count": 1,
+                     *         "uids_per_entity": 0.5,
+                     *         "validator_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainConcentrationArtifact"];
                     };
                 };
             };

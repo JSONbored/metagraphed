@@ -314,6 +314,23 @@ export async function readSubnetNeuronsCacheStamp(env, netuid) {
     : null;
 }
 
+// Network-wide neuron cache stamp: the newest captured_at across ALL subnets, so a
+// chain-level neurons aggregate (chain/concentration) busts its edge cache the
+// moment any subnet's snapshot advances — the network analog of the per-subnet
+// stamp above.
+export async function readNeuronsCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neurons",
+    [],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
 export function withNeuronsEdgeCache(
   request,
   ctx,

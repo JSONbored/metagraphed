@@ -94,6 +94,7 @@ import {
   CONCENTRATION_READ_COLUMNS,
   buildConcentration,
   buildConcentrationHistory,
+  loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import {
@@ -396,6 +397,29 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/concentration: network-wide stake & emission concentration
+// across EVERY subnet's neurons — the same five lenses as the per-subnet route,
+// but the entity lenses collapse an operator's hotkeys ACROSS subnets, so this is
+// the true network-level control distribution. neurons-tier (source
+// "metagraph-snapshot"), no params. Cold/absent store → schema-stable empties.
+export async function handleChainConcentration(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainConcentration(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/concentration.json",
         data.captured_at,
       ),
     },

@@ -456,6 +456,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/concentration",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      assert.equal(typeof body.data.entity_count, "number");
+      // each lens is a metrics object or null on a cold store.
+      assert.equal(
+        body.data.stake === null || typeof body.data.stake === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/economics/trends",
     (body) => {
       assert.equal(Array.isArray(body.data.days), true);
