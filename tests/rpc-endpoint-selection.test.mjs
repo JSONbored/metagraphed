@@ -142,16 +142,47 @@ describe("orderSafeRpcEndpoints — block-height routing", () => {
 });
 
 describe("isPrivateOrLocalHostname — CGNAT parity (#2312/#2313)", () => {
-  test("rejects the 100.64.0.0/10 CGNAT range, dotted and ::ffff:-mapped", () => {
+  test("rejects the 100.64.0.0/10 CGNAT range as a plain dotted IPv4 hostname", () => {
     assert.equal(isPrivateOrLocalHostname("100.64.0.1"), true);
     assert.equal(isPrivateOrLocalHostname("100.100.0.1"), true);
     assert.equal(isPrivateOrLocalHostname("100.127.255.255"), true);
-    assert.equal(isPrivateOrLocalHostname("::ffff:100.64.0.1"), true);
   });
 
   test("does not reject public addresses just outside the CGNAT range", () => {
     assert.equal(isPrivateOrLocalHostname("100.63.255.255"), false);
     assert.equal(isPrivateOrLocalHostname("100.128.0.0"), false);
     assert.equal(isPrivateOrLocalHostname("8.8.8.8"), false);
+  });
+
+  // The WHATWG URL parser re-serializes an IPv4-mapped IPv6 literal into
+  // hex-tail form — [::ffff:100.64.0.1] becomes hostname "::ffff:6440:1", NOT
+  // the dotted "::ffff:100.64.0.1" string. Route the literal through the same
+  // `new URL(...).hostname` step isSafeRpcEndpointUrl uses so this test can't
+  // drift from what the real request path actually evaluates.
+  test("rejects an IPv4-mapped CGNAT IPv6 literal via the real new URL(...).hostname form", () => {
+    const hostname = new URL("https://[::ffff:100.64.0.1]/").hostname;
+    // URL.hostname keeps the brackets for an IPv6 literal; pin the exact
+    // normalized form so this test can't silently drift from reality.
+    assert.equal(hostname, "[::ffff:6440:1]");
+    assert.equal(isPrivateOrLocalHostname(hostname), true);
+  });
+
+  test("still rejects the dotted-quad ::ffff: form directly (non-URL callers)", () => {
+    assert.equal(isPrivateOrLocalHostname("::ffff:100.64.0.1"), true);
+  });
+
+  test("rejects IPv4-mapped/compatible/6to4/NAT64 forms of the other private ranges too", () => {
+    // ::ffff:127.0.0.1 -> hex-tail ::ffff:7f00:1
+    assert.equal(
+      isPrivateOrLocalHostname(new URL("https://[::ffff:127.0.0.1]/").hostname),
+      true,
+    );
+    // ::ffff:192.168.1.1 -> hex-tail ::ffff:c0a8:101
+    assert.equal(
+      isPrivateOrLocalHostname(
+        new URL("https://[::ffff:192.168.1.1]/").hostname,
+      ),
+      true,
+    );
   });
 });
