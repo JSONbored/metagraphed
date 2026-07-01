@@ -705,6 +705,10 @@ describe("script utility contracts", () => {
       isR2OnlyArtifactPath("/metagraph/extrinsics/1234-3.json"),
       true,
     );
+    assert.equal(
+      isR2OnlyArtifactPath("/metagraph/subnets/7/transfer-volume.json"),
+      true,
+    );
     assert.equal(isR2OnlyArtifactPath("/metagraph/contracts.json"), false);
     // subnets/coverage moved to plain R2-only (#1003) — no committed copy, so
     // they are NOT R2-preferred-dual (that set is now empty). The changelog

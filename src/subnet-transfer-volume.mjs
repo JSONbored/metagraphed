@@ -44,8 +44,12 @@ function toCount(value) {
   return Math.max(0, Math.trunc(toNumber(value)));
 }
 
-function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+function observedAtIsoFromTotals(totals) {
+  const raw = totals?.last_observed;
+  if (raw == null || raw === "") return null;
+  const ms = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms).toISOString();
 }
 
 function resolveWindowLabel(windowLabel) {
@@ -58,13 +62,6 @@ function resolveLimit(limit) {
   const parsed = typeof limit === "number" ? limit : Number(limit);
   if (!Number.isFinite(parsed)) return SUBNET_TRANSFER_LIMIT_DEFAULT;
   return Math.max(1, Math.min(Math.trunc(parsed), SUBNET_TRANSFER_LIMIT_MAX));
-}
-
-function observedAtFromTotals(totals) {
-  const raw = totals?.last_observed;
-  if (raw == null || raw === "") return null;
-  const ms = typeof raw === "number" ? raw : Number(raw);
-  return Number.isFinite(ms) ? ms : null;
 }
 
 // Shape one side's leaderboard rows (address + summed volume + transfer count) into a
@@ -97,10 +94,7 @@ export function buildSubnetTransferVolume({
   const topSenderVolume = topSenders.reduce((sum, s) => sum + s.volume_tao, 0);
   const topSenderShare =
     totalVolume > 0
-      ? Math.min(
-          1,
-          Math.round((topSenderVolume / totalVolume) * 10000) / 10000,
-        )
+      ? Math.min(1, Math.round((topSenderVolume / totalVolume) * 10000) / 10000)
       : null;
   return {
     schema_version: 1,
@@ -163,7 +157,6 @@ export async function loadSubnetTransferVolume(
   );
 
   const totals = Array.isArray(totalsRows) ? totalsRows[0] : null;
-  const lastObserved = observedAtFromTotals(totals);
   return {
     data: buildSubnetTransferVolume({
       netuid,
@@ -172,6 +165,6 @@ export async function loadSubnetTransferVolume(
       senders,
       receivers,
     }),
-    generatedAt: lastObserved == null ? null : toIso(lastObserved),
+    generatedAt: observedAtIsoFromTotals(totals),
   };
 }

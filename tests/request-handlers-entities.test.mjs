@@ -1573,6 +1573,13 @@ describe("handleSubnetTransferVolume", () => {
       url(`/api/v1/subnets/${NETUID}/transfer-volume?limit=0`),
     );
     await errorJson(res);
+    const tooHigh = await handleSubnetTransferVolume(
+      req(`/api/v1/subnets/${NETUID}/transfer-volume`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/transfer-volume?limit=101`),
+    );
+    await errorJson(tooHigh);
   });
 
   test("returns schema-stable zeros on cold D1", async () => {
@@ -1612,7 +1619,9 @@ describe("handleSubnetTransferVolume", () => {
           { address: "5SenderA", volume_tao: 300, transfer_count: 5 },
           { address: "5SenderB", volume_tao: 100, transfer_count: 2 },
         ],
-        receivers: [{ address: "5ReceiverA", volume_tao: 250, transfer_count: 4 }],
+        receivers: [
+          { address: "5ReceiverA", volume_tao: 250, transfer_count: 4 },
+        ],
       },
     });
     const body = await json(
@@ -1631,10 +1640,7 @@ describe("handleSubnetTransferVolume", () => {
     assert.equal(body.data.top_senders.length, 2);
     assert.equal(body.data.top_receivers[0].address, "5ReceiverA");
     await assertValidComponent("SubnetTransferVolumeArtifact", body.data);
-    assert.equal(
-      body.meta.generated_at,
-      new Date(1717900000000).toISOString(),
-    );
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
   describe("canonicalSubnetTransferVolumeCachePath", () => {

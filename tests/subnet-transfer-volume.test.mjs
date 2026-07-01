@@ -44,7 +44,9 @@ describe("buildSubnetTransferVolume", () => {
         { address: "5SenderA", volume_tao: 600, transfer_count: 7 },
         { address: "5SenderB", volume_tao: 200, transfer_count: 3 },
       ],
-      receivers: [{ address: "5ReceiverA", volume_tao: 400, transfer_count: 4 }],
+      receivers: [
+        { address: "5ReceiverA", volume_tao: 400, transfer_count: 4 },
+      ],
     });
     assert.equal(data.total_volume_tao, 1000);
     assert.equal(data.transfer_count, 12);
@@ -103,6 +105,16 @@ describe("buildSubnetTransferVolume", () => {
       senders: [{ address: "5A", volume_tao: 5, transfer_count: 1 }],
     });
     assert.equal(data.top_sender_share, null);
+  });
+
+  test("non-array party rows collapse to empty leaderboards", () => {
+    const data = buildSubnetTransferVolume({
+      netuid: 1,
+      senders: "bad",
+      receivers: 42,
+    });
+    assert.deepEqual(data.top_senders, []);
+    assert.deepEqual(data.top_receivers, []);
   });
 });
 
@@ -200,6 +212,66 @@ describe("loadSubnetTransferVolume", () => {
     };
     const { generatedAt } = await loadSubnetTransferVolume(d1, 7, {});
     assert.equal(generatedAt, null);
+  });
+
+  test("rejects empty-string and non-finite last_observed timestamps", async () => {
+    for (const last_observed of ["", "not-a-number"]) {
+      const d1 = async (sql) => {
+        if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+          return [{ last_observed }];
+        }
+        return [];
+      };
+      const { generatedAt } = await loadSubnetTransferVolume(d1, 7, {});
+      assert.equal(generatedAt, null, String(last_observed));
+    }
+  });
+
+  test("coerces a numeric-string last_observed through the string branch", async () => {
+    const d1 = async (sql) => {
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+        return [{ last_observed: "1717900000000" }];
+      }
+      return [];
+    };
+    const { generatedAt } = await loadSubnetTransferVolume(d1, 7, {});
+    assert.equal(generatedAt, new Date(1717900000000).toISOString());
+  });
+
+  test("non-array D1 payloads degrade safely", async () => {
+    const d1 = async (sql) => {
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return null;
+      if (/GROUP BY hotkey/.test(sql)) return null;
+      if (/GROUP BY coldkey/.test(sql)) return undefined;
+      return null;
+    };
+    const { data, generatedAt } = await loadSubnetTransferVolume(d1, 7, {});
+    assert.equal(data.total_volume_tao, 0);
+    assert.deepEqual(data.top_senders, []);
+    assert.deepEqual(data.top_receivers, []);
+    assert.equal(generatedAt, null);
+  });
+
+  test("resolveLimit uses the numeric typeof branch", async () => {
+    let cap;
+    const d1 = async (sql, params) => {
+      if (/GROUP BY hotkey/.test(sql)) cap = params.at(-1);
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return [{}];
+      return [];
+    };
+    await loadSubnetTransferVolume(d1, 7, { limit: 15 });
+    assert.equal(cap, 15);
+  });
+
+  test("resolveWindowLabel keeps a supported window label", async () => {
+    const d1 = async (sql) => {
+      if (/COUNT\(DISTINCT hotkey\)/.test(sql)) return [{}];
+      return [];
+    };
+    const { data } = await loadSubnetTransferVolume(d1, 7, {
+      windowLabel: "7d",
+    });
+    assert.equal(data.window, "7d");
   });
 
   test("an unknown window label is normalized to the default in the artifact", async () => {
