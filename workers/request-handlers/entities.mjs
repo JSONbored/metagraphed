@@ -1385,6 +1385,9 @@ export async function handleBlock(request, env, ref) {
     next = nbr[0]?.next ?? null;
   }
   const data = buildBlock(rows[0], ref, { prev, next });
+  // Finalized block detail is immutable once resolved; a cold/unknown ref stays
+  // on the short profile so clients re-check when the block lands.
+  const cacheProfile = rows[0] ? "static" : "short";
   return envelopeResponse(
     request,
     {
@@ -1395,7 +1398,7 @@ export async function handleBlock(request, env, ref) {
         data.block?.observed_at ?? null,
       ),
     },
-    "short",
+    cacheProfile,
   );
 }
 
