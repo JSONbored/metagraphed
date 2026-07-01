@@ -71,6 +71,24 @@
         "timeout_ms": 10000
       },
       "notes": "Public SDK/tooling repository linked from the MANTIS source README for strategy iteration, GUI workflows, and local evaluation helpers."
+    },
+    {
+      "id": "sn-123-mantis-price-feed",
+      "name": "MANTIS price & funding data artifact",
+      "kind": "data-artifact",
+      "url": "https://pub-ba8c1b8edb8046edaccecbd26b5ca7f8.r2.dev/latest_prices.json",
+      "provider": "mantis",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://raw.githubusercontent.com/Barbariandev/MANTIS/main/config.py"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "notes": "Public no-auth JSON data artifact of asset prices and funding rates published by the SN123 MANTIS validator — the PRICE_DATA_URL declared in the official repo's config.py (line 63). Freshness/uptime are probe-derived and not asserted here."
     }
   ]
 }
