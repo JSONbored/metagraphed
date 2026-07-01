@@ -95,14 +95,19 @@ function validateQueryParams(url, allowedParams) {
   return null;
 }
 
-function canonicalAnalyticsCacheRoute(url, params = []) {
+// Build an edge-cache key from RESOLVED query values so a bare path, an explicit
+// ?window=<default>, and omitted defaulted params all share one cache entry —
+// mirrors handleChainActivity and canonicalHealthWindowCachePath. Optional
+// filters (call_module) are included only when set.
+function canonicalAnalyticsCacheRoute(url, { window, extras = {} } = {}) {
   const search = new URL("https://cache-key.invalid/").searchParams;
-  for (const param of [ANALYTICS_WINDOW_PARAM, ...params]) {
-    const value = url.searchParams.get(param);
-    if (value !== null) search.set(param, value);
+  search.set(ANALYTICS_WINDOW_PARAM, window);
+  for (const key of ["group_by", "limit", "sort", "call_module"]) {
+    if (!Object.hasOwn(extras, key)) continue;
+    const value = extras[key];
+    if (value != null && value !== "") search.set(key, String(value));
   }
-  const query = search.toString();
-  return `${url.pathname}${query ? `?${query}` : ""}`;
+  return `${url.pathname}?${search.toString()}`;
 }
 
 function analyticsWindow(url, extraParams = []) {
@@ -746,7 +751,14 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
       );
       return usedFallback ? markD1FallbackResponse(response) : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["group_by", "limit", "call_module"]),
+    canonicalAnalyticsCacheRoute(url, {
+      window: label,
+      extras: {
+        group_by: groupBy,
+        limit,
+        ...(callModule ? { call_module: callModule } : {}),
+      },
+    }),
   );
 }
 
@@ -803,7 +815,14 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         ? markD1FallbackResponse(response)
         : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"]),
+    canonicalAnalyticsCacheRoute(url, {
+      window: label,
+      extras: {
+        limit,
+        sort,
+        ...(callModule ? { call_module: callModule } : {}),
+      },
+    }),
   );
 }
 
@@ -845,7 +864,10 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
         "short",
       );
     },
-    canonicalAnalyticsCacheRoute(url, ["limit"]),
+    canonicalAnalyticsCacheRoute(url, {
+      window: label,
+      extras: { limit },
+    }),
   );
 }
 
@@ -897,7 +919,13 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         ? markD1FallbackResponse(response)
         : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "call_module"]),
+    canonicalAnalyticsCacheRoute(url, {
+      window: label,
+      extras: {
+        limit,
+        ...(callModule ? { call_module: callModule } : {}),
+      },
+    }),
   );
 }
 
