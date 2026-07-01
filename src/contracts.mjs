@@ -2069,7 +2069,6 @@ export const API_ROUTES = [
           type: "integer",
           minimum: 1,
           maximum: 100,
-          default: 20,
           description:
             "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
         },

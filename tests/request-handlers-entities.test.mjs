@@ -2257,7 +2257,10 @@ describe("handleAccountCounterparties", () => {
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, "limit");
-      assert.equal(body.error.message, "limit must be an integer from 1 to 100.");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
   });
@@ -2383,7 +2386,10 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, "limit");
-      assert.equal(body.error.message, "limit must be an integer from 1 to 100.");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
   });
@@ -2403,7 +2409,9 @@ describe("handleAccountCounterparties relationship drilldown", () => {
     });
     const body = await json(
       await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`),
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
         env,
         SS58,
         url(
@@ -2414,6 +2422,36 @@ describe("handleAccountCounterparties relationship drilldown", () => {
     assert.equal(body.data.counterparty_count, 1);
     assert.equal(body.data.relationship.transfer_count, 80);
     assert.equal(body.data.relationship.transfers.length, 50);
+  });
+
+  test("accepts limit=100 at the documented upper bound in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 150);
+    assert.equal(body.data.relationship.transfers.length, 100);
   });
 
   test("returns schema-stable empty pair detail on cold D1", async () => {

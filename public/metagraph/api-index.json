@@ -4861,7 +4861,6 @@
         {
           "name": "limit",
           "schema": {
-            "default": 20,
             "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
             "maximum": 100,
             "minimum": 1,
