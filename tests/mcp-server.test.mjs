@@ -6012,13 +6012,25 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       { env },
     );
     assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
-    assert.equal(capture.filter((c) => /FROM extrinsics/.test(c.sql)).length, 0);
+    assert.equal(
+      capture.filter((c) => /FROM extrinsics/.test(c.sql)).length,
+      0,
+    );
   });
 
   test("list_extrinsics rejects a non-boolean success filter", async () => {
     const res = await callTool("list_extrinsics", { success: "maybe" });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /success/);
+  });
+
+  test("list_extrinsics binds success=false as 0", async () => {
+    const capture = [];
+    const env = chainD1({ extrinsics: [] }, capture);
+    await callTool("list_extrinsics", { success: false }, { env });
+    const q = capture.find((c) => /FROM extrinsics/.test(c.sql));
+    assert.ok(/success = \?/.test(q.sql));
+    assert.ok(q.params.includes(0));
   });
 
   test("get_extrinsic returns extrinsic detail by 0x hash", async () => {

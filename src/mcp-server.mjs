@@ -2671,7 +2671,8 @@ export const MCP_TOOLS = [
       properties: {
         block: {
           type: "integer",
-          description: "Optional exact block_number filter. Omit for all blocks.",
+          description:
+            "Optional exact block_number filter. Omit for all blocks.",
           minimum: 0,
         },
         signer: {

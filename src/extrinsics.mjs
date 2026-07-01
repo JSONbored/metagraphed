@@ -258,7 +258,11 @@ export async function loadExtrinsics(
     (to != null && to < observedFloorMs) ||
     (from != null && to != null && from > to)
   ) {
-    return buildExtrinsicFeed([], { limit: lim, offset: off, nextCursor: null });
+    return buildExtrinsicFeed([], {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
   }
   const conds = [];
   const params = [];
@@ -292,8 +296,7 @@ export async function loadExtrinsics(
     conds.push("success = ?");
     params.push(0);
   }
-  const hasBlockRangeFilter =
-    blockStart != null || blockEnd != null;
+  const hasBlockRangeFilter = blockStart != null || blockEnd != null;
   if (blockStart != null) {
     conds.push("block_number >= ?");
     params.push(blockStart);
@@ -319,8 +322,7 @@ export async function loadExtrinsics(
   const effectiveFromMs = from ?? observedFloorMs;
   const effectiveToMs = to ?? nowMs + DAY_MS;
   const hasNarrowObservedWindow =
-    (from != null || to != null) &&
-    effectiveToMs - effectiveFromMs <= DAY_MS;
+    (from != null || to != null) && effectiveToMs - effectiveFromMs <= DAY_MS;
   const forceObservedOrderIndex =
     hasNarrowObservedWindow &&
     !hasBlockFilter &&
