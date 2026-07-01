@@ -36,6 +36,7 @@ export const EXTRINSIC_INSERT_COLUMNS = [
 ];
 
 function toIso(ms) {
+  if (ms == null) return null;
   const n = Number(ms);
   return Number.isFinite(n) ? new Date(n).toISOString() : null;
 }

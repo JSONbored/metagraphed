@@ -267,6 +267,15 @@ test("formatExtrinsic drops invalid fee/tip cells and string zero success", () =
   assert.equal(out.success, false);
 });
 
+test("formatExtrinsic preserves null observed_at after numeric-string coercion", () => {
+  const out = formatExtrinsic({
+    block_number: 1,
+    extrinsic_index: 0,
+    observed_at: null,
+  });
+  assert.equal(out.observed_at, null);
+});
+
 test("buildExtrinsicFeed keeps coerced extrinsic types from formatExtrinsic", () => {
   const feed = buildExtrinsicFeed([
     {
