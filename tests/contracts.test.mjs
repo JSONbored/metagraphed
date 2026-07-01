@@ -293,6 +293,31 @@ describe("public contract registry", () => {
     }
   });
 
+  test("contracts artifact joins route metadata by artifact_path", () => {
+    const contracts = buildContractsArtifact("1970-01-01T00:00:00.000Z");
+    const apiIndexArtifact = contracts.artifacts.find(
+      (artifact) => artifact.id === "api-index",
+    );
+    const endpointsArtifact = contracts.artifacts.find(
+      (artifact) => artifact.id === "endpoints",
+    );
+
+    assert.equal(apiIndexArtifact.query_contract, null);
+    assert.equal(endpointsArtifact.query_contract.collection, "endpoints");
+    assert.deepEqual(endpointsArtifact.query_contract.sort_fields, [
+      "kind",
+      "last_checked",
+      "latency_ms",
+      "layer",
+      "netuid",
+      "pool_eligible",
+      "provider",
+      "publication_state",
+      "score",
+      "status",
+    ]);
+  });
+
   test("requires canonical component schemas before building OpenAPI", () => {
     assert.throws(
       () => buildOpenApiArtifact("1970-01-01T00:00:00.000Z", null),
