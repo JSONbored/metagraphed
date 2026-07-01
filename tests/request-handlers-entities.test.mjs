@@ -1742,6 +1742,39 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("rejects a non-integer netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("rejects a negative netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=-1`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("rejects a netuid above Number.MAX_SAFE_INTEGER with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=9007199254740992`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
@@ -1784,6 +1817,27 @@ describe("handleAccountEvents", () => {
       captures.sql.some((s) => /event_kind = \?/.test(s)),
       "expected kind filter in SQL",
     );
+  });
+
+  test("netuid filter narrows results", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ netuid: 7 })],
+    });
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?netuid=7`),
+      ),
+    );
+    assert.ok(
+      captures.sql.some((s) => /netuid = \?/.test(s)),
+      "expected netuid filter in SQL",
+    );
+    const idx = captures.sql.findIndex((s) => /FROM account_events/.test(s));
+    assert.ok(captures.params[idx].includes(7));
+    assert.equal(body.data.events[0].netuid, 7);
   });
 
   test("cursor uses keyset seek instead of offset", async () => {

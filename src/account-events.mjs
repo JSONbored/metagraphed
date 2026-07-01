@@ -623,7 +623,7 @@ export async function loadAccountSummary(d1, ss58) {
 export async function loadAccountEvents(
   d1,
   ss58,
-  { limit, offset, kind, cursor, blockStart, blockEnd } = {},
+  { limit, offset, kind, cursor, blockStart, blockEnd, netuid } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -643,6 +643,10 @@ export async function loadAccountEvents(
   if (blockEnd != null) {
     filterParts.push("AND block_number <= ?");
     filterParams.push(blockEnd);
+  }
+  if (netuid != null) {
+    filterParts.push("AND netuid = ?");
+    filterParams.push(netuid);
   }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);

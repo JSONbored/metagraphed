@@ -775,6 +775,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "limit",
     "offset",
     "cursor",
+    "netuid",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   // Optional block-height range filter, parity with the extrinsics and
@@ -791,6 +792,18 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  const netuid = url.searchParams.get("netuid");
+  if (
+    netuid != null &&
+    (!/^\d+$/.test(netuid) || !Number.isSafeInteger(Number(netuid)))
+  ) {
+    return errorResponse(
+      "invalid_param",
+      "netuid must be a non-negative integer.",
+      400,
+      { parameter: "netuid" },
+    );
+  }
   const data = await loadAccountEvents(d1Runner(env), ss58, {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
@@ -798,6 +811,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     cursor: url.searchParams.get("cursor"),
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
+    netuid: netuid != null ? Number(netuid) : undefined,
   });
   return accountEnvelopeResponse(
     request,
