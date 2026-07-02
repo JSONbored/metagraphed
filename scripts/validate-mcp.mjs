@@ -461,6 +461,16 @@ assert.ok(
     feesCold.window === "7d",
   "get_chain_fees must return window + daily[] + top_fee_payers[] on cold D1",
 );
+const transfersCold = await callOk("get_chain_transfers", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  transfersCold.window === "7d" &&
+    Array.isArray(transfersCold.top_senders) &&
+    Array.isArray(transfersCold.top_receivers),
+  "get_chain_transfers must return window + top_senders[] + top_receivers[] on cold D1",
+);
 const networkActivityCold = await callOk("get_network_activity", {
   window: "7d",
 });

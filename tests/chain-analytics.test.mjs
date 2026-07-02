@@ -700,6 +700,10 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
 });
 
 test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
+  // The median query only runs for days the daily aggregate already proved
+  // are within the sample cap, so the daily response must report a real day
+  // (today, UTC) rather than an empty result set.
+  const today = new Date().toISOString().slice(0, 10);
   const captured = [];
   const env = {
     ...createLocalArtifactEnv(),
@@ -708,6 +712,21 @@ test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", asyn
         return {
           bind(...params) {
             captured.push({ sql, params });
+            if (/GROUP BY day/.test(sql)) {
+              return {
+                all: () =>
+                  Promise.resolve({
+                    results: [
+                      {
+                        day: today,
+                        extrinsic_count: 10,
+                        total_fee_tao: 1,
+                        total_tip_tao: 1,
+                      },
+                    ],
+                  }),
+              };
+            }
             return { all: () => Promise.resolve({ results: [] }) };
           },
         };

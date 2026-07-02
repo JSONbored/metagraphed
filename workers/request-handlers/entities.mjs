@@ -27,7 +27,7 @@ import {
   parsePagination,
 } from "../request-params.mjs";
 
-import { errorResponse } from "../http.mjs";
+import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -94,6 +94,7 @@ import {
   CONCENTRATION_READ_COLUMNS,
   buildConcentration,
   buildConcentrationHistory,
+  loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import {
@@ -433,6 +434,29 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
   );
 }
 
+// GET /api/v1/chain/concentration: network-wide stake & emission concentration
+// across EVERY subnet's neurons — the same five lenses as the per-subnet route,
+// but the entity lenses collapse an operator's hotkeys ACROSS subnets, so this is
+// the true network-level control distribution. neurons-tier (source
+// "metagraph-snapshot"), no params. Cold/absent store → schema-stable empties.
+export async function handleChainConcentration(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainConcentration(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
 // Shared helper: build a canonical edge-cache key for any windowed route by
 // normalising the ?window= query parameter through the route-specific parse
 // function, so that an omitted window and an explicit default-value window map
@@ -705,6 +729,17 @@ async function accountMeta(env, artifactPath, generatedAt) {
   };
 }
 
+// Account routes stamp meta.source but browsers need the CORS-exposed header too.
+async function accountEnvelopeResponse(
+  request,
+  payload,
+  cacheProfile = "short",
+) {
+  return envelopeResponse(request, payload, cacheProfile, {
+    [X_METAGRAPH_ARTIFACT_SOURCE_HEADER]: payload.meta.source,
+  });
+}
+
 // GET /api/v1/accounts/{ss58}/stake-flow: the account's StakeAdded/StakeRemoved flow
 // per subnet over a 7d/30d/90d window — net + gross flow, an HHI concentration of where
 // its flow is focused, and a direction label. account_events-derived (source
@@ -727,7 +762,7 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
       windowLabel: windowParam,
     },
   );
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -746,7 +781,7 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
 // (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
 export async function handleAccount(request, env, ss58) {
   const data = await loadAccountSummary(d1Runner(env), ss58);
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -794,7 +829,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -855,7 +890,11 @@ export async function handleAccountHistory(request, env, ss58, url) {
       offset,
       nextCursor: null,
     });
-    return envelopeResponse(
+    // Use the account envelope so this short-circuit exposes the
+    // x-metagraph-artifact-source header too — the normal path below does (#2618),
+    // and the payload stamps the same meta.source, so a browser must not lose the
+    // CORS-exposed header just because the range was inverted.
+    return accountEnvelopeResponse(
       request,
       {
         data,
@@ -915,7 +954,7 @@ export async function handleAccountHistory(request, env, ss58, url) {
       ? encodeCursor([Number(last.day.replaceAll("-", "")), last.netuid])
       : null;
   const data = buildAccountHistory(rows, ss58, { limit, offset, nextCursor });
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -961,7 +1000,7 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -1025,7 +1064,7 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -1072,7 +1111,7 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
       counterparty,
       { limit },
     );
-    return envelopeResponse(
+    return accountEnvelopeResponse(
       request,
       {
         data,
@@ -1086,7 +1125,7 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
     );
   }
   const data = await loadCounterparties(d1Runner(env), ss58, { limit });
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -1104,7 +1143,7 @@ export async function handleAccountCounterparties(request, env, ss58, url) {
 // registered (the cross-subnet footprint), from the neurons tier.
 export async function handleAccountSubnets(request, env, ss58) {
   const data = await loadAccountSubnets(d1Runner(env), ss58);
-  return envelopeResponse(
+  return accountEnvelopeResponse(
     request,
     {
       data,
@@ -1369,6 +1408,9 @@ export async function handleBlock(request, env, ref) {
     next = nbr[0]?.next ?? null;
   }
   const data = buildBlock(rows[0], ref, { prev, next });
+  // Finalized block detail is immutable once resolved; a cold/unknown ref stays
+  // on the short profile so clients re-check when the block lands.
+  const cacheProfile = rows[0] ? "static" : "short";
   return envelopeResponse(
     request,
     {
@@ -1379,7 +1421,7 @@ export async function handleBlock(request, env, ref) {
         data.block?.observed_at ?? null,
       ),
     },
-    "short",
+    cacheProfile,
   );
 }
 

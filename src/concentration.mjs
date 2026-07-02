@@ -229,6 +229,71 @@ export function buildConcentration(rows, netuid) {
   };
 }
 
+// ---- Network-wide concentration (#2106): the same lenses, every subnet -----
+// The neurons-tier columns the network concentration handler reads — like
+// CONCENTRATION_READ_COLUMNS but with `netuid`, so the artifact can report how
+// many subnets the current snapshot spans.
+export const CHAIN_CONCENTRATION_READ_COLUMNS =
+  "stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at";
+
+// Network analog of buildConcentration: the SAME five lenses computed over EVERY
+// subnet's neurons at once. The entity lenses (entity_stake / entity_emission)
+// collapse an operator's hotkeys ACROSS subnets into one holder, so this is the
+// true network-level control distribution — one operator running validators in
+// ten subnets counts once, not ten times (the genuinely new measurement a
+// per-subnet view can't give). `subnet_count` reports how many subnets the
+// snapshot spans. Null-safe: an empty array yields a schema-stable zero (every
+// metric block null), matching buildConcentration.
+export function buildChainConcentration(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  // One cron capture underlies the rows, but don't assume order — take the newest.
+  let capturedAt = null;
+  const netuids = new Set();
+  for (const row of list) {
+    const captured = captureStamp(row?.captured_at);
+    if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
+      capturedAt = captured;
+    }
+    const rawNetuid = row?.netuid;
+    if (rawNetuid != null) {
+      const netuid = Number(rawNetuid);
+      // guard the coercion: a blank/non-numeric cell must not count as subnet 0.
+      if (Number.isInteger(netuid) && netuid >= 0) netuids.add(netuid);
+    }
+  }
+  const entities = groupByEntity(list);
+  const validatorStake = list
+    .filter((row) => Number(row?.validator_permit) === 1)
+    .map((row) => row?.stake_tao);
+  return {
+    schema_version: 1,
+    subnet_count: netuids.size,
+    neuron_count: list.length,
+    entity_count: entities.count,
+    // UIDs per controlling entity network-wide — a consolidation signal (1.0 =
+    // every UID a distinct owner; higher = fewer operators each running many).
+    uids_per_entity:
+      entities.count > 0 ? round(list.length / entities.count, 4) : null,
+    captured_at: capturedAt?.value ?? null,
+    stake: computeConcentration(list.map((row) => row?.stake_tao)),
+    emission: computeConcentration(list.map((row) => row?.emission_tao)),
+    entity_stake: computeConcentration(entities.stake),
+    entity_emission: computeConcentration(entities.emission),
+    validator_stake: computeConcentration(validatorStake),
+  };
+}
+
+// Shared D1 loader (mirrors handleChainConcentration + loadSubnetConcentration):
+// read EVERY subnet's neurons in one pass, no netuid filter, and shape them into
+// the network concentration artifact.
+export async function loadChainConcentration(d1) {
+  const rows = await d1(
+    `SELECT ${CHAIN_CONCENTRATION_READ_COLUMNS} FROM neurons`,
+    [],
+  );
+  return buildChainConcentration(rows);
+}
+
 // ---- Concentration HISTORY (decentralization over time) --------------------
 // Per-day concentration from the dated neuron_daily rollup, so a subnet's
 // centralization trend (is power consolidating?) is chartable. Windows are

@@ -314,6 +314,26 @@ export async function readSubnetNeuronsCacheStamp(env, netuid) {
     : null;
 }
 
+// Network-wide neuron cache stamp: the newest captured_at across ALL subnets, so a
+// chain-level neurons aggregate (chain/concentration) busts its edge cache the
+// moment any subnet's snapshot advances — the network analog of the per-subnet
+// stamp above. Also backs /api/v1/validators: a filtered (validator_permit = 1)
+// variant was tried, but a subnet refresh that drops a permit=1 row wouldn't
+// touch that filtered MAX(captured_at), so the leaderboard's edge cache could
+// go stale for that change. The unfiltered stamp is used instead.
+export async function readNeuronsCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neurons",
+    [],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
 export function withNeuronsEdgeCache(
   request,
   ctx,

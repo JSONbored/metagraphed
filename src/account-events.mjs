@@ -627,6 +627,15 @@ export async function loadAccountEvents(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountEvents([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const filterParts = [];
   const filterParams = [];
   if (kind) {
@@ -776,6 +785,15 @@ export async function loadAccountExtrinsics(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountExtrinsics([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const params = [ss58];
   let sql = `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE signer = ?`;
   if (blockStart != null) {
@@ -820,6 +838,16 @@ export async function loadAccountTransfers(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountTransfers([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+      direction,
+    });
+  }
   const cur = decodeCursor(cursor, 2);
   const useCursor = Boolean(cur);
   const blockRangeClause = `${blockStart != null ? " AND block_number >= ?" : ""}${blockEnd != null ? " AND block_number <= ?" : ""}`;

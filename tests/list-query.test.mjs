@@ -38,10 +38,51 @@ function pageLink(path) {
 }
 
 describe("list-query field projection", () => {
-  test("rejects malformed field lists", () => {
+  test("rejects empty or whitespace-only field lists", () => {
+    for (const path of [
+      "/api/v1/subnets?fields=",
+      "/api/v1/subnets?fields=%20%20",
+      "/api/v1/subnets?fields=,,",
+    ]) {
+      const result = applyQueryFilters(
+        { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+        query(path),
+        "subnets",
+      );
+
+      assert.equal(result.error.parameter, "fields");
+      assert.match(result.error.message, /comma-separated/);
+    }
+  });
+
+  test("trims field tokens and drops empty segments", () => {
     const result = applyQueryFilters(
       { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
-      query("/api/v1/subnets?fields=netuid,,name"),
+      query("/api/v1/subnets?fields=,name"),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.meta.projection.fields, ["name"]);
+    assert.deepEqual(result.data.subnets, [{ name: "Allways" }]);
+  });
+
+  test("trims surrounding whitespace on field names", () => {
+    const result = applyQueryFilters(
+      { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+      query("/api/v1/subnets?fields=netuid,%20name"),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.meta.projection.fields, ["netuid", "name"]);
+    assert.deepEqual(result.data.subnets, [{ netuid: 7, name: "Allways" }]);
+  });
+
+  test("rejects genuinely malformed field names", () => {
+    const result = applyQueryFilters(
+      { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+      query("/api/v1/subnets?fields=netuid,@name"),
       "subnets",
     );
 

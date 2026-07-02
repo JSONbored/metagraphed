@@ -1045,6 +1045,7 @@ describe("neurons-tier edge cache", () => {
     const env = neuronsEnv(queries);
 
     for (const [keyParts, path] of [
+      ["global-validators", "/api/v1/validators?sort=subnet_count&limit=1"],
       ["subnet-metagraph", "/api/v1/subnets/7/metagraph"],
       ["subnet-validators", "/api/v1/subnets/7/validators"],
       ["subnet-concentration", "/api/v1/subnets/7/concentration"],

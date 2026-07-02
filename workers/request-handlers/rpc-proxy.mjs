@@ -507,7 +507,16 @@ export async function handleRpcProxyRequest(request, env, url, ctx = {}) {
     } catch {
       // body is not JSON; leave parsed null so it is not cached.
     }
-    if (parsed && parsed.result !== undefined && parsed.error === undefined) {
+    if (
+      parsed &&
+      parsed.result !== undefined &&
+      parsed.result !== null &&
+      parsed.error === undefined
+    ) {
+      // A `null` result is the "not available yet" sentinel for these reads —
+      // chain_getBlockHash(N) returns null until block N is produced — so it is
+      // NOT immutable and must never be pinned under the long block-read TTL, or
+      // callers keep replaying the stale null after the real hash exists.
       // Persist ONLY the cacheable `result` — not the upstream envelope, which
       // carries the priming caller's `id`. The envelope is rebuilt per request
       // on a cache hit above.

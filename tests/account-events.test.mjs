@@ -615,6 +615,38 @@ test("loadAccountTransfers applies the block_start/block_end range to both sides
   ]);
 });
 
+test("loadAccountTransfers short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountTransfers(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.transfer_count, 0);
+  assert.deepEqual(out.transfers, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
+test("loadAccountEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
   let captured;
   const out = await loadAccountTransfers(
@@ -660,6 +692,22 @@ test("loadAccountExtrinsics applies the block_start/block_end range as bound par
   assert.ok(/AND block_number >= \?/.test(captured.sql));
   assert.ok(/AND block_number <= \?/.test(captured.sql));
   assert.deepEqual(captured.params, ["5Hk", 100, 900, 100, 0]);
+});
+
+test("loadAccountExtrinsics short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountExtrinsics(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.extrinsic_count, 0);
+  assert.deepEqual(out.extrinsics, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
 });
 
 test("loadAccountExtrinsics emits next_cursor for a full page", async () => {
@@ -1047,6 +1095,22 @@ test("loadAccountEvents applies the ?kind filter as a bound param", async () => 
     100,
     0,
   ]);
+});
+
+test("loadAccountEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
 });
 
 test("loadAccountEvents applies the block_start/block_end range as bound params", async () => {
