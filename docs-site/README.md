@@ -11,20 +11,23 @@ docs-site/
   meta.json                 # site manifest (nav, contract version, stats)
   guides/                   # hand-written markdown (edit in PRs)
   generated/                # auto-generated — do not hand-edit
-    api-reference.md        # from openapi.json + api-index.json
-    api-playground.json     # structured try-it metadata for the UI
-    catalog.md              # from registry/subnets/
-    resources.md            # MCP tools + agent/MCP/skill URLs
+    manifest.json           # sha256 pins for all generated artifacts (committed)
+    catalog.md              # from registry/subnets/ (committed)
+    resources.md            # MCP tools + agent routes (committed)
+    api-reference.md        # from openapi.json + api-index.json (local; hash-pinned)
+    api-playground.json     # structured try-it metadata (local; hash-pinned)
 ```
+
+`api-reference.md` and `api-playground.json` are **gitignored** (~8k lines) and verified via `generated/manifest.json` so PR diffs stay reviewable while `validate:docs-site` still catches drift.
 
 ## Regenerate
 
 ```bash
-npm run docs-site:generate      # write generated/
+npm run docs-site:generate      # write generated/ (including local-only artifacts)
 npm run validate:docs-site        # CI freshness gate (--check)
 ```
 
-Run `docs-site:generate` after changing `schemas/` (→ openapi), `public/metagraph/api-index.json`, or `registry/subnets/`, then commit the updated `docs-site/generated/` files and `meta.json`.
+Run `docs-site:generate` after changing `schemas/` (→ openapi), `public/metagraph/api-index.json`, or `registry/subnets/`, then commit `meta.json`, `generated/catalog.md`, `generated/resources.md`, and `generated/manifest.json`.
 
 `npm run validate:docs-site` runs in CI **before** `npm run build` so it checks the committed docs against the committed contract sources — `npm run build` does not regenerate `docs-site/` (same discipline as the README catalog).
 
@@ -32,9 +35,9 @@ Hand-written guides under `guides/` are edited directly — they are not overwri
 
 ## For reviewers (slop / review load)
 
-Most PR diff lines under `generated/` are **deterministic output**, not hand-edited prose. The meaningful surface is the generator (`scripts/generate-docs-site.mjs`), guides, and `tests/docs-site.test.mjs`. No public API contract change unless `schemas/` or `public/metagraph/*` also changed.
+Committed docs output is ~400 lines (guides + catalog + resources + manifest). Large API reference and playground JSON are hash-pinned, not committed. Meaningful source: `scripts/generate-docs-site.mjs`, `scripts/lib/route-samples.mjs`, guides, and `tests/docs-site.test.mjs`.
 
 ```bash
-npm test -- tests/docs-site.test.mjs
+npm test -- tests/docs-site.test.mjs tests/route-samples.test.mjs
 npm run validate:docs-site
 ```

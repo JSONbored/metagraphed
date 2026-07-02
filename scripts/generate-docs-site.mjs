@@ -51,7 +51,7 @@ const PROVENANCE_EXACT = new Set([
   "macrocosmos",
 ]);
 
-const OUTPUTS = [
+const ARTIFACT_PATHS = [
   "meta.json",
   "generated/api-reference.md",
   "generated/catalog.md",
@@ -59,12 +59,33 @@ const OUTPUTS = [
   "generated/api-playground.json",
 ];
 
-export { OUTPUTS as DOCS_SITE_OUTPUTS };
+// Committed to git — large api-reference + api-playground are hash-pinned in
+// generated/manifest.json instead (keeps PR diffs reviewable; #1652 slop gate).
+const COMMITTED_OUTPUTS = [
+  "meta.json",
+  "generated/catalog.md",
+  "generated/resources.md",
+  "generated/manifest.json",
+];
+
+const LOCAL_GENERATED_OUTPUTS = [
+  "generated/api-reference.md",
+  "generated/api-playground.json",
+];
+
+const OUTPUTS = [...ARTIFACT_PATHS, "generated/manifest.json"];
+
+export { COMMITTED_OUTPUTS as DOCS_SITE_OUTPUTS, ARTIFACT_PATHS as DOCS_SITE_ARTIFACTS };
 
 export function expectedGeneratedFilenames() {
-  return OUTPUTS.filter((relativePath) =>
-    relativePath.startsWith("generated/"),
-  ).map((relativePath) => relativePath.slice("generated/".length));
+  return [
+    "catalog.md",
+    "resources.md",
+    "manifest.json",
+    ...LOCAL_GENERATED_OUTPUTS.map((relativePath) =>
+      relativePath.slice("generated/".length),
+    ),
+  ];
 }
 
 export function listUnexpectedGeneratedFiles(generatedDir = GENERATED_DIR) {
@@ -453,6 +474,26 @@ export function buildMeta(apiIndex, openapi, overlays) {
   };
 }
 
+function sha256(text) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+export function buildManifest(contentByRelativePath) {
+  const artifacts = {};
+  for (const relativePath of ARTIFACT_PATHS) {
+    const content = contentByRelativePath[relativePath];
+    artifacts[relativePath] = {
+      sha256: sha256(content),
+      bytes: Buffer.byteLength(content, "utf8"),
+    };
+  }
+  return {
+    schema_version: 1,
+    generator: "scripts/generate-docs-site.mjs",
+    artifacts,
+  };
+}
+
 export function generateDocsSiteContent() {
   const openapi = JSON.parse(readFileSync(OPENAPI_PATH, "utf8"));
   const apiIndex = JSON.parse(readFileSync(API_INDEX_PATH, "utf8"));
@@ -462,7 +503,7 @@ export function generateDocsSiteContent() {
     (route) => route.public !== false,
   );
 
-  return {
+  const content = {
     "meta.json": `${JSON.stringify(buildMeta(apiIndex, openapi, overlays), null, 2)}\n`,
     "generated/api-reference.md": renderApiReferenceMarkdown(apiIndex, openapi),
     "generated/catalog.md": renderCatalogMarkdown(overlays),
@@ -481,24 +522,23 @@ export function generateDocsSiteContent() {
       2,
     )}\n`,
   };
-}
-
-function sha256(text) {
-  return createHash("sha256").update(text).digest("hex");
+  content["generated/manifest.json"] =
+    `${JSON.stringify(buildManifest(content), null, 2)}\n`;
+  return content;
 }
 
 function writeOutputs(contentByRelativePath) {
   mkdirSync(GENERATED_DIR, { recursive: true });
-  for (const relativePath of OUTPUTS) {
+  for (const relativePath of [...ARTIFACT_PATHS, "generated/manifest.json"]) {
     const fullPath = path.join(DOCS_ROOT, relativePath);
     mkdirSync(path.dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, contentByRelativePath[relativePath], "utf8");
   }
 }
 
-function readCurrentOutputs() {
+function readCommittedOutputs() {
   const current = {};
-  for (const relativePath of OUTPUTS) {
+  for (const relativePath of COMMITTED_OUTPUTS) {
     const fullPath = path.join(DOCS_ROOT, relativePath);
     try {
       current[relativePath] = readFileSync(fullPath, "utf8");
@@ -507,6 +547,18 @@ function readCurrentOutputs() {
     }
   }
   return current;
+}
+
+function manifestMatches(contentByRelativePath, manifestText) {
+  const manifest = JSON.parse(manifestText);
+  for (const relativePath of ARTIFACT_PATHS) {
+    const expected = manifest.artifacts?.[relativePath];
+    const content = contentByRelativePath[relativePath];
+    if (!expected || expected.sha256 !== sha256(content)) {
+      return relativePath;
+    }
+  }
+  return null;
 }
 
 function main() {
@@ -521,25 +573,35 @@ function main() {
       );
       process.exit(1);
     }
-    const current = readCurrentOutputs();
+    const current = readCommittedOutputs();
     if (!current) {
       console.error(
-        "Docs site is missing generated files. Run `npm run docs-site:generate` and commit docs-site/.",
+        "Docs site is missing committed files. Run `npm run docs-site:generate` and commit docs-site/ (meta.json, generated/catalog.md, generated/resources.md, generated/manifest.json).",
       );
       process.exit(1);
     }
-    const stale = OUTPUTS.filter(
+    const staleCommitted = COMMITTED_OUTPUTS.filter(
       (relativePath) => current[relativePath] !== next[relativePath],
     );
-    if (stale.length) {
+    if (staleCommitted.length) {
       console.error(
-        `Docs site is stale (${stale.join(", ")}). Run \`npm run docs-site:generate\` and commit docs-site/.`,
+        `Docs site is stale (${staleCommitted.join(", ")}). Run \`npm run docs-site:generate\` and commit docs-site/.`,
       );
-      for (const relativePath of stale) {
+      for (const relativePath of staleCommitted) {
         console.error(
           `  ${relativePath}: current=${sha256(current[relativePath]).slice(0, 12)} next=${sha256(next[relativePath]).slice(0, 12)}`,
         );
       }
+      process.exit(1);
+    }
+    const manifestMismatch = manifestMatches(
+      next,
+      current["generated/manifest.json"],
+    );
+    if (manifestMismatch) {
+      console.error(
+        `Docs site manifest is stale for ${manifestMismatch}. Run \`npm run docs-site:generate\` and commit generated/manifest.json.`,
+      );
       process.exit(1);
     }
     console.log(

@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  DOCS_SITE_ARTIFACTS,
   DOCS_SITE_OUTPUTS,
+  buildManifest,
   buildMeta,
   buildResourceApiRoutes,
   exampleRouteUrl,
@@ -182,6 +184,19 @@ describe("generate-docs-site", () => {
     }
   });
 
+  it("manifest pins large local-only generated artifacts", () => {
+    const content = generateDocsSiteContent();
+    const manifest = buildManifest(content);
+    for (const relativePath of [
+      "generated/api-reference.md",
+      "generated/api-playground.json",
+    ]) {
+      expect(manifest.artifacts[relativePath].sha256).toHaveLength(64);
+      expect(manifest.artifacts[relativePath].bytes).toBeGreaterThan(1000);
+    }
+    expect(JSON.parse(content["generated/manifest.json"])).toEqual(manifest);
+  });
+
   it("try-it URLs stay aligned with smoke-live-api sample ids and query params", () => {
     const routes = publicRoutes();
     for (const route of routes) {
@@ -220,7 +235,9 @@ describe("generate-docs-site", () => {
 
   it("generates committed docs-site outputs with expected keys", () => {
     const content = generateDocsSiteContent();
-    expect(Object.keys(content).sort()).toEqual([...DOCS_SITE_OUTPUTS].sort());
+    expect(Object.keys(content).sort()).toEqual(
+      [...DOCS_SITE_ARTIFACTS, "generated/manifest.json"].sort(),
+    );
     const meta = JSON.parse(content["meta.json"]);
     expect(meta.schema_version).toBe(1);
     expect(meta.site_url).toBe("https://docs.metagraph.sh");

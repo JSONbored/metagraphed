@@ -19,7 +19,7 @@ describe(".gittensory.yml manifest", () => {
 
   it("documents docs-site slop context in the public review note", () => {
     const manifest = loadManifest();
-    expect(manifest.review?.note).toMatch(/docs-site\/generated/);
+    expect(manifest.review?.note).toMatch(/manifest\.json/);
     expect(manifest.review?.note).toMatch(/validate:docs-site/);
   });
 });
