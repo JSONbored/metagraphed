@@ -157,12 +157,9 @@ test("csvResponse suppresses the body on HEAD", async () => {
 });
 
 test("csvResponse honors explicit columns for empty exports", async () => {
-  const response = await csvResponse(
-    [],
-    "subnet-movers",
-    "short",
-    null,
-    ["netuid", "name"],
-  );
+  const response = await csvResponse([], "subnet-movers", "short", null, [
+    "netuid",
+    "name",
+  ]);
   assert.equal(await response.text(), "netuid,name");
 });
