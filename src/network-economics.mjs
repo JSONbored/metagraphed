@@ -89,6 +89,9 @@ export function economicsQueryUrl(args) {
 }
 
 export async function loadNetworkEconomics(ctx, args, deps) {
+  // Validate/build the list-query URL before any tier I/O so invalid_params
+  // (netuid, cursor, sort, …) never triggers live-KV or R2 reads.
+  const queryUrl = economicsQueryUrl(args);
   const live = await resolveLiveEconomics({
     readHealthKv: ctx.readHealthKv,
     env: ctx.env,
@@ -103,12 +106,7 @@ export async function loadNetworkEconomics(ctx, args, deps) {
   if (!blob || typeof blob !== "object") {
     throw networkEconomicsError("not_found", "Economics snapshot unavailable.");
   }
-  const transformed = applyQueryFilters(
-    blob,
-    economicsQueryUrl(args),
-    "economics",
-    [],
-  );
+  const transformed = applyQueryFilters(blob, queryUrl, "economics", []);
   if (transformed.error) {
     throw networkEconomicsError("invalid_params", transformed.error.message);
   }

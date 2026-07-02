@@ -194,6 +194,29 @@ describe("network-economics — loadNetworkEconomics", () => {
     }
   });
 
+  test("validates list-query args before live-KV or R2 reads", async () => {
+    let tierReads = 0;
+    const deps = {
+      contractVersion: () => "test-contract",
+      readOptionalArtifact: async () => {
+        tierReads += 1;
+        return ECON_BLOB;
+      },
+    };
+    const ctx = {
+      readHealthKv: async () => {
+        tierReads += 1;
+        return ECON_BLOB;
+      },
+      env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+    };
+    await assert.rejects(
+      () => loadNetworkEconomics(ctx, { netuid: -1 }, deps),
+      /netuid must be a non-negative integer/,
+    );
+    assert.equal(tierReads, 0);
+  });
+
   test("surfaces not_found when neither tier has data", async () => {
     await assert.rejects(
       () => loadNetworkEconomics(makeCtx(), {}, makeDeps(null)),
