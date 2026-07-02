@@ -29,6 +29,7 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
+  DAY_MS,
 } from "../workers/config.mjs";
 
 configureAnalytics({
@@ -71,6 +72,10 @@ function emptyEnv() {
   return {};
 }
 
+function isoDayOffset(daysAgo) {
+  return new Date(Date.now() - daysAgo * DAY_MS).toISOString().slice(0, 10);
+}
+
 // One row backs every shape the analytics SQL returns (shared ok-latency CTE,
 // SLA aggregates, gap-island incidents, bulk daily uptime).
 function rowsForSql(sql) {
@@ -109,11 +114,13 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
+    const recentDay = isoDayOffset(2);
+    const olderDay = isoDayOffset(20);
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: recentDay,
+        date: recentDay,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +129,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: olderDay,
+        date: olderDay,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
