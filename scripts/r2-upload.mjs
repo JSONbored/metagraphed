@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { readJson, repoRoot, sha256Hex, stableStringify } from "./lib.mjs";
 import {
@@ -21,6 +21,7 @@ const uploadRetries =
 const uploadRetryBaseDelayMs =
   parsePositiveInteger(process.env.METAGRAPH_R2_UPLOAD_RETRY_BASE_DELAY_MS) ||
   1000;
+const wrangler = wranglerCommand();
 const manifest = await readJson(
   path.join(repoRoot, R2_STAGING_RELATIVE_ROOT, "r2-manifest.json"),
 );
@@ -279,9 +280,29 @@ function uploadJob(localPath, key, bucketName, contentType, kind) {
 }
 
 function getRemoteManifest(bucketName, key) {
+  if (process.env.FAKE_REMOTE_MANIFEST) {
+    try {
+      const parsed = JSON.parse(
+        readFileSync(process.env.FAKE_REMOTE_MANIFEST, "utf8"),
+      );
+      return Array.isArray(parsed.artifacts)
+        ? { status: "found", manifest: parsed }
+        : { status: "unavailable", manifest: null };
+    } catch {
+      return { status: "unavailable", manifest: null };
+    }
+  }
   const result = spawnSync(
-    wranglerBin(),
-    ["r2", "object", "get", `${bucketName}/${key}`, "--remote", "--pipe"],
+    wrangler.bin,
+    [
+      ...wrangler.prefixArgs,
+      "r2",
+      "object",
+      "get",
+      `${bucketName}/${key}`,
+      "--remote",
+      "--pipe",
+    ],
     {
       encoding: "utf8",
       maxBuffer: 20 * 1024 * 1024,
@@ -352,6 +373,13 @@ async function putObject(job, { retries, retryBaseDelayMs }) {
 }
 
 function putObjectOnce({ localPath, key, bucketName, contentType }) {
+  if (process.env.FAKE_PUT_LOG) {
+    appendFileSync(
+      process.env.FAKE_PUT_LOG,
+      JSON.stringify({ key }) + "\n",
+    );
+    return Promise.resolve();
+  }
   const args = [
     "r2",
     "object",
@@ -365,7 +393,7 @@ function putObjectOnce({ localPath, key, bucketName, contentType }) {
     args.push("--content-type", contentType);
   }
   return new Promise((resolve, reject) => {
-    const child = spawn(wranglerBin(), args, {
+    const child = spawn(wrangler.bin, [...wrangler.prefixArgs, ...args], {
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -421,4 +449,30 @@ function wranglerBin() {
       process.platform === "win32" ? "wrangler.cmd" : "wrangler",
     )
   );
+}
+
+function wranglerCommand() {
+  const bin = wranglerBin();
+  if (!process.env.METAGRAPH_WRANGLER_BIN) {
+    return { bin, prefixArgs: [] };
+  }
+  // Test stubs often live under /tmp, which may be mounted noexec. When the
+  // custom wrangler path is a Node script, invoke it through node directly so
+  // the upload helpers work in both noexec sandboxes and normal shells.
+  if (shouldInvokeViaNode(bin)) {
+    return { bin: process.execPath, prefixArgs: [bin] };
+  }
+  return { bin, prefixArgs: [] };
+}
+
+function shouldInvokeViaNode(bin) {
+  if ([".cjs", ".js", ".mjs"].includes(path.extname(bin).toLowerCase())) {
+    return true;
+  }
+  try {
+    const firstLine = readFileSync(bin, "utf8").split(/\r?\n/, 1)[0] || "";
+    return /^#!.*\bnode(?:\s|$)/.test(firstLine);
+  } catch {
+    return false;
+  }
 }

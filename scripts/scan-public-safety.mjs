@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.mjs";
 
-const targetRoots = [
+const DEFAULT_TARGET_ROOTS = [
   "README.md",
   "docs",
   "registry",
@@ -13,6 +13,10 @@ const targetRoots = [
   "workers",
   "wrangler.jsonc",
 ];
+const targetRoots = parseTargetRoots(
+  process.env.METAGRAPH_PUBLIC_SAFETY_TARGETS,
+);
+const SCAN_CONCURRENCY = 32;
 
 const patterns = [
   { name: "local absolute path", regex: /\/Users\/|\/home\/|C:\\Users\\/ },
@@ -138,8 +142,6 @@ function isMirroredExternalFixture(relativePath) {
   return mirroredFixturePatterns.some((pattern) => pattern.test(relativePath));
 }
 
-const findings = [];
-
 async function* walk(target) {
   const fullPath = path.join(repoRoot, target);
   let stat;
@@ -168,36 +170,7 @@ async function* walk(target) {
   }
 }
 
-for (const root of targetRoots) {
-  for await (const filePath of walk(root)) {
-    const relative = path.relative(repoRoot, filePath);
-    if (isBinaryOrIgnored(relative)) {
-      continue;
-    }
-    const content = await fs.readFile(filePath, "utf8");
-    const lines = content.split(/\r?\n/);
-    const skipSoft = isMirroredExternalSpec(relative);
-
-    if (isMirroredExternalFixture(relative)) {
-      scanCapturedFixtureBody(relative, content);
-    }
-
-    for (const [index, line] of lines.entries()) {
-      for (const pattern of patterns) {
-        if (pattern.soft && skipSoft) {
-          continue;
-        }
-        // Strip allowlisted spans (e.g. the documented local subtensor RPC
-        // endpoint) before testing, so a real leak elsewhere on the same line
-        // is still caught.
-        const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
-        if (pattern.regex.test(probe)) {
-          findings.push(`${relative}:${index + 1}: ${pattern.name}`);
-        }
-      }
-    }
-  }
-}
+const findings = (await scanTargets()).sort((a, b) => a.localeCompare(b));
 
 if (findings.length > 0) {
   console.error(`Public-safety scan found ${findings.length} issue(s):`);
@@ -209,7 +182,80 @@ if (findings.length > 0) {
 
 console.log("Public-safety scan passed.");
 
-function scanCapturedFixtureBody(relativePath, content) {
+function parseTargetRoots(value) {
+  if (!value) {
+    return DEFAULT_TARGET_ROOTS;
+  }
+  return value
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+async function scanTargets() {
+  const targets = [];
+  for (const root of targetRoots) {
+    for await (const filePath of walk(root)) {
+      const relative = path.relative(repoRoot, filePath);
+      if (isBinaryOrIgnored(relative)) {
+        continue;
+      }
+      targets.push({ filePath, relative });
+    }
+  }
+  targets.sort((a, b) => a.relative.localeCompare(b.relative));
+  const perFileFindings = await mapLimit(
+    targets,
+    SCAN_CONCURRENCY,
+    scanTargetFile,
+  );
+  return perFileFindings.flat();
+}
+
+async function scanTargetFile({ filePath, relative }) {
+  const content = await fs.readFile(filePath, "utf8");
+  const localFindings = [];
+  const lines = content.split(/\r?\n/);
+  const skipSoft = isMirroredExternalSpec(relative);
+
+  if (isMirroredExternalFixture(relative)) {
+    scanCapturedFixtureBody(relative, content, localFindings);
+  }
+
+  for (const [index, line] of lines.entries()) {
+    for (const pattern of patterns) {
+      if (pattern.soft && skipSoft) {
+        continue;
+      }
+      // Strip allowlisted spans (e.g. the documented local subtensor RPC
+      // endpoint) before testing, so a real leak elsewhere on the same line is
+      // still caught.
+      const probe = pattern.allow ? line.replace(pattern.allow, "") : line;
+      if (pattern.regex.test(probe)) {
+        localFindings.push(`${relative}:${index + 1}: ${pattern.name}`);
+      }
+    }
+  }
+
+  return localFindings;
+}
+
+async function mapLimit(items, limit, mapper) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+function scanCapturedFixtureBody(relativePath, content, findings) {
   let fixture;
   try {
     fixture = JSON.parse(content);

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -14,6 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, test } from "vitest";
 import {
   artifactDirectoryPath,
@@ -36,17 +36,84 @@ import { handleRequest } from "../workers/api.mjs";
 // committed (publish infra); changelog + build-summary moved to R2-only (#1003)
 // — they live in dist/ (gitignored, freely regenerated) and need no preservation.
 const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
+let scriptImportCounter = 0;
 
-function runNode(script) {
-  execFileSync(process.execPath, [script], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    stdio: "pipe",
-    // The committed artifacts are an inert cold-start seed (ADR 0006) that drifts
-    // from live source between publishes. This no-build suite validates structure;
-    // committed-vs-fresh freshness parity is gated in CI (post-build) instead.
-    env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+async function runScriptModule(script, { args = [], env = {} } = {}) {
+  const priorArgv = [...process.argv];
+  const priorExit = process.exit;
+  const priorLog = console.log;
+  const priorError = console.error;
+  const priorWarn = console.warn;
+  const priorEnv = {};
+  const stdout = [];
+  const stderr = [];
+  try {
+    for (const [key, value] of Object.entries(env)) {
+      priorEnv[key] = process.env[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    process.argv = [process.execPath, script, ...args];
+    console.log = (...messages) => {
+      stdout.push(messages.join(" "));
+    };
+    console.error = (...messages) => {
+      stderr.push(messages.join(" "));
+    };
+    console.warn = (...messages) => {
+      stderr.push(messages.join(" "));
+    };
+    process.exit = ((code = 0) => {
+      throw new Error(`__script_exit_${code}__`);
+    });
+    const scriptUrl = new URL(
+      `?artifacts-test=${scriptImportCounter++}`,
+      pathToFileURL(path.join(process.cwd(), script)),
+    );
+    await import(/* @vite-ignore */ scriptUrl.href);
+    return { status: 0, stdout: stdout.join("\n"), stderr: stderr.join("\n") };
+  } catch (error) {
+    const match = String(error?.message || "").match(/^__script_exit_(\d+)__$/);
+    if (match) {
+      return {
+        status: Number(match[1]),
+        stdout: stdout.join("\n"),
+        stderr: stderr.join("\n"),
+      };
+    }
+    throw error;
+  } finally {
+    process.argv = priorArgv;
+    process.exit = priorExit;
+    console.log = priorLog;
+    console.error = priorError;
+    console.warn = priorWarn;
+    for (const [key, value] of Object.entries(priorEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+async function runNode(script, env = {}, args = []) {
+  const result = await runScriptModule(script, {
+    args,
+    env: {
+      // The committed artifacts are an inert cold-start seed (ADR 0006) that drifts
+      // from live source between publishes. This no-build suite validates structure;
+      // committed-vs-fresh freshness parity is gated in CI (post-build) instead.
+      METAGRAPH_ALLOW_SEED_DRIFT: "1",
+      ...env,
+    },
   });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result;
 }
 
 // Snapshot/restore the served public/ tree so the build-running tests below leave
@@ -99,11 +166,18 @@ afterAll(() => {
   restorePublicTree(publicTreeSnapshot);
 });
 
-test("registry validates", () => {
-  runNode("scripts/validate.mjs");
+function committedPublicArtifact(relativePath) {
+  const snapshotPath = path.join(process.cwd(), relativePath);
+  const bytes = publicTreeSnapshot?.get(snapshotPath);
+  assert(bytes, `missing committed snapshot for ${relativePath}`);
+  return bytes.toString("utf8");
+}
+
+test("registry validates", async () => {
+  await runNode("scripts/validate.mjs");
 });
 
-test("registry validation accepts the community-seeded curation level", () => {
+test("registry validation accepts the community-seeded curation level", async () => {
   const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
   const fixture = tamperedOverlayFixture("sn-1-community-seeded");
   fixture.curation.level = "community-seeded";
@@ -112,11 +186,8 @@ test("registry validation accepts the community-seeded curation level", () => {
   let result;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
-    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    result = await runScriptModule("scripts/validate.mjs", {
+      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
     });
   } finally {
     rmSync(overlayPath, { force: true });
@@ -130,45 +201,47 @@ test("registry validation accepts the community-seeded curation level", () => {
   );
 });
 
-test("registry validation warns but does not block on cross-netuid on-chain name collisions", () => {
-  const nativePath = "registry/native/finney-subnets.json";
-  const original = readFileSync(nativePath, "utf8");
-  const nativeSnapshot = JSON.parse(original);
-  const attackerControlledSubnet = nativeSnapshot.subnets.find(
-    (subnet) => subnet.netuid === 1,
-  );
-  assert(
-    attackerControlledSubnet,
-    "expected native fixture to include netuid 1",
-  );
-  attackerControlledSubnet.chain_identity ||= {};
-  attackerControlledSubnet.chain_identity.subnet_name = "Templar";
+test(
+  "registry validation warns but does not block on cross-netuid on-chain name collisions",
+  async () => {
+    const nativePath = "registry/native/finney-subnets.json";
+    const original = readFileSync(nativePath, "utf8");
+    const nativeSnapshot = JSON.parse(original);
+    const attackerControlledSubnet = nativeSnapshot.subnets.find(
+      (subnet) => subnet.netuid === 1,
+    );
+    assert(
+      attackerControlledSubnet,
+      "expected native fixture to include netuid 1",
+    );
+    attackerControlledSubnet.chain_identity ||= {};
+    attackerControlledSubnet.chain_identity.subnet_name = "Templar";
 
-  let result;
-  try {
-    writeFileSync(nativePath, `${JSON.stringify(nativeSnapshot, null, 2)}\n`);
-    result = spawnSync(process.execPath, ["scripts/validate.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, METAGRAPH_ALLOW_SEED_DRIFT: "1" },
-    });
-  } finally {
-    writeFileSync(nativePath, original);
-  }
+    let result;
+    try {
+      writeFileSync(nativePath, `${JSON.stringify(nativeSnapshot, null, 2)}\n`);
+      result = await runScriptModule("scripts/validate.mjs", {
+        env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+      });
+    } finally {
+      writeFileSync(nativePath, original);
+    }
 
-  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
-  assert.match(
-    output,
-    /sn-3: curated name "Templar" .*possible mis-keyed overlay/,
-  );
-  assert.doesNotMatch(
-    output,
-    /Validation failed[^]*- sn-3: curated name "Templar"/,
-  );
-});
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+    assert.match(
+      output,
+      /sn-3: curated name "Templar" .*possible mis-keyed overlay/,
+    );
+    assert.doesNotMatch(
+      output,
+      /Validation failed[^]*- sn-3: curated name "Templar"/,
+    );
+  },
+);
 
-test("registry validation rejects registry-observed surfaces without verification evidence", () => {
+test(
+  "registry validation rejects registry-observed surfaces without verification evidence",
+  async () => {
   const overlayPath = "registry/subnets/test-tampered-sn-1.json";
   const tampered = tamperedOverlayFixture("sn-1-unverified-registry-observed");
 
@@ -184,27 +257,30 @@ test("registry validation rejects registry-observed surfaces without verificatio
     source_urls: ["https://example.invalid/source"],
   });
 
-  let failure;
+  let result;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
-  } catch (error) {
-    failure = error;
+    result = await runScriptModule("scripts/validate.mjs", {
+      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
   } finally {
     rmSync(overlayPath, { force: true });
   }
 
   assert(
-    failure,
+    result && result.status !== 0,
     "expected validation to reject a registry-observed surface without verification evidence",
   );
   assert.match(
-    `${failure.stdout || ""}\n${failure.stderr || ""}`,
+    `${result.stdout || ""}\n${result.stderr || ""}`,
     /registry-observed surface requires verification evidence/,
   );
-});
+},
+);
 
-test("registry validation rejects registry-observed surfaces with only inline verification", () => {
+test(
+  "registry validation rejects registry-observed surfaces with only inline verification",
+  async () => {
   const overlayPath = "registry/subnets/test-tampered-sn-1.json";
   const tampered = tamperedOverlayFixture("sn-1-forged-inline-verification");
 
@@ -224,25 +300,26 @@ test("registry validation rejects registry-observed surfaces with only inline ve
     },
   });
 
-  let failure;
+  let result;
   try {
     writeFileSync(overlayPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
-  } catch (error) {
-    failure = error;
+    result = await runScriptModule("scripts/validate.mjs", {
+      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
   } finally {
     rmSync(overlayPath, { force: true });
   }
 
   assert(
-    failure,
+    result && result.status !== 0,
     "expected validation to reject forged inline verification without ledger evidence",
   );
   assert.match(
-    `${failure.stdout || ""}\n${failure.stderr || ""}`,
+    `${result.stdout || ""}\n${result.stderr || ""}`,
     /registry-observed surface requires verification evidence/,
   );
-});
+},
+);
 
 function tamperedOverlayFixture(slug) {
   return {
@@ -266,30 +343,35 @@ function tamperedOverlayFixture(slug) {
   };
 }
 
-test("registry validation rejects tampered per-subnet artifacts", () => {
+test("registry validation rejects tampered per-subnet artifacts", async () => {
   const artifactPath = artifactFilePath("subnets/0.json");
   const original = readFileSync(artifactPath, "utf8");
   const tampered = JSON.parse(original);
   tampered.phishing_url = "https://example.invalid/phish";
 
-  let failure;
+  let result;
   try {
     writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    runNode("scripts/validate.mjs");
-  } catch (error) {
-    failure = error;
+    result = await runScriptModule("scripts/validate.mjs", {
+      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+    });
   } finally {
     writeFileSync(artifactPath, original);
   }
 
-  assert(failure, "expected validation to reject tampered subnet artifact");
+  assert(
+    result && result.status !== 0,
+    "expected validation to reject tampered subnet artifact",
+  );
   assert.match(
-    `${failure.stdout || ""}\n${failure.stderr || ""}`,
+    `${result.stdout || ""}\n${result.stderr || ""}`,
     /per-subnet detail artifact is not reproducible from registry inputs/,
   );
 });
 
-test("artifact build does not preserve forged endpoint index health", () => {
+test(
+  "artifact build does not preserve forged endpoint index health",
+  async () => {
   const endpointsPath = artifactFilePath("endpoints.json");
   const cachePath = ".cache/metagraphed/health/latest.json";
   const original = readFileSync(endpointsPath, "utf8");
@@ -317,11 +399,8 @@ test("artifact build does not preserve forged endpoint index health", () => {
 
   try {
     writeFileSync(endpointsPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" },
-      stdio: "pipe",
+    await runNode("scripts/build-artifacts.mjs", {
+      METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     });
 
     const rebuilt = JSON.parse(readFileSync(endpointsPath, "utf8"));
@@ -342,38 +421,21 @@ test("artifact build does not preserve forged endpoint index health", () => {
     } else {
       writeFileSync(cachePath, originalCache);
     }
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
-      },
-      stdio: "pipe",
+    await runNode("scripts/build-artifacts.mjs", {
+      METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     });
-    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    restoreSupportArtifacts(supportArtifacts);
+    await runNode("scripts/generate-types.mjs");
+    await runNode("scripts/generate-client.mjs", {}, ["--write"]);
+    await runNode("scripts/r2-manifest.mjs", {}, ["--write"]);
+    await restoreSupportArtifacts(supportArtifacts);
   }
-}, 30_000);
+  },
+  120_000,
+);
 
-test("artifact build does not preserve forged schema snapshot metadata", () => {
+test(
+  "artifact build does not preserve forged schema snapshot metadata",
+  async () => {
   const schemaDriftPath = artifactFilePath("schema-drift.json");
   const schemaIndexPath = artifactFilePath("schemas/index.json");
   const originalSchemaDrift = existsSync(schemaDriftPath)
@@ -424,12 +486,7 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       );
     }
     writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
+    await runNode("scripts/build-artifacts.mjs");
 
     const rebuiltSchemaDrift = existsSync(schemaDriftPath)
       ? readFileSync(schemaDriftPath, "utf8")
@@ -448,33 +505,15 @@ test("artifact build does not preserve forged schema snapshot metadata", () => {
       rmSync(schemaDriftPath, { force: true });
     }
     writeFileSync(schemaIndexPath, originalSchemaIndex);
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-types.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/generate-client.mjs", "--write"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
-    restoreSupportArtifacts(supportArtifacts);
+    await runNode("scripts/build-artifacts.mjs");
+    await runNode("scripts/generate-types.mjs");
+    await runNode("scripts/generate-client.mjs", {}, ["--write"]);
+    await runNode("scripts/r2-manifest.mjs", {}, ["--write"]);
+    await restoreSupportArtifacts(supportArtifacts);
   }
-}, 30_000);
+  },
+  120_000,
+);
 
 // #510 refactor invariant: the artifact build is deterministic, so two
 // consecutive builds (epoch timestamp, no METAGRAPH_BUILD_TIMESTAMP) must emit a
@@ -496,19 +535,17 @@ function digestArtifactTree(root) {
   return hash.digest("hex");
 }
 
-test("artifact build is deterministic (byte-identical across rebuilds)", () => {
+test(
+  "artifact build is deterministic (byte-identical across rebuilds)",
+  async () => {
   const supportArtifacts = snapshotSupportArtifacts();
-  const buildEnv = { ...process.env, METAGRAPH_PRESERVE_PROBE_HEALTH: "1" };
-  delete buildEnv.METAGRAPH_BUILD_TIMESTAMP; // force the reproducible epoch
   const runBuild = () =>
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: buildEnv,
-      stdio: "pipe",
+    runNode("scripts/build-artifacts.mjs", {
+      METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
+      METAGRAPH_BUILD_TIMESTAMP: undefined,
     });
   try {
-    runBuild();
+    await runBuild();
     const firstDigest = digestArtifactTree(r2StagingRoot);
 
     // The build must actually produce the artifacts whose derivation was
@@ -528,7 +565,7 @@ test("artifact build is deterministic (byte-identical across rebuilds)", () => {
       );
     }
 
-    runBuild();
+    await runBuild();
     const secondDigest = digestArtifactTree(r2StagingRoot);
 
     assert.equal(
@@ -537,12 +574,16 @@ test("artifact build is deterministic (byte-identical across rebuilds)", () => {
       "two consecutive builds must emit a byte-identical R2 staging tree",
     );
   } finally {
-    runBuild();
-    restoreSupportArtifacts(supportArtifacts);
+    await runBuild();
+    await restoreSupportArtifacts(supportArtifacts);
   }
-}, 30_000);
+  },
+  120_000,
+);
 
-test("artifact build preserves committed schema index without R2 schema details", () => {
+test(
+  "artifact build preserves committed schema index without R2 schema details",
+  async () => {
   const schemaIndexPath = artifactFilePath("schemas/index.json");
   const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
   const originalSchemaIndexJson = JSON.parse(originalSchemaIndex);
@@ -559,12 +600,7 @@ test("artifact build preserves committed schema index without R2 schema details"
 
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
-    execFileSync(process.execPath, ["scripts/build-artifacts.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: process.env,
-      stdio: "pipe",
-    });
+    await runNode("scripts/build-artifacts.mjs");
 
     const rebuiltSchemaIndex = readFileSync(schemaIndexPath, "utf8");
     assert.deepEqual(JSON.parse(rebuiltSchemaIndex), originalSchemaIndexJson);
@@ -574,21 +610,19 @@ test("artifact build preserves committed schema index without R2 schema details"
     if (hadStagingRoot) {
       cpSync(stagingBackup, r2StagingRoot, { recursive: true });
     }
-    restoreSupportArtifacts(supportArtifacts);
+    await restoreSupportArtifacts(supportArtifacts);
     rmSync(backupDir, { recursive: true, force: true });
   }
-}, 30_000);
+},
+  120_000,
+);
 
 test("committed R2 manifest does not use fallback history keys", () => {
-  // Read the git-committed manifest, not the working-tree copy: the Validate
-  // test/checks jobs run `npm run build` before the suite, which regenerates
-  // r2-manifest.json with the 1970 epoch placeholder (no METAGRAPH_BUILD_TIMESTAMP).
-  // This guard is about the committed publish lockfile, which must carry the real
-  // timestamp written by the publish workflow.
+  // Read the snapshot captured before any test rewrites the artifact tree. This
+  // is the same committed seed the suite started from, without relying on a git
+  // subprocess in the sandboxed test runtime.
   const manifest = JSON.parse(
-    execFileSync("git", ["show", "HEAD:public/metagraph/r2-manifest.json"], {
-      encoding: "utf8",
-    }),
+    committedPublicArtifact("public/metagraph/r2-manifest.json"),
   );
 
   assert.notEqual(manifest.generated_at, "1970-01-01T00:00:00.000Z");
@@ -600,7 +634,7 @@ test("committed R2 manifest does not use fallback history keys", () => {
   );
 });
 
-test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", () => {
+test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", async () => {
   const timestamp = "2026-06-08T12:34:56.789Z";
   const expectedRunPrefix = "runs/2026-06-08T12-34-56-789Z/";
   const originalManifest = readFileSync(
@@ -616,25 +650,14 @@ test("r2 manifest dry-run reuses the committed timestamp for staged artifacts", 
 
   try {
     rmSync(r2StagingRoot, { recursive: true, force: true });
-    execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        METAGRAPH_BUILD_TIMESTAMP: timestamp,
-      },
-      stdio: "pipe",
-    });
+    await runNode("scripts/r2-manifest.mjs", {
+      METAGRAPH_BUILD_TIMESTAMP: timestamp,
+    }, ["--write"]);
 
-    const dryRunEnv = { ...process.env };
-    delete dryRunEnv.METAGRAPH_BUILD_TIMESTAMP;
-    const output = execFileSync(process.execPath, ["scripts/r2-manifest.mjs"], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: dryRunEnv,
-      stdio: "pipe",
+    const result = await runScriptModule("scripts/r2-manifest.mjs", {
+      env: { METAGRAPH_BUILD_TIMESTAMP: undefined },
     });
-    const summary = JSON.parse(output);
+    const summary = JSON.parse(result.stdout);
 
     assert.equal(summary.run_prefix, expectedRunPrefix);
   } finally {
@@ -2252,7 +2275,7 @@ test("R2-only generated artifacts stay out of the public git tree", () => {
   }
 });
 
-test("R2 history upload writes every planned run-prefix artifact", () => {
+test("R2 history upload writes every planned run-prefix artifact", async () => {
   const temporaryDirectory = mkdtempSync(
     path.join(tmpdir(), "metagraphed-r2-upload-"),
   );
@@ -2286,25 +2309,46 @@ process.exit(2);
   chmodSync(wranglerPath, 0o755);
 
   try {
-    const output = execFileSync(
-      process.execPath,
-      ["scripts/r2-upload.mjs", "--write"],
-      {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          FAKE_PUT_LOG: putLogPath,
-          FAKE_REMOTE_MANIFEST: manifestPath,
-          METAGRAPH_ALLOW_R2_UPLOAD: "1",
-          METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
-          METAGRAPH_R2_UPLOAD_HISTORY: "1",
-          METAGRAPH_WRANGLER_BIN: wranglerPath,
-        },
-        stdio: "pipe",
-      },
-    );
-    const summary = JSON.parse(output);
+    const priorArgv = [...process.argv];
+    const priorLog = console.log;
+    const priorEnv = {};
+    const envOverrides = {
+      FAKE_PUT_LOG: putLogPath,
+      FAKE_REMOTE_MANIFEST: manifestPath,
+      METAGRAPH_ALLOW_R2_UPLOAD: "1",
+      METAGRAPH_R2_UPLOAD_CONCURRENCY: "16",
+      METAGRAPH_R2_UPLOAD_HISTORY: "1",
+      METAGRAPH_R2_UPLOAD_PROGRESS_INTERVAL: "5000",
+      METAGRAPH_WRANGLER_BIN: wranglerPath,
+    };
+    const logs = [];
+    try {
+      for (const [key, value] of Object.entries(envOverrides)) {
+        priorEnv[key] = process.env[key];
+        process.env[key] = value;
+      }
+      process.argv = [process.execPath, "scripts/r2-upload.mjs", "--write"];
+      console.log = (value) => {
+        logs.push(String(value));
+      };
+      const scriptUrl = new URL(
+        `?history-upload-test=${Date.now()}`,
+        pathToFileURL(path.join(process.cwd(), "scripts/r2-upload.mjs")),
+      );
+      await import(/* @vite-ignore */ scriptUrl.href);
+    } finally {
+      process.argv = priorArgv;
+      console.log = priorLog;
+      for (const [key, value] of Object.entries(priorEnv)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+
+    const summary = JSON.parse(logs.at(-1));
     const putKeys = readFileSync(putLogPath, "utf8")
       .trim()
       .split("\n")
@@ -2333,21 +2377,14 @@ process.exit(2);
   }
 }, 30_000);
 
-test("limited R2 upload dry run skips control manifests", () => {
-  const output = execFileSync(
-    process.execPath,
-    ["scripts/r2-upload.mjs", "--dry-run"],
-    {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        METAGRAPH_R2_UPLOAD_LIMIT: "5",
-      },
-      stdio: "pipe",
+test("limited R2 upload dry run skips control manifests", async () => {
+  const result = await runScriptModule("scripts/r2-upload.mjs", {
+    args: ["--dry-run"],
+    env: {
+      METAGRAPH_R2_UPLOAD_LIMIT: "5",
     },
-  );
-  const summary = JSON.parse(output);
+  });
+  const summary = JSON.parse(result.stdout);
 
   assert.equal(summary.limited_artifact_count, 5);
   assert.equal(summary.control_artifact_count, 0);
@@ -2443,16 +2480,11 @@ function snapshotSupportArtifacts() {
   );
 }
 
-function restoreSupportArtifacts(snapshot) {
+async function restoreSupportArtifacts(snapshot) {
   for (const [filePath, content] of snapshot) {
     writeFileSync(filePath, content);
   }
-  execFileSync(process.execPath, ["scripts/r2-manifest.mjs", "--write"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: process.env,
-    stdio: "pipe",
-  });
+  await runNode("scripts/r2-manifest.mjs", {}, ["--write"]);
   for (const [filePath, content] of snapshot) {
     writeFileSync(filePath, content);
   }

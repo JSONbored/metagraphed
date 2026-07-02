@@ -2111,36 +2111,46 @@ const LOCAL_NETWORK_INFO = {
 // Only an /api/v1/ or /metagraph/ path whose first segment is a known network
 // alias is treated as network-scoped; real routes (subnets, providers, …) never
 // collide with the alias set, so this never shadows an existing path.
+const DEFAULT_NETWORK_PREFIX_PATTERN =
+  /^\/(api\/v1|metagraph)(?:\/(?:mainnet|finney))+(\/.*|$)/;
 const NETWORK_PREFIX_PATTERN =
   /^\/(api\/v1|metagraph)\/(mainnet|finney|testnet|test|local)(\/.*|$)/;
 
+function normalizeNetworkPathSuffix(suffix = "") {
+  return suffix && suffix !== "/" ? suffix : "";
+}
+
 // Splits explicit /{network}/ prefixes off the path. Default-network aliases
-// (mainnet/finney) are canonicalized iteratively so repeated aliases preserve
-// the old bare-route dispatch without recursively re-entering handleRequest. If
-// a non-default prefix remains after default alias normalization, it is returned
-// for the network-scoped artifact handler. Bare paths resolve to mainnet with
-// the URL unchanged (explicit:false) — the zero-regression default.
+// (mainnet/finney) are canonicalized in one regex pass, so a pathological chain
+// of repeated aliases preserves the old bare-route dispatch without thousands of
+// URL rewrites. If a non-default prefix remains after default alias
+// normalization, it is returned for the network-scoped artifact handler. Bare
+// paths resolve to mainnet with the URL unchanged (explicit:false) — the
+// zero-regression default.
 function resolveNetworkPrefix(url) {
-  let rewritten = url;
   let explicit = false;
+  let pathname = url.pathname;
 
-  while (true) {
-    const match = NETWORK_PREFIX_PATTERN.exec(rewritten.pathname);
-    if (!match) {
-      return { network: DEFAULT_NETWORK, url: rewritten, explicit };
-    }
-
-    const network = NETWORKS[match[2]];
-    const nextUrl = new URL(rewritten);
-    nextUrl.pathname = `/${match[1]}${match[3] && match[3] !== "/" ? match[3] : ""}`;
+  const defaultMatch = DEFAULT_NETWORK_PREFIX_PATTERN.exec(pathname);
+  if (defaultMatch) {
+    pathname = `/${defaultMatch[1]}${normalizeNetworkPathSuffix(defaultMatch[2])}`;
     explicit = true;
-
-    if (!network.isDefault) {
-      return { network, url: nextUrl, explicit };
-    }
-
-    rewritten = nextUrl;
   }
+
+  const match = NETWORK_PREFIX_PATTERN.exec(pathname);
+  if (!match) {
+    if (!explicit) {
+      return { network: DEFAULT_NETWORK, url, explicit };
+    }
+    const nextUrl = new URL(url);
+    nextUrl.pathname = pathname;
+    return { network: DEFAULT_NETWORK, url: nextUrl, explicit };
+  }
+
+  const network = NETWORKS[match[2]];
+  const nextUrl = new URL(url);
+  nextUrl.pathname = `/${match[1]}${normalizeNetworkPathSuffix(match[3])}`;
+  return { network, url: nextUrl, explicit: true };
 }
 
 // Inserts the network key segment for non-default networks, so the artifact read

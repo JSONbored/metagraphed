@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import {
   chmodSync,
   mkdtempSync,
@@ -9,10 +8,61 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "vitest";
 import { r2StagingRoot } from "../scripts/lib.mjs";
 
-test("R2 latest upload uses real sha256 even when content hash matches", () => {
+let scriptImportCounter = 0;
+
+async function runScriptModule(script, { args = [], env = {} } = {}) {
+  const priorArgv = [...process.argv];
+  const priorLog = console.log;
+  const priorExit = process.exit;
+  const priorEnv = {};
+  const logs = [];
+  try {
+    for (const [key, value] of Object.entries(env)) {
+      priorEnv[key] = process.env[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+    process.argv = [process.execPath, script, ...args];
+    console.log = (...messages) => {
+      logs.push(messages.join(" "));
+    };
+    process.exit = ((code = 0) => {
+      throw new Error(`__script_exit_${code}__`);
+    });
+    const scriptUrl = new URL(
+      `?r2-upload-test=${scriptImportCounter++}`,
+      pathToFileURL(path.join(process.cwd(), script)),
+    );
+    await import(/* @vite-ignore */ scriptUrl.href);
+    return { status: 0, stdout: logs.join("\n") };
+  } catch (error) {
+    const match = String(error?.message || "").match(/^__script_exit_(\d+)__$/);
+    if (match) {
+      return { status: Number(match[1]), stdout: logs.join("\n") };
+    }
+    throw error;
+  } finally {
+    process.argv = priorArgv;
+    console.log = priorLog;
+    process.exit = priorExit;
+    for (const [key, value] of Object.entries(priorEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+test("R2 latest upload uses real sha256 even when content hash matches", async () => {
   const temporaryDirectory = mkdtempSync(
     path.join(tmpdir(), "metagraphed-r2-upload-sha-"),
   );
@@ -64,24 +114,17 @@ process.exit(2);
   chmodSync(wranglerPath, 0o755);
 
   try {
-    const output = execFileSync(
-      process.execPath,
-      ["scripts/r2-upload.mjs", "--write"],
-      {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          FAKE_PUT_LOG: putLogPath,
-          FAKE_REMOTE_MANIFEST: remoteManifestPath,
-          METAGRAPH_ALLOW_R2_UPLOAD: "1",
-          METAGRAPH_R2_UPLOAD_LIMIT: "1",
-          METAGRAPH_WRANGLER_BIN: wranglerPath,
-        },
-        stdio: "pipe",
+    const result = await runScriptModule("scripts/r2-upload.mjs", {
+      args: ["--write"],
+      env: {
+        FAKE_PUT_LOG: putLogPath,
+        FAKE_REMOTE_MANIFEST: remoteManifestPath,
+        METAGRAPH_ALLOW_R2_UPLOAD: "1",
+        METAGRAPH_R2_UPLOAD_LIMIT: "1",
+        METAGRAPH_WRANGLER_BIN: wranglerPath,
       },
-    );
-    const summary = JSON.parse(output);
+    });
+    const summary = JSON.parse(result.stdout);
     const putKeys = readFileSync(putLogPath, "utf8")
       .trim()
       .split("\n")

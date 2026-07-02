@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, test } from "vitest";
 import {
   evaluateArtifactBudgets,
@@ -2416,18 +2417,40 @@ test("validate:intake rejects nested retired community candidate files", async (
   await mkdir(retiredDir, { recursive: true });
   try {
     await writeFile(retiredFile, "{}\n");
-    const result = spawnSync("node", ["scripts/validate-intake.mjs"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-    });
+    const priorExit = process.exit;
+    const priorLog = console.log;
+    const priorError = console.error;
+    const output = [];
+    try {
+      process.exit = ((code = 0) => {
+        throw new Error(`__validate_intake_exit_${code}__`);
+      });
+      console.log = (...args) => {
+        output.push(args.join(" "));
+      };
+      console.error = (...args) => {
+        output.push(args.join(" "));
+      };
+      const scriptUrl = new URL(
+        `?validate-intake-test=${Date.now()}`,
+        pathToFileURL(path.join(repoRoot, "scripts/validate-intake.mjs")),
+      );
+      await import(/* @vite-ignore */ scriptUrl.href);
+      assert.fail("validate-intake should have exited non-zero");
+    } catch (error) {
+      assert.match(String(error?.message || ""), /__validate_intake_exit_1__/);
+    } finally {
+      process.exit = priorExit;
+      console.log = priorLog;
+      console.error = priorError;
+    }
 
-    assert.notEqual(result.status, 0);
     assert.match(
-      `${result.stdout}\n${result.stderr}`,
+      output.join("\n"),
       /registry\/candidates\/community\/ is retired/,
     );
     assert.match(
-      `${result.stdout}\n${result.stderr}`,
+      output.join("\n"),
       /__retired-intake-test__\/nested\.json/,
     );
   } finally {

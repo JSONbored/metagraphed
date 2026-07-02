@@ -17,8 +17,10 @@ export async function loadBulkHealthTrends(
   d1,
   { observedAt = null, now = Date.now() } = {},
 ) {
+  const observedAtMs = Date.parse(observedAt ?? "");
+  const referenceNow = Number.isFinite(observedAtMs) ? observedAtMs : now;
   const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
-  const cutoffDay = new Date(now - maxWindowDays * DAY_MS)
+  const cutoffDay = new Date(referenceNow - maxWindowDays * DAY_MS)
     .toISOString()
     .slice(0, 10);
   const rows = await d1(
@@ -36,7 +38,7 @@ export async function loadBulkHealthTrends(
   );
   const windows = {};
   for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
-    const windowCutoff = new Date(now - days * DAY_MS)
+    const windowCutoff = new Date(referenceNow - days * DAY_MS)
       .toISOString()
       .slice(0, 10);
     windows[label] = rows.filter(

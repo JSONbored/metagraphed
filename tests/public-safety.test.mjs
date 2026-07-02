@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterEach, describe, test } from "vitest";
 import {
   isUnsafeResolvedUrl,
@@ -25,19 +25,47 @@ async function writeTestFixture(body) {
   );
 }
 
-// Run the real scanner and return its combined output. The scanner walks the
-// whole repo, so its exit code depends on unrelated tree state — assertions key
-// off the test fixture's path in the output, which is independent of that.
-function runScanOutput() {
+// Run the real scanner module directly so the assertions stay about scanner
+// behavior rather than nested-process sandbox quirks. The scoped target roots
+// keep runtime bounded while still exercising the production script.
+async function runScanOutput() {
+  const priorExit = process.exit;
+  const priorLog = console.log;
+  const priorError = console.error;
+  const priorTargets = process.env.METAGRAPH_PUBLIC_SAFETY_TARGETS;
+  const output = [];
   try {
-    execFileSync("node", ["scripts/scan-public-safety.mjs"], {
-      cwd: repoRoot,
-      encoding: "utf8",
+    process.env.METAGRAPH_PUBLIC_SAFETY_TARGETS =
+      "public,dist/metagraph-r2/metagraph/fixtures";
+    console.log = (...args) => {
+      output.push(args.join(" "));
+    };
+    console.error = (...args) => {
+      output.push(args.join(" "));
+    };
+    process.exit = ((code = 0) => {
+      throw new Error(`__public_safety_exit_${code}__`);
     });
-    return "";
-  } catch (err) {
-    return `${err.stdout ?? ""}${err.stderr ?? ""}`;
+    const scriptUrl = new URL(
+      `?public-safety-test=${Date.now()}`,
+      pathToFileURL(path.join(repoRoot, "scripts/scan-public-safety.mjs")),
+    );
+    await import(/* @vite-ignore */ scriptUrl.href);
+  } catch (error) {
+    if (!String(error?.message || "").startsWith("__public_safety_exit_")) {
+      throw error;
+    }
+  } finally {
+    process.exit = priorExit;
+    console.log = priorLog;
+    console.error = priorError;
+    if (priorTargets === undefined) {
+      delete process.env.METAGRAPH_PUBLIC_SAFETY_TARGETS;
+    } else {
+      process.env.METAGRAPH_PUBLIC_SAFETY_TARGETS = priorTargets;
+    }
   }
+  return output.join("\n");
 }
 
 describe("public URL safety checks", () => {
@@ -146,7 +174,7 @@ describe("captured-fixture body scan", () => {
       "Use the documented local RPC at `ws://127.0.0.1:9944` for local development.\n",
       "utf8",
     );
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.equal(
       output.includes(TEST_PUBLIC_FILE),
       false,
@@ -166,7 +194,7 @@ describe("captured-fixture body scan", () => {
       `${bypassAttempts.join("\n")}\n`,
       "utf8",
     );
-    const output = runScanOutput();
+    const output = await runScanOutput();
     for (const [index] of bypassAttempts.entries()) {
       assert.ok(
         output.includes(
@@ -260,7 +288,7 @@ describe("captured-fixture body scan", () => {
       summary: "The miner hotkey to look up",
       detail: "Provide the validator hotkey path and coldkey wording.",
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.equal(
       output.includes(TEST_FIXTURE),
       false,
@@ -272,7 +300,7 @@ describe("captured-fixture body scan", () => {
     await writeTestFixture({
       note: "seed phrase: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(`${TEST_FIXTURE}:response.body.note: wallet/key wording`),
       `sensitive wallet/key wording must still fire on fixture body values; got:\n${output}`,
@@ -284,7 +312,7 @@ describe("captured-fixture body scan", () => {
       "seed phrase":
         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(
         `${TEST_FIXTURE}:response.body.seed phrase key: wallet/key wording`,
@@ -309,7 +337,7 @@ describe("captured-fixture body scan", () => {
     await writeTestFixture({
       note: "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(`${TEST_FIXTURE}:response.body`),
       `hard secret patterns must still fire on fixture body values; got:\n${output}`,
@@ -321,7 +349,7 @@ describe("captured-fixture body scan", () => {
       description:
         "seed phrase: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(
         `${TEST_FIXTURE}:response.body.description: wallet/key wording`,
@@ -348,7 +376,7 @@ describe("captured-fixture body scan", () => {
         },
       },
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.equal(
       output.includes(TEST_FIXTURE),
       false,
@@ -365,7 +393,7 @@ describe("captured-fixture body scan", () => {
           "Example call: token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
       },
     });
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(`${TEST_FIXTURE}:response.body`),
       `hard secrets must fire even inside doc fields; got:\n${output}`,
@@ -386,7 +414,7 @@ describe("captured-fixture body scan", () => {
       ].join("\n") + "\n",
       "utf8",
     );
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.equal(
       output.includes(TEST_PUBLIC_FILE),
       false,
@@ -421,7 +449,7 @@ describe("captured-fixture body scan", () => {
       "Set coldkey-only-seedphrase to 5xyzABCDEFGHabcdefgh in your config.\n",
       "utf8",
     );
-    const output = runScanOutput();
+    const output = await runScanOutput();
     assert.ok(
       output.includes(`${TEST_PUBLIC_FILE}:1: Bittensor key terminology`),
       `a hyphenated coldkey secret attempt must still be flagged; got:\n${output}`,
