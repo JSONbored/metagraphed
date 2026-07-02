@@ -239,6 +239,18 @@ def _net(a):  # NetworkAdded/NetworkRemoved: {netuid, ...} or [netuid, ...]
     return {"netuid": _idx(netuid)}
 
 
+def _burn_set(a):  # BurnSet: (netuid, burn_rao) — a subnet's registration cost/burn
+    # (the recycled TAO a neuron pays to register on that subnet). Positional tuple
+    # on finney; the dict guard mirrors _net for named/older decodings.
+    if isinstance(a, dict):
+        netuid = a.get("netuid")
+        amount = a.get("amount", a.get("burn"))
+    else:
+        netuid = a[0] if len(a) > 0 else None
+        amount = a[1] if len(a) > 1 else None
+    return {"netuid": _idx(netuid), "amount_tao": _tao(amount)}
+
+
 def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, hotkey, ...]
     if isinstance(a, dict):
         ck, hk = a.get("coldkey"), a.get("hotkey")
@@ -288,9 +300,10 @@ EXTRACTORS = {
     "PrometheusServed": _axon,  # [netuid, hotkey]
     "WeightsSet": _weights,
     "RootClaimed": _root,
-    # Subnet lifecycle (#1816)
+    # Subnet lifecycle (#1816, #2561)
     "NetworkAdded": _net,
     "NetworkRemoved": _net,
+    "BurnSet": _burn_set,  # registration cost/burn (netuid, recycled TAO)
     # Delegation (#1816)
     "DelegateAdded": _delegate_added,
     "TakeDecreased": _take_changed,

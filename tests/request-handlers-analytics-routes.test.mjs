@@ -373,6 +373,55 @@ describe("handleLeaderboards", () => {
     assert.equal(body.data.boards["most-reliable"].length, 1);
     assert.equal(body.data.boards["most-reliable"][0].netuid, 7);
   });
+
+  test("healthiest SQL averages only ok surface_status latencies", async () => {
+    const surfaceStatusSql = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                async all() {
+                  if (/FROM surface_status/.test(sql)) {
+                    surfaceStatusSql.push(sql);
+                    return {
+                      results: [
+                        {
+                          netuid: 1,
+                          total: 2,
+                          ok_count: 1,
+                          avg_latency_ms: 100,
+                        },
+                      ],
+                    };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    await json(
+      await handleLeaderboards(
+        req("/"),
+        env,
+        url("/?board=healthiest&limit=5"),
+      ),
+    );
+    const healthSql = surfaceStatusSql.find((sql) =>
+      /SUM\(CASE WHEN status = 'ok'/.test(sql),
+    );
+    assert.ok(
+      healthSql,
+      "expected leaderboards healthRows surface_status query",
+    );
+    assert.match(healthSql, /status = 'ok'/);
+    assert.match(healthSql, /AVG\(CASE WHEN/);
+    assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
+  });
 });
 
 describe("handleCompare", () => {

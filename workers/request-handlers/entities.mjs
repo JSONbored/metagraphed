@@ -62,10 +62,10 @@ import {
   ACCOUNT_EVENT_COLUMNS,
   INGESTED_EVENT_KINDS,
   buildAccountHistory,
-  buildSubnetEvents,
   formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountExtrinsics,
   loadAccountTransfers,
   loadAccountSubnets,
@@ -117,6 +117,7 @@ import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
+import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -368,6 +369,35 @@ export async function handleSubnetHistory(request, env, netuid, url) {
         env,
         `/metagraph/subnets/${netuid}/history.json`,
         null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/identity-history (#1647): append-only on-chain
+// identity timeline, newest first. Cold/absent store → schema-stable zero.
+export async function handleSubnetIdentityHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const data = await loadSubnetIdentityHistory(d1Runner(env), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/identity-history.json`,
+        data.entries[0]?.observed_at ?? null,
       ),
     },
     "short",
@@ -1142,7 +1172,6 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -1167,40 +1196,14 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
-  // Keyset (cursor) pagination on (block_number, event_index), mirroring
-  // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (blockStart.value != null) {
-    sql += " AND block_number >= ?";
-    params.push(blockStart.value);
-  }
-  if (blockEnd.value != null) {
-    sql += " AND block_number <= ?";
-    params.push(blockEnd.value);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  const data = buildSubnetEvents(rows, netuid, { limit, offset, nextCursor });
+  const data = await loadSubnetEvents(d1Runner(env), netuid, {
+    limit: url.searchParams.get("limit"),
+    offset: url.searchParams.get("offset"),
+    kind: url.searchParams.get("kind"),
+    cursor: url.searchParams.get("cursor"),
+    blockStart: blockStart.value,
+    blockEnd: blockEnd.value,
+  });
   return envelopeResponse(
     request,
     {
