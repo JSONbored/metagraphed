@@ -32,7 +32,7 @@ const PLACEHOLDER_IDENTITY_URL = /deprecated|username\/repo|example\.com/i;
 const CONTACT_HANDLE_PATTERN = /^@?[a-z0-9][a-z0-9._-]{1,63}(?:#\d{1,6})?$/i;
 const CONTACT_HANDLE_JUNK = /^(?:deprecated|none|null|n\/a|tbd|todo)$/i;
 
-function isCredentialedUrl(value) {
+export function isCredentialedUrl(value) {
   try {
     const url = new URL(value);
     if (url.username || url.password) {
@@ -78,8 +78,6 @@ export function normalizePublicUrl(value) {
     const url = new URL(candidate);
     if (
       !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
       isCredentialedUrl(url.toString()) ||
       isUnsafePublicUrl(url.toString())
     ) {
