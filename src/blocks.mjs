@@ -117,9 +117,13 @@ export function formatBlock(row) {
     block_hash: row.block_hash ?? null,
     parent_hash: row.parent_hash ?? null,
     author: row.author ?? null,
-    extrinsic_count: row.extrinsic_count ?? null,
-    event_count: row.event_count ?? null,
-    spec_version: row.spec_version ?? null,
+    // extrinsic_count / event_count / spec_version (D1 INTEGER columns) — coerce
+    // through toBlockNumber like block_number above, so a numeric string never
+    // leaks the string form into these ["integer","null"] contract fields.
+    // Mirrors the count coercion in account-events.mjs and the fix in #2435.
+    extrinsic_count: toBlockNumber(row.extrinsic_count),
+    event_count: toBlockNumber(row.event_count),
+    spec_version: toBlockNumber(row.spec_version),
     observed_at: toIso(row.observed_at),
   };
 }

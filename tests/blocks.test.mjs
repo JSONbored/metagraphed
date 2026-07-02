@@ -138,6 +138,28 @@ test("formatBlock coerces a string-typed block_number cell to a Number", () => {
   assert.equal(typeof out.block_number, "number");
 });
 
+test("formatBlock coerces string-typed extrinsic_count/event_count/spec_version cells", () => {
+  // Same D1 numeric-string hazard as block_number: these INTEGER columns must
+  // not leak the string form into their ["integer","null"] contract fields.
+  const out = formatBlock({
+    block_number: 1000,
+    extrinsic_count: "4",
+    event_count: "12",
+    spec_version: "201",
+  });
+  assert.equal(out.extrinsic_count, 4);
+  assert.equal(typeof out.extrinsic_count, "number");
+  assert.equal(out.event_count, 12);
+  assert.equal(typeof out.event_count, "number");
+  assert.equal(out.spec_version, 201);
+  assert.equal(typeof out.spec_version, "number");
+  // A missing/invalid count falls through to null, never NaN.
+  const sparse = formatBlock({ block_number: 1, extrinsic_count: "oops" });
+  assert.equal(sparse.extrinsic_count, null);
+  assert.equal(sparse.event_count, null);
+  assert.equal(sparse.spec_version, null);
+});
+
 test("formatBlock rejects a negative or non-integer block_number cell to null", () => {
   // Guard the toBlockNumber helper: negatives and floats are not valid block
   // heights, so the formatter must fall back to null rather than coerce them.
