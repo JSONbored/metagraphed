@@ -4,7 +4,7 @@
 // payloads without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -897,19 +897,25 @@ describe("handleBulkHealthTrends", () => {
   });
 
   test("happy path includes surface_uptime_daily aggregates per window", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleBulkHealthTrends(
-        req("/api/v1/health/trends"),
-        env,
-        url("/api/v1/health/trends"),
-      ),
-    );
-    assert.equal(body.data.observed_at, LAST_RUN_AT);
-    assert.ok(body.data.windows["7d"].subnets.length > 0);
-    assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-25T00:00:00.000Z"));
+    try {
+      globalThis.caches = undefined;
+      const { env } = dbWith();
+      env.__healthMeta = { last_run_at: LAST_RUN_AT };
+      const body = await json(
+        await handleBulkHealthTrends(
+          req("/api/v1/health/trends"),
+          env,
+          url("/api/v1/health/trends"),
+        ),
+      );
+      assert.equal(body.data.observed_at, LAST_RUN_AT);
+      assert.ok(body.data.windows["7d"].subnets.length > 0);
+      assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("meta block carries bulk trends artifact path", async () => {
