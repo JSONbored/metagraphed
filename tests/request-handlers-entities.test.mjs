@@ -283,11 +283,11 @@ function dbWith({
                   ) {
                     return { results: neuronDailyHistory || [] };
                   }
-                  // Net stake flow: SUM(amount_tao) over the two stake kinds
+                  // Net stake flow: SUM(amount_tao) over stake kinds
                   // (checked before the generic event_kind aggregate below).
                   if (
                     /SUM\(amount_tao\)/.test(sql) &&
-                    /event_kind IN \(\?, \?\)/.test(sql)
+                    /event_kind IN \(/.test(sql)
                   ) {
                     return { results: stakeFlow || [] };
                   }
@@ -1421,6 +1421,18 @@ describe("handleSubnetStakeFlow", () => {
     await errorJson(res);
   });
 
+  test("rejects an unsupported direction enum value with 400", async () => {
+    const res = await handleSubnetStakeFlow(
+      req(`/api/v1/subnets/${NETUID}/stake-flow`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
+  });
+
   test("returns schema-stable zeros on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetStakeFlow,
@@ -1490,6 +1502,102 @@ describe("handleSubnetStakeFlow", () => {
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
+  test("direction=in binds StakeAdded only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717000000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetStakeFlow(
+        req(`/api/v1/subnets/${NETUID}/stake-flow`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=in`),
+      ),
+    );
+    assert.equal(body.data.total_staked_tao, 200);
+    assert.equal(body.data.total_unstaked_tao, 0);
+    assert.equal(body.data.net_flow_tao, 200);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][1], "StakeAdded");
+    assert.equal(captures.params[idx].length, 3);
+  });
+
+  test("direction=out binds StakeRemoved only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717900000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetStakeFlow(
+        req(`/api/v1/subnets/${NETUID}/stake-flow`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=out`),
+      ),
+    );
+    assert.equal(body.data.total_staked_tao, 0);
+    assert.equal(body.data.total_unstaked_tao, 50);
+    assert.equal(body.data.net_flow_tao, -50);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][1], "StakeRemoved");
+    assert.equal(captures.params[idx].length, 3);
+  });
+
+  test("direction=all and omitted direction both query both kinds", async () => {
+    for (const query of ["", "?direction=all"]) {
+      const { env, captures } = dbWith({
+        stakeFlow: [
+          {
+            event_kind: "StakeAdded",
+            total_tao: 10,
+            event_count: 1,
+            last_observed: 1717000000000,
+          },
+          {
+            event_kind: "StakeRemoved",
+            total_tao: 3,
+            event_count: 1,
+            last_observed: 1717000000000,
+          },
+        ],
+      });
+      const body = await json(
+        await handleSubnetStakeFlow(
+          req(`/api/v1/subnets/${NETUID}/stake-flow`),
+          env,
+          NETUID,
+          url(`/api/v1/subnets/${NETUID}/stake-flow${query}`),
+        ),
+      );
+      assert.equal(body.data.net_flow_tao, 7);
+      const idx = captures.sql.findIndex((s) =>
+        /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+      );
+      assert.ok(idx !== -1);
+      assert.equal(captures.params[idx][1], "StakeAdded");
+      assert.equal(captures.params[idx][2], "StakeRemoved");
+    }
+  });
+
   describe("canonicalSubnetStakeFlowCachePath", () => {
     test("canonicalizes omitted and explicit default window to one cache key", () => {
       const omitted = canonicalSubnetStakeFlowCachePath(
@@ -1518,6 +1626,40 @@ describe("handleSubnetStakeFlow", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/stake-flow?bogus=1");
+    });
+
+    test("canonicalizes omitted and explicit default direction to one cache key", () => {
+      const omitted = canonicalSubnetStakeFlowCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d"),
+      );
+      const explicit = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d&direction=all",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/stake-flow?window=30d");
+    });
+
+    test("includes direction=in|out in the cache key", () => {
+      const inPath = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=7d&direction=in",
+        ),
+      );
+      assert.equal(
+        inPath,
+        "/api/v1/subnets/7/stake-flow?window=7d&direction=in",
+      );
+      const outPath = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=7d&direction=out",
+        ),
+      );
+      assert.equal(
+        outPath,
+        "/api/v1/subnets/7/stake-flow?window=7d&direction=out",
+      );
     });
   });
 });

@@ -1558,7 +1558,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. Windows (7d/30d/90d) are bounded by the account_events retention. */
+        /** Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention. */
         get: operations["subnetStakeFlow"];
         put?: never;
         post?: never;
@@ -18282,6 +18282,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d" | "90d";
+                direction?: "all" | "in" | "out";
             };
             header?: never;
             path: {

@@ -34388,6 +34388,19 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "in",
+                "out"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -34504,7 +34517,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. Windows (7d/30d/90d) are bounded by the account_events retention.",
+        "summary": "Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention.",
         "tags": [
           "subnets",
           "analytics"
