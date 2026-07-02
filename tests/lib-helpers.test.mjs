@@ -1657,13 +1657,17 @@ describe("flattenSurfaces curation_level (#1757)", () => {
         netuid: 1,
         slug: "sn-1",
         name: "One",
-        curation: { level: null, verified_at: null },
+        curation: {
+          level: "maintainer-reviewed",
+          verified_at: "2026-06-01T00:00:00Z",
+        },
         surfaces: [
           {
-            id: "sn-1-site",
-            kind: "website",
-            url: "https://one.example",
-            authority: null,
+            id: "sn-1-community-api",
+            kind: "subnet-api",
+            url: "https://one.example/api",
+            authority: "community",
+            review: { state: "community-submitted" },
           },
         ],
       },
@@ -1676,9 +1680,10 @@ describe("flattenSurfaces curation_level (#1757)", () => {
       flat.map((s) => s.netuid),
       [1, 2],
     );
-    // netuid 1: no authority, no verification → native floor.
+    // netuid 1: community-submitted surfaces do not inherit subnet
+    // verification; they stay candidate-discovered until probe-verified.
     const one = flat.find((s) => s.netuid === 1);
-    assert.equal(one.curation_level, "native");
+    assert.equal(one.curation_level, "candidate-discovered");
     assert.equal(one.last_verified_at, null);
     // netuid 2: official + fresh per-surface verification on a
     // maintainer-reviewed subnet → inherits maintainer-reviewed.
