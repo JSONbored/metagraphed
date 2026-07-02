@@ -351,10 +351,9 @@ assert.ok(
   "get_chain_calls must return calls[]",
 );
 const chainConc = await callOk("get_chain_concentration", {});
-assert.equal(
-  typeof chainConc.subnet_count,
-  "number",
-  "get_chain_concentration must return a numeric subnet_count",
+assert.ok(
+  Number.isInteger(chainConc.subnet_count),
+  "get_chain_concentration must return an integer subnet_count",
 );
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
