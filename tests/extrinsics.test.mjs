@@ -167,6 +167,19 @@ test("formatExtrinsic maps a null/absent fee_tao/tip_tao to null", () => {
   assert.equal(out.tip_tao, null);
 });
 
+test("formatExtrinsic maps a non-numeric fee_tao/tip_tao to null (not NaN)", () => {
+  // A non-finite / non-numeric cell must fall through to null, never leak NaN
+  // into the ["number","null"] contract field.
+  const out = formatExtrinsic({
+    block_number: 10,
+    extrinsic_index: 0,
+    fee_tao: "not-a-number",
+    tip_tao: "abc",
+  });
+  assert.equal(out.fee_tao, null);
+  assert.equal(out.tip_tao, null);
+});
+
 test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
   // Substrate call args are canonically a LIST of {name,value} descriptors.
   const arr = formatExtrinsic({
