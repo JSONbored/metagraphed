@@ -72,6 +72,22 @@ describe("deriveDomainTags", () => {
     );
   });
 
+  test("tags 'distributed computing' for the compute rule", () => {
+    // "distributed computing" is the canonical way a compute subnet describes
+    // itself, yet the compute rule only anchored the "decentralized" and
+    // "parallel" adjective variants — a description that used "distributed"
+    // silently dropped the compute tag. Mirrors the sibling `... comput\w*`
+    // alternatives already in the rule.
+    assert.deepEqual(
+      deriveDomainTags({ description: "A distributed computing network" }),
+      ["compute"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({ description: "Distributed compute for AI workloads" }),
+      ["compute"],
+    );
+  });
+
   test("accepts curated categories that are already in the vocabulary", () => {
     const tags = deriveDomainTags({
       categories: ["Finance", "privacy"],
