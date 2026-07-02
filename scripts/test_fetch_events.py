@@ -520,6 +520,20 @@ class StakeTransferredExtractorTest(unittest.TestCase):
         self.assertEqual(result["netuid"], 9)
         self.assertAlmostEqual(result["amount_tao"], 100.0)
 
+    def test_dict_form_accepts_amount_rao_macro_field_name(self):
+        # A named decoding could surface the TaoBalance leg under the macro field
+        # name "amount_rao" instead of "amount"; the dict fallback accepts both.
+        result = _extract(
+            "StakeTransferred",
+            {
+                "origin_coldkey": _SS58_A,
+                "hotkey": _SS58_C,
+                "origin_netuid": 9,
+                "amount_rao": _RAO_100,
+            },
+        )
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
     def test_invalid_keys_give_null(self):
         result = _extract(
             "StakeTransferred",
