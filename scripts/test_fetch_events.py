@@ -337,6 +337,36 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["amount_tao"])
 
 
+class NeuronDeregisteredExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.NeuronDeregistered (#2553).
+
+    Attribute order confirmed against finney spec 424:
+    (netuid, uid, hotkey), identical to NeuronRegistered.
+    """
+
+    def test_positional_netuid_uid_hotkey(self):
+        result = _extract("NeuronDeregistered", [7, 42, _SS58_A])
+        self.assertEqual(result["netuid"], 7)
+        self.assertEqual(result["uid"], 42)
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+
+    def test_invalid_hotkey_gives_null(self):
+        result = _extract("NeuronDeregistered", [7, 42, "not-an-address"])
+        self.assertEqual(result["netuid"], 7)
+        self.assertEqual(result["uid"], 42)
+        self.assertIsNone(result["hotkey"])
+
+    def test_out_of_range_uid_gives_null(self):
+        result = _extract("NeuronDeregistered", [7, 70000, _SS58_A])
+        self.assertEqual(result["netuid"], 7)
+        self.assertIsNone(result["uid"])
+        self.assertEqual(result["hotkey"], _SS58_A)
+
+    def test_empty_shape_drift_is_skipped(self):
+        self.assertIsNone(_extract("NeuronDeregistered", []))
+
+
 class PrometheusServedExtractorTest(unittest.TestCase):
     """Tests for the SubtensorModule.PrometheusServed extractor (#2554)."""
 
@@ -499,6 +529,69 @@ class ColdkeySwapExtractorTest(unittest.TestCase):
     def test_nonexistent_scheduled_event_is_not_mapped(self):
         # The phantom name must no longer resolve to an extractor.
         self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
+
+
+class RegistrationAllowedExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule registration toggles (#2557).
+
+    Attribute order confirmed against finney spec 424:
+    (netuid, allowed). The boolean is display-only for the current row contract.
+    """
+
+    def test_registration_allowed_positional_netuid(self):
+        result = _extract("RegistrationAllowed", [7, True])
+        self.assertEqual(result["netuid"], 7)
+        self.assertIsNone(result["hotkey"])
+
+    def test_pow_registration_allowed_positional_netuid(self):
+        result = _extract("PowRegistrationAllowed", [8, False])
+        self.assertEqual(result["netuid"], 8)
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named_netuid(self):
+        result = _extract("RegistrationAllowed", {"netuid": 9, "allowed": True})
+        self.assertEqual(result["netuid"], 9)
+
+    def test_invalid_netuid_gives_null(self):
+        result = _extract("PowRegistrationAllowed", [70000, True])
+        self.assertIsNone(result["netuid"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("RegistrationAllowed", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["netuid"])
+
+
+class SubnetOwnerHotkeySetExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.SubnetOwnerHotkeySet (#2558).
+
+    Attribute order confirmed against finney spec 424: (netuid, new_hotkey).
+    """
+
+    def test_positional_netuid_new_hotkey(self):
+        result = _extract("SubnetOwnerHotkeySet", [7, _SS58_A])
+        self.assertEqual(result["netuid"], 7)
+        self.assertEqual(result["hotkey"], _SS58_A)
+        self.assertIsNone(result["coldkey"])
+
+    def test_dict_form_named_fields(self):
+        result = _extract(
+            "SubnetOwnerHotkeySet",
+            {"netuid": 8, "new_hotkey": _SS58_B},
+        )
+        self.assertEqual(result["netuid"], 8)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_invalid_netuid_or_hotkey_gives_nulls(self):
+        result = _extract("SubnetOwnerHotkeySet", [70000, "not-an-address"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["hotkey"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("SubnetOwnerHotkeySet", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["hotkey"])
 
 
 class BurnSetExtractorTest(unittest.TestCase):

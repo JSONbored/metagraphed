@@ -63,9 +63,13 @@ export const INDEXED_EVENT_KINDS = [
 // scoping validation to INDEXED_EVENT_KINDS alone would wrongly reject valid kinds.
 export const INGESTED_EVENT_KINDS = [
   ...INDEXED_EVENT_KINDS,
+  "NeuronDeregistered",
   "NetworkAdded",
   "NetworkRemoved",
+  "RegistrationAllowed",
+  "PowRegistrationAllowed",
   "BurnSet",
+  "SubnetOwnerHotkeySet",
   "DelegateAdded",
   "TakeDecreased",
   "TakeIncreased",

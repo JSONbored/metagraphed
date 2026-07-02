@@ -117,6 +117,17 @@ test("INGESTED_EVENT_KINDS accepts BurnSet (subnet registration cost) for kind f
   assert.ok(INGESTED_EVENT_KINDS.includes("BurnSet"));
 });
 
+test("INGESTED_EVENT_KINDS accepts expanded Subtensor lifecycle event filters", () => {
+  for (const kind of [
+    "NeuronDeregistered",
+    "RegistrationAllowed",
+    "PowRegistrationAllowed",
+    "SubnetOwnerHotkeySet",
+  ]) {
+    assert.ok(INGESTED_EVENT_KINDS.includes(kind), `missing ${kind}`);
+  }
+});
+
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,
