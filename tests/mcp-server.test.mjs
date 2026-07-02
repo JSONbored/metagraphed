@@ -5131,6 +5131,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.entity_count, 1);
     assert.equal(out.entity_stake.total, 150);
     assert.equal(out.stake.holders, 2);
+    assert.equal(out.emission.total, 3);
+    assert.equal(out.emission.holders, 2);
+    assert.equal(out.entity_emission.total, 3);
+    assert.equal(out.entity_emission.holders, 1);
+    assert.equal(out.validator_stake.total, 100);
+    assert.equal(out.validator_stake.holders, 1);
+    assert.ok(out.stake.gini != null);
+    assert.ok(out.emission.gini != null);
   });
 
   test("get_chain_concentration returns schema-stable null blocks on cold D1", async () => {
@@ -5175,6 +5183,15 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.entity_count, 1); // both rows share coldkey ck-a
     assert.equal(out.entity_stake.total, 150);
     assert.equal(out.stake.holders, 2);
+    assert.equal(out.emission.total, 3);
+    assert.equal(out.emission.holders, 2);
+    assert.equal(out.entity_emission.total, 3);
+    assert.equal(out.entity_emission.holders, 1);
+    assert.equal(out.validator_stake.total, 100);
+    assert.equal(out.validator_stake.holders, 1);
+    assert.equal(out.validator_stake.nakamoto_coefficient, 1);
+    assert.ok(out.stake.gini != null);
+    assert.ok(out.emission.gini != null);
   });
 
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {

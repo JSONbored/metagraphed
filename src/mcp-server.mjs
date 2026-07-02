@@ -4525,6 +4525,26 @@ const objectItems = (properties = {}) => ({
   type: "array",
   items: { type: "object", additionalProperties: true, properties },
 });
+// One concentration lens (stake, emission, entity_*, validator_stake): mirrors
+// components/schemas/ConcentrationMetrics in the OpenAPI contract.
+const CONCENTRATION_METRICS_BLOCK = {
+  type: ["object", "null"],
+  additionalProperties: true,
+  properties: {
+    holders: { type: "integer" },
+    total: { type: ["number", "null"] },
+    gini: { type: ["number", "null"] },
+    hhi: { type: ["number", "null"] },
+    hhi_normalized: { type: ["number", "null"] },
+    nakamoto_coefficient: NULLABLE_INT,
+    top_1pct_share: { type: ["number", "null"] },
+    top_5pct_share: { type: ["number", "null"] },
+    top_10pct_share: { type: ["number", "null"] },
+    top_20pct_share: { type: ["number", "null"] },
+    entropy: { type: ["number", "null"] },
+    entropy_normalized: { type: ["number", "null"] },
+  },
+};
 // Shared account item shapes: a registration appears in get_account +
 // get_account_subnets, an event in get_account + get_account_events.
 const ACCOUNT_REGISTRATION_ITEM = {
@@ -4914,11 +4934,11 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_count: { type: "integer" },
       uids_per_entity: { type: ["number", "null"] },
       captured_at: NULLABLE_STRING,
-      stake: { type: ["object", "null"] },
-      emission: { type: ["object", "null"] },
-      entity_stake: { type: ["object", "null"] },
-      entity_emission: { type: ["object", "null"] },
-      validator_stake: { type: ["object", "null"] },
+      stake: CONCENTRATION_METRICS_BLOCK,
+      emission: CONCENTRATION_METRICS_BLOCK,
+      entity_stake: CONCENTRATION_METRICS_BLOCK,
+      entity_emission: CONCENTRATION_METRICS_BLOCK,
+      validator_stake: CONCENTRATION_METRICS_BLOCK,
     },
   },
   get_chain_concentration: {
@@ -4932,11 +4952,11 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_count: { type: "integer" },
       uids_per_entity: { type: ["number", "null"] },
       captured_at: NULLABLE_STRING,
-      stake: { type: ["object", "null"] },
-      emission: { type: ["object", "null"] },
-      entity_stake: { type: ["object", "null"] },
-      entity_emission: { type: ["object", "null"] },
-      validator_stake: { type: ["object", "null"] },
+      stake: CONCENTRATION_METRICS_BLOCK,
+      emission: CONCENTRATION_METRICS_BLOCK,
+      entity_stake: CONCENTRATION_METRICS_BLOCK,
+      entity_emission: CONCENTRATION_METRICS_BLOCK,
+      validator_stake: CONCENTRATION_METRICS_BLOCK,
     },
   },
   get_subnet_concentration_history: {

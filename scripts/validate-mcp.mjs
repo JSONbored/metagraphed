@@ -361,8 +361,11 @@ assert.ok(
 );
 const chainConc = await callOk("get_chain_concentration", {});
 assert.ok(
-  Number.isInteger(chainConc.subnet_count),
-  "get_chain_concentration must return an integer subnet_count",
+  chainConc.subnet_count === 0 &&
+    chainConc.neuron_count === 0 &&
+    chainConc.stake === null &&
+    chainConc.emission === null,
+  "get_chain_concentration must return schema-stable empties on cold D1",
 );
 const meta = await callOk("get_subnet_metagraph", { netuid: 7 });
 assert.ok(
