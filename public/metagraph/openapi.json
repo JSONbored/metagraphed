@@ -33558,6 +33558,17 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -35644,6 +35655,17 @@
             "schema": {
               "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv"
+              ],
+              "type": "string"
             }
           }
         ],

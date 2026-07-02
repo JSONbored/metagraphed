@@ -1885,7 +1885,10 @@ export const API_ROUTES = [
     "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "validator_permit", schema: { type: "string", enum: ["true"] } }],
+    [
+      { name: "validator_permit", schema: { type: "string", enum: ["true"] } },
+      { name: "format", schema: { type: "string", enum: ["csv"] } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -1910,7 +1913,7 @@ export const API_ROUTES = [
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
     "short",
     ["subnets", "analytics"],
-    [],
+    [{ name: "format", schema: { type: "string", enum: ["csv"] } }],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

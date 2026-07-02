@@ -30,6 +30,7 @@ import {
 import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
 import {
   contractVersion,
+  csvResponse,
   envelopeResponse,
   publishedAt,
 } from "../responses.mjs";
@@ -173,22 +174,75 @@ async function metagraphMeta(env, artifactPath, generatedAt) {
   };
 }
 
+const NEURON_CSV_COLUMNS = [
+  "uid",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+];
+
+function validateCsvFormat(url) {
+  const format = url.searchParams.get("format");
+  if (format === null || format === "csv") return null;
+  return {
+    parameter: "format",
+    message: "format must be one of: csv.",
+  };
+}
+
+function csvValue(value) {
+  if (value == null) return "";
+  const text = String(value);
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return /[",\n\r]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe;
+}
+
+function neuronsCsv(rows) {
+  return [
+    NEURON_CSV_COLUMNS.join(","),
+    ...rows.map((row) =>
+      NEURON_CSV_COLUMNS.map((column) => csvValue(row[column])).join(","),
+    ),
+  ].join("\n");
+}
+
 export async function handleSubnetMetagraph(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["validator_permit"]);
+  const validationError = validateQueryParams(url, [
+    "validator_permit",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateCsvFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
   const data = await loadSubnetMetagraph(d1Runner(env), netuid, {
     validatorsOnly,
   });
+  const meta = await metagraphMeta(
+    env,
+    `/metagraph/subnets/${netuid}/metagraph.json`,
+    data.captured_at,
+  );
+  if (url.searchParams.get("format") === "csv") {
+    return csvResponse(request, neuronsCsv(data.neurons), meta, "short");
+  }
   return envelopeResponse(
     request,
     {
       data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/metagraph.json`,
-        data.captured_at,
-      ),
+      meta,
     },
     "short",
   );
@@ -235,18 +289,24 @@ export async function handleNeuron(request, env, netuid, uid) {
 }
 
 export async function handleSubnetValidators(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateCsvFormat(url);
+  if (formatError) return analyticsQueryError(formatError);
   const data = await loadSubnetValidators(d1Runner(env), netuid);
+  const meta = await metagraphMeta(
+    env,
+    `/metagraph/subnets/${netuid}/validators.json`,
+    data.captured_at,
+  );
+  if (url.searchParams.get("format") === "csv") {
+    return csvResponse(request, neuronsCsv(data.validators), meta, "short");
+  }
   return envelopeResponse(
     request,
     {
       data,
-      meta: await metagraphMeta(
-        env,
-        `/metagraph/subnets/${netuid}/validators.json`,
-        data.captured_at,
-      ),
+      meta,
     },
     "short",
   );
@@ -543,12 +603,19 @@ export function canonicalSubnetMoversCachePath(url) {
 // ?validator_permit=true changes the response; omission and =false both serve
 // the full metagraph and must share one cache slot.
 export function canonicalSubnetMetagraphCachePath(url) {
-  const validationError = validateQueryParams(url, ["validator_permit"]);
+  const validationError = validateQueryParams(url, [
+    "validator_permit",
+    "format",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
+  if (validateCsvFormat(url)) return `${url.pathname}${url.search}`;
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
-  return validatorsOnly
-    ? `${url.pathname}?validator_permit=true`
-    : url.pathname;
+  const format = url.searchParams.get("format");
+  const search = new URL("https://cache-key.invalid/").searchParams;
+  if (validatorsOnly) search.set("validator_permit", "true");
+  if (format === "csv") search.set("format", "csv");
+  const query = search.toString();
+  return `${url.pathname}${query ? `?${query}` : ""}`;
 }
 
 // GET /api/v1/subnets/{netuid}/concentration/history?window=7d|30d|90d: the per-day

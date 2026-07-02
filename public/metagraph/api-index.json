@@ -4501,6 +4501,15 @@
             ],
             "type": "string"
           }
+        },
+        {
+          "name": "format",
+          "schema": {
+            "enum": [
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -4526,7 +4535,17 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "format",
+          "schema": {
+            "enum": [
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/yield.json",

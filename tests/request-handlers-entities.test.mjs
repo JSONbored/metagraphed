@@ -567,6 +567,83 @@ describe("handleSubnetMetagraph", () => {
     );
   });
 
+  test("format=csv returns metagraph neurons as CSV", async () => {
+    const { env } = dbWith({
+      neurons: [
+        neuronRow({ uid: 1, validator_permit: 1, axon: "1.2.3.4:9000" }),
+        neuronRow({ uid: 2, validator_permit: 0, axon: null }),
+      ],
+    });
+    const res = await handleSubnetMetagraph(
+      req(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const lines = (await res.text()).split("\n");
+    assert.equal(
+      lines[0],
+      [
+        "uid",
+        "hotkey",
+        "coldkey",
+        "active",
+        "validator_permit",
+        "rank",
+        "trust",
+        "validator_trust",
+        "consensus",
+        "incentive",
+        "dividends",
+        "emission_tao",
+        "stake_tao",
+        "registered_at_block",
+        "is_immunity_period",
+        "axon",
+      ].join(","),
+    );
+    assert.match(lines[1], /^1,/);
+    assert.match(lines[1], /,true,/);
+    assert.match(lines[2], /^2,/);
+    assert.match(lines[2], /,false,/);
+  });
+
+  test("format=csv with validator_permit=true only exports validators", async () => {
+    const { env, captures } = dbWith({
+      neurons: [neuronRow({ uid: 1, validator_permit: 1 })],
+    });
+    const res = await handleSubnetMetagraph(
+      req(
+        `/api/v1/subnets/${NETUID}/metagraph?validator_permit=true&format=csv`,
+      ),
+      env,
+      NETUID,
+      url(
+        `/api/v1/subnets/${NETUID}/metagraph?validator_permit=true&format=csv`,
+      ),
+    );
+    assert.equal(res.status, 200);
+    assert.ok(
+      captures.sql.some((s) => /validator_permit = 1/.test(s)),
+      "expected validator_permit filter in SQL",
+    );
+    assert.match(await res.text(), /^uid,hotkey,/);
+  });
+
+  test("format=csv returns header-only CSV for an empty metagraph", async () => {
+    const { env } = dbWith({ neurons: [] });
+    const res = await handleSubnetMetagraph(
+      req(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal((await res.text()).split("\n").length, 1);
+  });
+
   test("validator_permit=true filters to validators only", async () => {
     const { env, captures } = dbWith({
       neurons: [neuronRow({ validator_permit: 1 })],
@@ -730,6 +807,17 @@ describe("handleSubnetValidators", () => {
     await errorJson(res);
   });
 
+  test("rejects unsupported validator CSV format with 400", async () => {
+    const res = await handleSubnetValidators(
+      req(`/api/v1/subnets/${NETUID}/validators?format=json`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/validators?format=json`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "format");
+  });
+
   test("returns schema-stable empty validators on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetValidators,
@@ -740,6 +828,35 @@ describe("handleSubnetValidators", () => {
     );
     assert.equal(body.data.validator_count, 0);
     assert.deepEqual(body.data.validators, []);
+  });
+
+  test("format=csv returns validators as CSV", async () => {
+    const { env } = dbWith({
+      neurons: [neuronRow({ uid: 8, stake_tao: 500 })],
+    });
+    const res = await handleSubnetValidators(
+      req(`/api/v1/subnets/${NETUID}/validators?format=csv`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/validators?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const lines = (await res.text()).split("\n");
+    assert.match(lines[0], /^uid,hotkey,/);
+    assert.match(lines[1], /^8,/);
+  });
+
+  test("format=csv returns header-only CSV for empty validators", async () => {
+    const { env } = dbWith({ neurons: [] });
+    const res = await handleSubnetValidators(
+      req(`/api/v1/subnets/${NETUID}/validators?format=csv`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/validators?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.equal((await res.text()).split("\n").length, 1);
   });
 
   test("happy path returns validator rows ranked by stake", async () => {
@@ -1453,6 +1570,27 @@ describe("handleSubnetTurnover", () => {
         ),
       );
       assert.equal(key, "/api/v1/subnets/1/metagraph?validator_permit=true");
+    });
+
+    test("preserves csv format in the cache key", () => {
+      const key = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?format=csv",
+        ),
+      );
+      assert.equal(key, "/api/v1/subnets/1/metagraph?format=csv");
+    });
+
+    test("preserves validator filter before csv format in the cache key", () => {
+      const key = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?format=csv&validator_permit=true",
+        ),
+      );
+      assert.equal(
+        key,
+        "/api/v1/subnets/1/metagraph?validator_permit=true&format=csv",
+      );
     });
 
     test("returns raw search on an unsupported query parameter", () => {

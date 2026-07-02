@@ -109,3 +109,36 @@ export async function envelopeResponse(
     headers,
   });
 }
+
+export async function csvResponse(
+  request,
+  csv,
+  meta,
+  cacheProfile,
+  extraHeaders = {},
+) {
+  const body = String(csv);
+  const headers = apiHeaders(cacheProfile);
+  headers.set("content-type", "text/csv; charset=utf-8");
+  const etag = await weakEtag(body);
+  headers.set("etag", etag);
+  headers.set(
+    "x-metagraph-contract-version",
+    meta.contract_version || CONTRACT_VERSION,
+  );
+  for (const [key, value] of Object.entries(extraHeaders)) {
+    if (value != null) {
+      headers.set(key, value);
+    }
+  }
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, {
+      status: 304,
+      headers,
+    });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
+}

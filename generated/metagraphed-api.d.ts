@@ -17449,6 +17449,7 @@ export interface operations {
         parameters: {
             query?: {
                 validator_permit?: "true";
+                format?: "csv";
             };
             header?: never;
             path: {
@@ -19093,7 +19094,9 @@ export interface operations {
     };
     subnetValidators: {
         parameters: {
-            query?: never;
+            query?: {
+                format?: "csv";
+            };
             header?: never;
             path: {
                 netuid: number;
