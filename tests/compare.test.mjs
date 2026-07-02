@@ -232,20 +232,23 @@ describe("composeCompareData", () => {
     assert.equal(s1.health.ok_count, 4);
     assert.equal(s2.economics.open_slots, 3);
 
-    // A row with an unusable (non-integer) netuid is skipped, not thrown on.
+    // A row with an unusable (non-integer) netuid is skipped in every tier,
+    // not thrown on and not keyed under a junk value.
     const skipped = composeCompareData({
       requestedNetuids: [1],
-      dimensions: ["structure"],
+      dimensions: ["structure", "economics", "health"],
       subnetMeta,
       structureRows: [
         { netuid: "nope", completeness_score: 1, surface_count: 1 },
         { netuid: null, completeness_score: 2, surface_count: 2 },
       ],
-      economicsRows: [],
-      healthRows: [],
+      economicsRows: [{ netuid: "x", open_slots: 3 }],
+      healthRows: [{ netuid: null, ok_count: 4 }],
       observedAt: null,
     });
     assert.equal(skipped.subnets[0].structure, null);
+    assert.equal(skipped.subnets[0].economics, null);
+    assert.equal(skipped.subnets[0].health, null);
   });
 
   test("composeCompareData output validates against the CompareArtifact contract", async () => {
