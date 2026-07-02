@@ -97,6 +97,25 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Bitcast \"X\" subnet-mechanism repo; README states \"Register a UID on subnet 93\" and \"Subnet ID: 93 (Bittensor mainnet)\". In the team's bitcast-network org."
+    },
+    {
+      "id": "sn-93-bitcast-briefs-api",
+      "name": "Bitcast active briefs API",
+      "kind": "subnet-api",
+      "url": "https://creator.bitcast.network/api/briefs",
+      "provider": "bitcast-network",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/bitcast-network/bitcast",
+        "https://creator.bitcast.network/briefs"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "jimcody1995"
+      },
+      "notes": "Public JSON feed of active SN93 content briefs (id_brief, brief_id, brief text, boost, format). Served from the creator portal host; curl-verified 200 application/json with no auth. Distinct from the HTML briefs dashboard at /briefs."
     }
   ]
 }
