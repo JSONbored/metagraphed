@@ -49,7 +49,11 @@ export function validateListQueryRequest(
     return null;
   }
   const normalizedConfig = normalizeListConfig(config, queryFilterNames);
-  return validateListQuery(url.searchParams, normalizedConfig, queryFilterNames);
+  return validateListQuery(
+    url.searchParams,
+    normalizedConfig,
+    queryFilterNames,
+  );
 }
 
 function normalizeListConfig(config, queryFilterNames = []) {
