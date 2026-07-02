@@ -9,6 +9,15 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
+  # Intentionally omits `contents:`. The lone checkout step below is an empty
+  # sparse checkout of this public repo's own ref (added only to satisfy
+  # validate:workflows' "every workflow has a checkout step" rule -- it reads
+  # zero files and nothing downstream depends on the working tree); an
+  # anonymous git clone of a public GitHub repository succeeds regardless of
+  # the workflow's declared permissions, and this has been verified green in
+  # CI end-to-end (checkout + API calls + comment upsert all succeeded with
+  # only `pull-requests: write` declared). If GitHub's checkout behavior for
+  # public repos ever changes, add `contents: read` here.
   pull-requests: write
 
 concurrency:
@@ -96,8 +105,11 @@ jobs:
 
           overlap_lines=()
           for other in "${other_pr_numbers[@]}"; do
-            other_files_raw=$(api_get "repos/$REPO/pulls/$other/files?per_page=100") || continue
-            other_files_json=$(printf '%s' "$other_files_raw" | jq '[.[].filename]') || continue
+            # --paginate to match the current-PR file fetch above -- otherwise
+            # an overlap past the first 100 changed files of `other` would be
+            # silently missed for large PRs.
+            other_files_json=$(gh api "repos/$REPO/pulls/$other/files" \
+              --paginate --jq '[.[].filename]' 2>/dev/null) || continue
             shared=$(jq -n \
               --argjson a "$this_pr_files_json" \
               --argjson b "$other_files_json" \
