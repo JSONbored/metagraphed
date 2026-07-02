@@ -1,6 +1,18 @@
 import { spawnSync } from "node:child_process";
 import { stableStringify } from "./lib.mjs";
 
+// Deploy/publish-pipeline-owned artifacts: their committed copies reflect the
+// last real publish, not a local/CI validate build, and normal `npm run
+// build` runs are expected to leave them looking "stale" relative to HEAD
+// (see the "Verify committed derived artifacts are fresh" step in
+// .github/workflows/validate.yml for the full reasoning). A production
+// publish run legitimately updates these, so the warning below is skipped
+// in that context.
+const DEPLOY_OWNED_ARTIFACTS = [
+  "public/metagraph/r2-manifest.json",
+  "public/metagraph/schemas/index.json",
+];
+
 const productionBuild = isProductionPublishBuild();
 const startedAt = new Date().toISOString();
 const effectiveBuildTimestamp =
@@ -53,6 +65,39 @@ console.log(
     results,
   }),
 );
+
+warnIfDeployOwnedArtifactsChanged();
+
+function warnIfDeployOwnedArtifactsChanged() {
+  // A real publish run (productionBuild) is expected to update these files —
+  // don't warn in that context. Everywhere else (plain local/CI validate
+  // build), a diff here is the footgun this warning exists to catch.
+  if (productionBuild) {
+    return;
+  }
+  const diff = spawnSync(
+    "git",
+    ["status", "--porcelain", "--", ...DEPLOY_OWNED_ARTIFACTS],
+    { cwd: process.cwd(), encoding: "utf8" },
+  );
+  if (diff.status !== 0 || !diff.stdout.trim()) {
+    return;
+  }
+  console.warn(
+    [
+      "",
+      "warning: build modified deploy-owned artifact(s):",
+      ...DEPLOY_OWNED_ARTIFACTS.map((file) => `  - ${file}`),
+      "These reflect the last real publish, not this local/CI build, and will",
+      "always differ for reasons unrelated to your change (see the",
+      '"Verify committed derived artifacts are fresh" step in',
+      ".github/workflows/validate.yml). Revert them before committing:",
+      "",
+      `  git checkout origin/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+      "",
+    ].join("\n"),
+  );
+}
 
 function localSteps() {
   return [

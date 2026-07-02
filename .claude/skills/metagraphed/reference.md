@@ -213,6 +213,11 @@ local paths, env dumps, or private notes.
 - Editing the contract by hand without `npm run build` (contract-drift), or stale committed artifacts.
 - Committing generated artifacts — `public/datasets/*` or any `public/metagraph/*` outside the reviewed
   contract (regenerated on build/deploy; `ci-verify-submitted-artifacts` rejects them).
+- Bundling `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json` into the diff —
+  even on a Path A surface PR. `npm run build` always rewrites both locally; they are deploy/publish-
+  pipeline-owned (see §8) and the gate's registry-review lane treats their presence as "bundling other
+  file changes" outside the one subnet file. Revert them before committing:
+  `git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`.
 
 ---
 
@@ -234,6 +239,18 @@ local paths, env dumps, or private notes.
   fails if a committed `public/metagraph/*` is stale.
 - **Reader tests** serve R2-only artifacts that only exist after `npm run build` — build before the
   suite if a test reads served artifacts.
+- **Never commit `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json`.**
+  `npm run build` fully populates R2 staging (per ADR-0001) and rewrites both to reflect that local/CI
+  build, but their committed copies on `main` reflect the last real deploy/publish — not a local build —
+  for reasons unrelated to your change: `r2-manifest.json` is publish infrastructure read from its
+  committed path by `scripts/kv-publish-pointer.mjs` / `scripts/cloudflare-verify.mjs` /
+  `scripts/sync-summary.mjs` during the actual publish, and its `*_artifact_size_bytes` totals are
+  inherently non-deterministic build-to-build; `schemas/index.json` is a network-capture cache the build
+  "reconciles in place". Both are explicitly excluded from the derived-artifact freshness gate in
+  `.github/workflows/validate.yml` (see the comment above that step) — CI won't catch this, but the
+  Gittensory Gate's registry-review lane will reject a PR that bundles them in. After `npm run build`:
+  `git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`.
+  `npm run build` itself prints a non-fatal warning if either changed.
 - **`format:check`:** `main` is not fully prettier-clean — never `prettier --write` whole files you
   didn't change; format only your own lines.
 - **`pipeline:check`** is only trustworthy in isolation after a clean `npm run build`.
