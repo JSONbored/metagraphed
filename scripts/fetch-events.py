@@ -218,6 +218,31 @@ def _moved(a):  # [coldkey, hotkey, netuid, ...]
     }
 
 
+def _stake_transferred(a):  # StakeTransferred (#2556): stake moved between two coldkeys
+    # Finney 6-tuple: (origin_coldkey, destination_coldkey, hotkey, origin_netuid,
+    # destination_netuid, amount_rao). The shared columns capture the origin leg —
+    # origin_coldkey, hotkey, origin_netuid, and the TAO amount; the destination
+    # coldkey/netuid have no columns and are dropped (no migration, per the issue).
+    # Note the shape differs from _moved: a[1] is a coldkey, not a hotkey, and the
+    # hotkey sits at a[2], so this needs its own extractor.
+    if isinstance(a, dict):
+        ck = a.get("origin_coldkey", a.get("coldkey"))
+        hk = a.get("hotkey")
+        netuid = a.get("origin_netuid", a.get("netuid"))
+        amount = a.get("amount")
+    else:
+        ck = a[0] if len(a) > 0 else None
+        hk = a[2] if len(a) > 2 else None
+        netuid = a[3] if len(a) > 3 else None
+        amount = a[5] if len(a) > 5 else None
+    return {
+        "coldkey": _ss58(ck),
+        "hotkey": _ss58(hk),
+        "netuid": _idx(netuid),
+        "amount_tao": _tao(amount),
+    }
+
+
 def _root(a):  # {coldkey} (named) or [coldkey]
     ck = a.get("coldkey") if isinstance(a, dict) else (a[0] if a else None)
     return {"coldkey": _ss58(ck)}
@@ -307,6 +332,7 @@ EXTRACTORS = {
     "StakeAdded": _stake,
     "StakeRemoved": _stake,
     "StakeMoved": _moved,
+    "StakeTransferred": _stake_transferred,  # (#2556) stake moved between two coldkeys
     "AxonServed": _axon,
     # Forward-compat (#2555): axon clear/withdraw counterpart to AxonServed.
     # [netuid, hotkey] — same tuple as AxonServed/PrometheusServed. Not present in

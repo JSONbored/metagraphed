@@ -63,6 +63,8 @@ export const INDEXED_EVENT_KINDS = [
 // scoping validation to INDEXED_EVENT_KINDS alone would wrongly reject valid kinds.
 export const INGESTED_EVENT_KINDS = [
   ...INDEXED_EVENT_KINDS,
+  // Stake moved between two coldkeys (#2556) — a stake event beyond the indexed core.
+  "StakeTransferred",
   "NeuronDeregistered",
   "NetworkAdded",
   "NetworkRemoved",
