@@ -1169,7 +1169,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "registry-leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file).",
+    "Registry leaderboards — operational (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and economic opportunity (open-slots, cheapest-registration, highest-emission, validator-headroom) — computed live from D1 + registry projections + the economics tier at /api/v1/registry/leaderboards (no static file). Selected boards can be exported as CSV with `board=<name>&format=csv`.",
     "RegistryLeaderboardsArtifact",
   ),
   artifact(
@@ -2404,7 +2404,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/registry/leaderboards",
     "/metagraph/registry/leaderboards.json",
-    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
+    "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards. Pass `format=csv` with a selected `board` to export that board's rows as CSV.",
     "standard",
     ["registry", "analytics", "subnets"],
     [
@@ -2427,8 +2427,23 @@ export const API_ROUTES = [
         },
       },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      { name: "format", schema: { type: "string", enum: ["csv"] } },
     ],
     [],
+    {
+      additionalSuccessContent: [
+        {
+          contentType: "text/csv",
+          schema: {
+            type: "string",
+            description:
+              "CSV rows for the selected leaderboard board. Requires `format=csv` and `board`.",
+          },
+          example:
+            "netuid,slug,name,open_slots,max_uids,registration_cost_tao,registration_allowed\n1,example,Example,10,256,0.1,true\n",
+        },
+      ],
+    },
   ),
   route(
     "compare",
@@ -2731,6 +2746,21 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         },
       ],
     };
+    const successContent = {
+      "application/json": {
+        schema: responseSchema,
+        // Deterministic worked example (schema-valid, no live data) so
+        // Swagger UI + agents see a concrete response shape. Generated
+        // from the schema; enforced by validate-openapi-examples.
+        example: sampleFromSchema(responseSchema, componentSchemas),
+      },
+    };
+    for (const content of entry.additional_success_content) {
+      successContent[content.content_type] = {
+        schema: content.schema,
+        example: content.example,
+      };
+    }
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -2757,15 +2787,7 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
             description:
               "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: successContent,
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2926,6 +2948,7 @@ function route(
   tags,
   queryParameters = [],
   pathParameters = [],
+  options = {},
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
   return {
@@ -2940,6 +2963,13 @@ function route(
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
     path_parameters: pathParameters,
+    additional_success_content: (options.additionalSuccessContent || []).map(
+      (content) => ({
+        content_type: content.contentType,
+        schema: content.schema,
+        example: content.example,
+      }),
+    ),
   };
 }
 

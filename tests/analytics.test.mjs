@@ -1101,6 +1101,33 @@ describe("analytics routes (cold local D1)", () => {
     assert.deepEqual(Object.keys(body.data.boards), ["highest-emission"]);
     assert.ok(body.data.boards["highest-emission"].length <= 5);
   });
+  test("leaderboards exports a selected board as CSV", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/registry/leaderboards?board=open-slots&format=csv",
+      ),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const csv = await res.text();
+    assert.ok(
+      csv.startsWith(
+        "netuid,slug,name,open_slots,max_uids,registration_cost_tao,registration_allowed\n",
+      ),
+    );
+    assert.match(csv, /\n\d+,[^\n]*,\d+,/);
+  });
+  test("leaderboards CSV requires a selected board", async () => {
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?format=csv",
+      env,
+    );
+    assert.equal(status, 400);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "board");
+  });
   test("leaderboards economic boards prefer the live economics KV blob", async () => {
     // A fresh, on-contract, integrity-valid blob makes resolveLiveEconomics win,
     // so the boards project from KV rather than the committed R2 economics.json.

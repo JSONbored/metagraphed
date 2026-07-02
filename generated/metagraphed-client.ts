@@ -39,6 +39,14 @@ export type QueryParams<Path extends ApiPath> =
   GetOperation<Path> extends { parameters: { query?: infer Query } }
     ? Query
     : never;
+type JsonCompatibleQuery<Query> = Query extends object
+  ? "format" extends keyof Query
+    ? Omit<Query, "format"> & { format?: Exclude<Query["format"], "csv"> }
+    : Query
+  : Query;
+export type JsonQueryParams<Path extends ApiPath> = JsonCompatibleQuery<
+  QueryParams<Path>
+>;
 export type PathParams<Path extends ApiPath> =
   GetOperation<Path> extends { parameters: { path?: infer Params } }
     ? Params
@@ -60,7 +68,7 @@ export interface MetagraphedFetchOptions<Path extends ApiPath>
   extends Omit<RequestInit, "method" | "body"> {
   baseUrl?: string;
   pathParams?: PathParams<Path>;
-  query?: QueryParams<Path>;
+  query?: JsonQueryParams<Path>;
   /** Abort the request after this many ms (default 30000). Pass 0 to disable. An explicit `signal` takes precedence. */
   timeoutMs?: number;
 }
@@ -185,7 +193,7 @@ export async function* metagraphedPaginate<Path extends ApiPath>(
     }
     const page = await metagraphedFetch(path, {
       ...options,
-      query: baseQuery as unknown as QueryParams<Path>,
+      query: baseQuery as unknown as JsonQueryParams<Path>,
     });
     yield page;
     const next = (
@@ -695,7 +703,7 @@ export function createMetagraphedClient(
       }
       const page = await request(path, {
         ...options,
-        query: baseQuery as unknown as QueryParams<Path>,
+        query: baseQuery as unknown as JsonQueryParams<Path>,
       });
       yield page;
       const next = (

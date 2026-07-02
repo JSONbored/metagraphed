@@ -26162,6 +26162,17 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -26219,6 +26230,13 @@
                       "type": "object"
                     }
                   ]
+                }
+              },
+              "text/csv": {
+                "example": "netuid,slug,name,open_slots,max_uids,registration_cost_tao,registration_allowed\n1,example,Example,10,256,0.1,true\n",
+                "schema": {
+                  "description": "CSV rows for the selected leaderboard board. Requires `format=csv` and `board`.",
+                  "type": "string"
                 }
               }
             },
@@ -26279,7 +26297,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards.",
+        "summary": "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards. Pass `format=csv` with a selected `board` to export that board's rows as CSV.",
         "tags": [
           "registry",
           "analytics",

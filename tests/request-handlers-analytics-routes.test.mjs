@@ -350,6 +350,153 @@ describe("handleLeaderboards", () => {
     assert.ok(Array.isArray(body.data.boards["most-complete"]));
   });
 
+  test("exports the selected board as CSV", async () => {
+    configureAnalyticsRoutes({
+      readHealthMetaKv: async () => ({ last_run_at: OBSERVED_AT }),
+      readEconomicsCurrentKv: async () => ({
+        captured_at: new Date().toISOString(),
+        summary: { with_economics_count: 1 },
+        subnets: [
+          {
+            netuid: 777,
+            slug: "=live",
+            name: 'Quote, "Subnet"\nLine',
+            open_slots: 5,
+            registration_cost_tao: 1.5,
+            registration_allowed: true,
+            emission_share: 1,
+          },
+        ],
+      }),
+    });
+    const env = createLocalArtifactEnv();
+    const request = req(
+      "/api/v1/registry/leaderboards?board=open-slots&format=csv",
+    );
+    const res = await handleLeaderboards(
+      request,
+      env,
+      url("/api/v1/registry/leaderboards?board=open-slots&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(res.headers.get("etag"));
+    const csv = await res.text();
+    assert.ok(
+      csv.startsWith(
+        "netuid,slug,name,open_slots,max_uids,registration_cost_tao,registration_allowed\n",
+      ),
+    );
+    assert.match(csv, /777,'=live,"Quote, ""Subnet""\nLine",5,,1\.5,true\n/);
+
+    const cached = await handleLeaderboards(
+      new Request(request.url, {
+        headers: { "if-none-match": res.headers.get("etag") },
+      }),
+      env,
+      url("/api/v1/registry/leaderboards?board=open-slots&format=csv"),
+    );
+    assert.equal(cached.status, 304);
+    assert.equal(await cached.text(), "");
+  });
+
+  test("exports an empty selected board as header-only CSV", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleLeaderboards(
+      req("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+      env,
+      url("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "netuid,slug,name,latency_ms\n");
+  });
+
+  test("marks CSV responses built from D1 fallback rows", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          throw new Error("D1 unavailable");
+        },
+      },
+    };
+    const res = await handleLeaderboards(
+      req("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+      env,
+      url("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.equal(await res.text(), "netuid,slug,name,latency_ms\n");
+  });
+
+  test("exports CSV responses built from successful empty D1 rows", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      ...d1Env(),
+    };
+    const res = await handleLeaderboards(
+      req("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+      env,
+      url("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.equal(await res.text(), "netuid,slug,name,latency_ms\n");
+  });
+
+  test("exports non-empty operational board rows as CSV", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      ...d1Env({
+        "MIN\\(latency_ms\\)": [{ netuid: 7, min_latency_ms: 42 }],
+      }),
+    };
+    const res = await handleLeaderboards(
+      req("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+      env,
+      url("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const csv = await res.text();
+    assert.equal(csv.split("\n")[0], "netuid,slug,name,latency_ms");
+    assert.match(csv, /\n7,[^\n]*,42\n/);
+  });
+
+  test("suppresses CSV bodies for HEAD requests", async () => {
+    const env = createLocalArtifactEnv();
+    const request = new Request(
+      "https://api.metagraph.sh/api/v1/registry/leaderboards?board=fastest-rpc&format=csv",
+      { method: "HEAD" },
+    );
+    const res = await handleLeaderboards(
+      request,
+      env,
+      url("/api/v1/registry/leaderboards?board=fastest-rpc&format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.equal(await res.text(), "");
+  });
+
+  test("requires a board for CSV exports", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleLeaderboards(req("/"), env, url("/?format=csv"));
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /requires a board/);
+    assert.equal(body.meta.parameter, "board");
+  });
+
+  test("rejects unsupported leaderboard formats", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleLeaderboards(req("/"), env, url("/?format=json"));
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "format");
+  });
+
   test("uses surface uptime rollups for most-reliable board", async () => {
     const env = d1Env({
       "FROM surface_uptime_daily": [
@@ -630,6 +777,17 @@ describe("canonicalLeaderboardsCachePath", () => {
     );
   });
 
+  test("preserves valid CSV board requests", () => {
+    assert.equal(
+      canonicalLeaderboardsCachePath(
+        url(
+          "/api/v1/registry/leaderboards?format=csv&limit=10&board=open-slots",
+        ),
+      ),
+      "/api/v1/registry/leaderboards?board=open-slots&format=csv&limit=10",
+    );
+  });
+
   test("falls back to raw search on invalid limit", () => {
     const raw = "/api/v1/registry/leaderboards?limit=0";
     assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
@@ -638,6 +796,15 @@ describe("canonicalLeaderboardsCachePath", () => {
   test("falls back to raw search on unknown board", () => {
     const raw = "/api/v1/registry/leaderboards?board=not-a-board";
     assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on unsupported CSV requests", () => {
+    for (const raw of [
+      "/api/v1/registry/leaderboards?format=json",
+      "/api/v1/registry/leaderboards?format=csv",
+    ]) {
+      assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
+    }
   });
 });
 

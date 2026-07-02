@@ -9,7 +9,12 @@
 // injected once at module-init so this file never imports api.mjs back.
 
 import { DAY_MS, MAX_UPTIME_ROWS, UPTIME_WINDOWS } from "../config.mjs";
-import { errorResponse } from "../http.mjs";
+import {
+  apiHeaders,
+  errorResponse,
+  ifNoneMatchSatisfied,
+  weakEtag,
+} from "../http.mjs";
 import { readArtifact } from "../storage.mjs";
 import { contractVersion, envelopeResponse } from "../responses.mjs";
 import {
@@ -56,12 +61,119 @@ let leaderboardProfilesCache = null; // { subnetMeta, mostComplete, builtAt }
 
 const COMPARE_DIMENSIONS = ["structure", "economics", "health"];
 const COMPARE_NETUIDS_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
+const CSV_SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+const LEADERBOARD_CSV_COLUMNS = {
+  healthiest: [
+    "netuid",
+    "slug",
+    "name",
+    "uptime_ratio",
+    "surfaces_ok",
+    "surfaces_total",
+    "avg_latency_ms",
+  ],
+  "fastest-rpc": ["netuid", "slug", "name", "latency_ms"],
+  "most-complete": ["netuid", "slug", "name", "completeness_score"],
+  "most-enriched": [
+    "netuid",
+    "slug",
+    "name",
+    "surface_count",
+    "operational_interface_count",
+  ],
+  "fastest-growing": ["netuid", "slug", "name", "completeness_delta"],
+  "most-reliable": [
+    "netuid",
+    "slug",
+    "name",
+    "score",
+    "grade",
+    "uptime_ratio",
+    "avg_latency_ms",
+    "sample_count",
+    "latency_sample_count",
+  ],
+  "open-slots": [
+    "netuid",
+    "slug",
+    "name",
+    "open_slots",
+    "max_uids",
+    "registration_cost_tao",
+    "registration_allowed",
+  ],
+  "cheapest-registration": [
+    "netuid",
+    "slug",
+    "name",
+    "registration_cost_tao",
+    "open_slots",
+    "registration_allowed",
+  ],
+  "highest-emission": [
+    "netuid",
+    "slug",
+    "name",
+    "emission_share",
+    "total_stake_tao",
+    "validator_count",
+    "miner_count",
+  ],
+  "validator-headroom": [
+    "netuid",
+    "slug",
+    "name",
+    "validator_headroom",
+    "validator_count",
+    "max_validators",
+    "emission_share",
+  ],
+};
 
 async function envelopeWithD1Fallback(request, payload, cacheProfile, rowSets) {
   const response = await envelopeResponse(request, payload, cacheProfile);
   return hasD1FallbackRows(...rowSets)
     ? markD1FallbackResponse(response)
     : response;
+}
+
+function csvCell(value) {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  const safeText = CSV_SPREADSHEET_FORMULA_PREFIX.test(text)
+    ? `'${text}`
+    : text;
+  return /[",\r\n]/.test(safeText)
+    ? `"${safeText.replace(/"/g, '""')}"`
+    : safeText;
+}
+
+function leaderboardRowsCsv(board, rows) {
+  const columns = LEADERBOARD_CSV_COLUMNS[board];
+  return (
+    [
+      columns.join(","),
+      ...rows.map((row) =>
+        columns.map((column) => csvCell(row[column])).join(","),
+      ),
+    ].join("\n") + "\n"
+  );
+}
+
+async function leaderboardCsvResponse(request, env, board, rows) {
+  const body = leaderboardRowsCsv(board, rows);
+  const headers = apiHeaders("standard");
+  const etag = await weakEtag(body);
+  headers.set("content-type", "text/csv; charset=utf-8");
+  headers.set("etag", etag);
+  headers.set("x-metagraph-contract-version", contractVersion(env));
+  if (ifNoneMatchSatisfied(request, etag)) {
+    return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === "HEAD" ? null : body, {
+    status: 200,
+    headers,
+  });
 }
 
 // Week-over-week structural trajectory from daily snapshots.
@@ -226,8 +338,16 @@ export function canonicalEconomicsTrendsCachePath(url) {
 // ?limit=20 request both resolve to the same edge-cache entry — mirrors
 // canonicalCompareCachePath and canonicalUptimeCachePath.
 export function canonicalLeaderboardsCachePath(url) {
-  const validationError = validateQueryParams(url, ["board", "limit"]);
+  const validationError = validateQueryParams(url, [
+    "board",
+    "format",
+    "limit",
+  ]);
   if (validationError) return `${url.pathname}${url.search}`;
+  const format = url.searchParams.get("format");
+  if (format !== null && format !== "csv") {
+    return `${url.pathname}${url.search}`;
+  }
   const limit = url.searchParams.get("limit");
   if (
     limit !== null &&
@@ -239,8 +359,12 @@ export function canonicalLeaderboardsCachePath(url) {
   if (board && !LEADERBOARD_BOARDS.includes(board)) {
     return `${url.pathname}${url.search}`;
   }
+  if (format === "csv" && !board) {
+    return `${url.pathname}${url.search}`;
+  }
   const cap = Math.max(1, Math.min(100, Number(limit) || 20));
   const params = [`limit=${cap}`];
+  if (format === "csv") params.unshift("format=csv");
   if (board) params.unshift(`board=${encodeURIComponent(board)}`);
   return `${url.pathname}?${params.join("&")}`;
 }
@@ -292,14 +416,35 @@ async function resolveEconomicsRows(env) {
 }
 
 export async function handleLeaderboards(request, env, url) {
-  const validationError = validateQueryParams(url, ["board", "limit"]);
+  const validationError = validateQueryParams(url, [
+    "board",
+    "format",
+    "limit",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
+  const requestedFormat = url.searchParams.get("format");
+  if (requestedFormat !== null && requestedFormat !== "csv") {
+    return errorResponse(
+      "invalid_query",
+      'format must be "csv" when provided.',
+      400,
+      { parameter: "format" },
+    );
+  }
   if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
     return errorResponse(
       "invalid_query",
       `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
       400,
+    );
+  }
+  if (requestedFormat === "csv" && !requestedBoard) {
+    return errorResponse(
+      "invalid_query",
+      "format=csv requires a board parameter.",
+      400,
+      { parameter: "board" },
     );
   }
   const limit = url.searchParams.get("limit");
@@ -382,6 +527,22 @@ export async function handleLeaderboards(request, env, url) {
     economicsRows,
     subnetMeta,
   });
+  if (requestedFormat === "csv") {
+    const response = await leaderboardCsvResponse(
+      request,
+      env,
+      requestedBoard,
+      data.boards[requestedBoard],
+    );
+    return hasD1FallbackRows(
+      healthRows,
+      rpcRows,
+      growthSamples,
+      reliabilityRows,
+    )
+      ? markD1FallbackResponse(response)
+      : response;
+  }
   return envelopeWithD1Fallback(
     request,
     {

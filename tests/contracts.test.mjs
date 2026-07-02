@@ -296,6 +296,19 @@ describe("public contract registry", () => {
     }
   });
 
+  test("documents leaderboard CSV exports as text/csv responses", async () => {
+    const generatedAt = "1970-01-01T00:00:00.000Z";
+    const openapi = buildOpenApiArtifact(
+      generatedAt,
+      await loadOpenApiComponentSchemas(generatedAt),
+    );
+    const operation =
+      openapi.paths["/api/v1/registry/leaderboards"].get.responses["200"];
+    assert.ok(operation.content["application/json"].schema);
+    assert.equal(operation.content["text/csv"].schema.type, "string");
+    assert.match(operation.content["text/csv"].example, /^netuid,/);
+  });
+
   test("applies wildcard artifact budgets to dated health history", () => {
     const [result] = evaluateArtifactBudgets([
       {

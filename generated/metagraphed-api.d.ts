@@ -963,7 +963,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards. */
+        /** Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom. Omit `board` for all boards. Pass `format=csv` with a selected `board` to export that board's rows as CSV. */
         get: operations["registryLeaderboards"];
         put?: never;
         post?: never;
@@ -12905,6 +12905,7 @@ export interface operations {
             query?: {
                 board?: "healthiest" | "fastest-rpc" | "most-complete" | "most-enriched" | "fastest-growing" | "most-reliable" | "open-slots" | "cheapest-registration" | "highest-emission" | "validator-headroom";
                 limit?: number;
+                format?: "csv";
             };
             header?: never;
             path?: never;
@@ -12963,6 +12964,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RegistryLeaderboardsArtifact"];
                     };
+                    /**
+                     * @example netuid,slug,name,open_slots,max_uids,registration_cost_tao,registration_allowed
+                     *     1,example,Example,10,256,0.1,true
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
