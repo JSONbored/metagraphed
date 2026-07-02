@@ -28,7 +28,7 @@ import {
 } from "../request-params.mjs";
 
 import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
-import { csvRequested, csvResponse } from "../csv.mjs";
+import { csvRequested, csvResponse, validateCsvFormatParam } from "../csv.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -303,6 +303,8 @@ export async function handleGlobalValidators(request, env, url) {
     max: GLOBAL_VALIDATOR_LIMIT_MAX,
   });
   if (limit.error) return analyticsQueryError(limit.error);
+  const formatError = validateCsvFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const data = await loadGlobalValidators(d1Runner(env), {
     sort: sortParam,
     limit: limit.value,
@@ -756,6 +758,8 @@ export async function handleSubnetMovers(request, env, url) {
     max: MOVERS_LIMIT_MAX,
   });
   if (limit.error) return analyticsQueryError(limit.error);
+  const formatError = validateCsvFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const data = await loadSubnetMovers(d1Runner(env), {
     windowLabel: windowParam,
     sort: sortParam,

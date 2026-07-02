@@ -1803,6 +1803,18 @@ describe("handleSubnetMovers", () => {
     );
   });
 
+  test("rejects an unsupported format with 400", async () => {
+    const body = await errorJson(
+      await handleSubnetMovers(
+        req("/api/v1/subnets/movers"),
+        emptyEnv(),
+        url("/api/v1/subnets/movers?format=xml"),
+      ),
+    );
+    assert.equal(body.meta.parameter, "format");
+    assert.match(body.error.message, /xml/);
+  });
+
   test("returns a schema-stable empty leaderboard on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetMovers,
@@ -1928,6 +1940,18 @@ describe("handleGlobalValidators", () => {
         url("/api/v1/validators?bogus=1"),
       ),
     );
+  });
+
+  test("rejects an unsupported format with 400", async () => {
+    const body = await errorJson(
+      await handleGlobalValidators(
+        req("/api/v1/validators"),
+        emptyEnv(),
+        url("/api/v1/validators?format=xml"),
+      ),
+    );
+    assert.equal(body.meta.parameter, "format");
+    assert.match(body.error.message, /xml/);
   });
 
   test("exports cold validators as header-only CSV", async () => {

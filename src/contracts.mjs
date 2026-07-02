@@ -1902,7 +1902,7 @@ export const API_ROUTES = [
               "CSV rows for the global validator leaderboard. Requires `format=csv`.",
           },
           example:
-            "hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance\r\n5GrwvaEF5zXb26Fz9rcwpuC9sUkLyVaio1ERDrJJimH4uwpFbP,5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty,3,5,1200.5,45.2,0.91,0.95,0.12\r\n",
+            "subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance\r\n3,5,1200.5,45.2,0.91,0.95,0.12\r\n",
         },
       ],
     },

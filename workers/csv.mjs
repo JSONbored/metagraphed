@@ -79,6 +79,21 @@ export function rowsToCsv(rows, columns) {
   return lines.join("\r\n");
 }
 
+export function validateCsvFormatParam(url) {
+  const format = url.searchParams.get("format");
+  if (format === null || format === "") {
+    return null;
+  }
+  const normalized = format.toLowerCase();
+  if (normalized === "csv" || normalized === "json") {
+    return null;
+  }
+  return {
+    parameter: "format",
+    message: `"${format}" is not a supported format. Pass format=csv for text/csv, or omit format for JSON.`,
+  };
+}
+
 export function csvRequested(url, request) {
   const format = url.searchParams.get("format")?.toLowerCase();
   if (format === "csv") {
