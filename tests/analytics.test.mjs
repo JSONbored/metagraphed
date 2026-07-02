@@ -1296,8 +1296,10 @@ describe("analytics routes (fake D1 with data)", () => {
 });
 
 describe("leaderboards growth baseline handles a null window-start score", () => {
-  // A subnet whose earliest in-window snapshot is unscored (null) must NOT
-  // produce a spurious positive delta from a forward-shifted baseline.
+  // A subnet whose earliest in-window snapshot is unscored (null) must latch
+  // the first real completeness score, not pin `first` to null for the whole
+  // window — otherwise REST diverges from MCP and drops genuinely fast-growing
+  // subnets (mirrors growthRowsFromSamples / #2602).
   function growthD1(growthRows) {
     return {
       prepare(sql) {
@@ -1316,7 +1318,7 @@ describe("leaderboards growth baseline handles a null window-start score", () =>
       },
     };
   }
-  test("excludes a subnet that was unscored at the window start", async () => {
+  test("includes a subnet once real scores exist after a leading null", async () => {
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: growthD1([
@@ -1329,11 +1331,11 @@ describe("leaderboards growth baseline handles a null window-start score", () =>
       "https://api.metagraph.sh/api/v1/registry/leaderboards?board=fastest-growing",
       env,
     );
-    assert.equal(
-      body.data.boards["fastest-growing"].some((e) => e.netuid === 9),
-      false,
-      "unscored-at-start subnet must not appear with a spurious delta",
+    const entry = body.data.boards["fastest-growing"].find(
+      (e) => e.netuid === 9,
     );
+    assert.ok(entry, "leading-null subnet must rank once real scores exist");
+    assert.equal(entry.completeness_delta, 5);
   });
 });
 

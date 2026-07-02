@@ -588,13 +588,15 @@ export function flattenSurfaces(subnets) {
         // #1005: a stable identity decoupled from the hand-authored display id.
         flattened.key = surfaceStableKey(flattened);
         // #1006: the as-of timestamp every served surface should carry. A
-        // per-surface verification wins; otherwise the subnet's curation
-        // verified_at (when a maintainer last vetted the overlay). null when
-        // neither exists — the agent then sees the surface is unverified.
+        // per-surface verification wins; otherwise only official surfaces may
+        // inherit subnet curation verified_at (when a maintainer last vetted the
+        // overlay). Community-submitted/provider-claimed surfaces stay
+        // unverified until they carry their own probe verification.
         flattened.last_verified_at =
           surface.verification?.verified_at ??
-          subnet.curation?.verified_at ??
-          null;
+          (surface.authority === "official"
+            ? (subnet.curation?.verified_at ?? null)
+            : null);
         // #1757: the resolved trust tier for this surface. `stale` is stamped
         // later (withSurfaceFreshness, which carries the nowMs reference), so a
         // surface fresh at flatten time may still resolve down a tier once the

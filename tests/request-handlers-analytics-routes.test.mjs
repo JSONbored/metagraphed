@@ -422,6 +422,28 @@ describe("handleLeaderboards", () => {
     assert.match(healthSql, /AVG\(CASE WHEN/);
     assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
   });
+
+  test("fastest-growing latches growth from the first non-null completeness score", async () => {
+    const env = d1Env({
+      "WHERE snapshot_date >= \\?": [
+        { netuid: 9, snapshot_date: "2026-06-03", completeness_score: null },
+        { netuid: 9, snapshot_date: "2026-06-06", completeness_score: 80 },
+        { netuid: 9, snapshot_date: "2026-06-10", completeness_score: 85 },
+      ],
+    });
+    const body = await json(
+      await handleLeaderboards(
+        req("/"),
+        env,
+        url("/?board=fastest-growing&limit=5"),
+      ),
+    );
+    const entry = body.data.boards["fastest-growing"].find(
+      (e) => e.netuid === 9,
+    );
+    assert.ok(entry, "leading-null subnet must rank once real scores exist");
+    assert.equal(entry.completeness_delta, 5);
+  });
 });
 
 describe("handleCompare", () => {

@@ -194,6 +194,7 @@ export const API_QUERY_COLLECTIONS = {
     search: ["name", "slug"],
     sort: [
       "alpha_price_tao",
+      "block",
       "emission_share",
       "max_stake_tao",
       "max_uids",
@@ -771,7 +772,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "economics",
     "/metagraph/economics.json",
-    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived price-weighted emission share, and on-chain registration block height.",
     "EconomicsArtifact",
   ),
   artifact(
@@ -957,7 +958,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "global-validators",
     "/metagraph/validators.json",
-    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
     "GlobalValidatorsArtifact",
   ),
   artifact(
@@ -1001,6 +1002,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/history.json",
     "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
     "SubnetHistoryArtifact",
+  ),
+  artifact(
+    "subnet-identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
+    "SubnetIdentityHistoryArtifact",
   ),
   artifact(
     "account-summary",
@@ -1512,7 +1519,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share, registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=block&order=asc` or `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
@@ -1839,7 +1846,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
     "short",
     ["validators", "analytics"],
     [
@@ -1848,10 +1855,13 @@ export const API_ROUTES = [
         schema: {
           type: "string",
           enum: [
-            "subnet_count",
-            "uid_count",
             "avg_validator_trust",
             "max_validator_trust",
+            "stake_dominance",
+            "subnet_count",
+            "total_emission",
+            "total_stake",
+            "uid_count",
           ],
         },
       },
@@ -1958,6 +1968,21 @@ export const API_ROUTES = [
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-identity-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),

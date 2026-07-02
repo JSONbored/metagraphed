@@ -151,7 +151,7 @@ describe("buildEconomicsArtifact", () => {
 
   test("derives emission_share, open_slots, and miner_readiness for a row", () => {
     const artifact = buildEconomicsArtifact({
-      subnets: [econSubnet(1)],
+      subnets: [econSubnet(1, { block: 1_234_567 })],
       economicsByNetuid: new Map([
         [
           1,
@@ -169,6 +169,7 @@ describe("buildEconomicsArtifact", () => {
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
     const row = artifact.subnets[0];
+    assert.equal(row.block, 1_234_567);
     assert.equal(row.emission_share, 1); // only priced subnet → 100% of total
     assert.equal(row.open_slots, 47); // 256 − 9 − 200
     // 40 registration + 30 open slots + 20 cost≤1 + 10 active.

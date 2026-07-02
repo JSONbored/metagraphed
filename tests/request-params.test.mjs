@@ -20,6 +20,7 @@ import {
   clampOffset,
   parseDateRange,
   parseLimitParam,
+  parseNonNegativeIntParam,
   parsePagination,
 } from "../workers/request-params.mjs";
 
@@ -254,6 +255,13 @@ describe("parseLimitParam", () => {
     );
   });
 
+  test("rejects a negative limit", () => {
+    assert.equal(
+      parseLimitParam(url("limit=-1"), opts).error?.parameter,
+      "limit",
+    );
+  });
+
   test("rejects a blank limit", () => {
     assert.equal(
       parseLimitParam(url("limit="), opts).error?.parameter,
@@ -274,5 +282,36 @@ describe("parseLimitParam", () => {
         .error.message,
       "limit must be an integer between 1 and 100.",
     );
+  });
+});
+
+describe("parseNonNegativeIntParam", () => {
+  test("returns null when the raw value is absent or blank", () => {
+    assert.deepEqual(parseNonNegativeIntParam(null, "offset"), { value: null });
+    assert.deepEqual(parseNonNegativeIntParam("", "offset"), { value: null });
+  });
+
+  test("rejects a non-digit value", () => {
+    assert.deepEqual(parseNonNegativeIntParam("-1", "offset").error, {
+      parameter: "offset",
+      message: "offset must be a non-negative integer.",
+    });
+    assert.deepEqual(parseNonNegativeIntParam("abc", "offset").error, {
+      parameter: "offset",
+      message: "offset must be a non-negative integer.",
+    });
+  });
+
+  test("rejects an unsafe integer beyond MAX_SAFE_INTEGER", () => {
+    const raw = String(Number.MAX_SAFE_INTEGER + 1);
+    assert.deepEqual(parseNonNegativeIntParam(raw, "offset").error, {
+      parameter: "offset",
+      message: "offset must be a non-negative integer.",
+    });
+  });
+
+  test("returns a parsed value for a valid non-negative integer", () => {
+    assert.deepEqual(parseNonNegativeIntParam("0", "offset"), { value: 0 });
+    assert.deepEqual(parseNonNegativeIntParam("42", "offset"), { value: 42 });
   });
 });

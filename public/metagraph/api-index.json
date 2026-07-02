@@ -457,6 +457,13 @@
     },
     {
       "contract_version": "2026-06-30.14",
+      "id": "subnet-identity-history",
+      "path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-06-30.14",
       "id": "account-summary",
       "path": "/metagraph/accounts/{ss58}.json",
       "schema_ref": "#/components/schemas/AccountSummaryArtifact",
@@ -2399,7 +2406,7 @@
     {
       "artifact_path": "/metagraph/economics.json",
       "cache": "standard",
-      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
+      "description": "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share, registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=block&order=asc` or `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
       "id": "economics",
       "method": "GET",
       "path": "/api/v1/economics",
@@ -2461,6 +2468,7 @@
           "schema": {
             "enum": [
               "alpha_price_tao",
+              "block",
               "emission_share",
               "max_stake_tao",
               "max_uids",
@@ -4429,7 +4437,7 @@
     {
       "artifact_path": "/metagraph/validators.json",
       "cache": "short",
-      "description": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+      "description": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
       "id": "global-validators",
       "method": "GET",
       "path": "/api/v1/validators",
@@ -4441,10 +4449,13 @@
           "name": "sort",
           "schema": {
             "enum": [
-              "subnet_count",
-              "uid_count",
               "avg_validator_trust",
-              "max_validator_trust"
+              "max_validator_trust",
+              "stake_dominance",
+              "subnet_count",
+              "total_emission",
+              "total_stake",
+              "uid_count"
             ],
             "type": "string"
           }
@@ -4612,6 +4623,40 @@
               "1y",
               "all"
             ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "cache": "short",
+      "description": "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "id": "subnet-identity-history",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/identity-history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
             "type": "string"
           }
         }

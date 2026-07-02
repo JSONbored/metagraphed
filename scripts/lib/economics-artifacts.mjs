@@ -80,6 +80,7 @@ export function buildEconomicsArtifact({
       netuid: subnet.netuid,
       slug: subnet.slug,
       name: subnet.name,
+      block: subnet.block ?? null,
       ...economics,
       emission_share: emissionShare,
       open_slots: openSlots,

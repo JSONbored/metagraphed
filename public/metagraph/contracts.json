@@ -237,7 +237,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-30.14",
-      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+      "description": "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived price-weighted emission share, and on-chain registration block height.",
       "id": "economics",
       "path": "/metagraph/economics.json",
       "schema_ref": "#/components/schemas/EconomicsArtifact",
@@ -516,7 +516,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-30.14",
-      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
       "id": "global-validators",
       "path": "/metagraph/validators.json",
       "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
@@ -583,6 +583,15 @@
       "id": "subnet-history",
       "path": "/metagraph/subnets/{netuid}/history.json",
       "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-06-30.14",
+      "description": "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
+      "id": "subnet-identity-history",
+      "path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
       "storage_tier": "r2"
     },
     {

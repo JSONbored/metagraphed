@@ -113,6 +113,10 @@ test("INGESTED_EVENT_KINDS accepts PrometheusServed for kind filters", () => {
   assert.ok(INGESTED_EVENT_KINDS.includes("PrometheusServed"));
 });
 
+test("INGESTED_EVENT_KINDS accepts BurnSet (subnet registration cost) for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("BurnSet"));
+});
+
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,
@@ -161,6 +165,44 @@ test("formatAccountEvent rejects non-integer or negative netuid/uid cells to nul
   assert.equal(formatAccountEvent({ netuid: -1 }).netuid, null);
   assert.equal(formatAccountEvent({ uid: 1.5 }).uid, null);
   assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
+});
+
+test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells to Numbers", () => {
+  // D1 can return a REAL column as a numeric string; the bare `?? null`
+  // pass-through this replaced would have leaked strings into the JSON payload.
+  // Mirrors the coercion in blocks.mjs (#2435), extrinsics.mjs (#2439), and
+  // metagraph-neurons.mjs (#2503). Rounded to rao precision (9 dp) so the
+  // IEEE-754 float noise from SUM() never carries into the payload.
+  const out = formatAccountEvent({
+    block_number: 1,
+    amount_tao: "1.5",
+    alpha_amount: "2.25",
+  });
+  assert.equal(out.amount_tao, 1.5);
+  assert.equal(typeof out.amount_tao, "number");
+  assert.equal(out.alpha_amount, 2.25);
+  assert.equal(typeof out.alpha_amount, "number");
+});
+
+test("formatAccountEvent coerces null amount_tao and alpha_amount to null (not 0)", () => {
+  // amount_tao / alpha_amount are nullable REAL columns. Null must surface
+  // as null, never coerced to 0 by the bare `?? null` fallback this replaced.
+  const out = formatAccountEvent({ block_number: 1 });
+  assert.equal(out.amount_tao, null);
+  assert.equal(out.alpha_amount, null);
+});
+
+test("formatAccountEvent rounds amount_tao and alpha_amount to rao precision", () => {
+  // The rao is the smallest TAO unit (1e-9). A SUM() over many REAL rows
+  // accumulates IEEE-754 noise below the rao floor; toTaoOrNull rounds to
+  // 9 dp so the payload never carries a long floating-point tail.
+  const out = formatAccountEvent({
+    block_number: 1,
+    amount_tao: 1.1234567899,
+    alpha_amount: 2.9876543211,
+  });
+  assert.equal(out.amount_tao, 1.12345679);
+  assert.equal(out.alpha_amount, 2.987654321);
 });
 
 test("utcDayBounds returns the UTC day window", () => {
@@ -545,6 +587,55 @@ test("buildAccountTransfers labels a self-transfer by the requested side (#2362)
     const out = buildAccountTransfers([selfRow], "5SELF", { direction: value });
     assert.equal(out.transfers[0].direction, "sent");
   }
+});
+
+test("buildAccountTransfers coerces string-typed amount_tao cells to Numbers", () => {
+  const out = buildAccountTransfers(
+    [
+      {
+        block_number: 1,
+        event_index: 0,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: "4.2",
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(typeof out.transfers[0].amount_tao, "number");
+  assert.equal(out.transfers[0].amount_tao, 4.2);
+});
+
+test("buildAccountTransfers preserves null amount_tao as null (not 0)", () => {
+  const out = buildAccountTransfers(
+    [{ hotkey: "5A", coldkey: "5B", amount_tao: null }],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, null);
+});
+
+test("buildAccountTransfers rounds amount_tao to rao precision", () => {
+  const out = buildAccountTransfers(
+    [
+      {
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: "1.0000000004",
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, 1);
+});
+
+test("buildAccountTransfers drops invalid amount_tao strings", () => {
+  const out = buildAccountTransfers(
+    [{ hotkey: "5A", coldkey: "5B", amount_tao: "not-a-number" }],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, null);
 });
 
 test("buildAccountTransfers explicit side never flips a normal row (#2362)", () => {

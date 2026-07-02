@@ -565,7 +565,7 @@ test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
   assert.equal(boundParams.at(-1), 0);
 });
 
-test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846)", async () => {
+test("GET /extrinsics?success=true binds 1; an invalid success returns 400 (#2575)", async () => {
   let boundSql;
   let boundParams;
   const env = {
@@ -589,10 +589,16 @@ test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846
   assert.ok(/success = \?/.test(boundSql));
   assert.ok(boundParams.includes(1));
 
-  // A non-true/false success value adds no condition (no WHERE).
-  await handleRequest(req("/api/v1/extrinsics?success=maybe"), env, {});
-  assert.ok(!/success = \?/.test(boundSql));
-  assert.ok(!/WHERE/.test(boundSql));
+  const bad = await handleRequest(
+    req("/api/v1/extrinsics?success=maybe"),
+    env,
+    {},
+  );
+  assert.equal(bad.status, 400);
+  const body = await bad.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "success");
 });
 
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {
