@@ -29,6 +29,7 @@ import {
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
+import { growthRowsFromSamples } from "../../src/analytics-live.mjs";
 import {
   formatLeaderboards,
   formatTrajectory,
@@ -355,23 +356,7 @@ export async function handleLeaderboards(request, env, url) {
       ),
     ]);
 
-  const growthByNetuid = new Map();
-  for (const row of growthSamples) {
-    const entry = growthByNetuid.get(row.netuid) || {
-      first: undefined,
-      last: undefined,
-    };
-    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
-    entry.last = row.completeness_score ?? null;
-    growthByNetuid.set(row.netuid, entry);
-  }
-  const growthRows = [...growthByNetuid.entries()].map(([netuid, entry]) => ({
-    netuid,
-    delta:
-      entry.first != null && entry.last != null
-        ? Number(entry.last) - Number(entry.first)
-        : null,
-  }));
+  const growthRows = growthRowsFromSamples(growthSamples);
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
