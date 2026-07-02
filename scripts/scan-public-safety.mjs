@@ -27,8 +27,12 @@ const patterns = [
   },
   {
     name: "private or loopback URL",
+    // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint
+    // (169.254.169.254) is the canonical SSRF/credential-theft target and is
+    // classified unsafe by lib.mjs isUnsafeUrl, so a leaked URL to it must be
+    // flagged alongside the RFC1918 ranges.
     regex:
-      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
+      /(?:https?|wss?):\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|10\.\d+\.\d+\.\d+|169\.254\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[0-1])\.\d+\.\d+)/i,
     // The standard local subtensor RPC endpoint is documented setup guidance for
     // the `local` network surface (llms.txt / setup docs), not a leaked internal
     // URL. Scoped to the exact well-known endpoint; any other loopback URL on the

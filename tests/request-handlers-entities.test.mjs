@@ -1742,6 +1742,23 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow()],
+    });
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
@@ -2256,8 +2273,59 @@ describe("handleAccountCounterparties", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("accepts limit=100 at the documented upper bound", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 1_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 150);
+    assert.equal(body.data.counterparties.length, 100);
+  });
+
+  test("defaults limit to 20 when absent in list mode", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 30 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 2_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 30);
+    assert.equal(body.data.counterparties.length, 20);
   });
 
   test("returns schema-stable empty rollup on cold D1", async () => {
@@ -2334,8 +2402,73 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("defaults limit to 50 when absent in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 80 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 80);
+    assert.equal(body.data.relationship.transfers.length, 50);
+  });
+
+  test("accepts limit=100 at the documented upper bound in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 150);
+    assert.equal(body.data.relationship.transfers.length, 100);
   });
 
   test("returns schema-stable empty pair detail on cold D1", async () => {
@@ -2646,6 +2779,24 @@ describe("handleSubnetEvents", () => {
       ),
     );
     assert.ok(captures.params.some((p) => p.includes(100) && p.includes(900)));
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 500 })],
+    });
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("rejects a non-integer block_start with 400", async () => {

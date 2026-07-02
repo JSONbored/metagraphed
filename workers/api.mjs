@@ -1171,8 +1171,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
 
   // Global validator/operator leaderboard from the current neurons snapshot. Exact path,
   // dispatched before subnet routing so the top-level collection stays unambiguous.
+  // Busts on the newest neuron captured_at across ALL subnets (like chain/concentration
+  // below), not a validator-permit-filtered stamp: a subnet refresh that drops a
+  // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
+  // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
-    return handleGlobalValidators(request, env, url);
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      "global-validators",
+      () => handleGlobalValidators(request, env, url),
+      null,
+      (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+    );
   }
 
   // Cross-subnet movers leaderboard (exact path, dispatched before subnet-slug

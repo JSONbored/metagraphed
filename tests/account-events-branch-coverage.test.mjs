@@ -46,6 +46,16 @@ describe("formatAccountActivity count fallback", () => {
     assert.equal(out.modules_called[0].count, 0);
     assert.equal(out.tx_count, 2);
   });
+
+  test("formatAccountActivity coerces D1 numeric-string counts", () => {
+    const out = formatAccountActivity(
+      { tx_count: "12", last_tx_block: "900" },
+      [{ call_module: "Balances", count: "3" }],
+    );
+    assert.equal(out.tx_count, 12);
+    assert.equal(out.last_tx_block, 900);
+    assert.equal(out.modules_called[0].count, 3);
+  });
 });
 
 describe("buildSubnetEvents", () => {

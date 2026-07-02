@@ -4842,7 +4842,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/counterparties.json",
       "cache": "short",
-      "description": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100).",
+      "description": "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
       "id": "account-counterparties",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/counterparties",
@@ -4853,6 +4853,7 @@
         {
           "name": "counterparty",
           "schema": {
+            "description": "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58.",
             "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
             "type": "string"
           }
@@ -4860,6 +4861,7 @@
         {
           "name": "limit",
           "schema": {
+            "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
             "maximum": 100,
             "minimum": 1,
             "type": "integer"

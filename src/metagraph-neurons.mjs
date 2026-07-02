@@ -105,12 +105,18 @@ export function formatNeuron(row) {
     coldkey: row.coldkey ?? null,
     active: toD1Flag(row.active),
     validator_permit: toD1Flag(row.validator_permit),
-    rank: row.rank ?? null,
-    trust: row.trust ?? null,
-    validator_trust: row.validator_trust ?? null,
-    consensus: row.consensus ?? null,
-    incentive: row.incentive ?? null,
-    dividends: row.dividends ?? null,
+    rank: row.rank == null ? null : round(nullableNumber(row.rank)),
+    trust: row.trust == null ? null : round(nullableNumber(row.trust)),
+    validator_trust:
+      row.validator_trust == null
+        ? null
+        : round(nullableNumber(row.validator_trust)),
+    consensus:
+      row.consensus == null ? null : round(nullableNumber(row.consensus)),
+    incentive:
+      row.incentive == null ? null : round(nullableNumber(row.incentive)),
+    dividends:
+      row.dividends == null ? null : round(nullableNumber(row.dividends)),
     emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
     stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
     registered_at_block:

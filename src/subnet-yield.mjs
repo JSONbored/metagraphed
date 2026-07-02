@@ -80,7 +80,12 @@ export function buildSubnetYield(rows, netuid) {
     if (uid == null) continue;
     if (capturedAt == null) {
       capturedAt = toIso(Number(row?.captured_at));
-      const block = Number(row?.block_number);
+      // block_number is a nullable INTEGER; guard null before Number() since
+      // Number(null) === 0 would fabricate the genesis height 0 for a row whose
+      // block is absent (the contract models it as ["integer","null"]). A
+      // numeric string like "8454388" from D1 must still pass.
+      const rawBlock = row?.block_number;
+      const block = rawBlock == null ? NaN : Number(rawBlock);
       blockNumber = Number.isFinite(block) ? block : null;
     }
     const stake = toNumber(row?.stake_tao);

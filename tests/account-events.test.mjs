@@ -14,6 +14,7 @@ import {
   buildAccountSubnets,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountHistory,
   loadAccountExtrinsics,
   loadAccountSubnets,
@@ -635,6 +636,22 @@ test("loadAccountTransfers short-circuits an inverted block range before D1", as
   assert.equal(called, false);
 });
 
+test("loadAccountEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountTransfers uses cursor keyset pagination over offset", async () => {
   let captured;
   const out = await loadAccountTransfers(
@@ -779,6 +796,68 @@ test("buildAccountSummary defaults a missing event-kind count to 0", () => {
     kinds: [{ kind: "StakeAdded" }],
   });
   assert.deepEqual(out.event_kinds, [{ kind: "StakeAdded", count: 0 }]);
+});
+
+test("buildAccountSummary coerces D1 numeric-string aggregates to integers", () => {
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "42", sc: "3", fb: "100", lb: "200" },
+    scanned: "42",
+    kinds: [{ kind: "Transfer", count: "7" }],
+    activity: { tx_count: "9", last_tx_block: "500" },
+    modules: [{ call_module: "Balances", count: "4" }],
+  });
+  assert.equal(out.event_count, 42);
+  assert.equal(out.subnet_count, 3);
+  assert.equal(out.first_block, 100);
+  assert.equal(out.last_block, 200);
+  assert.equal(out.event_scan_capped, false);
+  assert.deepEqual(out.event_kinds, [{ kind: "Transfer", count: 7 }]);
+  assert.equal(out.activity.tx_count, 9);
+  assert.equal(out.activity.last_tx_block, 500);
+  assert.deepEqual(out.activity.modules_called, [
+    { call_module: "Balances", count: 4 },
+  ]);
+});
+
+test("buildAccountSummary rejects junk D1 count cells to 0/null", () => {
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "nope", sc: "-1" },
+    kinds: [{ kind: "Transfer", count: "abc" }],
+    activity: { tx_count: "x" },
+    modules: [{ call_module: "Balances", count: null }],
+  });
+  assert.equal(out.event_count, 0);
+  assert.equal(out.subnet_count, 0);
+  assert.deepEqual(out.event_kinds, [{ kind: "Transfer", count: 0 }]);
+  assert.equal(out.activity.tx_count, 0);
+  assert.equal(out.activity.modules_called[0].count, 0);
+});
+
+test("buildAccountSummary coerces a string scanned probe for the cap flag", () => {
+  const capped = buildAccountSummary("5Hk", {
+    agg: { c: 100 },
+    scanned: String(ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1),
+  });
+  assert.equal(capped.event_scan_capped, true);
+  assert.equal(capped.first_block, null);
+});
+
+test("buildAccountSummary treats a junk scanned probe as zero for cap detection", () => {
+  // scanned is present but non-numeric → toBlockNumber returns null → ?? 0,
+  // so the cap probe does not false-positive from a garbage D1 cell.
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "42" },
+    scanned: "nope",
+  });
+  assert.equal(out.event_count, 42);
+  assert.equal(out.event_scan_capped, false);
+});
+
+test("buildAccountSummary uses coerced event_count when scanned is omitted", () => {
+  const out = buildAccountSummary("5Hk", { agg: { c: "12", sc: "2" } });
+  assert.equal(out.event_count, 12);
+  assert.equal(out.subnet_count, 2);
+  assert.equal(out.event_scan_capped, false);
 });
 
 test("buildAccountEvents defaults rows/limit/offset when called bare", () => {
@@ -1085,6 +1164,22 @@ test("loadAccountEvents applies the ?kind filter as a bound param", async () => 
   ]);
 });
 
+test("loadAccountEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadAccountEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    "5Hk",
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
+});
+
 test("loadAccountEvents applies the block_start/block_end range as bound params", async () => {
   let captured;
   await loadAccountEvents(
@@ -1108,6 +1203,23 @@ test("loadAccountEvents applies the block_start/block_end range as bound params"
     100,
     0,
   ]);
+});
+
+test("loadSubnetEvents short-circuits an inverted block range before D1", async () => {
+  let called = false;
+  const out = await loadSubnetEvents(
+    async () => {
+      called = true;
+      return [];
+    },
+    7,
+    { blockStart: 500, blockEnd: 100, limit: 50, offset: 0 },
+  );
+  assert.equal(out.netuid, 7);
+  assert.equal(out.event_count, 0);
+  assert.deepEqual(out.events, []);
+  assert.equal(out.next_cursor, null);
+  assert.equal(called, false);
 });
 
 test("loadAccountEvents emits a next_cursor only on a full page", async () => {

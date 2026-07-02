@@ -15,14 +15,8 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
-// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
-// different contract from the shared pagination-profile clamp used here.
-import {
-  FEED_PAGINATION,
-  clampLimit as clampPageLimit,
-  clampOffset,
-} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
   loadSubnetConcentration,
@@ -100,10 +94,9 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
-  buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountSubnets,
   loadAccountHistory,
   loadAccountExtrinsics,
@@ -119,7 +112,6 @@ import {
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -356,17 +348,21 @@ function mcpContractVersion(ctx) {
 }
 
 // A (sql, params) => Promise<rows[]> runner over the health DB for the metagraph
-// / trajectory loaders. Like the REST d1All, a cold DB or query error yields []
-// (schema-stable empty payload). No withTimeout — unavailable to this pure module.
+// / trajectory loaders. Like the REST d1All, a cold DB, timeout, or query error
+// yields [] (schema-stable empty payload). The timeout keeps public MCP tools
+// from monopolizing D1/Worker time with expensive aggregates.
 function mcpD1Runner(ctx) {
   return async (sql, params) => {
     const db = ctx.env?.METAGRAPH_HEALTH_DB;
     if (!db?.prepare) return [];
     try {
-      const result = await db
-        .prepare(sql)
-        .bind(...params)
-        .all();
+      const result = await withTimeout(
+        db
+          .prepare(sql)
+          .bind(...params)
+          .all(),
+        d1TimeoutMs(ctx.env),
+      );
       return result?.results || [];
     } catch {
       return [];
@@ -524,6 +520,53 @@ async function loadChainEventsFeed(
   };
 }
 
+async function requireDataTierRateLimit(ctx) {
+  if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
+  const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+    key: `data:${ctx.clientIp}`,
+  });
+  if (!success) {
+    throw toolError(
+      "data_rate_limited",
+      "Too many data API requests from this client; slow down.",
+    );
+  }
+}
+
+function chainSignersCacheKey({ label, limit, callModule, sort }) {
+  return JSON.stringify([label, limit, callModule || "", sort]);
+}
+
+async function loadMcpChainSigners(ctx, options) {
+  ctx.chainSignersCache ||= new Map();
+  const key = chainSignersCacheKey(options);
+  if (!ctx.chainSignersCache.has(key)) {
+    // The limiter charge lives inside the cache-miss promise (not ahead of the
+    // cache check) so a batch of identical calls shares one limiter charge
+    // alongside the one D1 aggregation, instead of paying the limiter once per
+    // duplicate request in the batch.
+    ctx.chainSignersCache.set(
+      key,
+      requireDataTierRateLimit(ctx)
+        .then(() =>
+          loadChainSigners(mcpD1Runner(ctx), {
+            windowLabel: options.label,
+            windowDays: options.days,
+            observedAt: options.observedAt,
+            limit: options.limit,
+            callModule: options.callModule,
+            sort: options.sort,
+          }),
+        )
+        .catch((error) => {
+          ctx.chainSignersCache.delete(key);
+          throw error;
+        }),
+    );
+  }
+  return ctx.chainSignersCache.get(key);
+}
+
 async function mcpObservedAt(ctx) {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
@@ -584,44 +627,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
-// account_events filtered by netuid, newest first, optional kind filter, keyset
-// (cursor) pagination on (block_number, event_index) with offset as the
-// deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
-  const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
-  const resolvedOffset = clampOffset(offset);
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(resolvedLimit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(resolvedOffset);
-  }
-  const rows = await run(sql, params);
-  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: resolvedLimit,
-    offset: resolvedOffset,
-    nextCursor,
-  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -2147,7 +2152,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(ctx, netuid, {
+      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
         limit: args?.limit,
         offset: args?.offset,
@@ -3165,9 +3170,9 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
-      const { data } = await loadChainSigners(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
+      const { data } = await loadMcpChainSigners(ctx, {
+        label,
+        days,
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
