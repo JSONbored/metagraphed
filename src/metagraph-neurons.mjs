@@ -341,11 +341,11 @@ export function buildGlobalValidators(
   const validators = applyStakeDominance(
     [...validatorsByHotkey.values()].map(buildGlobalValidatorEntry),
   ).sort(
-      (a, b) =>
-        validatorSortValue(b, normalizedSort) -
-          validatorSortValue(a, normalizedSort) ||
-        a.hotkey.localeCompare(b.hotkey),
-    );
+    (a, b) =>
+      validatorSortValue(b, normalizedSort) -
+        validatorSortValue(a, normalizedSort) ||
+      a.hotkey.localeCompare(b.hotkey),
+  );
 
   return {
     schema_version: 1,

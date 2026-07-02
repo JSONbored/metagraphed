@@ -545,7 +545,10 @@ describe("metagraph-neurons builders", () => {
       ],
       { sort: "subnet_count", limit: 10 },
     );
-    assert.equal(data.validators.every((v) => v.stake_dominance === null), true);
+    assert.equal(
+      data.validators.every((v) => v.stake_dominance === null),
+      true,
+    );
   });
 
   test("buildGlobalValidators sorts by total_stake with hotkey tie-break", () => {

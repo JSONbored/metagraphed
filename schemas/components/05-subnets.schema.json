@@ -1537,7 +1537,11 @@
           "uid_count": { "type": "integer", "minimum": 0 },
           "total_stake_tao": { "type": "number", "minimum": 0 },
           "total_emission_tao": { "type": "number", "minimum": 0 },
-          "stake_dominance": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "stake_dominance": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
           "latest_captured_at": {
