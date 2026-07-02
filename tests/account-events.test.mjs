@@ -821,6 +821,17 @@ test("buildAccountSummary coerces a string scanned probe for the cap flag", () =
   assert.equal(capped.first_block, null);
 });
 
+test("buildAccountSummary treats a junk scanned probe as zero for cap detection", () => {
+  // scanned is present but non-numeric → toBlockNumber returns null → ?? 0,
+  // so the cap probe does not false-positive from a garbage D1 cell.
+  const out = buildAccountSummary("5Hk", {
+    agg: { c: "42" },
+    scanned: "nope",
+  });
+  assert.equal(out.event_count, 42);
+  assert.equal(out.event_scan_capped, false);
+});
+
 test("buildAccountSummary uses coerced event_count when scanned is omitted", () => {
   const out = buildAccountSummary("5Hk", { agg: { c: "12", sc: "2" } });
   assert.equal(out.event_count, 12);
