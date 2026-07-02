@@ -511,8 +511,7 @@ class TakeDelegateExtractorTest(unittest.TestCase):
 
 class ColdkeySwapExtractorTest(unittest.TestCase):
     # Subtensor emits the completed swap as ColdkeySwapped(old_coldkey,
-    # new_coldkey) -- the event the poller must index. ColdkeySwapScheduled is
-    # not a real event, so it must not be the mapped key.
+    # new_coldkey) -- the event the poller must index.
     def test_coldkey_swapped_positional(self):
         result = _extract("ColdkeySwapped", [_SS58_A, _SS58_B])
         self.assertEqual(result["coldkey"], _SS58_A)  # old_coldkey
@@ -526,9 +525,49 @@ class ColdkeySwapExtractorTest(unittest.TestCase):
         self.assertEqual(result["coldkey"], _SS58_A)
         self.assertEqual(result["hotkey"], _SS58_B)
 
-    def test_nonexistent_scheduled_event_is_not_mapped(self):
-        # The phantom name must no longer resolve to an extractor.
-        self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
+
+class ColdkeySwapScheduledExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.ColdkeySwapScheduled (#2559).
+
+    Attribute order confirmed against finney spec 424 (v233+):
+    (old_coldkey, new_coldkey, execution_block, swap_cost). The first two
+    fields match ColdkeySwapped; extra trailing fields are display-only.
+    Removed from live metadata at v377 but still indexed for historical blocks.
+    """
+
+    def test_positional_old_and_new_coldkey(self):
+        result = _extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_positional_with_trailing_execution_block_and_swap_cost(self):
+        result = _extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B, 7_430_400, 1_000_000_000])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_named_dict_form(self):
+        result = _extract(
+            "ColdkeySwapScheduled",
+            {"old_coldkey": _SS58_A, "new_coldkey": _SS58_B},
+        )
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_invalid_old_coldkey_gives_null(self):
+        result = _extract("ColdkeySwapScheduled", ["not-an-address", _SS58_B])
+        self.assertIsNone(result["coldkey"])
+        self.assertEqual(result["hotkey"], _SS58_B)
+
+    def test_invalid_new_coldkey_gives_null(self):
+        result = _extract("ColdkeySwapScheduled", [_SS58_A, "not-an-address"])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertIsNone(result["hotkey"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("ColdkeySwapScheduled", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["hotkey"])
 
 
 class RegistrationAllowedExtractorTest(unittest.TestCase):
