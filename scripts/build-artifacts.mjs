@@ -77,6 +77,7 @@ import {
   buildApiIndexArtifact,
   buildContractsArtifact,
 } from "../src/contracts.mjs";
+import { SDL as GRAPHQL_SDL } from "../src/graphql.mjs";
 import {
   MCP_SERVER_INFO,
   MCP_REGISTRY_META,
@@ -2209,6 +2210,11 @@ await writeJson(
   buildApiIndexArtifact(generatedAt, contracts),
 );
 await writeJson(artifactFile("openapi.json"), openApi);
+await fs.writeFile(
+  artifactFile("graphql.graphql"),
+  `${GRAPHQL_SDL.trimEnd()}\n`,
+  "utf8",
+);
 const searchIndexArtifact = buildSearchIndex(
   mergedSubnets,
   surfaces,

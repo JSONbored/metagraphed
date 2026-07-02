@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Blob } from "node:buffer";
+import { readFileSync } from "node:fs";
 import { buildSchema, getIntrospectionQuery, parse, validate } from "graphql";
 import { describe, test } from "vitest";
 import {
@@ -1093,6 +1094,15 @@ describe("graphql — account node + lazy account relationships", () => {
     assert.match(SDL, /type Account \{/);
     assert.match(SDL, /summary: AccountSummary!/);
     assert.match(SDL, /balance: AccountBalance/);
+  });
+
+  test("committed GraphQL SDL artifact matches the Worker SDL", () => {
+    const artifact = readFileSync(
+      new URL("../public/metagraph/graphql.graphql", import.meta.url),
+      "utf8",
+    );
+
+    assert.equal(artifact, `${SDL.trimEnd()}\n`);
   });
 
   test("invalid account ids return null before touching live account stores", async () => {

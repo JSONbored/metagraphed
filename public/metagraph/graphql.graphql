@@ -1,0 +1,453 @@
+
+  type Query {
+    "Paginated active-subnet index."
+    subnets(limit: Int, cursor: String): SubnetList!
+    "One subnet with its health, surfaces, endpoints, and economics."
+    subnet(netuid: Int!): Subnet
+    "Paginated provider/source registry."
+    providers(limit: Int, cursor: String): ProviderList!
+    "One provider with its subnets."
+    provider(id: String!): Provider
+    "Paginated per-subnet economic + validator metrics."
+    economics(limit: Int, cursor: String): EconomicsList!
+    "Curated public interface surfaces, optionally scoped to one subnet."
+    surfaces(netuid: Int, limit: Int, cursor: String): SurfaceList!
+    "Endpoint/resource registry, optionally scoped to one subnet."
+    endpoints(netuid: Int, limit: Int, cursor: String): EndpointList!
+    "Global operational health rollup with per-subnet summaries."
+    health: GlobalHealth
+    "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
+    opportunity_boards(limit: Int): OpportunityBoards!
+    "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
+    compare(netuids: [Int!]!, dimensions: [String!]): Compare!
+    "One Bittensor account with lazy chain-data relationships. Mirrors the /api/v1/accounts/{ss58} family."
+    account(ss58: String!): Account
+  }
+
+  type SubnetList {
+    items: [Subnet!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  type Subnet {
+    netuid: Int!
+    name: String
+    slug: String
+    description: String
+    categories: [String!]
+    status: String
+    subnet_type: String
+    lifecycle: String
+    coverage_level: String
+    curation_level: String
+    integration_readiness: Int
+    surface_count: Int
+    official_surface_count: Int
+    probed_surface_count: Int
+    gap_count: Int
+    first_party: Boolean
+    symbol: String
+    logo_url: String
+    website_url: String
+    docs_url: String
+    "Live operational health summary for this subnet."
+    health: SubnetHealth
+    "Per-subnet economic + validator metrics."
+    economics: SubnetEconomics
+    "Curated public interface surfaces of this subnet."
+    surfaces: [Surface!]!
+    "Endpoint/resource registry rows for this subnet."
+    endpoints: [Endpoint!]!
+  }
+
+  type ProviderList {
+    items: [Provider!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  type Provider {
+    id: String!
+    name: String
+    kind: String
+    authority: String
+    docs_url: String
+    github_url: String
+    website_url: String
+    contact_url: String
+    logo_url: String
+    notes: String
+    public_notes: String
+    endpoint_count: Int
+    surface_count: Int
+    subnet_count: Int
+    netuids: [Int]!
+    "The subnets this provider operates surfaces on."
+    subnets: [Subnet!]!
+  }
+
+  type Account {
+    ss58: String!
+    "Cross-subnet activity summary for this account."
+    summary: AccountSummary!
+    "Durable per-day activity series for this account."
+    history(netuid: Int, from: String, to: String, limit: Int, offset: Int, cursor: String): AccountHistory!
+    "Native-TAO transfers involving this account."
+    transfers(direction: String, block_start: Int, block_end: Int, limit: Int, offset: Int, cursor: String): AccountTransfers!
+    "Top native-TAO counterparties for this account."
+    counterparties(limit: Int): AccountCounterparties!
+    "Extrinsics signed by this account."
+    extrinsics(block_start: Int, block_end: Int, limit: Int, offset: Int, cursor: String): AccountExtrinsics!
+    "Subnets where this account's hotkey is currently registered."
+    subnets: AccountSubnets!
+    "Live finney TAO balance for this account. Null for non-finney or checksum-invalid SS58 addresses."
+    balance: AccountBalance
+  }
+
+  type AccountSummary {
+    schema_version: Int!
+    ss58: String!
+    event_count: Int!
+    subnet_count: Int!
+    first_block: Int
+    last_block: Int
+    first_seen_at: String
+    last_seen_at: String
+    event_kinds: [AccountEventKindCount!]!
+    registrations: [AccountRegistration!]!
+    recent_events: [AccountEvent!]!
+    activity: AccountActivity!
+  }
+
+  type AccountEventKindCount {
+    kind: String!
+    count: Int!
+  }
+
+  type AccountRegistration {
+    netuid: Int
+    uid: Int
+    stake_tao: Float
+    validator_permit: Boolean
+    active: Boolean
+  }
+
+  type AccountActivity {
+    tx_count: Int!
+    last_tx_block: Int
+    last_tx_at: String
+    total_fee_tao: Float
+    modules_called: [AccountModuleCall!]!
+  }
+
+  type AccountModuleCall {
+    call_module: String
+    count: Int!
+  }
+
+  type AccountEvent {
+    block_number: Int
+    event_index: Int
+    event_kind: String
+    hotkey: String
+    coldkey: String
+    netuid: Int
+    uid: Int
+    amount_tao: Float
+    alpha_amount: Float
+    observed_at: String
+    extrinsic_index: Int
+  }
+
+  type AccountHistory {
+    schema_version: Int!
+    ss58: String!
+    day_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    days: [AccountDay!]!
+  }
+
+  type AccountDay {
+    day: String
+    netuid: Int
+    event_count: Int
+    event_kinds: [String!]!
+    first_block: Int
+    last_block: Int
+  }
+
+  type AccountTransfers {
+    schema_version: Int!
+    ss58: String!
+    transfer_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    transfers: [AccountTransfer!]!
+  }
+
+  type AccountTransfer {
+    block_number: Int
+    event_index: Int
+    from: String
+    to: String
+    amount_tao: Float
+    direction: String
+    observed_at: String
+  }
+
+  type AccountCounterparties {
+    schema_version: Int!
+    ss58: String!
+    counterparty_count: Int!
+    transfers_scanned: Int
+    scan_capped: Boolean
+    total_sent_tao: Float
+    total_received_tao: Float
+    counterparties: [AccountCounterparty!]!
+  }
+
+  type AccountCounterparty {
+    address: String!
+    sent_tao: Float!
+    received_tao: Float!
+    net_tao: Float!
+    transfer_count: Int!
+    last_block: Int
+  }
+
+  type AccountExtrinsics {
+    schema_version: Int!
+    ss58: String!
+    extrinsic_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    extrinsics: [AccountExtrinsic!]!
+  }
+
+  type AccountExtrinsic {
+    block_number: Int
+    extrinsic_index: Int
+    extrinsic_hash: String
+    signer: String
+    call_module: String
+    call_function: String
+    success: Boolean
+    fee_tao: Float
+    tip_tao: Float
+    observed_at: String
+  }
+
+  type AccountSubnets {
+    schema_version: Int!
+    ss58: String!
+    subnet_count: Int!
+    subnets: [AccountRegistration!]!
+  }
+
+  type AccountBalance {
+    schema_version: Int!
+    ss58: String!
+    balance_tao: Float
+    queried_at: String
+  }
+
+  type EconomicsList {
+    subnets: [SubnetEconomics!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  type SubnetEconomics {
+    netuid: Int!
+    name: String
+    slug: String
+    emission_share: Float
+    alpha_price_tao: Float
+    registration_allowed: Boolean
+    registration_cost_tao: Float
+    open_slots: Int
+    max_uids: Int
+    miner_count: Int
+    miner_readiness: Int
+    validator_count: Int
+    max_validators: Int
+    total_stake_tao: Float
+    max_stake_tao: Float
+    subnet_volume_tao: Float
+    tao_in_pool_tao: Float
+    alpha_in_pool: Float
+    alpha_out_pool: Float
+    owner_coldkey: String
+    owner_hotkey: String
+  }
+
+  type SurfaceList {
+    items: [Surface!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  type Surface {
+    id: String!
+    key: String
+    netuid: Int
+    name: String
+    kind: String
+    status: String
+    classification: String
+    authority: String
+    provider: String
+    url: String
+    auth_required: Boolean
+    public_safe: Boolean
+    schema_status: String
+    schema_url: String
+    last_verified_at: String
+    stale: Boolean
+    subnet_name: String
+    subnet_slug: String
+    source_urls: [String!]
+    notes: String
+  }
+
+  type EndpointList {
+    items: [Endpoint!]!
+    total: Int!
+    next_cursor: String
+  }
+
+  type Endpoint {
+    id: String!
+    surface_id: String
+    surface_key: String
+    netuid: Int
+    kind: String
+    layer: String
+    network: String
+    status: String
+    classification: String
+    authority: String
+    provider: String
+    operator: String
+    url: String
+    auth_required: Boolean
+    public_safe: Boolean
+    latency_ms: Int
+    latest_block: Int
+    last_checked: String
+    last_ok: String
+    health_source: String
+    score: Int
+    pool_eligible: Boolean
+    monitoring_status: String
+    subnet_name: String
+    subnet_slug: String
+    source_urls: [String!]
+  }
+
+  type GlobalHealth {
+    status: String
+    surface_count: Int
+    ok_count: Int
+    degraded_count: Int
+    failed_count: Int
+    unknown_count: Int
+    avg_latency_ms: Int
+    latency_sample_count: Int
+    last_checked: String
+    last_ok: String
+    generated_at: String
+    operational_observed_at: String
+    health_source: String
+    scope: String
+    subnets: [SubnetHealth!]!
+  }
+
+  type SubnetHealth {
+    netuid: Int
+    name: String
+    slug: String
+    status: String
+    surface_count: Int
+    ok_count: Int
+    degraded_count: Int
+    failed_count: Int
+    unknown_count: Int
+    avg_latency_ms: Int
+    latency_sample_count: Int
+    last_checked: String
+    last_ok: String
+  }
+
+  type OpportunityBoards {
+    observed_at: String
+    with_economics_count: Int!
+    open_slots: [OpportunityEntry!]!
+    cheapest_registration: [OpportunityEntry!]!
+    highest_emission: [OpportunityEntry!]!
+    validator_headroom: [OpportunityEntry!]!
+  }
+
+  type OpportunityEntry {
+    netuid: Int!
+    slug: String
+    name: String
+    open_slots: Int
+    max_uids: Int
+    registration_cost_tao: Float
+    registration_allowed: Boolean
+    emission_share: Float
+    total_stake_tao: Float
+    validator_count: Int
+    miner_count: Int
+    validator_headroom: Int
+    max_validators: Int
+  }
+
+  type Compare {
+    schema_version: Int!
+    source: String
+    observed_at: String
+    dimensions: [String!]!
+    requested_netuids: [Int!]!
+    subnets: [CompareSubnet!]!
+  }
+
+  type CompareSubnet {
+    netuid: Int!
+    name: String
+    slug: String
+    found: Boolean!
+    structure: CompareStructure
+    economics: CompareEconomics
+    health: CompareHealth
+  }
+
+  type CompareStructure {
+    completeness_score: Float
+    surface_count: Int
+    operational_interface_count: Int
+  }
+
+  type CompareEconomics {
+    registration_cost_tao: Float
+    registration_allowed: Boolean
+    open_slots: Int
+    emission_share: Float
+    alpha_price_tao: Float
+    validator_count: Int
+    miner_count: Int
+    total_stake_tao: Float
+    miner_readiness: Int
+  }
+
+  type CompareHealth {
+    surface_count: Int
+    ok_count: Int
+    avg_latency_ms: Int
+  }
