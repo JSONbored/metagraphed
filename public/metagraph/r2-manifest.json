@@ -1,6 +1,6 @@
 {
   "artifact_count": 7,
-  "artifact_size_bytes": 2281663,
+  "artifact_size_bytes": 2282094,
   "artifacts": [
     {
       "content_type": "application/json",
@@ -52,8 +52,8 @@
       "key": "runs/2026-06-18T00-00-00-000Z/schemas/index.json",
       "latest_key": "latest/schemas/index.json",
       "path": "/metagraph/schemas/index.json",
-      "sha256": "cf46bb7bae1b832a07b9937f4bf4b839a870275b835fe0fd5eaf49b4e1b0da26",
-      "size_bytes": 37277,
+      "sha256": "b9c98797d7e0242b4cf5d51053a19396981e66678de1dc3fb2242c72615add2a",
+      "size_bytes": 37708,
       "storage_tier": "dual"
     },
     {
@@ -70,7 +70,7 @@
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-30.14",
   "full_artifact_count": 2262,
-  "full_artifact_size_bytes": 40486157,
+  "full_artifact_size_bytes": 40486320,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -92,7 +92,7 @@
     "r2": 2255
   },
   "storage_tier_size_bytes": {
-    "dual": 2281663,
-    "r2": 38204494
+    "dual": 2282094,
+    "r2": 38204226
   }
 }
