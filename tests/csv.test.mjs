@@ -73,11 +73,14 @@ test("validateCsvFormatParam accepts absent and csv values", () => {
   assert.equal(validateCsvFormatParam(url("?format=CSV")), null);
 });
 
-test("validateCsvFormatParam rejects unsupported format values", () => {
-  for (const format of ["xml", "json"]) {
-    const error = validateCsvFormatParam(url(`?format=${format}`));
+test("validateCsvFormatParam rejects empty and unsupported format values", () => {
+  for (const format of ["", "xml", "json"]) {
+    const query = format === "" ? "?format=" : `?format=${format}`;
+    const error = validateCsvFormatParam(url(query));
     assert.equal(error.parameter, "format");
-    assert.match(error.message, new RegExp(format));
+    if (format !== "") {
+      assert.match(error.message, new RegExp(format));
+    }
     assert.match(error.message, /format=csv/);
   }
 });
@@ -113,13 +116,14 @@ test("rowsToCsv neutralizes spreadsheet formula trigger prefixes", () => {
       tab: "\tleak",
       cr: "\rleak",
       spaced: " =cmd",
+      hyphen: "-danger",
       plain: "safe",
     },
   ]);
 
   assert.equal(
     csv,
-    "name,delta,note,tab,cr,spaced,plain\r\n'=cmd,'+100,'@SUM(A1),'\tleak,\"'\rleak\",' =cmd,safe",
+    "name,delta,note,tab,cr,spaced,hyphen,plain\r\n'=cmd,'+100,'@SUM(A1),'\tleak,\"'\rleak\",' =cmd,'-danger,safe",
   );
 });
 

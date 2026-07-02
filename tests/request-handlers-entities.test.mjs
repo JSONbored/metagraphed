@@ -1804,16 +1804,22 @@ describe("handleSubnetMovers", () => {
   });
 
   test("rejects an unsupported format with 400", async () => {
-    for (const format of ["xml", "json"]) {
+    for (const format of ["", "xml", "json"]) {
+      const query =
+        format === ""
+          ? "/api/v1/subnets/movers?format="
+          : `/api/v1/subnets/movers?format=${format}`;
       const body = await errorJson(
         await handleSubnetMovers(
-          req("/api/v1/subnets/movers"),
+          req(query),
           emptyEnv(),
-          url(`/api/v1/subnets/movers?format=${format}`),
+          url(query),
         ),
       );
       assert.equal(body.meta.parameter, "format");
-      assert.match(body.error.message, new RegExp(format));
+      if (format !== "") {
+        assert.match(body.error.message, new RegExp(format));
+      }
     }
   });
 
@@ -1957,16 +1963,22 @@ describe("handleGlobalValidators", () => {
   });
 
   test("rejects an unsupported format with 400", async () => {
-    for (const format of ["xml", "json"]) {
+    for (const format of ["", "xml", "json"]) {
+      const query =
+        format === ""
+          ? "/api/v1/validators?format="
+          : `/api/v1/validators?format=${format}`;
       const body = await errorJson(
         await handleGlobalValidators(
-          req("/api/v1/validators"),
+          req(query),
           emptyEnv(),
-          url(`/api/v1/validators?format=${format}`),
+          url(query),
         ),
       );
       assert.equal(body.meta.parameter, "format");
-      assert.match(body.error.message, new RegExp(format));
+      if (format !== "") {
+        assert.match(body.error.message, new RegExp(format));
+      }
     }
   });
 

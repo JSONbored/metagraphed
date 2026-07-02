@@ -108,7 +108,7 @@ export function rowsToCsv(rows, columns) {
 
 export function validateCsvFormatParam(url) {
   const format = url.searchParams.get("format");
-  if (format === null || format === "") {
+  if (format === null) {
     return null;
   }
   if (format.toLowerCase() === "csv") {
