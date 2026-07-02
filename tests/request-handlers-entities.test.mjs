@@ -1742,6 +1742,23 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow()],
+    });
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(captures.sql.length, 0);
+  });
+
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountEvents,
