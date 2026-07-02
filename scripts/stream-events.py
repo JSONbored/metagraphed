@@ -197,6 +197,13 @@ def push(url, payload):
             resp.read()
         return True
     except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            log.error(
+                "ingest push rejected (HTTP %s) — auth/token misconfiguration; "
+                "exiting so this does not silently retry forever",
+                e.code,
+            )
+            sys.exit(1)
         log.warning(
             "ingest push rejected (HTTP %s) — poller backstop will cover this gap",
             e.code,
