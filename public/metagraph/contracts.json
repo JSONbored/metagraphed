@@ -507,7 +507,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-01.1",
-      "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+      "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file). Pass `format=csv` for a text/csv export.",
       "id": "subnet-movers",
       "path": "/metagraph/subnets/movers.json",
       "schema_ref": "#/components/schemas/SubnetMoversArtifact",
@@ -516,7 +516,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-01.1",
-      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file). Pass `format=csv` for a text/csv export.",
       "id": "global-validators",
       "path": "/metagraph/validators.json",
       "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",

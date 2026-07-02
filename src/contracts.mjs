@@ -958,13 +958,13 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
-    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file). Pass `format=csv` for a text/csv export.",
     "SubnetMoversArtifact",
   ),
   artifact(
     "global-validators",
     "/metagraph/validators.json",
-    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file). Pass `format=csv` for a text/csv export.",
     "GlobalValidatorsArtifact",
   ),
   artifact(
