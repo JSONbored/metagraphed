@@ -136,6 +136,49 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.validator_trust, null);
   });
 
+  test("formatNeuron coerces string-typed REAL score cells (rank/trust/consensus/…)", () => {
+    // rank/trust/validator_trust/consensus/incentive/dividends are nullable REAL
+    // columns that D1 can surface as numeric strings ("0.5" not 0.5). #2493 left
+    // them on a bare `?? null` pass-through while coercing the other numeric
+    // fields, so a string cell leaked straight into the number-typed API payload.
+    const n = formatNeuron({
+      rank: "0.75",
+      trust: "0.5",
+      validator_trust: "0.99",
+      consensus: "0.4",
+      incentive: "0.1",
+      dividends: "0.2",
+    });
+    assert.equal(n.rank, 0.75);
+    assert.equal(typeof n.rank, "number");
+    assert.equal(n.trust, 0.5);
+    assert.equal(n.validator_trust, 0.99);
+    assert.equal(n.consensus, 0.4);
+    assert.equal(n.incentive, 0.1);
+    assert.equal(n.dividends, 0.2);
+    assert.equal(typeof n.dividends, "number");
+  });
+
+  test("formatNeuron keeps null contract for explicit null score cells", () => {
+    // nullableNumber(null) === 0 (Number(null) is 0, which is finite), so the
+    // score fields need the same `== null` guard as uid/stake/emission — an
+    // explicit null REAL cell must serialize as null, not 0.
+    const n = formatNeuron({
+      rank: null,
+      trust: null,
+      validator_trust: null,
+      consensus: null,
+      incentive: null,
+      dividends: null,
+    });
+    assert.equal(n.rank, null);
+    assert.equal(n.trust, null);
+    assert.equal(n.validator_trust, null);
+    assert.equal(n.consensus, null);
+    assert.equal(n.incentive, null);
+    assert.equal(n.dividends, null);
+  });
+
   test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
     // Regression for the Gittensory Orb follow-up blocker on #2503: stake_tao /
     // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
