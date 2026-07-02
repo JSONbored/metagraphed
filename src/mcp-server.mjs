@@ -19,6 +19,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
+  loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
@@ -162,7 +163,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.17.0";
+export const MCP_SERVER_VERSION = "1.18.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -256,7 +257,9 @@ export const MCP_INSTRUCTIONS =
   "get_account_events returns its chain-event history (optional kind filter), and " +
   "get_account_subnets the subnets where it is registered, get_account_stake_flow " +
   "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
-  "activity analytics, get_chain_calls returns the extrinsic call-mix " +
+  "activity analytics, get_chain_concentration network-wide stake and emission " +
+  "decentralization (Gini, HHI, Nakamoto) with coldkeys collapsed across subnets, " +
+  "get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_transfers network-wide " +
   "native-TAO transfer volume plus top senders/receivers, get_network_activity the daily " +
@@ -3399,6 +3402,25 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_concentration",
+    title: "Get network-wide stake/emission concentration",
+    description:
+      "Fetch network-wide stake and emission decentralization scorecards: Gini, " +
+      "HHI, Nakamoto coefficient, top-percentile shares, and entropy over per-UID, " +
+      "per-entity (coldkey-collapsed across subnets), and validator-only " +
+      "distributions. Use it to see whether consensus power is broadly distributed " +
+      "or captured by a few operators network-wide. Mirrors GET " +
+      "/api/v1/chain/concentration.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainConcentration(mcpD1Runner(ctx));
+    },
+  },
+  {
     name: "get_chain_fees",
     title: "Get chain fee and tip market analytics",
     description:
@@ -5500,6 +5522,24 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_tip_tao: { type: ["number", "null"] },
         last_tx_block: NULLABLE_INT,
       }),
+    },
+  },
+  get_chain_concentration: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer" },
+      neuron_count: { type: "integer" },
+      entity_count: { type: "integer" },
+      uids_per_entity: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      stake: { type: ["object", "null"] },
+      emission: { type: ["object", "null"] },
+      entity_stake: { type: ["object", "null"] },
+      entity_emission: { type: ["object", "null"] },
+      validator_stake: { type: ["object", "null"] },
     },
   },
   get_chain_fees: {

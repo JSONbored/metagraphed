@@ -2168,6 +2168,69 @@ describe("MCP get_chain_signers", () => {
   });
 });
 
+describe("MCP get_chain_concentration", () => {
+  test("returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_chain_concentration", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.stake, null);
+    assert.equal(out.emission, null);
+  });
+
+  test("collapses coldkeys across subnets for entity lenses", async () => {
+    const res = await callTool(
+      "get_chain_concentration",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: {
+            prepare(sql) {
+              return {
+                bind() {
+                  return {
+                    all() {
+                      if (!sql.includes("FROM neurons")) {
+                        return Promise.resolve({ results: [] });
+                      }
+                      return Promise.resolve({
+                        results: [
+                          {
+                            stake_tao: 100,
+                            emission_tao: 2,
+                            coldkey: "ck-a",
+                            validator_permit: 1,
+                            netuid: 1,
+                            captured_at: "2026-06-27T00:00:00Z",
+                          },
+                          {
+                            stake_tao: 50,
+                            emission_tao: 1,
+                            coldkey: "ck-a",
+                            validator_permit: 0,
+                            netuid: 2,
+                            captured_at: "2026-06-27T00:00:00Z",
+                          },
+                        ],
+                      });
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.entity_count, 1);
+    assert.equal(out.entity_stake.total, 150);
+    assert.equal(out.stake.holders, 2);
+  });
+});
+
 describe("MCP get_chain_fees", () => {
   test("returns daily series and top payers from D1", async () => {
     // The median query only runs for days the daily aggregate already proved

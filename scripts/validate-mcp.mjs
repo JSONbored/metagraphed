@@ -483,6 +483,13 @@ assert.ok(
   Array.isArray(signersCold.signers) && signersCold.window === "7d",
   "get_chain_signers must return window + signers[] on cold D1",
 );
+const chainConcentrationCold = await callOk("get_chain_concentration", {});
+assert.ok(
+  chainConcentrationCold.subnet_count === 0 &&
+    chainConcentrationCold.neuron_count === 0 &&
+    chainConcentrationCold.stake === null,
+  "get_chain_concentration must return schema-stable empties on cold D1",
+);
 const feesCold = await callOk("get_chain_fees", {
   window: "7d",
   limit: 5,
