@@ -17515,6 +17515,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetMetagraphArtifact"];
                     };
+                    /**
+                     * @example uid,hotkey
+                     *     0,5Hk1
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -19161,6 +19166,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetValidatorsArtifact"];
                     };
+                    /**
+                     * @example uid,hotkey
+                     *     0,5Hk1
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

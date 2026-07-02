@@ -760,6 +760,22 @@ describe("metagraph routes (#1304/#1305) via the Worker", () => {
     assert.equal(body.data.neurons[0].uid, 0);
   });
 
+  test("GET /subnets/{n}/metagraph?format=csv serves CSV through the Worker route", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/metagraph?format=csv",
+      ),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    const lines = (await res.text()).split("\n");
+    assert.match(lines[0], /^uid,hotkey,/);
+    assert.match(lines[1], /^0,/);
+    assert.match(lines[2], /^5,/);
+  });
+
   test("GET /subnets/{n}/yield routes to the emission-yield handler", async () => {
     const { res, body } = await getJson("/api/v1/subnets/7/yield", env);
     assert.equal(res.status, 200);

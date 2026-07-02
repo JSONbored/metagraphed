@@ -288,11 +288,19 @@ describe("public contract registry", () => {
     assert.deepEqual(genericAliases, []);
 
     for (const route of API_ROUTES) {
-      const dataRef =
+      const content =
         openapi.paths[route.path][route.method.toLowerCase()].responses["200"]
-          .content["application/json"].schema.allOf[1].properties.data.$ref;
+          .content;
+      const dataRef =
+        content["application/json"].schema.allOf[1].properties.data.$ref;
       assert.notEqual(dataRef, "#/components/schemas/JsonObject");
       assert.notEqual(dataRef, "#/components/schemas/GenericArtifact");
+      if (route.id === "subnet-metagraph" || route.id === "subnet-validators") {
+        assert.deepEqual(Object.keys(content).sort(), [
+          "application/json",
+          "text/csv",
+        ]);
+      }
     }
   });
 

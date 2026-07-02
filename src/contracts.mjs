@@ -1890,6 +1890,7 @@ export const API_ROUTES = [
       { name: "format", schema: { type: "string", enum: ["csv"] } },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+    ["application/json", "text/csv"],
   ),
   route(
     "subnet-neuron",
@@ -1915,6 +1916,7 @@ export const API_ROUTES = [
     ["subnets", "analytics"],
     [{ name: "format", schema: { type: "string", enum: ["csv"] } }],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+    ["application/json", "text/csv"],
   ),
   route(
     "subnet-yield",
@@ -2734,6 +2736,27 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         },
       ],
     };
+    const successContent = {};
+    for (const contentType of entry.response_content_types || [
+      "application/json",
+    ]) {
+      if (contentType === "application/json") {
+        successContent["application/json"] = {
+          schema: responseSchema,
+          // Deterministic worked example (schema-valid, no live data) so
+          // Swagger UI + agents see a concrete response shape. Generated
+          // from the schema; enforced by validate-openapi-examples.
+          example: sampleFromSchema(responseSchema, componentSchemas),
+        };
+        continue;
+      }
+      if (contentType === "text/csv") {
+        successContent["text/csv"] = {
+          schema: { type: "string" },
+          example: "uid,hotkey\n0,5Hk1",
+        };
+      }
+    }
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -2760,15 +2783,7 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
             description:
               "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: successContent,
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2929,6 +2944,7 @@ function route(
   tags,
   queryParameters = [],
   pathParameters = [],
+  responseContentTypes = ["application/json"],
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
   return {
@@ -2943,6 +2959,7 @@ function route(
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
     path_parameters: pathParameters,
+    response_content_types: responseContentTypes,
   };
 }
 

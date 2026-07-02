@@ -33632,6 +33632,12 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "uid,hotkey\n0,5Hk1",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
             "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
@@ -35729,6 +35735,12 @@
                       "type": "object"
                     }
                   ]
+                }
+              },
+              "text/csv": {
+                "example": "uid,hotkey\n0,5Hk1",
+                "schema": {
+                  "type": "string"
                 }
               }
             },

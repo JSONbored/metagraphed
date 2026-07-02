@@ -43,12 +43,52 @@ export type PathParams<Path extends ApiPath> =
   GetOperation<Path> extends { parameters: { path?: infer Params } }
     ? Params
     : never;
+export type HasResponseContent<
+  Path extends ApiPath,
+  ContentType extends string,
+> = GetOperation<Path> extends {
+  responses: {
+    200: {
+      content: {
+        [Key in ContentType]: unknown;
+      };
+    };
+  };
+}
+  ? true
+  : false;
+export type JsonPath = {
+  [Path in ApiPath]: HasResponseContent<Path, "application/json"> extends true
+    ? Path
+    : never;
+}[ApiPath];
+export type CsvPath = {
+  [Path in ApiPath]: HasResponseContent<Path, "text/csv"> extends true
+    ? Path
+    : never;
+}[ApiPath];
+export type JsonQueryParams<Path extends JsonPath> =
+  QueryParams<Path> extends object
+    ? Omit<QueryParams<Path>, "format"> & { format?: never }
+    : QueryParams<Path>;
 export type JsonResponse<Path extends ApiPath> =
   GetOperation<Path> extends {
     responses: {
       200: {
         content: {
           "application/json": infer Body;
+        };
+      };
+    };
+  }
+    ? Body
+    : never;
+export type CsvResponse<Path extends ApiPath> =
+  GetOperation<Path> extends {
+    responses: {
+      200: {
+        content: {
+          "text/csv": infer Body;
         };
       };
     };
@@ -122,9 +162,11 @@ function resolveSignal(
  * THROWS a MetagraphedError (carrying status + error code + envelope) on any
  * non-2xx, so a resolved value is always a success.
  */
-export async function metagraphedFetch<Path extends ApiPath>(
+export async function metagraphedFetch<Path extends JsonPath>(
   path: Path,
-  options: MetagraphedFetchOptions<Path> = {},
+  options: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+    query?: JsonQueryParams<Path>;
+  } = {},
 ): Promise<JsonResponse<Path>> {
   const {
     baseUrl = "https://api.metagraph.sh",
@@ -167,13 +209,64 @@ export async function metagraphedFetch<Path extends ApiPath>(
   return body as JsonResponse<Path>;
 }
 
+export async function metagraphedFetchCsv<Path extends CsvPath>(
+  path: Path,
+  options: MetagraphedFetchOptions<Path> = {},
+): Promise<CsvResponse<Path>> {
+  const {
+    baseUrl = "https://api.metagraph.sh",
+    pathParams,
+    query,
+    timeoutMs = 30000,
+    signal,
+    ...init
+  } = options;
+  const resolvedPath = interpolatePath(
+    String(path),
+    pathParams as Record<string, string | number> | undefined,
+  );
+  const url = new URL(resolvedPath, baseUrl);
+  const csvQuery = {
+    ...(query as Record<string, unknown> | undefined),
+    format: "csv",
+  };
+  for (const [key, value] of Object.entries(csvQuery)) {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
+  }
+  const response = await fetch(url, {
+    ...init,
+    method: "GET",
+    headers: {
+      accept: "text/csv",
+      ...(init.headers || {}),
+    },
+    signal: resolveSignal(signal, timeoutMs),
+  });
+  if (!response.ok) {
+    const body = await readJsonBody(response);
+    const envelope = isErrorEnvelope(body) ? body : undefined;
+    throw new MetagraphedError(
+      envelope?.error?.message ??
+        `GET ${url.pathname} failed with status ${response.status}`,
+      response.status,
+      envelope?.error?.code,
+      envelope,
+    );
+  }
+  return (await response.text()) as CsvResponse<Path>;
+}
+
 /**
  * Follow cursor pagination for a list endpoint, yielding each page's success
  * envelope until meta.pagination.next_cursor is exhausted.
  */
-export async function* metagraphedPaginate<Path extends ApiPath>(
+export async function* metagraphedPaginate<Path extends JsonPath>(
   path: Path,
-  options: MetagraphedFetchOptions<Path> = {},
+  options: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+    query?: JsonQueryParams<Path>;
+  } = {},
 ): AsyncGenerator<JsonResponse<Path>, void, unknown> {
   const baseQuery: Record<string, unknown> = {
     ...(options.query as Record<string, unknown> | undefined),
@@ -511,17 +604,27 @@ function buildEtagCacheKey(
  * createMetagraphedClient.
  */
 export interface MetagraphedClient {
-  request<Path extends ApiPath>(
+  request<Path extends JsonPath>(
     path: Path,
-    options?: MetagraphedFetchOptions<Path>,
+    options?: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    },
   ): Promise<JsonResponse<Path>>;
-  paginate<Path extends ApiPath>(
+  requestCsv<Path extends CsvPath>(
     path: Path,
     options?: MetagraphedFetchOptions<Path>,
+  ): Promise<CsvResponse<Path>>;
+  paginate<Path extends JsonPath>(
+    path: Path,
+    options?: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    },
   ): AsyncGenerator<JsonResponse<Path>, void, unknown>;
-  fetchAll<Item = unknown, Path extends ApiPath = ApiPath>(
+  fetchAll<Item = unknown, Path extends JsonPath = JsonPath>(
     path: Path,
-    options?: MetagraphedFetchOptions<Path>,
+    options?: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    },
   ): Promise<Item[]>;
   rpc<Result = unknown>(
     network: string,
@@ -582,9 +685,11 @@ export function createMetagraphedClient(
       : clientOptions.cache
     : null;
 
-  async function request<Path extends ApiPath>(
+  async function request<Path extends JsonPath>(
     path: Path,
-    options: MetagraphedFetchOptions<Path> = {},
+    options: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    } = {},
   ): Promise<JsonResponse<Path>> {
     const {
       baseUrl: requestBaseUrl,
@@ -681,9 +786,23 @@ export function createMetagraphedClient(
     }
   }
 
-  async function* paginate<Path extends ApiPath>(
+  async function requestCsv<Path extends CsvPath>(
     path: Path,
     options: MetagraphedFetchOptions<Path> = {},
+  ): Promise<CsvResponse<Path>> {
+    return metagraphedFetchCsv(path, {
+      ...options,
+      baseUrl: options.baseUrl ?? baseUrl,
+      headers: mergeRequestHeaders(clientOptions.headers, options.headers),
+      timeoutMs: options.timeoutMs ?? clientOptions.timeoutMs ?? 30000,
+    });
+  }
+
+  async function* paginate<Path extends JsonPath>(
+    path: Path,
+    options: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    } = {},
   ): AsyncGenerator<JsonResponse<Path>, void, unknown> {
     const baseQuery: Record<string, unknown> = {
       ...(options.query as Record<string, unknown> | undefined),
@@ -708,9 +827,11 @@ export function createMetagraphedClient(
     }
   }
 
-  async function fetchAll<Item = unknown, Path extends ApiPath = ApiPath>(
+  async function fetchAll<Item = unknown, Path extends JsonPath = JsonPath>(
     path: Path,
-    options: MetagraphedFetchOptions<Path> = {},
+    options: Omit<MetagraphedFetchOptions<Path>, "query"> & {
+      query?: JsonQueryParams<Path>;
+    } = {},
   ): Promise<Item[]> {
     const items: Item[] = [];
     for await (const page of paginate(path, options)) {
@@ -753,6 +874,7 @@ export function createMetagraphedClient(
 
   return {
     request,
+    requestCsv,
     paginate,
     fetchAll,
     rpc,

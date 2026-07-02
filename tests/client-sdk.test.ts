@@ -7,6 +7,7 @@ import {
   createMetagraphedClient,
   MetagraphedError,
   metagraphedFetch,
+  metagraphedFetchCsv,
   metagraphedPaginate,
   metagraphedRpc,
 } from "../generated/metagraphed-client";
@@ -133,6 +134,28 @@ describe("metagraphedFetch", () => {
     );
     await metagraphedFetch("/api/v1/health" as never, { timeoutMs: 0 });
     expect((fetchMock.mock.calls[1][1] as RequestInit).signal).toBeUndefined();
+  });
+
+  test("metagraphedFetchCsv requests CSV and forces format=csv", async () => {
+    const fetchMock = stubFetch(
+      async () =>
+        new Response("uid,hotkey\n0,5Hk1", {
+          status: 200,
+          headers: { "content-type": "text/csv; charset=utf-8" },
+        }),
+    );
+    const out = await metagraphedFetchCsv(
+      "/api/v1/subnets/{netuid}/metagraph" as never,
+      {
+        pathParams: { netuid: 7 } as never,
+        query: { validator_permit: "true" } as never,
+      },
+    );
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.searchParams.get("format")).toBe("csv");
+    expect(url.searchParams.get("validator_permit")).toBe("true");
+    expect((init.headers as Record<string, string>).accept).toBe("text/csv");
+    expect(out).toBe("uid,hotkey\n0,5Hk1");
   });
 });
 

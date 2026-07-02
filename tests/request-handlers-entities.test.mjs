@@ -533,6 +533,17 @@ describe("handleSubnetMetagraph", () => {
     assert.match(body.error.message, /bogus/);
   });
 
+  test("rejects unsupported metagraph CSV format with 400", async () => {
+    const res = await handleSubnetMetagraph(
+      req(`/api/v1/subnets/${NETUID}/metagraph?format=json`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=json`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "format");
+  });
+
   test("returns schema-stable empty payload on cold/unbound D1", async () => {
     const body = await assertColdSchema(
       handleSubnetMetagraph,
@@ -642,6 +653,49 @@ describe("handleSubnetMetagraph", () => {
     );
     assert.equal(res.status, 200);
     assert.equal((await res.text()).split("\n").length, 1);
+  });
+
+  test("format=csv HEAD returns headers without a body", async () => {
+    const { env } = dbWith({ neurons: [neuronRow()] });
+    const res = await handleSubnetMetagraph(
+      new Request(
+        `https://api.metagraph.sh/api/v1/subnets/${NETUID}/metagraph?format=csv`,
+        {
+          method: "HEAD",
+        },
+      ),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /text\/csv/);
+    assert.equal(await res.text(), "");
+  });
+
+  test("format=csv honors If-None-Match with 304", async () => {
+    const { env } = dbWith({ neurons: [neuronRow()] });
+    const first = await handleSubnetMetagraph(
+      req(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+    );
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    const second = await handleSubnetMetagraph(
+      new Request(
+        `https://api.metagraph.sh/api/v1/subnets/${NETUID}/metagraph?format=csv`,
+        {
+          headers: { "if-none-match": etag },
+        },
+      ),
+      env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/metagraph?format=csv`),
+    );
+    assert.equal(second.status, 304);
+    assert.equal(await second.text(), "");
   });
 
   test("validator_permit=true filters to validators only", async () => {
@@ -1595,6 +1649,14 @@ describe("handleSubnetTurnover", () => {
 
     test("returns raw search on an unsupported query parameter", () => {
       const raw = "/api/v1/subnets/1/metagraph?unknown=1";
+      const key = canonicalSubnetMetagraphCachePath(
+        new URL(`https://api.metagraph.sh${raw}`),
+      );
+      assert.equal(key, raw);
+    });
+
+    test("returns raw search on an unsupported format value", () => {
+      const raw = "/api/v1/subnets/1/metagraph?format=json";
       const key = canonicalSubnetMetagraphCachePath(
         new URL(`https://api.metagraph.sh${raw}`),
       );
