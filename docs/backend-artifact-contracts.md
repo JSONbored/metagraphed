@@ -11,7 +11,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `registry/reviews/maintainer-reviewed.json` stores public-safe maintainer review decisions.
 - `schemas/components/*.schema.json` is canonical for public API/artifact component schemas.
 - `schemas/api-components.schema.json` is a generated bundle and should not be edited by hand.
-- `/metagraph/openapi.json`, `/metagraph/types.d.ts`, `generated/metagraphed-api.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
+- `/metagraph/openapi.json`, `/metagraph/graphql.graphql`, `/metagraph/types.d.ts`, `generated/metagraphed-api.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
 - `public/metagraph/*` files are compact generated projections and should not be edited by hand. R2-only artifacts must not be committed there.
 - `dist/metagraph-r2/metagraph/*` is the ignored staging tree for volatile/detail generated projections that are uploaded to R2.
 - Artifact contracts carry `storage_tier`: `dual` for compact Git-plus-R2 artifacts, `r2` for volatile/detail artifacts, and `git` for local-only generated support artifacts.
@@ -27,6 +27,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/providers/{slug}/endpoints.json`: endpoint resources for one provider or operator. R2-backed.
 - `/metagraph/api-index.json`: Worker API route map and response-envelope contract.
 - `/metagraph/openapi.json`: OpenAPI 3.1 contract for backend API consumers.
+- `/metagraph/graphql.graphql`: GraphQL SDL contract for backend API consumers.
 - `/metagraph/types.d.ts`: generated TypeScript definitions for consumers.
 - `/metagraph/changelog.json`: reviewable generated artifact and subnet-change summary.
 - `/metagraph/subnets.json`: compact all-subnet index.
