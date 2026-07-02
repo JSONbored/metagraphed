@@ -822,6 +822,7 @@ export async function handleAccount(request, env, ss58) {
 export async function handleAccountEvents(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "kind",
+    "netuid",
     "block_start",
     "block_end",
     "limit",
@@ -829,6 +830,14 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  // Optional per-subnet scope, parity with the sibling /history route: the
+  // account_events rows carry a netuid column, so a caller can follow one
+  // subnet's slice of an account's event stream.
+  const netuid = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuid.error) return analyticsQueryError(netuid.error);
   // Optional block-height range filter, parity with the extrinsics and
   // chain-events feeds. Index-satisfiable via idx_account_events_hotkey and
   // idx_account_events_coldkey (each leads block_number), so a bounded range
@@ -848,6 +857,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     offset: url.searchParams.get("offset"),
     kind: url.searchParams.get("kind"),
     cursor: url.searchParams.get("cursor"),
+    netuid: netuid.value,
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });

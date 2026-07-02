@@ -156,6 +156,18 @@ test("GET /accounts/{ss58}/events rejects an unsupported query param", async () 
   assert.equal(res.status, 400);
 });
 
+test("GET /accounts/{ss58}/events rejects a malformed netuid with a 400 (#2585)", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/events?netuid=seven`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "netuid");
+});
+
 test("GET /accounts/{ss58}/subnets returns the cross-subnet footprint (#1347)", async () => {
   const env = dbWith({
     registrations: [

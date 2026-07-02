@@ -695,7 +695,7 @@ export async function loadAccountSummary(d1, ss58) {
 export async function loadAccountEvents(
   d1,
   ss58,
-  { limit, offset, kind, cursor, blockStart, blockEnd } = {},
+  { limit, offset, kind, cursor, blockStart, blockEnd, netuid } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -713,6 +713,13 @@ export async function loadAccountEvents(
   if (kind) {
     filterParts.push("AND event_kind = ?");
     filterParams.push(kind);
+  }
+  // Per-subnet scope, parity with the sibling /history route: a bound equality
+  // on the account_events netuid column, applied inside each indexed branch so
+  // the hotkey/coldkey seeks stay index-satisfiable.
+  if (netuid != null) {
+    filterParts.push("AND netuid = ?");
+    filterParams.push(netuid);
   }
   // Block-height range filter, parity with the extrinsics and chain-events
   // feeds: the per-branch hotkey/coldkey indexes both lead block_number, so a

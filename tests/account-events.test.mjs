@@ -1362,6 +1362,61 @@ test("loadAccountEvents applies the block_start/block_end range as bound params"
   ]);
 });
 
+test("loadAccountEvents applies netuid as a bound predicate in both branches (#2585)", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { netuid: 74, limit: 50, offset: 0 },
+  );
+  // The indexed union has a hotkey and a coldkey branch; the netuid equality
+  // must be bound inside each so both seeks stay scoped to the subnet.
+  assert.equal((captured.sql.match(/AND netuid = \?/g) || []).length, 2);
+  assert.deepEqual(captured.params, ["5Hk", 74, "5Hk", "5Hk", 74, 50, 0]);
+});
+
+test("loadAccountEvents combines netuid with the kind filter", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { netuid: 74, kind: "stake_added", limit: 50, offset: 0 },
+  );
+  assert.equal((captured.sql.match(/AND event_kind = \?/g) || []).length, 2);
+  assert.equal((captured.sql.match(/AND netuid = \?/g) || []).length, 2);
+  assert.deepEqual(captured.params, [
+    "5Hk",
+    "stake_added",
+    74,
+    "5Hk",
+    "5Hk",
+    "stake_added",
+    74,
+    50,
+    0,
+  ]);
+});
+
+test("loadAccountEvents without netuid keeps the unfiltered query shape", async () => {
+  let captured;
+  await loadAccountEvents(
+    async (sql, params) => {
+      captured = { sql, params };
+      return [];
+    },
+    "5Hk",
+    { limit: 50, offset: 0 },
+  );
+  assert.doesNotMatch(captured.sql, /AND netuid = \?/);
+  assert.deepEqual(captured.params, ["5Hk", "5Hk", "5Hk", 50, 0]);
+});
+
 test("loadSubnetEvents short-circuits an inverted block range before D1", async () => {
   let called = false;
   const out = await loadSubnetEvents(
