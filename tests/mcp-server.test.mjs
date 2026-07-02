@@ -4296,6 +4296,85 @@ describe("list_subnets", () => {
   const rangeNetuids = (out) =>
     out.subnets.map((s) => s.netuid).sort((a, b) => a - b);
 
+  // Fixture: 0=root/active, 7=application/active/inference,
+  // 8=application/deprecated with derived_categories ["data"].
+  test("not_status / not_subnet_type / not_domain exclude matching subnets", async () => {
+    const notActive = (
+      await callTool("list_subnets", { not_status: "active" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notActive), [8]); // only the deprecated one
+
+    const notApp = (
+      await callTool(
+        "list_subnets",
+        { not_subnet_type: "application" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notApp), [0]); // only the root one
+
+    const notInference = (
+      await callTool("list_subnets", { not_domain: "inference" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(notInference), [0, 8]); // 7 (inference) dropped
+  });
+
+  test("not_domain also excludes a derived_categories match (union semantics)", async () => {
+    // netuid 8 carries "data" only via derived_categories — the exclusion must
+    // treat curated + derived tags as one domain set, like the inclusion does.
+    const out = (
+      await callTool("list_subnets", { not_domain: "data" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [0, 7]);
+  });
+
+  test("not_<categorical> is case-insensitive (matches the inclusion form)", async () => {
+    const out = (
+      await callTool("list_subnets", { not_status: "ACTIVE" }, { deps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [8]);
+  });
+
+  test("a row missing the field fails inclusion but survives its exclusion (complements)", async () => {
+    const localDeps = makeDeps({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, slug: "a", name: "A", status: "active" },
+          { netuid: 2, slug: "b", name: "B" }, // status absent
+        ],
+      },
+    });
+    const included = (
+      await callTool("list_subnets", { status: "active" }, { deps: localDeps })
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(included), [1]); // absent-status row fails inclusion
+
+    const excluded = (
+      await callTool(
+        "list_subnets",
+        { not_status: "active" },
+        { deps: localDeps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(excluded), [2]); // …but survives the exclusion
+    // Together they partition the fixture: inclusion ∪ exclusion = all rows.
+    assert.deepEqual(
+      [...rangeNetuids(included), ...rangeNetuids(excluded)].sort(),
+      [1, 2],
+    );
+  });
+
+  test("inclusion and exclusion compose (status=active AND not_subnet_type=root)", async () => {
+    const out = (
+      await callTool(
+        "list_subnets",
+        { status: "active", not_subnet_type: "root" },
+        { deps },
+      )
+    ).body.result.structuredContent;
+    assert.deepEqual(rangeNetuids(out), [7]); // active {0,7} minus root {0}
+  });
+
   test("max_readiness keeps rows <= the bound (complement of min_readiness)", async () => {
     const out = (
       await callTool("list_subnets", { max_readiness: 50 }, { deps })

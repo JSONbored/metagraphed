@@ -242,6 +242,15 @@ assert.deepEqual(
 
 await callOk("search_subnets", { query: "subnet", limit: 5 });
 await callOk("find_subnets_by_capability", { capability: "data", limit: 5 });
+const excluded = await callOk("list_subnets", {
+  not_status: "inactive",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(excluded.subnets) &&
+    excluded.subnets.every((s) => s.status !== "inactive"),
+  "list_subnets not_status must exclude matching subnets",
+);
 const overview = await callOk("get_subnet", { netuid: 7 });
 assert.equal(overview.netuid ?? overview.subnet?.netuid ?? 7, 7);
 await callOk("get_subnet_health", { netuid: 7 });
