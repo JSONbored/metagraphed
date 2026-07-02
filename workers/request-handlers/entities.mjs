@@ -258,28 +258,47 @@ export async function handleSubnetValidators(request, env, netuid, url) {
 // operator footprint rather than only one subnet at a time. Stake/emission values stay
 // scoped to each membership row because those source units are not globally aggregated.
 // Cold/absent D1 returns a schema-stable empty list.
-export async function handleGlobalValidators(request, env, url) {
+function parseGlobalValidatorsQuery(url) {
   const validationError = validateQueryParams(url, ["sort", "limit"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const sortParam =
-    url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
-  if (!GLOBAL_VALIDATOR_SORTS.includes(sortParam)) {
-    return analyticsQueryError({
-      parameter: "sort",
-      message: `"${sortParam}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
-        ", ",
-      )}.`,
-    });
+  if (validationError) return { error: validationError };
+
+  const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
+  if (!GLOBAL_VALIDATOR_SORTS.includes(sort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
+          ", ",
+        )}.`,
+      },
+    };
   }
+
   const limit = parseBoundedIntParam(url, "limit", {
     def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     min: 1,
     max: GLOBAL_VALIDATOR_LIMIT_MAX,
   });
-  if (limit.error) return analyticsQueryError(limit.error);
+  if (limit.error) return { error: limit.error };
+
+  return { sort, limit: limit.value };
+}
+
+export function canonicalGlobalValidatorsCachePath(url) {
+  const parsed = parseGlobalValidatorsQuery(url);
+  if (parsed.error) {
+    return { response: analyticsQueryError(parsed.error) };
+  }
+  const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
+  return { cachePathAndSearch: `${url.pathname}?${search}` };
+}
+
+export async function handleGlobalValidators(request, env, url) {
+  const parsed = parseGlobalValidatorsQuery(url);
+  if (parsed.error) return analyticsQueryError(parsed.error);
   const data = await loadGlobalValidators(d1Runner(env), {
-    sort: sortParam,
-    limit: limit.value,
+    sort: parsed.sort,
+    limit: parsed.limit,
   });
   return envelopeResponse(
     request,
