@@ -1810,11 +1810,7 @@ describe("handleSubnetMovers", () => {
           ? "/api/v1/subnets/movers?format="
           : `/api/v1/subnets/movers?format=${format}`;
       const body = await errorJson(
-        await handleSubnetMovers(
-          req(query),
-          emptyEnv(),
-          url(query),
-        ),
+        await handleSubnetMovers(req(query), emptyEnv(), url(query)),
       );
       assert.equal(body.meta.parameter, "format");
       if (format !== "") {
@@ -1969,11 +1965,7 @@ describe("handleGlobalValidators", () => {
           ? "/api/v1/validators?format="
           : `/api/v1/validators?format=${format}`;
       const body = await errorJson(
-        await handleGlobalValidators(
-          req(query),
-          emptyEnv(),
-          url(query),
-        ),
+        await handleGlobalValidators(req(query), emptyEnv(), url(query)),
       );
       assert.equal(body.meta.parameter, "format");
       if (format !== "") {
