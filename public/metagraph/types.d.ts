@@ -130,7 +130,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. */
+        /** Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. */
         get: operations["accountStakeFlow"];
         put?: never;
         post?: never;
@@ -606,7 +606,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -4718,6 +4718,8 @@ export interface components {
         });
         /** @description Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses. */
         SubnetEconomics: {
+            /** @description Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite. */
+            alpha_fdv_tao: number | null;
             alpha_in_pool: number | null;
             /** @description Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing. */
             alpha_market_cap_tao: number | null;
@@ -6448,6 +6450,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d" | "90d";
+                direction?: "all" | "in" | "out";
             };
             header?: never;
             path: {
@@ -10001,7 +10004,7 @@ export interface operations {
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "alpha_market_cap_tao" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };
@@ -10031,6 +10034,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
+                     *             "alpha_fdv_tao": 0.5,
                      *             "alpha_in_pool": 0.5,
                      *             "alpha_market_cap_tao": 0.5,
                      *             "alpha_out_pool": 0.5,
@@ -15283,6 +15287,8 @@ export interface operations {
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
+                /** @description Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -15290,7 +15296,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -15357,6 +15363,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetsArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -15459,6 +15470,7 @@ export interface operations {
                      *         ],
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
+                     *           "alpha_fdv_tao": 0.5,
                      *           "alpha_in_pool": 0.5,
                      *           "alpha_market_cap_tao": 0.5,
                      *           "alpha_out_pool": 0.5,

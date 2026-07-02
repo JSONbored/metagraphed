@@ -142,8 +142,10 @@ export function buildBlock(row, ref, { prev, next } = {}) {
     schema_version: 1,
     ref: ref ?? null,
     block,
-    prev_block_number: block ? (prev ?? null) : null,
-    next_block_number: block ? (next ?? null) : null,
+    // D1 can return INTEGER neighbor heights as numeric strings; coerce like
+    // formatBlock's block_number so chain-walk nav never leaks string cells.
+    prev_block_number: block ? toBlockNumber(prev) : null,
+    next_block_number: block ? toBlockNumber(next) : null,
   };
 }
 

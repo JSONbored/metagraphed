@@ -75,6 +75,7 @@ export const INGESTED_EVENT_KINDS = [
   "TakeIncreased",
   "HotkeySwapped",
   "ColdkeySwapped",
+  "ColdkeySwapScheduled",
   "Transfer",
 ];
 

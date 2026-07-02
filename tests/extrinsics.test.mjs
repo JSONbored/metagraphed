@@ -180,6 +180,38 @@ test("formatExtrinsic maps a non-numeric fee_tao/tip_tao to null (not NaN)", () 
   assert.equal(out.tip_tao, null);
 });
 
+test("formatExtrinsic coerces a string-typed observed_at cell to an ISO timestamp", () => {
+  // D1 can return the INTEGER observed_at as a numeric string; the old
+  // Number.isFinite(string) guard dropped a real timestamp to null. Mirrors #2708.
+  const out = formatExtrinsic({
+    block_number: 10,
+    extrinsic_index: 0,
+    observed_at: "1750000000000",
+  });
+  assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatExtrinsic keeps a null/blank/invalid observed_at as null (not epoch 1970)", () => {
+  assert.equal(
+    formatExtrinsic({ block_number: 10, extrinsic_index: 0, observed_at: null })
+      .observed_at,
+    null,
+  );
+  assert.equal(
+    formatExtrinsic({ block_number: 10, extrinsic_index: 0, observed_at: "" })
+      .observed_at,
+    null,
+  );
+  assert.equal(
+    formatExtrinsic({
+      block_number: 10,
+      extrinsic_index: 0,
+      observed_at: "not-a-timestamp",
+    }).observed_at,
+    null,
+  );
+});
+
 test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
   // Substrate call args are canonically a LIST of {name,value} descriptors.
   const arr = formatExtrinsic({

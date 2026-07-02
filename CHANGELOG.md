@@ -19,6 +19,38 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.34.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.33.0...platform-v0.34.0) (2026-07-02)
+
+
+### Features
+
+* **api:** add validator stake totals, dominance, and sorting ([#2685](https://github.com/JSONbored/metagraphed/issues/2685)) ([d2d3084](https://github.com/JSONbored/metagraphed/commit/d2d3084f66a8f9d166ed6ce620a8cf6c666ee50a))
+* **api:** track and serve on-chain subnet identity history ([#2610](https://github.com/JSONbored/metagraphed/issues/2610)) ([423c426](https://github.com/JSONbored/metagraphed/commit/423c42606a6142f9cff58322fd9ffb0f5c730f1e))
+* **economics:** add alpha market cap metric ([#2688](https://github.com/JSONbored/metagraphed/issues/2688)) ([6dd7375](https://github.com/JSONbored/metagraphed/commit/6dd7375d30db31cebe380f8402a17ad6824d9c10))
+* **events:** decode + ingest SubtensorModule BurnSet (subnet registration cost) ([#2655](https://github.com/JSONbored/metagraphed/issues/2655)) ([38f4ff2](https://github.com/JSONbored/metagraphed/commit/38f4ff237ee290b16407e9b0489f33a5ac313950)), closes [#2561](https://github.com/JSONbored/metagraphed/issues/2561)
+* **mcp:** stake-flow and movers economics parity bundle ([#2661](https://github.com/JSONbored/metagraphed/issues/2661)) ([b298dcc](https://github.com/JSONbored/metagraphed/commit/b298dcc8cd35d101816e3f996d86dcc439d305b2))
+
+
+### Bug Fixes
+
+* **account-events:** coerce string-typed amount_tao and alpha_amount cells in formatAccountEvent ([#2662](https://github.com/JSONbored/metagraphed/issues/2662)) ([547e077](https://github.com/JSONbored/metagraphed/commit/547e077b5c404a7cba10e371d21df9ce2d250eda))
+* **account-events:** coerce string-typed amount_tao in buildAccountTransfers ([#2682](https://github.com/JSONbored/metagraphed/issues/2682)) ([fb024d8](https://github.com/JSONbored/metagraphed/commit/fb024d83393475ce87ab9296a861d337c7b92107))
+* **analytics:** average only ok probes in leaderboards and compare health SQL ([#2644](https://github.com/JSONbored/metagraphed/issues/2644)) ([b3cd269](https://github.com/JSONbored/metagraphed/commit/b3cd269144a641dcd0df8085bc7bdf32436d434c))
+* **analytics:** reuse growthRowsFromSamples in REST leaderboards handler ([#2684](https://github.com/JSONbored/metagraphed/issues/2684)) ([a5515e7](https://github.com/JSONbored/metagraphed/commit/a5515e70d87f68f9e6c6ec8ba6957987f40bc581))
+* **api:** add block sort to economics collection ([#2576](https://github.com/JSONbored/metagraphed/issues/2576)) ([#2678](https://github.com/JSONbored/metagraphed/issues/2678)) ([92987e4](https://github.com/JSONbored/metagraphed/commit/92987e41d264f0e00791193deb1238cec35aa107))
+* **api:** bound chain fee median samples ([#2492](https://github.com/JSONbored/metagraphed/issues/2492)) ([9236646](https://github.com/JSONbored/metagraphed/commit/9236646508c534c01f373189d7a0e7bafa7ca9c6))
+* **api:** coerce D1 numeric-string counts in account summary aggregates ([#2642](https://github.com/JSONbored/metagraphed/issues/2642)) ([631e252](https://github.com/JSONbored/metagraphed/commit/631e252a8d11cb4df652977abc1acd9b6f154c6c))
+* **api:** coerce string-typed REAL score cells in formatNeuron ([#2671](https://github.com/JSONbored/metagraphed/issues/2671)) ([f945d00](https://github.com/JSONbored/metagraphed/commit/f945d007d2538596799b47171ec17aa719c2979a))
+* **api:** document counterparties limit bounds ([#2584](https://github.com/JSONbored/metagraphed/issues/2584)) ([#2643](https://github.com/JSONbored/metagraphed/issues/2643)) ([0f918a1](https://github.com/JSONbored/metagraphed/commit/0f918a1e8a040f1a15e571fdfcb645855cb26d89))
+* **api:** reject invalid success filter on extrinsics feed ([#2575](https://github.com/JSONbored/metagraphed/issues/2575)) ([#2673](https://github.com/JSONbored/metagraphed/issues/2673)) ([cc6a222](https://github.com/JSONbored/metagraphed/commit/cc6a222154ac9a10e6623281adefcbc2c4452a23))
+* **api:** short-circuit inverted block range on account events before D1 ([#2634](https://github.com/JSONbored/metagraphed/issues/2634)) ([707ae21](https://github.com/JSONbored/metagraphed/commit/707ae219f8fe1f4c6cdfa65d2bec25662bebe0a1))
+* **api:** short-circuit inverted block range on subnet events before D1 ([#2638](https://github.com/JSONbored/metagraphed/issues/2638)) ([7907f2e](https://github.com/JSONbored/metagraphed/commit/7907f2e0bb45a1de51edbc1b488c2c017d1a97f9))
+* **icon-proxy:** treat 403/408/429 as transient in the icon negative cache ([#2679](https://github.com/JSONbored/metagraphed/issues/2679)) ([befe194](https://github.com/JSONbored/metagraphed/commit/befe19471855d7fa7e73344f60dc4f20a9c0743a))
+* **metagraph-neurons:** coerce D1 string ratio cells in formatNeuron ([#2641](https://github.com/JSONbored/metagraphed/issues/2641)) ([cd2e74c](https://github.com/JSONbored/metagraphed/commit/cd2e74c5eecdf075828d23c8f4cb896f597a8241))
+* **registry:** avoid inferred verification for community surfaces ([#2672](https://github.com/JSONbored/metagraphed/issues/2672)) ([670af0d](https://github.com/JSONbored/metagraphed/commit/670af0d5ffb1f91545e3ad8d3ae19eb5725cecdf))
+* **scan:** flag link-local 169.254.0.0/16 URLs in the public-safety scan ([#2652](https://github.com/JSONbored/metagraphed/issues/2652)) ([34be495](https://github.com/JSONbored/metagraphed/commit/34be49503bbd3807a6065b353e24383c3b75565a))
+* **subnet-yield:** report a null block_number as null, not a fabricated 0 ([#2636](https://github.com/JSONbored/metagraphed/issues/2636)) ([4d73f2e](https://github.com/JSONbored/metagraphed/commit/4d73f2e3aad7c49158f153d9e28152fcce4173c3))
+
 ## [0.33.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.32.0...platform-v0.33.0) (2026-07-01)
 
 

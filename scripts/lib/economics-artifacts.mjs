@@ -40,6 +40,9 @@ export function computeMinerReadiness(economics, openSlots, emissionShare) {
   return Math.max(0, Math.min(100, score));
 }
 
+// Fixed per-subnet alpha max supply on Bittensor — the denominator for FDV.
+export const ALPHA_MAX_SUPPLY = 21_000_000;
+
 export function computeAlphaMarketCapTao(alphaPriceTao, totalStakeTao) {
   if (!Number.isFinite(alphaPriceTao) || !Number.isFinite(totalStakeTao)) {
     return null;
@@ -47,6 +50,13 @@ export function computeAlphaMarketCapTao(alphaPriceTao, totalStakeTao) {
   // total_stake_tao is the on-chain circulating-alpha proxy for this display
   // metric until a dedicated circulating-alpha supply field is available.
   return alphaPriceTao * totalStakeTao;
+}
+
+export function computeAlphaFdvTao(alphaPriceTao) {
+  if (alphaPriceTao == null || !Number.isFinite(alphaPriceTao)) {
+    return null;
+  }
+  return alphaPriceTao * ALPHA_MAX_SUPPLY;
 }
 
 export function buildEconomicsArtifact({
@@ -89,6 +99,7 @@ export function buildEconomicsArtifact({
       price,
       economics.total_stake_tao,
     );
+    const alphaFdvTao = computeAlphaFdvTao(price);
     return {
       netuid: subnet.netuid,
       slug: subnet.slug,
@@ -96,6 +107,7 @@ export function buildEconomicsArtifact({
       block: subnet.block ?? null,
       ...economics,
       alpha_market_cap_tao: alphaMarketCapTao,
+      alpha_fdv_tao: alphaFdvTao,
       emission_share: emissionShare,
       open_slots: openSlots,
       miner_readiness: computeMinerReadiness(

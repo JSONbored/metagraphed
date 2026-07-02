@@ -19,6 +19,12 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
+  GET_ECONOMICS_INSTRUCTIONS,
+  GET_ECONOMICS_MCP_TOOL,
+  GET_ECONOMICS_OUTPUT_SCHEMA,
+  loadNetworkEconomics,
+} from "./network-economics.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -118,6 +124,8 @@ import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_FLOW_DIRECTIONS,
+  DEFAULT_STAKE_FLOW_DIRECTION,
 } from "./stake-flow.mjs";
 import { loadAccountStakeFlow } from "./account-stake-flow.mjs";
 import {
@@ -164,7 +172,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.18.0";
+export const MCP_SERVER_VERSION = "1.19.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -226,7 +234,9 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, and alpha price, get_economics_trends the network-wide " +
+  "open slots, and alpha price, " +
+  GET_ECONOMICS_INSTRUCTIONS +
+  "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
@@ -1716,6 +1726,22 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_ECONOMICS_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadNetworkEconomics(ctx, args, {
+          contractVersion: mcpContractVersion,
+          readOptionalArtifact: loadOptionalArtifact,
+        });
+      } catch (err) {
+        if (err?.networkEconomics) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
+    },
+  },
+  {
     name: "get_subnet_trajectory",
     title: "Get subnet trajectory",
     description:
@@ -1910,7 +1936,8 @@ export const MCP_TOOLS = [
       "(7d, 30d, or 90d; default 30d): TAO staked (StakeAdded) vs unstaked " +
       "(StakeRemoved), the net capital flow, and event counts, summed live " +
       "from the account_events stream. Use it to see whether capital is " +
-      "entering or leaving a subnet. Mirrors " +
+      "entering or leaving a subnet. ?direction narrows to inflow (in) or " +
+      "outflow (out) only; all (default) reports both sides. Mirrors " +
       "GET /api/v1/subnets/{netuid}/stake-flow.",
     inputSchema: {
       type: "object",
@@ -1920,6 +1947,11 @@ export const MCP_TOOLS = [
           type: "string",
           enum: STAKE_FLOW_WINDOW_KEYS,
           description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_FLOW_DIRECTIONS,
+          description: `Flow side to report: in | out | all (default ${DEFAULT_STAKE_FLOW_DIRECTION}).`,
         },
       },
       required: ["netuid"],
@@ -1935,8 +1967,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
+      const direction =
+        optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
+      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+        throw toolError(
+          "invalid_params",
+          `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        );
+      }
       const { data } = await loadSubnetStakeFlow(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
+        direction,
       });
       return data;
     },
@@ -2363,6 +2404,18 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
             "Omit for all kinds; unsupported kinds are rejected.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         block_start: {
           type: "integer",
@@ -4901,6 +4954,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       economics: { type: ["object", "null"] },
     },
   },
+  get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,

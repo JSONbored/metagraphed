@@ -514,6 +514,26 @@ describe("deliverChangeEvent", () => {
     assert.equal(out.reason, "unsafe-url");
   });
 
+  test("returns a retryable failure (not a drop) when the resolver throws", async () => {
+    // A transient DNS failure (resolver throws, e.g. EAI_AGAIN) must NOT be a
+    // terminal "skipped" — that would delete the parked record on the redelivery
+    // sweep and silently lose an owed at-least-once delivery to a healthy
+    // endpoint. It is a retryable "failed", carrying its event_id so it can be
+    // parked and retried.
+    const out = await deliverChangeEvent({
+      subscription: base,
+      event,
+      fetchFn: async () => new Response("", { status: 200 }),
+      resolveHostnames: async () => {
+        throw new Error("EAI_AGAIN");
+      },
+    });
+    assert.equal(out.status, "failed");
+    assert.equal(out.reason, "resolve-error");
+    assert.equal(out.retryable, true);
+    assert.ok(out.event_id, "carries identity so it can be parked + retried");
+  });
+
   test("delivers on a 2xx with the current timestamp from now()", async () => {
     let seenHeaders;
     const out = await deliverChangeEvent({

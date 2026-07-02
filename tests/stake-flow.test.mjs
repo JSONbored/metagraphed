@@ -264,4 +264,52 @@ describe("loadSubnetStakeFlow", () => {
       STAKE_REMOVED_KIND,
     ]);
   });
+
+  test("generatedAt coerces string-typed last_observed cells to ISO timestamps", async () => {
+    const d1 = async () => [
+      {
+        event_kind: STAKE_ADDED_KIND,
+        total_tao: 10,
+        event_count: 1,
+        last_observed: "1717000000000",
+      },
+      {
+        event_kind: STAKE_REMOVED_KIND,
+        total_tao: 5,
+        event_count: 1,
+        last_observed: "1717900000000",
+      },
+    ];
+    const { generatedAt } = await loadSubnetStakeFlow(d1, 7, {
+      windowLabel: "7d",
+    });
+    assert.equal(generatedAt, new Date(1717900000000).toISOString());
+  });
+
+  test("generatedAt stays null for blank or out-of-range last_observed (not epoch 1970)", async () => {
+    for (const last_observed of [
+      "",
+      "   ",
+      "not-a-date",
+      "8640000000000001",
+      null,
+    ]) {
+      const d1 = async () => [
+        {
+          event_kind: STAKE_ADDED_KIND,
+          total_tao: 10,
+          event_count: 1,
+          last_observed,
+        },
+      ];
+      const { generatedAt } = await loadSubnetStakeFlow(d1, 7, {
+        windowLabel: "7d",
+      });
+      assert.equal(
+        generatedAt,
+        null,
+        `last_observed=${JSON.stringify(last_observed)}`,
+      );
+    }
+  });
 });

@@ -12139,6 +12139,13 @@
         "additionalProperties": false,
         "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
         "properties": {
+          "alpha_fdv_tao": {
+            "description": "Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "alpha_in_pool": {
             "type": [
               "number",
@@ -12282,6 +12289,7 @@
           "registration_cost_tao",
           "alpha_price_tao",
           "alpha_market_cap_tao",
+          "alpha_fdv_tao",
           "total_stake_tao",
           "max_stake_tao",
           "tao_in_pool_tao",

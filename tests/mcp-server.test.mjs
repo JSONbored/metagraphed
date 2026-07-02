@@ -2503,6 +2503,42 @@ describe("MCP stake-flow and movers economics tools", () => {
     }
   });
 
+  test("get_subnet_stake_flow narrows to one side with direction=in", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7, window: "30d", direction: "in" },
+      {
+        env: stakeFlowD1(
+          [
+            {
+              event_kind: "StakeAdded",
+              total_tao: 200,
+              event_count: 4,
+              last_observed: 1_717_000_000_000,
+            },
+          ],
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_staked_tao, 200);
+    assert.equal(out.total_unstaked_tao, 0);
+    // direction=in binds only the StakeAdded kind, not StakeRemoved.
+    assert.ok(capture[0].params.includes("StakeAdded"));
+    assert.ok(!capture[0].params.includes("StakeRemoved"));
+  });
+
+  test("get_subnet_stake_flow rejects an unsupported direction", async () => {
+    const res = await callTool("get_subnet_stake_flow", {
+      netuid: 7,
+      direction: "sideways",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /direction must be one of/);
+  });
+
   test("get_subnet_stake_flow rejects an unsupported window", async () => {
     const res = await callTool("get_subnet_stake_flow", {
       netuid: 7,
@@ -4821,6 +4857,223 @@ describe("MCP economics + metagraph data tools", () => {
     const res = await callTool(
       "get_subnet_economics",
       { netuid: 7 },
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        {
+          ...ECON_ROW,
+          netuid: 9,
+          name: "Beta",
+          slug: "beta",
+          registration_allowed: false,
+          emission_share: 0,
+        },
+      ],
+      summary: {
+        ...ECON_BLOB.summary,
+        subnet_count: 2,
+        with_economics_count: 2,
+      },
+    };
+    const res = await callTool(
+      "get_economics",
+      { registration_allowed: "true", sort: "emission_share", order: "desc" },
+      {
+        deps: makeDeps({}, { "economics:current": blob }),
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-kv");
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.total, 1);
+  });
+
+  test("get_economics falls back to R2 and pages with limit/cursor", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8, emission_share: 0.5 },
+        { ...ECON_ROW, netuid: 9, emission_share: 0.1 },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { limit: 2, cursor: 1, sort: "netuid", order: "asc" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 2);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.next_cursor, null);
+    assert.deepEqual(
+      out.subnets.map((row) => row.netuid),
+      [8, 9],
+    );
+  });
+
+  test("get_economics rejects an invalid sort field", async () => {
+    const res = await callTool(
+      "get_economics",
+      { sort: "not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("get_economics rejects invalid netuid and cursor before loading data", async () => {
+    const deps = makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {});
+    for (const [args, pattern] of [
+      [{ netuid: -1 }, /netuid must be a non-negative integer/],
+      [{ cursor: -1 }, /cursor must be a non-negative integer/],
+    ]) {
+      const res = await callTool("get_economics", args, { deps, env: {} });
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.match(res.body.result.content[0].text, pattern);
+    }
+  });
+
+  test("get_economics supports q search, fields projection, and netuid filter", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      network: "finney",
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8, name: "Other", slug: "other" },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { q: "allways", fields: "netuid,name,emission_share" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.network, "finney");
+    assert.equal(out.subnets.length, 1);
+    assert.deepEqual(Object.keys(out.subnets[0]).sort(), [
+      "emission_share",
+      "name",
+      "netuid",
+    ]);
+
+    const byNetuid = await callTool(
+      "get_economics",
+      { netuid: 8 },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    assert.equal(byNetuid.body.result.structuredContent.subnets[0].netuid, 8);
+  });
+
+  test("get_economics rejects unsupported fields projection", async () => {
+    const res = await callTool(
+      "get_economics",
+      { fields: "netuid,not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /fields includes unsupported/,
+    );
+  });
+
+  test("get_economics returns next_cursor when more pages remain", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8 },
+        { ...ECON_ROW, netuid: 9 },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { limit: 1, sort: "netuid", order: "asc" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.next_cursor, 1);
+    assert.equal(out.subnets[0].netuid, 7);
+  });
+
+  test("get_economics defaults pagination when limit and cursor are omitted", async () => {
+    const res = await callTool(
+      "get_economics",
+      {},
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, null);
+    assert.equal(out.captured_at, FRESH_RUN);
+  });
+
+  test("get_economics handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_economics");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          {},
+          {
+            env: {},
+            readHealthKv: async () => null,
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_economics payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "get_economics")
+        .outputSchema,
+    );
+    const res = await callTool(
+      "get_economics",
+      { sort: "netuid", order: "asc" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  test("get_economics surfaces not_found when neither tier has data", async () => {
+    const res = await callTool(
+      "get_economics",
+      {},
       { deps: makeDeps({}, {}), env: {} },
     );
     assert.equal(res.body.result.isError, true);

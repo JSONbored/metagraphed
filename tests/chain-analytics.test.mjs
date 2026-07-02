@@ -9,6 +9,32 @@ import {
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
 
+function installMapCache() {
+  const store = new Map();
+  const putKeys = [];
+  let matchCalls = 0;
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        matchCalls += 1;
+        const cached = store.get(request.url);
+        return cached ? cached.clone() : undefined;
+      },
+      async put(request, response) {
+        putKeys.push(request.url);
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+  return {
+    store,
+    putKeys,
+    get matchCalls() {
+      return matchCalls;
+    },
+  };
+}
+
 // A D1 mock that routes the two grouped aggregations by table and records the
 // bound SQL/params so a test can assert the query shape + the merged response.
 function chainActivityEnv(captured = []) {
@@ -672,6 +698,105 @@ test("GET /api/v1/chain/transfers aggregates volume + ranks senders/receivers", 
   const senders = captured.find((c) => /GROUP BY hotkey/.test(c.sql));
   assert.match(senders.sql, /event_kind = \?/);
   assert.equal(senders.params.at(-1), 5); // limit
+});
+
+test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
+  const originalCaches = globalThis.caches;
+  const cache = installMapCache();
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_CONTROL: {
+      async get(key) {
+        return key === "health:meta"
+          ? { last_run_at: "2026-07-02T00:00:00.000Z" }
+          : null;
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return {
+              all: () => {
+                if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        transfer_count: 1,
+                        total_volume_tao: 2,
+                        unique_senders: 1,
+                        unique_receivers: 1,
+                      },
+                    ],
+                  });
+                }
+                if (/GROUP BY hotkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      { address: "5Sender", volume_tao: 2, transfer_count: 1 },
+                    ],
+                  });
+                }
+                if (/GROUP BY coldkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        address: "5Receiver",
+                        volume_tao: 2,
+                        transfer_count: 1,
+                      },
+                    ],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+
+  try {
+    const url = "https://api.metagraph.sh/api/v1/chain/transfers?window=7d";
+    const first = await handleRequest(
+      new Request(url, { method: "HEAD" }),
+      env,
+      {
+        waitUntil(promise) {
+          return promise;
+        },
+      },
+    );
+    assert.equal(first.status, 200);
+    assert.equal(await first.text(), "");
+    assert.equal(captured.length, 3);
+    assert.equal(cache.putKeys.length, 1);
+
+    const second = await handleRequest(
+      new Request(url, { method: "HEAD" }),
+      env,
+      {},
+    );
+    assert.equal(second.status, 200);
+    assert.equal(await second.text(), "");
+    assert.equal(captured.length, 3, "warm HEAD must not re-run D1");
+    assert.equal(cache.matchCalls, 2);
+
+    const get = await handleRequest(new Request(url), env, {});
+    assert.equal(get.status, 200);
+    const body = await get.json();
+    assert.equal(body.data.total_volume_tao, 2);
+    assert.equal(
+      captured.length,
+      3,
+      "GET should reuse the HEAD-populated body",
+    );
+  } finally {
+    globalThis.caches = originalCaches;
+  }
 });
 
 test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {

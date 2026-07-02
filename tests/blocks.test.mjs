@@ -236,6 +236,23 @@ test("loadBlock resolves neighbors when D1 returns a string-typed block_number (
   assert.equal(out.next_block_number, 1240);
 });
 
+test("loadBlock coerces string-typed neighbor heights from D1 (#1853)", async () => {
+  const d1 = async (sql) => {
+    if (/block_number = \?/.test(sql)) {
+      return [{ block_number: 1234, block_hash: "0xabc", observed_at: 1 }];
+    }
+    if (/MAX\(block_number\)/.test(sql)) {
+      return [{ prev: "1230", next: "1240" }];
+    }
+    return [];
+  };
+  const out = await loadBlock(d1, "1234");
+  assert.equal(out.prev_block_number, 1230);
+  assert.equal(out.next_block_number, 1240);
+  assert.equal(typeof out.prev_block_number, "number");
+  assert.equal(typeof out.next_block_number, "number");
+});
+
 test("buildBlock defaults a null/absent ref to null (regression)", () => {
   // A caller that passes no ref must get ref:null, never undefined — keeps the
   // detail artifact JSON-stable when the lookup key itself is missing.
@@ -243,6 +260,23 @@ test("buildBlock defaults a null/absent ref to null (regression)", () => {
   assert.equal(out.ref, null);
   assert.equal(out.block, null);
   assert.equal(out.schema_version, 1);
+});
+
+test("buildBlock coerces string-typed neighbor heights to integers (#1853)", () => {
+  const row = { block_number: 1234, block_hash: "0xabc", observed_at: 1 };
+  const out = buildBlock(row, "1234", { prev: "1230", next: "1240" });
+  assert.equal(out.block.block_number, 1234);
+  assert.equal(out.prev_block_number, 1230);
+  assert.equal(out.next_block_number, 1240);
+  assert.equal(typeof out.prev_block_number, "number");
+  assert.equal(typeof out.next_block_number, "number");
+});
+
+test("buildBlock nulls invalid neighbor cells instead of leaking strings", () => {
+  const row = { block_number: 1, block_hash: "0xabc", observed_at: 1 };
+  const out = buildBlock(row, "1", { prev: "oops", next: -5 });
+  assert.equal(out.prev_block_number, null);
+  assert.equal(out.next_block_number, null);
 });
 
 test("pruneBlocks reports changes:null when D1 omits the meta block", async () => {

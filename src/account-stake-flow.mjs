@@ -51,8 +51,17 @@ function normalizedNetuid(value) {
 
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite. The REST
 // meta.generated_at is string|null per the envelope contract.
-function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+function coerceEpochMs(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? n : null;
+}
+
+function toIso(value) {
+  const n = coerceEpochMs(value);
+  return n == null ? null : new Date(n).toISOString();
 }
 
 // Net vs gross share -> a coarse direction label. gross 0 (no flow at all) reads as
@@ -177,25 +186,34 @@ export function buildAccountStakeFlow(rows, address, { window } = {}) {
 export async function loadAccountStakeFlow(
   d1,
   address,
-  { windowLabel = DEFAULT_STAKE_FLOW_WINDOW } = {},
+  { windowLabel = DEFAULT_STAKE_FLOW_WINDOW, direction } = {},
 ) {
   const days =
     STAKE_FLOW_WINDOWS[windowLabel] ??
     STAKE_FLOW_WINDOWS[DEFAULT_STAKE_FLOW_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
+  // direction narrows the flow to one side: in = StakeAdded only, out =
+  // StakeRemoved only, all (or omitted) = both kinds. Mirrors loadSubnetStakeFlow.
+  const kinds =
+    direction === "in"
+      ? [STAKE_ADDED_KIND]
+      : direction === "out"
+        ? [STAKE_REMOVED_KIND]
+        : [STAKE_ADDED_KIND, STAKE_REMOVED_KIND];
+  const placeholders = kinds.map(() => "?").join(", ");
   const rows = await d1(
     "SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
       "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
       "FROM account_events INDEXED BY idx_account_events_hotkey " +
-      "WHERE hotkey = ? AND event_kind IN (?, ?) AND observed_at >= ? " +
+      `WHERE hotkey = ? AND event_kind IN (${placeholders}) AND observed_at >= ? ` +
       "GROUP BY netuid, event_kind",
-    [address, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff],
+    [address, ...kinds, cutoff],
   );
   let latestObserved = null;
   for (const row of Array.isArray(rows) ? rows : []) {
-    const observed = Number(row?.last_observed);
+    const observed = coerceEpochMs(row?.last_observed);
     if (
-      Number.isFinite(observed) &&
+      observed != null &&
       (latestObserved == null || observed > latestObserved)
     ) {
       latestObserved = observed;
