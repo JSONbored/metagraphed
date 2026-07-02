@@ -97,6 +97,7 @@ import {
   loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import { loadChainConsensus } from "../../src/chain-consensus.mjs";
 import {
   loadCounterparties,
   loadCounterpartyRelationship,
@@ -420,6 +421,29 @@ export async function handleChainConcentration(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/consensus: network-wide Yuma-consensus performance distribution
+// across every subnet's neurons — per-signal (trust, consensus, incentive,
+// dividends) percentile summaries plus the active / validator / miner counts.
+// neurons-tier (source "metagraph-snapshot"), no params. Cold/absent store →
+// schema-stable empties.
+export async function handleChainConsensus(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainConsensus(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/consensus.json",
         data.captured_at,
       ),
     },

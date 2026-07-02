@@ -470,6 +470,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/consensus",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.validator_count, "number");
+      // each signal is a distribution summary or null on a cold store.
+      assert.ok(
+        body.data.trust === null || typeof body.data.trust === "object",
+      );
+    },
+  ],
+  [
     "/api/v1/economics/trends",
     (body) => {
       assert.equal(Array.isArray(body.data.days), true);
