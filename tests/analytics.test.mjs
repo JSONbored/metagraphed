@@ -671,6 +671,34 @@ describe("formatTrajectory", () => {
     assert.deepEqual(out.points, []);
     assert.equal(out.deltas["7d"], null);
   });
+  test("coerces D1 numeric-string snapshot cells to schema types", () => {
+    const out = formatTrajectory({
+      netuid: 3,
+      rows: [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: "80",
+          surface_count: "5",
+          endpoint_count: "3",
+          validator_count: "9",
+          miner_count: "247",
+          total_stake_tao: "2522266",
+          alpha_price_tao: "0.04",
+          emission_share: "0.01",
+        },
+      ],
+    });
+    const point = out.points[0];
+    assert.equal(typeof point.completeness_score, "number");
+    assert.equal(typeof point.surface_count, "number");
+    assert.equal(typeof point.endpoint_count, "number");
+    assert.equal(typeof point.validator_count, "number");
+    assert.equal(typeof point.miner_count, "number");
+    assert.equal(typeof point.total_stake_tao, "number");
+    assert.equal(point.surface_count, 5);
+    assert.equal(point.validator_count, 9);
+    assert.equal(point.total_stake_tao, 2522266);
+  });
 });
 
 // --- writeSubnetSnapshot ----------------------------------------------------
