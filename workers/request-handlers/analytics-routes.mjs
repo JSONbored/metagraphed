@@ -20,7 +20,10 @@ import {
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
-import { dailyLatencyColumns } from "../../src/health-sql.mjs";
+import {
+  dailyLatencyColumns,
+  surfaceStatusAvgLatencySql,
+} from "../../src/health-sql.mjs";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
@@ -316,7 +319,7 @@ export async function handleLeaderboards(request, env, url) {
         `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-              AVG(latency_ms) AS avg_latency_ms
+              ${surfaceStatusAvgLatencySql()} AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
         [],
@@ -554,7 +557,7 @@ export async function handleCompare(request, env, url) {
           `SELECT netuid,
                 COUNT(*) AS surface_count,
                 SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-                ROUND(AVG(latency_ms)) AS avg_latency_ms
+                ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
          FROM surface_status
          WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
          GROUP BY netuid`,

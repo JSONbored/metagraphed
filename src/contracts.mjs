@@ -1003,6 +1003,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetHistoryArtifact",
   ),
   artifact(
+    "subnet-identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
+    "SubnetIdentityHistoryArtifact",
+  ),
+  artifact(
     "account-summary",
     "/metagraph/accounts/{ss58}.json",
     "Cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to current registrations, served live from D1 at /api/v1/accounts/{ss58} (no static file).",
@@ -1962,6 +1968,21 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-identity-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "account-summary",
     "GET",
     "/api/v1/accounts/{ss58}",
@@ -2050,15 +2071,29 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100).",
+    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "counterparty",
-        schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
+        schema: {
+          type: "string",
+          pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
+          description:
+            "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58.",
+        },
       },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          description:
+            "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
+        },
+      },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),

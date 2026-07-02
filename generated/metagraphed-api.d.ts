@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100). */
+        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -1466,6 +1466,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/identity-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
+        get: operations["subnetIdentityHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/metagraph": {
         parameters: {
             query?: never;
@@ -2014,6 +2031,8 @@ export interface components {
                 integration_readiness?: number;
                 name?: string;
                 netuid: number;
+                /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+                previously_known_as?: string[];
                 readiness?: components["schemas"]["IntegrationReadiness"];
                 service_count: number;
                 service_kinds?: string[];
@@ -2033,6 +2052,8 @@ export interface components {
             integration_readiness?: number;
             name?: string;
             netuid: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+            previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
             service_count: number;
             services: ({
@@ -4651,6 +4672,8 @@ export interface components {
             netuid: number;
             notes?: string | null;
             participant_count?: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647). */
+            previously_known_as?: string[];
             probed_surface_count?: number;
             provenance: {
                 [key: string]: unknown;
@@ -4763,6 +4786,35 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging. */
+        SubnetIdentityHistoryArtifact: {
+            entries: components["schemas"]["SubnetIdentityHistoryEntry"][];
+            entry_count: number;
+            limit?: number | null;
+            netuid: number;
+            next_cursor?: string | null;
+            offset?: number | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data. */
+        SubnetIdentityHistoryEntry: {
+            block_number?: number | null;
+            description?: string | null;
+            discord?: string | null;
+            /** Format: uri */
+            github_repo?: string | null;
+            identity_hash: string;
+            /** Format: uri */
+            logo_url?: string | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            subnet_name?: string | null;
+            /** Format: uri */
+            subnet_url?: string | null;
+            symbol?: string | null;
         };
         SubnetIndexEntry: {
             block?: number;
@@ -7036,6 +7088,9 @@ export interface operations {
                      *         "name": "Example Subnet",
                      *         "netuid": 7,
                      *         "notes": "Example description.",
+                     *         "previously_known_as": [
+                     *           "example"
+                     *         ],
                      *         "readiness": {
                      *           "components": {},
                      *           "readiness_tier": "buildable",
@@ -15506,6 +15561,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
@@ -17261,6 +17319,122 @@ export interface operations {
             };
         };
     };
+    subnetIdentityHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "entries": [
+                     *           {
+                     *             "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "entry_count": 1,
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetIdentityHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetMetagraph: {
         parameters: {
             query?: {
@@ -18176,6 +18350,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,

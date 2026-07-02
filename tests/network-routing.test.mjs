@@ -329,7 +329,15 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/incidents",
 
       "/api/v1/testnet/rpc/usage",
+      // The whole D1-backed chain analytics family is mainnet-only, not just
+      // chain/activity — cover the rest so a route dropped from the allow-list
+      // 404s with the network-named contract instead of leaking a testnet R2 key.
       "/api/v1/testnet/chain/activity",
+      "/api/v1/testnet/chain/calls",
+      "/api/v1/testnet/chain/fees",
+      "/api/v1/testnet/chain/signers",
+      "/api/v1/testnet/chain/transfers",
+      "/api/v1/testnet/chain/concentration",
     ]) {
       const { res, body } = await get(env, path);
       assert.equal(res.status, 404, path);

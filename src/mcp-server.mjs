@@ -15,13 +15,6 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
-// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
-// different contract from the shared pagination-profile clamp used here.
-import {
-  FEED_PAGINATION,
-  clampLimit as clampPageLimit,
-  clampOffset,
-} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
@@ -101,10 +94,9 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
-  buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountSubnets,
   loadAccountHistory,
   loadAccountExtrinsics,
@@ -117,10 +109,10 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
+import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
 import { loadExtrinsics } from "./extrinsics.mjs";
@@ -588,6 +580,18 @@ async function loadSubnetHistory(ctx, netuid, { label, days }) {
   return buildSubnetHistory(rows, netuid, { window: label });
 }
 
+async function loadSubnetIdentityHistoryTool(
+  ctx,
+  netuid,
+  { limit, offset, cursor },
+) {
+  return loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+}
+
 // One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
 // for (netuid, uid), newest first, bounded, shaped by buildNeuronHistory. Cold D1
 // → point_count:0.
@@ -603,44 +607,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
-// account_events filtered by netuid, newest first, optional kind filter, keyset
-// (cursor) pagination on (block_number, event_index) with offset as the
-// deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
-  const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
-  const resolvedOffset = clampOffset(offset);
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(resolvedLimit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(resolvedOffset);
-  }
-  const rows = await run(sql, params);
-  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: resolvedLimit,
-    offset: resolvedOffset,
-    nextCursor,
-  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -2087,6 +2053,49 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_identity_history",
+    title: "Get a subnet's on-chain identity history",
+    description:
+      "Fetch the append-only on-chain identity timeline for one subnet (#1647): " +
+      "each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked " +
+      "field changed (name, symbol, description, repo, website, discord, logo). " +
+      "Newest first. Page with limit (1-1000, default 100) / offset, or follow " +
+      "next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetIdentityHistoryTool(ctx, netuid, {
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: args?.cursor,
+      });
+    },
+  },
+  {
     name: "get_neuron_history",
     title: "Get one neuron's daily history",
     description:
@@ -2166,7 +2175,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(ctx, netuid, {
+      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
         limit: args?.limit,
         offset: args?.offset,
@@ -4930,6 +4939,31 @@ const TOOL_OUTPUT_SCHEMAS = {
         validator_count: NULLABLE_INT,
         total_stake_tao: ANY,
         total_emission_tao: ANY,
+      }),
+    },
+  },
+  get_subnet_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["schema_version", "netuid", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        subnet_name: NULLABLE_STRING,
+        symbol: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        github_repo: NULLABLE_STRING,
+        subnet_url: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        logo_url: NULLABLE_STRING,
+        identity_hash: { type: "string" },
       }),
     },
   },

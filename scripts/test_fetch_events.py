@@ -501,5 +501,44 @@ class ColdkeySwapExtractorTest(unittest.TestCase):
         self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
 
 
+class BurnSetExtractorTest(unittest.TestCase):
+    """Tests for the SubtensorModule.BurnSet extractor (#2561) — a subnet's
+    registration cost/burn (recycled TAO). Attribute order: (netuid, burn_rao),
+    confirmed against finney: Event::BurnSet(NetUid, TaoBalance)."""
+
+    def test_positional_netuid_and_amount(self):
+        result = _extract("BurnSet", [7, _RAO_100])
+        self.assertEqual(result["netuid"], 7)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        # A subnet-lifecycle event carries no account/uid legs.
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["uid"])
+
+    def test_rao_to_tao_coercion(self):
+        result = _extract("BurnSet", [1, 500_000_000])  # 0.5 TAO in rao
+        self.assertAlmostEqual(result["amount_tao"], 0.5)
+
+    def test_dict_form_named_netuid(self):
+        result = _extract("BurnSet", {"netuid": 12, "amount": _RAO_100})
+        self.assertEqual(result["netuid"], 12)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_invalid_netuid_gives_null(self):
+        result = _extract("BurnSet", [70000, _RAO_100])  # > 65535 -> out of range
+        self.assertIsNone(result["netuid"])
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_zero_burn(self):
+        result = _extract("BurnSet", [3, 0])
+        self.assertEqual(result["netuid"], 3)
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_empty_shape_drift_is_null(self):
+        result = _extract("BurnSet", [])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["amount_tao"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

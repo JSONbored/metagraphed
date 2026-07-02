@@ -41,6 +41,7 @@ const COMPUTED_ARTIFACTS = new Set([
   "subnet-events",
   "subnet-neuron-history",
   "subnet-history",
+  "subnet-identity-history",
   "account-summary",
   "account-events",
   "account-history",
