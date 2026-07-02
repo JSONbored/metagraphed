@@ -112,6 +112,33 @@ test("formatBlock maps a D1 row to an API block (ISO time)", () => {
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatBlock coerces string-typed observed_at cells to ISO timestamps", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "1750000000000",
+  });
+  assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatBlock preserves null observed_at as null (not epoch 1970)", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: null,
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("formatBlock drops invalid observed_at strings to null", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "not-a-timestamp",
+  });
+  assert.equal(out.observed_at, null);
+});
+
 test("formatBlock is null-safe on junk + sparse rows", () => {
   assert.equal(formatBlock(null), null);
   assert.equal(formatBlock("x"), null);
