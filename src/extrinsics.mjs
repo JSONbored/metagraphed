@@ -37,7 +37,13 @@ export const EXTRINSIC_INSERT_COLUMNS = [
 ];
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  // D1 can return the INTEGER observed_at as a numeric string; a bare
+  // Number.isFinite(ms) is false for a string, so the old form dropped a real
+  // timestamp to null. Coerce first, and require n > 0 so a null/blank/invalid
+  // cell stays null instead of epoch 1970. Mirrors the blocks toIso fix (#2708).
+  if (ms == null) return null;
+  const n = Number(ms);
+  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null;
 }
 
 // Coerce a chain-position cell (block_number / extrinsic_index) to a
