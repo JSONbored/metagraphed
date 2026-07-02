@@ -28,6 +28,7 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
+  DAY_MS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.mjs";
 
@@ -43,6 +44,12 @@ configureAnalytics({
 
 const NETUID = 7;
 const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
+const RECENT_DAILY_DAY = new Date(Date.now() - 2 * DAY_MS)
+  .toISOString()
+  .slice(0, 10);
+const OLDER_DAILY_DAY = new Date(Date.now() - 20 * DAY_MS)
+  .toISOString()
+  .slice(0, 10);
 const ctx = { waitUntil: (promise) => promise };
 
 function req(path, init = {}) {
@@ -112,8 +119,8 @@ function rowsForSql(sql) {
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: RECENT_DAILY_DAY,
+        date: RECENT_DAILY_DAY,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +129,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: OLDER_DAILY_DAY,
+        date: OLDER_DAILY_DAY,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
