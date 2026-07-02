@@ -26,6 +26,7 @@ import {
   handleSubnetTurnover,
   handleSubnetStakeFlow,
   handleSubnetMovers,
+  handleGlobalValidators,
   handleAccount,
   handleAccountEvents,
   handleAccountHistory,
@@ -225,6 +226,9 @@ function dbWith({
   neuronDailyHistory,
   turnoverBounds,
   turnoverRows,
+  moversBounds,
+  moversAggregateRows,
+  globalValidators,
   stakeFlow,
   agg,
   kinds,
@@ -281,10 +285,19 @@ function dbWith({
                   ) {
                     return { results: neuronDailyUid || [] };
                   }
-                  // Turnover: MIN/MAX boundary-date probe (checked before the
-                  // generic `snapshot_date >=` history match below).
                   if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    if (
+                      /WHERE snapshot_date >= \(SELECT date\(MAX\(snapshot_date\)/.test(
+                        sql,
+                      ) &&
+                      !/WHERE netuid/.test(sql)
+                    ) {
+                      return { results: moversBounds || [] };
+                    }
                     return { results: turnoverBounds || [] };
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return { results: moversAggregateRows || [] };
                   }
                   // Turnover: the two boundary snapshots' rows.
                   if (
@@ -446,6 +459,10 @@ function dbWith({
                       return { results: neurons };
                     }
                     return { results: neurons?.length ? [neurons[0]] : [] };
+                  }
+                  // Global validator leaderboard.
+                  if (/validator_permit = 1 AND hotkey IS NOT NULL/.test(sql)) {
+                    return { results: globalValidators || neurons || [] };
                   }
                   // Validators ranking (stake_tao DESC).
                   if (
@@ -1802,6 +1819,78 @@ describe("handleSubnetMovers", () => {
     assert.equal(body.meta.source, "metagraph-snapshot");
   });
 
+  test("exports cold movers as header-only CSV", async () => {
+    const res = await handleSubnetMovers(
+      req("/api/v1/subnets/movers?format=csv"),
+      emptyEnv(),
+      url("/api/v1/subnets/movers?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="subnet-movers.csv"',
+    );
+    assert.equal(
+      await res.text(),
+      "netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end",
+    );
+  });
+
+  test("exports ranked movers as CSV", async () => {
+    const { env } = dbWith({
+      moversBounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+      moversAggregateRows: [
+        {
+          netuid: 7,
+          snapshot_date: "2026-06-01",
+          neuron_count: 10,
+          validator_count: 2,
+          total_stake_tao: 1000,
+          total_emission_tao: 50,
+        },
+        {
+          netuid: 7,
+          snapshot_date: "2026-06-30",
+          neuron_count: 12,
+          validator_count: 4,
+          total_stake_tao: 1100,
+          total_emission_tao: 62.5,
+        },
+        {
+          netuid: 64,
+          snapshot_date: "2026-06-01",
+          neuron_count: 5,
+          validator_count: 1,
+          total_stake_tao: 500,
+          total_emission_tao: 20,
+        },
+        {
+          netuid: 64,
+          snapshot_date: "2026-06-30",
+          neuron_count: 5,
+          validator_count: 1,
+          total_stake_tao: 520,
+          total_emission_tao: 21,
+        },
+      ],
+    });
+    const res = await handleSubnetMovers(
+      req("/api/v1/subnets/movers?sort=emission&window=30d&format=csv&limit=2"),
+      env,
+      url("/api/v1/subnets/movers?sort=emission&window=30d&format=csv&limit=2"),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end",
+    );
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], /^7,/);
+    assert.match(lines[2], /^64,/);
+  });
+
   describe("canonicalSubnetMoversCachePath", () => {
     test("canonicalizes omitted params to the full default cache key", () => {
       const omitted = canonicalSubnetMoversCachePath(
@@ -1827,6 +1916,86 @@ describe("handleSubnetMovers", () => {
         assert.equal(path, `/api/v1/subnets/movers${q}`);
       }
     });
+  });
+});
+
+describe("handleGlobalValidators", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    await errorJson(
+      await handleGlobalValidators(
+        req("/api/v1/validators"),
+        emptyEnv(),
+        url("/api/v1/validators?bogus=1"),
+      ),
+    );
+  });
+
+  test("exports cold validators as header-only CSV", async () => {
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators?format=csv"),
+      emptyEnv(),
+      url("/api/v1/validators?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      await res.text(),
+      "hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance",
+    );
+  });
+
+  test("exports ranked validators as CSV", async () => {
+    const { env } = dbWith({
+      globalValidators: [
+        {
+          netuid: 1,
+          uid: 0,
+          hotkey: "5HotkeyA",
+          coldkey: "5ColdkeyA",
+          validator_trust: 0.9,
+          stake_tao: 100,
+          emission_tao: 10,
+          block_number: 100,
+          captured_at: OBSERVED_AT,
+        },
+        {
+          netuid: 2,
+          uid: 1,
+          hotkey: "5HotkeyA",
+          coldkey: "5ColdkeyA",
+          validator_trust: 0.8,
+          stake_tao: 50,
+          emission_tao: 5,
+          block_number: 101,
+          captured_at: OBSERVED_AT,
+        },
+        {
+          netuid: 3,
+          uid: 0,
+          hotkey: "5HotkeyB",
+          coldkey: "5ColdkeyB",
+          validator_trust: 0.7,
+          stake_tao: 200,
+          emission_tao: 20,
+          block_number: 102,
+          captured_at: OBSERVED_AT,
+        },
+      ],
+    });
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators?sort=uid_count&format=csv&limit=2"),
+      env,
+      url("/api/v1/validators?sort=uid_count&format=csv&limit=2"),
+    );
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance",
+    );
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], /^5HotkeyA,/);
+    assert.equal(lines[1].split(",")[3], "2");
   });
 });
 

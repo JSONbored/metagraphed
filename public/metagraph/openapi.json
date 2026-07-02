@@ -35975,6 +35975,17 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -36049,9 +36060,16 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end\r\n7,100.5,12.3,2,1000,1100.5,10,1.23,10,12\r\n",
+                "schema": {
+                  "description": "CSV rows for the ranked subnet movers leaderboard. Requires `format=csv`.",
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or a text/csv export when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -36108,7 +36126,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+        "summary": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked movers as text/csv. Computed live from the neuron_daily D1 rollup.",
         "tags": [
           "subnets",
           "analytics"
@@ -36375,6 +36393,17 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -36455,9 +36484,16 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance\r\n5GrwvaEF5zXb26Fz9rcwpuC9sUkLyVaio1ERDrJJimH4uwpFbP,5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty,3,5,1200.5,45.2,0.91,0.95,0.12\r\n",
+                "schema": {
+                  "description": "CSV rows for the global validator leaderboard. Requires `format=csv`.",
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or a text/csv export when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -36514,7 +36550,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
+        "summary": "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked validators as text/csv. Computed live from the neurons D1 tier.",
         "tags": [
           "validators",
           "analytics"

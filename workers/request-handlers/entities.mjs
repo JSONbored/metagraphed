@@ -28,6 +28,7 @@ import {
 } from "../request-params.mjs";
 
 import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
+import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -120,6 +121,31 @@ import {
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
 import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
+
+const SUBNET_MOVERS_CSV_COLUMNS = [
+  "netuid",
+  "stake_delta_tao",
+  "emission_delta_tao",
+  "validators_delta",
+  "stake_start_tao",
+  "stake_end_tao",
+  "stake_pct_change",
+  "emission_pct_change",
+  "validators_start",
+  "validators_end",
+];
+
+const GLOBAL_VALIDATORS_CSV_COLUMNS = [
+  "hotkey",
+  "coldkey",
+  "subnet_count",
+  "uid_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "avg_validator_trust",
+  "max_validator_trust",
+  "stake_dominance",
+];
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -259,7 +285,7 @@ export async function handleSubnetValidators(request, env, netuid, url) {
 // scoped to each membership row because those source units are not globally aggregated.
 // Cold/absent D1 returns a schema-stable empty list.
 export async function handleGlobalValidators(request, env, url) {
-  const validationError = validateQueryParams(url, ["sort", "limit"]);
+  const validationError = validateQueryParams(url, ["sort", "limit", "format"]);
   if (validationError) return analyticsQueryError(validationError);
   const sortParam =
     url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -281,6 +307,15 @@ export async function handleGlobalValidators(request, env, url) {
     sort: sortParam,
     limit: limit.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.validators,
+      "validators",
+      "short",
+      request,
+      GLOBAL_VALIDATORS_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -692,7 +727,12 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
 // snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
 // (schema-stable, never 404), mirroring the sibling history/turnover routes.
 export async function handleSubnetMovers(request, env, url) {
-  const validationError = validateQueryParams(url, ["window", "sort", "limit"]);
+  const validationError = validateQueryParams(url, [
+    "window",
+    "sort",
+    "limit",
+    "format",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
   if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
@@ -721,6 +761,15 @@ export async function handleSubnetMovers(request, env, url) {
     sort: sortParam,
     limit: limit.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.movers,
+      "subnet-movers",
+      "short",
+      request,
+      SUBNET_MOVERS_CSV_COLUMNS,
+    );
+  }
   // neuron_daily-derived, so the meta reports the metagraph-snapshot source; generated_at
   // is the end snapshot date (string), matching the turnover/history routes.
   return envelopeResponse(

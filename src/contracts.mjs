@@ -1827,7 +1827,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/movers",
     "/metagraph/subnets/movers.json",
-    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked movers as text/csv. Computed live from the neuron_daily D1 rollup.",
     "short",
     ["subnets", "analytics"],
     [
@@ -1843,15 +1843,30 @@ export const API_ROUTES = [
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 100 },
       },
+      { name: "format", schema: { type: "string", enum: ["csv"] } },
     ],
     [],
+    {
+      additionalSuccessContent: [
+        {
+          contentType: "text/csv",
+          schema: {
+            type: "string",
+            description:
+              "CSV rows for the ranked subnet movers leaderboard. Requires `format=csv`.",
+          },
+          example:
+            "netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end\r\n7,100.5,12.3,2,1000,1100.5,10,1.23,10,12\r\n",
+        },
+      ],
+    },
   ),
   route(
     "global-validators",
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked validators as text/csv. Computed live from the neurons D1 tier.",
     "short",
     ["validators", "analytics"],
     [
@@ -1874,8 +1889,23 @@ export const API_ROUTES = [
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 100 },
       },
+      { name: "format", schema: { type: "string", enum: ["csv"] } },
     ],
     [],
+    {
+      additionalSuccessContent: [
+        {
+          contentType: "text/csv",
+          schema: {
+            type: "string",
+            description:
+              "CSV rows for the global validator leaderboard. Requires `format=csv`.",
+          },
+          example:
+            "hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance\r\n5GrwvaEF5zXb26Fz9rcwpuC9sUkLyVaio1ERDrJJimH4uwpFbP,5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty,3,5,1200.5,45.2,0.91,0.95,0.12\r\n",
+        },
+      ],
+    },
   ),
   route(
     "subnet-metagraph",
@@ -2755,17 +2785,25 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         responses: {
           200: {
             description:
-              "Canonical artifact wrapped in the Metagraphed API envelope.",
+              entry.additional_success_content.length > 0
+                ? "Canonical artifact wrapped in the Metagraphed API envelope, or a text/csv export when CSV is requested."
+                : "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: (() => {
+              const successContent = {
+                "application/json": {
+                  schema: responseSchema,
+                  example: sampleFromSchema(responseSchema, componentSchemas),
+                },
+              };
+              for (const content of entry.additional_success_content) {
+                successContent[content.content_type] = {
+                  schema: content.schema,
+                  example: content.example,
+                };
+              }
+              return successContent;
+            })(),
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2926,6 +2964,7 @@ function route(
   tags,
   queryParameters = [],
   pathParameters = [],
+  options = {},
 ) {
   const querySpec = normalizeQueryParameters(queryParameters);
   return {
@@ -2940,6 +2979,13 @@ function route(
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
     path_parameters: pathParameters,
+    additional_success_content: (options.additionalSuccessContent || []).map(
+      (content) => ({
+        content_type: content.contentType,
+        schema: content.schema,
+        example: content.example,
+      }),
+    ),
   };
 }
 

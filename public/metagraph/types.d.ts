@@ -1694,7 +1694,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked movers as text/csv. Computed live from the neuron_daily D1 rollup. */
         get: operations["subnetMovers"];
         put?: never;
         post?: never;
@@ -1728,7 +1728,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. */
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Pass `format=csv` to download the ranked validators as text/csv. Computed live from the neurons D1 tier. */
         get: operations["globalValidators"];
         put?: never;
         post?: never;
@@ -19346,6 +19346,7 @@ export interface operations {
                 window?: "7d" | "30d" | "90d";
                 sort?: "stake" | "emission" | "validators";
                 limit?: number;
+                format?: "csv";
             };
             header?: never;
             path?: never;
@@ -19353,7 +19354,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or a text/csv export when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -19420,6 +19421,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetMoversArtifact"];
                     };
+                    /**
+                     * @example netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end
+                     *     7,100.5,12.3,2,1000,1100.5,10,1.23,10,12
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -19597,6 +19603,7 @@ export interface operations {
             query?: {
                 sort?: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
                 limit?: number;
+                format?: "csv";
             };
             header?: never;
             path?: never;
@@ -19604,7 +19611,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or a text/csv export when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -19677,6 +19684,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["GlobalValidatorsArtifact"];
                     };
+                    /**
+                     * @example hotkey,coldkey,subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance
+                     *     5GrwvaEF5zXb26Fz9rcwpuC9sUkLyVaio1ERDrJJimH4uwpFbP,5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty,3,5,1200.5,45.2,0.91,0.95,0.12
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
