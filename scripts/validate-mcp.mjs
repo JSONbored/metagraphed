@@ -398,6 +398,15 @@ assert.equal(
   0,
   "get_subnet_stake_flow must degrade to zeros on cold D1",
 );
+const stakeFlowIn = await callOk("get_subnet_stake_flow", {
+  netuid: 7,
+  direction: "in",
+});
+assert.equal(
+  stakeFlowIn.netuid,
+  7,
+  "get_subnet_stake_flow must accept the direction filter",
+);
 const moversCold = await callOk("get_subnet_movers", {
   window: "30d",
   sort: "stake",

@@ -117,6 +117,8 @@ import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_FLOW_DIRECTIONS,
+  DEFAULT_STAKE_FLOW_DIRECTION,
 } from "./stake-flow.mjs";
 import { loadAccountStakeFlow } from "./account-stake-flow.mjs";
 import {
@@ -163,7 +165,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.18.0";
+export const MCP_SERVER_VERSION = "1.19.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -1897,7 +1899,8 @@ export const MCP_TOOLS = [
       "(7d, 30d, or 90d; default 30d): TAO staked (StakeAdded) vs unstaked " +
       "(StakeRemoved), the net capital flow, and event counts, summed live " +
       "from the account_events stream. Use it to see whether capital is " +
-      "entering or leaving a subnet. Mirrors " +
+      "entering or leaving a subnet. ?direction narrows to inflow (in) or " +
+      "outflow (out) only; all (default) reports both sides. Mirrors " +
       "GET /api/v1/subnets/{netuid}/stake-flow.",
     inputSchema: {
       type: "object",
@@ -1907,6 +1910,11 @@ export const MCP_TOOLS = [
           type: "string",
           enum: STAKE_FLOW_WINDOW_KEYS,
           description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_FLOW_DIRECTIONS,
+          description: `Flow side to report: in | out | all (default ${DEFAULT_STAKE_FLOW_DIRECTION}).`,
         },
       },
       required: ["netuid"],
@@ -1922,8 +1930,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
+      const direction =
+        optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
+      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+        throw toolError(
+          "invalid_params",
+          `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        );
+      }
       const { data } = await loadSubnetStakeFlow(mcpD1Runner(ctx), netuid, {
         windowLabel: window,
+        direction,
       });
       return data;
     },
