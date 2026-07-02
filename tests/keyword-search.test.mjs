@@ -47,6 +47,11 @@ describe("queryTerms", () => {
       Array.from({ length: MAX_QUERY_TERMS }, (_, i) => `t${i}`),
     );
   });
+
+  test("preserves insertion order, not alphabetical order", () => {
+    // "zebra" < "apple" alphabetically would be swapped if sorted; insertion order must win.
+    assert.deepEqual(queryTerms("zebra apple mango"), ["zebra", "apple", "mango"]);
+  });
 });
 
 describe("keywordScore — substring noise is gone (whole-word / prefix only)", () => {
@@ -133,6 +138,24 @@ describe("keywordScore — precision boosts", () => {
     assert.ok(score(doc, "image gen") > score(doc, "image"));
   });
 
+  test("EXACT_NAME_BOOST fires when slug matches exactly but name tokens do not", () => {
+    // nameTokens=["bitcoin","network"] !== "bitcoin"; slugTokens=["bitcoin"] === "bitcoin"
+    // Forces the right side of the || on keywordScore line 103 to be the sole trigger.
+    const slugExact = { name: "Bitcoin Network", slug: "bitcoin", text: [] };
+    const noExact = { name: "Bitcoin Data", slug: "btc-data", text: [] };
+    assert.ok(score(slugExact, "bitcoin") > score(noExact, "bitcoin"));
+  });
+
+  test("FULL_COVERAGE_BOOST is added when every query term matches", () => {
+    const doc = { name: "x", slug: "x", text: ["alpha", "beta"] };
+    // both terms match → TEXT_WEIGHT*2 + FULL_COVERAGE_BOOST = 1+1+2 = 4
+    const fullScore = keywordScore(doc, ["alpha", "beta"]);
+    // one miss → TEXT_WEIGHT*1, no boost = 1
+    const partScore = keywordScore(doc, ["alpha", "gamma"]);
+    assert.equal(fullScore, 4);
+    assert.equal(partScore, 1);
+  });
+
   test("full multi-term coverage outranks a partial match", () => {
     const both = {
       name: "Stable Diffusion",
@@ -160,6 +183,9 @@ describe("keywordScore — non-matches and edge inputs", () => {
     const doc = { name: "Compute", slug: "compute", text: ["gpu"] };
     assert.equal(keywordScore(doc, []), 0);
     assert.equal(keywordScore(doc, undefined), 0);
+    assert.equal(keywordScore(doc, null), 0);
+    assert.equal(keywordScore(doc, "gpu"), 0);
+    assert.equal(keywordScore(doc, 42), 0);
   });
 
   test("missing fields are tolerated", () => {
