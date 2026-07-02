@@ -110,6 +110,7 @@ describe("public contract registry", () => {
     );
 
     assert.equal(contracts.primary_domain, "api.metagraph.sh");
+    assert.equal(contracts.api_index_url, "/metagraph/api-index.json");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");

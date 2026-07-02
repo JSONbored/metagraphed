@@ -904,6 +904,27 @@ describe("subnets CSV export", () => {
     );
   });
 
+  test("CSV route returns 304 when If-None-Match matches", async () => {
+    const env = createLocalArtifactEnv();
+    const first = await handleRequest(
+      req("/api/v1/subnets?format=csv&fields=netuid,name&limit=2"),
+      env,
+      {},
+    );
+    const etag = first.headers.get("etag");
+    const second = await handleRequest(
+      req("/api/v1/subnets?format=csv&fields=netuid,name&limit=2", {
+        headers: { "if-none-match": etag },
+      }),
+      env,
+      {},
+    );
+
+    assert.equal(second.status, 304);
+    assert.equal(second.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.equal(await second.text(), "");
+  });
+
   test("?format=csv falls back to JSON when list data is not an array", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {

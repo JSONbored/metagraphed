@@ -42,6 +42,23 @@ describe("rowsToCsv", () => {
     );
   });
 
+  test("escapes header cells and keeps object serialization failures bounded", () => {
+    const circular = {};
+    circular.self = circular;
+
+    assert.equal(
+      rowsToCsv([{ "bad,name": 1, meta: circular }]),
+      '"bad,name",meta\n1,[object Object]\n',
+    );
+  });
+
+  test("hardens spreadsheet formula values after leading spaces", () => {
+    assert.equal(
+      rowsToCsv([{ value: " =SUM(1,1)", safe: "plain" }], ["value", "safe"]),
+      'value,safe\n"\' =SUM(1,1)",plain\n',
+    );
+  });
+
   test("skips malformed rows while deriving columns", () => {
     assert.deepEqual(
       columnsFromRows([null, ["bad"], "bad", { a: 1 }, { b: 2, a: 3 }]),

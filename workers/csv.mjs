@@ -1,7 +1,7 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 
 const CSV_CONTENT_TYPE = "text/csv; charset=utf-8";
-const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+const SPREADSHEET_FORMULA_PREFIX = /^\s*[=+\-@]/;
 
 export function columnsFromRows(rows = []) {
   const columns = [];
@@ -27,7 +27,7 @@ export function csvValue(value) {
   const text = Array.isArray(value)
     ? value.join("; ")
     : typeof value === "object"
-      ? JSON.stringify(value)
+      ? safeJsonCell(value)
       : String(value);
   const safeText = SPREADSHEET_FORMULA_PREFIX.test(text) ? `'${text}` : text;
   return /[",\r\n]/.test(safeText)
@@ -36,11 +36,19 @@ export function csvValue(value) {
 }
 
 export function rowsToCsv(rows = [], columns = columnsFromRows(rows)) {
-  const header = columns.join(",");
+  const header = columns.map((column) => csvValue(column)).join(",");
   const body = rows.map((row) =>
     columns.map((column) => csvValue(row?.[column])).join(","),
   );
   return [header, ...body].join("\n") + "\n";
+}
+
+function safeJsonCell(value) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 export function csvRequested(url, request) {

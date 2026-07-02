@@ -2510,7 +2510,7 @@ async function handleApiRequest(
     transformed.meta.pagination,
     {
       queryCollection: matched.queryCollection,
-      queryFilterNames: matched.queryFilterNames || [],
+      queryFilterNames: matched.queryFilterNames,
       extraSearchParams: wantsCsv
         ? { format: "csv" }
         : explicitFormat !== null

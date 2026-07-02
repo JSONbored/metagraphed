@@ -2609,6 +2609,7 @@ export function buildContractsArtifact(generatedAt) {
     primary_domain: PRIMARY_DOMAIN,
     status_domain: null,
     base_path: ARTIFACT_BASE_PATH,
+    api_index_url: `${ARTIFACT_BASE_PATH}/api-index.json`,
     openapi_url: `${ARTIFACT_BASE_PATH}/openapi.json`,
     type_definitions_url: TYPE_DEFINITIONS_PATH,
     notes: [
