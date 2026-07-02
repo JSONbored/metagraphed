@@ -79,11 +79,7 @@ import {
   buildBlock,
   loadBlocks,
 } from "../../src/blocks.mjs";
-import {
-  EXTRINSIC_READ_COLUMNS,
-  buildExtrinsic,
-  loadExtrinsics,
-} from "../../src/extrinsics.mjs";
+import { loadExtrinsics } from "../../src/extrinsics.mjs";
 import {
   loadBlockEvents,
   loadBlockExtrinsics,
