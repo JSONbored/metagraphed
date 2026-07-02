@@ -1335,6 +1335,14 @@ async function validateGeneratedArtifacts(
     "R2 manifest: generated type definitions must be uploaded",
   );
   assert(
+    r2ManifestArtifact.artifacts.some(
+      (artifact) =>
+        artifact.path === "/metagraph/graphql.graphql" &&
+        artifact.content_type === "application/graphql; charset=utf-8",
+    ),
+    "R2 manifest: GraphQL SDL contract must be uploaded",
+  );
+  assert(
     (schemaDriftArtifact.openapi_surface_count ??
       schemaDriftArtifact.summary?.surface_count) ===
       surfacesArtifact.surfaces.filter((surface) => surface.kind === "openapi")

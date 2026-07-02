@@ -225,6 +225,7 @@ export const DUAL_PATTERNS = [
   /^r2-manifest\.json$/,
   /^contracts\.json$/,
   /^openapi\.json$/,
+  /^graphql\.graphql$/,
   /^schemas\/index\.json$/,
   /^types\.d\.ts$/,
   // The cron prober's own input list. It is deterministic (probe-enabled overlay

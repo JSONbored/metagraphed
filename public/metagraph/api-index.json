@@ -44,6 +44,13 @@
     },
     {
       "contract_version": "2026-06-30.14",
+      "id": "graphql-sdl",
+      "path": "/metagraph/graphql.graphql",
+      "schema_ref": null,
+      "storage_tier": "dual"
+    },
+    {
+      "contract_version": "2026-06-30.14",
       "id": "type-definitions",
       "path": "/metagraph/types.d.ts",
       "schema_ref": null,

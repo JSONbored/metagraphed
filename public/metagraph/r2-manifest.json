@@ -1,14 +1,14 @@
 {
-  "artifact_count": 6,
-  "artifact_size_bytes": 2270482,
+  "artifact_count": 7,
+  "artifact_size_bytes": 2281663,
   "artifacts": [
     {
       "content_type": "application/json",
       "key": "runs/2026-06-18T00-00-00-000Z/api-index.json",
       "latest_key": "latest/api-index.json",
       "path": "/metagraph/api-index.json",
-      "sha256": "45a992dc196f54d20b6f5b7cfd36ee158d6379fb08427c9181d8bccd741e3157",
-      "size_bytes": 183186,
+      "sha256": "49709f158e37a9db584ee7070ef5e42d242301417d52826f62486f43e5409a07",
+      "size_bytes": 183368,
       "storage_tier": "dual"
     },
     {
@@ -16,8 +16,17 @@
       "key": "runs/2026-06-18T00-00-00-000Z/contracts.json",
       "latest_key": "latest/contracts.json",
       "path": "/metagraph/contracts.json",
-      "sha256": "d4b69053570b4c30ea60c044c520e0523dc9a7836708d39fa9fb3ee4f4725553",
-      "size_bytes": 50635,
+      "sha256": "bba8b568802045edd082162c7136558c14527f2e6adc50b2fa640ec97a401a0e",
+      "size_bytes": 50956,
+      "storage_tier": "dual"
+    },
+    {
+      "content_type": "application/graphql; charset=utf-8",
+      "key": "runs/2026-06-18T00-00-00-000Z/graphql.graphql",
+      "latest_key": "latest/graphql.graphql",
+      "path": "/metagraph/graphql.graphql",
+      "sha256": "37eb527b83e432d85d0c474b30f52cbc876fc492dba3fc5a0d211632b33459fe",
+      "size_bytes": 10678,
       "storage_tier": "dual"
     },
     {
@@ -60,8 +69,8 @@
   "bucket_binding": "METAGRAPH_ARCHIVE",
   "bucket_name": "metagraphed-artifacts",
   "contract_version": "2026-06-30.14",
-  "full_artifact_count": 2261,
-  "full_artifact_size_bytes": 40449679,
+  "full_artifact_count": 2262,
+  "full_artifact_size_bytes": 40486157,
   "full_manifest_key": "latest/r2-manifest.json",
   "full_manifest_run_key": "runs/2026-06-18T00-00-00-000Z/r2-manifest.json",
   "generated_at": "2026-06-18T00:00:00.000Z",
@@ -79,11 +88,11 @@
   "run_prefix": "runs/2026-06-18T00-00-00-000Z/",
   "schema_version": 1,
   "storage_tier_counts": {
-    "dual": 6,
+    "dual": 7,
     "r2": 2255
   },
   "storage_tier_size_bytes": {
-    "dual": 2270482,
-    "r2": 38179197
+    "dual": 2281663,
+    "r2": 38204494
   }
 }

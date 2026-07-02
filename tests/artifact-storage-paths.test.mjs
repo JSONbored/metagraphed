@@ -9,6 +9,7 @@ describe("isGeneratedPublicArtifactRelativePath", () => {
       "r2-manifest.json",
       "contracts.json",
       "openapi.json",
+      "graphql.graphql",
       "schemas/index.json",
       "types.d.ts",
       "operational-surfaces.json",
@@ -28,6 +29,10 @@ describe("isGeneratedPublicArtifactRelativePath", () => {
       true,
     );
     assert.equal(
+      isGeneratedPublicArtifactRelativePath("/metagraph/graphql.graphql"),
+      true,
+    );
+    assert.equal(
       isGeneratedPublicArtifactRelativePath("/metagraph/contracts.json"),
       true,
     );
@@ -38,6 +43,7 @@ describe("isGeneratedPublicArtifactRelativePath", () => {
       "xopenapi.json", // not anchored at the start
       "openapi.jsonx", // not anchored at the end
       "openapi.json/", // trailing segment
+      "graphql.graphql.json", // extension must match exactly
       "schemas/other.json", // only schemas/index.json is dual
       "testnet/openapi.json", // secondary-network prefix is not stripped
       "subnets.json", // an R2/live artifact, not a committed one

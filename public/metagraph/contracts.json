@@ -55,6 +55,15 @@
       "storage_tier": "dual"
     },
     {
+      "content_type": "application/graphql; charset=utf-8",
+      "contract_version": "2026-06-30.14",
+      "description": "GraphQL SDL contract for the metagraph.sh backend API.",
+      "id": "graphql-sdl",
+      "path": "/metagraph/graphql.graphql",
+      "schema_ref": null,
+      "storage_tier": "dual"
+    },
+    {
       "content_type": "text/plain; charset=utf-8",
       "contract_version": "2026-06-30.14",
       "description": "Generated TypeScript definitions for metagraph.sh backend consumers.",

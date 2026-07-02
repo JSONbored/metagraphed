@@ -649,6 +649,12 @@ export const PUBLIC_ARTIFACTS = [
     "OpenApiArtifact",
   ),
   artifact(
+    "graphql-sdl",
+    "/metagraph/graphql.graphql",
+    "GraphQL SDL contract for the metagraph.sh backend API.",
+    null,
+  ),
+  artifact(
     "type-definitions",
     "/metagraph/types.d.ts",
     "Generated TypeScript definitions for metagraph.sh backend consumers.",
@@ -2863,6 +2869,9 @@ function artifact(id, pathValue, description, schemaRef) {
 }
 
 function artifactContentType(pathValue) {
+  if (pathValue.endsWith(".graphql")) {
+    return "application/graphql; charset=utf-8";
+  }
   if (pathValue.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
   }

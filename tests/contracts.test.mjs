@@ -112,7 +112,31 @@ describe("public contract registry", () => {
     assert.equal(contracts.primary_domain, "api.metagraph.sh");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
+    assert.deepEqual(
+      contracts.artifacts.find((artifact) => artifact.id === "graphql-sdl"),
+      {
+        content_type: "application/graphql; charset=utf-8",
+        contract_version: CONTRACT_VERSION,
+        description: "GraphQL SDL contract for the metagraph.sh backend API.",
+        id: "graphql-sdl",
+        path: "/metagraph/graphql.graphql",
+        schema_ref: null,
+        storage_tier: "dual",
+      },
+    );
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");
+    assert.deepEqual(
+      apiIndex.artifact_contracts.find(
+        (artifact) => artifact.id === "graphql-sdl",
+      ),
+      {
+        contract_version: CONTRACT_VERSION,
+        id: "graphql-sdl",
+        path: "/metagraph/graphql.graphql",
+        schema_ref: null,
+        storage_tier: "dual",
+      },
+    );
     assert.equal(apiIndex.routes.length, API_ROUTES.length);
     assert.equal(
       apiIndex.routes.find((route) => route.id === "subnets").query_collection,

@@ -227,10 +227,17 @@ async function listArtifactFiles(dirPath) {
 }
 
 function isManifestedArtifact(fileName) {
-  return fileName.endsWith(".json") || fileName.endsWith(".d.ts");
+  return (
+    fileName.endsWith(".json") ||
+    fileName.endsWith(".d.ts") ||
+    fileName.endsWith(".graphql")
+  );
 }
 
 function contentTypeFor(relativePath) {
+  if (relativePath.endsWith(".graphql")) {
+    return "application/graphql; charset=utf-8";
+  }
   if (relativePath.endsWith(".d.ts")) {
     return "text/plain; charset=utf-8";
   }

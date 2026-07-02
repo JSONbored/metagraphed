@@ -682,6 +682,10 @@ describe("script utility contracts", () => {
       ARTIFACT_STORAGE_TIERS.dual,
     );
     assert.equal(
+      artifactStorageTierForRelativePath("graphql.graphql"),
+      ARTIFACT_STORAGE_TIERS.dual,
+    );
+    assert.equal(
       artifactStorageTierForRelativePath("schemas/allways-swagger.json"),
       ARTIFACT_STORAGE_TIERS.r2,
     );
