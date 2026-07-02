@@ -440,7 +440,7 @@ describe("badge — uptime / reliability metric", () => {
       "https://api.metagraph.sh/api/v1/providers/partial/badge.svg?metric=uptime",
     );
     const db = {
-      prepare(sql) {
+      prepare(_sql) {
         return {
           bind() {
             return this;
