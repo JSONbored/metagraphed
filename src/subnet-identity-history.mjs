@@ -42,7 +42,7 @@ async function sha256Hex(text) {
 export function identitySnapshotFromProfile(profile) {
   const identity = profile?.native_identity;
   if (!identity || typeof identity !== "object") return null;
-  return {
+  return sanitizeIdentityHistoryFields({
     subnet_name: identity.subnet_name ?? null,
     symbol: profile.symbol ?? null,
     description: identity.description ?? null,
@@ -50,7 +50,7 @@ export function identitySnapshotFromProfile(profile) {
     subnet_url: identity.website_url ?? null,
     discord: identity.discord ?? identity.discord_url ?? null,
     logo_url: identity.logo_url ?? null,
-  };
+  });
 }
 
 export async function identityHash(snapshot) {
@@ -191,19 +191,18 @@ export async function recordSubnetIdentityChanges(
     if (!snapshot) continue;
     const hash = await identityHash(snapshot);
     if (latestByNetuid.get(profile.netuid) === hash) continue;
-    const stored = sanitizeIdentityHistoryFields(snapshot);
     statements.push(
       stmt.bind(
         profile.netuid,
         blockNumber,
         now,
-        stored.subnet_name,
-        stored.symbol,
-        stored.description,
-        stored.github_repo,
-        stored.subnet_url,
-        stored.discord,
-        stored.logo_url,
+        snapshot.subnet_name,
+        snapshot.symbol,
+        snapshot.description,
+        snapshot.github_repo,
+        snapshot.subnet_url,
+        snapshot.discord,
+        snapshot.logo_url,
         hash,
       ),
     );

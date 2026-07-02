@@ -52,7 +52,7 @@ describe("identitySnapshotFromProfile", () => {
         symbol: "α",
         description: "sound AI",
         github_repo: "https://github.com/example/miao",
-        subnet_url: "https://miao.example",
+        subnet_url: "https://miao.example/",
         discord: "miao",
         logo_url: "https://miao.example/logo.png",
       },
@@ -71,6 +71,53 @@ describe("identitySnapshotFromProfile", () => {
       },
     });
     assert.equal(snapshot.discord, "https://discord.gg/example");
+  });
+
+  test("nulls malformed or placeholder on-chain links before hashing", () => {
+    assert.deepEqual(
+      identitySnapshotFromProfile({
+        netuid: 1,
+        native_identity: {
+          github_url: "not-a-uri",
+          website_url: "javascript:alert(1)",
+          discord: "x".repeat(201),
+          logo_url: "https://deprecated.png/logo.png",
+        },
+      }),
+      {
+        subnet_name: null,
+        symbol: null,
+        description: null,
+        github_repo: null,
+        subnet_url: null,
+        discord: null,
+        logo_url: null,
+      },
+    );
+  });
+
+  test("normalizes valid on-chain links and discord handles in the snapshot", () => {
+    assert.deepEqual(
+      identitySnapshotFromProfile({
+        netuid: 86,
+        symbol: "α",
+        native_identity: {
+          github_url: "github.com/example/repo",
+          website_url: "https://miao.example/",
+          discord: "macrocrux",
+          logo_url: "https://miao.example/logo.png",
+        },
+      }),
+      {
+        subnet_name: null,
+        symbol: "α",
+        description: null,
+        github_repo: "https://github.com/example/repo",
+        subnet_url: "https://miao.example/",
+        discord: "macrocrux",
+        logo_url: "https://miao.example/logo.png",
+      },
+    );
   });
 });
 
