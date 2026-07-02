@@ -99,7 +99,15 @@ function canonicalAnalyticsCacheRoute(url, params = []) {
   const search = new URL("https://cache-key.invalid/").searchParams;
   for (const param of [ANALYTICS_WINDOW_PARAM, ...params]) {
     const value = url.searchParams.get(param);
-    if (value !== null) search.set(param, value);
+    if (value !== null) {
+      search.set(param, value);
+      continue;
+    }
+    // Normalize the default window into the cache key so a bare request and an
+    // explicit ?window=<default> request share one edge-cache entry.
+    if (param === ANALYTICS_WINDOW_PARAM) {
+      search.set(param, DEFAULT_ANALYTICS_WINDOW);
+    }
   }
   const query = search.toString();
   return `${url.pathname}${query ? `?${query}` : ""}`;
@@ -317,7 +325,10 @@ export async function readSubnetNeuronsCacheStamp(env, netuid) {
 // Network-wide neuron cache stamp: the newest captured_at across ALL subnets, so a
 // chain-level neurons aggregate (chain/concentration) busts its edge cache the
 // moment any subnet's snapshot advances — the network analog of the per-subnet
-// stamp above.
+// stamp above. Also backs /api/v1/validators: a filtered (validator_permit = 1)
+// variant was tried, but a subnet refresh that drops a permit=1 row wouldn't
+// touch that filtered MAX(captured_at), so the leaderboard's edge cache could
+// go stale for that change. The unfiltered stamp is used instead.
 export async function readNeuronsCacheStamp(env) {
   const rows = await d1All(
     env,

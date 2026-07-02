@@ -463,6 +463,11 @@
           "native_slug": {
             "type": ["string", "null"]
           },
+          "previously_known_as": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647)."
+          },
           "notes": {
             "type": ["string", "null"]
           },
@@ -1252,6 +1257,7 @@
           "registration_allowed",
           "registration_cost_tao",
           "alpha_price_tao",
+          "alpha_market_cap_tao",
           "total_stake_tao",
           "max_stake_tao",
           "tao_in_pool_tao",
@@ -1266,6 +1272,11 @@
           "netuid": { "type": "integer", "minimum": 0 },
           "slug": { "type": "string" },
           "name": { "type": "string" },
+          "block": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters."
+          },
           "max_uids": { "type": "integer", "minimum": 0 },
           "validator_count": { "type": "integer", "minimum": 0 },
           "max_validators": { "type": "integer", "minimum": 0 },
@@ -1273,6 +1284,10 @@
           "registration_allowed": { "type": "boolean" },
           "registration_cost_tao": { "type": ["number", "null"] },
           "alpha_price_tao": { "type": ["number", "null"] },
+          "alpha_market_cap_tao": {
+            "type": ["number", "null"],
+            "description": "Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing."
+          },
           "total_stake_tao": { "type": ["number", "null"] },
           "max_stake_tao": { "type": ["number", "null"] },
           "tao_in_pool_tao": { "type": ["number", "null"] },
@@ -1520,6 +1535,9 @@
           "coldkey_count",
           "subnet_count",
           "uid_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
           "latest_captured_at",
@@ -1532,6 +1550,13 @@
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "uid_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "total_emission_tao": { "type": "number", "minimum": 0 },
+          "stake_dominance": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
           "latest_captured_at": {
@@ -1549,7 +1574,7 @@
       "GlobalValidatorsArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets.",
+        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file).",
         "required": [
           "schema_version",
           "sort",
@@ -1562,10 +1587,13 @@
           "sort": {
             "type": "string",
             "enum": [
-              "subnet_count",
-              "uid_count",
               "avg_validator_trust",
-              "max_validator_trust"
+              "max_validator_trust",
+              "stake_dominance",
+              "subnet_count",
+              "total_emission",
+              "total_stake",
+              "uid_count"
             ]
           },
           "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
@@ -1637,6 +1665,48 @@
                 "total_stake_tao": { "type": ["number", "null"] },
                 "total_emission_tao": { "type": ["number", "null"] }
               }
+            }
+          }
+        }
+      },
+      "SubnetIdentityHistoryEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data.",
+        "required": ["observed_at", "identity_hash"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"], "minimum": 0 },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_name": { "type": ["string", "null"] },
+          "symbol": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "github_repo": { "type": ["string", "null"], "format": "uri" },
+          "subnet_url": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "logo_url": { "type": ["string", "null"], "format": "uri" },
+          "identity_hash": { "type": "string" }
+        }
+      },
+      "SubnetIdentityHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "required": ["schema_version", "netuid", "entry_count", "entries"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "entry_count": { "type": "integer", "minimum": 0 },
+          "limit": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "offset": { "type": ["integer", "null"], "minimum": 0 },
+          "next_cursor": { "type": ["string", "null"] },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetIdentityHistoryEntry"
             }
           }
         }

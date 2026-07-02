@@ -63,8 +63,13 @@ export const INDEXED_EVENT_KINDS = [
 // scoping validation to INDEXED_EVENT_KINDS alone would wrongly reject valid kinds.
 export const INGESTED_EVENT_KINDS = [
   ...INDEXED_EVENT_KINDS,
+  "NeuronDeregistered",
   "NetworkAdded",
   "NetworkRemoved",
+  "RegistrationAllowed",
+  "PowRegistrationAllowed",
+  "BurnSet",
+  "SubnetOwnerHotkeySet",
   "DelegateAdded",
   "TakeDecreased",
   "TakeIncreased",
@@ -74,7 +79,9 @@ export const INGESTED_EVENT_KINDS = [
 ];
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  if (ms == null) return null;
+  const n = Number(ms);
+  return Number.isFinite(n) ? new Date(n).toISOString() : null;
 }
 
 // Coerce a block height or index cell to a non-negative integer, or null when
@@ -112,8 +119,12 @@ export function formatAccountEvent(row) {
     // sibling formatters in blocks.mjs (#2435) and extrinsics.mjs (#2439).
     netuid: toBlockNumber(row.netuid),
     uid: toBlockNumber(row.uid),
-    amount_tao: row.amount_tao ?? null,
-    alpha_amount: row.alpha_amount ?? null,
+    // amount_tao / alpha_amount (D1 REAL columns) — coerce through toTaoOrNull
+    // so a numeric string never leaks the string form into the JSON payload,
+    // and SUM float noise is rounded to rao precision. Mirrors the coercion
+    // applied in formatRegistration (#2487) and the sibling formatters.
+    amount_tao: toTaoOrNull(row.amount_tao),
+    alpha_amount: toTaoOrNull(row.alpha_amount),
     observed_at: toIso(row.observed_at),
     extrinsic_index: toBlockNumber(row.extrinsic_index),
   };
@@ -274,13 +285,16 @@ export function formatRegistration(row) {
 export function formatAccountActivity(agg, modules) {
   const a = agg || {};
   return {
-    tx_count: a.tx_count ?? 0,
+    tx_count: toBlockNumber(a.tx_count) ?? 0,
     last_tx_block: toBlockNumber(a.last_tx_block),
     last_tx_at: toIso(a.last_tx_at),
     total_fee_tao: toTaoOrNull(a.total_fee_tao),
     modules_called: (modules || [])
       .filter((m) => m && m.call_module)
-      .map((m) => ({ call_module: m.call_module, count: m.count ?? 0 })),
+      .map((m) => ({
+        call_module: m.call_module,
+        count: toBlockNumber(m.count) ?? 0,
+      })),
   };
 }
 
@@ -289,7 +303,9 @@ export function buildAccountSummary(
   { agg, kinds, scanned, registrations, recent, activity, modules } = {},
 ) {
   const a = agg || {};
-  const eventCount = a.c ?? 0;
+  const eventCount = toBlockNumber(a.c) ?? 0;
+  const scannedCount =
+    scanned != null ? (toBlockNumber(scanned) ?? 0) : eventCount;
   // event_count / subnet_count / event_kinds are aggregated over exactly the
   // account's newest ACCOUNT_EVENT_SUMMARY_SCAN_CAP events. `scanned` is a probe
   // COUNT over CAP+1: when it exceeds CAP the account has more events than that
@@ -298,13 +314,12 @@ export function buildAccountSummary(
   // null first_*. `> CAP` (not `>=`) means an account with EXACTLY CAP events is
   // complete (the probe found no extra row), so its totals + first_* stay exact.
   // last_* stay exact regardless (the newest events include the latest).
-  const eventScanCapped =
-    (scanned ?? eventCount) > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
+  const eventScanCapped = scannedCount > ACCOUNT_EVENT_SUMMARY_SCAN_CAP;
   return {
     schema_version: 1,
     ss58,
     event_count: eventCount,
-    subnet_count: a.sc ?? 0,
+    subnet_count: toBlockNumber(a.sc) ?? 0,
     event_scan_capped: eventScanCapped,
     first_block: eventScanCapped ? null : toBlockNumber(a.fb),
     last_block: toBlockNumber(a.lb),
@@ -312,7 +327,7 @@ export function buildAccountSummary(
     last_seen_at: toIso(a.lo),
     event_kinds: (kinds || [])
       .filter((k) => k && k.kind)
-      .map((k) => ({ kind: k.kind, count: k.count ?? 0 })),
+      .map((k) => ({ kind: k.kind, count: toBlockNumber(k.count) ?? 0 })),
     registrations: (registrations || [])
       .map(formatRegistration)
       .filter(Boolean),
@@ -358,6 +373,63 @@ export function buildSubnetEvents(
     next_cursor: nextCursor ?? null,
     events,
   };
+}
+
+// Paginated chain-event stream for one subnet (newest first), optional kind
+// filter, offset or keyset cursor. Clamps internally so REST and MCP agree; a
+// cursor overrides offset.
+export async function loadSubnetEvents(
+  d1,
+  netuid,
+  { kind, limit, offset, cursor, blockStart, blockEnd } = {},
+) {
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildSubnetEvents([], netuid, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
+  const cur = decodeCursor(cursor, 2);
+  const useCursor = Boolean(cur);
+  const params = [netuid];
+  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
+  if (kind) {
+    sql += " AND event_kind = ?";
+    params.push(kind);
+  }
+  if (blockStart != null) {
+    sql += " AND block_number >= ?";
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    sql += " AND block_number <= ?";
+    params.push(blockEnd);
+  }
+  if (useCursor) {
+    sql += " AND (block_number, event_index) < (?, ?)";
+    params.push(cur[0], cur[1]);
+  }
+  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
+  const last = rows.length === lim ? rows[rows.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([last.block_number, last.event_index])
+    : null;
+  return buildSubnetEvents(rows, netuid, {
+    limit: lim,
+    offset: off,
+    nextCursor,
+  });
 }
 
 // The decoded chain events in ONE block (#1852, block explorer): account_events
@@ -468,7 +540,7 @@ export function buildAccountTransfers(
       event_index: toBlockNumber(r.event_index),
       from: r.hotkey ?? null,
       to: r.coldkey ?? null,
-      amount_tao: r.amount_tao ?? null,
+      amount_tao: toTaoOrNull(r.amount_tao),
       direction:
         fixedDirection ??
         (r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null),
@@ -627,6 +699,15 @@ export async function loadAccountEvents(
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
+  // Inverted block-height bounds are a deterministic no-match. Short-circuit before
+  // D1 so REST and MCP callers cannot force a scan to prove an impossible empty page.
+  if (blockStart != null && blockEnd != null && blockStart > blockEnd) {
+    return buildAccountEvents([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    });
+  }
   const filterParts = [];
   const filterParams = [];
   if (kind) {

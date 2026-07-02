@@ -239,14 +239,32 @@ test for every bug fix**. **Codecov is the coverage gate** — run it unsharded 
 
 ### Phase B3 — Regenerate what you invalidated (then commit it)
 
-| You changed…                                 | Run             | Commit                                                                     |
-| -------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
-| `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index               |
-| A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                               |
-| A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts)      |
-| MCP tools in `src/mcp-server.mjs`            | —               | **nothing** — the server card is worker-computed, not a committed artifact |
+| You changed…                                 | Run             | Commit                                                                                            |
+| -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index                                      |
+| A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                                                      |
+| A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts)                             |
+| MCP tools in `src/mcp-server.mjs`            | —               | **nothing** — the server card is worker-computed, not a committed artifact                        |
+| _(any of the above)_                         | `npm run build` | **never** `public/metagraph/r2-manifest.json` / `public/metagraph/schemas/index.json` — see below |
 
 Stale committed artifacts fail the **derived-artifact freshness** + **contract-drift** gates.
+
+**Never commit `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json`.**
+`npm run build` always rewrites both to reflect a full local/CI build, but their committed copies on
+`main` are owned by the real deploy/publish pipeline (`r2-manifest.json` is the publish lockfile
+read from its committed path at publish time; `schemas/index.json` is a network-capture cache the
+build reconciles in place) — see the "Verify committed derived artifacts are fresh" step in
+`.github/workflows/validate.yml`, which explicitly excludes both for this reason. A contributor
+build will **always** show them as changed for reasons unrelated to your change. After
+`npm run build`, always revert them against your **base** remote — `upstream/main` if you forked
+per Phase A0, or `origin/main` if you cloned this repo directly (no `upstream` configured):
+
+```sh
+git checkout "$(git remote | grep -qx upstream && echo upstream || echo origin)/main" -- \
+  public/metagraph/r2-manifest.json public/metagraph/schemas/index.json
+```
+
+before staging/committing — even if they show as modified.
 
 **Client SDK version:** do **not** bump `packages/client/package.json` in your PR. The
 `sync-client-version` workflow auto-opens a `chore/sync-client-version` PR after a contract-changing
@@ -286,6 +304,10 @@ the PR template with the validation commands you actually ran. Sync with `main` 
       `review.state: community-submitted`; `public_safe: true`; no health/`verification`/secrets set by hand.
 - [ ] Not a duplicate of an existing surface or an open PR; not the same surface re-titled by `kind`.
 - [ ] `npm run validate:surface` + `npm run scan:public-safety` clean.
+- [ ] If you ran `npm run build` locally out of caution (not normally required for Path A), your diff
+      still touches only your one subnet file — see the Path B note below on
+      `public/metagraph/r2-manifest.json` / `public/metagraph/schemas/index.json`; the Gittensory Gate's
+      registry-review lane rejects a PR that bundles either in with your surface change.
 - [ ] Conventional Commit (no AI attribution); PR template filled; **`Closes #<issue>`** if an issue tracks it (optional).
 
 **Path B (code/schema):**
@@ -294,6 +316,11 @@ the PR template with the validation commands you actually ran. Sync with `main` 
 - [ ] Regenerated + committed: `npm run build` artifacts (OpenAPI/types/contracts) as applicable. MCP
       tool additions do NOT require server-card regen (worker-computed). Client version bump NOT required
       (auto-sync workflow handles it post-merge).
+- [ ] `public/metagraph/r2-manifest.json` and `public/metagraph/schemas/index.json` are **not** part of
+      your diff — both always change on a local/CI build for reasons unrelated to your PR (they're
+      deploy/publish-pipeline-owned, not contract artifacts). Revert them against your base remote
+      (the Phase B3 command above) before committing if `npm run build` touched them. `npm run build`
+      itself warns you if either changed.
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).

@@ -239,6 +239,28 @@ def _net(a):  # NetworkAdded/NetworkRemoved: {netuid, ...} or [netuid, ...]
     return {"netuid": _idx(netuid)}
 
 
+def _burn_set(a):  # BurnSet: (netuid, burn_rao) — a subnet's registration cost/burn
+    # (the recycled TAO a neuron pays to register on that subnet). Positional tuple
+    # on finney; the dict guard mirrors _net for named/older decodings.
+    if isinstance(a, dict):
+        netuid = a.get("netuid")
+        amount = a.get("amount", a.get("burn"))
+    else:
+        netuid = a[0] if len(a) > 0 else None
+        amount = a[1] if len(a) > 1 else None
+    return {"netuid": _idx(netuid), "amount_tao": _tao(amount)}
+
+
+def _subnet_owner_hotkey(a):  # SubnetOwnerHotkeySet: (netuid, new_hotkey)
+    if isinstance(a, dict):
+        netuid = a.get("netuid")
+        hotkey = a.get("new_hotkey", a.get("hotkey"))
+    else:
+        netuid = a[0] if len(a) > 0 else None
+        hotkey = a[1] if len(a) > 1 else None
+    return {"netuid": _idx(netuid), "hotkey": _ss58(hotkey)}
+
+
 def _delegate_added(a):  # DelegateAdded: {coldkey, hotkey, take} or [coldkey, hotkey, ...]
     if isinstance(a, dict):
         ck, hk = a.get("coldkey"), a.get("hotkey")
@@ -281,6 +303,7 @@ def _coldkey_swap(a):  # ColdkeySwapped: {old_coldkey, new_coldkey} or [old_cold
 
 EXTRACTORS = {
     "NeuronRegistered": _registered,
+    "NeuronDeregistered": _registered,  # same [netuid, uid, hotkey] shape
     "StakeAdded": _stake,
     "StakeRemoved": _stake,
     "StakeMoved": _moved,
@@ -288,9 +311,13 @@ EXTRACTORS = {
     "PrometheusServed": _axon,  # [netuid, hotkey]
     "WeightsSet": _weights,
     "RootClaimed": _root,
-    # Subnet lifecycle (#1816)
+    # Subnet lifecycle (#1816, #2561)
     "NetworkAdded": _net,
     "NetworkRemoved": _net,
+    "RegistrationAllowed": _net,
+    "PowRegistrationAllowed": _net,
+    "BurnSet": _burn_set,  # registration cost/burn (netuid, recycled TAO)
+    "SubnetOwnerHotkeySet": _subnet_owner_hotkey,
     # Delegation (#1816)
     "DelegateAdded": _delegate_added,
     "TakeDecreased": _take_changed,

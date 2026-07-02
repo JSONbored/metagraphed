@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.14";
+export const CONTRACT_VERSION = "2026-07-01.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -193,7 +193,9 @@ export const API_QUERY_COLLECTIONS = {
     },
     search: ["name", "slug"],
     sort: [
+      "alpha_market_cap_tao",
       "alpha_price_tao",
+      "block",
       "emission_share",
       "max_stake_tao",
       "max_uids",
@@ -771,7 +773,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "economics",
     "/metagraph/economics.json",
-    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, and derived price-weighted emission share.",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived price-weighted emission share, and on-chain registration block height.",
     "EconomicsArtifact",
   ),
   artifact(
@@ -945,7 +947,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-stake-flow",
     "/metagraph/subnets/{netuid}/stake-flow.json",
-    "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
+    "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, with optional ?direction=all|in|out to filter inflow or outflow only, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
     "SubnetStakeFlowArtifact",
   ),
   artifact(
@@ -957,7 +959,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "global-validators",
     "/metagraph/validators.json",
-    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
     "GlobalValidatorsArtifact",
   ),
   artifact(
@@ -1001,6 +1003,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/history.json",
     "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
     "SubnetHistoryArtifact",
+  ),
+  artifact(
+    "subnet-identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
+    "SubnetIdentityHistoryArtifact",
   ),
   artifact(
     "account-summary",
@@ -1512,7 +1520,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
@@ -1799,13 +1807,17 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/stake-flow",
     "/metagraph/subnets/{netuid}/stake-flow.json",
-    "Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. Windows (7d/30d/90d) are bounded by the account_events retention.",
+    "Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention.",
     "short",
     ["subnets", "analytics"],
     [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "in", "out"] },
       },
     ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
@@ -1839,7 +1851,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators",
     "/metagraph/validators.json",
-    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier.",
+    "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
     "short",
     ["validators", "analytics"],
     [
@@ -1848,10 +1860,13 @@ export const API_ROUTES = [
         schema: {
           type: "string",
           enum: [
-            "subnet_count",
-            "uid_count",
             "avg_validator_trust",
             "max_validator_trust",
+            "stake_dominance",
+            "subnet_count",
+            "total_emission",
+            "total_stake",
+            "uid_count",
           ],
         },
       },
@@ -1962,6 +1977,21 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-identity-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/identity-history",
+    "/metagraph/subnets/{netuid}/identity-history.json",
+    "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "short",
+    ["subnets", "analytics"],
+    [
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
+      { name: "cursor", schema: { type: "string" } },
+    ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "account-summary",
     "GET",
     "/api/v1/accounts/{ss58}",
@@ -2050,15 +2080,29 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/counterparties",
     "/metagraph/accounts/{ss58}/counterparties.json",
-    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100).",
+    "Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "counterparty",
-        schema: { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
+        schema: {
+          type: "string",
+          pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
+          description:
+            "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58.",
+        },
       },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          description:
+            "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
+        },
+      },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
@@ -2346,10 +2390,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
-    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
+    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
     "short",
     ["health", "subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["90d", "1y"] } }],
+    [
+      { name: "window", schema: { type: "string", enum: ["90d", "1y"] } },
+      { name: "min_samples", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

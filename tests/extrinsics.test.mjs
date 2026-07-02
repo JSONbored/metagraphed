@@ -144,6 +144,42 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatExtrinsic coerces D1 numeric-string fee_tao/tip_tao and rounds to rao", () => {
+  // D1 can return the REAL fee/tip columns as numeric strings; a bare `?? null`
+  // would leak the string into the ["number","null"] contract field. Coercion
+  // also rounds float noise to rao precision (9 dp). Mirrors #2662.
+  const out = formatExtrinsic({
+    block_number: 10,
+    extrinsic_index: 0,
+    fee_tao: "0.0125",
+    tip_tao: "0.10000000004",
+    observed_at: 1750000000000,
+  });
+  assert.equal(out.fee_tao, 0.0125);
+  assert.equal(typeof out.fee_tao, "number");
+  assert.equal(out.tip_tao, 0.1); // rounded to rao (9 dp)
+  assert.equal(typeof out.tip_tao, "number");
+});
+
+test("formatExtrinsic maps a null/absent fee_tao/tip_tao to null", () => {
+  const out = formatExtrinsic({ block_number: 10, extrinsic_index: 0 });
+  assert.equal(out.fee_tao, null);
+  assert.equal(out.tip_tao, null);
+});
+
+test("formatExtrinsic maps a non-numeric fee_tao/tip_tao to null (not NaN)", () => {
+  // A non-finite / non-numeric cell must fall through to null, never leak NaN
+  // into the ["number","null"] contract field.
+  const out = formatExtrinsic({
+    block_number: 10,
+    extrinsic_index: 0,
+    fee_tao: "not-a-number",
+    tip_tao: "abc",
+  });
+  assert.equal(out.fee_tao, null);
+  assert.equal(out.tip_tao, null);
+});
+
 test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
   // Substrate call args are canonically a LIST of {name,value} descriptors.
   const arr = formatExtrinsic({
@@ -565,7 +601,7 @@ test("GET /extrinsics applies the conjunctive filter set (#1846)", async () => {
   assert.equal(boundParams.at(-1), 0);
 });
 
-test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846)", async () => {
+test("GET /extrinsics?success=true binds 1; an invalid success returns 400 (#2575)", async () => {
   let boundSql;
   let boundParams;
   const env = {
@@ -589,10 +625,16 @@ test("GET /extrinsics?success=true binds 1; an invalid success is ignored (#1846
   assert.ok(/success = \?/.test(boundSql));
   assert.ok(boundParams.includes(1));
 
-  // A non-true/false success value adds no condition (no WHERE).
-  await handleRequest(req("/api/v1/extrinsics?success=maybe"), env, {});
-  assert.ok(!/success = \?/.test(boundSql));
-  assert.ok(!/WHERE/.test(boundSql));
+  const bad = await handleRequest(
+    req("/api/v1/extrinsics?success=maybe"),
+    env,
+    {},
+  );
+  assert.equal(bad.status, 400);
+  const body = await bad.json();
+  assert.equal(body.ok, false);
+  assert.equal(body.error.code, "invalid_query");
+  assert.equal(body.meta.parameter, "success");
 });
 
 test("GET /extrinsics/{hash} returns detail by extrinsic_hash (#1345)", async () => {

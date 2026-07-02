@@ -20,12 +20,17 @@ import {
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
-import { dailyLatencyColumns } from "../../src/health-sql.mjs";
+import {
+  dailyLatencyColumns,
+  surfaceStatusAvgLatencySql,
+} from "../../src/health-sql.mjs";
+import { parseNonNegativeIntParam } from "../request-params.mjs";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
+import { growthRowsFromSamples } from "../../src/analytics-live.mjs";
 import {
   formatLeaderboards,
   formatTrajectory,
@@ -120,7 +125,7 @@ export async function handleEconomicsTrends(request, env, url) {
 
 // Long-term daily uptime history for one subnet's operational surfaces.
 export async function handleUptime(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "min_samples"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
@@ -129,6 +134,14 @@ export async function handleUptime(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, UPTIME_WINDOWS),
     });
   }
+  // Optional low-sample noise floor: drop day rows whose aggregated probe count
+  // is below the threshold (a HAVING bound param), so sparse days (including
+  // the SUM(samples)=0 'unknown' rows) can be excluded from availability charts.
+  const minSamples = parseNonNegativeIntParam(
+    url.searchParams.get("min_samples"),
+    "min_samples",
+  );
+  if (minSamples.error) return analyticsQueryError(minSamples.error);
   const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -157,9 +170,11 @@ export async function handleUptime(request, env, netuid, url) {
      FROM surface_uptime_daily
      WHERE netuid = ? AND day >= ?
      GROUP BY COALESCE(surface_key, surface_id), day
-     ORDER BY day DESC
+     ${minSamples.value !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
      LIMIT ?`,
-    [netuid, cutoff, MAX_UPTIME_ROWS],
+    minSamples.value !== null
+      ? [netuid, cutoff, minSamples.value, MAX_UPTIME_ROWS]
+      : [netuid, cutoff, MAX_UPTIME_ROWS],
   );
   const healthMeta = await readHealthMetaKv(env);
   const data = formatUptime({
@@ -316,7 +331,7 @@ export async function handleLeaderboards(request, env, url) {
         `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-              AVG(latency_ms) AS avg_latency_ms
+              ${surfaceStatusAvgLatencySql()} AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
         [],
@@ -352,23 +367,7 @@ export async function handleLeaderboards(request, env, url) {
       ),
     ]);
 
-  const growthByNetuid = new Map();
-  for (const row of growthSamples) {
-    const entry = growthByNetuid.get(row.netuid) || {
-      first: undefined,
-      last: undefined,
-    };
-    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
-    entry.last = row.completeness_score ?? null;
-    growthByNetuid.set(row.netuid, entry);
-  }
-  const growthRows = [...growthByNetuid.entries()].map(([netuid, entry]) => ({
-    netuid,
-    delta:
-      entry.first != null && entry.last != null
-        ? Number(entry.last) - Number(entry.first)
-        : null,
-  }));
+  const growthRows = growthRowsFromSamples(growthSamples);
 
   const meta = await readHealthMetaKv(env);
   const data = formatLeaderboards({
@@ -554,7 +553,7 @@ export async function handleCompare(request, env, url) {
           `SELECT netuid,
                 COUNT(*) AS surface_count,
                 SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-                ROUND(AVG(latency_ms)) AS avg_latency_ms
+                ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
          FROM surface_status
          WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
          GROUP BY netuid`,

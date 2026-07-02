@@ -1168,14 +1168,14 @@ describe("graphql — economics pagination", () => {
             captured_at: new Date().toISOString(),
             subnets: [
               { netuid: 1, emission_share: 0.6 },
-              { netuid: 2, emission_share: 0.4 },
+              { netuid: 2, emission_share: 0.4, alpha_market_cap_tao: 80 },
             ],
           },
         },
       },
     );
     const { status, body } = await gql(
-      "{ economics { subnets { netuid } total } }",
+      "{ economics { subnets { netuid alpha_market_cap_tao } total } }",
       env,
     );
     assert.equal(status, 200);
@@ -1184,6 +1184,8 @@ describe("graphql — economics pagination", () => {
       body.data.economics.subnets.map((s) => s.netuid),
       [1, 2],
     );
+    assert.equal(body.data.economics.subnets[0].alpha_market_cap_tao, null);
+    assert.equal(body.data.economics.subnets[1].alpha_market_cap_tao, 80);
   });
 });
 
@@ -1321,10 +1323,10 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
 
   test("greedily pulling many fields of several relationships across the list exceeds the budget", async () => {
     // subnets(5) items(1) + four relationship containers (5 each = 20) + 28 leaf
-    // fields = 54 > 50.
+    // fields = 55 > 50.
     const { status, body } = await gql(
       `{ subnets { items {
-          economics { netuid emission_share open_slots max_uids miner_count validator_count total_stake_tao }
+          economics { netuid emission_share alpha_market_cap_tao open_slots max_uids miner_count validator_count total_stake_tao }
           endpoints { id status kind url latency_ms last_ok score }
           health { status ok_count failed_count degraded_count unknown_count surface_count avg_latency_ms }
           surfaces { id key kind status url provider name }

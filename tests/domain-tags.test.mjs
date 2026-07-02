@@ -54,6 +54,24 @@ describe("deriveDomainTags", () => {
     );
   });
 
+  test("tags the plural 'language models' / 'large language models'", () => {
+    // "large language models" is the single most natural way to describe an
+    // LLM/inference subnet, yet the inference rule only anchored the singular
+    // ("language model") — the trailing \b failed before the plural "s", so a
+    // plural-only description silently dropped the inference tag. Mirrors the
+    // s? plurals every other alternative in the rule already carries.
+    assert.deepEqual(
+      deriveDomainTags({ description: "A marketplace for language models" }),
+      ["inference"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({
+        description: "A decentralized network of large language models",
+      }),
+      ["inference"],
+    );
+  });
+
   test("accepts curated categories that are already in the vocabulary", () => {
     const tags = deriveDomainTags({
       categories: ["Finance", "privacy"],

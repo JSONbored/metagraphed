@@ -40,6 +40,15 @@ export function computeMinerReadiness(economics, openSlots, emissionShare) {
   return Math.max(0, Math.min(100, score));
 }
 
+export function computeAlphaMarketCapTao(alphaPriceTao, totalStakeTao) {
+  if (!Number.isFinite(alphaPriceTao) || !Number.isFinite(totalStakeTao)) {
+    return null;
+  }
+  // total_stake_tao is the on-chain circulating-alpha proxy for this display
+  // metric until a dedicated circulating-alpha supply field is available.
+  return alphaPriceTao * totalStakeTao;
+}
+
 export function buildEconomicsArtifact({
   subnets,
   economicsByNetuid,
@@ -76,11 +85,17 @@ export function buildEconomicsArtifact({
       numericOrZero(economics.miner_count);
     const maxUids = numericOrZero(economics.max_uids);
     const openSlots = maxUids > 0 ? Math.max(0, maxUids - participants) : null;
+    const alphaMarketCapTao = computeAlphaMarketCapTao(
+      price,
+      economics.total_stake_tao,
+    );
     return {
       netuid: subnet.netuid,
       slug: subnet.slug,
       name: subnet.name,
+      block: subnet.block ?? null,
       ...economics,
+      alpha_market_cap_tao: alphaMarketCapTao,
       emission_share: emissionShare,
       open_slots: openSlots,
       miner_readiness: computeMinerReadiness(

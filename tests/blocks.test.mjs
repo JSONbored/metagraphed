@@ -112,6 +112,51 @@ test("formatBlock maps a D1 row to an API block (ISO time)", () => {
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatBlock coerces string-typed observed_at cells to ISO timestamps", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "1750000000000",
+  });
+  assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatBlock preserves null observed_at as null (not epoch 1970)", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: null,
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("formatBlock drops invalid observed_at strings to null", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "not-a-timestamp",
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("formatBlock drops blank observed_at strings to null (not epoch 1970)", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "",
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("formatBlock drops whitespace-only observed_at strings to null", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "   ",
+  });
+  assert.equal(out.observed_at, null);
+});
+
 test("formatBlock is null-safe on junk + sparse rows", () => {
   assert.equal(formatBlock(null), null);
   assert.equal(formatBlock("x"), null);
@@ -136,6 +181,28 @@ test("formatBlock coerces a string-typed block_number cell to a Number", () => {
   const out = formatBlock({ block_number: "1000", block_hash: "0xabc" });
   assert.equal(out.block_number, 1000);
   assert.equal(typeof out.block_number, "number");
+});
+
+test("formatBlock coerces string-typed extrinsic_count/event_count/spec_version cells", () => {
+  // Same D1 numeric-string hazard as block_number: these INTEGER columns must
+  // not leak the string form into their ["integer","null"] contract fields.
+  const out = formatBlock({
+    block_number: 1000,
+    extrinsic_count: "4",
+    event_count: "12",
+    spec_version: "201",
+  });
+  assert.equal(out.extrinsic_count, 4);
+  assert.equal(typeof out.extrinsic_count, "number");
+  assert.equal(out.event_count, 12);
+  assert.equal(typeof out.event_count, "number");
+  assert.equal(out.spec_version, 201);
+  assert.equal(typeof out.spec_version, "number");
+  // A missing/invalid count falls through to null, never NaN.
+  const sparse = formatBlock({ block_number: 1, extrinsic_count: "oops" });
+  assert.equal(sparse.extrinsic_count, null);
+  assert.equal(sparse.event_count, null);
+  assert.equal(sparse.spec_version, null);
 });
 
 test("formatBlock rejects a negative or non-integer block_number cell to null", () => {

@@ -4,7 +4,7 @@
 // payloads without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -29,6 +29,7 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
+  DAY_MS,
 } from "../workers/config.mjs";
 
 configureAnalytics({
@@ -109,11 +110,15 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
+    const recentDay = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
+    const olderDay = new Date(Date.now() - 20 * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: recentDay,
+        date: recentDay,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +127,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: olderDay,
+        date: olderDay,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
@@ -346,6 +351,19 @@ describe("canonicalAnalyticsCacheRoute", () => {
     assert.equal(
       canonicalAnalyticsCacheRoute(encoded, ["limit", "call_module", "sort"]),
       canonicalAnalyticsCacheRoute(plain, ["limit", "call_module", "sort"]),
+    );
+  });
+
+  test("normalizes a missing window to the default window", () => {
+    const bare = url("/api/v1/chain/transfers?limit=25");
+    const explicit = url(`/api/v1/chain/transfers?window=7d&limit=25`);
+    assert.equal(
+      canonicalAnalyticsCacheRoute(bare, ["limit"]),
+      `/api/v1/chain/transfers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(explicit, ["limit"]),
+      canonicalAnalyticsCacheRoute(bare, ["limit"]),
     );
   });
 
@@ -897,19 +915,25 @@ describe("handleBulkHealthTrends", () => {
   });
 
   test("happy path includes surface_uptime_daily aggregates per window", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleBulkHealthTrends(
-        req("/api/v1/health/trends"),
-        env,
-        url("/api/v1/health/trends"),
-      ),
-    );
-    assert.equal(body.data.observed_at, LAST_RUN_AT);
-    assert.ok(body.data.windows["7d"].subnets.length > 0);
-    assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-25T00:00:00.000Z"));
+    try {
+      globalThis.caches = undefined;
+      const { env } = dbWith();
+      env.__healthMeta = { last_run_at: LAST_RUN_AT };
+      const body = await json(
+        await handleBulkHealthTrends(
+          req("/api/v1/health/trends"),
+          env,
+          url("/api/v1/health/trends"),
+        ),
+      );
+      assert.equal(body.data.observed_at, LAST_RUN_AT);
+      assert.ok(body.data.windows["7d"].subnets.length > 0);
+      assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("meta block carries bulk trends artifact path", async () => {

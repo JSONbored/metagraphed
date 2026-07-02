@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "gm",
+  "name": "gm",
+  "kind": "subnet-team",
+  "website_url": "https://saygm.com/",
+  "authority": "community",
+  "notes": "Community-submitted provider profile for the SN28 gm team (saygm.com)."
+}

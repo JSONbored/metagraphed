@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  computeAlphaMarketCapTao,
   computeMinerReadiness,
   buildEconomicsArtifact,
 } from "../scripts/lib/economics-artifacts.mjs";
@@ -116,6 +117,34 @@ describe("computeMinerReadiness", () => {
   });
 });
 
+// --- computeAlphaMarketCapTao ----------------------------------------------
+
+describe("computeAlphaMarketCapTao", () => {
+  test("multiplies finite alpha price by the total-stake supply proxy", () => {
+    assert.equal(computeAlphaMarketCapTao(0.04, 1000), 40);
+  });
+
+  test("returns null when alpha price is missing", () => {
+    assert.equal(computeAlphaMarketCapTao(null, 1000), null);
+  });
+
+  test("returns null when total stake is missing", () => {
+    assert.equal(computeAlphaMarketCapTao(0.04, null), null);
+  });
+
+  test("returns null when both inputs are missing", () => {
+    assert.equal(computeAlphaMarketCapTao(undefined, undefined), null);
+  });
+
+  test("returns null for non-finite inputs", () => {
+    assert.equal(computeAlphaMarketCapTao(Number.NaN, 1000), null);
+    assert.equal(
+      computeAlphaMarketCapTao(0.04, Number.POSITIVE_INFINITY),
+      null,
+    );
+  });
+});
+
 // --- buildEconomicsArtifact -------------------------------------------------
 
 function econSubnet(netuid, overrides = {}) {
@@ -151,7 +180,7 @@ describe("buildEconomicsArtifact", () => {
 
   test("derives emission_share, open_slots, and miner_readiness for a row", () => {
     const artifact = buildEconomicsArtifact({
-      subnets: [econSubnet(1)],
+      subnets: [econSubnet(1, { block: 1_234_567 })],
       economicsByNetuid: new Map([
         [
           1,
@@ -169,7 +198,9 @@ describe("buildEconomicsArtifact", () => {
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
     const row = artifact.subnets[0];
+    assert.equal(row.block, 1_234_567);
     assert.equal(row.emission_share, 1); // only priced subnet → 100% of total
+    assert.equal(row.alpha_market_cap_tao, 40);
     assert.equal(row.open_slots, 47); // 256 − 9 − 200
     // 40 registration + 30 open slots + 20 cost≤1 + 10 active.
     assert.equal(row.miner_readiness, 100);
@@ -193,6 +224,7 @@ describe("buildEconomicsArtifact", () => {
     });
     assert.equal(artifact.subnets.length, 1);
     assert.equal(artifact.subnets[0].netuid, 1);
+    assert.equal(artifact.subnets[0].alpha_market_cap_tao, 0.2);
     assert.equal(artifact.summary.subnet_count, 2);
     assert.equal(artifact.summary.with_economics_count, 1);
   });
@@ -261,6 +293,7 @@ describe("buildEconomicsArtifact", () => {
       generatedAt: "2026-06-25T00:00:00.000Z",
     });
     assert.equal(artifact.subnets[0].emission_share, null);
+    assert.equal(artifact.subnets[0].alpha_market_cap_tao, null);
   });
 
   test("open_slots is null without max_uids and clamps to zero when oversubscribed", () => {

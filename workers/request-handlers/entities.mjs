@@ -62,10 +62,10 @@ import {
   ACCOUNT_EVENT_COLUMNS,
   INGESTED_EVENT_KINDS,
   buildAccountHistory,
-  buildSubnetEvents,
   formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountExtrinsics,
   loadAccountTransfers,
   loadAccountSubnets,
@@ -106,6 +106,8 @@ import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
+  DEFAULT_STAKE_FLOW_DIRECTION,
+  STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
@@ -117,6 +119,7 @@ import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
+import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -374,6 +377,35 @@ export async function handleSubnetHistory(request, env, netuid, url) {
   );
 }
 
+// GET /api/v1/subnets/{netuid}/identity-history (#1647): append-only on-chain
+// identity timeline, newest first. Cold/absent store → schema-stable zero.
+export async function handleSubnetIdentityHistory(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, [
+    "limit",
+    "offset",
+    "cursor",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
+  const data = await loadSubnetIdentityHistory(d1Runner(env), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/identity-history.json`,
+        data.entries[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
 // GET /api/v1/subnets/{netuid}/concentration: stake & emission decentralization
 // metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) over
 // the subnet's live distribution (#2106), across three lenses — per-UID, per-entity
@@ -463,18 +495,26 @@ export function canonicalSubnetTurnoverCachePath(url) {
   return `${url.pathname}?window=${encodeURIComponent(label)}${suffix}`;
 }
 
-// Canonical edge-cache key for the subnet-stake-flow route. Only ?window= (one of
-// STAKE_FLOW_WINDOWS) changes the response; an omitted window and the explicit
-// default must share one cache slot, so canonicalize both to ?window=<default>.
+// Canonical edge-cache key for the subnet-stake-flow route. ?window= (one of
+// STAKE_FLOW_WINDOWS) and ?direction= (all|in|out) change the response; omitted
+// window/direction and their explicit defaults must share one cache slot.
 export function canonicalSubnetStakeFlowCachePath(url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
   if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
     return `${url.pathname}${url.search}`;
   }
-  return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  const direction = url.searchParams.get("direction");
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
+    return `${url.pathname}${url.search}`;
+  }
+  let path = `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  if (direction === "in" || direction === "out") {
+    path += `&direction=${encodeURIComponent(direction)}`;
+  }
+  return path;
 }
 
 // Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
@@ -593,13 +633,15 @@ export async function handleSubnetTurnover(request, env, netuid, url) {
   );
 }
 
-// GET /api/v1/subnets/{netuid}/stake-flow?window=7d|30d|90d: net stake flow for one
-// subnet over the window — TAO staked (StakeAdded) vs unstaked (StakeRemoved) and
-// the net, summed live from the account_events stream (idx_account_events_netuid_kind).
-// Windows (7d/30d/90d) match the concentration/history route. Cold/absent store →
-// 200 with zeroed totals (schema-stable, never 404), mirroring the sibling routes.
+// GET /api/v1/subnets/{netuid}/stake-flow?window=7d|30d|90d&direction=all|in|out:
+// net stake flow for one subnet over the window — TAO staked (StakeAdded) vs
+// unstaked (StakeRemoved) and the net, summed live from the account_events stream
+// (idx_account_events_netuid_kind). ?direction=in|out narrows to one side;
+// omitted or all sums both. Windows (7d/30d/90d) match the concentration/history
+// route. Cold/absent store → 200 with zeroed totals (schema-stable, never 404),
+// mirroring the sibling routes.
 export async function handleSubnetStakeFlow(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
@@ -609,11 +651,21 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
     });
   }
+  const direction = url.searchParams.get("direction");
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+    });
+  }
+  const normalizedDirection =
+    direction === "in" || direction === "out" ? direction : undefined;
   const { data, generatedAt } = await loadSubnetStakeFlow(
     d1Runner(env),
     netuid,
     {
       windowLabel: windowParam,
+      direction: normalizedDirection ?? DEFAULT_STAKE_FLOW_DIRECTION,
     },
   );
   // account_events-derived, so the meta reports source "chain-events" (via
@@ -1142,7 +1194,6 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "cursor",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset, cursor } = parsePagination(url, FEED_PAGINATION);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -1167,40 +1218,14 @@ export async function handleSubnetEvents(request, env, netuid, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
-  // Keyset (cursor) pagination on (block_number, event_index), mirroring
-  // loadAccountEvents; offset stays as a deprecated fallback, cursor wins.
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (blockStart.value != null) {
-    sql += " AND block_number >= ?";
-    params.push(blockStart.value);
-  }
-  if (blockEnd.value != null) {
-    sql += " AND block_number <= ?";
-    params.push(blockEnd.value);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(limit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(offset);
-  }
-  const rows = await d1All(env, sql, params);
-  const last = rows.length === limit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  const data = buildSubnetEvents(rows, netuid, { limit, offset, nextCursor });
+  const data = await loadSubnetEvents(d1Runner(env), netuid, {
+    limit: url.searchParams.get("limit"),
+    offset: url.searchParams.get("offset"),
+    kind: url.searchParams.get("kind"),
+    cursor: url.searchParams.get("cursor"),
+    blockStart: blockStart.value,
+    blockEnd: blockEnd.value,
+  });
   return envelopeResponse(
     request,
     {
@@ -1488,6 +1513,12 @@ export async function handleExtrinsics(request, env, url) {
   const fromMs = numericFilters.from ?? null;
   const toMs = numericFilters.to ?? null;
   const successRaw = sp.get("success");
+  if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
+    return analyticsQueryError({
+      parameter: "success",
+      message: "success must be one of: true, false.",
+    });
+  }
   const data = await loadExtrinsics(d1Runner(env), {
     block: numericFilters.block ?? undefined,
     signer: sp.get("signer") || undefined,

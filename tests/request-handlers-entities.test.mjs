@@ -20,6 +20,7 @@ import {
   handleSubnetValidators,
   handleNeuronHistory,
   handleSubnetHistory,
+  handleSubnetIdentityHistory,
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
@@ -198,6 +199,23 @@ function accountDayRow(overrides = {}) {
   };
 }
 
+function identityHistoryRow(overrides = {}) {
+  return {
+    id: 10,
+    block_number: 100,
+    observed_at: OBSERVED_AT,
+    subnet_name: "MIAO",
+    symbol: "α",
+    description: "old",
+    github_repo: null,
+    subnet_url: null,
+    discord: null,
+    logo_url: null,
+    identity_hash: "abc",
+    ...overrides,
+  };
+}
+
 // A D1 mock that routes SQL by regex patterns (order-sensitive: specific first).
 // Named buckets let each handler test supply only the rows it needs.
 function dbWith({
@@ -213,6 +231,7 @@ function dbWith({
   registrations,
   accountEvents,
   accountEventsDaily,
+  subnetIdentityHistory,
   transfers,
   relationshipTransfers,
   subnetEvents,
@@ -283,11 +302,11 @@ function dbWith({
                   ) {
                     return { results: neuronDailyHistory || [] };
                   }
-                  // Net stake flow: SUM(amount_tao) over the two stake kinds
+                  // Net stake flow: SUM(amount_tao) over stake kinds
                   // (checked before the generic event_kind aggregate below).
                   if (
                     /SUM\(amount_tao\)/.test(sql) &&
-                    /event_kind IN \(\?, \?\)/.test(sql)
+                    /event_kind IN \(/.test(sql)
                   ) {
                     return { results: stakeFlow || [] };
                   }
@@ -307,6 +326,10 @@ function dbWith({
                   // Account per-day rollup (#1854).
                   if (/FROM account_events_daily/.test(sql)) {
                     return { results: accountEventsDaily || [] };
+                  }
+                  // Subnet on-chain identity history (#1647).
+                  if (/FROM subnet_identity_history/.test(sql)) {
+                    return { results: subnetIdentityHistory || [] };
                   }
                   // Extrinsic-emitted events embed (#1849) — before generic events.
                   if (
@@ -919,6 +942,48 @@ describe("handleSubnetHistory", () => {
   });
 });
 
+describe("handleSubnetIdentityHistory", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetIdentityHistory(
+      req(`/api/v1/subnets/${NETUID}/identity-history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/identity-history?bogus=1`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty entries on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetIdentityHistory,
+      req(`/api/v1/subnets/${NETUID}/identity-history`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/identity-history`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.entry_count, 0);
+    assert.deepEqual(body.data.entries, []);
+  });
+
+  test("happy path returns identity timeline rows", async () => {
+    const { env } = dbWith({
+      subnetIdentityHistory: [identityHistoryRow()],
+    });
+    const body = await json(
+      await handleSubnetIdentityHistory(
+        req(`/api/v1/subnets/${NETUID}/identity-history`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/identity-history?limit=20`),
+      ),
+    );
+    assert.equal(body.data.entry_count, 1);
+    assert.equal(body.data.entries[0].subnet_name, "MIAO");
+    assert.equal(body.data.limit, 20);
+  });
+});
+
 describe("handleSubnetConcentration", () => {
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetConcentration(
@@ -1421,6 +1486,18 @@ describe("handleSubnetStakeFlow", () => {
     await errorJson(res);
   });
 
+  test("rejects an unsupported direction enum value with 400", async () => {
+    const res = await handleSubnetStakeFlow(
+      req(`/api/v1/subnets/${NETUID}/stake-flow`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
+  });
+
   test("returns schema-stable zeros on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetStakeFlow,
@@ -1490,6 +1567,102 @@ describe("handleSubnetStakeFlow", () => {
     assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
   });
 
+  test("direction=in binds StakeAdded only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717000000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetStakeFlow(
+        req(`/api/v1/subnets/${NETUID}/stake-flow`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=in`),
+      ),
+    );
+    assert.equal(body.data.total_staked_tao, 200);
+    assert.equal(body.data.total_unstaked_tao, 0);
+    assert.equal(body.data.net_flow_tao, 200);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][1], "StakeAdded");
+    assert.equal(captures.params[idx].length, 3);
+  });
+
+  test("direction=out binds StakeRemoved only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717900000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleSubnetStakeFlow(
+        req(`/api/v1/subnets/${NETUID}/stake-flow`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/stake-flow?direction=out`),
+      ),
+    );
+    assert.equal(body.data.total_staked_tao, 0);
+    assert.equal(body.data.total_unstaked_tao, 50);
+    assert.equal(body.data.net_flow_tao, -50);
+    const idx = captures.sql.findIndex((s) =>
+      /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][1], "StakeRemoved");
+    assert.equal(captures.params[idx].length, 3);
+  });
+
+  test("direction=all and omitted direction both query both kinds", async () => {
+    for (const query of ["", "?direction=all"]) {
+      const { env, captures } = dbWith({
+        stakeFlow: [
+          {
+            event_kind: "StakeAdded",
+            total_tao: 10,
+            event_count: 1,
+            last_observed: 1717000000000,
+          },
+          {
+            event_kind: "StakeRemoved",
+            total_tao: 3,
+            event_count: 1,
+            last_observed: 1717000000000,
+          },
+        ],
+      });
+      const body = await json(
+        await handleSubnetStakeFlow(
+          req(`/api/v1/subnets/${NETUID}/stake-flow`),
+          env,
+          NETUID,
+          url(`/api/v1/subnets/${NETUID}/stake-flow${query}`),
+        ),
+      );
+      assert.equal(body.data.net_flow_tao, 7);
+      const idx = captures.sql.findIndex((s) =>
+        /FROM account_events WHERE netuid = \? AND event_kind IN/.test(s),
+      );
+      assert.ok(idx !== -1);
+      assert.equal(captures.params[idx][1], "StakeAdded");
+      assert.equal(captures.params[idx][2], "StakeRemoved");
+    }
+  });
+
   describe("canonicalSubnetStakeFlowCachePath", () => {
     test("canonicalizes omitted and explicit default window to one cache key", () => {
       const omitted = canonicalSubnetStakeFlowCachePath(
@@ -1518,6 +1691,51 @@ describe("handleSubnetStakeFlow", () => {
         new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?bogus=1"),
       );
       assert.equal(path, "/api/v1/subnets/7/stake-flow?bogus=1");
+    });
+
+    test("passes an invalid direction through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?direction=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/stake-flow?direction=bogus");
+    });
+
+    test("canonicalizes omitted and explicit default direction to one cache key", () => {
+      const omitted = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d",
+        ),
+      );
+      const explicit = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d&direction=all",
+        ),
+      );
+      assert.equal(omitted, explicit);
+      assert.equal(omitted, "/api/v1/subnets/7/stake-flow?window=30d");
+    });
+
+    test("includes direction=in|out in the cache key", () => {
+      const inPath = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=7d&direction=in",
+        ),
+      );
+      assert.equal(
+        inPath,
+        "/api/v1/subnets/7/stake-flow?window=7d&direction=in",
+      );
+      const outPath = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=7d&direction=out",
+        ),
+      );
+      assert.equal(
+        outPath,
+        "/api/v1/subnets/7/stake-flow?window=7d&direction=out",
+      );
     });
   });
 });
@@ -1740,6 +1958,23 @@ describe("handleAccountEvents", () => {
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow()],
+    });
+    const body = await json(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("returns schema-stable empty events on cold D1", async () => {
@@ -2256,8 +2491,59 @@ describe("handleAccountCounterparties", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("accepts limit=100 at the documented upper bound", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 1_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties?limit=100`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 150);
+    assert.equal(body.data.counterparties.length, 100);
+  });
+
+  test("defaults limit to 20 when absent in list mode", async () => {
+    const { env } = dbWith({
+      transfers: Array.from({ length: 30 }, (_, index) =>
+        transferEventRow({
+          hotkey: SS58,
+          coldkey: `CP-${index.toString().padStart(3, "0")}`,
+          amount_tao: index + 1,
+          block_number: 2_000 - index,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${SS58}/counterparties`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/counterparties`),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 30);
+    assert.equal(body.data.counterparties.length, 20);
   });
 
   test("returns schema-stable empty rollup on cold D1", async () => {
@@ -2334,8 +2620,73 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "limit");
+      assert.equal(
+        body.error.message,
+        "limit must be an integer from 1 to 100.",
+      );
       assert.equal(captures.sql.length, 0);
     }
+  });
+
+  test("defaults limit to 50 when absent in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 80 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 80);
+    assert.equal(body.data.relationship.transfers.length, 50);
+  });
+
+  test("accepts limit=100 at the documented upper bound in relationship mode", async () => {
+    const { env } = dbWith({
+      relationshipTransfers: Array.from({ length: 150 }, (_, index) =>
+        transferEventRow({
+          block_number: 5_000 - index,
+          event_index: index,
+          hotkey: index % 2 === 0 ? SS58 : COUNTERPARTY,
+          coldkey: index % 2 === 0 ? COUNTERPARTY : SS58,
+          amount_tao: index + 1,
+          observed_at: OBSERVED_AT - index * 1_000,
+        }),
+      ),
+    });
+    const body = await json(
+      await handleAccountCounterparties(
+        req(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+        env,
+        SS58,
+        url(
+          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=100`,
+        ),
+      ),
+    );
+    assert.equal(body.data.counterparty_count, 1);
+    assert.equal(body.data.relationship.transfer_count, 150);
+    assert.equal(body.data.relationship.transfers.length, 100);
   });
 
   test("returns schema-stable empty pair detail on cold D1", async () => {
@@ -2646,6 +2997,24 @@ describe("handleSubnetEvents", () => {
       ),
     );
     assert.ok(captures.params.some((p) => p.includes(100) && p.includes(900)));
+  });
+
+  test("short-circuits an inverted block_start>block_end window before D1", async () => {
+    const { env, captures } = dbWith({
+      subnetEvents: [accountEventRow({ block_number: 500 })],
+    });
+    const body = await json(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events?block_start=500&block_end=100`),
+      ),
+    );
+    assert.equal(body.data.event_count, 0);
+    assert.deepEqual(body.data.events, []);
+    assert.equal(body.data.next_cursor, null);
+    assert.equal(captures.sql.length, 0);
   });
 
   test("rejects a non-integer block_start with 400", async () => {
@@ -3340,6 +3709,60 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
+  test("rejects a non-boolean success value with 400 (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=1"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "success");
+    assert.match(body.error.message, /true, false/);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("success=true binds only successful extrinsics (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=true"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/success = \?/.test(sql));
+    assert.ok(captures.params.flat().includes(1));
+  });
+
+  test("success=false binds only failed extrinsics, omitting NULL (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=false"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/success = \?/.test(sql));
+    assert.ok(captures.params.flat().includes(0));
+    assert.ok(!/success IS NULL/.test(sql));
+  });
+
+  test("omitted success leaves the feed unfiltered (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/success = \?/.test(sql));
+  });
+
   test("forces module-index for a module-only feed path (#2082)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(
@@ -4028,6 +4451,16 @@ describe("query-param guard matrix (#1900)", () => {
           emptyEnv(),
           NETUID,
           url(`/api/v1/subnets/${NETUID}/history?foo=bar`),
+        ),
+    },
+    {
+      name: "handleSubnetIdentityHistory",
+      run: () =>
+        handleSubnetIdentityHistory(
+          req(`/api/v1/subnets/${NETUID}/identity-history`),
+          emptyEnv(),
+          NETUID,
+          url(`/api/v1/subnets/${NETUID}/identity-history?foo=bar`),
         ),
     },
     {

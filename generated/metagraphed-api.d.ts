@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100). */
+        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -606,7 +606,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, emission share). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=total_stake_tao&order=desc`), NOT a combined `field:desc` token. */
+        /** List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token. */
         get: operations["economics"];
         put?: never;
         post?: never;
@@ -1466,6 +1466,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/identity-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
+        get: operations["subnetIdentityHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/metagraph": {
         parameters: {
             query?: never;
@@ -1558,7 +1575,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. Windows (7d/30d/90d) are bounded by the account_events retention. */
+        /** Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention. */
         get: operations["subnetStakeFlow"];
         put?: never;
         post?: never;
@@ -1626,7 +1643,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). */
+        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
         get: operations["subnetUptime"];
         put?: never;
         post?: never;
@@ -1711,7 +1728,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, or max_validator_trust; limit caps the list (default 20, max 100). Per-membership stake/emission values remain scoped to subnets[] and are not summed across subnets. Computed live from the neurons D1 tier. */
+        /** Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier. */
         get: operations["globalValidators"];
         put?: never;
         post?: never;
@@ -2014,6 +2031,8 @@ export interface components {
                 integration_readiness?: number;
                 name?: string;
                 netuid: number;
+                /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+                previously_known_as?: string[];
                 readiness?: components["schemas"]["IntegrationReadiness"];
                 service_count: number;
                 service_kinds?: string[];
@@ -2033,6 +2052,8 @@ export interface components {
             integration_readiness?: number;
             name?: string;
             netuid: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+            previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
             service_count: number;
             services: ({
@@ -3250,11 +3271,14 @@ export interface components {
             /** Format: date-time */
             latest_captured_at: string | null;
             max_validator_trust: number | null;
+            stake_dominance: number | null;
             subnet_count: number;
             subnets: components["schemas"]["GlobalValidatorSubnet"][];
+            total_emission_tao: number;
+            total_stake_tao: number;
             uid_count: number;
         };
-        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets. */
+        /** @description Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file). */
         GlobalValidatorsArtifact: {
             block_number?: number | null;
             /** Format: date-time */
@@ -3262,7 +3286,7 @@ export interface components {
             limit: number;
             schema_version: number;
             /** @enum {string} */
-            sort: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+            sort: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
             validator_count: number;
             validators: components["schemas"]["GlobalValidatorEntry"][];
         } & {
@@ -4651,6 +4675,8 @@ export interface components {
             netuid: number;
             notes?: string | null;
             participant_count?: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647). */
+            previously_known_as?: string[];
             probed_surface_count?: number;
             provenance: {
                 [key: string]: unknown;
@@ -4693,8 +4719,12 @@ export interface components {
         /** @description Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses. */
         SubnetEconomics: {
             alpha_in_pool: number | null;
+            /** @description Derived market-cap proxy: alpha_price_tao multiplied by total_stake_tao, where total_stake_tao is the circulating-alpha proxy. Null when either input is missing. */
+            alpha_market_cap_tao: number | null;
             alpha_out_pool: number | null;
             alpha_price_tao: number | null;
+            /** @description Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters. */
+            block?: number | null;
             /** @description Alpha price / sum of all subnets' alpha prices — this subnet's share of price-weighted network TAO emission. Null when the subnet reports no alpha price. */
             emission_share: number | null;
             max_stake_tao: number | null;
@@ -4763,6 +4793,35 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging. */
+        SubnetIdentityHistoryArtifact: {
+            entries: components["schemas"]["SubnetIdentityHistoryEntry"][];
+            entry_count: number;
+            limit?: number | null;
+            netuid: number;
+            next_cursor?: string | null;
+            offset?: number | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data. */
+        SubnetIdentityHistoryEntry: {
+            block_number?: number | null;
+            description?: string | null;
+            discord?: string | null;
+            /** Format: uri */
+            github_repo?: string | null;
+            identity_hash: string;
+            /** Format: uri */
+            logo_url?: string | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            subnet_name?: string | null;
+            /** Format: uri */
+            subnet_url?: string | null;
+            symbol?: string | null;
         };
         SubnetIndexEntry: {
             block?: number;
@@ -7036,6 +7095,9 @@ export interface operations {
                      *         "name": "Example Subnet",
                      *         "netuid": 7,
                      *         "notes": "Example description.",
+                     *         "previously_known_as": [
+                     *           "example"
+                     *         ],
                      *         "readiness": {
                      *           "components": {},
                      *           "readiness_tier": "buildable",
@@ -9939,7 +10001,7 @@ export interface operations {
                 limit?: number;
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
-                sort?: "alpha_price_tao" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
+                sort?: "alpha_market_cap_tao" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_tao" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_tao" | "validator_count";
                 /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
                 order?: "asc" | "desc";
             };
@@ -9970,6 +10032,7 @@ export interface operations {
                      *         "subnets": [
                      *           {
                      *             "alpha_in_pool": 0.5,
+                     *             "alpha_market_cap_tao": 0.5,
                      *             "alpha_out_pool": 0.5,
                      *             "alpha_price_tao": 0.5,
                      *             "emission_share": 0.5,
@@ -15397,8 +15460,10 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "economics": {
                      *           "alpha_in_pool": 0.5,
+                     *           "alpha_market_cap_tao": 0.5,
                      *           "alpha_out_pool": 0.5,
                      *           "alpha_price_tao": 0.5,
+                     *           "block": 5000000,
                      *           "emission_share": 0.5,
                      *           "max_stake_tao": 0.5,
                      *           "max_uids": 1,
@@ -15506,6 +15571,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
@@ -17261,6 +17329,122 @@ export interface operations {
             };
         };
     };
+    subnetIdentityHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "entries": [
+                     *           {
+                     *             "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "entry_count": 1,
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetIdentityHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetMetagraph: {
         parameters: {
             query?: {
@@ -18176,6 +18360,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
@@ -18282,6 +18469,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d" | "90d";
+                direction?: "all" | "in" | "out";
             };
             header?: never;
             path: {
@@ -18772,6 +18960,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "90d" | "1y";
+                min_samples?: number;
             };
             header?: never;
             path: {
@@ -19406,7 +19595,7 @@ export interface operations {
     globalValidators: {
         parameters: {
             query?: {
-                sort?: "subnet_count" | "uid_count" | "avg_validator_trust" | "max_validator_trust";
+                sort?: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
                 limit?: number;
             };
             header?: never;
@@ -19431,7 +19620,7 @@ export interface operations {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "limit": 1,
                      *         "schema_version": 1,
-                     *         "sort": "subnet_count",
+                     *         "sort": "avg_validator_trust",
                      *         "validator_count": 1,
                      *         "validators": [
                      *           {
@@ -19442,6 +19631,7 @@ export interface operations {
                      *             "latest_block_number": 5000000,
                      *             "latest_captured_at": "2026-06-01T00:00:00.000Z",
                      *             "max_validator_trust": 0.5,
+                     *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
                      *             "subnets": [
                      *               {
@@ -19452,6 +19642,8 @@ export interface operations {
                      *                 "validator_trust": 0.5
                      *               }
                      *             ],
+                     *             "total_emission_tao": 0.5,
+                     *             "total_stake_tao": 0.5,
                      *             "uid_count": 1
                      *           }
                      *         ]

@@ -26,7 +26,7 @@ const DOMAIN_TAG_RULES = [
   ],
   [
     "inference",
-    /\b(inference|llms?|large language model|language model|text[- ]generation|chatbots?|prompt(?:s|ing)?|completion(?:s)?)\b/i,
+    /\b(inference|llms?|large language models?|language models?|text[- ]generation|chatbots?|prompt(?:s|ing)?|completion(?:s)?)\b/i,
   ],
   [
     "media",
