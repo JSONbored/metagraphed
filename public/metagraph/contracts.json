@@ -516,7 +516,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-06-30.14",
-      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+      "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
       "id": "global-validators",
       "path": "/metagraph/validators.json",
       "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",

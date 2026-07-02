@@ -957,7 +957,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "global-validators",
     "/metagraph/validators.json",
-    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
+    "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, computed live from the neurons D1 tier at /api/v1/validators (no static file).",
     "GlobalValidatorsArtifact",
   ),
   artifact(
