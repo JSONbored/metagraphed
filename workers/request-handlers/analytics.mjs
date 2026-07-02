@@ -59,6 +59,7 @@ import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
 } from "../../src/chain-query-loaders.mjs";
+import { loadChainTransfers } from "../../src/chain-transfers.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -305,6 +306,26 @@ export async function readSubnetNeuronsCacheStamp(env, netuid) {
     env,
     "SELECT MAX(captured_at) AS captured_at FROM neurons WHERE netuid = ?",
     [netuid],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
+// Network-wide neuron cache stamp: the newest captured_at across ALL subnets, so a
+// chain-level neurons aggregate (chain/concentration) busts its edge cache the
+// moment any subnet's snapshot advances — the network analog of the per-subnet
+// stamp above. Also backs /api/v1/validators: a filtered (validator_permit = 1)
+// variant was tried, but a subnet refresh that drops a permit=1 row wouldn't
+// touch that filtered MAX(captured_at), so the leaderboard's edge cache could
+// go stale for that change. The unfiltered stamp is used instead.
+export async function readNeuronsCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neurons",
+    [],
   );
   if (hasD1FallbackRows(rows)) return null;
   const capturedAt = rows[0]?.captured_at;
@@ -786,6 +807,48 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         : response;
     },
     canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"]),
+  );
+}
+
+// Network-wide native-TAO transfer analytics: total Balances.Transfer volume over the
+// window, the top senders + receivers by volume, and the top senders' share of total
+// volume (a concentration signal), from the account_events Transfer feed. The
+// network-level companion of /accounts/{ss58}/transfers + /counterparties.
+export async function handleChainTransfers(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  return withEdgeCache(
+    request,
+    ctx,
+    env,
+    "chain-transfers",
+    async () => {
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainTransfers(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: meta?.last_run_at || null,
+        limit,
+      });
+      return envelopeResponse(
+        request,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/transfers.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
   );
 }
 

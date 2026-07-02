@@ -72,6 +72,81 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.is_immunity_period, false);
   });
 
+  test("formatNeuron coerces string-typed D1 0/1 flags to real booleans", () => {
+    // D1 can return an INTEGER flag column as a numeric string ("0"/"1"); the
+    // bare Boolean() this replaced would have leaked Boolean("0") === true
+    // and Boolean("") === false, so a string "0" flag would silently surface
+    // as `active: true`. Same class as the formatRegistration fix in #2487.
+    const n = formatNeuron({
+      active: "0",
+      validator_permit: "1",
+      is_immunity_period: "0",
+    });
+    assert.equal(n.active, false);
+    assert.equal(n.validator_permit, true);
+    assert.equal(n.is_immunity_period, false);
+  });
+
+  test("formatNeuron coerces string-typed uid/registered_at_block and stake/emission cells", () => {
+    // D1 can return INTEGER / REAL columns as numeric strings ("3" not 3,
+    // "1000.5" not 1000.5); the bare `?? null` pass-through this replaced would
+    // have leaked strings into the API payload. Same shape as the coercion in
+    // blocks.mjs (#2435), extrinsics.mjs (#2439), and account-events.mjs
+    // (#2481, #2489). stake/emission additionally round to rao precision so
+    // accumulated IEEE-754 float noise never reaches the payload.
+    const n = formatNeuron({
+      uid: "3",
+      registered_at_block: "6702485",
+      stake_tao: "1000.5",
+      emission_tao: "22.123456789",
+    });
+    assert.equal(n.uid, 3);
+    assert.equal(typeof n.uid, "number");
+    assert.equal(n.registered_at_block, 6702485);
+    assert.equal(typeof n.registered_at_block, "number");
+    assert.equal(n.stake_tao, 1000.5);
+    assert.equal(typeof n.stake_tao, "number");
+    assert.equal(n.emission_tao, 22.123456789);
+    assert.equal(typeof n.emission_tao, "number");
+  });
+
+  test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
+    // Regression for the Gittensory Orb follow-up blocker on #2503: stake_tao /
+    // emission_tao must be rounded to 1e-9 (rao) precision so a noisy REAL
+    // D1 cell (e.g. 22.1234567894) does not leak accumulated IEEE-754 noise
+    // into the API payload. Mirrors toTaoOrNull in account-events.mjs and
+    // roundTao in chain-analytics.mjs.
+    const n = formatNeuron({
+      stake_tao: "22.1234567894",
+      emission_tao: "1000.50000000004",
+    });
+    // 22.1234567894 → 22.123456789 (9 dp); 1000.50000000004 → 1000.5
+    assert.equal(n.stake_tao, 22.123456789);
+    assert.equal(n.emission_tao, 1000.5);
+    // And no extra precision sneaks past rao.
+    assert.equal(String(n.stake_tao).split(".")[1]?.length ?? 0, 9);
+    assert.equal(String(n.emission_tao).split(".")[1]?.length <= 9, true);
+  });
+
+  test("formatNeuron keeps null contract for explicit null cells (regression)", () => {
+    // Regression for the Gittensory Orb blocker on #2503: the upstream
+    // nonNegativeInt / nullableNumber helpers added in #2493 do not have
+    // explicit `value == null` guards, so Number(null) === 0 leaks as 0
+    // instead of falling through to null. A real D1 row with explicit null
+    // cells must serialize as null (matches the missing-key behavior proven
+    // by the existing `defaults every missing field to null/false` test).
+    const n = formatNeuron({
+      uid: null,
+      registered_at_block: null,
+      stake_tao: null,
+      emission_tao: null,
+    });
+    assert.equal(n.uid, null);
+    assert.equal(n.registered_at_block, null);
+    assert.equal(n.stake_tao, null);
+    assert.equal(n.emission_tao, null);
+  });
+
   test("buildSubnetMetagraph stamps count + ISO captured_at", () => {
     const data = buildSubnetMetagraph([ROW, MINER], 7);
     assert.equal(data.netuid, 7);
@@ -90,6 +165,30 @@ describe("metagraph-neurons builders", () => {
     const data = buildSubnetValidators([ROW], 7);
     assert.equal(data.validator_count, 1);
     assert.equal(data.validators[0].validator_permit, true);
+  });
+
+  test("coerces a string-typed D1 block_number to an integer in the snapshot stamp + neuron detail", () => {
+    // block_number is a nullable D1 INTEGER that can come back as a numeric
+    // string; the snapshot stamp (metagraph/validators) and neuron-detail top
+    // level must emit an integer or null, never leak the string into the
+    // ["integer","null"] contract field. Mirrors the buildGlobalValidators fix
+    // (#2611) for the remaining emission sites.
+    const meta = buildSubnetMetagraph([{ ...ROW, block_number: "8454388" }], 7);
+    assert.equal(meta.block_number, 8454388);
+    assert.equal(typeof meta.block_number, "number");
+    const vals = buildSubnetValidators(
+      [{ ...ROW, block_number: "8454388" }],
+      7,
+    );
+    assert.equal(vals.block_number, 8454388);
+    const detail = buildNeuronDetail({ ...ROW, block_number: "8454388" }, 7);
+    assert.equal(detail.block_number, 8454388);
+    assert.equal(typeof detail.block_number, "number");
+    // a null block_number stays null (not a fabricated 0).
+    assert.equal(
+      buildNeuronDetail({ ...ROW, block_number: null }, 7).block_number,
+      null,
+    );
   });
 
   test("buildGlobalValidators groups validator identities across subnets", () => {
@@ -323,6 +422,38 @@ describe("metagraph-neurons builders", () => {
       alphabetical.validators.map((validator) => validator.hotkey),
       ["hk-a", "hk-b"],
     );
+  });
+
+  test("buildGlobalValidators reports a null block_number as null, not a fabricated 0", () => {
+    // block_number is a nullable INTEGER column and the /validators query does not
+    // filter it, so a validator's newest capture can carry block_number: null.
+    // Number(null) === 0 must NOT surface as the real chain height 0 (block 0 is
+    // the genesis block, a height the neuron was never captured at).
+    const data = buildGlobalValidators(
+      [
+        {
+          ...ROW,
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk-null-block",
+          block_number: null,
+          captured_at: 2000,
+        },
+        {
+          ...ROW,
+          netuid: 2,
+          uid: 1,
+          hotkey: "hk-null-block",
+          block_number: 99,
+          captured_at: 1000,
+        },
+      ],
+      { sort: "subnet_count", limit: 10 },
+    );
+    // Newest capture (captured_at 2000) has no block height → both the per-validator
+    // and top-level block numbers must be null.
+    assert.equal(data.block_number, null);
+    assert.equal(data.validators[0].latest_block_number, null);
   });
 
   test("builders drop malformed rows and count only real neurons", () => {

@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-06-30.12";
+export const CONTRACT_VERSION = "2026-06-30.14";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -238,6 +238,7 @@ export const API_QUERY_COLLECTIONS = {
       kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
+    rangeFilters: ["eligible_count", "endpoint_count"],
   }),
   "endpoint-incidents": queryCollection("incidents", {
     filters: {
@@ -545,6 +546,7 @@ export const API_QUERY_COLLECTIONS = {
       kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
+    rangeFilters: ["eligible_count", "endpoint_count"],
   }),
   providers: queryCollection("providers", {
     filters: {
@@ -1127,10 +1129,22 @@ export const PUBLIC_ARTIFACTS = [
     "ChainSignersArtifact",
   ),
   artifact(
+    "chain-transfers",
+    "/metagraph/chain/transfers.json",
+    "Network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume (a concentration signal), computed live from the account_events Transfer feed at /api/v1/chain/transfers (no static file).",
+    "ChainTransfersArtifact",
+  ),
+  artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
     "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
     "ChainFeesArtifact",
+  ),
+  artifact(
+    "chain-concentration",
+    "/metagraph/chain/concentration.json",
+    "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier at /api/v1/chain/concentration (no static file).",
+    "ChainConcentrationArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -2288,6 +2302,20 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-transfers",
+    "GET",
+    "/api/v1/chain/transfers",
+    "/metagraph/chain/transfers.json",
+    "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
     "chain-fees",
     "GET",
     "/api/v1/chain/fees",
@@ -2300,6 +2328,17 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "call_module", schema: { type: "string", maxLength: 100 } },
     ],
+    [],
+  ),
+  route(
+    "chain-concentration",
+    "GET",
+    "/api/v1/chain/concentration",
+    "/metagraph/chain/concentration.json",
+    "Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier; schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [],
     [],
   ),
   route(

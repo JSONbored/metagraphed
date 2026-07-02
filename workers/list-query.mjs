@@ -428,7 +428,11 @@ function parseProjection(params, rows, dataKey) {
   if (!params.has("fields")) {
     return { fields: null };
   }
-  const requested = params.get("fields").split(",");
+  const requested = params
+    .get("fields")
+    .split(",")
+    .map((field) => field.trim())
+    .filter((field) => field.length > 0);
   if (
     requested.length === 0 ||
     requested.some((field) => !FIELD_NAME_PATTERN.test(field))

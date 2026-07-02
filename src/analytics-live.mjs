@@ -64,11 +64,24 @@ export function growthRowsFromSamples(growthSamples) {
   const growthByNetuid = new Map();
   for (const row of growthSamples || []) {
     const entry = growthByNetuid.get(row.netuid) || {
-      first: undefined,
-      last: undefined,
+      first: null,
+      last: null,
     };
-    if (entry.first === undefined) entry.first = row.completeness_score ?? null;
-    entry.last = row.completeness_score ?? null;
+    // Latch the window's first and last *non-null* completeness scores. Rows
+    // arrive ordered by (netuid, snapshot_date), so a subnet whose earliest
+    // in-window snapshot has no score yet (completeness_score is a nullable
+    // INTEGER) must not have `first` pinned to null: the old `=== undefined`
+    // guard fired on the first row regardless, so a leading NULL froze `first`
+    // at null for the whole subnet, collapsing its delta to null. That silently
+    // dropped a genuinely fast-growing subnet from the "fastest-growing"
+    // leaderboard, which filters out null deltas. Skipping NULL scores here
+    // makes `first`/`last` the first/last real scores (a trailing NULL no
+    // longer poisons `last` either); an all-NULL subnet still yields null.
+    const score = row.completeness_score ?? null;
+    if (score != null) {
+      if (entry.first == null) entry.first = score;
+      entry.last = score;
+    }
     growthByNetuid.set(row.netuid, entry);
   }
   return [...growthByNetuid.entries()].map(([netuid, entry]) => ({
@@ -563,9 +576,17 @@ export async function loadChainCalls(
   });
 }
 
-// Fee/tip market analytics (#1988): per-UTC-day fee series with exact medians
-// plus a windowed top-fee-payer list. Mirrors REST handleChainFees and
-// get_chain_fees MCP (#2423).
+const CHAIN_FEE_MEDIAN_SAMPLE_LIMIT = 10000;
+
+// Floor to the start of the UTC calendar day a timestamp falls in (matches the
+// `strftime('%Y-%m-%d', ..., 'unixepoch')` day bucketing used below).
+function utcDayFloor(ms) {
+  return Math.floor(ms / DAY_MS) * DAY_MS;
+}
+
+// Fee/tip market analytics (#1988): per-UTC-day fee series with bounded
+// request-time medians plus a windowed top-fee-payer list. Mirrors REST
+// handleChainFees and get_chain_fees MCP (#2423).
 export async function loadChainFees(
   d1,
   {
@@ -586,7 +607,7 @@ export async function loadChainFees(
   const payerParams = callModuleFilter
     ? [cutoff, callModuleFilter, limit]
     : [cutoff, limit];
-  const [dailyRows, payerRows, medianRows] = await Promise.all([
+  const [dailyRows, payerRows] = await Promise.all([
     d1(
       `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
               COUNT(*) AS extrinsic_count,
@@ -611,13 +632,56 @@ export async function loadChainFees(
        LIMIT ?`,
       payerParams,
     ),
-    d1(
-      `WITH samples AS (
-         SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+  ]);
+  // Exact per-day medians, but ONLY for days whose extrinsic_count (from the
+  // daily aggregate above, already computed) is within the sample cap. A day
+  // over the cap gets an honest null median instead of one approximated from
+  // a subsample — every capping strategy tried here (chronological-first,
+  // random, bucketed) trades exactness for a DIFFERENT bias, and the daily
+  // aggregate already tells us for free which days are cheap enough to
+  // compute exactly. Each included day's own [dayStart, dayEnd) range is an
+  // index-terminated scan (idx_extrinsics_observed) bounded to that day's
+  // ALREADY-VERIFIED-small row count — an over-cap day's rows are never
+  // touched by the median query at all, so total rows scanned is capped by
+  // (verified-safe days) * CHAIN_FEE_MEDIAN_SAMPLE_LIMIT, a hard ceiling
+  // fixed before the query runs, not an approximation of one.
+  const safeDayCounts = new Map(
+    dailyRows.map((row) => [row.day, Number(row.extrinsic_count)]),
+  );
+  const safeDayBoundaries = [];
+  for (let dayStart = utcDayFloor(cutoff); dayStart < now; dayStart += DAY_MS) {
+    const dayLabel = new Date(dayStart).toISOString().slice(0, 10);
+    const count = safeDayCounts.get(dayLabel);
+    if (count !== undefined && count <= CHAIN_FEE_MEDIAN_SAMPLE_LIMIT) {
+      safeDayBoundaries.push(dayStart);
+    }
+  }
+  let medianRows = [];
+  if (safeDayBoundaries.length > 0) {
+    const medianModuleParam = callModuleFilter ? 1 : null;
+    const medianFirstDayParam = callModuleFilter ? 2 : 1;
+    const medianModuleClause = callModuleFilter
+      ? ` AND call_module = ?${medianModuleParam}`
+      : "";
+    const medianDayBlocks = safeDayBoundaries.map((dayStart, i) => {
+      const startParam = medianFirstDayParam + i * 2;
+      const endParam = startParam + 1;
+      return `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
                 COALESCE(fee_tao, 0) AS fee_tao,
                 COALESCE(tip_tao, 0) AS tip_tao
          FROM extrinsics
-         WHERE observed_at >= ?${moduleClause}
+         WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}`;
+    });
+    const medianParams = [
+      ...(callModuleFilter ? [callModuleFilter] : []),
+      ...safeDayBoundaries.flatMap((dayStart) => [
+        Math.max(dayStart, cutoff),
+        Math.min(dayStart + DAY_MS, now),
+      ]),
+    ];
+    medianRows = await d1(
+      `WITH samples AS (
+         ${medianDayBlocks.join("\n         UNION ALL\n         ")}
        ),
        fee_ranked AS (
          SELECT day,
@@ -650,9 +714,9 @@ export async function loadChainFees(
               tip_medians.median_tip_tao
        FROM fee_medians
        JOIN tip_medians USING (day)`,
-      dailyParams,
-    ),
-  ]);
+      medianParams,
+    );
+  }
   const data = buildChainFees({
     window: windowLabel,
     observedAt,

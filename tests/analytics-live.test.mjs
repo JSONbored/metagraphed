@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
@@ -136,6 +137,46 @@ describe("analytics-live projections", () => {
         { netuid: 1, delta: 15 },
         { netuid: 2, delta: null },
       ],
+    );
+  });
+
+  test("growthRowsFromSamples ignores a leading null score when latching first", () => {
+    // A subnet not yet profiled on its earliest in-window day emits a NULL
+    // completeness_score first; `first` must latch the first *real* score, not
+    // the NULL, so its growth still counts. Regression for the "fastest-growing"
+    // leaderboard silently dropping such subnets.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 9, completeness_score: null },
+        { netuid: 9, completeness_score: 10 },
+        { netuid: 9, completeness_score: 90 },
+      ]),
+      [{ netuid: 9, delta: 80 }],
+    );
+  });
+
+  test("growthRowsFromSamples ignores a trailing null score when latching last", () => {
+    // Symmetric guard: a NULL on the newest day must not pin `last` to null and
+    // collapse the delta — `last` latches the last real score.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 4, completeness_score: 50 },
+        { netuid: 4, completeness_score: 70 },
+        { netuid: 4, completeness_score: null },
+      ]),
+      [{ netuid: 4, delta: 20 }],
+    );
+  });
+
+  test("growthRowsFromSamples treats a zero first score as a real sample", () => {
+    // completeness_score 0 is a valid score, not "missing" — it must anchor the
+    // delta so a 0→60 climb reads as +60, not null.
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: 7, completeness_score: 0 },
+        { netuid: 7, completeness_score: 60 },
+      ]),
+      [{ netuid: 7, delta: 60 }],
     );
   });
 });
@@ -610,13 +651,14 @@ describe("analytics-live loaders", () => {
 describe("loadChainFees", () => {
   test("aggregates daily series and top payers with call_module filter", async () => {
     const now = Date.UTC(2026, 5, 26);
+    const dayMs = 24 * 60 * 60 * 1000;
     const calls = [];
     const run = async (sql, params) => {
       calls.push({ sql, params });
       if (/ROW_NUMBER\(\) OVER/.test(sql)) {
         return [
           {
-            day: "2026-06-01",
+            day: "2026-06-25",
             median_fee_tao: 0.5,
             median_tip_tao: 0.05,
           },
@@ -625,7 +667,7 @@ describe("loadChainFees", () => {
       if (/GROUP BY day/.test(sql)) {
         return [
           {
-            day: "2026-06-01",
+            day: "2026-06-25",
             extrinsic_count: 10,
             total_fee_tao: 5,
             total_tip_tao: 1,
@@ -662,31 +704,120 @@ describe("loadChainFees", () => {
     assert.equal(data.daily[0].median_tip_tao, 0.05);
     assert.equal(data.top_fee_payers[0].total_fee_tao, 3);
     assert.match(calls[0].sql, /call_module = \?/);
-    assert.deepEqual(calls[0].params, [
-      now - 7 * 24 * 60 * 60 * 1000,
-      "SubtensorModule",
-    ]);
+    assert.deepEqual(calls[0].params, [now - 7 * dayMs, "SubtensorModule"]);
     assert.match(calls[1].sql, /ORDER BY total_fee_tao DESC, signer ASC/);
-    assert.deepEqual(calls[1].params, [
-      now - 7 * 24 * 60 * 60 * 1000,
-      "SubtensorModule",
-      10,
-    ]);
+    assert.deepEqual(calls[1].params, [now - 7 * dayMs, "SubtensorModule", 10]);
     assert.match(calls[2].sql, /ROW_NUMBER\(\) OVER/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    // The median query only scans days the daily aggregate above already
+    // proved are within the sample cap (see the dedicated shape test below
+    // for the multi-day / skip-the-over-cap-day case, and the honest-null
+    // regression tests for what an over-cap day reports instead).
+    assert.doesNotMatch(calls[2].sql, /ORDER BY RANDOM\(\)/);
+    assert.doesNotMatch(calls[2].sql, /LIMIT/);
+    // The call_module filter is the same value in every day block, so it's
+    // bound ONCE (numbered ?1, reused across every UNION ALL block) rather
+    // than re-bound per block.
+    assert.match(calls[2].sql, /call_module = \?1/);
+    const day25 = Date.UTC(2026, 5, 25);
     assert.deepEqual(calls[2].params, [
-      now - 7 * 24 * 60 * 60 * 1000,
       "SubtensorModule",
+      day25,
+      day25 + dayMs,
     ]);
+  });
+
+  test("the median query includes one block per safe day and skips a day over the cap", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const calls = [];
+    const safeDays = ["2026-06-23", "2026-06-24", "2026-06-25"];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      if (/GROUP BY day/.test(sql)) {
+        return [
+          // Over the sample cap — must be excluded from the median query
+          // entirely, not truncated to a subsample.
+          {
+            day: "2026-06-19",
+            extrinsic_count: 50000,
+            total_fee_tao: 1,
+            total_tip_tao: 1,
+          },
+          ...safeDays.map((day) => ({
+            day,
+            extrinsic_count: 10,
+            total_fee_tao: 1,
+            total_tip_tao: 1,
+          })),
+        ];
+      }
+      return [];
+    };
+    await loadChainFees(run, { window: "7d", observedAt: OBSERVED_AT, now });
+    const medianCall = calls.find((c) => /ROW_NUMBER\(\) OVER/.test(c.sql));
+    assert.ok(medianCall, "median query must still run for the safe days");
+    // 3 safe-day blocks => 2 UNION ALL joins; the over-cap day contributes none.
+    assert.equal((medianCall.sql.match(/UNION ALL/g) || []).length, 2);
+    assert.doesNotMatch(medianCall.sql, /ORDER BY RANDOM\(\)/);
+    assert.doesNotMatch(medianCall.sql, /LIMIT/);
+    const expectedParams = safeDays.flatMap((day) => {
+      const start = Date.parse(`${day}T00:00:00.000Z`);
+      return [start, start + dayMs];
+    });
+    assert.deepEqual(medianCall.params, expectedParams);
+  });
+
+  test("each included day's median block is an index-assisted range scan, not a full sort", () => {
+    // Directly verifies the fix's core cost claim: the median query no
+    // longer needs to scan or order every matching row for a day before a
+    // cap applies — each included day's own range is index-terminated.
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number INTEGER NOT NULL, extrinsic_index INTEGER NOT NULL,
+        observed_at INTEGER NOT NULL, fee_tao REAL, tip_tao REAL, call_module TEXT,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+    `);
+    const dayStart = Date.UTC(2026, 5, 25);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const sql = `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao, COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics WHERE observed_at >= ? AND observed_at < ?`;
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .all(dayStart, dayStart + dayMs);
+    assert.equal(plan.length, 1);
+    assert.match(
+      plan[0].detail,
+      /SEARCH extrinsics USING INDEX idx_extrinsics_observed/,
+    );
+    assert.equal(
+      plan.some((p) => /TEMP B-TREE/.test(p.detail)),
+      false,
+    );
   });
 
   test("omits call_module from SQL params when unscoped", async () => {
     const now = Date.UTC(2026, 5, 26);
+    const dayMs = 24 * 60 * 60 * 1000;
     const calls = [];
     const run = async (sql, params) => {
       calls.push({ sql, params });
+      if (/GROUP BY day/.test(sql)) {
+        return [
+          {
+            day: "2026-06-25",
+            extrinsic_count: 10,
+            total_fee_tao: 1,
+            total_tip_tao: 1,
+          },
+        ];
+      }
       return [];
     };
     await loadChainFees(run, {
@@ -697,25 +828,195 @@ describe("loadChainFees", () => {
     });
     assert.equal(calls.length, 3);
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
-    assert.deepEqual(calls[0].params, [now - 30 * 24 * 60 * 60 * 1000]);
-    assert.deepEqual(calls[1].params, [now - 30 * 24 * 60 * 60 * 1000, 5]);
+    assert.deepEqual(calls[0].params, [now - 30 * dayMs]);
+    assert.deepEqual(calls[1].params, [now - 30 * dayMs, 5]);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.deepEqual(calls[2].params, [now - 30 * 24 * 60 * 60 * 1000]);
+    assert.doesNotMatch(calls[2].sql, /LIMIT/);
+    const day25 = Date.UTC(2026, 5, 25);
+    assert.deepEqual(calls[2].params, [day25, day25 + dayMs]);
+  });
+
+  test("stays under D1's 100-bound-parameter limit when every day in a scoped 30d window is safe", async () => {
+    // Regression: re-binding the call_module filter fresh per UNION ALL day
+    // block (rather than once via a numbered ?1 param, reused across every
+    // block) would push a scoped 30-day window towards 30 * 3 = 90+ params;
+    // binding it once keeps real headroom under D1's 100-param limit.
+    const now = Date.UTC(2026, 5, 26);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const calls = [];
+    const run = async (sql, params) => {
+      calls.push({ sql, params });
+      if (/GROUP BY day/.test(sql)) {
+        const rows = [];
+        for (let d = now - 30 * dayMs; d < now; d += dayMs) {
+          rows.push({
+            day: new Date(d).toISOString().slice(0, 10),
+            extrinsic_count: 10,
+            total_fee_tao: 1,
+            total_tip_tao: 1,
+          });
+        }
+        return rows;
+      }
+      return [];
+    };
+    await loadChainFees(run, {
+      window: "30d",
+      callModule: "SubtensorModule",
+      observedAt: OBSERVED_AT,
+      now,
+    });
+    const medianCall = calls.find((c) => /ROW_NUMBER\(\) OVER/.test(c.sql));
+    assert.ok(medianCall);
+    assert.ok(
+      medianCall.params.length < 100,
+      `median query has ${medianCall.params.length} bound params, over D1's 100-param limit`,
+    );
   });
 
   test("treats empty call_module as unscoped", async () => {
+    const now = Date.UTC(2026, 5, 26);
+    const dayMs = 24 * 60 * 60 * 1000;
     const calls = [];
     await loadChainFees(
       async (sql, params) => {
         calls.push({ sql, params });
+        if (/GROUP BY day/.test(sql)) {
+          return [
+            {
+              day: "2026-06-25",
+              extrinsic_count: 10,
+              total_fee_tao: 1,
+              total_tip_tao: 1,
+            },
+          ];
+        }
         return [];
       },
-      { window: "7d", callModule: "", observedAt: OBSERVED_AT },
+      { window: "7d", callModule: "", observedAt: OBSERVED_AT, now },
     );
     assert.doesNotMatch(calls[0].sql, /call_module = \?/);
     assert.equal(calls[0].params.length, 1);
     assert.doesNotMatch(calls[2].sql, /call_module = \?/);
-    assert.equal(calls[2].params.length, 1);
+    assert.doesNotMatch(calls[2].sql, /LIMIT/);
+    const day25 = Date.UTC(2026, 5, 25);
+    assert.deepEqual(calls[2].params, [day25, day25 + dayMs]);
+  });
+
+  test("an over-cap day gets a null median without affecting a safe sibling day's exact median", async () => {
+    // Regression for a global `LIMIT ?` applied ahead of the per-day
+    // partition: once a single day exceeds the sample cap, days that sort
+    // after it in scan order used to lose their entire sample. Now: an
+    // over-cap day is excluded from the median query outright (honest
+    // null), while a safe sibling day gets its exact, unsampled median
+    // regardless of how much volume the over-cap day has.
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number    INTEGER NOT NULL,
+        extrinsic_index INTEGER NOT NULL,
+        extrinsic_hash  TEXT,
+        signer          TEXT,
+        call_module     TEXT,
+        call_function   TEXT,
+        success         INTEGER,
+        observed_at     INTEGER NOT NULL,
+        fee_tao         REAL,
+        tip_tao         REAL,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+    `);
+    const insert = db.prepare(
+      "INSERT INTO extrinsics (block_number, extrinsic_index, observed_at, fee_tao, tip_tao) VALUES (?, ?, ?, ?, ?)",
+    );
+    const dayMs = 24 * 60 * 60 * 1000;
+    const day1Start = Date.UTC(2026, 5, 1);
+    const day2Start = Date.UTC(2026, 5, 2);
+    const day1Count = 10005; // exceeds CHAIN_FEE_MEDIAN_SAMPLE_LIMIT (10000)
+    const day2Count = 10; // comfortably under the cap
+    let block = 0;
+    for (let i = 0; i < day1Count; i += 1) {
+      insert.run(block, 0, day1Start + i, 1, 0.1);
+      block += 1;
+    }
+    for (let i = 0; i < day2Count; i += 1) {
+      insert.run(block, 0, day2Start + i, 2, 0.2);
+      block += 1;
+    }
+    const run = async (sql, params) => db.prepare(sql).all(...params);
+    const { data } = await loadChainFees(run, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+      now: day2Start + day2Count + dayMs,
+    });
+    const byDay = Object.fromEntries(data.daily.map((d) => [d.day, d]));
+    assert.ok(byDay["2026-06-01"], "the over-cap day must still report a day");
+    assert.ok(
+      byDay["2026-06-02"],
+      "a sibling day must not be starved by day 1's volume",
+    );
+    assert.equal(
+      byDay["2026-06-01"].median_fee_tao,
+      null,
+      "an over-cap day reports an honest null median, not an approximation",
+    );
+    assert.equal(byDay["2026-06-02"].median_fee_tao, 2);
+    assert.equal(byDay["2026-06-02"].median_tip_tao, 0.2);
+  });
+
+  test("an over-cap day with a real intraday fee trend gets a null median instead of a biased guess", async () => {
+    // Regression: any subsample of an over-cap day (chronological-first,
+    // random, or bucketed) trades exactness for SOME bias — capping to the
+    // chronologically-earliest rows silently pulled the median toward
+    // however fees looked at the START of the day. Rather than pick a
+    // "less wrong" sampling strategy, an over-cap day is excluded from the
+    // median query outright, so its median is honestly null instead of
+    // silently skewed toward part of the day's history.
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number    INTEGER NOT NULL,
+        extrinsic_index INTEGER NOT NULL,
+        extrinsic_hash  TEXT,
+        signer          TEXT,
+        call_module     TEXT,
+        call_function   TEXT,
+        success         INTEGER,
+        observed_at     INTEGER NOT NULL,
+        fee_tao         REAL,
+        tip_tao         REAL,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+    `);
+    const insert = db.prepare(
+      "INSERT INTO extrinsics (block_number, extrinsic_index, observed_at, fee_tao, tip_tao) VALUES (?, ?, ?, ?, ?)",
+    );
+    const dayMs = 24 * 60 * 60 * 1000;
+    const dayStart = Date.UTC(2026, 5, 1);
+    const lowFeeCount = 5000;
+    const highFeeCount = 5100; // 10100 total, 100 over the cap
+    let block = 0;
+    for (let i = 0; i < lowFeeCount; i += 1) {
+      insert.run(block, 0, dayStart + i, 0, 0);
+      block += 1;
+    }
+    for (let i = 0; i < highFeeCount; i += 1) {
+      insert.run(block, 0, dayStart + lowFeeCount + i, 1000, 100);
+      block += 1;
+    }
+    const run = async (sql, params) => db.prepare(sql).all(...params);
+    const { data } = await loadChainFees(run, {
+      window: "7d",
+      observedAt: OBSERVED_AT,
+      now: dayStart + lowFeeCount + highFeeCount + dayMs,
+    });
+    const day = data.daily.find((d) => d.day === "2026-06-01");
+    assert.ok(day, "the over-cap day must still report a day");
+    assert.equal(day.extrinsic_count, lowFeeCount + highFeeCount);
+    assert.equal(day.median_fee_tao, null);
+    assert.equal(day.median_tip_tao, null);
   });
 
   test("loadChainFees tie-breaks top_fee_payers for stable LIMIT membership", async () => {

@@ -161,24 +161,92 @@ export function buildBlockFeed(rows, { limit, offset, nextCursor } = {}) {
 // handlers and the MCP block-explorer tools. `d1` is a
 // (sql, params) => Promise<rows[]> runner; a cold/unbound DB yields [].
 
+// Astronomically high per-block count floors are deterministic no-match cases.
+// Short-circuit them before D1 so public callers cannot amplify cost by forcing
+// scans to prove an impossible empty result (mirrors handleBlocks / #1991).
+export const MAX_BLOCK_COUNT_FILTER = 1_000_000;
+
 // Recent-block feed (newest first) with keyset cursor support (#1851). A cursor
-// takes precedence over offset when present (WHERE block_number < ?).
-export async function loadBlocks(d1, { limit, offset, cursor } = {}) {
+// takes precedence over offset when present (WHERE block_number < ?). Optional
+// conjunctive filters mirror GET /api/v1/blocks (#1846/#1991): author,
+// spec_version, block_start/block_end, from/to (observed_at epoch-ms), and
+// min_extrinsics/min_events floors. Inverted indexed ranges short-circuit to an
+// empty feed without querying D1.
+export async function loadBlocks(
+  d1,
+  {
+    limit,
+    offset,
+    cursor,
+    author,
+    specVersion,
+    blockStart,
+    blockEnd,
+    from,
+    to,
+    minExtrinsics,
+    minEvents,
+  } = {},
+) {
   const lim = clampLimit(limit, BLOCK_PAGINATION);
   const off = clampOffset(offset);
-  const cur = decodeCursor(cursor, 1);
-  let rows;
-  if (cur) {
-    rows = await d1(
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks WHERE block_number < ? ORDER BY block_number DESC LIMIT ?`,
-      [cur[0], lim],
-    );
-  } else {
-    rows = await d1(
-      `SELECT ${BLOCK_READ_COLUMNS} FROM blocks ORDER BY block_number DESC LIMIT ? OFFSET ?`,
-      [lim, off],
-    );
+  if (
+    (blockStart != null && blockEnd != null && blockStart > blockEnd) ||
+    (from != null && to != null && from > to) ||
+    (minExtrinsics != null && minExtrinsics > MAX_BLOCK_COUNT_FILTER) ||
+    (minEvents != null && minEvents > MAX_BLOCK_COUNT_FILTER)
+  ) {
+    return buildBlockFeed([], { limit: lim, offset: off, nextCursor: null });
   }
+  const conds = [];
+  const params = [];
+  if (author) {
+    conds.push("author = ?");
+    params.push(author);
+  }
+  if (specVersion != null) {
+    conds.push("spec_version = ?");
+    params.push(specVersion);
+  }
+  if (blockStart != null) {
+    conds.push("block_number >= ?");
+    params.push(blockStart);
+  }
+  if (blockEnd != null) {
+    conds.push("block_number <= ?");
+    params.push(blockEnd);
+  }
+  if (from != null) {
+    conds.push("observed_at >= ?");
+    params.push(from);
+  }
+  if (to != null) {
+    conds.push("observed_at <= ?");
+    params.push(to);
+  }
+  if (minExtrinsics != null) {
+    conds.push("extrinsic_count >= ?");
+    params.push(minExtrinsics);
+  }
+  if (minEvents != null) {
+    conds.push("event_count >= ?");
+    params.push(minEvents);
+  }
+  const cur = decodeCursor(cursor, 1);
+  const useCursor = Boolean(cur);
+  if (useCursor) {
+    conds.push("block_number < ?");
+    params.push(cur[0]);
+  }
+  let sql = `SELECT ${BLOCK_READ_COLUMNS} FROM blocks`;
+  if (conds.length) sql += ` WHERE ${conds.join(" AND ")}`;
+  sql += " ORDER BY block_number DESC LIMIT ?";
+  params.push(lim);
+  if (!useCursor) {
+    sql += " OFFSET ?";
+    params.push(off);
+  }
+  const rows = await d1(sql, params);
   const last = rows.length === lim ? rows[rows.length - 1] : null;
   const nextCursor = last ? encodeCursor([last.block_number]) : null;
   return buildBlockFeed(rows, { limit: lim, offset: off, nextCursor });
@@ -219,8 +287,14 @@ export async function loadBlock(d1, ref) {
   const rows = await d1(sql, [param]);
   let prev = null;
   let next = null;
-  const resolvedNumber = rows[0]?.block_number;
-  if (Number.isInteger(resolvedNumber)) {
+  // Coerce the resolved anchor through the same helper formatBlock uses: D1 can
+  // return the INTEGER block_number as a numeric string, and a bare
+  // `Number.isInteger(rows[0]?.block_number)` guard is false for "1234", so the
+  // neighbor query would be skipped and a resolved block would wrongly report
+  // prev/next_block_number: null (breaking chain-walk nav #1853). Mirrors the
+  // string-cell coercion in formatBlock / account-events formatAccountDay (#2489).
+  const resolvedNumber = toBlockNumber(rows[0]?.block_number);
+  if (resolvedNumber !== null) {
     const nbr = await d1(
       `SELECT (SELECT MAX(block_number) FROM blocks WHERE block_number < ?) AS prev, (SELECT MIN(block_number) FROM blocks WHERE block_number > ?) AS next`,
       [resolvedNumber, resolvedNumber],
