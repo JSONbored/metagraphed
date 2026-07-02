@@ -909,10 +909,15 @@ export function formatLeaderboards({
       name: row.name ?? null,
       completeness_score: row.completeness_score ?? null,
     }))
+    // Drop subnets with no completeness signal — completeness_score is a nullable
+    // INTEGER, and a not-yet-profiled subnet carries null. Ranking it on a
+    // "most-complete" board (emitting completeness_score: null) is wrong; every
+    // sibling board filters its absent metric (healthiest/most-enriched on >0,
+    // fastest-rpc/fastest-growing on != null, most-reliable on a null score).
+    .filter((entry) => entry.completeness_score != null)
     .sort(
       (a, b) =>
-        (b.completeness_score ?? -1) - (a.completeness_score ?? -1) ||
-        a.netuid - b.netuid,
+        b.completeness_score - a.completeness_score || a.netuid - b.netuid,
     )
     .slice(0, cap);
 

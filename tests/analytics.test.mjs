@@ -333,6 +333,21 @@ describe("formatLeaderboards", () => {
     assert.deepEqual(order(tied), [2, 5, 9]);
     assert.deepEqual(order([...tied].reverse()), [2, 5, 9]);
   });
+  test("most-complete excludes subnets with no completeness score", () => {
+    // completeness_score is nullable (a not-yet-profiled subnet is null); a
+    // "most-complete" ranking must drop it, not emit it with a null score —
+    // matching every sibling board's absent-metric filter.
+    const out = formatLeaderboards({
+      ...inputs,
+      mostComplete: [
+        { netuid: 1, slug: "one", name: "One", completeness_score: 70 },
+        { netuid: 9, slug: "nine", name: "Nine", completeness_score: null },
+      ],
+      board: "most-complete",
+    });
+    assert.equal(out.boards["most-complete"].length, 1);
+    assert.equal(out.boards["most-complete"][0].netuid, 1);
+  });
   test("most-enriched breaks surface-count ties by netuid", () => {
     const tied = [
       {
