@@ -165,6 +165,15 @@ test("formatAccountEvent preserves null observed_at as null (not epoch 1970)", (
   assert.equal(out.observed_at, null);
 });
 
+test("formatAccountEvent drops invalid observed_at strings to null", () => {
+  const out = formatAccountEvent({
+    block_number: 1,
+    event_kind: "Transfer",
+    observed_at: "not-a-timestamp",
+  });
+  assert.equal(out.observed_at, null);
+});
+
 test("buildAccountTransfers coerces string-typed observed_at cells to ISO timestamps", () => {
   const out = buildAccountTransfers(
     [
