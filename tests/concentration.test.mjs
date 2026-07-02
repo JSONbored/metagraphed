@@ -207,6 +207,8 @@ describe("buildConcentration", () => {
       -1,
       0,
       true,
+      8_640_000_000_000_001,
+      "8640000000000001",
     ]) {
       const data = buildConcentration(
         [{ stake_tao: 1, emission_tao: 1, captured_at }],
