@@ -1813,4 +1813,12 @@ describe("resolveBaseRemote", () => {
       process.chdir(previousCwd);
     }
   });
+
+  test("falls back to origin when git remote produces no output at all", () => {
+    // A repo with zero configured remotes: `git remote` exits 0 with empty
+    // stdout, exercising the `result.stdout || ""` fallback (falsy empty
+    // string on both sides) rather than a non-empty remote list.
+    const dir = initRepo();
+    assert.equal(resolveBaseRemote(dir), "origin");
+  });
 });
