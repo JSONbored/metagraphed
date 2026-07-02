@@ -2417,18 +2417,6 @@ export const MCP_TOOLS = [
             "Optional inclusive upper block bound; omit for no upper limit.",
           minimum: 0,
         },
-        block_start: {
-          type: "integer",
-          description:
-            "Optional inclusive lower block bound; omit for no lower limit.",
-          minimum: 0,
-        },
-        block_end: {
-          type: "integer",
-          description:
-            "Optional inclusive upper block bound; omit for no upper limit.",
-          minimum: 0,
-        },
         limit: {
           type: "integer",
           description: "Max events to return (1-1000, default 100).",
