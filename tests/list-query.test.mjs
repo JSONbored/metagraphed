@@ -565,6 +565,68 @@ describe("list-query endpoint pool count range filters (#2587)", () => {
   }
 });
 
+// #2577: the endpoints collection already exposes sort by latency_ms / score but
+// could not threshold on them — the generic list-query rangeFilterRows engine
+// drops non-numeric cells and rows missing the field, so a caller can ask for
+// "endpoints faster than 500ms" with a single ?max_latency_ms=500 query.
+describe("list-query endpoint latency / score range filters (#2577)", () => {
+  const data = {
+    endpoints: [
+      { surface_id: "fast-rpc", latency_ms: 120, score: 0.95 },
+      { surface_id: "slow-rpc", latency_ms: 800, score: 0.7 },
+      { surface_id: "no-latency", score: 0.5 },
+      { surface_id: "non-numeric-latency", latency_ms: "x", score: 0.4 },
+    ],
+  };
+  const surfaceIds = (result) => result.data.endpoints.map((r) => r.surface_id);
+
+  test("?max_latency_ms=500 keeps rows with latency_ms <= 500 and drops non-numeric / absent cells", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?max_latency_ms=500"),
+      "endpoints",
+    );
+    assert.deepEqual(surfaceIds(result), ["fast-rpc"]);
+  });
+
+  test("?min_score=0.5 keeps rows with score >= 0.5", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_score=0.5"),
+      "endpoints",
+    );
+    assert.deepEqual(surfaceIds(result), [
+      "fast-rpc",
+      "slow-rpc",
+      "no-latency",
+    ]);
+  });
+
+  test("no range param is a no-op (every row passes)", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints"),
+      "endpoints",
+    );
+    assert.deepEqual(surfaceIds(result), [
+      "fast-rpc",
+      "slow-rpc",
+      "no-latency",
+      "non-numeric-latency",
+    ]);
+  });
+
+  test("contradictory min_score > max_score is a query error", () => {
+    const bad = applyQueryFilters(
+      data,
+      query("/api/v1/endpoints?min_score=0.9&max_score=0.3"),
+      "endpoints",
+    );
+    assert.equal(bad.error.parameter, "min_score");
+    assert.match(bad.error.message, /must not be greater than max_score/);
+  });
+});
+
 describe("list-query pagination Link header", () => {
   test("first page: next + last only (no earlier page exists)", () => {
     const links = parseLink(pageLink("/api/v1/subnets?sort=netuid&limit=2"));

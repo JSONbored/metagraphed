@@ -1610,6 +1610,30 @@
           }
         },
         {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1754,6 +1778,30 @@
               "unknown"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
           }
         },
         {
@@ -2229,6 +2277,30 @@
               "unknown"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
           }
         },
         {
@@ -6008,6 +6080,30 @@
               "unknown"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
           }
         },
         {

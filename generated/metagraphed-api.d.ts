@@ -10587,6 +10587,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12749,6 +12753,10 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -14217,6 +14225,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16126,6 +16138,10 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                min_latency_ms?: number;
+                max_latency_ms?: number;
+                min_score?: number;
+                max_score?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
