@@ -53,6 +53,18 @@ function toChainPosition(value) {
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
+// Coerce a TAO amount cell (fee_tao / tip_tao, D1 REAL columns) to a number
+// rounded to rao precision (9 dp), or null when missing/non-finite. D1 can
+// return a REAL column as a numeric string, so a bare `?? null` pass-through
+// would leak the string form into the ["number","null"] contract field and
+// serve unrounded float noise. Mirrors toTaoOrNull in account-events.mjs
+// (#2662) and the coercion in formatRegistration (#2487).
+function toTaoOrNull(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 1e9) / 1e9 : null;
+}
+
 // Keep only well-formed extrinsics rows (a valid (block_number, extrinsic_index)
 // primary key + an integer timestamp). Shared by the staged-batch loader so
 // garbage is rejected before it touches D1.
@@ -146,8 +158,11 @@ export function formatExtrinsic(row) {
     // successful extrinsic mislabeled false. Number()-coerce first, mirroring
     // toD1Flag in account-events.mjs (#2487).
     success: row.success == null ? null : Number(row.success) === 1,
-    fee_tao: row.fee_tao ?? null,
-    tip_tao: row.tip_tao ?? null,
+    // fee_tao / tip_tao (D1 REAL columns) — coerce through toTaoOrNull so a
+    // numeric string never leaks the string form into the ["number","null"]
+    // payload, matching formatAccountEvent (#2662) and the sibling formatters.
+    fee_tao: toTaoOrNull(row.fee_tao),
+    tip_tao: toTaoOrNull(row.tip_tao),
     observed_at: toIso(row.observed_at),
   };
 }

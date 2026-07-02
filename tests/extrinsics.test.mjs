@@ -144,6 +144,29 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatExtrinsic coerces D1 numeric-string fee_tao/tip_tao and rounds to rao", () => {
+  // D1 can return the REAL fee/tip columns as numeric strings; a bare `?? null`
+  // would leak the string into the ["number","null"] contract field. Coercion
+  // also rounds float noise to rao precision (9 dp). Mirrors #2662.
+  const out = formatExtrinsic({
+    block_number: 10,
+    extrinsic_index: 0,
+    fee_tao: "0.0125",
+    tip_tao: "0.10000000004",
+    observed_at: 1750000000000,
+  });
+  assert.equal(out.fee_tao, 0.0125);
+  assert.equal(typeof out.fee_tao, "number");
+  assert.equal(out.tip_tao, 0.1); // rounded to rao (9 dp)
+  assert.equal(typeof out.tip_tao, "number");
+});
+
+test("formatExtrinsic maps a null/absent fee_tao/tip_tao to null", () => {
+  const out = formatExtrinsic({ block_number: 10, extrinsic_index: 0 });
+  assert.equal(out.fee_tao, null);
+  assert.equal(out.tip_tao, null);
+});
+
 test("formatExtrinsic parses call_args (array, object, parse-failure->null)", () => {
   // Substrate call args are canonically a LIST of {name,value} descriptors.
   const arr = formatExtrinsic({
