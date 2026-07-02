@@ -2,7 +2,8 @@
 // and cursor pagination over in-memory artifact collections. Extracted from
 // workers/api.mjs (issue #510, de-monolith) as a leaf module: it imports only
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
-// `applyQueryFilters` is the single public entry; the rest are internal helpers.
+// `applyQueryFilters` is the main public entry; route preflight uses the same
+// validator before artifact/cache reads.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 import { linkHeader } from "./http.mjs";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
@@ -23,15 +24,38 @@ export function applyQueryFilters(
   if (!Array.isArray(data?.[config.data_key])) {
     return { data, meta: {} };
   }
-  return applyListTransform(data, params, {
+  return applyListTransform(
+    data,
+    params,
+    listQueryConfig(config, queryFilterNames),
+  );
+}
+
+export function validateListQueryParams(
+  url,
+  queryCollection,
+  queryFilterNames = [],
+) {
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) {
+    return null;
+  }
+  return validateListQuery(
+    url.searchParams,
+    listQueryConfig(config, queryFilterNames),
+  );
+}
+
+function listQueryConfig(config, queryFilterNames = []) {
+  return {
     ...config,
     filters: Object.fromEntries(
-      (queryFilterNames.length > 0
-        ? queryFilterNames
-        : Object.keys(config.filters)
-      ).map((name) => [name, config.filters[name]]),
+      effectiveFilterNames(config, queryFilterNames).map((name) => [
+        name,
+        config.filters[name],
+      ]),
     ),
-  });
+  };
 }
 
 // RFC 8288 Link header for a cursor-paginated response (window from
@@ -43,10 +67,21 @@ export function applyQueryFilters(
 function listQueryParamNames(queryCollection, queryFilterNames = []) {
   const config = API_QUERY_COLLECTIONS[queryCollection];
   if (!config) return [];
+  return listQueryParamNamesForConfig(config, queryFilterNames);
+}
+
+function effectiveFilterNames(config, queryFilterNames = []) {
+  const filters = config.filters || {};
+  return queryFilterNames.length > 0
+    ? queryFilterNames.filter((name) => Object.hasOwn(filters, name))
+    : Object.keys(filters);
+}
+
+function listQueryParamNamesForConfig(config, queryFilterNames = []) {
   const filterNames =
     queryFilterNames.length > 0
-      ? queryFilterNames
-      : Object.keys(config.filters);
+      ? effectiveFilterNames(config, queryFilterNames)
+      : Object.keys(config.filters || {});
   const rangeNames = (config.range_filters || []).flatMap((field) => [
     `min_${field}`,
     `max_${field}`,
@@ -320,6 +355,16 @@ function paginateRows(rows, params) {
 }
 
 function validateListQuery(params, config) {
+  const allowedParams = new Set(listQueryParamNamesForConfig(config));
+  for (const key of params.keys()) {
+    if (!allowedParams.has(key)) {
+      return {
+        parameter: key,
+        message: "unknown query parameter.",
+      };
+    }
+  }
+
   const limit = params.get("limit");
   if (
     limit !== null &&
@@ -354,14 +399,14 @@ function validateListQuery(params, config) {
   }
 
   const sort = params.get("sort");
-  if (sort !== null && !config.sort_fields.includes(sort)) {
+  if (sort !== null && !(config.sort_fields || []).includes(sort)) {
     return {
       parameter: "sort",
       message: `sort is not supported for ${config.data_key}.`,
     };
   }
 
-  for (const [key, schema] of Object.entries(config.filters)) {
+  for (const [key, schema] of Object.entries(config.filters || {})) {
     if (!params.has(key)) {
       continue;
     }
@@ -396,7 +441,7 @@ function validateListQuery(params, config) {
     }
   }
 
-  for (const field of config.range_filters) {
+  for (const field of config.range_filters || []) {
     for (const bound of ["min", "max"]) {
       const key = `${bound}_${field}`;
       if (params.has(key) && numberParam(params.get(key)) === null) {

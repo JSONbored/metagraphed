@@ -8,6 +8,7 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryParams,
 } from "./list-query.mjs";
 import {
   apiHeaders,
@@ -2330,6 +2331,18 @@ async function handleApiRequest(
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
+  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
+  const queryError = validateListQueryParams(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames,
+  );
+  if (queryError) {
+    return errorResponse("invalid_query", queryError.message, 400, {
+      artifact_path: artifactPath,
+      parameter: queryError.parameter,
+    });
+  }
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
   // not by whether live data happened to be available for this request, so cold
@@ -2396,8 +2409,6 @@ async function handleApiRequest(
   }
   // Mainnet (default) reads the unprefixed artifact (no-op); non-default networks
   // read metagraph/{prefix}/… — see artifactPathForNetwork.
-  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
-
   // Live operational-health overlay (Phase 3): current health is live-only.
   // Static current-health artifacts are not read for mainnet health routes, so
   // stale R2 objects left behind by earlier publishes cannot affect responses.

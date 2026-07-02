@@ -473,6 +473,77 @@ describe("list-query numeric range filters", () => {
   });
 });
 
+describe("list-query unknown parameter validation", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        name: "Alpha Inference",
+        slug: "alpha",
+        status: "active",
+        categories: ["inference"],
+        block: 150,
+      },
+      {
+        netuid: 2,
+        name: "Beta Compute",
+        slug: "beta",
+        status: "inactive",
+        categories: ["compute"],
+        block: 50,
+      },
+    ],
+  };
+
+  test("rejects a typoed query parameter before silently returning an unfiltered list", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?statuss=active"),
+      "subnets",
+    );
+
+    assert.equal(result.error.parameter, "statuss");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("accepts every supported list parameter family", () => {
+    const result = applyQueryFilters(
+      data,
+      query(
+        "/api/v1/subnets?q=alpha&fields=netuid,name&limit=10&cursor=0" +
+          "&sort=netuid&order=asc&status=active&netuids=1" +
+          "&domain=inference&min_block=100&max_block=200",
+      ),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.data.subnets, [
+      { netuid: 1, name: "Alpha Inference" },
+    ]);
+    assert.equal(result.meta.pagination.total, 1);
+  });
+
+  test("accepts an empty query string", () => {
+    const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
+
+    assert.equal(result.error, undefined);
+    assert.equal(result.data.subnets.length, 2);
+  });
+
+  test("rejects filters excluded by a route-level queryFilterNames allowlist", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?curation_level=native"),
+      "subnets",
+      ["netuid"],
+    );
+
+    assert.equal(result.error.parameter, "curation_level");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+});
+
 // #2085: integration_readiness was sortable/filterable via MCP list_subnets but
 // not on the equivalent REST subnets collection. After wiring it into the
 // contract's sort + rangeFilters, the generic list-query engine reads row[key]
@@ -665,10 +736,14 @@ describe("list-query pagination Link header", () => {
     }
   });
 
-  test("drops ignored query parameters from cacheable page links", () => {
+  test("canonical page links drop ignored query parameters", () => {
     const links = parseLink(
-      pageLink(
-        "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+      paginationLinkHeader(
+        query(
+          "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+        ),
+        { cursor: 0, limit: 2, next_cursor: 2, total: 5 },
+        { queryCollection: "subnets" },
       ),
     );
 

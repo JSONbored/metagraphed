@@ -1644,7 +1644,7 @@ describe("Worker runtime", () => {
     }
   });
 
-  test("canonicalizes overlay cache keys for ignored query parameters", async () => {
+  test("rejects unknown list query parameters before overlay cache reads", async () => {
     const store = new Map();
     const cachePutKeys = [];
     let r2Gets = 0;
@@ -1716,18 +1716,13 @@ describe("Worker runtime", () => {
         overlayEnv,
         ctx,
       );
-      assert.equal(first.status, 200);
-      assert.equal(second.status, 200);
-      assert.equal(await second.text(), await first.text());
-      assert.equal(
-        r2Gets,
-        1,
-        "ignored query params must not bust overlay cache",
-      );
-      assert.equal(store.size, 1, "ignored query params share one cache entry");
-      assert.deepEqual(cachePutKeys, [
-        `https://edge-cache.metagraph.sh/overlay/mainnet/${CONTRACT_VERSION}/2026-06-18T00%3A00%3A00.000Z/api/v1/endpoints`,
-      ]);
+      assert.equal(first.status, 400);
+      assert.equal(second.status, 400);
+      assert.equal((await first.json()).meta.parameter, "junk");
+      assert.equal((await second.json()).meta.parameter, "junk");
+      assert.equal(r2Gets, 0, "invalid list queries do not read R2 overlays");
+      assert.equal(store.size, 0, "invalid list queries are not cached");
+      assert.deepEqual(cachePutKeys, []);
     } finally {
       globalThis.caches = originalCaches;
     }

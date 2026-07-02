@@ -669,6 +669,19 @@ describe("invalid query handling", () => {
     assert.equal((await res.json()).meta.parameter, "order");
   });
 
+  test("400 invalid_query for an unknown list query parameter", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?statuss=active"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.error.message, "unknown query parameter.");
+    assert.equal(body.meta.parameter, "statuss");
+  });
+
   test("400 invalid_query for an unsupported projected field", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?fields=netuid,not_a_field"),
@@ -788,19 +801,15 @@ describe("pagination Link header", () => {
     assert.match(res.headers.get("access-control-expose-headers"), /\blink\b/);
   });
 
-  test("page links drop ignored/tracker query params end-to-end (#1932 cache-key safety)", async () => {
-    // Drive the canonicalization through the real Worker: tracker/attacker params
-    // the edge cache key ignores must not ride along in the cacheable Link header,
-    // while the body-affecting sort/cursor/limit are preserved.
-    const { res, links } = await page(
+  test("page links reject ignored/tracker query params end-to-end", async () => {
+    const { res } = await page(
       "limit=50&cursor=0&utm_campaign=evil&token=SECRET123",
     );
-    assert.equal(res.status, 200);
-    assert.equal(links.next.searchParams.has("utm_campaign"), false);
-    assert.equal(links.next.searchParams.has("token"), false);
-    assert.equal(links.next.searchParams.get("sort"), "netuid");
-    assert.equal(links.next.searchParams.get("cursor"), "50");
-    assert.equal(links.next.searchParams.get("limit"), "50");
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.error.message, "unknown query parameter.");
+    assert.equal(body.meta.parameter, "utm_campaign");
   });
 
   test("middle page advertises all four relations", async () => {
