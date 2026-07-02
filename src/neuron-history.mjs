@@ -54,7 +54,9 @@ export function isValidSnapshotDate(value) {
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);
-  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 /**

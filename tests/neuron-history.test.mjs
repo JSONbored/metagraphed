@@ -268,6 +268,15 @@ describe("history builders", () => {
     assert.equal(out.points[0].captured_at, null);
   });
 
+  test("buildNeuronHistory drops out-of-range captured_at strings to null", () => {
+    const out = buildNeuronHistory(
+      [dailyRow({ captured_at: "8640000000000001" })],
+      7,
+      3,
+    );
+    assert.equal(out.points[0].captured_at, null);
+  });
+
   test("buildSubnetHistory defaults window + every aggregate to null on sparse rows", () => {
     const out = buildSubnetHistory([{ snapshot_date: "2026-06-20" }], 7);
     assert.equal(out.window, null);
