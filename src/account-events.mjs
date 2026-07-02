@@ -75,7 +75,9 @@ export const INGESTED_EVENT_KINDS = [
 ];
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  if (ms == null) return null;
+  const n = Number(ms);
+  return Number.isFinite(n) ? new Date(n).toISOString() : null;
 }
 
 // Coerce a block height or index cell to a non-negative integer, or null when

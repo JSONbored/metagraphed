@@ -146,6 +146,42 @@ test("formatAccountEvent is null-safe on junk + sparse rows", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatAccountEvent coerces string-typed observed_at cells to ISO timestamps", () => {
+  const out = formatAccountEvent({
+    block_number: 1,
+    event_kind: "Transfer",
+    observed_at: "1750000000000",
+  });
+  assert.equal(out.observed_at, new Date(1750000000000).toISOString());
+});
+
+test("formatAccountEvent preserves null observed_at as null (not epoch 1970)", () => {
+  const out = formatAccountEvent({
+    block_number: 1,
+    event_kind: "Transfer",
+    observed_at: null,
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("buildAccountTransfers coerces string-typed observed_at cells to ISO timestamps", () => {
+  const out = buildAccountTransfers(
+    [
+      {
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: 1,
+        observed_at: "1750000000000",
+      },
+    ],
+    "5A",
+  );
+  assert.equal(
+    out.transfers[0].observed_at,
+    new Date(1750000000000).toISOString(),
+  );
+});
+
 test("formatAccountEvent coerces string-typed netuid and uid cells to Numbers", () => {
   // D1 can return an INTEGER column as a numeric string ("7" not 7); the bare
   // `?? null` pass-through this replaced would have leaked strings into the API
