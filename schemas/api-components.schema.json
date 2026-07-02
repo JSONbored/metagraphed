@@ -6157,6 +6157,14 @@
               "null"
             ]
           },
+          "stake_dominance": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "subnet_count": {
             "minimum": 0,
             "type": "integer"
@@ -6167,6 +6175,14 @@
             },
             "maxItems": 10,
             "type": "array"
+          },
+          "total_emission_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "minimum": 0,
+            "type": "number"
           },
           "uid_count": {
             "minimum": 0,
@@ -6179,6 +6195,9 @@
           "coldkey_count",
           "subnet_count",
           "uid_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
           "latest_captured_at",
@@ -6189,7 +6208,7 @@
       },
       "GlobalValidatorsArtifact": {
         "additionalProperties": true,
-        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets.",
+        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file).",
         "properties": {
           "block_number": {
             "type": [
@@ -6214,10 +6233,13 @@
           },
           "sort": {
             "enum": [
-              "subnet_count",
-              "uid_count",
               "avg_validator_trust",
-              "max_validator_trust"
+              "max_validator_trust",
+              "stake_dominance",
+              "subnet_count",
+              "total_emission",
+              "total_stake",
+              "uid_count"
             ],
             "type": "string"
           },
@@ -12132,6 +12154,14 @@
           "alpha_price_tao": {
             "type": [
               "number",
+              "null"
+            ]
+          },
+          "block": {
+            "description": "Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters.",
+            "minimum": 0,
+            "type": [
+              "integer",
               "null"
             ]
           },

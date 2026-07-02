@@ -589,6 +589,55 @@ test("buildAccountTransfers labels a self-transfer by the requested side (#2362)
   }
 });
 
+test("buildAccountTransfers coerces string-typed amount_tao cells to Numbers", () => {
+  const out = buildAccountTransfers(
+    [
+      {
+        block_number: 1,
+        event_index: 0,
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: "4.2",
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(typeof out.transfers[0].amount_tao, "number");
+  assert.equal(out.transfers[0].amount_tao, 4.2);
+});
+
+test("buildAccountTransfers preserves null amount_tao as null (not 0)", () => {
+  const out = buildAccountTransfers(
+    [{ hotkey: "5A", coldkey: "5B", amount_tao: null }],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, null);
+});
+
+test("buildAccountTransfers rounds amount_tao to rao precision", () => {
+  const out = buildAccountTransfers(
+    [
+      {
+        hotkey: "5A",
+        coldkey: "5B",
+        amount_tao: "1.0000000004",
+        observed_at: null,
+      },
+    ],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, 1);
+});
+
+test("buildAccountTransfers drops invalid amount_tao strings", () => {
+  const out = buildAccountTransfers(
+    [{ hotkey: "5A", coldkey: "5B", amount_tao: "not-a-number" }],
+    "5A",
+  );
+  assert.equal(out.transfers[0].amount_tao, null);
+});
+
 test("buildAccountTransfers explicit side never flips a normal row (#2362)", () => {
   // For a non-self transfer the requested side already matches the per-row
   // derivation, so forcing the label is a no-op — the fix only changes the

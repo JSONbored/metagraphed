@@ -534,7 +534,7 @@ export function buildAccountTransfers(
       event_index: toBlockNumber(r.event_index),
       from: r.hotkey ?? null,
       to: r.coldkey ?? null,
-      amount_tao: r.amount_tao ?? null,
+      amount_tao: toTaoOrNull(r.amount_tao),
       direction:
         fixedDirection ??
         (r.hotkey === ss58 ? "sent" : r.coldkey === ss58 ? "received" : null),

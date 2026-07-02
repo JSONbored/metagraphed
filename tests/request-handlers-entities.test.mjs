@@ -3556,6 +3556,60 @@ describe("handleExtrinsics", () => {
     assert.ok(captures.params.flat().includes(0));
   });
 
+  test("rejects a non-boolean success value with 400 (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=1"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "success");
+    assert.match(body.error.message, /true, false/);
+    assert.equal(
+      captures.sql.filter((s) => /FROM extrinsics/.test(s)).length,
+      0,
+    );
+  });
+
+  test("success=true binds only successful extrinsics (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=true"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/success = \?/.test(sql));
+    assert.ok(captures.params.flat().includes(1));
+  });
+
+  test("success=false binds only failed extrinsics, omitting NULL (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics?success=false"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(/success = \?/.test(sql));
+    assert.ok(captures.params.flat().includes(0));
+    assert.ok(!/success IS NULL/.test(sql));
+  });
+
+  test("omitted success leaves the feed unfiltered (#2575)", async () => {
+    const { env, captures } = dbWith({ extrinsics: [] });
+    await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env,
+      url("/api/v1/extrinsics"),
+    );
+    const sql = captures.sql.find((s) => /FROM extrinsics/.test(s));
+    assert.ok(sql);
+    assert.ok(!/success = \?/.test(sql));
+  });
+
   test("forces module-index for a module-only feed path (#2082)", async () => {
     const { env, captures } = dbWith({ extrinsics: [] });
     await handleExtrinsics(

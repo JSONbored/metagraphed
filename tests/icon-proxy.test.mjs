@@ -609,6 +609,50 @@ test("allowlisted host, 5xx from an aggregator -> short transient negative cache
   assert.match(res.headers.get("cache-control"), /max-age=600/);
 });
 
+test("allowlisted host, 429 rate-limit from an aggregator -> short transient negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("", { status: 429 }),
+  });
+  assert.equal(res.status, 404);
+  // 429 is a retryable upstream blip, not a stable "no" — a real icon must
+  // retry in 10m, not be blackholed for 24h.
+  assert.match(res.headers.get("cache-control"), /max-age=600/);
+});
+
+test("allowlisted host, 403 bot-block from an aggregator -> short transient negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("", { status: 403 }),
+  });
+  assert.equal(res.status, 404);
+  // 403 is the aggregators' anti-bot block (the failure this module exists to
+  // survive), so it must take the short retry window, not the 24h stable one.
+  assert.match(res.headers.get("cache-control"), /max-age=600/);
+});
+
+test("allowlisted host, genuine 404 from an aggregator -> stable 24h negative cache", async () => {
+  const env = {
+    METAGRAPH_ICON_ALLOWED_HOSTS: "example.com",
+    METAGRAPH_ARCHIVE: { get: async () => null, put: async () => {} },
+  };
+  const res = await call("?host=example.com", {
+    env,
+    fetchImpl: async () => new Response("", { status: 404 }),
+  });
+  assert.equal(res.status, 404);
+  // A clean 404 is a real "no icon" — it keeps the long stable window.
+  assert.match(res.headers.get("cache-control"), /max-age=86400/);
+});
+
 test("aborts a hung upstream fetch via the timeout controller", async () => {
   vi.useFakeTimers();
   try {

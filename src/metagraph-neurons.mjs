@@ -35,10 +35,13 @@ export const NEURON_INSERT_COLUMNS = [
 ];
 
 export const GLOBAL_VALIDATOR_SORTS = [
-  "subnet_count",
-  "uid_count",
   "avg_validator_trust",
   "max_validator_trust",
+  "stake_dominance",
+  "subnet_count",
+  "total_emission",
+  "total_stake",
+  "uid_count",
 ];
 export const DEFAULT_GLOBAL_VALIDATOR_SORT = "subnet_count";
 export const GLOBAL_VALIDATOR_LIMIT_DEFAULT = 20;
@@ -209,12 +212,30 @@ function buildGlobalValidatorEntry(entry) {
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
+    total_stake_tao: roundTao(entry.stakeTotal),
+    total_emission_tao: roundTao(entry.emissionTotal),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
     latest_block_number: entry.latestBlockNumber,
     subnets,
   };
+}
+
+function applyStakeDominance(validators) {
+  const networkStakeTotal = validators.reduce(
+    (sum, entry) => sum + numberOrZero(entry.total_stake_tao),
+    0,
+  );
+  if (!(networkStakeTotal > 0) || !Number.isFinite(networkStakeTotal)) {
+    return validators.map((entry) => ({ ...entry, stake_dominance: null }));
+  }
+  return validators.map((entry) => ({
+    ...entry,
+    stake_dominance: round(
+      numberOrZero(entry.total_stake_tao) / networkStakeTotal,
+    ),
+  }));
 }
 
 export function buildGlobalValidators(
@@ -256,6 +277,8 @@ export function buildGlobalValidators(
         coldkeys: new Map(),
         netuids: new Set(),
         uidCount: 0,
+        stakeTotal: 0,
+        emissionTotal: 0,
         validatorTrustTotal: 0,
         validatorTrustCount: 0,
         maxValidatorTrust: null,
@@ -273,6 +296,8 @@ export function buildGlobalValidators(
     }
     entry.netuids.add(netuid);
     entry.uidCount += 1;
+    entry.stakeTotal += stake;
+    entry.emissionTotal += emission;
     if (trust != null) {
       entry.validatorTrustTotal += trust;
       entry.validatorTrustCount += 1;
@@ -313,14 +338,14 @@ export function buildGlobalValidators(
     });
   }
 
-  const validators = [...validatorsByHotkey.values()]
-    .map(buildGlobalValidatorEntry)
-    .sort(
-      (a, b) =>
-        validatorSortValue(b, normalizedSort) -
-          validatorSortValue(a, normalizedSort) ||
-        a.hotkey.localeCompare(b.hotkey),
-    );
+  const validators = applyStakeDominance(
+    [...validatorsByHotkey.values()].map(buildGlobalValidatorEntry),
+  ).sort(
+    (a, b) =>
+      validatorSortValue(b, normalizedSort) -
+        validatorSortValue(a, normalizedSort) ||
+      a.hotkey.localeCompare(b.hotkey),
+  );
 
   return {
     schema_version: 1,
@@ -333,8 +358,14 @@ export function buildGlobalValidators(
   };
 }
 
+const GLOBAL_VALIDATOR_SORT_FIELDS = {
+  total_stake: "total_stake_tao",
+  total_emission: "total_emission_tao",
+};
+
 function validatorSortValue(row, key) {
-  const value = row?.[key];
+  const field = GLOBAL_VALIDATOR_SORT_FIELDS[key] ?? key;
+  const value = row?.[field];
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : Number.NEGATIVE_INFINITY;

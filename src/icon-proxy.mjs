@@ -290,7 +290,19 @@ export async function handleIconProxy(request, env, url, options = {}) {
         signal: controller.signal,
       }).finally(() => clearTimeout(timeout));
       if (!res.ok) {
-        if (res.status >= 500) transient = true; // upstream blip, not a real "no"
+        // Transient (retry soon), not a stable "no": 5xx upstream blips, the
+        // retryable 4xx (408 timeout, 429 rate-limit), and 403 — the anti-bot
+        // block these aggregators return to non-browser UAs, which is the exact
+        // prod failure this module works around (see the BROWSER_UA note above).
+        // Blackholing any of these as a 24h stable negative would drop a real,
+        // resolvable icon for a full day.
+        if (
+          res.status >= 500 ||
+          res.status === 429 ||
+          res.status === 408 ||
+          res.status === 403
+        )
+          transient = true;
         continue;
       }
       const ct = res.headers.get("content-type") || "image/png";

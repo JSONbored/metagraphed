@@ -1271,6 +1271,11 @@
           "netuid": { "type": "integer", "minimum": 0 },
           "slug": { "type": "string" },
           "name": { "type": "string" },
+          "block": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Block height at which this subnet was registered on-chain — the same field the subnets collection exposes for sorting and range filters."
+          },
           "max_uids": { "type": "integer", "minimum": 0 },
           "validator_count": { "type": "integer", "minimum": 0 },
           "max_validators": { "type": "integer", "minimum": 0 },
@@ -1525,6 +1530,9 @@
           "coldkey_count",
           "subnet_count",
           "uid_count",
+          "total_stake_tao",
+          "total_emission_tao",
+          "stake_dominance",
           "avg_validator_trust",
           "max_validator_trust",
           "latest_captured_at",
@@ -1537,6 +1545,13 @@
           "coldkey_count": { "type": "integer", "minimum": 0 },
           "subnet_count": { "type": "integer", "minimum": 0 },
           "uid_count": { "type": "integer", "minimum": 0 },
+          "total_stake_tao": { "type": "number", "minimum": 0 },
+          "total_emission_tao": { "type": "number", "minimum": 0 },
+          "stake_dominance": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 1
+          },
           "avg_validator_trust": { "type": ["number", "null"] },
           "max_validator_trust": { "type": ["number", "null"] },
           "latest_captured_at": {
@@ -1554,7 +1569,7 @@
       "GlobalValidatorsArtifact": {
         "type": "object",
         "additionalProperties": true,
-        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, or validator trust, served live from the neurons D1 tier at /api/v1/validators (no static file). Per-membership stake/emission values are exposed inside subnets[] and intentionally not summed across subnets.",
+        "description": "Network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships and ranked by subnet footprint, UID footprint, validator trust, or cross-subnet stake/emission totals, served live from the neurons D1 tier at /api/v1/validators (no static file).",
         "required": [
           "schema_version",
           "sort",
@@ -1567,10 +1582,13 @@
           "sort": {
             "type": "string",
             "enum": [
-              "subnet_count",
-              "uid_count",
               "avg_validator_trust",
-              "max_validator_trust"
+              "max_validator_trust",
+              "stake_dominance",
+              "subnet_count",
+              "total_emission",
+              "total_stake",
+              "uid_count"
             ]
           },
           "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
