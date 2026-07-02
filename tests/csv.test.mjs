@@ -94,10 +94,14 @@ test("rowsToCsv keeps negative numeric values unmodified", () => {
       stake_delta_tao: -1.5,
       validators_delta: -2,
       active: false,
+      enabled: true,
     },
   ]);
 
-  assert.equal(csv, "stake_delta_tao,validators_delta,active\r\n-1.5,-2,false");
+  assert.equal(
+    csv,
+    "stake_delta_tao,validators_delta,active,enabled\r\n-1.5,-2,false,true",
+  );
 });
 
 test("rowsToCsv neutralizes spreadsheet formula trigger prefixes", () => {
@@ -107,13 +111,15 @@ test("rowsToCsv neutralizes spreadsheet formula trigger prefixes", () => {
       delta: "+100",
       note: "@SUM(A1)",
       tab: "\tleak",
+      cr: "\rleak",
+      spaced: " =cmd",
       plain: "safe",
     },
   ]);
 
   assert.equal(
     csv,
-    "name,delta,note,tab,plain\r\n'=cmd,'+100,'@SUM(A1),'\tleak,safe",
+    "name,delta,note,tab,cr,spaced,plain\r\n'=cmd,'+100,'@SUM(A1),'\tleak,\"'\rleak\",' =cmd,safe",
   );
 });
 

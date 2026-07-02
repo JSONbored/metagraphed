@@ -5,7 +5,7 @@ import {
   buildCsvExample,
   GLOBAL_VALIDATORS_CSV_COLUMNS,
   SUBNET_MOVERS_CSV_COLUMNS,
-} from "../workers/csv.mjs";
+} from "./csv-export.mjs";
 
 export const CONTRACT_VERSION = "2026-07-01.1";
 export const SCHEMA_VERSION = 1;
