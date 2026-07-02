@@ -104,6 +104,104 @@ describe("composeCompareData", () => {
     assert.equal(s.economics.open_slots, 3);
   });
 
+  test("coerces string-typed D1 numeric cells to numbers across every tier", () => {
+    // Some D1 read paths hand numeric columns back as strings; the compare
+    // projection must not leak those as strings into the CompareArtifact
+    // numeric fields. registration_allowed (a boolean) and absent/null cells
+    // are left exactly as they arrive.
+    const data = composeCompareData({
+      requestedNetuids: [1, 2],
+      dimensions: ["structure", "economics", "health"],
+      subnetMeta,
+      structureRows: [
+        {
+          netuid: 1,
+          completeness_score: "80",
+          surface_count: "5",
+          operational_interface_count: "2",
+        },
+      ],
+      economicsRows: [
+        {
+          netuid: 2,
+          registration_cost_tao: "1.5",
+          registration_allowed: true,
+          open_slots: "3",
+          emission_share: "0.12",
+          alpha_price_tao: "0.04",
+          validator_count: "8",
+          miner_count: "64",
+          total_stake_tao: "1200",
+          miner_readiness: "72",
+        },
+      ],
+      healthRows: [
+        { netuid: 1, surface_count: "5", ok_count: "4", avg_latency_ms: "120" },
+      ],
+      observedAt: null,
+    });
+
+    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s2 = data.subnets.find((s) => s.netuid === 2);
+    assert.deepEqual(s1.structure, {
+      completeness_score: 80,
+      surface_count: 5,
+      operational_interface_count: 2,
+    });
+    assert.deepEqual(s1.health, {
+      surface_count: 5,
+      ok_count: 4,
+      avg_latency_ms: 120,
+    });
+    assert.deepEqual(s2.economics, {
+      registration_cost_tao: 1.5,
+      registration_allowed: true, // boolean preserved, not coerced
+      open_slots: 3,
+      emission_share: 0.12,
+      alpha_price_tao: 0.04,
+      validator_count: 8,
+      miner_count: 64,
+      total_stake_tao: 1200,
+      miner_readiness: 72,
+    });
+
+    // A real number and a null cell pass through untouched.
+    const passthrough = composeCompareData({
+      requestedNetuids: [1],
+      dimensions: ["structure"],
+      subnetMeta,
+      structureRows: [
+        {
+          netuid: 1,
+          completeness_score: null,
+          surface_count: 5,
+          operational_interface_count: 2,
+        },
+      ],
+      economicsRows: [],
+      healthRows: [],
+      observedAt: null,
+    });
+    assert.equal(passthrough.subnets[0].structure.completeness_score, null);
+    assert.equal(passthrough.subnets[0].structure.surface_count, 5);
+
+    // A blank or non-numeric string is left as-is rather than turned into 0/NaN.
+    const oddCells = composeCompareData({
+      requestedNetuids: [1],
+      dimensions: ["health"],
+      subnetMeta,
+      structureRows: [],
+      economicsRows: [],
+      healthRows: [
+        { netuid: 1, surface_count: "", ok_count: "n/a", avg_latency_ms: "9" },
+      ],
+      observedAt: null,
+    });
+    assert.equal(oddCells.subnets[0].health.surface_count, "");
+    assert.equal(oddCells.subnets[0].health.ok_count, "n/a");
+    assert.equal(oddCells.subnets[0].health.avg_latency_ms, 9);
+  });
+
   test("composeCompareData output validates against the CompareArtifact contract", async () => {
     const generatedAt = "2026-06-24T12:00:00.000Z";
     const openapi = buildOpenApiArtifact(
