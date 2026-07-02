@@ -19,6 +19,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
+  loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
   parseConcentrationHistoryWindow,
@@ -259,7 +260,9 @@ export const MCP_INSTRUCTIONS =
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
   "fee/tip market series plus top payers, get_chain_transfers network-wide " +
-  "native-TAO transfer volume plus top senders/receivers, get_network_activity the daily " +
+  "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
+  "the network-wide stake/emission decentralization scorecard across all subnets, " +
+  "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
   "list_chain_events the raw recent decoded event feed (filterable by " +
@@ -1748,6 +1751,26 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_chain_concentration",
+    title: "Get network-wide stake/emission concentration",
+    description:
+      "Fetch the network-wide stake and emission decentralization scorecard: " +
+      "Gini, HHI, Nakamoto coefficient, top-percentile shares, and entropy over " +
+      "per-UID, per-entity (coldkeys collapsed ACROSS subnets into the true " +
+      "network control distribution — one operator running validators in ten " +
+      "subnets counts once), and validator-only distributions, plus the " +
+      "subnet_count the snapshot spans. The network-level companion of " +
+      "get_subnet_concentration. Mirrors GET /api/v1/chain/concentration.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainConcentration(mcpD1Runner(ctx));
     },
   },
   {
@@ -4861,6 +4884,24 @@ const TOOL_OUTPUT_SCHEMAS = {
     properties: {
       schema_version: { type: "integer" },
       netuid: { type: "integer" },
+      neuron_count: { type: "integer" },
+      entity_count: { type: "integer" },
+      uids_per_entity: { type: ["number", "null"] },
+      captured_at: NULLABLE_STRING,
+      stake: { type: ["object", "null"] },
+      emission: { type: ["object", "null"] },
+      entity_stake: { type: ["object", "null"] },
+      entity_emission: { type: ["object", "null"] },
+      validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_chain_concentration: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer" },
       neuron_count: { type: "integer" },
       entity_count: { type: "integer" },
       uids_per_entity: { type: ["number", "null"] },
