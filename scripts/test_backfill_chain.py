@@ -31,5 +31,34 @@ class BackfillRange(unittest.TestCase):
         self.assertEqual((frm, to), (7_000_000, 8_500_000))
 
 
+class Flush(unittest.TestCase):
+    def test_flush_upserts_every_decoded_tier_incl_chain_events(self):
+        # Regression: _flush must upsert every tier rows_from_decoded produces. The
+        # live indexer upserts chain_events (index-chain.py) and the module docstring
+        # promises "zero decode/schema drift", so a backfilled range must fill the
+        # generic all-events tier too — otherwise deep-history /api/v1/chain-events
+        # reads are silently empty for backfilled blocks.
+        calls = []
+        original = bf.ic._upsert
+        bf.ic._upsert = lambda conn, table, cols, rows, conflict: calls.append(table)
+        try:
+            bf._flush(
+                object(),
+                [
+                    {
+                        "blocks": [{"block_number": 1}],
+                        "extrinsics": [],
+                        "account_events": [],
+                        "chain_events": [{"block_number": 1, "event_index": 0}],
+                    }
+                ],
+            )
+        finally:
+            bf.ic._upsert = original
+        self.assertEqual(
+            calls, ["blocks", "extrinsics", "account_events", "chain_events"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

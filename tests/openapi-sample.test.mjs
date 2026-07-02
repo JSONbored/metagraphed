@@ -359,6 +359,97 @@ describe("sampleFromSchema", () => {
     assert.deepEqual(emptySample.counterparties, []);
   });
 
+  test("chain transfer-volume samples keep the leaderboard consistent with the total", () => {
+    const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
+    const partySchema = {
+      type: "object",
+      required: ["address", "volume_tao", "transfer_count"],
+      properties: {
+        address: { type: "string", pattern: ss58Pattern },
+        volume_tao: { type: "number" },
+        transfer_count: { type: "integer" },
+      },
+    };
+    const transfersSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "total_volume_tao",
+        "transfer_count",
+        "unique_senders",
+        "unique_receivers",
+        "top_sender_share",
+        "top_senders",
+        "top_receivers",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        total_volume_tao: { type: "number" },
+        transfer_count: { type: "integer" },
+        unique_senders: { type: "integer" },
+        unique_receivers: { type: "integer" },
+        top_sender_share: { type: ["number", "null"] },
+        top_senders: { type: "array", items: partySchema },
+        top_receivers: { type: "array", items: partySchema },
+      },
+    };
+    const sample = s(transfersSchema, "data");
+
+    // The worked example is internally consistent: the two top senders' volume
+    // sums to exactly the share of the total the endpoint reports.
+    assert.equal(sample.total_volume_tao, 100);
+    assert.equal(sample.top_sender_share, 0.8);
+    assert.equal(sample.transfer_count, 12);
+    assert.equal(sample.unique_senders, 5);
+    assert.equal(sample.unique_receivers, 7);
+    assert.deepEqual(sample.top_senders, [
+      {
+        address: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        volume_tao: 60,
+        transfer_count: 3,
+      },
+      {
+        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        volume_tao: 20,
+        transfer_count: 2,
+      },
+    ]);
+    assert.deepEqual(sample.top_receivers, [
+      {
+        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        volume_tao: 55,
+        transfer_count: 4,
+      },
+      {
+        address: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        volume_tao: 30,
+        transfer_count: 2,
+      },
+    ]);
+    const topSendersVolume = sample.top_senders.reduce(
+      (sum, party) => sum + party.volume_tao,
+      0,
+    );
+    assert.equal(
+      topSendersVolume / sample.total_volume_tao,
+      sample.top_sender_share,
+    );
+
+    // A shape missing one leaderboard array is not a transfers artifact and is
+    // left untouched (guard branch).
+    const notTransfersSchema = JSON.parse(JSON.stringify(transfersSchema));
+    delete notTransfersSchema.properties.top_receivers;
+    notTransfersSchema.required = notTransfersSchema.required.filter(
+      (key) => key !== "top_receivers",
+    );
+    const untouched = s(notTransfersSchema, "data");
+    assert.notEqual(untouched.total_volume_tao, 100);
+  });
+
   test("bounds recursion: deep objects drop optionals, deep arrays bottom out", () => {
     // Nest optional objects past OPTIONAL_DEPTH -> deep optionals are dropped.
     let obj = { type: "string" };

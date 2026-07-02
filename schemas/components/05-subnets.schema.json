@@ -463,6 +463,11 @@
           "native_slug": {
             "type": ["string", "null"]
           },
+          "previously_known_as": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647)."
+          },
           "notes": {
             "type": ["string", "null"]
           },
@@ -1641,6 +1646,48 @@
           }
         }
       },
+      "SubnetIdentityHistoryEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data.",
+        "required": ["observed_at", "identity_hash"],
+        "properties": {
+          "block_number": { "type": ["integer", "null"], "minimum": 0 },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "subnet_name": { "type": ["string", "null"] },
+          "symbol": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "github_repo": { "type": ["string", "null"], "format": "uri" },
+          "subnet_url": { "type": ["string", "null"], "format": "uri" },
+          "discord": { "type": ["string", "null"], "maxLength": 200 },
+          "logo_url": { "type": ["string", "null"], "format": "uri" },
+          "identity_hash": { "type": "string" }
+        }
+      },
+      "SubnetIdentityHistoryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging.",
+        "required": ["schema_version", "netuid", "entry_count", "entries"],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "netuid": { "type": "integer", "minimum": 0 },
+          "entry_count": { "type": "integer", "minimum": 0 },
+          "limit": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "offset": { "type": ["integer", "null"], "minimum": 0 },
+          "next_cursor": { "type": ["string", "null"] },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubnetIdentityHistoryEntry"
+            }
+          }
+        }
+      },
       "EconomicsTrendsDay": {
         "type": "object",
         "additionalProperties": false,
@@ -2308,6 +2355,52 @@
             "items": { "$ref": "#/components/schemas/ChainSignerEntry" }
           }
         }
+      },
+      "ChainTransferParty": {
+        "type": "object",
+        "description": "One account on a chain-transfers leaderboard: its total transfer volume and count over the window.",
+        "required": ["address", "volume_tao", "transfer_count"],
+        "properties": {
+          "address": { "type": "string" },
+          "volume_tao": { "type": "number" },
+          "transfer_count": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "ChainTransfersArtifact": {
+        "type": "object",
+        "description": "Network-wide native-TAO transfer analytics over a 7d/30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/chain/transfers (no static file); zeros + empty leaderboards when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "total_volume_tao",
+          "transfer_count",
+          "unique_senders",
+          "unique_receivers",
+          "top_sender_share",
+          "top_senders",
+          "top_receivers"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_volume_tao": { "type": "number" },
+          "transfer_count": { "type": "integer", "minimum": 0 },
+          "unique_senders": { "type": "integer", "minimum": 0 },
+          "unique_receivers": { "type": "integer", "minimum": 0 },
+          "top_sender_share": { "type": ["number", "null"] },
+          "top_senders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainTransferParty" }
+          },
+          "top_receivers": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainTransferParty" }
+          }
+        },
+        "additionalProperties": false
       },
       "ChainFeeDay": {
         "type": "object",

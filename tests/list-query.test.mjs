@@ -38,10 +38,51 @@ function pageLink(path) {
 }
 
 describe("list-query field projection", () => {
-  test("rejects malformed field lists", () => {
+  test("rejects empty or whitespace-only field lists", () => {
+    for (const path of [
+      "/api/v1/subnets?fields=",
+      "/api/v1/subnets?fields=%20%20",
+      "/api/v1/subnets?fields=,,",
+    ]) {
+      const result = applyQueryFilters(
+        { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+        query(path),
+        "subnets",
+      );
+
+      assert.equal(result.error.parameter, "fields");
+      assert.match(result.error.message, /comma-separated/);
+    }
+  });
+
+  test("trims field tokens and drops empty segments", () => {
     const result = applyQueryFilters(
       { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
-      query("/api/v1/subnets?fields=netuid,,name"),
+      query("/api/v1/subnets?fields=,name"),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.meta.projection.fields, ["name"]);
+    assert.deepEqual(result.data.subnets, [{ name: "Allways" }]);
+  });
+
+  test("trims surrounding whitespace on field names", () => {
+    const result = applyQueryFilters(
+      { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+      query("/api/v1/subnets?fields=netuid,%20name"),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.meta.projection.fields, ["netuid", "name"]);
+    assert.deepEqual(result.data.subnets, [{ netuid: 7, name: "Allways" }]);
+  });
+
+  test("rejects genuinely malformed field names", () => {
+    const result = applyQueryFilters(
+      { subnets: [{ netuid: 7, name: "Allways", slug: "allways" }] },
+      query("/api/v1/subnets?fields=netuid,@name"),
       "subnets",
     );
 
@@ -465,6 +506,63 @@ describe("list-query integration_readiness (#2085)", () => {
     );
     assert.deepEqual(netuids(result), [2, 3]);
   });
+});
+
+// #2587: endpoint-pools and pools are duplicate collection configs (same data_key,
+// same filters/sort/rangeFilters). REST exposes endpoint-pools; pools is the
+// canonical id for the artifact data_key. Both must accept min_/max_ on counts.
+describe("list-query endpoint pool count range filters (#2587)", () => {
+  const data = {
+    pools: [
+      { id: "finney-rpc", eligible_count: 2, endpoint_count: 5 },
+      { id: "finney-wss", eligible_count: 8, endpoint_count: 10 },
+      { id: "finney-archive", eligible_count: 0, endpoint_count: 3 },
+      { id: "test-rpc" }, // eligible_count absent
+      { id: "test-wss", eligible_count: "x" }, // non-numeric
+    ],
+  };
+  const poolIds = (result) => result.data.pools.map((r) => r.id);
+
+  for (const collection of ["endpoint-pools", "pools"]) {
+    test(`${collection}: min_eligible_count keeps rows >= the bound and drops absent/non-numeric`, () => {
+      const result = applyQueryFilters(
+        data,
+        query("/api/v1/endpoint-pools?min_eligible_count=2"),
+        collection,
+      );
+      assert.deepEqual(poolIds(result), ["finney-rpc", "finney-wss"]);
+    });
+
+    test(`${collection}: no range param is a no-op (every row passes)`, () => {
+      const result = applyQueryFilters(
+        data,
+        query("/api/v1/endpoint-pools"),
+        collection,
+      );
+      assert.deepEqual(poolIds(result), [
+        "finney-rpc",
+        "finney-wss",
+        "finney-archive",
+        "test-rpc",
+        "test-wss",
+      ]);
+    });
+
+    test(`${collection}: contradictory min_ > max_ on the same field is a query error`, () => {
+      const bad = applyQueryFilters(
+        data,
+        query(
+          "/api/v1/endpoint-pools?min_eligible_count=9&max_eligible_count=2",
+        ),
+        collection,
+      );
+      assert.equal(bad.error.parameter, "min_eligible_count");
+      assert.match(
+        bad.error.message,
+        /must not be greater than max_eligible_count/,
+      );
+    });
+  }
 });
 
 describe("list-query pagination Link header", () => {

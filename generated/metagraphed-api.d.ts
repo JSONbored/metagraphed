@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?limit (<=100). */
+        /** Fetch the per-counterparty fund-flow rollup for one account — or, with ?counterparty=<ss58>, pair-level native-TAO transfer evidence for one relationship — computed live from the account_events D1 tier. ?counterparty switches the route from ranked list mode into relationship drilldown mode; ?limit is 1-100, default 20 in list mode, and default 50 when ?counterparty is present. */
         get: operations["accountCounterparties"];
         put?: never;
         post?: never;
@@ -429,6 +429,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/concentration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainConcentration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -455,6 +472,23 @@ export interface paths {
         };
         /** Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold. */
         get: operations["chainSigners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. */
+        get: operations["chainTransfers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1432,6 +1466,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/identity-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. */
+        get: operations["subnetIdentityHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/metagraph": {
         parameters: {
             query?: never;
@@ -1980,6 +2031,8 @@ export interface components {
                 integration_readiness?: number;
                 name?: string;
                 netuid: number;
+                /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+                previously_known_as?: string[];
                 readiness?: components["schemas"]["IntegrationReadiness"];
                 service_count: number;
                 service_kinds?: string[];
@@ -1999,6 +2052,8 @@ export interface components {
             integration_readiness?: number;
             name?: string;
             netuid: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history (#1647), excluding the current name. */
+            previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
             service_count: number;
             services: ({
@@ -2427,6 +2482,22 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null. */
+        ChainConcentrationArtifact: {
+            captured_at: string | null;
+            emission: components["schemas"]["ConcentrationMetrics"];
+            entity_count: number;
+            entity_emission: components["schemas"]["ConcentrationMetrics"];
+            entity_stake: components["schemas"]["ConcentrationMetrics"];
+            neuron_count: number;
+            schema_version: number;
+            stake: components["schemas"]["ConcentrationMetrics"];
+            subnet_count: number;
+            uids_per_entity: number | null;
+            validator_stake: components["schemas"]["ConcentrationMetrics"];
+        } & {
+            [key: string]: unknown;
+        };
         /** @description One raw pallet-level chain event from the Postgres-backed all-events tier (ADR 0013), distinct from the curated account-attributed AccountEvent. pallet.method is the runtime event id (e.g. SubtensorModule.NeuronRegistered); args is the decoded event arguments (object, array, or null); phase is the dispatch phase (ApplyExtrinsic/Initialization/Finalization); extrinsic_index is the 0-based index of the emitting extrinsic in the block (null for non-ApplyExtrinsic phases); observed_at is the block time as an epoch-ms integer. */
         ChainEvent: {
             args?: Record<string, never> | unknown[] | null;
@@ -2514,6 +2585,26 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account on a chain-transfers leaderboard: its total transfer volume and count over the window. */
+        ChainTransferParty: {
+            address: string;
+            transfer_count: number;
+            volume_tao: number;
+        };
+        /** @description Network-wide native-TAO transfer analytics over a 7d/30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume. Served live from the account_events D1 tier at /api/v1/chain/transfers (no static file); zeros + empty leaderboards when cold. */
+        ChainTransfersArtifact: {
+            /** Format: date-time */
+            observed_at: string | null;
+            schema_version: number;
+            top_receivers: components["schemas"]["ChainTransferParty"][];
+            top_sender_share: number | null;
+            top_senders: components["schemas"]["ChainTransferParty"][];
+            total_volume_tao: number;
+            transfer_count: number;
+            unique_receivers: number;
+            unique_senders: number;
+            window: string | null;
+        };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
                 added: components["schemas"]["ArtifactDiffEntry"][];
@@ -2583,6 +2674,23 @@ export interface components {
                 surface_count?: number;
             } | null;
         };
+        /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
+        ConcentrationMetrics: ({
+            entropy?: number | null;
+            entropy_normalized?: number | null;
+            gini?: number | null;
+            hhi?: number | null;
+            hhi_normalized?: number | null;
+            holders?: number;
+            nakamoto_coefficient?: number | null;
+            top_10pct_share?: number | null;
+            top_1pct_share?: number | null;
+            top_20pct_share?: number | null;
+            top_5pct_share?: number | null;
+            total?: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
         ContractsArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: components["schemas"]["ArtifactContractEntry"][];
             /** @constant */
@@ -4564,6 +4672,8 @@ export interface components {
             netuid: number;
             notes?: string | null;
             participant_count?: number;
+            /** @description Distinct prior on-chain subnet_name values from identity history, excluding the current name, newest-seen first. Served live from the subnet_identity_history D1 tier (#1647). */
+            previously_known_as?: string[];
             probed_surface_count?: number;
             provenance: {
                 [key: string]: unknown;
@@ -4676,6 +4786,35 @@ export interface components {
             window?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** @description Append-only on-chain identity timeline for one subnet (#1647), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file). Newest first; page with limit (<=1000) / offset or ?cursor= for stable keyset paging. */
+        SubnetIdentityHistoryArtifact: {
+            entries: components["schemas"]["SubnetIdentityHistoryEntry"][];
+            entry_count: number;
+            limit?: number | null;
+            netuid: number;
+            next_cursor?: string | null;
+            offset?: number | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One observed on-chain SubnetIdentitiesV3 snapshot for a subnet (#1647). Operator-controlled untrusted data. */
+        SubnetIdentityHistoryEntry: {
+            block_number?: number | null;
+            description?: string | null;
+            discord?: string | null;
+            /** Format: uri */
+            github_repo?: string | null;
+            identity_hash: string;
+            /** Format: uri */
+            logo_url?: string | null;
+            /** Format: date-time */
+            observed_at: string | null;
+            subnet_name?: string | null;
+            /** Format: uri */
+            subnet_url?: string | null;
+            symbol?: string | null;
         };
         SubnetIndexEntry: {
             block?: number;
@@ -6949,6 +7088,9 @@ export interface operations {
                      *         "name": "Example Subnet",
                      *         "netuid": 7,
                      *         "notes": "Example description.",
+                     *         "previously_known_as": [
+                     *           "example"
+                     *         ],
                      *         "readiness": {
                      *           "components": {},
                      *           "readiness_tier": "buildable",
@@ -8454,6 +8596,180 @@ export interface operations {
             };
         };
     };
+    chainConcentration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_count": 1,
+                     *         "entity_emission": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "entity_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "neuron_count": 1,
+                     *         "schema_version": 1,
+                     *         "stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         },
+                     *         "subnet_count": 1,
+                     *         "uids_per_entity": 0.5,
+                     *         "validator_stake": {
+                     *           "entropy": 0.5,
+                     *           "entropy_normalized": 0.5,
+                     *           "gini": 0.5,
+                     *           "hhi": 0.5,
+                     *           "hhi_normalized": 0.5,
+                     *           "holders": 1,
+                     *           "nakamoto_coefficient": 1,
+                     *           "top_10pct_share": 0.5,
+                     *           "top_1pct_share": 0.5,
+                     *           "top_20pct_share": 0.5,
+                     *           "top_5pct_share": 0.5,
+                     *           "total": 1
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainConcentrationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainFees: {
         parameters: {
             query?: {
@@ -8649,6 +8965,139 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainSignersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainTransfers: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "top_receivers": [
+                     *           {
+                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "transfer_count": 4,
+                     *             "volume_tao": 55
+                     *           },
+                     *           {
+                     *             "address": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "transfer_count": 2,
+                     *             "volume_tao": 30
+                     *           }
+                     *         ],
+                     *         "top_sender_share": 0.8,
+                     *         "top_senders": [
+                     *           {
+                     *             "address": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "transfer_count": 3,
+                     *             "volume_tao": 60
+                     *           },
+                     *           {
+                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "transfer_count": 2,
+                     *             "volume_tao": 20
+                     *           }
+                     *         ],
+                     *         "total_volume_tao": 100,
+                     *         "transfer_count": 12,
+                     *         "unique_receivers": 7,
+                     *         "unique_senders": 5,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainTransfersArtifact"];
                     };
                 };
             };
@@ -9947,6 +10396,10 @@ export interface operations {
             query?: {
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
+                min_eligible_count?: number;
+                max_eligible_count?: number;
+                min_endpoint_count?: number;
+                max_endpoint_count?: number;
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15108,6 +15561,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
@@ -16863,6 +17319,122 @@ export interface operations {
             };
         };
     };
+    subnetIdentityHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "entries": [
+                     *           {
+                     *             "identity_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z"
+                     *           }
+                     *         ],
+                     *         "entry_count": 1,
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetIdentityHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetMetagraph: {
         parameters: {
             query?: {
@@ -17778,6 +18350,9 @@ export interface operations {
                      *           "netuid": 7,
                      *           "notes": "Example description.",
                      *           "participant_count": 1,
+                     *           "previously_known_as": [
+                     *             "example"
+                     *           ],
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,

@@ -18,6 +18,11 @@ import {
   handleTrajectory,
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.mjs";
+import {
+  unsupportedWindowMessage,
+  HISTORY_WINDOWS,
+} from "../src/neuron-history.mjs";
+import { UPTIME_WINDOWS } from "../workers/config.mjs";
 
 const NETUID = 7;
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
@@ -148,6 +153,10 @@ describe("handleEconomicsTrends", () => {
     const res = await handleEconomicsTrends(req("/"), {}, url("/?window=99d"));
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("99d", HISTORY_WINDOWS),
+    );
   });
 
   test("aggregates per-day across subnets (sums + weighted/median price)", async () => {
@@ -249,6 +258,10 @@ describe("handleUptime", () => {
     const res = await handleUptime(req("/"), {}, NETUID, url("/?window=30d"));
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
+    assert.equal(
+      body.error.message,
+      unsupportedWindowMessage("30d", UPTIME_WINDOWS),
+    );
   });
 
   test("rejects duplicate window parameters", async () => {
@@ -359,6 +372,55 @@ describe("handleLeaderboards", () => {
     assert.equal(body.data.board, "most-reliable");
     assert.equal(body.data.boards["most-reliable"].length, 1);
     assert.equal(body.data.boards["most-reliable"][0].netuid, 7);
+  });
+
+  test("healthiest SQL averages only ok surface_status latencies", async () => {
+    const surfaceStatusSql = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind() {
+              return {
+                async all() {
+                  if (/FROM surface_status/.test(sql)) {
+                    surfaceStatusSql.push(sql);
+                    return {
+                      results: [
+                        {
+                          netuid: 1,
+                          total: 2,
+                          ok_count: 1,
+                          avg_latency_ms: 100,
+                        },
+                      ],
+                    };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    await json(
+      await handleLeaderboards(
+        req("/"),
+        env,
+        url("/?board=healthiest&limit=5"),
+      ),
+    );
+    const healthSql = surfaceStatusSql.find((sql) =>
+      /SUM\(CASE WHEN status = 'ok'/.test(sql),
+    );
+    assert.ok(
+      healthSql,
+      "expected leaderboards healthRows surface_status query",
+    );
+    assert.match(healthSql, /status = 'ok'/);
+    assert.match(healthSql, /AVG\(CASE WHEN/);
+    assert.doesNotMatch(healthSql, /AVG\(latency_ms\)/);
   });
 });
 

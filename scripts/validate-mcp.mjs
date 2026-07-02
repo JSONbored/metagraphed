@@ -368,6 +368,31 @@ assert.ok(
   Array.isArray(vals.validators),
   "list_subnet_validators must return validators[]",
 );
+const yieldCard = await callOk("get_subnet_yield", { netuid: 7 });
+assert.ok(
+  Array.isArray(yieldCard.neurons),
+  "get_subnet_yield must return neurons[]",
+);
+assert.equal(yieldCard.netuid, 7, "get_subnet_yield must echo the netuid");
+const stakeFlowCold = await callOk("get_subnet_stake_flow", {
+  netuid: 7,
+  window: "30d",
+});
+assert.equal(stakeFlowCold.netuid, 7, "get_subnet_stake_flow must echo netuid");
+assert.equal(
+  stakeFlowCold.net_flow_tao,
+  0,
+  "get_subnet_stake_flow must degrade to zeros on cold D1",
+);
+const moversCold = await callOk("get_subnet_movers", {
+  window: "30d",
+  sort: "stake",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(moversCold.movers),
+  "get_subnet_movers must return movers[]",
+);
 const neuron = await callOk("get_neuron", { netuid: 7, uid: 0 });
 assert.ok("neuron" in neuron, "get_neuron must return a neuron field");
 
@@ -392,6 +417,19 @@ const accountSubnets = await callOk("get_account_subnets", { ss58: SS58 });
 assert.ok(
   Array.isArray(accountSubnets.subnets),
   "get_account_subnets must return subnets[]",
+);
+const accountStakeFlow = await callOk("get_account_stake_flow", {
+  ss58: SS58,
+  window: "30d",
+});
+assert.ok(
+  Array.isArray(accountStakeFlow.subnets),
+  "get_account_stake_flow must return subnets[]",
+);
+assert.equal(
+  accountStakeFlow.address,
+  SS58,
+  "get_account_stake_flow must echo the address",
 );
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
@@ -454,6 +492,16 @@ assert.ok(
     Array.isArray(feesCold.top_fee_payers) &&
     feesCold.window === "7d",
   "get_chain_fees must return window + daily[] + top_fee_payers[] on cold D1",
+);
+const transfersCold = await callOk("get_chain_transfers", {
+  window: "7d",
+  limit: 5,
+});
+assert.ok(
+  transfersCold.window === "7d" &&
+    Array.isArray(transfersCold.top_senders) &&
+    Array.isArray(transfersCold.top_receivers),
+  "get_chain_transfers must return window + top_senders[] + top_receivers[] on cold D1",
 );
 const networkActivityCold = await callOk("get_network_activity", {
   window: "7d",

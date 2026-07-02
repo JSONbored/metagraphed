@@ -4,7 +4,7 @@
 // payloads without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -44,6 +44,12 @@ configureAnalytics({
 const NETUID = 7;
 const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
 const ctx = { waitUntil: (promise) => promise };
+
+function recentUtcDay(daysAgo) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
 
 function req(path, init = {}) {
   return new Request(`https://api.metagraph.sh${path}`, init);
@@ -109,11 +115,13 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
+    const recent = recentUtcDay(1);
+    const older = recentUtcDay(20);
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: recent,
+        date: recent,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +130,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: older,
+        date: older,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
@@ -897,19 +905,25 @@ describe("handleBulkHealthTrends", () => {
   });
 
   test("happy path includes surface_uptime_daily aggregates per window", async () => {
-    globalThis.caches = undefined;
-    const { env } = dbWith();
-    env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    const body = await json(
-      await handleBulkHealthTrends(
-        req("/api/v1/health/trends"),
-        env,
-        url("/api/v1/health/trends"),
-      ),
-    );
-    assert.equal(body.data.observed_at, LAST_RUN_AT);
-    assert.ok(body.data.windows["7d"].subnets.length > 0);
-    assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-25T00:00:00.000Z"));
+    try {
+      globalThis.caches = undefined;
+      const { env } = dbWith();
+      env.__healthMeta = { last_run_at: LAST_RUN_AT };
+      const body = await json(
+        await handleBulkHealthTrends(
+          req("/api/v1/health/trends"),
+          env,
+          url("/api/v1/health/trends"),
+        ),
+      );
+      assert.equal(body.data.observed_at, LAST_RUN_AT);
+      assert.ok(body.data.windows["7d"].subnets.length > 0);
+      assert.equal(body.data.windows["7d"].subnets[0].netuid, NETUID);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("meta block carries bulk trends artifact path", async () => {

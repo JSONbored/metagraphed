@@ -55,6 +55,8 @@ export const R2_ONLY_PATTERNS = [
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/neurons\/(?:\d+|\{uid\})\/history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/history\.json$/,
+  // On-chain identity timeline (#1647): computed live from subnet_identity_history D1.
+  /^subnets\/(?:\d+|\{netuid\})\/identity-history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/validators\.json$/,
   // Per-subnet chain-event stream (#1345): account_events filtered by netuid at
   // /api/v1/subnets/{netuid}/events — live D1, never written as a file.
@@ -94,6 +96,10 @@ export const R2_ONLY_PATTERNS = [
   /^chain\/calls\.json$/,
   /^chain\/signers\.json$/,
   /^chain\/fees\.json$/,
+  /^chain\/transfers\.json$/,
+  // Network-wide concentration aggregated across every subnet's neurons, computed
+  // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
+  /^chain\/concentration\.json$/,
   // Postgres-backed all-events tier (ADR 0013): the recent-events feed, the
   // per-block all-events list, and the activity-stats aggregate are served live
   // by the dedicated data Worker at /api/v1/chain-events* — never written as

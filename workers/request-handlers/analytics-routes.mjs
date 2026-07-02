@@ -20,8 +20,14 @@ import {
   markD1FallbackResponse,
   validateQueryParams,
 } from "./analytics.mjs";
-import { dailyLatencyColumns } from "../../src/health-sql.mjs";
-import { parseHistoryWindow } from "../../src/neuron-history.mjs";
+import {
+  dailyLatencyColumns,
+  surfaceStatusAvgLatencySql,
+} from "../../src/health-sql.mjs";
+import {
+  parseHistoryWindow,
+  unsupportedWindowMessage,
+} from "../../src/neuron-history.mjs";
 import { loadEconomicsTrends } from "../../src/economics-trends.mjs";
 import {
   formatLeaderboards,
@@ -121,12 +127,10 @@ export async function handleUptime(request, env, netuid, url) {
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
-    return errorResponse(
-      "invalid_query",
-      "Query parameter `window` must be one of: 90d, 1y.",
-      400,
-      { parameter: "window" },
-    );
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, UPTIME_WINDOWS),
+    });
   }
   const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
@@ -315,7 +319,7 @@ export async function handleLeaderboards(request, env, url) {
         `SELECT netuid,
               COUNT(*) AS total,
               SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-              AVG(latency_ms) AS avg_latency_ms
+              ${surfaceStatusAvgLatencySql()} AS avg_latency_ms
        FROM surface_status
        GROUP BY netuid`,
         [],
@@ -553,7 +557,7 @@ export async function handleCompare(request, env, url) {
           `SELECT netuid,
                 COUNT(*) AS surface_count,
                 SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
-                ROUND(AVG(latency_ms)) AS avg_latency_ms
+                ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
          FROM surface_status
          WHERE netuid IN (${requestedNetuids.map(() => "?").join(", ")})
          GROUP BY netuid`,
