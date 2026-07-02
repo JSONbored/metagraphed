@@ -139,6 +139,24 @@ test("formatBlock drops invalid observed_at strings to null", () => {
   assert.equal(out.observed_at, null);
 });
 
+test("formatBlock drops blank observed_at strings to null (not epoch 1970)", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "",
+  });
+  assert.equal(out.observed_at, null);
+});
+
+test("formatBlock drops whitespace-only observed_at strings to null", () => {
+  const out = formatBlock({
+    block_number: 1000,
+    block_hash: "0xhash",
+    observed_at: "   ",
+  });
+  assert.equal(out.observed_at, null);
+});
+
 test("formatBlock is null-safe on junk + sparse rows", () => {
   assert.equal(formatBlock(null), null);
   assert.equal(formatBlock("x"), null);
