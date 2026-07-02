@@ -110,6 +110,7 @@ describe("public contract registry", () => {
     );
 
     assert.equal(contracts.primary_domain, "api.metagraph.sh");
+    assert.equal(contracts.api_index_url, "/metagraph/api-index.json");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
     assert.equal(apiIndex.openapi_url, "/api/v1/openapi.json");
@@ -147,6 +148,17 @@ describe("public contract registry", () => {
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
+    assert.deepEqual(
+      subnetParameters.find((parameter) => parameter.name === "format").schema
+        .enum,
+      ["json", "csv"],
+    );
+    assert.equal(
+      Boolean(
+        openapi.paths["/api/v1/subnets"].get.responses[200].content["text/csv"],
+      ),
+      true,
+    );
     assert.equal(
       subnetParameters.find((parameter) => parameter.name === "fields").schema
         .pattern,

@@ -1047,6 +1047,18 @@
           }
         },
         {
+          "description": "Response format. Omit or use `json` for the standard API envelope; use `csv` for a text/csv export of the filtered list rows.",
+          "name": "format",
+          "schema": {
+            "default": "json",
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",

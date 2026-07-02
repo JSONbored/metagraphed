@@ -1328,7 +1328,16 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    listQuery("subnets"),
+    listQuery("subnets", {
+      parameters: [
+        {
+          name: "format",
+          description:
+            "Response format. Omit or use `json` for the standard API envelope; use `csv` for a text/csv export of the filtered list rows.",
+          schema: { type: "string", enum: ["json", "csv"], default: "json" },
+        },
+      ],
+    }),
   ),
   route(
     "subnet-detail",
@@ -2600,6 +2609,7 @@ export function buildContractsArtifact(generatedAt) {
     primary_domain: PRIMARY_DOMAIN,
     status_domain: null,
     base_path: ARTIFACT_BASE_PATH,
+    api_index_url: `${ARTIFACT_BASE_PATH}/api-index.json`,
     openapi_url: `${ARTIFACT_BASE_PATH}/openapi.json`,
     type_definitions_url: TYPE_DEFINITIONS_PATH,
     notes: [
@@ -2671,6 +2681,10 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
   const paths = {};
   for (const entry of API_ROUTES) {
     const openApiPath = entry.path;
+    const supportsCsvResponse = entry.query_parameters.some(
+      (parameter) =>
+        parameter.name === "format" && parameter.schema?.enum?.includes("csv"),
+    );
     const responseSchema = {
       allOf: [
         { $ref: "#/components/schemas/SuccessEnvelope" },
@@ -2718,6 +2732,17 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
                 // from the schema; enforced by validate-openapi-examples.
                 example: sampleFromSchema(responseSchema, componentSchemas),
               },
+              ...(supportsCsvResponse
+                ? {
+                    "text/csv": {
+                      schema: {
+                        type: "string",
+                        description:
+                          "CSV export of the selected list rows. The standard JSON envelope is omitted for this representation.",
+                      },
+                    },
+                  }
+                : {}),
             },
           },
           304: {
@@ -2928,6 +2953,7 @@ function listQuery(collection, options = {}) {
   }
 
   const excluded = new Set(options.exclude || []);
+  const extraParameters = options.parameters || [];
   const filterParameters = Object.entries(config.filters)
     .map(([name, schema]) => ({ name, schema }))
     .filter((parameter) => !excluded.has(parameter.name));
@@ -2945,6 +2971,7 @@ function listQuery(collection, options = {}) {
       ...filterParameters,
       ...searchParameters,
       ...rangeParameters,
+      ...extraParameters,
       {
         name: "fields",
         schema: fieldListSchema,

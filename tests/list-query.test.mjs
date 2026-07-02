@@ -838,6 +838,16 @@ describe("list-query paginationLinkHeader canonicalization", () => {
     assert.equal(next.searchParams.get("sort"), "netuid");
   });
 
+  test("extra page-link params are appended only when non-null", () => {
+    const header = paginationLinkHeader(pagedUrl("/api/v1/subnets"), meta, {
+      queryCollection: "subnets",
+      extraSearchParams: { format: "csv", omitted: null },
+    });
+    const next = new URL(header.match(/<([^>]+)>;\s*rel="next"/)[1]);
+    assert.equal(next.searchParams.get("format"), "csv");
+    assert.equal(next.searchParams.has("omitted"), false);
+  });
+
   test("canonicalizes unordered duplicate params in page links", () => {
     const header = paginationLinkHeader(
       pagedUrl(

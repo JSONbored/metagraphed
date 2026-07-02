@@ -11,7 +11,11 @@ import {
 } from "../workers/api.mjs";
 import workerDefault from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
-import { API_ROUTES, compileRoutePattern } from "../src/contracts.mjs";
+import {
+  API_ROUTES,
+  CONTRACT_VERSION,
+  compileRoutePattern,
+} from "../src/contracts.mjs";
 import * as workerConfig from "../workers/config.mjs";
 
 const req = (path, init) =>
@@ -746,6 +750,194 @@ describe("invalid query handling", () => {
     const names = (await res.json()).data.subnets.map((s) => String(s.name));
     const sorted = [...names].sort((a, b) => b.localeCompare(a));
     assert.deepEqual(names, sorted);
+  });
+});
+
+// --- CSV list export ----------------------------------------------------------
+describe("subnets CSV export", () => {
+  const varyValues = (response) =>
+    String(response.headers.get("vary") || "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase());
+
+  test("?format=csv returns text/csv with header and rows", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=csv&limit=3&sort=netuid"),
+      createLocalArtifactEnv(),
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(varyValues(res).includes("accept"));
+    assert.equal(
+      res.headers.get("x-metagraph-contract-version"),
+      CONTRACT_VERSION,
+    );
+    assert.match(
+      res.headers.get("content-disposition"),
+      /filename="subnets\.csv"/,
+    );
+    const lines = (await res.text()).trimEnd().split("\n");
+    assert.ok(lines.length > 1);
+    assert.match(lines[0], /\bnetuid\b/);
+    assert.doesNotMatch(lines[0], /\bok\b/);
+  });
+
+  test("?format=csv uses projected field columns", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=csv&fields=netuid,name&limit=2&sort=netuid"),
+      createLocalArtifactEnv(),
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).trimEnd().split("\n");
+    assert.equal(lines[0], "netuid,name");
+    assert.equal(lines.length, 3);
+  });
+
+  test("?format=csv applies list filters before serialization", async () => {
+    const env = createLocalArtifactEnv();
+    const json = await (
+      await handleRequest(
+        req("/api/v1/subnets?status=active&limit=200"),
+        env,
+        {},
+      )
+    ).json();
+    const csv = await handleRequest(
+      req("/api/v1/subnets?format=csv&status=active&limit=200"),
+      env,
+      {},
+    );
+
+    assert.equal(csv.status, 200);
+    const rows = (await csv.text()).trimEnd().split("\n").slice(1);
+    assert.equal(rows.length, json.data.subnets.length);
+  });
+
+  test("Accept: text/csv returns CSV and JSON negotiation stays unchanged", async () => {
+    const csv = await handleRequest(
+      req("/api/v1/subnets?fields=netuid,name&limit=1", {
+        headers: { accept: "application/json, text/csv;q=0.9" },
+      }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(csv.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(varyValues(csv).includes("accept"));
+
+    const json = await handleRequest(
+      req("/api/v1/subnets?format=json&fields=netuid,name&limit=1", {
+        headers: { accept: "text/csv" },
+      }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.match(json.headers.get("content-type"), /application\/json/);
+    assert.ok(varyValues(json).includes("accept"));
+    const body = await json.json();
+    assert.equal(body.ok, true);
+    assert.deepEqual(Object.keys(body.data.subnets[0]).sort(), [
+      "name",
+      "netuid",
+    ]);
+  });
+
+  test("CSV pagination links keep format=csv", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=csv&sort=netuid&limit=50&cursor=0"),
+      createLocalArtifactEnv(),
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    const link = res.headers.get("link");
+    assert.match(link, /[?&]format=csv\b/);
+    assert.match(link, /[?&]cursor=50\b/);
+  });
+
+  test("JSON pagination links keep explicit format=json when Accept prefers CSV", async () => {
+    const env = createLocalArtifactEnv();
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=json&sort=netuid&limit=50&cursor=0", {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    const link = res.headers.get("link");
+    const next = new URL(link.match(/<([^>]+)>;\s*rel="next"/)[1]);
+    assert.equal(next.searchParams.get("format"), "json");
+    assert.equal(next.searchParams.get("cursor"), "50");
+
+    const nextPage = await handleRequest(
+      req(`${next.pathname}${next.search}`, {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      {},
+    );
+    assert.match(nextPage.headers.get("content-type"), /application\/json/);
+  });
+
+  test("CSV responses surface stale contract headers", async () => {
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_CONTRACT_VERSION: "2099-01-01.1",
+    };
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=csv&limit=1"),
+      env,
+      {},
+    );
+
+    assert.equal(res.status, 200);
+    assert.ok(res.headers.get("x-metagraph-stale-contract"));
+    assert.notEqual(
+      res.headers.get("x-metagraph-stale-contract"),
+      "2099-01-01.1",
+    );
+  });
+
+  test("?format=csv falls back to JSON when list data is not an array", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (!String(key).endsWith("subnets.json")) {
+            return null;
+          }
+          return {
+            async json() {
+              return { contract_version: CONTRACT_VERSION, subnets: "bad" };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/api/v1/subnets?format=csv"), env, {});
+
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    const body = await res.json();
+    assert.equal(body.data.subnets, "bad");
+  });
+
+  test("CSV negotiation is opt-in per route", async () => {
+    const res = await handleRequest(
+      req("/api/v1/providers?format=csv", {
+        headers: { accept: "text/csv" },
+      }),
+      createLocalArtifactEnv(),
+      {},
+    );
+
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    assert.equal((await res.json()).ok, true);
   });
 });
 

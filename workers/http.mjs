@@ -16,6 +16,7 @@ export const X_METAGRAPH_ARTIFACT_SOURCE_HEADER = "x-metagraph-artifact-source";
 const EXPOSED_RESPONSE_HEADERS = [
   "etag", // conditional-request validator (If-None-Match → 304)
   "link", // RFC 8288 pagination links (next/prev/first/last) on list routes
+  "content-disposition", // CSV downloads expose their suggested filename
   // rate-limit family: detect throttling, honour the back-off
   "retry-after",
   "x-ratelimit-limit",

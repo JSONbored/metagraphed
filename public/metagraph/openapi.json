@@ -30140,6 +30140,20 @@
             }
           },
           {
+            "description": "Response format. Omit or use `json` for the standard API envelope; use `csv` for a text/csv export of the filtered list rows.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "fields",
             "required": false,
@@ -30276,6 +30290,12 @@
                       "type": "object"
                     }
                   ]
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "description": "CSV export of the selected list rows. The standard JSON envelope is omitted for this representation.",
+                  "type": "string"
                 }
               }
             },

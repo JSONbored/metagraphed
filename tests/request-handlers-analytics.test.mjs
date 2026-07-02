@@ -4,7 +4,7 @@
 // payloads without routing through workers/api.mjs.
 
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -43,6 +43,7 @@ configureAnalytics({
 
 const NETUID = 7;
 const LAST_RUN_AT = "2026-06-18T00:00:00.000Z";
+const BULK_TRENDS_TEST_NOW = "2026-06-25T00:00:00.000Z";
 const ctx = { waitUntil: (promise) => promise };
 
 function req(path, init = {}) {
@@ -255,6 +256,7 @@ function expectedKey(keyParts, pathname, search = "") {
 
 let originalCaches;
 afterEach(() => {
+  vi.useRealTimers();
   globalThis.caches = originalCaches;
 });
 
@@ -897,6 +899,8 @@ describe("handleBulkHealthTrends", () => {
   });
 
   test("happy path includes surface_uptime_daily aggregates per window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(BULK_TRENDS_TEST_NOW));
     globalThis.caches = undefined;
     const { env } = dbWith();
     env.__healthMeta = { last_run_at: LAST_RUN_AT };

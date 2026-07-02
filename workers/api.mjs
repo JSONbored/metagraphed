@@ -1,4 +1,5 @@
 import {
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -9,6 +10,7 @@ import {
   canonicalListSearch,
   paginationLinkHeader,
 } from "./list-query.mjs";
+import { columnsFromRows, csvRequested, csvResponse } from "./csv.mjs";
 import {
   apiHeaders,
   errorResponse,
@@ -2318,8 +2320,11 @@ async function handleApiRequest(
   // The key namespaces by network + contract version so a deploy or a network
   // switch can never serve a cross-version body; the response's own
   // cache-control max-age bounds staleness.
+  const wantsCsv = matched.supportsCsv ? csvRequested(url, request) : false;
   const edgeCache =
-    request.method === "GET" && isStaticEdgeCacheEligible(matched, network)
+    request.method === "GET" &&
+    !wantsCsv &&
+    isStaticEdgeCacheEligible(matched, network)
       ? globalThis.caches?.default
       : null;
   const edgeCacheKey = edgeCache
@@ -2494,6 +2499,50 @@ async function handleApiRequest(
       parameter: transformed.error.parameter,
     });
   }
+  // Advertise the page chain via an RFC 8288 Link header on paginated list
+  // responses. networkPublicUrl restores the prefix stripped before dispatch;
+  // paginationLinkHeader returns null (no header) for non-list/single-page data.
+  const explicitFormat = matched.supportsCsv
+    ? url.searchParams.get("format")
+    : null;
+  const linkValue = paginationLinkHeader(
+    networkPublicUrl(url, network),
+    transformed.meta.pagination,
+    {
+      queryCollection: matched.queryCollection,
+      queryFilterNames: matched.queryFilterNames,
+      extraSearchParams: wantsCsv
+        ? { format: "csv" }
+        : explicitFormat !== null
+          ? { format: explicitFormat }
+          : {},
+    },
+  );
+  const representationHeaders = matched.supportsCsv
+    ? { vary: "Accept, Accept-Encoding" }
+    : {};
+  if (wantsCsv) {
+    const collectionKey =
+      API_QUERY_COLLECTIONS[matched.queryCollection].data_key;
+    const rows = transformed.data[collectionKey];
+    if (Array.isArray(rows)) {
+      const csvHeaders = {
+        ...representationHeaders,
+        "x-metagraph-contract-version": contractVersion(env),
+        ...(staleContract
+          ? { "x-metagraph-stale-contract": staleContract.built_under }
+          : {}),
+        ...(linkValue ? { link: linkValue } : {}),
+      };
+      return csvResponse(rows, matched.id, matched.cache, {
+        columns:
+          transformed.meta.projection?.fields ||
+          columnsFromRows(baseData?.[collectionKey]),
+        extraHeaders: csvHeaders,
+        request,
+      });
+    }
+  }
   // Real publish time from the KV latest pointer (null until a publish has
   // populated it). Unlike generated_at — a deterministic content marker that is
   // intentionally the 1970 epoch in committed/local builds (issue #349) — this
@@ -2532,17 +2581,6 @@ async function handleApiRequest(
       responseData = { ...responseData, ...patch };
     }
   }
-  // Advertise the page chain via an RFC 8288 Link header on paginated list
-  // responses. networkPublicUrl restores the prefix stripped before dispatch;
-  // paginationLinkHeader returns null (no header) for non-list/single-page data.
-  const linkValue = paginationLinkHeader(
-    networkPublicUrl(url, network),
-    transformed.meta.pagination,
-    {
-      queryCollection: matched.queryCollection,
-      queryFilterNames: matched.queryFilterNames || [],
-    },
-  );
   const response = await envelopeResponse(
     request,
     {
@@ -2562,7 +2600,10 @@ async function handleApiRequest(
       },
     },
     matched.cache,
-    linkValue ? { link: linkValue } : {},
+    {
+      ...representationHeaders,
+      ...(linkValue ? { link: linkValue } : {}),
+    },
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
   // are skipped even when their live store is cold and the response falls back
@@ -2601,6 +2642,11 @@ function matchRoute(pathname) {
       params,
       queryCollection: candidate.query_collection,
       queryFilterNames: candidate.query_filter_names,
+      supportsCsv: candidate.query_parameters.some(
+        (parameter) =>
+          parameter.name === "format" &&
+          parameter.schema?.enum?.includes("csv"),
+      ),
     };
   }
   return null;

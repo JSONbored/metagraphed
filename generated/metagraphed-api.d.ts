@@ -15213,6 +15213,8 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                /** @description Response format. Omit or use `json` for the standard API envelope; use `csv` for a text/csv export of the filtered list rows. */
+                format?: "json" | "csv";
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15294,6 +15296,7 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetsArtifact"];
                     };
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

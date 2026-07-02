@@ -85,6 +85,7 @@ export function paginationLinkHeader(url, pagination, options = {}) {
     return null;
   }
   const { cursor, limit, next_cursor: nextCursor, total } = pagination;
+  const extraSearchParams = options.extraSearchParams || {};
   const canonicalSearch = options.queryCollection
     ? canonicalListSearch(
         url,
@@ -95,6 +96,11 @@ export function paginationLinkHeader(url, pagination, options = {}) {
   const pageUri = (offset) => {
     const target = new URL(url.href);
     target.search = canonicalSearch;
+    for (const [name, value] of Object.entries(extraSearchParams)) {
+      if (value != null) {
+        target.searchParams.set(name, String(value));
+      }
+    }
     target.searchParams.set("cursor", String(offset));
     target.searchParams.set("limit", String(limit));
     return target.href;
