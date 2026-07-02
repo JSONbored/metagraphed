@@ -59,6 +59,17 @@ function toIso(ms) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+// Coerce a non-negative integer cell, or null when missing, non-finite, or
+// negative. D1 can return COUNT/SUM aggregates as numeric strings, so a bare
+// `r.neuron_count ?? null` would leak the string into the subnet-history
+// payload (breaking the ["integer","null"] contract). Mirrors toBlockNumber in
+// blocks.mjs / account-events.mjs.
+function toNonNegativeInt(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 /**
  * Daily rollup: snapshot the current `neurons` table into `neuron_daily` for the
  * captured UTC day. A single atomic INSERT...SELECT in the health DB:
@@ -450,8 +461,8 @@ export function buildSubnetHistory(rows, netuid, { window } = {}) {
     .filter((r) => r && typeof r === "object")
     .map((r) => ({
       snapshot_date: r.snapshot_date,
-      neuron_count: r.neuron_count ?? null,
-      validator_count: r.validator_count ?? null,
+      neuron_count: toNonNegativeInt(r.neuron_count),
+      validator_count: toNonNegativeInt(r.validator_count),
       // Round the per-day SUM(stake_tao)/SUM(emission_tao) to stop accumulated
       // float noise from leaking, matching buildEconomicsTrends above.
       total_stake_tao: roundTaoOrNull(r.total_stake_tao),

@@ -286,6 +286,43 @@ describe("history builders", () => {
     assert.equal(out.points[0].total_emission_tao, null);
   });
 
+  test("buildSubnetHistory coerces string-typed aggregate counts to integers", () => {
+    const out = buildSubnetHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: "256",
+          validator_count: "64",
+        },
+      ],
+      7,
+    );
+    assert.equal(out.points[0].neuron_count, 256);
+    assert.equal(out.points[0].validator_count, 64);
+  });
+
+  test("buildSubnetHistory rejects invalid aggregate counts to null", () => {
+    const out = buildSubnetHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: -1,
+          validator_count: 1.5,
+        },
+        {
+          snapshot_date: "2026-06-19",
+          neuron_count: "abc",
+          validator_count: null,
+        },
+      ],
+      7,
+    );
+    assert.equal(out.points[0].neuron_count, null);
+    assert.equal(out.points[0].validator_count, null);
+    assert.equal(out.points[1].neuron_count, null);
+    assert.equal(out.points[1].validator_count, null);
+  });
+
   test("buildEconomicsTrends rolls per-subnet rows up to one network point per day", () => {
     const out = buildEconomicsTrends(
       [
