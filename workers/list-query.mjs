@@ -29,7 +29,9 @@ export function applyQueryFilters(
       (queryFilterNames.length > 0
         ? queryFilterNames
         : Object.keys(config.filters ?? {})
-      ).map((name) => [name, config.filters?.[name]]),
+      )
+        .map((name) => [name, config.filters?.[name]])
+        .filter(([, schema]) => schema && typeof schema === "object"),
     ),
   });
 }

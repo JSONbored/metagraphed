@@ -709,6 +709,26 @@ describe("list-query unknown query parameters", () => {
       delete API_QUERY_COLLECTIONS.__test_no_filters_list_query;
     }
   });
+
+  test("gracefully handles queryFilterNames when collection has no filters", () => {
+    API_QUERY_COLLECTIONS.__test_no_filters_with_allowlist = {
+      data_key: "rows",
+      search_keys: [],
+      sort_fields: ["netuid"],
+    };
+    try {
+      const result = applyQueryFilters(
+        { rows: [{ netuid: 1, status: "active" }] },
+        query("/api/v1/custom?status=active"),
+        "__test_no_filters_with_allowlist",
+        ["status"],
+      );
+      assert.equal(result.error.parameter, "status");
+      assert.equal(result.error.message, "unknown query parameter.");
+    } finally {
+      delete API_QUERY_COLLECTIONS.__test_no_filters_with_allowlist;
+    }
+  });
 });
 
 describe("list-query pagination Link header", () => {
