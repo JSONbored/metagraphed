@@ -340,6 +340,13 @@ assert.ok(
   econ.economics && Number.isInteger(econ.economics.netuid),
   "get_subnet_economics must return the per-subnet economics row",
 );
+const economics = await callOk("get_economics", { limit: 5 });
+assert.ok(
+  Array.isArray(economics.subnets) &&
+    economics.subnets.length <= 5 &&
+    Number.isInteger(economics.total),
+  "get_economics must return subnets[] with pagination totals",
+);
 
 // The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
 // has no neurons DB, so each tool must degrade to its schema-stable empty

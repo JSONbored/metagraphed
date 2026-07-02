@@ -19,6 +19,12 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
+  GET_ECONOMICS_INSTRUCTIONS,
+  GET_ECONOMICS_MCP_TOOL,
+  GET_ECONOMICS_OUTPUT_SCHEMA,
+  loadNetworkEconomics,
+} from "./network-economics.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -227,7 +233,9 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, and alpha price, get_economics_trends the network-wide " +
+  "open slots, and alpha price, " +
+  GET_ECONOMICS_INSTRUCTIONS +
+  "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
@@ -1702,6 +1710,22 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
+    },
+  },
+  {
+    ...GET_ECONOMICS_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadNetworkEconomics(ctx, args, {
+          contractVersion: mcpContractVersion,
+          readOptionalArtifact: loadOptionalArtifact,
+        });
+      } catch (err) {
+        if (err?.networkEconomics) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
     },
   },
   {
@@ -4888,6 +4912,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       economics: { type: ["object", "null"] },
     },
   },
+  get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,

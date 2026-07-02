@@ -532,6 +532,54 @@ describe("find_subnet_opportunities + leaderboards — economics R2 fallback", (
   });
 });
 
+// ── get_economics — list-query + tier fallbacks ─────────────────────────
+describe("get_economics — branch coverage", () => {
+  const ECON_ROW = {
+    netuid: 7,
+    name: "Allways",
+    slug: "allways",
+    emission_share: 1,
+    registration_allowed: true,
+  };
+  const ECON_BLOB = {
+    contract_version: "test-contract",
+    captured_at: FRESH_RUN,
+    schema_version: 1,
+    summary: { with_economics_count: 1, subnet_count: 1 },
+    subnets: [ECON_ROW],
+  };
+
+  test("tolerates economics blob with no subnets array", async () => {
+    const deps = makeDeps(
+      {
+        "/metagraph/economics.json": { captured_at: FRESH_RUN, summary: null },
+      },
+      {},
+    );
+    const res = await callTool("get_economics", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.summary, null);
+  });
+
+  test("rejects malformed fields list from list-query validation", async () => {
+    const res = await callTool(
+      "get_economics",
+      { fields: "netuid,9invalid" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /fields must be a comma-separated/,
+    );
+  });
+});
+
 // ── list_subnet_apis fallbacks ────────────────────────────
 describe("list_subnet_apis — detail fallback fields", () => {
   test("falls back to the requested netuid + empty services when detail is bare", async () => {
