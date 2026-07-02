@@ -15,9 +15,14 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+import { applyQueryFilters } from "../workers/list-query.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
-import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
+import {
+  API_QUERY_COLLECTIONS,
+  CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
+} from "./contracts.mjs";
 import {
   loadChainConcentration,
   loadSubnetConcentration,
@@ -163,7 +168,8 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.18.0";
+export const MCP_SERVER_VERSION = "1.19.0";
+const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -225,7 +231,8 @@ export const MCP_INSTRUCTIONS =
   "callable subnets and how_do_i_call returns concrete call instructions " +
   "(base URL, auth, schema, health) for one subnet. For on-chain economics and " +
   "participation, get_subnet_economics returns a subnet's registration cost, " +
-  "open slots, and alpha price, get_economics_trends the network-wide " +
+  "open slots, and alpha price, get_economics the live network-wide economics " +
+  "scorecard (filterable/sortable per-subnet rows), get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
@@ -410,6 +417,107 @@ async function loadSubnetEconomics(ctx, netuid) {
     captured_at: blob?.captured_at ?? null,
     summary: blob?.summary ?? null,
     economics: blob?.subnets?.find((row) => row?.netuid === netuid) ?? null,
+  };
+}
+
+function economicsQueryUrl(args) {
+  const url = new URL("https://mcp.internal/economics");
+  if (args?.netuid !== undefined) {
+    if (!Number.isInteger(args.netuid) || args.netuid < 0) {
+      throw toolError(
+        "invalid_params",
+        "netuid must be a non-negative integer.",
+      );
+    }
+    url.searchParams.set("netuid", String(args.netuid));
+  }
+  const q = optionalString(args, "q");
+  if (q) url.searchParams.set("q", q);
+  const registrationAllowed = optionalEnum(args, "registration_allowed", [
+    "true",
+    "false",
+  ]);
+  if (args?.registration_allowed !== undefined && !registrationAllowed) {
+    throw toolError(
+      "invalid_params",
+      "registration_allowed must be 'true' or 'false'.",
+    );
+  }
+  if (registrationAllowed) {
+    url.searchParams.set("registration_allowed", registrationAllowed);
+  }
+  const sort = optionalEnum(args, "sort", ECONOMICS_SORT_FIELDS);
+  if (args?.sort !== undefined && !sort) {
+    throw toolError(
+      "invalid_params",
+      `sort must be one of: ${ECONOMICS_SORT_FIELDS.join(", ")}.`,
+    );
+  }
+  if (sort) url.searchParams.set("sort", sort);
+  const order = optionalEnum(args, "order", ["asc", "desc"]);
+  if (args?.order !== undefined && !order) {
+    throw toolError("invalid_params", "order must be 'asc' or 'desc'.");
+  }
+  if (order) url.searchParams.set("order", order);
+  const fields = optionalString(args, "fields");
+  if (fields) url.searchParams.set("fields", fields);
+  if (args?.limit !== undefined) {
+    url.searchParams.set("limit", String(clampLimit(args.limit, 100, 1000)));
+  }
+  if (args?.cursor !== undefined) {
+    if (!Number.isInteger(args.cursor) || args.cursor < 0) {
+      throw toolError(
+        "invalid_params",
+        "cursor must be a non-negative integer.",
+      );
+    }
+    url.searchParams.set("cursor", String(args.cursor));
+  }
+  return url;
+}
+
+// Network-wide economics collection: live KV tier (KV-primary), else the
+// committed R2 snapshot — the precedence GET /api/v1/economics uses. Applies
+// the same list-query filters (netuid, registration_allowed, q, sort, cursor).
+async function loadNetworkEconomics(ctx, args) {
+  const live = await resolveLiveEconomics({
+    readHealthKv: ctx.readHealthKv,
+    env: ctx.env,
+    contractVersion: mcpContractVersion(ctx),
+  });
+  let blob = live?.data;
+  let source = live?.source || null;
+  if (!blob) {
+    blob = await loadOptionalArtifact(ctx, "/metagraph/economics.json");
+    source = "r2-fallback";
+  }
+  if (!blob || typeof blob !== "object") {
+    throw toolError("not_found", "Economics snapshot unavailable.");
+  }
+  const transformed = applyQueryFilters(
+    blob,
+    economicsQueryUrl(args),
+    "economics",
+    [],
+  );
+  if (transformed.error) {
+    throw toolError("invalid_params", transformed.error.message);
+  }
+  const { data, meta } = transformed;
+  const page = meta.pagination || {};
+  return {
+    source: source || "r2-fallback",
+    captured_at: data.captured_at ?? null,
+    network: data.network ?? null,
+    summary: data.summary ?? null,
+    subnets: Array.isArray(data.subnets) ? data.subnets : [],
+    total: page.total ?? data.subnets?.length ?? 0,
+    returned: page.returned ?? data.subnets?.length ?? 0,
+    limit: page.limit ?? data.subnets?.length ?? 0,
+    cursor: page.cursor ?? 0,
+    next_cursor: page.next_cursor ?? null,
+    sort: page.sort ?? null,
+    order: page.order ?? null,
   };
 }
 
@@ -1700,6 +1808,70 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetEconomics(ctx, netuid);
+    },
+  },
+  {
+    name: "get_economics",
+    title: "Get network-wide subnet economics",
+    description:
+      "Fetch the live network-wide economics scorecard: per-subnet validator " +
+      "and miner counts, registration cost and whether registration is open, open " +
+      "slots, stake, alpha price, emission share, and summary totals. Served " +
+      "live from the economics tier (~3h), falling back to the latest committed " +
+      "snapshot. Filter by netuid or registration_allowed, search by name/slug " +
+      "(q), sort with sort + order, and page with limit (1-1000) / cursor. " +
+      "Mirrors GET /api/v1/economics.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: {
+          type: "integer",
+          description: "Filter to one subnet netuid.",
+          minimum: 0,
+        },
+        registration_allowed: {
+          type: "string",
+          enum: ["true", "false"],
+          description:
+            "Filter to subnets where registration is open (true) or closed (false).",
+        },
+        q: {
+          type: "string",
+          description: "Search subnet name or slug (case-insensitive).",
+        },
+        sort: {
+          type: "string",
+          enum: ECONOMICS_SORT_FIELDS,
+          description:
+            "Field to sort by (bare name only). Pair with order for direction.",
+        },
+        order: {
+          type: "string",
+          enum: ["asc", "desc"],
+          description: "Sort direction for sort (default asc).",
+        },
+        fields: {
+          type: "string",
+          description:
+            "Comma-separated projection of subnet row fields to return.",
+        },
+        limit: {
+          type: "integer",
+          description:
+            "Max subnet rows to return (1-1000). Enables pagination.",
+          minimum: 1,
+          maximum: 1000,
+        },
+        cursor: {
+          type: "integer",
+          description: "Pagination cursor from a prior response's next_cursor.",
+          minimum: 0,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      return loadNetworkEconomics(ctx, args);
     },
   },
   {
@@ -4869,6 +5041,25 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       summary: { type: ["object", "null"] },
       economics: { type: ["object", "null"] },
+    },
+  },
+  get_economics: {
+    type: "object",
+    additionalProperties: true,
+    required: ["source", "subnets"],
+    properties: {
+      source: NULLABLE_STRING,
+      captured_at: NULLABLE_STRING,
+      network: NULLABLE_STRING,
+      summary: { type: ["object", "null"] },
+      subnets: { type: "array", items: { type: "object" } },
+      total: { type: "integer" },
+      returned: { type: "integer" },
+      limit: { type: "integer" },
+      cursor: { type: "integer" },
+      next_cursor: NULLABLE_INT,
+      sort: NULLABLE_STRING,
+      order: NULLABLE_STRING,
     },
   },
   get_subnet_trajectory: {

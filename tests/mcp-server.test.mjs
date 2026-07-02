@@ -4827,6 +4827,90 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /not_found/);
   });
 
+  test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        {
+          ...ECON_ROW,
+          netuid: 9,
+          name: "Beta",
+          slug: "beta",
+          registration_allowed: false,
+          emission_share: 0,
+        },
+      ],
+      summary: {
+        ...ECON_BLOB.summary,
+        subnet_count: 2,
+        with_economics_count: 2,
+      },
+    };
+    const res = await callTool(
+      "get_economics",
+      { registration_allowed: "true", sort: "emission_share", order: "desc" },
+      {
+        deps: makeDeps({}, { "economics:current": blob }),
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-kv");
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.total, 1);
+  });
+
+  test("get_economics falls back to R2 and pages with limit/cursor", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8, emission_share: 0.5 },
+        { ...ECON_ROW, netuid: 9, emission_share: 0.1 },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { limit: 2, cursor: 1, sort: "netuid", order: "asc" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 2);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.next_cursor, null);
+    assert.deepEqual(
+      out.subnets.map((row) => row.netuid),
+      [8, 9],
+    );
+  });
+
+  test("get_economics rejects an invalid sort field", async () => {
+    const res = await callTool(
+      "get_economics",
+      { sort: "not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("get_economics surfaces not_found when neither tier has data", async () => {
+    const res = await callTool(
+      "get_economics",
+      {},
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
   // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
   // mirroring the metagraph-neurons unit-test fixtures.
   const ROW = {
