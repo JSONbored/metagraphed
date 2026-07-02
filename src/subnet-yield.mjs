@@ -33,7 +33,11 @@ function normalizedUid(value) {
 // string|null). All rows of one subnet snapshot share captured_at, so the first row
 // stamps the response.
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 // Emission-per-stake return rate; null when stake is 0 (return is undefined with no
@@ -79,7 +83,7 @@ export function buildSubnetYield(rows, netuid) {
     const uid = normalizedUid(row?.uid);
     if (uid == null) continue;
     if (capturedAt == null) {
-      capturedAt = toIso(Number(row?.captured_at));
+      capturedAt = toIso(row?.captured_at);
       // block_number is a nullable INTEGER; guard null before Number() since
       // Number(null) === 0 would fabricate the genesis height 0 for a row whose
       // block is absent (the contract models it as ["integer","null"]). A

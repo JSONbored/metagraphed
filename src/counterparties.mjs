@@ -51,13 +51,17 @@ function nullableInteger(value) {
 }
 
 function nullableTimestamp(value) {
-  if (value == null) return null;
+  if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? n : null;
 }
 
 function toIso(timestamp) {
-  return timestamp == null ? null : new Date(timestamp).toISOString();
+  if (timestamp == null) return null;
+  const date = new Date(timestamp);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 // Aggregate an account's Transfer rows into per-counterparty fund flow: for each

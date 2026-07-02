@@ -49,7 +49,19 @@ function toNumber(value) {
 // REST meta.generated_at is string|null per the envelope contract, so the newest
 // event's epoch-ms observed_at is rendered the same way account-events does (toIso).
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function coerceEpochMs(value) {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? n : null;
 }
 
 // Shape a subnet's StakeAdded/StakeRemoved aggregate into a stake-flow scorecard.
@@ -124,9 +136,9 @@ export async function loadSubnetStakeFlow(
   );
   let latestObserved = null;
   for (const row of Array.isArray(rows) ? rows : []) {
-    const observed = Number(row?.last_observed);
+    const observed = coerceEpochMs(row?.last_observed);
     if (
-      Number.isFinite(observed) &&
+      observed != null &&
       (latestObserved == null || observed > latestObserved)
     ) {
       latestObserved = observed;
