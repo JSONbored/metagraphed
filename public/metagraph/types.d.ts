@@ -7961,6 +7961,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9603,6 +9604,7 @@ export interface operations {
                 agent_status?: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
                 blocker_level?: "none" | "hard-blocked" | "needs-review" | "missing-data";
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9797,6 +9799,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -9935,6 +9938,7 @@ export interface operations {
                 netuid?: number;
                 registration_allowed?: "true" | "false";
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10193,6 +10197,7 @@ export interface operations {
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
                 state?: "active" | "resolved";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10345,6 +10350,7 @@ export interface operations {
                 max_eligible_count?: number;
                 min_endpoint_count?: number;
                 max_endpoint_count?: number;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10520,6 +10526,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -10671,6 +10678,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11297,6 +11305,7 @@ export interface operations {
                 netuid?: number;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11429,6 +11438,7 @@ export interface operations {
             query?: {
                 netuid?: number;
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -11558,6 +11568,7 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12176,6 +12187,7 @@ export interface operations {
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12429,6 +12441,7 @@ export interface operations {
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -12682,6 +12695,7 @@ export interface operations {
                 pool_eligible?: "true" | "false";
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13079,6 +13093,7 @@ export interface operations {
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13234,6 +13249,7 @@ export interface operations {
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 netuid?: number;
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13399,6 +13415,7 @@ export interface operations {
                 review_state?: string;
                 manual_review_required?: "true" | "false";
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13609,6 +13626,7 @@ export interface operations {
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 target_type?: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13819,6 +13837,7 @@ export interface operations {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -13952,6 +13971,7 @@ export interface operations {
                 identity_level?: "none" | "directory" | "partial" | "complete";
                 identity_promotion_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 native_name_quality?: "chain" | "placeholder" | "empty";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -14150,6 +14170,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -14693,6 +14714,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -14816,6 +14838,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15061,6 +15084,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15213,6 +15237,7 @@ export interface operations {
                 max_surface_count?: number;
                 min_tempo?: number;
                 max_tempo?: number;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -15626,6 +15651,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16046,6 +16072,7 @@ export interface operations {
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16320,6 +16347,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16446,6 +16474,7 @@ export interface operations {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 review_state?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -16654,6 +16683,7 @@ export interface operations {
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -18393,6 +18423,7 @@ export interface operations {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;
@@ -19284,6 +19315,7 @@ export interface operations {
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 provider?: string;
+                /** @description Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored. */
                 fields?: string;
                 limit?: number;
                 cursor?: number;

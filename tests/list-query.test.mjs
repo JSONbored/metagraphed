@@ -627,6 +627,39 @@ describe("list-query unknown query parameters", () => {
     assert.equal(result.error, undefined);
     assert.equal(result.data.subnets.length, 1);
   });
+
+  test("queryFilterNames restricts the allowed filter-key set", () => {
+    const endpoints = {
+      endpoints: [{ id: "a", kind: "axon", layer: "inference" }],
+    };
+    const allowed = applyQueryFilters(
+      endpoints,
+      query("/api/v1/endpoints?kind=docs"),
+      "endpoints",
+      ["kind"],
+    );
+    assert.equal(allowed.error, undefined);
+
+    const blocked = applyQueryFilters(
+      endpoints,
+      query("/api/v1/endpoints?layer=inference"),
+      "endpoints",
+      ["kind"],
+    );
+    assert.equal(blocked.error.parameter, "layer");
+    assert.equal(blocked.error.message, "unknown query parameter.");
+  });
+
+  test("canonicalListSearch honors queryFilterNames allow-list", () => {
+    const search = canonicalListSearch(
+      query("/api/v1/endpoints?kind=docs&layer=inference&junk=1"),
+      "endpoints",
+      ["kind"],
+    );
+    assert.equal(search.includes("kind=docs"), true);
+    assert.equal(search.includes("layer=inference"), false);
+    assert.equal(search.includes("junk=1"), false);
+  });
 });
 
 describe("list-query pagination Link header", () => {

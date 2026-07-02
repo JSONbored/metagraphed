@@ -1047,6 +1047,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1201,6 +1202,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1352,6 +1354,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1442,6 +1445,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1592,6 +1596,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1739,6 +1744,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1857,6 +1863,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1964,6 +1971,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2060,6 +2068,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2214,6 +2223,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2347,6 +2357,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2434,6 +2445,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2597,6 +2609,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2691,6 +2704,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2781,6 +2795,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2866,6 +2881,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3011,6 +3027,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3169,6 +3186,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3389,6 +3407,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3551,6 +3570,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3798,6 +3818,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -3887,6 +3908,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -4024,6 +4046,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -4153,6 +4176,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -5635,6 +5659,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -5699,6 +5724,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -5775,6 +5801,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -5924,6 +5951,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -6044,6 +6072,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -6177,6 +6206,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -6293,6 +6323,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -6357,6 +6388,7 @@
           }
         },
         {
+          "description": "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",

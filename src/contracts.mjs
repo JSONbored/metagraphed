@@ -2961,6 +2961,8 @@ function listQuery(collection, options = {}) {
       ...rangeParameters,
       {
         name: "fields",
+        description:
+          "Optional projection list. Unknown query parameters are rejected with `400 invalid_query` (parameter named in `meta.parameter`) instead of being ignored.",
         schema: fieldListSchema,
       },
       {
