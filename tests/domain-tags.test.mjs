@@ -4,13 +4,57 @@ import { DOMAIN_TAGS, deriveDomainTags } from "../src/domain-tags.mjs";
 
 describe("DOMAIN_TAGS", () => {
   test("is the sorted controlled vocabulary", () => {
-    assert.ok(DOMAIN_TAGS.length >= 10);
-    assert.deepEqual(DOMAIN_TAGS, [...DOMAIN_TAGS].sort());
-    assert.ok(new Set(DOMAIN_TAGS).size === DOMAIN_TAGS.length);
+    assert.deepEqual(DOMAIN_TAGS, [
+      "agents",
+      "compute",
+      "data",
+      "finance",
+      "inference",
+      "media",
+      "prediction",
+      "privacy",
+      "robotics",
+      "science",
+      "search",
+      "security",
+      "storage",
+      "training",
+    ]);
   });
 });
 
 describe("deriveDomainTags", () => {
+  test("matches one positive keyword for every domain rule", () => {
+    const cases = [
+      ["agents", "autonomous agents"],
+      ["compute", "GPU network"],
+      ["data", "web scraping pipeline"],
+      ["finance", "DeFi liquidity"],
+      ["inference", "LLM subnet"],
+      ["media", "text-to-speech generation"],
+      ["prediction", "forecasting markets"],
+      ["privacy", "zero-knowledge proofs"],
+      ["robotics", "drone coordination"],
+      ["science", "protein modeling"],
+      ["search", "semantic search"],
+      ["security", "malware detection"],
+      ["storage", "IPFS pinning"],
+      ["training", "model training"],
+    ];
+
+    assert.deepEqual(
+      cases.map(([tag]) => tag),
+      DOMAIN_TAGS,
+    );
+    for (const [tag, description] of cases) {
+      assert.deepEqual(
+        deriveDomainTags({ description }),
+        [tag],
+        `expected ${tag} for ${JSON.stringify(description)}`,
+      );
+    }
+  });
+
   test("matches inference and training keywords from on-chain text", () => {
     const tags = deriveDomainTags({
       description: "Large language model inference with RLHF fine-tuning",
@@ -74,7 +118,7 @@ describe("deriveDomainTags", () => {
 
   test("accepts curated categories that are already in the vocabulary", () => {
     const tags = deriveDomainTags({
-      categories: ["Finance", "privacy"],
+      categories: ["Finance", "privacy", "not-a-domain-tag", 42, null],
     });
     assert.deepEqual(tags, ["finance", "privacy"]);
   });
@@ -91,15 +135,29 @@ describe("deriveDomainTags", () => {
     }
   });
 
+  test("returns [] for nullish and non-string text with non-array categories", () => {
+    assert.deepEqual(deriveDomainTags(), []);
+    assert.deepEqual(deriveDomainTags({}), []);
+    assert.deepEqual(
+      deriveDomainTags({
+        description: null,
+        additional: 42,
+        categories: "inference",
+      }),
+      [],
+    );
+  });
+
   test("is deterministic, sorted, and de-duplicated", () => {
     const input = {
-      description: "GPU compute for image generation and image editing",
-      categories: ["media", "compute"],
+      description: "GPU compute for image generation and IPFS storage",
+      additional: "compute network storage",
+      categories: ["media", "compute", "Storage"],
     };
     const first = deriveDomainTags(input);
     const second = deriveDomainTags(input);
     assert.deepEqual(first, second);
-    assert.deepEqual(first, ["compute", "media"]);
+    assert.deepEqual(first, ["compute", "media", "storage"]);
     assert.equal(first.length, new Set(first).size);
   });
 });
