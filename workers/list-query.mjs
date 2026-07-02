@@ -81,7 +81,7 @@ function listQueryParamNamesForConfig(config, queryFilterNames = []) {
   const filterNames =
     queryFilterNames.length > 0
       ? effectiveFilterNames(config, queryFilterNames)
-      : Object.keys(config.filters || {});
+      : Object.keys(config.filters);
   const rangeNames = (config.range_filters || []).flatMap((field) => [
     `min_${field}`,
     `max_${field}`,
@@ -406,7 +406,7 @@ function validateListQuery(params, config) {
     };
   }
 
-  for (const [key, schema] of Object.entries(config.filters || {})) {
+  for (const [key, schema] of Object.entries(config.filters)) {
     if (!params.has(key)) {
       continue;
     }

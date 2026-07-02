@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryParams,
 } from "../workers/list-query.mjs";
 
 function query(path) {
@@ -541,6 +543,66 @@ describe("list-query unknown parameter validation", () => {
 
     assert.equal(result.error.parameter, "curation_level");
     assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("rejects all filters when a route allowlist has no configured filter names", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=active"),
+      "subnets",
+      ["not_a_configured_filter"],
+    );
+
+    assert.equal(result.error.parameter, "status");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("preflight skips routes without list-query contracts", () => {
+    assert.equal(
+      validateListQueryParams(
+        query("/api/v1/not-a-list?anything=1"),
+        undefined,
+      ),
+      null,
+    );
+  });
+
+  test("transform stays a no-op when the artifact data key is not a list", () => {
+    const result = applyQueryFilters(
+      { subnets: null },
+      query("/api/v1/subnets?statuss=active"),
+      "subnets",
+    );
+
+    assert.deepEqual(result, { data: { subnets: null }, meta: {} });
+  });
+
+  test("handles sparse collection configs without optional filter families", () => {
+    const collection = "__test_sparse_rows";
+    API_QUERY_COLLECTIONS[collection] = { data_key: "rows" };
+    try {
+      assert.equal(
+        validateListQueryParams(query("/api/v1/sparse?limit=1"), collection),
+        null,
+      );
+
+      const sortError = validateListQueryParams(
+        query("/api/v1/sparse?sort=name"),
+        collection,
+      );
+      assert.equal(sortError.parameter, "sort");
+      assert.equal(sortError.message, "sort is not supported for rows.");
+
+      const result = applyQueryFilters(
+        { rows: [] },
+        query("/api/v1/sparse?surprise=1"),
+        collection,
+      );
+      assert.equal(result.error.parameter, "surprise");
+      assert.equal(result.error.message, "unknown query parameter.");
+    } finally {
+      delete API_QUERY_COLLECTIONS[collection];
+    }
   });
 });
 

@@ -782,6 +782,7 @@ describe("Worker runtime", () => {
       ["/api/v1/subnets?fields=netuid,nope", "fields"],
       ["/api/v1/subnets?netuid=nope", "netuid"],
       ["/api/v1/subnets?subnet_type=nope", "subnet_type"],
+      ["/api/v1/subnets/7/endpoints?netuid=7", "netuid"],
     ];
 
     for (const [path, parameter] of invalidCases) {
