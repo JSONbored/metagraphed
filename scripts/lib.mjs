@@ -23,6 +23,17 @@ export const publicMetagraphRoot = path.join(repoRoot, "public/metagraph");
 export const r2StagingRoot = path.join(repoRoot, R2_STAGING_RELATIVE_ROOT);
 export const generatedSourceRoot = path.join(repoRoot, "dist/metagraph-source");
 
+// Deploy/publish-pipeline-owned artifacts: their committed copies on `main`
+// reflect the last real publish, not a local/CI build, so they are EXPECTED
+// to drift on every `npm run build` for reasons unrelated to any given PR.
+// Single source of truth, consumed by build.mjs (post-build local warning)
+// and ci-verify-submitted-artifacts.mjs (submitted-artifact mismatch
+// messaging) so both stay in sync.
+export const DEPLOY_OWNED_ARTIFACTS = [
+  "public/metagraph/r2-manifest.json",
+  "public/metagraph/schemas/index.json",
+];
+
 const credentialedUrlParams = new Set([
   "access_key",
   "access-token",

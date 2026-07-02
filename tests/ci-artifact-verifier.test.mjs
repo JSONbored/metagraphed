@@ -4,6 +4,7 @@ import {
   canonicalArtifactJson,
   canonicalJson,
   isSubmittedPublicArtifactPath,
+  partitionMismatches,
 } from "../scripts/ci-verify-submitted-artifacts.mjs";
 
 test("submitted artifact verifier includes force-added public datasets", () => {
@@ -74,6 +75,35 @@ test("R2 manifest comparison ignores only R2 aggregate byte drift", () => {
       storage_tier_size_bytes: { dual: 11, r2: 21 },
     }),
   );
+});
+
+test("partitionMismatches routes deploy-owned artifacts to their own bucket, from real PR #2667 data", () => {
+  // PR #2667's actual failure: a count-field drift (registry growth between
+  // the contributor's build and CI's, not tolerated by canonicalArtifactJson)
+  // produced this exact mismatch entry, alongside an unrelated genuine
+  // mismatch to make sure the two buckets don't cross-contaminate.
+  const mismatches = [
+    "public/metagraph/r2-manifest.json (content differs from a fresh build)",
+    "public/metagraph/schemas/index.json (content differs from a fresh build)",
+    "public/metagraph/coverage.json (content differs from a fresh build)",
+  ];
+  const { deployOwned, other } = partitionMismatches(mismatches);
+  assert.deepEqual(deployOwned, [
+    "public/metagraph/r2-manifest.json (content differs from a fresh build)",
+    "public/metagraph/schemas/index.json (content differs from a fresh build)",
+  ]);
+  assert.deepEqual(other, [
+    "public/metagraph/coverage.json (content differs from a fresh build)",
+  ]);
+});
+
+test("partitionMismatches puts everything in `other` when nothing is deploy-owned", () => {
+  const mismatches = [
+    "public/metagraph/openapi.json (content differs from a fresh build)",
+  ];
+  const { deployOwned, other } = partitionMismatches(mismatches);
+  assert.deepEqual(deployOwned, []);
+  assert.deepEqual(other, mismatches);
 });
 
 test("R2 manifest comparison rejects invalid ignored byte totals", () => {

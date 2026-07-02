@@ -6,7 +6,7 @@ import {
   artifactRelativePath,
   isGeneratedPublicArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
-import { artifactFilePath } from "./lib.mjs";
+import { artifactFilePath, DEPLOY_OWNED_ARTIFACTS } from "./lib.mjs";
 
 // Generated artifacts like openapi.json now exceed Node's default 1 MB
 // execFileSync buffer, so git reads must allow plenty of headroom or the
@@ -108,13 +108,33 @@ function main() {
   }
 
   if (mismatches.length > 0) {
-    console.error(
-      [
-        "Submitted public artifacts do not match a fresh build (content differs, not just formatting):",
-        ...mismatches.map((file) => `- ${file}`),
-        "Run `npm run build` and commit the regenerated public artifacts.",
-      ].join("\n"),
-    );
+    const { deployOwned: deployOwnedMismatches, other: otherMismatches } =
+      partitionMismatches(mismatches);
+
+    if (deployOwnedMismatches.length > 0) {
+      console.error(
+        [
+          "Deploy/publish-pipeline-owned artifact(s) in your diff don't match a fresh build --",
+          "this is EXPECTED and not something to fix by rebuilding again. These files are not",
+          "reviewed contract surfaces; their committed copies on main reflect the last real",
+          "publish, not your local build, and constantly drift for reasons unrelated to your PR",
+          "(see .claude/skills/metagraphed/reference.md §8):",
+          ...deployOwnedMismatches.map((file) => `- ${file}`),
+          "",
+          "Revert them and re-commit -- do not try to make them match:",
+          `  git checkout origin/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+        ].join("\n"),
+      );
+    }
+    if (otherMismatches.length > 0) {
+      console.error(
+        [
+          "Submitted public artifacts do not match a fresh build (content differs, not just formatting):",
+          ...otherMismatches.map((file) => `- ${file}`),
+          "Run `npm run build` and commit the regenerated public artifacts.",
+        ].join("\n"),
+      );
+    }
     process.exit(1);
   }
   console.log(
@@ -133,6 +153,20 @@ export function isSubmittedPublicArtifactPath(file) {
   return (
     file.startsWith("public/metagraph/") || file.startsWith("public/datasets/")
   );
+}
+
+/**
+ * Splits mismatch entries (e.g. "public/metagraph/r2-manifest.json (content
+ * differs from a fresh build)") into deploy-owned-artifact entries, which get
+ * a distinct "revert, don't rebuild" message, versus everything else, which
+ * keeps the generic "run npm run build and commit" message.
+ */
+export function partitionMismatches(mismatches) {
+  const deployOwned = mismatches.filter((entry) =>
+    DEPLOY_OWNED_ARTIFACTS.some((file) => entry.startsWith(file)),
+  );
+  const other = mismatches.filter((entry) => !deployOwned.includes(entry));
+  return { deployOwned, other };
 }
 
 /** Stable JSON: recursively sort object keys while preserving semantic array order. */
