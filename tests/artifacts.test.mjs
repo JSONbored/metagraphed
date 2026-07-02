@@ -36,6 +36,7 @@ import { handleRequest } from "../workers/api.mjs";
 // committed (publish infra); changelog + build-summary moved to R2-only (#1003)
 // — they live in dist/ (gitignored, freely regenerated) and need no preservation.
 const SUPPORT_ARTIFACT_PATHS = ["public/metagraph/r2-manifest.json"];
+const VALIDATE_SCRIPT_TIMEOUT_MS = 15_000;
 let scriptImportCounter = 0;
 
 async function runScriptModule(script, { args = [], env = {} } = {}) {
@@ -159,8 +160,11 @@ function restorePublicTree(snapshot) {
 }
 
 let publicTreeSnapshot;
-beforeAll(() => {
+beforeAll(async () => {
   publicTreeSnapshot = snapshotPublicTree();
+  if (!existsSync(artifactFilePath("subnets/1.json"))) {
+    await runNode("scripts/build-artifacts.mjs");
+  }
 });
 afterAll(() => {
   restorePublicTree(publicTreeSnapshot);
@@ -173,36 +177,45 @@ function committedPublicArtifact(relativePath) {
   return bytes.toString("utf8");
 }
 
-test("registry validates", async () => {
-  await runNode("scripts/validate.mjs");
-});
+test(
+  "registry validates",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
+  async () => {
+    await runNode("scripts/validate.mjs");
+  },
+);
 
-test("registry validation accepts the community-seeded curation level", async () => {
-  const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
-  const fixture = tamperedOverlayFixture("sn-1-community-seeded");
-  fixture.curation.level = "community-seeded";
-  fixture.curation.review_state = "unreviewed";
+test(
+  "registry validation accepts the community-seeded curation level",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
+  async () => {
+    const overlayPath = "registry/subnets/test-community-seeded-sn-1.json";
+    const fixture = tamperedOverlayFixture("sn-1-community-seeded");
+    fixture.curation.level = "community-seeded";
+    fixture.curation.review_state = "unreviewed";
 
-  let result;
-  try {
-    writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
-    result = await runScriptModule("scripts/validate.mjs", {
-      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
-    });
-  } finally {
-    rmSync(overlayPath, { force: true });
-  }
+    let result;
+    try {
+      writeFileSync(overlayPath, `${JSON.stringify(fixture, null, 2)}\n`);
+      result = await runScriptModule("scripts/validate.mjs", {
+        env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+      });
+    } finally {
+      rmSync(overlayPath, { force: true });
+    }
 
-  const output = `${result.stdout || ""}\n${result.stderr || ""}`;
-  assert.doesNotMatch(
-    output,
-    /sn-1-community-seeded: invalid curation\.level/,
-    "community-seeded must be an accepted curation.level (added to schema in #1822)",
-  );
-});
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`;
+    assert.doesNotMatch(
+      output,
+      /sn-1-community-seeded: invalid curation\.level/,
+      "community-seeded must be an accepted curation.level (added to schema in #1822)",
+    );
+  },
+);
 
 test(
   "registry validation warns but does not block on cross-netuid on-chain name collisions",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
   async () => {
     const nativePath = "registry/native/finney-subnets.json";
     const original = readFileSync(nativePath, "utf8");
@@ -241,6 +254,7 @@ test(
 
 test(
   "registry validation rejects registry-observed surfaces without verification evidence",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
   async () => {
   const overlayPath = "registry/subnets/test-tampered-sn-1.json";
   const tampered = tamperedOverlayFixture("sn-1-unverified-registry-observed");
@@ -275,11 +289,12 @@ test(
     `${result.stdout || ""}\n${result.stderr || ""}`,
     /registry-observed surface requires verification evidence/,
   );
-},
+  },
 );
 
 test(
   "registry validation rejects registry-observed surfaces with only inline verification",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
   async () => {
   const overlayPath = "registry/subnets/test-tampered-sn-1.json";
   const tampered = tamperedOverlayFixture("sn-1-forged-inline-verification");
@@ -318,7 +333,7 @@ test(
     `${result.stdout || ""}\n${result.stderr || ""}`,
     /registry-observed surface requires verification evidence/,
   );
-},
+  },
 );
 
 function tamperedOverlayFixture(slug) {
@@ -343,31 +358,35 @@ function tamperedOverlayFixture(slug) {
   };
 }
 
-test("registry validation rejects tampered per-subnet artifacts", async () => {
-  const artifactPath = artifactFilePath("subnets/0.json");
-  const original = readFileSync(artifactPath, "utf8");
-  const tampered = JSON.parse(original);
-  tampered.phishing_url = "https://example.invalid/phish";
+test(
+  "registry validation rejects tampered per-subnet artifacts",
+  { timeout: VALIDATE_SCRIPT_TIMEOUT_MS },
+  async () => {
+    const artifactPath = artifactFilePath("subnets/0.json");
+    const original = readFileSync(artifactPath, "utf8");
+    const tampered = JSON.parse(original);
+    tampered.phishing_url = "https://example.invalid/phish";
 
-  let result;
-  try {
-    writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
-    result = await runScriptModule("scripts/validate.mjs", {
-      env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
-    });
-  } finally {
-    writeFileSync(artifactPath, original);
-  }
+    let result;
+    try {
+      writeFileSync(artifactPath, `${JSON.stringify(tampered, null, 2)}\n`);
+      result = await runScriptModule("scripts/validate.mjs", {
+        env: { METAGRAPH_ALLOW_SEED_DRIFT: "1" },
+      });
+    } finally {
+      writeFileSync(artifactPath, original);
+    }
 
-  assert(
-    result && result.status !== 0,
-    "expected validation to reject tampered subnet artifact",
-  );
-  assert.match(
-    `${result.stdout || ""}\n${result.stderr || ""}`,
-    /per-subnet detail artifact is not reproducible from registry inputs/,
-  );
-});
+    assert(
+      result && result.status !== 0,
+      "expected validation to reject tampered subnet artifact",
+    );
+    assert.match(
+      `${result.stdout || ""}\n${result.stderr || ""}`,
+      /per-subnet detail artifact is not reproducible from registry inputs/,
+    );
+  },
+);
 
 test(
   "artifact build does not preserve forged endpoint index health",

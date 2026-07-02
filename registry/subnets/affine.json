@@ -16,7 +16,7 @@
       "id": "sn-120-affine-openapi",
       "kind": "openapi",
       "name": "Affine API OpenAPI schema",
-      "notes": "Machine-readable OpenAPI schema for the public Affine validator API.",
+      "notes": "Machine-readable OpenAPI schema for the public Affine API; the official affine-cortex server and API client both reference api.affine.io.",
       "provider": "affine",
       "public_safe": true,
       "review": {
@@ -26,7 +26,9 @@
       "schema_status": "machine-readable",
       "schema_url": "https://api.affine.io/openapi.json",
       "source_urls": [
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/api/server.py",
         "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/api/server.py",
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py",
         "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/utils/api_client.py"
       ],
       "url": "https://api.affine.io/openapi.json"
@@ -37,7 +39,7 @@
       "id": "sn-120-affine-subnet-api",
       "kind": "subnet-api",
       "name": "Affine API health",
-      "notes": "Safe read-only health endpoint for the public Affine validator API.",
+      "notes": "Safe read-only health endpoint for the public Affine API; the official affine-cortex server defines /api/v1/health and the API client targets the same host.",
       "provider": "affine",
       "public_safe": true,
       "review": {
@@ -46,8 +48,10 @@
       },
       "schema_url": "https://api.affine.io/openapi.json",
       "source_urls": [
-        "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/utils/api_client.py",
-        "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/api/server.py"
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/api/server.py",
+        "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/api/server.py",
+        "https://github.com/AffineFoundation/affine-cortex/blob/main/affine/utils/api_client.py",
+        "https://raw.githubusercontent.com/AffineFoundation/affine-cortex/main/affine/utils/api_client.py"
       ],
       "url": "https://api.affine.io/api/v1/health"
     }

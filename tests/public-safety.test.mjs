@@ -254,7 +254,7 @@ describe("captured-fixture body scan", () => {
       "https://169.254.42.7/admin",
     ];
     await fs.writeFile(TEST_PUBLIC_PATH, `${lines.join("\n")}\n`, "utf8");
-    const output = runScanOutput();
+    const output = await runScanOutput();
     for (const [index] of lines.entries()) {
       assert.ok(
         output.includes(
