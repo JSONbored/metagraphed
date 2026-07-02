@@ -63,8 +63,15 @@ function stringifyCell(value) {
   return String(value);
 }
 
+function neutralizeSpreadsheetFormula(text) {
+  if (/^(\s*[=+\-@]|[\t\r])/.test(text)) {
+    return `'${text}`;
+  }
+  return text;
+}
+
 function escapeCell(value) {
-  const text = stringifyCell(value);
+  const text = neutralizeSpreadsheetFormula(stringifyCell(value));
   if (!/[",\r\n]/.test(text)) {
     return text;
   }

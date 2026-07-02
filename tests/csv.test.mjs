@@ -88,6 +88,23 @@ test("csvRequested only honors format=csv", () => {
   assert.equal(csvRequested(url()), false);
 });
 
+test("rowsToCsv neutralizes spreadsheet formula trigger prefixes", () => {
+  const csv = rowsToCsv([
+    {
+      name: "=cmd",
+      delta: "+100",
+      note: "@SUM(A1)",
+      tab: "\tleak",
+      plain: "safe",
+    },
+  ]);
+
+  assert.equal(
+    csv,
+    "name,delta,note,tab,plain\r\n'=cmd,'+100,'@SUM(A1),'\tleak,safe",
+  );
+});
+
 test("buildCsvExample matches rowsToCsv output for route examples", () => {
   const example = buildCsvExample(GLOBAL_VALIDATORS_CSV_COLUMNS, [
     {
