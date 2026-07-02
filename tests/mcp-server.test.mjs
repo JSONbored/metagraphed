@@ -2509,7 +2509,13 @@ describe("MCP stake-flow and movers economics tools", () => {
       window: "1y",
     });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /window/);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_stake_flow rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_stake_flow", { window: "30d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
   });
 
   test("get_subnet_stake_flow degrades to zeros on cold D1", async () => {
@@ -2563,6 +2569,24 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.match(res.body.result.content[0].text, /ss58/i);
   });
 
+  test("get_account_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_account_stake_flow", {
+      ss58: SS58,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_flow degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_flow", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
   test("get_subnet_movers ranks subnets by stake delta", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
@@ -2607,7 +2631,52 @@ describe("MCP stake-flow and movers economics tools", () => {
   test("get_subnet_movers rejects an invalid sort", async () => {
     const res = await callTool("get_subnet_movers", { sort: "liquidity" });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /sort/);
+    assert.match(res.body.result.content[0].text, /sort must be one of/);
+  });
+
+  test("get_subnet_movers rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_movers", { window: "1y" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_movers ranks subnets by emission delta", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_subnet_movers",
+        { window: "7d", sort: "emission", limit: 10 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-06-23", end_date: "2026-06-30" }],
+            aggregateRows: [
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-23",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 1,
+              },
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-30",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 4,
+              },
+            ],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, "emission");
+      assert.equal(out.movers[0].emission_delta_tao, 3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("get_subnet_movers degrades to an empty leaderboard on cold D1", async () => {
