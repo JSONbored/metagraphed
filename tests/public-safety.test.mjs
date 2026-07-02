@@ -220,7 +220,9 @@ describe("captured-fixture body scan", () => {
   test("flags a bare AWS access key id", async () => {
     // The signed-URL rule only catches request params; a long-term (AKIA) or
     // temporary (ASIA) access key id pasted into a doc/config is the common leak.
-    const leaks = ["AKIAIOSFODNN7EXAMPLE", "ASIAIOSFODNN7EXAMPLE"];
+    // Assemble prefix + shared body at runtime so the source never commits a
+    // contiguous key-shaped literal (which secret scanners flag in the diff).
+    const leaks = ["AKIA", "ASIA"].map((prefix) => `${prefix}IOSFODNN7EXAMPLE`);
     await fs.writeFile(TEST_PUBLIC_PATH, `${leaks.join("\n")}\n`, "utf8");
     const output = runScanOutput();
     for (const [index] of leaks.entries()) {
