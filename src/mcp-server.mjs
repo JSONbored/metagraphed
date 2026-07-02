@@ -113,6 +113,7 @@ import {
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
+import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -238,6 +239,8 @@ export const MCP_INSTRUCTIONS =
   "incidents, " +
   "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
+  "get_subnet_performance the reward distribution (incentive/dividends " +
+  "concentration) and trust/consensus score spread, " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
   "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
@@ -1779,6 +1782,31 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetConcentration(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "get_subnet_performance",
+    title: "Get subnet reward distribution & score spread",
+    description:
+      "Fetch one subnet's live reward-distribution scorecard: the concentration " +
+      "(Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) of the " +
+      "actual rewards — incentive across all neurons and dividends across the " +
+      "validators — plus the p10–p90 spread of the 0–1 trust, consensus, and " +
+      "validator_trust scores. The reward-flow companion of get_subnet_concentration " +
+      "(which measures stake/emission): use it to see whether a subnet's emissions " +
+      "are broadly earned or captured by a few UIDs. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/performance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetPerformance(mcpD1Runner(ctx), netuid);
     },
   },
   {
@@ -4936,6 +4964,24 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_stake: { type: ["object", "null"] },
       entity_emission: { type: ["object", "null"] },
       validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_subnet_performance: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      neuron_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      active_count: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      incentive: { type: ["object", "null"] },
+      dividends: { type: ["object", "null"] },
+      trust: { type: ["object", "null"] },
+      consensus: { type: ["object", "null"] },
+      validator_trust: { type: ["object", "null"] },
     },
   },
   get_chain_concentration: {

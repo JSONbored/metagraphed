@@ -22,6 +22,7 @@ import {
   handleSubnetHistory,
   handleSubnetIdentityHistory,
   handleSubnetConcentration,
+  handleSubnetPerformance,
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
@@ -981,6 +982,32 @@ describe("handleSubnetIdentityHistory", () => {
     assert.equal(body.data.entry_count, 1);
     assert.equal(body.data.entries[0].subnet_name, "MIAO");
     assert.equal(body.data.limit, 20);
+  });
+});
+
+describe("handleSubnetPerformance", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleSubnetPerformance(
+      req(`/api/v1/subnets/${NETUID}/performance`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance?window=7d`),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable null blocks on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleSubnetPerformance,
+      req(`/api/v1/subnets/${NETUID}/performance`),
+      emptyEnv(),
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/performance`),
+    );
+    assert.equal(body.data.netuid, NETUID);
+    assert.equal(body.data.neuron_count, 0);
+    assert.equal(body.data.incentive, null);
+    assert.equal(body.data.trust, null);
   });
 });
 

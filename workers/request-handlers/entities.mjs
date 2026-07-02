@@ -98,6 +98,10 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import {
+  PERFORMANCE_READ_COLUMNS,
+  buildSubnetPerformance,
+} from "../../src/subnet-performance.mjs";
+import {
   loadCounterparties,
   loadCounterpartyRelationship,
 } from "../../src/counterparties.mjs";
@@ -429,6 +433,36 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/performance: reward-distribution + score-spread
+// metrics for one subnet — how concentrated the actual REWARDS are (Gini/HHI/
+// Nakamoto/top-share of incentive across neurons and dividends across validators)
+// and how the 0..1 trust/consensus/validator_trust scores are spread (p10..p90).
+// The reward-flow companion to /concentration (which measures stake/emission).
+// Computed from the neurons D1 tier; a cold/absent store or empty subnet → 200
+// with null blocks (schema-stable, never 404), mirroring the sibling routes.
+export async function handleSubnetPerformance(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  const data = buildSubnetPerformance(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/performance.json`,
         data.captured_at,
       ),
     },

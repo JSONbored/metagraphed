@@ -373,6 +373,13 @@
     },
     {
       "contract_version": "2026-07-02.1",
+      "id": "subnet-performance",
+      "path": "/metagraph/subnets/{netuid}/performance.json",
+      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-02.1",
       "id": "subnet-concentration-history",
       "path": "/metagraph/subnets/{netuid}/concentration/history.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
@@ -4305,6 +4312,18 @@
       "id": "subnet-concentration",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/concentration",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/performance.json",
+      "cache": "short",
+      "description": "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
+      "id": "subnet-performance",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/performance",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

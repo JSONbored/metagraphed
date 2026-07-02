@@ -81,6 +81,7 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetYield,
+  handleSubnetPerformance,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
   handleGlobalValidators,
@@ -266,6 +267,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
+  SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1395,6 +1397,28 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         resolved.url,
       );
     }
+    // Reward-distribution + score-spread over the current neurons snapshot —
+    // per-UID read of the neurons tier, so it edge-caches on the subnet's neuron
+    // captured_at stamp like /concentration, not the health prober tick.
+    const performanceMatch = SUBNET_PERFORMANCE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (performanceMatch) {
+      return withNeuronsEdgeCache(
+        request,
+        ctx,
+        env,
+        Number(performanceMatch[1]),
+        "subnet-performance",
+        () =>
+          handleSubnetPerformance(
+            request,
+            env,
+            Number(performanceMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
     const neuronHistoryMatch = SUBNET_NEURON_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -1744,6 +1768,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
+    SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||

@@ -1858,6 +1858,62 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
+describe("MCP get_subnet_performance", () => {
+  test("returns reward-distribution + score-spread from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  assert.match(sql, /FROM neurons WHERE netuid = \?/);
+                  assert.ok(params.includes(7));
+                  return {
+                    results: [
+                      {
+                        incentive: 0.6,
+                        dividends: 0.5,
+                        trust: 0.9,
+                        consensus: 0.8,
+                        validator_trust: 0.95,
+                        active: 1,
+                        validator_permit: 1,
+                        captured_at: 1_750_000_000_000,
+                      },
+                      {
+                        incentive: 0.1,
+                        dividends: 0,
+                        trust: 0.3,
+                        consensus: 0.2,
+                        validator_trust: 0,
+                        active: 1,
+                        validator_permit: 0,
+                        captured_at: 1_750_000_000_000,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_performance",
+      { netuid: 7 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1);
+    assert.ok(out.incentive === null || typeof out.incentive === "object");
+    assert.ok(out.trust === null || typeof out.trust === "object");
+  });
+});
+
 describe("MCP get_chain_signers", () => {
   test("returns signers ranked by tx_count from D1", async () => {
     const env = {
