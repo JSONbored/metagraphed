@@ -1804,15 +1804,29 @@ describe("handleSubnetMovers", () => {
   });
 
   test("rejects an unsupported format with 400", async () => {
-    const body = await errorJson(
-      await handleSubnetMovers(
-        req("/api/v1/subnets/movers"),
-        emptyEnv(),
-        url("/api/v1/subnets/movers?format=xml"),
-      ),
+    for (const format of ["xml", "json"]) {
+      const body = await errorJson(
+        await handleSubnetMovers(
+          req("/api/v1/subnets/movers"),
+          emptyEnv(),
+          url(`/api/v1/subnets/movers?format=${format}`),
+        ),
+      );
+      assert.equal(body.meta.parameter, "format");
+      assert.match(body.error.message, new RegExp(format));
+    }
+  });
+
+  test("ignores Accept: text/csv without format=csv", async () => {
+    const body = await assertColdSchema(
+      handleSubnetMovers,
+      new Request("https://api.metagraph.sh/api/v1/subnets/movers", {
+        headers: { accept: "text/csv" },
+      }),
+      emptyEnv(),
+      url("/api/v1/subnets/movers"),
     );
-    assert.equal(body.meta.parameter, "format");
-    assert.match(body.error.message, /xml/);
+    assert.deepEqual(body.data.movers, []);
   });
 
   test("returns a schema-stable empty leaderboard on cold D1", async () => {
@@ -1943,15 +1957,17 @@ describe("handleGlobalValidators", () => {
   });
 
   test("rejects an unsupported format with 400", async () => {
-    const body = await errorJson(
-      await handleGlobalValidators(
-        req("/api/v1/validators"),
-        emptyEnv(),
-        url("/api/v1/validators?format=xml"),
-      ),
-    );
-    assert.equal(body.meta.parameter, "format");
-    assert.match(body.error.message, /xml/);
+    for (const format of ["xml", "json"]) {
+      const body = await errorJson(
+        await handleGlobalValidators(
+          req("/api/v1/validators"),
+          emptyEnv(),
+          url(`/api/v1/validators?format=${format}`),
+        ),
+      );
+      assert.equal(body.meta.parameter, "format");
+      assert.match(body.error.message, new RegExp(format));
+    }
   });
 
   test("exports cold validators as header-only CSV", async () => {

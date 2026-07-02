@@ -1,6 +1,11 @@
 import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
+import {
+  buildCsvExample,
+  GLOBAL_VALIDATORS_CSV_COLUMNS,
+  SUBNET_MOVERS_CSV_COLUMNS,
+} from "../workers/csv.mjs";
 
 export const CONTRACT_VERSION = "2026-07-01.1";
 export const SCHEMA_VERSION = 1;
@@ -1855,8 +1860,20 @@ export const API_ROUTES = [
             description:
               "CSV rows for the ranked subnet movers leaderboard. Requires `format=csv`.",
           },
-          example:
-            "netuid,stake_delta_tao,emission_delta_tao,validators_delta,stake_start_tao,stake_end_tao,stake_pct_change,emission_pct_change,validators_start,validators_end\r\n7,100.5,12.3,2,1000,1100.5,10,1.23,10,12\r\n",
+          example: buildCsvExample(SUBNET_MOVERS_CSV_COLUMNS, [
+            {
+              netuid: 7,
+              stake_delta_tao: 100.5,
+              emission_delta_tao: 12.3,
+              validators_delta: 2,
+              stake_start_tao: 1000,
+              stake_end_tao: 1100.5,
+              stake_pct_change: 10,
+              emission_pct_change: 1.23,
+              validators_start: 10,
+              validators_end: 12,
+            },
+          ]),
         },
       ],
     },
@@ -1901,8 +1918,19 @@ export const API_ROUTES = [
             description:
               "CSV rows for the global validator leaderboard. Requires `format=csv`.",
           },
-          example:
-            "subnet_count,uid_count,total_stake_tao,total_emission_tao,avg_validator_trust,max_validator_trust,stake_dominance\r\n3,5,1200.5,45.2,0.91,0.95,0.12\r\n",
+          example: buildCsvExample(GLOBAL_VALIDATORS_CSV_COLUMNS, [
+            {
+              hotkey: "5GrwvaEF5zXb26Fz9rcwpuC9sUkLyVaio1ERDrJJimH4uwpFbP",
+              coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+              subnet_count: 3,
+              uid_count: 5,
+              total_stake_tao: 1200.5,
+              total_emission_tao: 45.2,
+              avg_validator_trust: 0.91,
+              max_validator_trust: 0.95,
+              stake_dominance: 0.12,
+            },
+          ]),
         },
       ],
     },

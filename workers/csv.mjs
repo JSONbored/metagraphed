@@ -1,5 +1,30 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 
+export const SUBNET_MOVERS_CSV_COLUMNS = [
+  "netuid",
+  "stake_delta_tao",
+  "emission_delta_tao",
+  "validators_delta",
+  "stake_start_tao",
+  "stake_end_tao",
+  "stake_pct_change",
+  "emission_pct_change",
+  "validators_start",
+  "validators_end",
+];
+
+export const GLOBAL_VALIDATORS_CSV_COLUMNS = [
+  "hotkey",
+  "coldkey",
+  "subnet_count",
+  "uid_count",
+  "total_stake_tao",
+  "total_emission_tao",
+  "avg_validator_trust",
+  "max_validator_trust",
+  "stake_dominance",
+];
+
 function normalizeColumns(rows, columns) {
   if (Array.isArray(columns) && columns.length > 0) {
     return columns.map((column) => String(column));
@@ -84,8 +109,7 @@ export function validateCsvFormatParam(url) {
   if (format === null || format === "") {
     return null;
   }
-  const normalized = format.toLowerCase();
-  if (normalized === "csv" || normalized === "json") {
+  if (format.toLowerCase() === "csv") {
     return null;
   }
   return {
@@ -94,15 +118,12 @@ export function validateCsvFormatParam(url) {
   };
 }
 
-export function csvRequested(url, request) {
-  const format = url.searchParams.get("format")?.toLowerCase();
-  if (format === "csv") {
-    return true;
-  }
-  if (format === "json") {
-    return false;
-  }
-  return /\btext\/csv\b/i.test(request.headers.get("accept") || "");
+export function csvRequested(url) {
+  return url.searchParams.get("format")?.toLowerCase() === "csv";
+}
+
+export function buildCsvExample(columns, rows) {
+  return rowsToCsv(rows, columns);
 }
 
 export async function csvResponse(
@@ -121,7 +142,7 @@ export async function csvResponse(
     `attachment; filename="${csvFilename(filename)}"`,
   );
   headers.set("etag", etag);
-  headers.set("vary", "Accept, Accept-Encoding");
+  headers.set("vary", "Accept-Encoding");
 
   if (request && ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, { status: 304, headers });

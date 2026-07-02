@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  buildCsvExample,
   csvRequested,
   csvResponse,
+  GLOBAL_VALIDATORS_CSV_COLUMNS,
   rowsToCsv,
   validateCsvFormatParam,
 } from "../workers/csv.mjs";
@@ -65,32 +67,61 @@ test("rowsToCsv serializes nulls, arrays, and objects predictably", () => {
   );
 });
 
-test("validateCsvFormatParam accepts absent, csv, and json values", () => {
+test("validateCsvFormatParam accepts absent and csv values", () => {
   assert.equal(validateCsvFormatParam(url()), null);
   assert.equal(validateCsvFormatParam(url("?format=csv")), null);
-  assert.equal(validateCsvFormatParam(url("?format=JSON")), null);
-  assert.equal(validateCsvFormatParam(url("?format=json")), null);
+  assert.equal(validateCsvFormatParam(url("?format=CSV")), null);
 });
 
 test("validateCsvFormatParam rejects unsupported format values", () => {
-  const error = validateCsvFormatParam(url("?format=xml"));
-  assert.equal(error.parameter, "format");
-  assert.match(error.message, /xml/);
-  assert.match(error.message, /format=csv/);
+  for (const format of ["xml", "json"]) {
+    const error = validateCsvFormatParam(url(`?format=${format}`));
+    assert.equal(error.parameter, "format");
+    assert.match(error.message, new RegExp(format));
+    assert.match(error.message, /format=csv/);
+  }
 });
 
-test("csvRequested honors format and Accept negotiation", () => {
-  assert.equal(csvRequested(url("?format=csv"), req()), true);
+test("csvRequested only honors format=csv", () => {
+  assert.equal(csvRequested(url("?format=csv")), true);
+  assert.equal(csvRequested(url("?format=json")), false);
+  assert.equal(csvRequested(url()), false);
+});
+
+test("buildCsvExample matches rowsToCsv output for route examples", () => {
+  const example = buildCsvExample(GLOBAL_VALIDATORS_CSV_COLUMNS, [
+    {
+      hotkey: "5HotkeyA",
+      coldkey: "5ColdkeyA",
+      subnet_count: 3,
+      uid_count: 5,
+      total_stake_tao: 1200.5,
+      total_emission_tao: 45.2,
+      avg_validator_trust: 0.91,
+      max_validator_trust: 0.95,
+      stake_dominance: 0.12,
+    },
+  ]);
+  assert.match(example, /^hotkey,coldkey,/);
   assert.equal(
-    csvRequested(url(), req({ accept: "application/json, text/csv" })),
-    true,
+    example,
+    rowsToCsv(
+      [
+        {
+          hotkey: "5HotkeyA",
+          coldkey: "5ColdkeyA",
+          subnet_count: 3,
+          uid_count: 5,
+          total_stake_tao: 1200.5,
+          total_emission_tao: 45.2,
+          avg_validator_trust: 0.91,
+          max_validator_trust: 0.95,
+          stake_dominance: 0.12,
+        },
+      ],
+      GLOBAL_VALIDATORS_CSV_COLUMNS,
+    ),
   );
-  assert.equal(
-    csvRequested(url("?format=json"), req({ accept: "text/csv" })),
-    false,
-  );
-  assert.equal(csvRequested(url(), req({ accept: "application/json" })), false);
-  assert.equal(csvRequested(url(), req()), false);
 });
 
 test("csvResponse emits CSV download headers and a conditional ETag", async () => {

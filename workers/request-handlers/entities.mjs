@@ -28,7 +28,13 @@ import {
 } from "../request-params.mjs";
 
 import { errorResponse, X_METAGRAPH_ARTIFACT_SOURCE_HEADER } from "../http.mjs";
-import { csvRequested, csvResponse, validateCsvFormatParam } from "../csv.mjs";
+import {
+  csvRequested,
+  csvResponse,
+  GLOBAL_VALIDATORS_CSV_COLUMNS,
+  SUBNET_MOVERS_CSV_COLUMNS,
+  validateCsvFormatParam,
+} from "../csv.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -121,31 +127,6 @@ import {
   MOVERS_LIMIT_MAX,
 } from "../../src/movers.mjs";
 import { loadSubnetIdentityHistory } from "../../src/subnet-identity-history.mjs";
-
-const SUBNET_MOVERS_CSV_COLUMNS = [
-  "netuid",
-  "stake_delta_tao",
-  "emission_delta_tao",
-  "validators_delta",
-  "stake_start_tao",
-  "stake_end_tao",
-  "stake_pct_change",
-  "emission_pct_change",
-  "validators_start",
-  "validators_end",
-];
-
-const GLOBAL_VALIDATORS_CSV_COLUMNS = [
-  "hotkey",
-  "coldkey",
-  "subnet_count",
-  "uid_count",
-  "total_stake_tao",
-  "total_emission_tao",
-  "avg_validator_trust",
-  "max_validator_trust",
-  "stake_dominance",
-];
 
 function parseBoundedIntParam(url, parameter, { def, min, max }) {
   const raw = url.searchParams.get(parameter);
@@ -309,7 +290,7 @@ export async function handleGlobalValidators(request, env, url) {
     sort: sortParam,
     limit: limit.value,
   });
-  if (csvRequested(url, request)) {
+  if (csvRequested(url)) {
     return csvResponse(
       data.validators,
       "validators",
@@ -765,7 +746,7 @@ export async function handleSubnetMovers(request, env, url) {
     sort: sortParam,
     limit: limit.value,
   });
-  if (csvRequested(url, request)) {
+  if (csvRequested(url)) {
     return csvResponse(
       data.movers,
       "subnet-movers",
