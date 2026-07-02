@@ -88,6 +88,18 @@ test("csvRequested only honors format=csv", () => {
   assert.equal(csvRequested(url()), false);
 });
 
+test("rowsToCsv keeps negative numeric values unmodified", () => {
+  const csv = rowsToCsv([
+    {
+      stake_delta_tao: -1.5,
+      validators_delta: -2,
+      active: false,
+    },
+  ]);
+
+  assert.equal(csv, "stake_delta_tao,validators_delta,active\r\n-1.5,-2,false");
+});
+
 test("rowsToCsv neutralizes spreadsheet formula trigger prefixes", () => {
   const csv = rowsToCsv([
     {
