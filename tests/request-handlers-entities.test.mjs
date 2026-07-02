@@ -18,6 +18,7 @@ import {
   handleSubnetYield,
   handleNeuron,
   handleSubnetValidators,
+  handleGlobalValidators,
   handleNeuronHistory,
   handleSubnetHistory,
   handleSubnetIdentityHistory,
@@ -47,6 +48,7 @@ import {
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
+  canonicalGlobalValidatorsCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -763,6 +765,62 @@ describe("handleSubnetValidators", () => {
       body.meta.artifact_path,
       `/metagraph/subnets/${NETUID}/validators.json`,
     );
+  });
+});
+
+describe("handleGlobalValidators", () => {
+  // workers/api.mjs always resolves canonicalGlobalValidatorsCachePath(url)
+  // first and short-circuits on its { response } before handleGlobalValidators
+  // ever runs, so the router never reaches this guard with an invalid query.
+  // It stays as defense in depth for any direct/non-cached caller, so cover it
+  // directly here rather than only through the edge-cache route.
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleGlobalValidators(
+      req("/api/v1/validators"),
+      emptyEnv(),
+      url("/api/v1/validators?bogus=1"),
+    );
+    await errorJson(res);
+  });
+
+  test("returns schema-stable empty leaderboard on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleGlobalValidators,
+      req("/api/v1/validators"),
+      emptyEnv(),
+      url("/api/v1/validators"),
+    );
+    assert.deepEqual(body.data.validators, []);
+  });
+});
+
+describe("canonicalGlobalValidatorsCachePath", () => {
+  test("returns a response short-circuit for an unsupported query param", () => {
+    const result = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?bogus=1"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.ok(result.response instanceof Response);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("returns a response short-circuit for an unsupported sort value", () => {
+    const result = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?sort=bogus"),
+    );
+    assert.equal(result.cachePathAndSearch, undefined);
+    assert.equal(result.response.status, 400);
+  });
+
+  test("omitted sort/limit and their explicit defaults produce the same cache key", () => {
+    const omitted = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators"),
+    );
+    const explicit = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?sort=subnet_count&limit=20"),
+    );
+    assert.equal(omitted.response, undefined);
+    assert.equal(omitted.cachePathAndSearch, explicit.cachePathAndSearch);
   });
 });
 
