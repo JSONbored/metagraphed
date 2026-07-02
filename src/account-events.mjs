@@ -71,6 +71,7 @@ export const INGESTED_EVENT_KINDS = [
   "HotkeySwapped",
   "ColdkeySwapped",
   "Transfer",
+  "Faucet",
 ];
 
 function toIso(ms) {

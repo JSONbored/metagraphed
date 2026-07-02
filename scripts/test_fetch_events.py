@@ -501,5 +501,42 @@ class ColdkeySwapExtractorTest(unittest.TestCase):
         self.assertIsNone(_extract("ColdkeySwapScheduled", [_SS58_A, _SS58_B]))
 
 
+class FaucetExtractorTest(unittest.TestCase):
+    """Tests for the SubtensorModule.Faucet extractor (#2560) — testnet TAO mint
+    credited to a coldkey. Attribute order: (account, amount_rao), confirmed
+    against subtensor: Event::Faucet(AccountId, u64). Not FaucetMinted."""
+
+    def test_list_form_positional(self):
+        result = _extract("Faucet", [_SS58_A, _RAO_100])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named(self):
+        result = _extract("Faucet", {"account": _SS58_A, "amount": _RAO_100})
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_rao_to_tao_coercion(self):
+        result = _extract("Faucet", [_SS58_A, 500_000_000])
+        self.assertAlmostEqual(result["amount_tao"], 0.5)
+
+    def test_zero_amount(self):
+        result = _extract("Faucet", [_SS58_A, 0])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_recipient_gives_null_coldkey(self):
+        result = _extract("Faucet", ["not-an-address", _RAO_100])
+        self.assertIsNone(result["coldkey"])
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("Faucet", [])
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

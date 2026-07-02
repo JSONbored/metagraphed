@@ -279,6 +279,18 @@ def _coldkey_swap(a):  # ColdkeySwapped: {old_coldkey, new_coldkey} or [old_cold
     return {"coldkey": _ss58(old_ck), "hotkey": _ss58(new_ck)}
 
 
+def _faucet(a):  # Faucet: (account, amount_rao) — testnet TAO mint credited to a
+    # coldkey. Confirmed against subtensor: Event::Faucet(AccountId, u64). Positional
+    # tuple; dict guard mirrors _transfer for named/older decodings.
+    if isinstance(a, dict):
+        account = a.get("account", a.get("who"))
+        amount = a.get("amount")
+    else:
+        account = a[0] if len(a) > 0 else None
+        amount = a[1] if len(a) > 1 else None
+    return {"coldkey": _ss58(account), "amount_tao": _tao(amount)}
+
+
 EXTRACTORS = {
     "NeuronRegistered": _registered,
     "StakeAdded": _stake,
@@ -300,6 +312,8 @@ EXTRACTORS = {
     "ColdkeySwapped": _coldkey_swap,
     # Balances pallet — native TAO transfers between accounts (#1814)
     "Transfer": _transfer,
+    # Testnet faucet mint — test-TAO issuance credited to a coldkey (#2560)
+    "Faucet": _faucet,
 }
 
 
