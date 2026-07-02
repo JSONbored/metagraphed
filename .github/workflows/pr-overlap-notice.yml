@@ -63,8 +63,24 @@ jobs:
             gh api "$1" 2>/dev/null || return 1
           }
 
-          this_pr_files_json=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" \
-            --paginate --jq '[.[].filename]' 2>/dev/null) || {
+          # `gh api --paginate` emits one JSON value per page rather than
+          # merging pages into a single array/stream (see `gh api --help`:
+          # "Each page is a separate JSON array or object"). A `--jq
+          # '[.[].filename]'` filter therefore prints one bracketed array
+          # literal PER PAGE -- for any file list spanning more than one page,
+          # concatenating those lines is not valid JSON and breaks the later
+          # `jq --argjson` parse. Fetch flat, newline-joined filenames instead
+          # (safe: a repo path cannot contain a newline) and reassemble a
+          # single JSON array locally.
+          files_json_for_pr() {
+            local pr="$1"
+            local flat
+            flat=$(gh api "repos/$REPO/pulls/$pr/files" \
+              --paginate --jq '.[].filename' 2>/dev/null) || return 1
+            printf '%s' "$flat" | jq -R -s -c 'split("\n") | map(select(length > 0))'
+          }
+
+          this_pr_files_json=$(files_json_for_pr "$PR_NUMBER") || {
             echo "Could not fetch this PR's changed files; skipping overlap check." >&2
             exit 0
           }
@@ -105,11 +121,9 @@ jobs:
 
           overlap_lines=()
           for other in "${other_pr_numbers[@]}"; do
-            # --paginate to match the current-PR file fetch above -- otherwise
-            # an overlap past the first 100 changed files of `other` would be
-            # silently missed for large PRs.
-            other_files_json=$(gh api "repos/$REPO/pulls/$other/files" \
-              --paginate --jq '[.[].filename]' 2>/dev/null) || continue
+            # Paginated fetch (see files_json_for_pr above) so an overlap past
+            # the first page of `other`'s changed files is not missed.
+            other_files_json=$(files_json_for_pr "$other") || continue
             shared=$(jq -n \
               --argjson a "$this_pr_files_json" \
               --argjson b "$other_files_json" \
@@ -153,8 +167,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Same per-page pagination shape as the overlap-detection step: emit
+          # bare scalar ids (one per matching comment, across all pages) rather
+          # than a bracketed array literal per page, and take the first match.
+          # A PR should carry at most one marker comment (this workflow always
+          # upserts), so the first match is the one to update.
           existing_comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
-            --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id" 2>/dev/null) || {
+            --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\")) | .id][]" 2>/dev/null \
+            | head -n1) || {
             echo "Could not list existing comments; skipping." >&2
             exit 0
           }
