@@ -590,6 +590,38 @@ describe("list-query unknown query parameters", () => {
     assert.equal(result.data.subnets.length, 1);
   });
 
+  test("csv, array, and range params remain accepted", () => {
+    const result = applyQueryFilters(
+      {
+        subnets: [
+          {
+            netuid: 1,
+            status: "active",
+            categories: ["inference"],
+            derived_categories: [],
+            surface_count: 5,
+          },
+          {
+            netuid: 2,
+            status: "inactive",
+            categories: ["training"],
+            derived_categories: [],
+            surface_count: 2,
+          },
+        ],
+      },
+      query(
+        "/api/v1/subnets?netuids=1,2&domain=inference&min_surface_count=1&max_surface_count=10",
+      ),
+      "subnets",
+    );
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.subnets.map((row) => row.netuid),
+      [1],
+    );
+  });
+
   test("empty query params remain valid", () => {
     const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
     assert.equal(result.error, undefined);

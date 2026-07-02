@@ -43,16 +43,20 @@ export function applyQueryFilters(
 function listQueryParamNames(queryCollection, queryFilterNames = []) {
   const config = API_QUERY_COLLECTIONS[queryCollection];
   if (!config) return [];
+  return listQueryParamNamesFromConfig(config, queryFilterNames);
+}
+
+function listQueryParamNamesFromConfig(config, queryFilterNames = []) {
   const filterNames =
     queryFilterNames.length > 0
       ? queryFilterNames
       : Object.keys(config.filters);
-  const rangeNames = (config.range_filters || []).flatMap((field) => [
+  const rangeNames = (config.range_filters ?? []).flatMap((field) => [
     `min_${field}`,
     `max_${field}`,
   ]);
-  const csvNames = Object.keys(config.csv_filters || {});
-  const arrayNames = Object.keys(config.array_filters || {});
+  const csvNames = Object.keys(config.csv_filters ?? {});
+  const arrayNames = Object.keys(config.array_filters ?? {});
   return [
     "q",
     "fields",
@@ -320,21 +324,7 @@ function paginateRows(rows, params) {
 }
 
 function validateListQuery(params, config) {
-  const allowedParams = new Set([
-    "q",
-    "fields",
-    "limit",
-    "cursor",
-    "sort",
-    "order",
-    ...Object.keys(config.filters || {}),
-    ...Object.keys(config.csv_filters || {}),
-    ...Object.keys(config.array_filters || {}),
-    ...(config.range_filters || []).flatMap((field) => [
-      `min_${field}`,
-      `max_${field}`,
-    ]),
-  ]);
+  const allowedParams = new Set(listQueryParamNamesFromConfig(config));
   for (const key of params.keys()) {
     if (!allowedParams.has(key)) {
       return {
