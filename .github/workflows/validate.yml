@@ -66,11 +66,15 @@ jobs:
   # `.github/workflows/*.yml`/`.yaml`, and `Validate migration sequence`
   # (scripts/validate-migrations.mjs) reads ONLY `migrations/*.sql` — verified
   # by reading each script's full source; neither imports anything outside its
-  # own directory. A PR can be workflow-only or migration-only without being a
-  # docs PR, so these are computed as their own flags rather than folded into
-  # docs_only, and neither needs the registry guardrail above (neither path is
-  # registry-adjacent). Every other `checks` validator was evaluated for the
-  # same treatment and rejected: the contract/schema/route validators
+  # own directory. Each flag also matches its OWN validator script path
+  # (scripts/validate-workflows.mjs / scripts/validate-migrations.mjs) directly,
+  # so editing the validator's logic itself still runs it even when the diff
+  # doesn't touch `.github/workflows/` or `migrations/`. A PR can be
+  # workflow-only or migration-only without being a docs PR, so these are
+  # computed as their own flags rather than folded into docs_only, and neither
+  # needs the registry guardrail above (neither path is registry-adjacent).
+  # Every other `checks` validator was evaluated for the same treatment and
+  # rejected: the contract/schema/route validators
   # (validate:schemas/api/mcp/ai/openapi/types) all transitively import most of
   # `src/` + `workers/**` via `workers/api.mjs`, so no path glob short of
   # "almost the whole repo" would safely exclude them — see
@@ -115,7 +119,7 @@ jobs:
             git fetch origin "$BASE_REF"
             range="origin/$BASE_REF...HEAD"
           fi
-          git diff --name-only --diff-filter=d "$range" > changed-files.txt
+          git diff --name-only "$range" > changed-files.txt
 
           if [ ! -s changed-files.txt ]; then
             {
@@ -133,12 +137,12 @@ jobs:
           # Narrow, independent skips -- see the job comment above for the
           # file:line evidence that these two validators' entire footprint is
           # their own directory.
-          if grep -qE '^\.github/workflows/' changed-files.txt; then
+          if grep -qE '^\.github/workflows/|^scripts/validate-workflows\.mjs$' changed-files.txt; then
             echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
           fi
-          if grep -qE '^migrations/' changed-files.txt; then
+          if grep -qE '^migrations/|^scripts/validate-migrations\.mjs$' changed-files.txt; then
             echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
