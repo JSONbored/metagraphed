@@ -891,7 +891,7 @@ function accountNode(ss58) {
       ),
     counterparties: (args, context) =>
       loadCounterparties(graphqlD1(context), ss58, {
-        limit: args?.limit,
+        limit: requireOptionalNonNegativeInt(args?.limit, "limit"),
       }),
     extrinsics: (args, context) =>
       loadAccountExtrinsics(
@@ -944,6 +944,10 @@ function requireNonNegativeInt(value, name) {
   return value;
 }
 
+function requireOptionalNonNegativeInt(value, name) {
+  return value == null ? undefined : requireNonNegativeInt(value, name);
+}
+
 const GRAPHQL_ACCOUNT_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function requireDay(value, name) {
@@ -961,7 +965,7 @@ function accountHistoryArgs(args = {}) {
     netuid: requireNonNegativeInt(args.netuid, "netuid"),
     from: requireDay(args.from, "from"),
     to: requireDay(args.to, "to"),
-    limit: args.limit,
+    limit: requireOptionalNonNegativeInt(args.limit, "limit"),
     offset: requireNonNegativeInt(args.offset, "offset"),
     cursor: args.cursor,
   };
@@ -983,7 +987,7 @@ function accountTransfersArgs(args = {}) {
     direction: direction === "all" ? null : direction,
     blockStart: requireNonNegativeInt(args.block_start, "block_start"),
     blockEnd: requireNonNegativeInt(args.block_end, "block_end"),
-    limit: args.limit,
+    limit: requireOptionalNonNegativeInt(args.limit, "limit"),
     offset: requireNonNegativeInt(args.offset, "offset"),
     cursor: args.cursor,
   };
@@ -993,7 +997,7 @@ function accountExtrinsicsArgs(args = {}) {
   return {
     blockStart: requireNonNegativeInt(args.block_start, "block_start"),
     blockEnd: requireNonNegativeInt(args.block_end, "block_end"),
-    limit: args.limit,
+    limit: requireOptionalNonNegativeInt(args.limit, "limit"),
     offset: requireNonNegativeInt(args.offset, "offset"),
     cursor: args.cursor,
   };
@@ -1001,18 +1005,20 @@ function accountExtrinsicsArgs(args = {}) {
 
 async function loadGraphqlAccountBalance(context, ss58) {
   if (!isFinneySs58Address(ss58)) return null;
-  if (context.env?.RPC_RATE_LIMITER?.limit) {
-    const { success } = await context.env.RPC_RATE_LIMITER.limit({
-      key: `balance:${resolveClientIp(context.request)}`,
-    });
-    if (!success) {
-      throw new GraphQLError(
-        "Too many live balance requests from this client; slow down.",
-        { extensions: { code: "RATE_LIMITED" } },
-      );
-    }
-  }
-  return loadAccountBalance(context.env, ss58);
+  return loadAccountBalance(context.env, ss58, {
+    beforeLiveFetch: async () => {
+      if (!context.env?.RPC_RATE_LIMITER?.limit) return;
+      const { success } = await context.env.RPC_RATE_LIMITER.limit({
+        key: `balance:${resolveClientIp(context.request)}`,
+      });
+      if (!success) {
+        throw new GraphQLError(
+          "Too many live balance requests from this client; slow down.",
+          { extensions: { code: "RATE_LIMITED" } },
+        );
+      }
+    },
+  });
 }
 
 // --- Resolvers ---

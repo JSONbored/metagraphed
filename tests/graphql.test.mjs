@@ -1387,9 +1387,9 @@ describe("graphql — account node + lazy account relationships", () => {
     });
   });
 
-  test("balance uses the live balance limiter and KV-backed account balance loader", async () => {
+  test("balance serves KV hits before the live balance limiter", async () => {
     const kvReads = new Map();
-    let limiterKey = null;
+    let limiterCalled = false;
     const env = fixtureEnv(
       {},
       {
@@ -1405,9 +1405,9 @@ describe("graphql — account node + lazy account relationships", () => {
       },
     );
     env.RPC_RATE_LIMITER = {
-      async limit({ key }) {
-        limiterKey = key;
-        return { success: true };
+      async limit() {
+        limiterCalled = true;
+        return { success: false };
       },
     };
 
@@ -1417,13 +1417,43 @@ describe("graphql — account node + lazy account relationships", () => {
     );
 
     assert.equal(status, 200);
-    assert.equal(limiterKey, "balance:anonymous");
+    assert.equal(body.errors, undefined);
+    assert.equal(limiterCalled, false);
     assert.equal(kvReads.get(`balance:${ACCOUNT_SS58}`), 1);
     assert.deepEqual(body.data.account.balance, {
       ss58: ACCOUNT_SS58,
       balance_tao: 12.5,
       queried_at: "2026-06-30T00:00:00.000Z",
     });
+  });
+
+  test("balance applies the live limiter before a live RPC fallback", async () => {
+    const origFetch = globalThis.fetch;
+    let limiterKey = null;
+    globalThis.fetch = async () => ({ ok: false });
+    try {
+      const env = fixtureEnv();
+      env.RPC_RATE_LIMITER = {
+        async limit({ key }) {
+          limiterKey = key;
+          return { success: true };
+        },
+      };
+
+      const { status, body } = await gql(
+        `{ account(ss58: "${ACCOUNT_SS58}") { balance { ss58 balance_tao queried_at } } }`,
+        env,
+      );
+
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      assert.equal(limiterKey, "balance:anonymous");
+      assert.equal(body.data.account.balance.ss58, ACCOUNT_SS58);
+      assert.equal(body.data.account.balance.balance_tao, null);
+      assert.ok(body.data.account.balance.queried_at);
+    } finally {
+      globalThis.fetch = origFetch;
+    }
   });
 
   test("balance rate-limit failures surface as GraphQL field errors", async () => {
@@ -1486,6 +1516,23 @@ describe("graphql — account node + lazy account relationships", () => {
     assert.equal(badDirection.status, 200);
     assert.equal(badDirection.body.data.account, null);
     assert.equal(badDirection.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  test("account relationship limits reject negative values", async () => {
+    const queries = [
+      `{ account(ss58: "${ACCOUNT_SS58}") { history(limit: -1) { day_count } } }`,
+      `{ account(ss58: "${ACCOUNT_SS58}") { transfers(limit: -1) { transfer_count } } }`,
+      `{ account(ss58: "${ACCOUNT_SS58}") { counterparties(limit: -1) { counterparty_count } } }`,
+      `{ account(ss58: "${ACCOUNT_SS58}") { extrinsics(limit: -1) { extrinsic_count } } }`,
+    ];
+
+    for (const query of queries) {
+      const { status, body } = await gql(query, accountD1Env());
+      assert.equal(status, 200);
+      assert.equal(body.data.account, null);
+      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+      assert.match(body.errors[0].message, /limit/);
+    }
   });
 });
 

@@ -74,8 +74,9 @@ export function isFinneySs58Address(value) {
 }
 
 // Query live balance for one finney ss58. Uses METAGRAPH_CONTROL KV (60s TTL) when
-// present; balance_tao is null on RPC failure (schema-stable, never throws).
-export async function loadAccountBalance(env, ss58) {
+// present; balance_tao is null on RPC failure. Callers can pass beforeLiveFetch
+// to meter/block only the post-cache live RPC.
+export async function loadAccountBalance(env, ss58, { beforeLiveFetch } = {}) {
   const cacheKey = `balance:${ss58}`;
   const kv = env?.METAGRAPH_CONTROL;
 
@@ -87,6 +88,8 @@ export async function loadAccountBalance(env, ss58) {
       // KV read failure is non-fatal — fall through to the live RPC.
     }
   }
+
+  if (beforeLiveFetch) await beforeLiveFetch();
 
   const queriedAt = new Date().toISOString();
   let balanceTao = null;
