@@ -1630,7 +1630,9 @@ describe("handleSubnetStakeFlow", () => {
 
     test("canonicalizes omitted and explicit default direction to one cache key", () => {
       const omitted = canonicalSubnetStakeFlowCachePath(
-        new URL("https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d"),
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?window=30d",
+        ),
       );
       const explicit = canonicalSubnetStakeFlowCachePath(
         new URL(
