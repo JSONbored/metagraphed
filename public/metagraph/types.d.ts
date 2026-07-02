@@ -1643,7 +1643,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). */
+        /** Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. */
         get: operations["subnetUptime"];
         put?: never;
         post?: never;
@@ -18949,6 +18949,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "90d" | "1y";
+                min_samples?: number;
             };
             header?: never;
             path: {

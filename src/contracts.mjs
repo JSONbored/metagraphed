@@ -2381,10 +2381,13 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
-    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup).",
+    "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
     "short",
     ["health", "subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["90d", "1y"] } }],
+    [
+      { name: "window", schema: { type: "string", enum: ["90d", "1y"] } },
+      { name: "min_samples", schema: { type: "integer", minimum: 0 } },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(

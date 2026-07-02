@@ -24,6 +24,7 @@ import {
   dailyLatencyColumns,
   surfaceStatusAvgLatencySql,
 } from "../../src/health-sql.mjs";
+import { parseNonNegativeIntParam } from "../request-params.mjs";
 import {
   parseHistoryWindow,
   unsupportedWindowMessage,
@@ -123,7 +124,7 @@ export async function handleEconomicsTrends(request, env, url) {
 
 // Long-term daily uptime history for one subnet's operational surfaces.
 export async function handleUptime(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "min_samples"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || "90d";
   if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
@@ -132,6 +133,14 @@ export async function handleUptime(request, env, netuid, url) {
       message: unsupportedWindowMessage(windowParam, UPTIME_WINDOWS),
     });
   }
+  // Optional low-sample noise floor: drop day rows whose aggregated probe count
+  // is below the threshold (a HAVING bound param), so sparse days (including
+  // the SUM(samples)=0 'unknown' rows) can be excluded from availability charts.
+  const minSamples = parseNonNegativeIntParam(
+    url.searchParams.get("min_samples"),
+    "min_samples",
+  );
+  if (minSamples.error) return analyticsQueryError(minSamples.error);
   const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -160,9 +169,11 @@ export async function handleUptime(request, env, netuid, url) {
      FROM surface_uptime_daily
      WHERE netuid = ? AND day >= ?
      GROUP BY COALESCE(surface_key, surface_id), day
-     ORDER BY day DESC
+     ${minSamples.value !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
      LIMIT ?`,
-    [netuid, cutoff, MAX_UPTIME_ROWS],
+    minSamples.value !== null
+      ? [netuid, cutoff, minSamples.value, MAX_UPTIME_ROWS]
+      : [netuid, cutoff, MAX_UPTIME_ROWS],
   );
   const healthMeta = await readHealthMetaKv(env);
   const data = formatUptime({

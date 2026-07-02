@@ -1210,6 +1210,56 @@ describe("analytics routes (fake D1 with data)", () => {
     assert.equal(incidentQuery.params.at(-2), 2);
   });
 
+  test("uptime ?min_samples adds a bound HAVING sample floor (#2582)", async () => {
+    const queries = [];
+    const envWithCapture = captureD1Env(queries);
+    const { status } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=3",
+      envWithCapture,
+    );
+    assert.equal(status, 200);
+    const uptimeQuery = queries.find((query) =>
+      query.sql.includes("FROM surface_uptime_daily"),
+    );
+    // The floor is a bound HAVING predicate between GROUP BY and ORDER BY, so
+    // sparse day rows (including SUM(samples)=0 'unknown' days) drop in SQL.
+    assert.match(
+      uptimeQuery.sql,
+      /GROUP BY COALESCE\(surface_key, surface_id\), day\s+HAVING SUM\(samples\) >= \?\s+ORDER BY day DESC/,
+    );
+    assert.equal(uptimeQuery.params[0], 7); // netuid
+    assert.equal(uptimeQuery.params[2], 3); // the bound HAVING floor
+    assert.equal(uptimeQuery.params.length, 4); // netuid, cutoff, floor, LIMIT
+  });
+
+  test("uptime without min_samples keeps the unfiltered query shape", async () => {
+    const queries = [];
+    const envWithCapture = captureD1Env(queries);
+    const { status } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/uptime",
+      envWithCapture,
+    );
+    assert.equal(status, 200);
+    const uptimeQuery = queries.find((query) =>
+      query.sql.includes("FROM surface_uptime_daily"),
+    );
+    assert.doesNotMatch(uptimeQuery.sql, /HAVING/);
+    assert.equal(uptimeQuery.params.length, 3); // netuid, cutoff, LIMIT only
+  });
+
+  test("uptime rejects a malformed min_samples with a 400", async () => {
+    const queries = [];
+    const envWithCapture = captureD1Env(queries);
+    const { status, body } = await getJson(
+      "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=lots",
+      envWithCapture,
+    );
+    assert.equal(status, 400);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "min_samples");
+    assert.equal(queries.length, 0, "malformed input must not reach D1");
+  });
+
   test("trends and uptime SQL group by stable surface key", async () => {
     const queries = [];
     const envWithCapture = captureD1Env(queries);
