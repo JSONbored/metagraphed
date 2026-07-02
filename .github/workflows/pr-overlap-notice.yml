@@ -1,0 +1,168 @@
+name: PR Overlap Notice
+
+# Purely advisory: comments on a PR when another currently-open PR touches at
+# least one of the same file paths, so either author can check for conflicts
+# before merging. Never a required/blocking check — the job only ever posts a
+# comment (or does nothing); it does not fail the PR's checks list.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: pr-overlap-notice-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  overlap-notice:
+    runs-on: ubuntu-latest
+    steps:
+      # No contributor code is checked out or executed anywhere in this
+      # workflow -- every input below comes from already-public PR metadata
+      # fetched over the GitHub REST API (gh api), same trusted-workflow-only
+      # pattern as validate.yml's "Compute submitted files" step. This checkout
+      # is an empty sparse checkout of the trusted workflow's own base-branch
+      # ref, present only because validate:workflows requires every workflow to
+      # include a checkout step; it reads zero files and needs no `contents`
+      # permission (a public repo's default GITHUB_TOKEN can still perform an
+      # anonymous, credential-less clone).
+      - name: Checkout (no content read; satisfies workflow checkout guard)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/workflows/pr-overlap-notice.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Find and comment on overlapping open PRs
+        id: overlap
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MARKER: "<!-- overlap-notice:v1 -->"
+          MAX_OTHER_PRS: "200"
+          PER_PAGE: "100"
+        run: |
+          set -euo pipefail
+
+          # Gracefully skip on any transient API failure (rate limiting, etc.)
+          # -- this workflow must never fail the PR's checks list.
+          api_get() {
+            gh api "$1" 2>/dev/null || return 1
+          }
+
+          this_pr_files_json=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" \
+            --paginate --jq '[.[].filename]' 2>/dev/null) || {
+            echo "Could not fetch this PR's changed files; skipping overlap check." >&2
+            exit 0
+          }
+
+          # Manually paginate the open-PR list (capped at MAX_OTHER_PRS) rather
+          # than an unbounded --paginate, so a large open-PR backlog can't blow
+          # up API usage. Logs a note (does not fail) if the cap truncates the
+          # list.
+          other_pr_numbers=()
+          page=1
+          max_pages=$(( (MAX_OTHER_PRS + PER_PAGE - 1) / PER_PAGE ))
+          while [ "$page" -le "$max_pages" ]; do
+            page_numbers=$(api_get "repos/$REPO/pulls?state=open&per_page=$PER_PAGE&page=$page" \
+              | jq -r '.[].number') || {
+              echo "PR list fetch failed (possible rate limit); skipping overlap check." >&2
+              exit 0
+            }
+            [ -z "$page_numbers" ] && break
+            while IFS= read -r n; do
+              [ -n "$n" ] && [ "$n" != "$PR_NUMBER" ] && other_pr_numbers+=("$n")
+            done <<< "$page_numbers"
+            page_count=$(printf '%s\n' "$page_numbers" | grep -c .)
+            if [ "$page_count" -lt "$PER_PAGE" ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
+          if [ "$page" -gt "$max_pages" ]; then
+            echo "::notice::Open PR list may be truncated at $MAX_OTHER_PRS PRs; some overlaps could be missed."
+          fi
+
+          if [ "${#other_pr_numbers[@]}" -eq 0 ]; then
+            echo "No other open PRs to compare against; skipping."
+            echo "has_overlap=false" >> "$GITHUB_OUTPUT"
+            echo "no_other_prs=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          overlap_lines=()
+          for other in "${other_pr_numbers[@]}"; do
+            other_files_raw=$(api_get "repos/$REPO/pulls/$other/files?per_page=100") || continue
+            other_files_json=$(printf '%s' "$other_files_raw" | jq '[.[].filename]') || continue
+            shared=$(jq -n \
+              --argjson a "$this_pr_files_json" \
+              --argjson b "$other_files_json" \
+              '[$a[] | . as $x | select($b | any(. == $x))] | unique')
+            shared_count=$(printf '%s' "$shared" | jq 'length')
+            if [ "$shared_count" -gt 0 ]; then
+              shared_list=$(printf '%s' "$shared" | jq -r 'join("`, `")')
+              overlap_lines+=("- PR #$other also touches: \`$shared_list\`")
+            fi
+          done
+
+          if [ "${#overlap_lines[@]}" -eq 0 ]; then
+            echo "has_overlap=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_overlap=true" >> "$GITHUB_OUTPUT"
+          # Random per-run delimiter for the multiline $GITHUB_OUTPUT body -- the
+          # shared file-path list embedded below ultimately derives from PR-
+          # controlled filenames, so a fixed delimiter could in principle be used
+          # to smuggle extra output keys.
+          delimiter="COMMENT_BODY_$(python3 -c 'import uuid; print(uuid.uuid4().hex)' 2>/dev/null || date +%s%N)"
+          {
+            echo "body<<$delimiter"
+            echo "$MARKER"
+            echo "This PR touches file(s) that are also being changed in other currently-open PR(s) — worth checking for overlap before either merges."
+            echo ""
+            printf '%s\n' "${overlap_lines[@]}"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upsert overlap-notice comment
+        if: steps.overlap.outputs.no_other_prs != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MARKER: "<!-- overlap-notice:v1 -->"
+          HAS_OVERLAP: ${{ steps.overlap.outputs.has_overlap }}
+          BODY: ${{ steps.overlap.outputs.body }}
+        run: |
+          set -euo pipefail
+
+          existing_comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
+            --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id" 2>/dev/null) || {
+            echo "Could not list existing comments; skipping." >&2
+            exit 0
+          }
+
+          if [ "$HAS_OVERLAP" = "true" ]; then
+            if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
+              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
+                -f body="$BODY" >/dev/null 2>&1 || echo "Failed to update overlap comment; skipping." >&2
+            else
+              gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" \
+                -f body="$BODY" >/dev/null 2>&1 || echo "Failed to post overlap comment; skipping." >&2
+            fi
+          else
+            # No overlap now. If a prior overlap-notice comment exists (from an
+            # earlier, now-resolved overlap), update it to say so rather than
+            # leaving a stale warning. If no such comment exists, do nothing --
+            # never post an empty/no-op comment.
+            if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
+              cleared_body=$(printf '%s\nThis PR no longer overlaps with any other open PR'"'"'s changed files.' "$MARKER")
+              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
+                -f body="$cleared_body" >/dev/null 2>&1 || echo "Failed to clear overlap comment; skipping." >&2
+            fi
+          fi
