@@ -93,6 +93,11 @@ import {
   loadNeuron,
   loadSubnetMetagraph,
   loadSubnetValidators,
+  loadGlobalValidators,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.mjs";
 import {
   loadAccountSummary,
@@ -252,7 +257,8 @@ export const MCP_INSTRUCTIONS =
   "usage analytics (request volume, latency, failover, cache hits, per-endpoint " +
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
-  "list_subnet_validators its validators ranked by stake, and get_neuron one " +
+  "list_subnet_validators its validators ranked by stake, list_global_validators " +
+  "the network-wide validator leaderboard grouped by hotkey, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
@@ -2213,6 +2219,48 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "list_global_validators",
+    title: "List the network-wide validator leaderboard",
+    description:
+      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
+      "identities grouped by hotkey across all current subnet memberships, with " +
+      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
+      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
+      "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
+      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      "GET /api/v1/validators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: GLOBAL_VALIDATOR_SORTS,
+          description:
+            "Ranking key (default subnet_count). See tool description for options.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max validators to return (1-100, default 20).",
+          minimum: 1,
+          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
+        DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+      );
+      return loadGlobalValidators(mcpD1Runner(ctx), { sort, limit });
     },
   },
   {
@@ -5158,6 +5206,34 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       validators: { type: "array", items: { type: "object" } },
+    },
+  },
+  list_global_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      validator_count: { type: "integer" },
+      validators: objectItems({
+        hotkey: NULLABLE_STRING,
+        coldkey: NULLABLE_STRING,
+        coldkey_count: NULLABLE_INT,
+        subnet_count: NULLABLE_INT,
+        uid_count: NULLABLE_INT,
+        total_stake_tao: ANY,
+        total_emission_tao: ANY,
+        avg_validator_trust: ANY,
+        max_validator_trust: ANY,
+        stake_dominance: ANY,
+        latest_captured_at: NULLABLE_STRING,
+        latest_block_number: NULLABLE_INT,
+        subnets: { type: "array", items: { type: "object" } },
+      }),
     },
   },
   get_neuron: {

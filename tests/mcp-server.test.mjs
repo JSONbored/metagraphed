@@ -5071,6 +5071,82 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  test("list_global_validators returns schema-stable empty list on cold D1", async () => {
+    const res = await callTool("list_global_validators", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.limit, 20);
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+    assert.equal(out.captured_at, null);
+  });
+
+  test("list_global_validators groups hotkeys across subnets and applies sort/limit", async () => {
+    const res = await callTool(
+      "list_global_validators",
+      { sort: "total_stake", limit: 1 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                netuid: 1,
+                uid: 0,
+                hotkey: "5Hk-wide",
+                coldkey: "5Co-wide",
+                validator_permit: 1,
+                stake_tao: 50,
+                emission_tao: 1,
+                validator_trust: 0.8,
+                captured_at: 1750000000000,
+                block_number: 100,
+              },
+              {
+                netuid: 2,
+                uid: 0,
+                hotkey: "5Hk-wide",
+                coldkey: "5Co-wide",
+                validator_permit: 1,
+                stake_tao: 60,
+                emission_tao: 2,
+                validator_trust: 0.9,
+                captured_at: 1750000001000,
+                block_number: 101,
+              },
+              {
+                netuid: 3,
+                uid: 0,
+                hotkey: "5Hk-small",
+                coldkey: "5Co-small",
+                validator_permit: 1,
+                stake_tao: 10,
+                emission_tao: 1,
+                validator_trust: 0.5,
+                captured_at: 1750000000000,
+                block_number: 100,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_stake");
+    assert.equal(out.limit, 1);
+    assert.equal(out.validator_count, 2);
+    assert.equal(out.validators.length, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-wide");
+    assert.equal(out.validators[0].subnet_count, 2);
+    assert.equal(out.validators[0].total_stake_tao, 110);
+    assert.equal(out.validators[0].subnets.length, 2);
+  });
+
+  test("list_global_validators rejects an invalid sort", async () => {
+    const res = await callTool("list_global_validators", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort/i);
+  });
+
   test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
     const present = await callTool(
       "get_neuron",
