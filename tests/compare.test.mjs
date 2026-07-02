@@ -202,6 +202,52 @@ describe("composeCompareData", () => {
     assert.equal(oddCells.subnets[0].health.avg_latency_ms, 9);
   });
 
+  test("attaches tiers whose D1 row netuid comes back as a string", () => {
+    // The join key is the highest-risk string cell: requested netuids are
+    // numbers, so a row keyed on the raw string "1"/"2" would miss the numeric
+    // lookup and silently null out a populated tier. Every tier's key is
+    // normalized through the same coercion the value fields use.
+    const data = composeCompareData({
+      requestedNetuids: [1, 2],
+      dimensions: ["structure", "economics", "health"],
+      subnetMeta,
+      structureRows: [
+        {
+          netuid: "1",
+          completeness_score: 80,
+          surface_count: 5,
+          operational_interface_count: 2,
+        },
+      ],
+      economicsRows: [{ netuid: "2", open_slots: 3 }],
+      healthRows: [
+        { netuid: "1", surface_count: 5, ok_count: 4, avg_latency_ms: 120 },
+      ],
+      observedAt: null,
+    });
+
+    const s1 = data.subnets.find((s) => s.netuid === 1);
+    const s2 = data.subnets.find((s) => s.netuid === 2);
+    assert.equal(s1.structure.completeness_score, 80);
+    assert.equal(s1.health.ok_count, 4);
+    assert.equal(s2.economics.open_slots, 3);
+
+    // A row with an unusable (non-integer) netuid is skipped, not thrown on.
+    const skipped = composeCompareData({
+      requestedNetuids: [1],
+      dimensions: ["structure"],
+      subnetMeta,
+      structureRows: [
+        { netuid: "nope", completeness_score: 1, surface_count: 1 },
+        { netuid: null, completeness_score: 2, surface_count: 2 },
+      ],
+      economicsRows: [],
+      healthRows: [],
+      observedAt: null,
+    });
+    assert.equal(skipped.subnets[0].structure, null);
+  });
+
   test("composeCompareData output validates against the CompareArtifact contract", async () => {
     const generatedAt = "2026-06-24T12:00:00.000Z";
     const openapi = buildOpenApiArtifact(

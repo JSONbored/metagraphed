@@ -443,7 +443,9 @@ export function canonicalCompareCachePath(url) {
 // string cell to a number so the CompareArtifact numeric fields never leak a
 // string; leave real numbers, null, and absent cells exactly as-is so the
 // artifact's null/absent contract is unchanged. Booleans (registration_allowed)
-// are intentionally not routed through here.
+// are intentionally not routed through here. It also normalizes the per-tier
+// Map join key: composeCompareData looks tiers up by numeric requested netuid,
+// so a string-typed row netuid ("7") must key on 7 or the tier drops to null.
 function coerceD1Number(value) {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
@@ -467,7 +469,9 @@ export function composeCompareData({
 
   const structureByNetuid = new Map();
   for (const row of structureRows || []) {
-    structureByNetuid.set(row.netuid, {
+    const netuid = coerceD1Number(row.netuid);
+    if (!Number.isInteger(netuid)) continue;
+    structureByNetuid.set(netuid, {
       completeness_score: coerceD1Number(row.completeness_score),
       surface_count: coerceD1Number(row.surface_count),
       operational_interface_count: coerceD1Number(
@@ -477,7 +481,9 @@ export function composeCompareData({
   }
   const economicsByNetuid = new Map();
   for (const row of economicsRows || []) {
-    economicsByNetuid.set(row.netuid, {
+    const netuid = coerceD1Number(row.netuid);
+    if (!Number.isInteger(netuid)) continue;
+    economicsByNetuid.set(netuid, {
       registration_cost_tao: coerceD1Number(row.registration_cost_tao),
       registration_allowed: row.registration_allowed,
       open_slots: coerceD1Number(row.open_slots),
@@ -491,7 +497,9 @@ export function composeCompareData({
   }
   const healthByNetuid = new Map();
   for (const row of healthRows || []) {
-    healthByNetuid.set(row.netuid, {
+    const netuid = coerceD1Number(row.netuid);
+    if (!Number.isInteger(netuid)) continue;
+    healthByNetuid.set(netuid, {
       surface_count: coerceD1Number(row.surface_count),
       ok_count: coerceD1Number(row.ok_count),
       avg_latency_ms: coerceD1Number(row.avg_latency_ms),
