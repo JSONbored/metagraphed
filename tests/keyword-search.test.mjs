@@ -144,7 +144,7 @@ describe("keywordScore — precision boosts", () => {
 
   test("EXACT_NAME_BOOST fires when slug matches exactly but name tokens do not", () => {
     // nameTokens=["bitcoin","network"] !== "bitcoin"; slugTokens=["bitcoin"] === "bitcoin"
-    // Forces the right side of the || on keywordScore line 103 to be the sole trigger.
+    // Forces the slug exact-match path to be the only exact-match trigger.
     const slugExact = { name: "Bitcoin Network", slug: "bitcoin", text: [] };
     const noExact = { name: "Bitcoin Data", slug: "btc-data", text: [] };
     assert.ok(score(slugExact, "bitcoin") > score(noExact, "bitcoin"));
@@ -156,6 +156,8 @@ describe("keywordScore — precision boosts", () => {
     const fullScore = keywordScore(doc, ["alpha", "beta"]);
     // one miss → TEXT_WEIGHT*1, no boost = 1
     const partScore = keywordScore(doc, ["alpha", "gamma"]);
+    // Exact numeric values are the regression contract for the weight constants
+    // (TEXT_WEIGHT=1, FULL_COVERAGE_BOOST=2); update if those constants change.
     assert.equal(fullScore, 4);
     assert.equal(partScore, 1);
   });
