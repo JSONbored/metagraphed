@@ -23,6 +23,11 @@ export const STAKE_REMOVED_KIND = "StakeRemoved";
 export const STAKE_FLOW_WINDOWS = { "7d": 7, "30d": 30, "90d": 90 };
 export const DEFAULT_STAKE_FLOW_WINDOW = "30d";
 
+// direction narrows the stake-flow aggregate to one side: in = StakeAdded only,
+// out = StakeRemoved only, all (or omitted) = both kinds summed as today.
+export const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"];
+export const DEFAULT_STAKE_FLOW_DIRECTION = "all";
+
 // 1 TAO = 1e9 rao. Summing many REAL amount_tao values accumulates IEEE-754 noise
 // below the rao floor; round every TAO output to rao precision, the smallest real
 // unit (the same rounding the turnover/account-summary scorecards apply).
@@ -93,19 +98,29 @@ export function buildStakeFlow(rows, netuid, { window } = {}) {
 export async function loadSubnetStakeFlow(
   d1,
   netuid,
-  { windowLabel = DEFAULT_STAKE_FLOW_WINDOW } = {},
+  {
+    windowLabel = DEFAULT_STAKE_FLOW_WINDOW,
+    direction = DEFAULT_STAKE_FLOW_DIRECTION,
+  } = {},
 ) {
   const days =
     STAKE_FLOW_WINDOWS[windowLabel] ??
     STAKE_FLOW_WINDOWS[DEFAULT_STAKE_FLOW_WINDOW];
   const cutoff = Date.now() - days * DAY_MS;
+  const kinds =
+    direction === "in"
+      ? [STAKE_ADDED_KIND]
+      : direction === "out"
+        ? [STAKE_REMOVED_KIND]
+        : [STAKE_ADDED_KIND, STAKE_REMOVED_KIND];
+  const placeholders = kinds.map(() => "?").join(", ");
   const rows = await d1(
     "SELECT event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, " +
       "COUNT(*) AS event_count, MAX(observed_at) AS last_observed " +
       "FROM account_events " +
-      "WHERE netuid = ? AND event_kind IN (?, ?) AND observed_at >= ? " +
+      `WHERE netuid = ? AND event_kind IN (${placeholders}) AND observed_at >= ? ` +
       "GROUP BY event_kind",
-    [netuid, STAKE_ADDED_KIND, STAKE_REMOVED_KIND, cutoff],
+    [netuid, ...kinds, cutoff],
   );
   let latestObserved = null;
   for (const row of Array.isArray(rows) ? rows : []) {

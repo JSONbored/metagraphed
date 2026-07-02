@@ -201,4 +201,67 @@ describe("loadSubnetStakeFlow", () => {
     assert.equal(captured[3], Date.now() - STAKE_FLOW_WINDOWS["30d"] * DAY_MS);
     vi.useRealTimers();
   });
+
+  test("direction=in queries StakeAdded only", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [
+        {
+          event_kind: STAKE_ADDED_KIND,
+          total_tao: 100,
+          event_count: 3,
+          last_observed: 1717000000000,
+        },
+      ];
+    };
+    const { data } = await loadSubnetStakeFlow(d1, 7, {
+      windowLabel: "7d",
+      direction: "in",
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].params[1], STAKE_ADDED_KIND);
+    assert.equal(calls[0].params.length, 3);
+    assert.equal(data.total_staked_tao, 100);
+    assert.equal(data.total_unstaked_tao, 0);
+    assert.equal(data.net_flow_tao, 100);
+  });
+
+  test("direction=out queries StakeRemoved only", async () => {
+    const calls = [];
+    const d1 = async (sql, params) => {
+      calls.push({ sql, params });
+      return [
+        {
+          event_kind: STAKE_REMOVED_KIND,
+          total_tao: 40,
+          event_count: 2,
+          last_observed: 1717000000000,
+        },
+      ];
+    };
+    const { data } = await loadSubnetStakeFlow(d1, 7, {
+      windowLabel: "7d",
+      direction: "out",
+    });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].params[1], STAKE_REMOVED_KIND);
+    assert.equal(calls[0].params.length, 3);
+    assert.equal(data.total_staked_tao, 0);
+    assert.equal(data.total_unstaked_tao, 40);
+    assert.equal(data.net_flow_tao, -40);
+  });
+
+  test("direction=all (default) queries both stake kinds", async () => {
+    const calls = [];
+    const d1 = async (_sql, params) => {
+      calls.push(params);
+      return [];
+    };
+    await loadSubnetStakeFlow(d1, 7, { direction: "all" });
+    assert.deepEqual(calls[0].slice(1, 3), [
+      STAKE_ADDED_KIND,
+      STAKE_REMOVED_KIND,
+    ]);
+  });
 });
