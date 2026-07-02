@@ -6,7 +6,11 @@ import {
   artifactRelativePath,
   isGeneratedPublicArtifactRelativePath,
 } from "../src/artifact-storage.mjs";
-import { artifactFilePath, DEPLOY_OWNED_ARTIFACTS } from "./lib.mjs";
+import {
+  artifactFilePath,
+  DEPLOY_OWNED_ARTIFACTS,
+  resolveBaseRemote,
+} from "./lib.mjs";
 
 // Generated artifacts like openapi.json now exceed Node's default 1 MB
 // execFileSync buffer, so git reads must allow plenty of headroom or the
@@ -112,19 +116,7 @@ function main() {
       partitionMismatches(mismatches);
 
     if (deployOwnedMismatches.length > 0) {
-      console.error(
-        [
-          "Deploy/publish-pipeline-owned artifact(s) in your diff don't match a fresh build --",
-          "this is EXPECTED and not something to fix by rebuilding again. These files are not",
-          "reviewed contract surfaces; their committed copies on main reflect the last real",
-          "publish, not your local build, and constantly drift for reasons unrelated to your PR",
-          "(see .claude/skills/metagraphed/reference.md §8):",
-          ...deployOwnedMismatches.map((file) => `- ${file}`),
-          "",
-          "Revert them and re-commit -- do not try to make them match:",
-          `  git checkout origin/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
-        ].join("\n"),
-      );
+      console.error(buildDeployOwnedMismatchMessage(deployOwnedMismatches));
     }
     if (otherMismatches.length > 0) {
       console.error(
@@ -162,11 +154,37 @@ export function isSubmittedPublicArtifactPath(file) {
  * keeps the generic "run npm run build and commit" message.
  */
 export function partitionMismatches(mismatches) {
+  // Match the exact "<path> (<reason>)" format this script's own mismatch
+  // entries use, not a bare path-prefix `startsWith`, so a differently-named
+  // file that happens to share a prefix (e.g. an unrelated
+  // "public/metagraph/r2-manifest.json.bak (...)") can't be misclassified if
+  // this helper is ever reused against a different string shape.
   const deployOwned = mismatches.filter((entry) =>
-    DEPLOY_OWNED_ARTIFACTS.some((file) => entry.startsWith(file)),
+    DEPLOY_OWNED_ARTIFACTS.some((file) => entry.startsWith(`${file} (`)),
   );
   const other = mismatches.filter((entry) => !deployOwned.includes(entry));
   return { deployOwned, other };
+}
+
+/**
+ * Renders the "revert, don't rebuild" message for deploy-owned artifact
+ * mismatches. Resolves the revert command's remote via resolveBaseRemote so
+ * fork contributors (origin = their fork, upstream = canonical) get
+ * `upstream/main`, matching the same recommendation as build.mjs's local
+ * warning -- never a hardcoded `origin/main`, which is wrong on a fork.
+ */
+export function buildDeployOwnedMismatchMessage(deployOwnedMismatches, cwd) {
+  return [
+    "Deploy/publish-pipeline-owned artifact(s) in your diff don't match a fresh build --",
+    "this is EXPECTED and not something to fix by rebuilding again. These files are not",
+    "reviewed contract surfaces; their committed copies on main reflect the last real",
+    "publish, not your local build, and constantly drift for reasons unrelated to your PR",
+    "(see .claude/skills/metagraphed/reference.md §8):",
+    ...deployOwnedMismatches.map((file) => `- ${file}`),
+    "",
+    "Revert them and re-commit -- do not try to make them match:",
+    `  git checkout ${resolveBaseRemote(cwd)}/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+  ].join("\n");
 }
 
 /** Stable JSON: recursively sort object keys while preserving semantic array order. */

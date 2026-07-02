@@ -1,5 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { DEPLOY_OWNED_ARTIFACTS, stableStringify } from "./lib.mjs";
+import {
+  DEPLOY_OWNED_ARTIFACTS,
+  resolveBaseRemote,
+  stableStringify,
+} from "./lib.mjs";
 
 const productionBuild = isProductionPublishBuild();
 const startedAt = new Date().toISOString();
@@ -71,7 +75,7 @@ function warnIfDeployOwnedArtifactsChanged() {
   if (diff.status !== 0 || !diff.stdout.trim()) {
     return;
   }
-  const baseRemote = resolveBaseRemote();
+  const baseRemote = resolveBaseRemote(process.cwd());
   console.warn(
     [
       "",
@@ -86,19 +90,6 @@ function warnIfDeployOwnedArtifactsChanged() {
       "",
     ].join("\n"),
   );
-}
-
-// Forks (Phase A0) set up `upstream` pointing at the canonical repo, with
-// `origin` as the contributor's own fork — possibly stale relative to it. A
-// direct clone of the canonical repo has no `upstream` remote at all, so
-// `origin` there IS canonical. Prefer `upstream` when present.
-function resolveBaseRemote() {
-  const result = spawnSync("git", ["remote"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-  });
-  const remotes = (result.stdout || "").split("\n").map((line) => line.trim());
-  return remotes.includes("upstream") ? "upstream" : "origin";
 }
 
 function localSteps() {

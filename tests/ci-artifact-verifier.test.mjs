@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "vitest";
 import {
+  buildDeployOwnedMismatchMessage,
   canonicalArtifactJson,
   canonicalJson,
   isSubmittedPublicArtifactPath,
@@ -104,6 +109,54 @@ test("partitionMismatches puts everything in `other` when nothing is deploy-owne
   const { deployOwned, other } = partitionMismatches(mismatches);
   assert.deepEqual(deployOwned, []);
   assert.deepEqual(other, mismatches);
+});
+
+test("buildDeployOwnedMismatchMessage recommends upstream/main on a fork checkout", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "wj-deploy-owned-msg-"));
+  execFileSync("git", ["init", "-q"], { cwd: dir });
+  execFileSync(
+    "git",
+    [
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/contributor/metagraphed.git",
+    ],
+    { cwd: dir },
+  );
+  execFileSync(
+    "git",
+    [
+      "remote",
+      "add",
+      "upstream",
+      "https://github.com/JSONbored/metagraphed.git",
+    ],
+    { cwd: dir },
+  );
+  const message = buildDeployOwnedMismatchMessage(
+    ["public/metagraph/r2-manifest.json (content differs from a fresh build)"],
+    dir,
+  );
+  assert.match(message, /git checkout upstream\/main --/);
+  assert.doesNotMatch(message, /git checkout origin\/main --/);
+});
+
+test("buildDeployOwnedMismatchMessage falls back to origin/main on a direct clone", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "wj-deploy-owned-msg-"));
+  execFileSync("git", ["init", "-q"], { cwd: dir });
+  execFileSync(
+    "git",
+    ["remote", "add", "origin", "https://github.com/JSONbored/metagraphed.git"],
+    { cwd: dir },
+  );
+  const message = buildDeployOwnedMismatchMessage(
+    [
+      "public/metagraph/schemas/index.json (content differs from a fresh build)",
+    ],
+    dir,
+  );
+  assert.match(message, /git checkout origin\/main --/);
 });
 
 test("R2 manifest comparison rejects invalid ignored byte totals", () => {
