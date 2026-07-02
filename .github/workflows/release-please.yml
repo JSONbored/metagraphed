@@ -1,19 +1,30 @@
 name: release-please
 
-# Conventional-commit-driven release automation (#394). On every push to main,
-# release-please maintains a "Release PR" per component (packages/client → npm,
-# python → PyPI, "." → the hosted platform) that bumps the SemVer + regenerates
-# that component's CHANGELOG.md from the conventional commits. Merging a Release
-# PR tags the component (e.g. client-v0.3.0) and creates the GitHub Release with
-# the generated notes. release-please then dispatches the OIDC publish workflows
+# Conventional-commit-driven release automation (#394). release-please maintains a
+# "Release PR" per component (packages/client → npm, python → PyPI, "." → the
+# hosted platform) that bumps the SemVer + regenerates that component's
+# CHANGELOG.md from the conventional commits. Merging a Release PR tags the
+# component (e.g. client-v0.3.0) and creates the GitHub Release with the
+# generated notes. release-please then dispatches the OIDC publish workflows
 # (publish-client / publish-python) via workflow_dispatch — see the Dispatch steps
 # below. A tag-push trigger can't be used: GITHUB_TOKEN-created tags don't fire
 # workflows, and the validate gate requires GITHUB_REF=refs/heads/main. Commits are
 # already Conventional Commits, so the changelog is generated, not hand-maintained.
+#
+# Runs on a schedule rather than every push to main: release-please is idempotent
+# (it recomputes purely from conventional-commit history since the last release
+# tag), so batching to every 2 days has zero functional impact — it only reduces
+# how often the Release PR is refreshed against this repo's push volume.
+# `*/2` on the day-of-month field is "every other calendar day" (e.g. 2nd, 4th,
+# 6th...), not a strict rolling 48h from an arbitrary start — a standard, fine
+# approximation here since release-please just diffs commit history either way.
+# 09:00 UTC is after sync-client-version's 06:00 UTC run (below) so the same day's
+# release-please pass can pick up that day's SDK version-bump commit, if any.
+# workflow_dispatch stays available for an on-demand run.
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "0 9 */2 * *"
+  workflow_dispatch:
 
 permissions:
   contents: write

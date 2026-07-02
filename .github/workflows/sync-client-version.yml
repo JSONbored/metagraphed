@@ -6,13 +6,23 @@ name: Sync client SDK version
 # conflicts that occurred when multiple contract PRs were open simultaneously.
 #
 # After this PR merges, dispatch publish-client.yml manually to publish to npm.
+#
+# Runs on a schedule rather than on every push to main: the version-bump logic
+# below is unconditional (it bumps the patch version whenever it runs), so with
+# a push trigger the previous push-path filter was the ONLY thing preventing a
+# needless bump on unrelated pushes. Batching to every 2 days plus the explicit
+# change-detection guard (job below) fixes that at the source. `*/2` on the
+# day-of-month field is "every other calendar day", not a strict rolling 48h —
+# a standard, fine approximation since the guard only cares whether the watched
+# contract files changed since the last bump commit, not exact timing.
+# 06:00 UTC — three hours before release-please.yml's 09:00 UTC run — so a
+# version-bump commit opened/merged here has time to land on main before that
+# same day's release-please pass looks for it. workflow_dispatch stays available
+# for an on-demand run.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "public/metagraph/openapi.json"
-      - "generated/metagraphed-api.d.ts"
-      - "generated/metagraphed-client.ts"
+  schedule:
+    - cron: "0 6 */2 * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,13 +43,47 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      # Real change-detection: this job's version bump below is unconditional, so
+      # without this guard a scheduled run would bump the patch version even when
+      # no contract file changed since the last bump. Find the most recent commit
+      # on main whose message starts with "chore(client): bump SDK" (this
+      # workflow's own commit-message convention, see the create-pull-request step
+      # below), then diff that commit against HEAD for the three watched contract
+      # paths. No prior bump commit found (first run ever) or a non-empty diff ⇒
+      # proceed; an empty diff ⇒ skip every subsequent step via its `if:` so the
+      # job still exits cleanly (not a mid-script `exit 0`, which would skip
+      # cleanup/reporting steps a later change might add here).
+      - name: Check for contract changes since the last SDK bump
+        id: contract-diff
+        run: |
+          last_bump="$(git log --grep '^chore(client): bump SDK' --format=%H -n 1 main)"
+          if [ -z "$last_bump" ]; then
+            echo "no prior 'chore(client): bump SDK' commit found; treating as first run"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "last SDK bump commit: ${last_bump}"
+            if git diff --quiet "${last_bump}" HEAD -- \
+              public/metagraph/openapi.json \
+              generated/metagraphed-api.d.ts \
+              generated/metagraphed-client.ts; then
+              echo "no contract changes since ${last_bump}; skipping version bump"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "contract changes found since ${last_bump}"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - name: Setup Node
+        if: steps.contract-diff.outputs.changed == 'true'
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.23.1
 
       - name: Compute next patch version
+        if: steps.contract-diff.outputs.changed == 'true'
         id: version
         run: |
           current=$(node -p "require('./packages/client/package.json').version")
@@ -49,6 +93,7 @@ jobs:
           echo "next=$next" >> "$GITHUB_OUTPUT"
 
       - name: Bump packages/client/package.json
+        if: steps.contract-diff.outputs.changed == 'true'
         run: |
           node -e "
           const fs = require('fs');
@@ -58,6 +103,7 @@ jobs:
           "
 
       - name: Bump packages/client/package-lock.json
+        if: steps.contract-diff.outputs.changed == 'true'
         run: |
           node -e "
           const fs = require('fs');
@@ -68,6 +114,7 @@ jobs:
           "
 
       - name: Open sync PR (no-op if unchanged)
+        if: steps.contract-diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
