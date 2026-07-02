@@ -220,6 +220,21 @@ describe("analytics-live loaders", () => {
     assert.equal(data.surfaces[0].days[0].uptime_ratio, 0.9);
   });
 
+  test("loadSubnetUptime applies a min_samples HAVING floor when set", async () => {
+    const captured = [];
+    const runner = async (sql, params) => {
+      captured.push({ sql, params });
+      return [];
+    };
+    await loadSubnetUptime(runner, NETUID, { window: "90d", minSamples: 5 });
+    assert.match(captured[0].sql, /HAVING SUM\(samples\) >= \?/);
+    assert.ok(captured[0].params.includes(5));
+    // omitted (or null) → no HAVING clause, original param list
+    captured.length = 0;
+    await loadSubnetUptime(runner, NETUID, { window: "90d" });
+    assert.ok(!/HAVING/.test(captured[0].sql));
+  });
+
   test("loadSubnetHealthTrends returns schema-stable empty surfaces on cold D1", async () => {
     const data = await loadSubnetHealthTrends(d1(), NETUID, {
       observedAt: OBSERVED_AT,

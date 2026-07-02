@@ -172,7 +172,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.19.0";
+export const MCP_SERVER_VERSION = "1.20.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -2048,7 +2048,9 @@ export const MCP_TOOLS = [
       "Fetch one subnet's long-term daily uptime history for its operational " +
       "surfaces from the live surface_uptime_daily rollup. Returns per-surface " +
       "day series, window-wide uptime ratios, and reliability scores for the " +
-      "requested window (90d or 1y). Mirrors GET /api/v1/subnets/{netuid}/uptime.",
+      "requested window (90d or 1y). ?min_samples drops low-sample day rows " +
+      "(daily probe count below the threshold, incl. zero-sample 'unknown' days). " +
+      "Mirrors GET /api/v1/subnets/{netuid}/uptime.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2057,6 +2059,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["90d", "1y"],
           description: "History window (default 90d).",
+        },
+        min_samples: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Drop day rows whose daily probe count is below this threshold.",
         },
       },
       required: ["netuid"],
@@ -2071,6 +2079,7 @@ export const MCP_TOOLS = [
       return loadSubnetUptime(mcpD1Runner(ctx), netuid, {
         window: window || "90d",
         observedAt: await mcpObservedAt(ctx),
+        minSamples: optionalNonNegativeInt(args, "min_samples"),
       });
     },
   },
