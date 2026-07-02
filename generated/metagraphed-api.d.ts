@@ -497,6 +497,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/yield": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide emission yield (return on stake) aggregated across all subnets' neurons: stake and emission totals, stake-weighted network/validator/miner aggregate yields, a per-neuron yield distribution (count, mean, and min/p25/median/p75/p90/max spread) for each of those three lenses, and a top-yielders leaderboard capped by ?limit. Computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainYield"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/changelog": {
         parameters: {
             query?: never;
@@ -2583,6 +2600,26 @@ export interface components {
             unique_receivers: number;
             unique_senders: number;
             window: string | null;
+        };
+        /** @description Network-wide emission yield (return on stake) aggregated across all subnets' neurons, computed live from the neurons D1 tier. Reports stake and emission totals, stake-weighted aggregate yields for the network, validators, and miners, a per-neuron yield distribution for each of those three lenses, and a top-yielders leaderboard. Every aggregate, distribution, and stamp field is always present as a value or null. */
+        ChainYieldArtifact: {
+            captured_at: string | null;
+            miner_count: number;
+            miner_yield: number | null;
+            miner_yield_distribution: components["schemas"]["YieldDistribution"];
+            network_yield: number | null;
+            neuron_count: number;
+            schema_version: number;
+            subnet_count: number;
+            top_yielders: components["schemas"]["YieldLeaderEntry"][];
+            total_emission_tao: number;
+            total_stake_tao: number;
+            validator_count: number;
+            validator_yield: number | null;
+            validator_yield_distribution: components["schemas"]["YieldDistribution"];
+            yield: components["schemas"]["YieldDistribution"];
+        } & {
+            [key: string]: unknown;
         };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
@@ -5486,6 +5523,31 @@ export interface components {
             /** Format: uri */
             url: string;
             verified_at: string;
+        };
+        /** @description Per-neuron emission-per-stake yield distribution for one lens: the participant count (stake-bearing neurons), the mean, and the min/p25/median/p75/p90/max spread. Null when the lens has no stake-bearing neuron (a cold store or an all-zero-stake column). */
+        YieldDistribution: ({
+            count: number;
+            max: number | null;
+            mean: number | null;
+            median: number | null;
+            min: number | null;
+            p25: number | null;
+            p75: number | null;
+            p90: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
+        /** @description One entry in the top-yielders leaderboard: a stake-bearing neuron ranked by its emission-per-stake return. */
+        YieldLeaderEntry: {
+            emission_tao: number;
+            hotkey: string | null;
+            netuid: number | null;
+            /** @enum {string} */
+            role: "validator" | "miner";
+            stake_tao: number;
+            yield: number;
+        } & {
+            [key: string]: unknown;
         };
     };
     responses: never;
@@ -9043,6 +9105,157 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransfersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainYield: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "miner_count": 1,
+                     *         "miner_yield": 0.5,
+                     *         "miner_yield_distribution": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "network_yield": 0.5,
+                     *         "neuron_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "top_yielders": [
+                     *           {
+                     *             "emission_tao": 0.5,
+                     *             "hotkey": "example",
+                     *             "netuid": 7,
+                     *             "role": "validator",
+                     *             "stake_tao": 0.5,
+                     *             "yield": 0.5
+                     *           }
+                     *         ],
+                     *         "total_emission_tao": 0.5,
+                     *         "total_stake_tao": 0.5,
+                     *         "validator_count": 1,
+                     *         "validator_yield": 0.5,
+                     *         "validator_yield_distribution": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "yield": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainYieldArtifact"];
                     };
                 };
             };
