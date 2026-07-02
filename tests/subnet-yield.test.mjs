@@ -180,7 +180,7 @@ describe("buildSubnetYield", () => {
   });
 
   test("drops blank or out-of-range captured_at strings to null", () => {
-    for (const captured of ["", "8640000000000001"]) {
+    for (const captured of ["", "   ", "not-a-date", "8640000000000001"]) {
       const d = buildSubnetYield(
         [neuron(0, { validator: true, stake: 10, emission: 1, captured })],
         7,

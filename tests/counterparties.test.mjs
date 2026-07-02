@@ -343,6 +343,15 @@ describe("buildCounterpartyRelationship", () => {
           coldkey: "A",
           netuid: 1,
           amount_tao: 1,
+          observed_at: "   ",
+        },
+        {
+          block_number: 3,
+          event_index: 0,
+          hotkey: ME,
+          coldkey: "A",
+          netuid: 1,
+          amount_tao: 1,
           observed_at: "8640000000000001",
         },
       ],
@@ -350,11 +359,37 @@ describe("buildCounterpartyRelationship", () => {
       "A",
       {},
     );
-    assert.equal(data.transfer_count, 2);
+    assert.equal(data.transfer_count, 3);
     assert.equal(data.first_seen_at, null);
     assert.equal(data.last_seen_at, null);
     assert.equal(data.transfers[0].observed_at, null);
     assert.equal(data.transfers[1].observed_at, null);
+    assert.equal(data.transfers[2].observed_at, null);
+  });
+
+  test("coerces string-typed observed_at cells on relationship last_seen_at", () => {
+    const ts = String(Date.UTC(2026, 5, 2));
+    const data = buildCounterpartyRelationship(
+      [
+        {
+          block_number: 1,
+          event_index: 0,
+          hotkey: ME,
+          coldkey: "A",
+          netuid: 1,
+          amount_tao: 1,
+          observed_at: ts,
+        },
+      ],
+      ME,
+      "A",
+      {},
+    );
+    assert.equal(
+      data.last_seen_at,
+      new Date(Date.UTC(2026, 5, 2)).toISOString(),
+    );
+    assert.equal(data.transfers[0].observed_at, data.last_seen_at);
   });
 
   test("limits evidence rows while summary counts the full bounded scan", () => {

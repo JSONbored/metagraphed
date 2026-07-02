@@ -252,7 +252,13 @@ describe("loadAccountStakeFlow", () => {
   });
 
   test("generatedAt stays null for blank or out-of-range last_observed (not epoch 1970)", async () => {
-    for (const lastObserved of ["", "8640000000000001", null]) {
+    for (const lastObserved of [
+      "",
+      "   ",
+      "not-a-date",
+      "8640000000000001",
+      null,
+    ]) {
       const d1 = async () => [added(1, 10, 1, lastObserved)];
       const d = await loadAccountStakeFlow(d1, ADDR, { windowLabel: "7d" });
       assert.equal(

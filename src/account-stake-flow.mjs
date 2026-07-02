@@ -51,20 +51,17 @@ function normalizedNetuid(value) {
 
 // Convert an epoch-ms timestamp to an ISO string, or null when not finite. The REST
 // meta.generated_at is string|null per the envelope contract.
-function toIso(ms) {
-  if (ms == null) return null;
-  const n = Number(ms);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
-}
-
 function coerceEpochMs(value) {
   if (value == null) return null;
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
   return Number.isFinite(date.getTime()) ? n : null;
+}
+
+function toIso(value) {
+  const n = coerceEpochMs(value);
+  return n == null ? null : new Date(n).toISOString();
 }
 
 // Net vs gross share -> a coarse direction label. gross 0 (no flow at all) reads as

@@ -58,10 +58,9 @@ function nullableTimestamp(value) {
   return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(timestamp) {
-  if (timestamp == null) return null;
-  const date = new Date(timestamp);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+function toIso(value) {
+  const n = nullableTimestamp(value);
+  return n == null ? null : new Date(n).toISOString();
 }
 
 // Aggregate an account's Transfer rows into per-counterparty fund flow: for each
@@ -206,7 +205,7 @@ export function buildCounterpartyRelationship(
       to,
       amount_tao: amount,
       direction: sent ? "sent" : "received",
-      observed_at: toIso(observed),
+      observed_at: toIso(row.observed_at),
     });
   }
 

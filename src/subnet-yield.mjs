@@ -32,12 +32,17 @@ function normalizedUid(value) {
 // Epoch-ms -> ISO string, or null when not finite (the envelope's generated_at is
 // string|null). All rows of one subnet snapshot share captured_at, so the first row
 // stamps the response.
-function toIso(ms) {
-  if (ms == null) return null;
-  const n = Number(ms);
+function coerceEpochMs(value) {
+  if (value == null) return null;
+  const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
-  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  return Number.isFinite(date.getTime()) ? n : null;
+}
+
+function toIso(value) {
+  const n = coerceEpochMs(value);
+  return n == null ? null : new Date(n).toISOString();
 }
 
 // Emission-per-stake return rate; null when stake is 0 (return is undefined with no
