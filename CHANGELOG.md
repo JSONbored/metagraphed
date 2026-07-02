@@ -19,6 +19,14 @@ A few things this project versions differently:
 - **Registry data enrichments** (new/updated subnets, providers, surfaces) are
   not listed here — they show up in the live `/api/v1/changelog` feed.
 
+## [0.33.1](https://github.com/JSONbored/metagraphed/compare/platform-v0.33.0...platform-v0.33.1) (2026-07-02)
+
+
+### Bug Fixes
+
+* **api:** bound chain fee median samples ([#2492](https://github.com/JSONbored/metagraphed/issues/2492)) ([9236646](https://github.com/JSONbored/metagraphed/commit/9236646508c534c01f373189d7a0e7bafa7ca9c6))
+* **api:** short-circuit inverted block range on account events before D1 ([#2634](https://github.com/JSONbored/metagraphed/issues/2634)) ([707ae21](https://github.com/JSONbored/metagraphed/commit/707ae219f8fe1f4c6cdfa65d2bec25662bebe0a1))
+
 ## [0.33.0](https://github.com/JSONbored/metagraphed/compare/platform-v0.32.0...platform-v0.33.0) (2026-07-01)
 
 
