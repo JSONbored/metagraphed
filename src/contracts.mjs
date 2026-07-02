@@ -1336,7 +1336,7 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    listQuery("subnets"),
+    csvListQuery("subnets"),
   ),
   route(
     "subnet-detail",
@@ -2731,6 +2731,23 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         },
       ],
     };
+    const successContent = {
+      "application/json": {
+        schema: responseSchema,
+        // Deterministic worked example (schema-valid, no live data) so
+        // Swagger UI + agents see a concrete response shape. Generated
+        // from the schema; enforced by validate-openapi-examples.
+        example: sampleFromSchema(responseSchema, componentSchemas),
+      },
+      ...(entry.csv_response
+        ? {
+            "text/csv": {
+              schema: { type: "string" },
+              example: "netuid,name\r\n7,Allways",
+            },
+          }
+        : {}),
+    };
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -2754,18 +2771,11 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         ],
         responses: {
           200: {
-            description:
-              "Canonical artifact wrapped in the Metagraphed API envelope.",
+            description: entry.csv_response
+              ? "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested."
+              : "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: successContent,
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2939,6 +2949,7 @@ function route(
     query_collection: querySpec.collection,
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
+    csv_response: querySpec.csvResponse,
     path_parameters: pathParameters,
   };
 }
@@ -3020,12 +3031,30 @@ function listQuery(collection, options = {}) {
   };
 }
 
+function csvListQuery(collection, options = {}) {
+  const spec = listQuery(collection, options);
+  return {
+    ...spec,
+    csvResponse: true,
+    parameters: [
+      ...spec.parameters,
+      {
+        name: "format",
+        description:
+          "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
+        schema: { type: "string", enum: ["json", "csv"] },
+      },
+    ],
+  };
+}
+
 function normalizeQueryParameters(queryParameters) {
   if (Array.isArray(queryParameters)) {
     return { collection: null, filterNames: [], parameters: queryParameters };
   }
   return {
     collection: queryParameters.collection || null,
+    csvResponse: Boolean(queryParameters.csvResponse),
     filterNames: queryParameters.filterNames || [],
     parameters: queryParameters.parameters || [],
   };
