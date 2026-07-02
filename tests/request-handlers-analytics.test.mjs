@@ -466,19 +466,62 @@ describe("canonicalAnalyticsCacheRoute", () => {
   });
 
   test("canonicalizes default limit for chain transfers and fees", () => {
+    const bareTransfers = url("/api/v1/chain/transfers");
+    const explicitTransfers = url(
+      `/api/v1/chain/transfers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    const transfersKey = canonicalAnalyticsCacheRoute(bareTransfers, {
+      window: DEFAULT_ANALYTICS_WINDOW,
+      extras: { limit: 25 },
+    });
     assert.equal(
-      canonicalAnalyticsCacheRoute(url("/api/v1/chain/transfers"), {
+      transfersKey,
+      `/api/v1/chain/transfers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(explicitTransfers, {
         window: DEFAULT_ANALYTICS_WINDOW,
         extras: { limit: 25 },
       }),
-      `/api/v1/chain/transfers?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+      transfersKey,
+    );
+
+    const bareFees = url("/api/v1/chain/fees");
+    const explicitFees = url(
+      `/api/v1/chain/fees?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    const feesKey = canonicalAnalyticsCacheRoute(bareFees, {
+      window: DEFAULT_ANALYTICS_WINDOW,
+      extras: { limit: 25 },
+    });
+    assert.equal(
+      feesKey,
+      `/api/v1/chain/fees?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+    );
+    assert.equal(
+      canonicalAnalyticsCacheRoute(explicitFees, {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { limit: 25 },
+      }),
+      feesKey,
+    );
+  });
+
+  test("omits null or empty-string optional extras from the cache key", () => {
+    const key = `/api/v1/chain/fees?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`;
+    assert.equal(
+      canonicalAnalyticsCacheRoute(url("/api/v1/chain/fees"), {
+        window: DEFAULT_ANALYTICS_WINDOW,
+        extras: { limit: 25, call_module: null },
+      }),
+      key,
     );
     assert.equal(
       canonicalAnalyticsCacheRoute(url("/api/v1/chain/fees"), {
         window: DEFAULT_ANALYTICS_WINDOW,
-        extras: { limit: 25 },
+        extras: { limit: 25, call_module: "" },
       }),
-      `/api/v1/chain/fees?window=${DEFAULT_ANALYTICS_WINDOW}&limit=25`,
+      key,
     );
   });
 });
@@ -521,7 +564,7 @@ describe("chain analytics handlers", () => {
       ),
     );
     assert.equal(calls.data.schema_version, 1);
-    const signers = await json(
+    const transfers = await json(
       await handleChainTransfers(
         req("/api/v1/chain/transfers"),
         env,
@@ -529,7 +572,7 @@ describe("chain analytics handlers", () => {
         ctx,
       ),
     );
-    assert.equal(signers.data.schema_version, 1);
+    assert.equal(transfers.data.schema_version, 1);
     const fees = await json(
       await handleChainFees(
         req("/api/v1/chain/fees?call_module=Balances"),
