@@ -246,6 +246,29 @@ class EventRowBatchCapTest(unittest.TestCase):
         self.assertAlmostEqual(rows[0]["amount_tao"], 100.0)
         self.assertEqual(rows[0]["observed_at"], 456)
 
+    def test_event_rows_for_events_builds_stake_transferred_row(self):
+        # Exercises the full poller staging path (module dispatch -> extract ->
+        # built row), not just _extract, so a registry/row-building regression for
+        # the new StakeTransferred kind is caught, not only the pure extractor.
+        rows = event_rows_for_events(
+            100,
+            [
+                self.Event(
+                    "SubtensorModule",
+                    "StakeTransferred",
+                    [_SS58_A, _SS58_B, _SS58_C, 7, 8, _RAO_100],
+                )
+            ],
+            200,
+        )
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["event_kind"], "StakeTransferred")
+        self.assertEqual(rows[0]["coldkey"], _SS58_A)  # origin_coldkey
+        self.assertEqual(rows[0]["hotkey"], _SS58_C)  # hotkey at a[2], not dest ck
+        self.assertEqual(rows[0]["netuid"], 7)  # origin_netuid
+        self.assertAlmostEqual(rows[0]["amount_tao"], 100.0)
+        self.assertEqual(rows[0]["observed_at"], 200)
+
     def test_can_append_event_block_keeps_batches_under_cap(self):
         existing = [{}] * 3
         self.assertTrue(_can_append_event_block(existing, [{}] * 2, max_rows=5))
