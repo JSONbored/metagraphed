@@ -217,6 +217,20 @@ describe("captured-fixture body scan", () => {
     }
   });
 
+  test("flags a bare AWS access key id", async () => {
+    // The signed-URL rule only catches request params; a long-term (AKIA) or
+    // temporary (ASIA) access key id pasted into a doc/config is the common leak.
+    const leaks = ["AKIAIOSFODNN7EXAMPLE", "ASIAIOSFODNN7EXAMPLE"];
+    await fs.writeFile(TEST_PUBLIC_PATH, `${leaks.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of leaks.entries()) {
+      assert.ok(
+        output.includes(`${TEST_PUBLIC_FILE}:${index + 1}: aws access key id`),
+        `AWS access key id on line ${index + 1} must be flagged; got:\n${output}`,
+      );
+    }
+  });
+
   test("does not flag soft Bittensor terminology in a mirrored fixture body", async () => {
     // Regression for the publish-wedging false positive: upstream API docs
     // legitimately say "miner hotkey" / "validator hotkey path".

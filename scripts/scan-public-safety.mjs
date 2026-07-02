@@ -20,6 +20,10 @@ const patterns = [
   { name: "github token", regex: /ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+/ },
   { name: "openai-style token", regex: /sk-[A-Za-z0-9]{20,}/ },
   { name: "slack-style token", regex: /xox[baprs]-[A-Za-z0-9-]+/ },
+  // AWS access key id: AKIA (long-term) / ASIA (temporary STS) + 16 upper-alnum.
+  // The signed-URL rule below catches request params, but a bare access key id
+  // pasted into a doc/config is the more common leak and went undetected.
+  { name: "aws access key id", regex: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/ },
   {
     name: "signed object-storage URL parameter",
     regex:
