@@ -28,6 +28,7 @@ import { CONTRACT_VERSION } from "../src/contracts.mjs";
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
+  DAY_MS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.mjs";
 
@@ -71,6 +72,37 @@ function emptyEnv() {
   return {};
 }
 
+// Bulk-trends fixtures must track Date.now(): loadBulkHealthTrends filters rows
+// against a rolling 7d/30d cutoff, so pinned June 2026 dates eventually fall
+// outside the 7d window and the happy-path assertion sees zero subnets.
+function bulkTrendDailyRows() {
+  const now = Date.now();
+  const recentDay = new Date(now - 2 * DAY_MS).toISOString().slice(0, 10);
+  const olderDay = new Date(now - 20 * DAY_MS).toISOString().slice(0, 10);
+  return [
+    {
+      netuid: NETUID,
+      day: recentDay,
+      date: recentDay,
+      total: 100,
+      ok_count: 98,
+      latency_samples: 96,
+      p50: 120,
+      p95: 400,
+    },
+    {
+      netuid: NETUID,
+      day: olderDay,
+      date: olderDay,
+      total: 50,
+      ok_count: 45,
+      latency_samples: 48,
+      p50: 200,
+      p95: 500,
+    },
+  ];
+}
+
 // One row backs every shape the analytics SQL returns (shared ok-latency CTE,
 // SLA aggregates, gap-island incidents, bulk daily uptime).
 function rowsForSql(sql) {
@@ -109,28 +141,7 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
-    return [
-      {
-        netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
-        total: 100,
-        ok_count: 98,
-        latency_samples: 96,
-        p50: 120,
-        p95: 400,
-      },
-      {
-        netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
-        total: 50,
-        ok_count: 45,
-        latency_samples: 48,
-        p50: 200,
-        p95: 500,
-      },
-    ];
+    return bulkTrendDailyRows();
   }
   return [];
 }
