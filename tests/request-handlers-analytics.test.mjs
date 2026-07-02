@@ -29,6 +29,7 @@ import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
+  DAY_MS,
 } from "../workers/config.mjs";
 
 configureAnalytics({
@@ -109,11 +110,15 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
+    const recentDay = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
+    const olderDay = new Date(Date.now() - 20 * DAY_MS)
+      .toISOString()
+      .slice(0, 10);
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: recentDay,
+        date: recentDay,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +127,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: olderDay,
+        date: olderDay,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
