@@ -29,6 +29,7 @@ blockedPaths:
   - "migrations/**"
   - "packages/**"
   - "public/**"
+  - "docs-site/**"
   - ".github/**"
   - ".claude/**"
 
