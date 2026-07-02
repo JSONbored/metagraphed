@@ -50,7 +50,11 @@ describe("queryTerms", () => {
 
   test("preserves insertion order, not alphabetical order", () => {
     // "zebra" < "apple" alphabetically would be swapped if sorted; insertion order must win.
-    assert.deepEqual(queryTerms("zebra apple mango"), ["zebra", "apple", "mango"]);
+    assert.deepEqual(queryTerms("zebra apple mango"), [
+      "zebra",
+      "apple",
+      "mango",
+    ]);
   });
 });
 
