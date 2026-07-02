@@ -1,0 +1,50 @@
+{
+  "name": "@jsonbored/metagraphed",
+  "version": "0.12.6",
+  "description": "Typed TypeScript client for the metagraph.sh backend API — operational metadata, health, schemas, and interface discovery for Bittensor subnets.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "homepage": "https://metagraph.sh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JSONbored/metagraphed.git",
+    "directory": "packages/client"
+  },
+  "keywords": [
+    "bittensor",
+    "metagraph",
+    "subnet",
+    "registry",
+    "api-client"
+  ],
+  "engines": {
+    "node": ">=18.20.8"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "sync": "node scripts/sync-generated.mjs",
+    "build": "npm run sync && tsup src/index.ts --format esm,cjs --dts --clean --treeshake",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
+  }
+}

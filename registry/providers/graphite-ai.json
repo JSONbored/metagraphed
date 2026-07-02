@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "graphite-ai",
+  "name": "Graphite AI",
+  "kind": "subnet-team",
+  "website_url": "https://graphite-ai.net/",
+  "github_url": "https://github.com/GraphiteAI/Graphite-Subnet",
+  "authority": "official",
+  "notes": "Provider entry for Graphite SN43 official website and source repository."
+}

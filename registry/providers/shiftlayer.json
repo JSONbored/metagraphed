@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "shiftlayer",
+  "name": "Shiftlayer",
+  "kind": "subnet-team",
+  "website_url": "https://play.shiftlayer.ai/",
+  "github_url": "https://github.com/shiftlayer-llc/brainplay-subnet",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for the BrainPlay SN117 public repository and app surface. SN117 has conflicting public directory evidence, so this provider remains reviewed as an identity-dispute case rather than a fully settled subnet identity."
+}

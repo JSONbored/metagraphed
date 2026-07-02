@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "backprop-finance",
+  "name": "Backprop Finance",
+  "kind": "data-provider",
+  "website_url": "https://backprop.finance",
+  "docs_url": "https://backprop.finance/dtao/subnets/",
+  "authority": "provider-claimed",
+  "notes": "Third-party Bittensor dTAO dashboard. Used as enrichment and candidate discovery for public subnet dashboard surfaces, not canonical subnet identity authority."
+}

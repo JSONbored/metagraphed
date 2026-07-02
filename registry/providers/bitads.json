@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "bitads",
+  "name": "BitAds",
+  "kind": "subnet-team",
+  "website_url": "https://bitads.ai/",
+  "docs_url": "https://bitads.ai/docs",
+  "github_url": "https://github.com/FirstTensorLabs/BitAds",
+  "authority": "official",
+  "public_notes": "Provider profile for BitAds / SN16. Public surfaces include the BitAds website, docs page, and source repository.",
+  "notes": "Common API/OpenAPI probe paths currently return website HTML rather than machine-readable API/schema responses, so they are not promoted."
+}

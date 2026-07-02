@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "numinous",
+  "name": "Numinous",
+  "kind": "subnet-team",
+  "website_url": "https://numinouslabs.io/",
+  "docs_url": "https://api.numinouslabs.io/api/docs",
+  "github_url": "https://github.com/numinouslabs/numinous",
+  "authority": "official",
+  "public_notes": "Provider profile for Numinous / SN6. Public surfaces include the Numinous website, source repository, Swagger UI, OpenAPI schema, and read-only health/API data surfaces.",
+  "notes": "The public API exposes a machine-readable OpenAPI 3.1 schema and a safe read-only health endpoint."
+}

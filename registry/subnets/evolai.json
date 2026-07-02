@@ -1,0 +1,119 @@
+{
+  "categories": [
+    "baseline-curated",
+    "data",
+    "identity-reviewed",
+    "official-source-repo"
+  ],
+  "curation": {
+    "gap_notes": [
+      "No verified official website yet.",
+      "No verified docs site yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T09:25:00.000Z",
+    "source_count": 4,
+    "verified_at": "2026-06-08T09:25:00.000Z"
+  },
+  "dashboard_url": "https://taomarketcap.com/subnets/47",
+  "name": "EvolAI",
+  "netuid": 47,
+  "notes": "Reviewed overlay for SN47 using the official EvolAI source repository, referenced public Hugging Face dataset, and universal TaoMarketCap dashboard. No verified official website, OpenAPI, safe public subnet API, or SSE surface has been promoted yet.",
+  "schema_version": 1,
+  "slug": "sn-47",
+  "source_repo": "https://github.com/openevolai/evolai",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-47-evolai-source",
+      "kind": "source-repo",
+      "name": "EvolAI source repository",
+      "notes": "Official EvolAI source repository for SN47.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/openevolai/evolai"],
+      "url": "https://github.com/openevolai/evolai"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-47-evolai-universal-qa-dataset",
+      "kind": "data-artifact",
+      "name": "EvolAI Universal QA dataset",
+      "notes": "Public Hugging Face dataset referenced by the EvolAI repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/openevolai/evolai",
+        "https://huggingface.co/datasets/evolai/universal_qa"
+      ],
+      "url": "https://huggingface.co/datasets/evolai/universal_qa"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-47-evolai-website",
+      "kind": "website",
+      "name": "EvolAI official website",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "oktofeesh1"
+      },
+      "source_urls": ["https://github.com/openevolai/evolai"],
+      "url": "https://evolai.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-47-evolai-subnet-api",
+      "kind": "subnet-api",
+      "name": "EvolAI Proxy API",
+      "notes": "Public GET /datasets list endpoint on the EvolAI-operated Hugging Face Space proxy at https://evolai-gate.hf.space.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "evolai",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "source_urls": [
+        "https://huggingface.co/spaces/evolai/gate/raw/main/README.md",
+        "https://huggingface.co/spaces/evolai/gate"
+      ],
+      "url": "https://evolai-gate.hf.space/datasets"
+    }
+  ]
+}

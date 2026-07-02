@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "taostats",
+  "name": "Taostats",
+  "kind": "data-provider",
+  "website_url": "https://taostats.io",
+  "docs_url": "https://docs.taostats.io",
+  "authority": "provider-claimed",
+  "notes": "Bittensor explorer, API, SDK, and hosted RPC provider. API-key gated services are not published as public probeable surfaces."
+}

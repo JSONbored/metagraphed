@@ -1,0 +1,38 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "candidate-discovered",
+    "review_state": "unreviewed"
+  },
+  "name": "NI Compute",
+  "netuid": 27,
+  "schema_version": 1,
+  "slug": "sn-27",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-27-nodexo-source-repo",
+      "kind": "source-repo",
+      "name": "NI Compute source repository",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "nodexo",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/neuralinternet/SN27-opencompute/blob/main/server.py"
+      ],
+      "url": "https://github.com/neuralinternet/SN27-opencompute"
+    }
+  ]
+}

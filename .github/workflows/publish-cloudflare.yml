@@ -1,0 +1,401 @@
+name: Publish Cloudflare Backend
+
+# DATA refresh (ADR 0001). Builds fresh artifacts (chain snapshot + live probes +
+# adapter snapshots) and publishes them to R2 + the KV `latest` pointer. The Worker
+# CODE + committed assets deploy separately via Cloudflare Workers Builds on push to
+# main; this workflow only refreshes the DATA the Worker serves from R2/KV.
+#
+# Triggers — event-driven + daily floor:
+#   - push to main on human-input registry paths → republish so a merged
+#     contributor change (subnet / provider / community candidate / maintainer
+#     review / adapter) appears in the served dataset within minutes, not hours.
+#     Code/docs commits don't match the path filter, so they never trigger a
+#     re-probe (the original decoupling intent is preserved).
+#   - schedule: once daily → a floor for slow chain/registry drift. The volatile
+#     tiers are already served LIVE and refresh independently: surface health via
+#     the 15m prober (src/health-prober.mjs), economics via refresh-economics.yml.
+#   - workflow_dispatch (publish_mode=dry-run validates without writing R2/KV).
+#
+# No stale-pointer hazard: every run fresh-fetches the chain snapshot FIRST
+# (build.mjs productionSteps, tolerant), so the KV `latest` pointer always flips to
+# freshly-built data regardless of trigger. The prober is decoupled from this
+# publish too — operational-surfaces.json is DUAL/committed (#1247), so the live
+# health tier survives a publish outage.
+on:
+  push:
+    branches: [main]
+    # Human-input data only — NOT machine-generated paths (registry/native,
+    # registry/generated, registry/candidates/generated), which the build
+    # regenerates itself and must not self-trigger.
+    paths:
+      - "registry/subnets/**"
+      - "registry/providers/**"
+      - "registry/candidates/community/**"
+      - "registry/reviews/**"
+      - "registry/adapters/**"
+  schedule:
+    # Daily floor (07:17 UTC). Volatile data is live (health 15m, economics 3h);
+    # this only catches slow chain/registry drift no event trigger covered.
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      publish_mode:
+        description: "Use publish for real R2/KV publish; use dry-run for validation only."
+        required: true
+        default: publish
+        type: choice
+        options:
+          - publish
+          - dry-run
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      metagraph_run_id: ${{ steps.stamp-publish-time.outputs.metagraph_run_id }}
+      metagraph_published_at: ${{ steps.stamp-publish-time.outputs.metagraph_published_at }}
+    env:
+      METAGRAPH_PRODUCTION_BUILD: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Install
+        run: npm ci
+
+      - name: Stamp publish time
+        id: stamp-publish-time
+        run: |
+          # The real publish moment — served LIVE as meta.published_at, never baked.
+          published_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "METAGRAPH_PUBLISHED_AT=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_published_at=$published_at" >> "$GITHUB_OUTPUT"
+          # Unique R2 run-prefix id for every r2:manifest invocation (build + the
+          # post-changelog re-stamp). generated_at stays the deterministic epoch
+          # marker (issue #349) so artifacts don't churn; this keeps runs/ unique.
+          echo "METAGRAPH_RUN_ID=$published_at" >> "$GITHUB_ENV"
+          echo "metagraph_run_id=$published_at" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare reviewed publish artifacts
+        run: npm run build
+        env:
+          # The production build re-snapshots adapters from live GitHub metadata
+          # so the publish is fresh by construction. A token is always present
+          # here, so a 401 means the token is broken; fail loudly instead of
+          # shipping degraded adapter data (mirrors sync-subnets.yml).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No METAGRAPH_BUILD_TIMESTAMP override: generated_at stays the epoch
+          # marker (deterministic, no churn). The real time is served live
+          # (meta.published_at); the unique run prefix comes from METAGRAPH_RUN_ID.
+          METAGRAPH_REQUIRE_ADAPTER_AUTH: "1"
+
+      # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
+      # from live GitHub metadata. Refuse to publish if any degraded to broken
+      # auth / all-HTML-fallback (strict via METAGRAPH_PRODUCTION_BUILD).
+      - name: Validate adapter data quality
+        run: npm run validate:adapters
+
+      - name: Stage reviewed publish artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/publish-artifacts"
+          cp -R public "$RUNNER_TEMP/publish-artifacts/public"
+          mkdir -p "$RUNNER_TEMP/publish-artifacts/dist"
+          if [ -d dist/metagraph-r2 ]; then
+            cp -R dist/metagraph-r2 "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2"
+          fi
+          # Stage the whole registry (ADR 0006 step 2 + #599): the build refreshes
+          # several machine inputs in place — native snapshot (refresh-native-snapshot),
+          # candidate discovery + verification (refresh-candidates), adapter snapshots
+          # — so the publish job must validate against the SAME refreshed inputs, not
+          # the stale committed ones, or validate.mjs's committed-vs-staged cross-checks
+          # fail (native native_data_as_of; candidate/coverage counts). Human-authored
+          # registry files are identical to the checkout, so restoring the whole dir is
+          # a no-op for them.
+          cp -R registry "$RUNNER_TEMP/publish-artifacts/registry"
+
+      - name: Upload reviewed publish artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cloudflare-publish-artifacts
+          path: ${{ runner.temp }}/publish-artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+      # The scheduled refresh/publish is the only path that keeps R2/KV fresh; a
+      # silent failure leaves stale data live (issue: 2-day wedge went unnoticed).
+      # Opt-in: no-ops unless METAGRAPH_ALERT_WEBHOOK_URL is set.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"content\":\"🔴 metagraphed production publish FAILED (refresh/staging) — R2/KV may go stale — ${RUN_URL}\"}" || true
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: refresh
+    permissions:
+      contents: read
+    env:
+      METAGRAPH_PRODUCTION_BUILD: "1"
+      METAGRAPH_REQUIRE_PROBE_HEALTH: "1"
+      # $GITHUB_ENV is job-local; carry the refresh job's unique publish stamp
+      # into the publish job so the final r2:manifest restamp cannot fall back to
+      # the deterministic generated_at epoch and reuse runs/1970.../.
+      METAGRAPH_RUN_ID: ${{ needs.refresh.outputs.metagraph_run_id }}
+      METAGRAPH_PUBLISHED_AT: ${{ needs.refresh.outputs.metagraph_published_at }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+
+      - name: Install
+        run: npm ci
+
+      - name: Download reviewed publish artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: cloudflare-publish-artifacts
+          path: ${{ runner.temp }}/publish-artifacts
+
+      - name: Restore reviewed publish artifacts
+        run: |
+          set -euo pipefail
+          find "$RUNNER_TEMP/publish-artifacts" -type l -print -quit | grep -q . && {
+            echo "::error::Refusing to restore artifact containing symbolic links."
+            exit 1
+          }
+          rm -rf public/metagraph dist/metagraph-r2
+          cp -R "$RUNNER_TEMP/publish-artifacts/public/metagraph" public/metagraph
+          if [ -d "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" ]; then
+            mkdir -p dist
+            cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
+          fi
+          # Restore the refreshed registry so `npm run validate` reads the same
+          # machine inputs the staged artifacts were built from (ADR 0006 step 2 +
+          # #599 — native snapshot, candidate discovery/verification, adapters).
+          if [ -d "$RUNNER_TEMP/publish-artifacts/registry" ]; then
+            rm -rf registry
+            cp -R "$RUNNER_TEMP/publish-artifacts/registry" registry
+          fi
+
+      - name: Validate registry
+        run: npm run validate
+
+      # NOTE: the hermetic unit suite (`npm test`) is intentionally NOT run here.
+      # The validate step above rebuilds artifacts in-place with a real publish
+      # time, which violates the committed/deterministic-state assumptions of some
+      # unit tests (e.g. build-summary published_at:null / generated_at epoch-0).
+      # Code is already gated by `npm test` on every PR's CI; this job's purpose
+      # is to validate + publish the DATA, which the guards below cover.
+      # Contract re-derivation (validate:schemas/api/openapi/types) is intentionally
+      # NOT run here. It regenerates the schema bundle + TS types and diffs them
+      # against the committed contract — which can drift in this rebuild-in-place
+      # publish env (e.g. openapi-typescript output) even when the contract is
+      # valid. The contract is already gated by `npm run validate` on every PR's
+      # CI, and the worker code being published (merged main) is unchanged. This
+      # job validates + publishes DATA; the artifact/data guards below + the
+      # publish guards on the re-restored tree cover that.
+      - name: Validate built artifacts (budgets, docs, intake, workflows)
+        run: |
+          npm run validate:artifact-budgets
+          npm run validate:docs
+          npm run validate:intake
+          npm run validate:workflows
+
+      - name: Public-safety scan
+        run: npm run scan:public-safety
+
+      - name: Validate private boundary
+        run: npm run validate:private-boundary
+
+      # The validate/test steps above rebuild artifacts in-place WITHOUT the
+      # probe-result cache, which clobbers the probe-derived health/pools/
+      # freshness the refresh job built (real probe_finished_at + "ok" statuses
+      # become the 1970 epoch placeholder + all "unknown"). r2:upload/kv:publish
+      # below would then publish that unprobed dataset — leaving every RPC pool
+      # with zero eligible endpoints. Re-restore the immutable reviewed artifacts
+      # so we publish exactly what was reviewed, then re-run publish-critical
+      # guards on that final tree. This keeps probe-health assurance while
+      # ensuring no unscanned network-derived metadata reaches R2/KV.
+      - name: Re-restore reviewed artifacts and run final publish guards
+        run: |
+          set -euo pipefail
+          rm -rf public/metagraph dist/metagraph-r2
+          cp -R "$RUNNER_TEMP/publish-artifacts/public/metagraph" public/metagraph
+          if [ -d "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" ]; then
+            mkdir -p dist
+            cp -R "$RUNNER_TEMP/publish-artifacts/dist/metagraph-r2" dist/metagraph-r2
+          fi
+          npm run assert:probe-health
+          npm run scan:public-safety
+          npm run validate:private-boundary
+
+      - name: Check Cloudflare publishing secrets
+        id: cloudflare-secrets
+        run: |
+          set -euo pipefail
+          publish_mode="${PUBLISH_MODE:-publish}"
+          dry_run="false"
+          if [ "$publish_mode" = "dry-run" ]; then
+            dry_run="true"
+          fi
+
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$METAGRAPH_KV_NAMESPACE_ID" ]; then
+            echo "kv_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "kv_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+
+          if [ "$dry_run" != "true" ] && { [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; }; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required for main publish runs. Use workflow_dispatch publish_mode=dry-run for validation-only runs."
+            exit 1
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
+
+      # Compute the real "what changed since last publish" changelog by diffing
+      # the staged build against the previous R2 publish — BEFORE r2:upload
+      # overwrites latest/. The build emits only an empty placeholder (subnets/
+      # coverage are R2-only, #1003); this fills it in. Best-effort: it never
+      # fails the publish (a stale changelog for one run is recoverable).
+      - name: Compute publish changelog (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run changelog:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Build the deprecated surface-id alias map from the same previous R2
+      # publish. The deterministic build emits an empty placeholder because
+      # surfaces.json is R2-only; this fills it before latest/ is overwritten.
+      - name: Compute publish surface aliases (diff vs previous R2 publish)
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run surface-aliases:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # changelog:publish and surface-aliases:publish overwrite staged R2-only
+      # placeholder artifacts, but the r2-manifest still records the build-time
+      # placeholder hashes. Re-stamp the manifest from the final staged artifacts
+      # before upload.
+      - name: Re-stamp R2 manifest after publish metadata
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run r2:manifest
+
+      - name: Upload artifact history to R2
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run r2:upload
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_ALLOW_R2_UPLOAD: "1"
+          METAGRAPH_R2_UPLOAD_HISTORY: "1"
+
+      - name: Publish KV latest pointer
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run kv:publish
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_KV_WRITE: "1"
+
+      # Change-feed webhooks: now that the new data is live in R2/KV, fire
+      # HMAC-signed POSTs to matching subscribers. No-ops when there are no
+      # subscriptions. The dispatcher always exits 0 — per-subscriber and KV
+      # hiccups are logged as warnings but never fail the run, so a broken
+      # endpoint can't block the data pipeline or the smoke step below.
+      - name: Dispatch change-feed webhooks
+        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: npm run webhooks:dispatch
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
+          METAGRAPH_ALLOW_WEBHOOK_DISPATCH: "1"
+
+      # Worker CODE is deployed by Cloudflare Workers Builds on push to main;
+      # this workflow only refreshes the DATA in R2/KV. The live Worker reads
+      # the new KV pointer + R2 on its next origin miss.
+      - name: Smoke live API
+        if: steps.cloudflare-secrets.outputs.publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
+        run: |
+          # Smoke runs immediately after kv:publish, during the edge-cache
+          # revalidation window (routes are 300s-cached + stale-while-revalidate),
+          # so it can briefly see in-transition responses. The data publish
+          # (r2:upload + kv:publish) has already succeeded by here; retry through
+          # the window before failing the run.
+          for attempt in 1 2 3 4; do
+            if npm run smoke:live; then exit 0; fi
+            echo "::warning::smoke:live attempt $attempt failed; edge cache may still be revalidating after kv:publish — retrying in 90s"
+            sleep 90
+          done
+          echo "::error::smoke:live still failing after retries"
+          exit 1
+        env:
+          METAGRAPH_LIVE_BASE_URL: https://api.metagraph.sh
+
+      # Scheduled publish failures must page someone — a silent failure leaves stale
+      # R2/KV data live (a multi-day wedge previously went unnoticed). Reuses the
+      # opt-in METAGRAPH_ALERT_WEBHOOK_URL (no-ops if unset). The message is clearly
+      # tagged "production publish" to distinguish it from reviewbot gate messages;
+      # point it at a dedicated ops webhook secret if you want a separate channel.
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.METAGRAPH_ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -z "${ALERT_WEBHOOK_URL:-}" ]; then
+            echo "No METAGRAPH_ALERT_WEBHOOK_URL configured; skipping alert."
+            exit 0
+          fi
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          curl -fsS -m 15 -X POST "$ALERT_WEBHOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"content\":\"🔴 metagraphed production publish FAILED (deploy job) — R2/KV may go stale — ${RUN_URL}\"}" || true

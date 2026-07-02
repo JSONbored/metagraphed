@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "netuid": 104,
+  "name": "for sale (burn to uid1)",
+  "slug": "for-sale-uid1",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "no-public-project-surface"
+  ],
+  "source_repo": null,
+  "website_url": null,
+  "docs_url": null,
+  "dashboard_url": null,
+  "notes": "Reviewed overlay for SN104. The current chain identity is a sale/placeholder-style name and no official project website, source repository, API, OpenAPI schema, or docs site has been verified.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "verified_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Current chain identity is sale/placeholder-style rather than a clear product identity.",
+      "No verified official website yet.",
+      "No verified live source repository yet.",
+      "No verified official docs site yet beyond public directory/community pages.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": []
+}

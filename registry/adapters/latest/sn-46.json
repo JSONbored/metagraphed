@@ -1,0 +1,87 @@
+{
+  "adapter_kind": "generic-openapi",
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "openapi_schemas": {
+      "captured_at": "2026-06-14T09:09:40.843Z",
+      "captured_count": 1,
+      "schema_count": 1,
+      "schemas": [
+        {
+          "auth_required": false,
+          "captured_at": "2026-06-14T09:09:40.843Z",
+          "content_type": "application/json; charset=utf-8",
+          "hash": "7ac38e88eaafa60fd41edce90d2d1774cd50647d71e85ef3be36f0779808068b",
+          "latency_ms": 176,
+          "name": "Zipcode OpenAPI JSON",
+          "provider": "opentensor",
+          "schema_url": "https://zipcode.ai/openapi.json",
+          "shape": {
+            "component_schema_count": 3,
+            "has_global_security": false,
+            "method_counts": {
+              "delete": 8,
+              "get": 24,
+              "patch": 2,
+              "post": 18,
+              "put": 5
+            },
+            "openapi_version": "3.0.0",
+            "operation_count": 57,
+            "path_count": 41,
+            "sample_paths": [
+              "/api/billing/checkout",
+              "/api/billing/portal",
+              "/api/billing/summary",
+              "/api/dashboard/auth/validation-set",
+              "/api/dashboard/docs",
+              "/api/dashboard/models",
+              "/api/dashboard/models/{uid}",
+              "/api/dashboard/models/{uid}/validations",
+              "/api/dashboard/models/{uid}/validations/{date}",
+              "/api/dashboard/stats",
+              "/api/dashboard/stats/emissions",
+              "/api/dashboard/validation-set/real_estate/download",
+              "/api/docs",
+              "/api/geocode",
+              "/api/portal/acs/{zipCode}",
+              "/api/portal/projects",
+              "/api/portal/projects/{projectId}",
+              "/api/portal/projects/{projectId}/api-keys/{keyId}/reveal",
+              "/api/portal/projects/{projectId}/api-keys/{keyId}/revoke",
+              "/api/portal/projects/{projectId}/chats"
+            ],
+            "security_scheme_count": 3,
+            "server_count": 1,
+            "tag_count": 5,
+            "title": "Zip Code Portal API",
+            "version": "1.0.0"
+          },
+          "status": "captured",
+          "status_code": 200,
+          "surface_id": "sn-46-website-common-openapi-json",
+          "url": "https://zipcode.ai/openapi.json"
+        }
+      ],
+      "status": "captured",
+      "total_operation_count": 57,
+      "total_path_count": 41
+    },
+    "public_api_surfaces": {
+      "captured_at": "2026-06-14T09:09:40.843Z",
+      "status": "captured",
+      "surface_count": 0,
+      "surfaces": []
+    }
+  },
+  "generated_at": "2026-06-14T09:03:05.163Z",
+  "netuid": 46,
+  "notes": [
+    "Generic OpenAPI adapter publishes schema-shape, operation-count, hash, and freshness metadata only.",
+    "Raw schemas, protected method calls, credentialed data, and API response payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "sn-46",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

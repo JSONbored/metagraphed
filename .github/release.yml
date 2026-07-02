@@ -1,0 +1,33 @@
+# Categorization for GitHub's auto-generated release notes (issue #395).
+#
+# The publish workflows (publish-client.yml / publish-python.yml) call
+# `gh release create --generate-notes`, which groups the merged PRs since the
+# previous release tag into the categories below by PR label. Until release-please
+# (issue #394) lands commit-type-driven notes, label your PRs to land them in the
+# right bucket; anything unlabeled falls into "Other Changes".
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+      - stale
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: 🚀 Features
+      labels:
+        - enhancement
+    - title: 🐛 Fixes
+      labels:
+        - bug
+    - title: 🔒 Security
+      labels:
+        - area:security
+    - title: 📚 Documentation
+      labels:
+        - documentation
+    - title: 🧹 Other Changes
+      labels:
+        - "*"

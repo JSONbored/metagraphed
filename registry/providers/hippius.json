@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hippius",
+  "name": "Hippius",
+  "kind": "subnet-team",
+  "website_url": "https://hippius.com/",
+  "docs_url": "https://docs.hippius.com/",
+  "github_url": "https://github.com/thenervelab/hippius-validator",
+  "authority": "official",
+  "notes": "Provider entry for Hippius SN75 website, docs, blockchain API docs, validator repository, and storage miner repository."
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "netuid": 32,
+  "name": "ItsAI",
+  "slug": "sn-32",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-source-repo",
+    "official-website"
+  ],
+  "source_repo": "https://github.com/It-s-AI/llm-detection",
+  "dashboard_url": "https://taomarketcap.com/subnets/32",
+  "website_url": "https://its-ai.org/en",
+  "notes": "Reviewed overlay for SN32 using the official ItsAI website and LLM-detection source repository.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T10:10:00.000Z",
+    "verified_at": "2026-06-08T10:10:00.000Z",
+    "source_count": 4,
+    "gap_notes": [
+      "No verified official docs URL yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-32-itsai-website",
+      "name": "ItsAI website",
+      "kind": "website",
+      "url": "https://its-ai.org/en",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/llm-detection"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ItsAI website."
+    },
+    {
+      "id": "sn-32-itsai-source",
+      "name": "ItsAI source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/It-s-AI/llm-detection",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/llm-detection"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official ItsAI source repository."
+    },
+    {
+      "id": "sn-32-itsai-sdk",
+      "name": "ItsAI Python SDK (PyPI)",
+      "kind": "sdk",
+      "url": "https://pypi.org/project/its-ai/",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://its-ai.org/en"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Published PyPI package `its-ai` (\"Typed Python SDK client for ITS-AI API\", author ITS AI <support@its-ai.org>), linked as the \"Python SDK\" from the official homepage."
+    },
+    {
+      "id": "sn-32-itsai-docs",
+      "name": "ItsAI API documentation",
+      "kind": "docs",
+      "url": "https://docs.its-ai.org/",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://its-ai.org/en"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "Official ItsAI documentation (page title \"AI content detection API\") on the team's docs.its-ai.org subdomain, linked from the homepage. Fills the file's noted missing-docs gap."
+    },
+    {
+      "id": "sn-32-itsai-api-repo",
+      "name": "ItsAI API repository",
+      "kind": "source-repo",
+      "url": "https://github.com/It-s-AI/api",
+      "provider": "its-ai",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://github.com/It-s-AI/api"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "notes": "ItsAI API repository in the team's It-s-AI org; its README describes a FastAPI app that queries miners in \"Subnet32: It's AI\". Distinct from the registered llm-detection repo."
+    }
+  ],
+  "social": { "x": "https://x.com/ai_detection" },
+  "contact": "support@its-ai.org"
+}

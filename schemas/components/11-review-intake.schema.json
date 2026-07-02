@@ -1,0 +1,1600 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/11-review-intake.schema.json",
+  "title": "Metagraphed OpenAPI components 11-review-intake",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "ReviewGapPriority": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "curation_level",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "review_state",
+          "slug",
+          "suggested_next_action",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "suggested_next_action": {
+            "type": "string"
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewAdapterCandidate": {
+        "type": "object",
+        "required": [
+          "candidate_api_count",
+          "candidate_api_ids",
+          "candidate_api_kinds",
+          "curation_level",
+          "name",
+          "netuid",
+          "operational_kinds",
+          "operational_surface_count",
+          "operational_surface_ids",
+          "priority_score",
+          "reason_codes",
+          "recommended_adapter_kind",
+          "suggested_next_action",
+          "slug"
+        ],
+        "properties": {
+          "candidate_api_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_api_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "candidate_api_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "operational_surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_surface_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_adapter_kind": {
+            "enum": [
+              "custom-adapter",
+              "data-artifact-adapter",
+              "generic-openapi-or-custom",
+              "stream-adapter"
+            ]
+          },
+          "suggested_next_action": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewProfileCompletenessEntry": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "completeness_score",
+          "confidence",
+          "curation_level",
+          "gap_reasons",
+          "identity_level",
+          "identity_evidence",
+          "identity_promotion_kind_count",
+          "identity_promotion_kinds",
+          "identity_surface_count",
+          "live_identity_candidate_kind_count",
+          "missing_critical_count",
+          "missing_identity",
+          "missing_operational",
+          "missing_required",
+          "name",
+          "native_identity_signal_count",
+          "native_name_quality",
+          "netuid",
+          "operational_interface_count",
+          "priority_score",
+          "profile_level",
+          "review_state",
+          "slug",
+          "source_count",
+          "stale_identity_candidate_kind_count",
+          "supported_interface_kinds",
+          "suggested_next_action"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "gap_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/SubnetProfileIdentityEvidence"
+          },
+          "identity_promotion_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "identity_promotion_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "live_identity_candidate_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_critical_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missing_identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_operational": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_required": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "native_name_quality": {
+            "enum": ["chain", "placeholder", "empty"]
+          },
+          "native_identity_signal_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_identity_candidate_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "supported_interface_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "suggested_next_action": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentLane": {
+        "enum": [
+          "direct-submission",
+          "maintainer-review",
+          "adapter-candidate",
+          "monitoring-followup",
+          "baseline-monitoring"
+        ]
+      },
+      "ReviewEvidenceAction": {
+        "enum": [
+          "submit-new-evidence",
+          "verify-existing-evidence",
+          "replace-stale-evidence",
+          "review-existing-evidence",
+          "maintainer-review-existing-evidence",
+          "monitor"
+        ]
+      },
+      "ReviewEnrichmentTargetType": {
+        "enum": [
+          "surface-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
+      "ReviewEnrichmentSubmissionRoute": {
+        "enum": [
+          "direct-candidate-pr",
+          "adapter-request",
+          "maintainer-review",
+          "status-report"
+        ]
+      },
+      "ReviewEnrichmentTargetAction": {
+        "enum": [
+          "submit-new-candidate",
+          "replace-stale-candidate",
+          "verify-existing-candidate",
+          "review-existing-candidate",
+          "adapter-review",
+          "maintainer-review",
+          "monitoring-followup"
+        ]
+      },
+      "ReviewEnrichmentQueueEntry": {
+        "type": "object",
+        "required": [
+          "adapter_score",
+          "candidate_evidence_summary",
+          "candidate_count",
+          "completeness_score",
+          "contribution_hint",
+          "curation_level",
+          "direct_submission_kinds",
+          "endpoint_count",
+          "evidence_action",
+          "identity_level",
+          "identity_surface_count",
+          "lane",
+          "manual_review_required",
+          "missing_identity",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "operational_interface_count",
+          "priority_score",
+          "profile_level",
+          "reason_codes",
+          "recommended_action",
+          "review_state",
+          "sample_candidate_ids",
+          "sample_live_candidate_ids",
+          "sample_stale_candidate_ids",
+          "sample_target_candidate_ids",
+          "slug",
+          "source_urls",
+          "stale_candidate_count",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "adapter_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_evidence_summary": {
+            "$ref": "#/components/schemas/ReviewCandidateEvidenceSummary"
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "contribution_hint": {
+            "type": "string"
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evidence_action": {
+            "$ref": "#/components/schemas/ReviewEvidenceAction"
+          },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "lane": {
+            "$ref": "#/components/schemas/ReviewEnrichmentLane"
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "missing_identity": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "sample_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_live_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_stale_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_target_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "stale_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewCandidateEvidence": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "classifications",
+          "live_or_redirected_count",
+          "reviewable_count",
+          "sample_candidate_ids",
+          "stale_or_failed_count",
+          "unverified_count"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "classifications": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "live_or_redirected_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reviewable_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sample_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stale_or_failed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unverified_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewCandidateEvidenceSummary": {
+        "type": "object",
+        "required": [
+          "candidate_count",
+          "kinds_with_candidates",
+          "live_kinds",
+          "live_or_redirected_count",
+          "reviewable_count",
+          "stale_kinds",
+          "stale_or_failed_count",
+          "unverified_count",
+          "unverified_kinds"
+        ],
+        "properties": {
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kinds_with_candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "live_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "live_or_redirected_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reviewable_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "stale_or_failed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unverified_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unverified_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentTargetQueueContext": {
+        "type": "object",
+        "required": [
+          "adapter_score",
+          "candidate_count",
+          "completeness_score",
+          "curation_level",
+          "direct_submission_kind_count",
+          "endpoint_count",
+          "identity_surface_count",
+          "operational_interface_count",
+          "profile_level",
+          "review_state",
+          "source_url_count",
+          "stale_candidate_count",
+          "surface_count",
+          "verified_candidate_count"
+        ],
+        "properties": {
+          "adapter_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completeness_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "curation_level": {
+            "$ref": "#/components/schemas/CurationLevel"
+          },
+          "direct_submission_kind_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "identity_surface_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "operational_interface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "review_state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "source_url_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stale_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surface_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verified_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentEvidenceEntry": {
+        "type": "object",
+        "required": [
+          "candidate_evidence_by_kind",
+          "candidate_evidence_summary",
+          "direct_submission_kinds",
+          "evidence_action",
+          "lane",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "slug"
+        ],
+        "properties": {
+          "candidate_evidence_by_kind": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ReviewCandidateEvidence"
+            }
+          },
+          "candidate_evidence_summary": {
+            "$ref": "#/components/schemas/ReviewCandidateEvidenceSummary"
+          },
+          "direct_submission_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "evidence_action": {
+            "$ref": "#/components/schemas/ReviewEvidenceAction"
+          },
+          "lane": {
+            "$ref": "#/components/schemas/ReviewEnrichmentLane"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentTarget": {
+        "type": "object",
+        "required": [
+          "auto_review_candidate",
+          "candidate_command",
+          "candidate_evidence",
+          "contribution_prompt",
+          "evidence_action",
+          "identity_level",
+          "kind",
+          "lane",
+          "manual_review_required",
+          "missing_kinds",
+          "name",
+          "netuid",
+          "priority_score",
+          "profile_level",
+          "queue_context",
+          "reason_codes",
+          "recommended_action",
+          "sample_live_candidate_ids",
+          "sample_stale_candidate_ids",
+          "sample_target_candidate_ids",
+          "slug",
+          "source_requirements",
+          "source_urls",
+          "submission_route",
+          "target_action",
+          "target_id",
+          "target_type"
+        ],
+        "properties": {
+          "auto_review_candidate": {
+            "type": "boolean"
+          },
+          "candidate_command": {
+            "type": ["string", "null"]
+          },
+          "candidate_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewCandidateEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contribution_prompt": {
+            "type": "string"
+          },
+          "evidence_action": {
+            "$ref": "#/components/schemas/ReviewEvidenceAction"
+          },
+          "identity_level": {
+            "enum": ["none", "directory", "partial", "complete"]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane": {
+            "$ref": "#/components/schemas/ReviewEnrichmentLane"
+          },
+          "manual_review_required": {
+            "type": "boolean"
+          },
+          "missing_kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurfaceKind"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "profile_level": {
+            "enum": [
+              "directory-only",
+              "identity-partial",
+              "identity-complete",
+              "operational",
+              "adapter-backed"
+            ]
+          },
+          "queue_context": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetQueueContext"
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "sample_live_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_stale_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sample_target_candidate_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "submission_route": {
+            "$ref": "#/components/schemas/ReviewEnrichmentSubmissionRoute"
+          },
+          "target_action": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetAction"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewEnrichmentTargetGroup": {
+        "type": "object",
+        "required": [
+          "auto_review_candidate_count",
+          "kind",
+          "manual_review_required_count",
+          "target_count",
+          "target_ids",
+          "target_type",
+          "top_netuids"
+        ],
+        "properties": {
+          "auto_review_candidate_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_review_required_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/ReviewEnrichmentTargetType"
+          },
+          "top_netuids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewDecision": {
+        "type": "object",
+        "required": [
+          "confidence",
+          "decision",
+          "netuid",
+          "notes",
+          "reviewed_at",
+          "slug",
+          "source_urls"
+        ],
+        "properties": {
+          "confidence": {
+            "enum": ["low", "medium", "high"]
+          },
+          "decision": {
+            "enum": ["maintainer-reviewed", "needs-review", "rejected", "stale"]
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string"
+          },
+          "reviewed_at": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReviewCurationArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "adapter_candidates",
+              "gap_priorities",
+              "review_decisions",
+              "summary"
+            ],
+            "properties": {
+              "adapter_candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              },
+              "gap_priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              },
+              "review_decisions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewDecision"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_candidate_count",
+                  "gap_kind_counts",
+                  "maintainer_decision_count",
+                  "needs_maintainer_review_count",
+                  "subnet_count"
+                ],
+                "properties": {
+                  "adapter_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "gap_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_decision_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_maintainer_review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewGapPrioritiesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["priorities"],
+            "properties": {
+              "priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetGapsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["netuid", "priorities", "enrichment_queue"],
+            "properties": {
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "priorities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewGapPriority"
+                }
+              },
+              "enrichment_queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewAdapterCandidatesArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["candidates", "summary"],
+            "properties": {
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_backed_count",
+                  "candidate_api_kind_counts",
+                  "candidate_count",
+                  "by_curation_level",
+                  "by_recommended_adapter_kind",
+                  "data_artifact_backed_count",
+                  "openapi_backed_count",
+                  "operational_kind_counts",
+                  "sse_backed_count"
+                ],
+                "properties": {
+                  "adapter_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "candidate_api_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_curation_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_recommended_adapter_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "data_artifact_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "openapi_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "operational_kind_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "sse_backed_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewProfileCompletenessArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["profiles", "summary"],
+            "properties": {
+              "profiles": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewProfileCompletenessEntry"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "profile_count",
+                  "needs_identity_count",
+                  "needs_operational_count",
+                  "average_completeness_score",
+                  "native_identity_count",
+                  "identity_promotion_candidate_count",
+                  "native_identity_unpromoted_count",
+                  "by_identity_level",
+                  "by_profile_level",
+                  "by_confidence",
+                  "critical_gap_counts"
+                ],
+                "properties": {
+                  "profile_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "needs_operational_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "average_completeness_score": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "native_identity_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "identity_promotion_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "native_identity_unpromoted_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_profile_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_identity_level": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_confidence": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "critical_gap_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewEnrichmentQueueArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["notes", "queue", "summary"],
+            "properties": {
+              "notes": {
+                "type": "string"
+              },
+              "queue": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentQueueEntry"
+                }
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "adapter_candidate_count",
+                  "baseline_monitoring_count",
+                  "direct_submission_count",
+                  "evidence_action_counts",
+                  "identity_level_counts",
+                  "lane_counts",
+                  "maintainer_review_count",
+                  "manual_review_required_count",
+                  "monitoring_followup_count",
+                  "queue_count",
+                  "subnet_count",
+                  "top_direct_submission_kinds"
+                ],
+                "properties": {
+                  "adapter_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "baseline_monitoring_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "direct_submission_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "evidence_action_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "identity_level_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "lane_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "maintainer_review_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "manual_review_required_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "monitoring_followup_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "queue_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "top_direct_submission_kinds": {
+                    "$ref": "#/components/schemas/CountMap"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewEnrichmentEvidenceArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["entries", "notes", "summary"],
+            "properties": {
+              "entries": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentEvidenceEntry"
+                }
+              },
+              "notes": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "entry_count",
+                  "evidence_action_counts",
+                  "stale_candidate_count",
+                  "subnet_count",
+                  "unverified_candidate_count"
+                ],
+                "properties": {
+                  "entry_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "evidence_action_counts": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "stale_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "unverified_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewEnrichmentTargetsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["groups", "notes", "summary", "targets"],
+            "properties": {
+              "groups": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTargetGroup"
+                }
+              },
+              "notes": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "object",
+                "required": [
+                  "auto_review_candidate_count",
+                  "by_evidence_action",
+                  "by_kind",
+                  "by_lane",
+                  "by_target_type",
+                  "manual_review_required_count",
+                  "new_evidence_count",
+                  "stale_replacement_count",
+                  "subnet_count",
+                  "target_count"
+                ],
+                "properties": {
+                  "auto_review_candidate_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_evidence_action": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_kind": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_lane": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "by_target_type": {
+                    "$ref": "#/components/schemas/CountMap"
+                  },
+                  "manual_review_required_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "new_evidence_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "stale_replacement_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subnet_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "target_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "targets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewEnrichmentTarget"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "ReviewDecisionsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["decisions"],
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ReviewDecision"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "VerificationArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["candidate_count", "results"],
+            "properties": {
+              "candidate_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "observed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "summary": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VerificationResult"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetVerificationArtifact": {
+        "$ref": "#/components/schemas/VerificationArtifact"
+      }
+    }
+  }
+}

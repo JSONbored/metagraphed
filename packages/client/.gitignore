@@ -1,0 +1,5 @@
+dist
+node_modules
+# Synced from the repo root at build time (see scripts/sync-generated.mjs).
+src/metagraphed-api.ts
+src/metagraphed-client.ts

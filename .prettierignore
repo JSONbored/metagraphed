@@ -1,0 +1,28 @@
+node_modules
+python
+# CI-ephemeral: validate.yml's "Classify validation route" step writes this to the
+# workspace root before `prettier --check .` runs, so it must not be format-gated.
+validate-route.json
+packages/*/dist
+packages/*/src/metagraphed-api.ts
+packages/*/src/metagraphed-client.ts
+public/metagraph
+public/datasets
+public/.assetsignore
+public/llms.txt
+public/llms-full.txt
+public/.well-known
+generated
+schemas/api-components.schema.json
+registry/native
+registry/candidates/generated
+registry/subnets/generated
+registry/verification
+registry/adapters/latest
+migrations
+tmp
+
+# release-please regenerates these CHANGELOGs on every release in its own format;
+# they are machine-generated, not prettier-gated (python/CHANGELOG.md is covered by the `python` entry above).
+CHANGELOG.md
+packages/client/CHANGELOG.md

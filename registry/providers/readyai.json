@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "readyai",
+  "name": "ReadyAI",
+  "kind": "subnet-team",
+  "website_url": "https://readyai.ai/",
+  "github_url": "https://github.com/afterpartyai/bittensor-conversation-genome-project",
+  "authority": "official",
+  "notes": "Provider entry for ReadyAI SN33 website, Conversation Genome source repository, public dataset, and generated llms.txt data repository."
+}

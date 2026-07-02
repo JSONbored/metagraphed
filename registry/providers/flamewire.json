@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "flamewire",
+  "name": "FlameWire",
+  "kind": "infrastructure-provider",
+  "website_url": "https://flamewire.io",
+  "docs_url": "https://docs.flamewire.io/docs/users/bittensor-rpc",
+  "authority": "provider-claimed",
+  "notes": "Bittensor RPC/API infrastructure provider. Keyed examples remain provider capability metadata until a public-safe endpoint is verified."
+}

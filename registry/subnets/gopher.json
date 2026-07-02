@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "netuid": 42,
+  "name": "Gopher",
+  "slug": "sn-42",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "data",
+    "identity-drift",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website",
+    "tee"
+  ],
+  "docs_url": "https://developers.gopher-ai.com/docs/subnet/intro",
+  "source_repo": "https://github.com/gopher-lab/subnet-42",
+  "dashboard_url": "https://taomarketcap.com/subnets/42",
+  "website_url": "https://developers.gopher-ai.com/",
+  "notes": "Reviewed overlay for SN42 using the live Gopher developer portal, subnet documentation, miner documentation, and source repository. Native chain identity currently reports a placeholder name, so this remains an explicit identity-drift entry rather than a silent rename.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:15:00.000Z",
+    "verified_at": "2026-06-08T20:15:00.000Z",
+    "source_count": 7,
+    "gap_notes": [
+      "Native chain name currently reports as a placeholder.",
+      "Official developer portal, subnet docs, miner docs, and source repository are verified live.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-42-gopher-developer-portal",
+      "name": "Gopher developer portal",
+      "kind": "website",
+      "url": "https://developers.gopher-ai.com/",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/",
+        "https://developers.gopher-ai.com/docs/subnet/intro"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Gopher developer portal."
+    },
+    {
+      "id": "sn-42-gopher-docs",
+      "name": "Gopher subnet documentation",
+      "kind": "docs",
+      "url": "https://developers.gopher-ai.com/docs/subnet/intro",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/subnet/intro",
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Public Gopher subnet documentation. The docs identify the subnet as mainnet netuid 42 and link miner setup to the subnet source repository."
+    },
+    {
+      "id": "sn-42-gopher-miner-docs",
+      "name": "Gopher miner documentation",
+      "kind": "docs",
+      "url": "https://developers.gopher-ai.com/docs/subnet/miners",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://developers.gopher-ai.com/docs/subnet/miners",
+        "https://github.com/gopher-lab/subnet-42"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Gopher miner documentation for Subnet 42."
+    },
+    {
+      "id": "sn-42-gopher-source",
+      "name": "Gopher subnet source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/gopher-lab/subnet-42",
+      "provider": "gopher-ai",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/gopher-lab/subnet-42",
+        "https://developers.gopher-ai.com/docs/subnet/miners"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Public source repository for Gopher Subnet 42 neuron logic."
+    },
+    {
+      "id": "sn-42-gopher-ai-subnet-api",
+      "name": "Gopher Data API live search",
+      "kind": "subnet-api",
+      "url": "https://data.gopher-ai.com/api/v1/search/live",
+      "provider": "gopher-ai",
+      "authority": "community",
+      "auth_required": true,
+      "public_safe": true,
+      "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only credentialed endpoint; recurring read probes are intentionally disabled.",
+      "source_urls": [
+        "https://github.com/gopher-lab/gopher-client/blob/main/client/client.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-client/blob/main/config/config.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L22-L23",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L75-L76"
+      ],
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "HEAD"
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1."
+    }
+  ]
+}

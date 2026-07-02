@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "compelle",
+  "name": "Compelle",
+  "kind": "subnet-team",
+  "website_url": "https://compelle.com/",
+  "github_url": "https://github.com/compelle/compelle-validator",
+  "authority": "official",
+  "notes": "Provider entry for Compelle SN82 website and validator repository."
+}

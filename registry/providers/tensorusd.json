@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "tensorusd",
+  "name": "TensorUSD",
+  "kind": "subnet-team",
+  "website_url": "https://tensorusd.com/",
+  "docs_url": "https://docs.tensorusd.com/",
+  "github_url": "https://github.com/TensorUSD/subnet",
+  "authority": "official",
+  "notes": "Provider entry for TensorUSD SN113 website, subnet docs, and source repository."
+}

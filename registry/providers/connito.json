@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "connito",
+  "name": "Connito",
+  "kind": "subnet-team",
+  "website_url": "https://connito.ai/",
+  "github_url": "https://github.com/Connito-AI/Connito",
+  "authority": "official",
+  "notes": "Provider entry for ConnitoAI SN102 website and source repository."
+}

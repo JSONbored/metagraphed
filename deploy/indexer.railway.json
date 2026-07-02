@@ -1,0 +1,19 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/indexer.Dockerfile",
+    "watchPatterns": [
+      "scripts/index-chain.py",
+      "scripts/fetch-events.py",
+      "scripts/stream-events.py",
+      "deploy/indexer.Dockerfile",
+      "deploy/indexer.railway.json"
+    ]
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

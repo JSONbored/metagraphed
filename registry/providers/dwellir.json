@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "dwellir",
+  "name": "Dwellir",
+  "kind": "infrastructure-provider",
+  "website_url": "https://www.dwellir.com",
+  "docs_url": "https://www.dwellir.com/docs/bittensor",
+  "authority": "provider-claimed",
+  "notes": "Bittensor RPC provider with documented HTTP/WSS examples. API-key URLs are not published as public registry endpoints."
+}

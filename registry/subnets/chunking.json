@@ -1,0 +1,82 @@
+{
+  "baseline_excluded_surface_ids": ["sn-40-taomarketcap-source-repo"],
+  "categories": [
+    "baseline-curated",
+    "data-pipeline",
+    "identity-reviewed",
+    "official-website",
+    "rag"
+  ],
+  "curation": {
+    "gap_notes": [
+      "subnet.chunking.com appears to be the official Chunking website, but its TLS certificate is currently expired and probe-derived status should be degraded.",
+      "Previously discovered VectorChat/chunking_subnet source repository currently returns 404.",
+      "No verified live source repository yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 6,
+    "verified_at": "2026-06-08T15:00:00.000Z"
+  },
+  "name": "Chunking",
+  "netuid": 40,
+  "notes": "Reviewed overlay for SN40 Chunking. Multiple public directories identify VectorChat as the team and subnet.chunking.com as the official website, but the website currently has an expired TLS certificate and the historical VectorChat/chunking_subnet repository returns 404.",
+  "schema_version": 1,
+  "slug": "chunking",
+  "source_repo": null,
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "sn-40-chunking-website",
+      "kind": "website",
+      "name": "Chunking website",
+      "notes": "Official-looking Chunking subnet website retained with degraded probe status until the TLS certificate is fixed.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vectorchat",
+      "public_safe": true,
+      "rate_limit_notes": "Current simple probes fail TLS validation because the certificate is expired.",
+      "source_urls": [
+        "https://subnet.chunking.com/",
+        "https://github.com/VectorChat/chunking_subnet"
+      ],
+      "url": "https://subnet.chunking.com/"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-40-vectorchat-source-repo",
+      "kind": "source-repo",
+      "name": "Chunking community source-repo",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "vectorchat",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/40/subnet.json"
+      ],
+      "url": "https://github.com/salahawk/chunking_subnet"
+    }
+  ],
+  "website_url": "https://subnet.chunking.com/"
+}

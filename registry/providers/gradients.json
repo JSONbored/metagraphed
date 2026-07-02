@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "gradients",
+  "name": "Gradients",
+  "kind": "subnet-team",
+  "website_url": "https://www.gradients.io/",
+  "docs_url": "https://api.gradients.io/docs",
+  "github_url": "https://github.com/gradients-ai/G.O.D",
+  "authority": "provider-claimed",
+  "public_notes": "Provider profile for Gradients / SN56.",
+  "notes": "The public Gradients website describes decentralized AI training on Bittensor and links to the public API host. The GitHub source repository is live and was observed through public subnet directories."
+}

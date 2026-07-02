@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "netuid": 10,
+  "name": "Swap",
+  "slug": "sn-10",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-source-repo",
+    "official-website"
+  ],
+  "website_url": "https://www.taofi.com/pool",
+  "docs_url": "https://docs.taofi.com/",
+  "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
+  "dashboard_url": "https://taomarketcap.com/subnets/10",
+  "baseline_excluded_surface_ids": [
+    "sn-10-taomarketcap-source-repo",
+    "sn-10-taomarketcap-website",
+    "sn-10-website-common-api",
+    "sn-10-website-common-docs",
+    "sn-10-website-common-health",
+    "sn-10-website-common-openapi-json",
+    "sn-10-website-common-swagger",
+    "sn-10-website-common-swagger-json",
+    "sn-10-website-subdomain-docs-docs-taofi-com"
+  ],
+  "notes": "Reviewed overlay for SN10 Swap using the TaoFi pool page, TaoFi docs, and Swap source repository. Common www.taofi.com API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T20:25:00.000Z",
+    "verified_at": "2026-06-08T20:25:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Official TaoFi pool page, docs, and Swap source repository are verified live.",
+      "Common /api, /health, /openapi.json, and Swagger paths currently return 404.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "sn-10-taofi-pool",
+      "name": "TaoFi pool",
+      "kind": "website",
+      "url": "https://www.taofi.com/pool",
+      "provider": "taofi",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": [
+        "https://www.taofi.com/pool",
+        "https://github.com/Swap-Subnet/swap-subnet"
+      ],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TaoFi pool page for SN10 Swap."
+    },
+    {
+      "id": "sn-10-taofi-docs",
+      "name": "TaoFi docs",
+      "kind": "docs",
+      "url": "https://docs.taofi.com/",
+      "provider": "taofi",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://docs.taofi.com/"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "html",
+        "timeout_ms": 10000
+      },
+      "notes": "Official TaoFi documentation."
+    },
+    {
+      "id": "sn-10-swap-source",
+      "name": "Swap source repository",
+      "kind": "source-repo",
+      "url": "https://github.com/Swap-Subnet/swap-subnet",
+      "provider": "taofi",
+      "auth_required": false,
+      "authority": "official",
+      "public_safe": true,
+      "source_urls": ["https://github.com/Swap-Subnet/swap-subnet"],
+      "probe": {
+        "enabled": true,
+        "method": "HEAD",
+        "expect": "any",
+        "timeout_ms": 10000
+      },
+      "notes": "Official Swap subnet source repository."
+    }
+  ]
+}

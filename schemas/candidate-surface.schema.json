@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/candidate-surface.schema.json",
+  "title": "Metagraphed Candidate Surface",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "netuid",
+    "state",
+    "name",
+    "kind",
+    "url",
+    "source_url",
+    "provider",
+    "auth_required",
+    "public_safe"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "netuid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "state": {
+      "enum": [
+        "schema-invalid",
+        "schema-valid",
+        "maintainer-review",
+        "verified",
+        "stale",
+        "rejected"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "archive",
+        "subtensor-rpc",
+        "subtensor-wss",
+        "subnet-api",
+        "openapi",
+        "sse",
+        "sdk",
+        "example",
+        "website",
+        "source-repo",
+        "dashboard",
+        "repo-registry",
+        "docs",
+        "data-artifact"
+      ]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "source_urls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "uniqueItems": true
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_tier": {
+      "enum": [
+        "native-chain",
+        "provider-claimed",
+        "third-party-index",
+        "community-docs"
+      ]
+    },
+    "confidence": {
+      "enum": ["low", "medium", "high"]
+    },
+    "provider": {
+      "type": "string"
+    },
+    "auth_required": {
+      "type": "boolean"
+    },
+    "public_safe": {
+      "type": "boolean"
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["classification", "verified_at"],
+      "properties": {
+        "classification": {
+          "enum": [
+            "live",
+            "redirected",
+            "auth-required",
+            "dead",
+            "unsafe",
+            "unsupported",
+            "rate-limited",
+            "transient",
+            "timeout",
+            "content-mismatch"
+          ]
+        },
+        "verified_at": {
+          "type": "string"
+        }
+      }
+    },
+    "rate_limit_notes": {
+      "type": "string"
+    },
+    "rate_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests", "window"],
+      "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+      "properties": {
+        "requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Permitted requests per window."
+        },
+        "window": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Window the request budget applies to, e.g. \"60s\", \"1m\", \"1h\", \"1d\"."
+        },
+        "burst": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional short-term burst allowance above the steady rate."
+        },
+        "scope": {
+          "enum": ["per-key", "per-ip", "global", "unknown"],
+          "description": "What the limit is counted against."
+        },
+        "cost_notes": {
+          "type": "string",
+          "description": "Notes on weighted/credit costs or tier differences."
+        }
+      }
+    },
+    "auth": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["scheme"],
+      "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+      "properties": {
+        "scheme": {
+          "enum": ["none", "bearer", "api-key", "basic", "oauth2", "custom"],
+          "description": "Credential scheme."
+        },
+        "location": {
+          "enum": ["header", "query", "cookie"],
+          "description": "Where the credential is sent."
+        },
+        "name": {
+          "type": "string",
+          "description": "Header or query-parameter name, e.g. \"Authorization\" or \"X-API-Key\"."
+        },
+        "value_format": {
+          "type": "string",
+          "description": "Placeholder showing the value shape, e.g. \"Bearer <token>\". Never a real secret."
+        },
+        "token_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+          "description": "OAuth2/OIDC token or authorize endpoint, when the spec declares one."
+        },
+        "scopes_note": {
+          "type": "string",
+          "description": "Note on required scopes or how to obtain a credential."
+        }
+      }
+    },
+    "review_notes": {
+      "type": "string"
+    }
+  }
+}

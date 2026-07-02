@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "chutes",
+  "name": "Chutes",
+  "kind": "subnet-team",
+  "website_url": "https://chutes.ai/",
+  "docs_url": "https://chutes.ai/docs",
+  "github_url": "https://github.com/chutesai/chutes",
+  "authority": "official",
+  "notes": "Provider entry for Chutes SN64 website, docs, SDK, miner, validator/API source repositories, app catalog, and public pricing data."
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "green-compute",
+  "name": "Green Compute",
+  "kind": "subnet-team",
+  "website_url": "https://www.green-compute.com/",
+  "authority": "official",
+  "notes": "Provider entry for Green Compute SN110 official website, model directory, and advertised API surface."
+}

@@ -1,0 +1,10 @@
+{
+  "authority": "official",
+  "github_url": "https://github.com/DendriteHQ/SOMA",
+  "id": "soma",
+  "kind": "subnet-team",
+  "name": "SOMA",
+  "notes": "Provider entry for SOMA SN114. Public surfaces include the SOMA website, dashboard, MCP/access pages, and source repository; common API/OpenAPI probe paths currently return 404 or fail and are not promoted.",
+  "schema_version": 1,
+  "website_url": "https://thesoma.ai/"
+}

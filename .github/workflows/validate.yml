@@ -1,0 +1,384 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every contributor PR runs the FULL validation — there is NO reduced "UGC"
+# fast-lane. The old lane skipped the safety scans for "single community file"
+# PRs and kept causing a stale-base preflight false-positive; community surfaces
+# now live in one file per subnet (registry/subnets/<slug>.json) and are checked
+# by the same gates as everything else (validate:surface + public-safety +
+# private-boundary, all below).
+#
+# The work splits across two parallel jobs that both build: `test` builds then
+# runs the suite + coverage; `checks` builds then runs lint + the ~20 contract /
+# schema / safety validations. They are independent — no validation needs the
+# test results — so two runners make the wall-clock max(test, checks), not the
+# sum. Both build because the suite's reader tests serve R2-only artifacts
+# (registry-summary.json etc.) that have NO committed fallback and only exist
+# after `npm run build`, so a fresh runner must stage them.
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          # Pin to the contributor's actual pushed commit, not GitHub's default
+          # refs/pull/:N/merge preview -- keeps CI deterministic for a given sha
+          # (a PR can't start failing just because main moved) and matches what
+          # Codecov's patch status is measuring. See the coverage upload steps
+          # below for why this specifically also fixes commit attribution.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Stage artifacts before the suite: the reader tests serve R2-only
+      # artifacts that have NO committed fallback (dist/metagraph-r2/metagraph/*,
+      # e.g. registry-summary.json), which only exist after a build.
+      - name: Build artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+
+      - name: Prepare test reports dir
+        run: mkdir -p reports/junit
+
+      # The suite runs in two non-overlapping passes (see vitest.config.mjs's
+      # fileParallelism note). `test:ci` runs the parallelizable bulk — every
+      # file EXCEPT the two filesystem-mutating artifact writers — concurrently
+      # WITH coverage; `test:ci:artifacts` (the last step below) then runs those
+      # two writers serially, after coverage is already captured + uploaded. The
+      # writers drive their work via execFileSync child processes and add zero
+      # in-process coverage, so coverage comes only from `test:ci` and CI still
+      # makes a single Codecov upload.
+      - name: Test (parallel, with coverage gate)
+        env:
+          VITEST_JUNIT_PATH: reports/junit/vitest.xml
+        run: npm run test:ci
+
+      - name: Verify coverage report exists
+        run: test -s coverage/lcov.info
+
+      # Upload coverage to Codecov — the primary PR coverage gate (delta-based
+      # project + patch, see codecov.yml). vitest's thresholds are now just a
+      # local backstop. Same-repo PRs and main pushes use the repository token;
+      # fork PRs use Codecov's public-repo tokenless upload path instead.
+      # Missing coverage or upload errors fail the test job.
+      #
+      # Explicit override_branch/commit/pr on BOTH paths below: GITHUB_SHA is the
+      # ephemeral refs/pull/:N/merge commit on pull_request events, and the
+      # checkout step above pins to the real head sha instead (so tests run the
+      # contributor's actual commit) -- so auto-detection would otherwise attach
+      # the report to a merge sha that never appears in the PR's own checks list.
+      - name: Upload coverage to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          disable_search: true
+          override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
+          fail_ci_if_error: true
+
+      # override_branch is prefixed with the fork owner (owner:branch): Codecov only treats a branch
+      # string with a colon-separated prefix as "unprotected"/tokenless-eligible; a bare branch name
+      # looks like it could be a real (possibly protected) branch on the base repo and gets rejected with
+      # "Token required because branch is protected" even with zero token configuration anywhere.
+      # codecov-cli's own auto-detection never adds this prefix either (verified in its source), so it
+      # must be supplied explicitly. override_commit/override_pr are unaffected -- that check only
+      # inspects the branch string.
+      - name: Upload coverage to Codecov (fork PR tokenless)
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./coverage/lcov.info
+          disable_search: true
+          override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
+          override_commit: ${{ github.event.pull_request.head.sha }}
+          override_pr: ${{ github.event.pull_request.number }}
+          fail_ci_if_error: true
+
+      - name: Upload Vitest results to Codecov
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./reports/junit/vitest.xml
+          report_type: test_results
+          disable_search: true
+          override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          override_commit: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
+          fail_ci_if_error: false
+
+      - name: Upload Vitest results to Codecov (fork PR tokenless)
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./reports/junit/vitest.xml
+          report_type: test_results
+          disable_search: true
+          override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
+          override_commit: ${{ github.event.pull_request.head.sha }}
+          override_pr: ${{ github.event.pull_request.number }}
+          fail_ci_if_error: false
+
+      # The two filesystem-mutating artifact writers, run serially LAST so they
+      # never overlap the parallel readers above and coverage is already
+      # uploaded. They mutate the same on-disk artifact tree, so they cannot run
+      # concurrently with each other either — the serial default applies. This is
+      # a pure correctness gate (no coverage); a failure here still fails the job.
+      - name: Test (artifact writers, serial)
+        run: npm run test:ci:artifacts
+
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          # Same pin as the `test` job's checkout -- keep both jobs testing the
+          # identical commit.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      # Compute the deletion-filtered list of files this PR submits, inline in the
+      # trusted workflow (PR contents are untrusted). It feeds ONLY the
+      # reproducible-artifact verifier below, which diff-scopes its check to the
+      # files actually changed. There is no reduced lane to forge — every PR runs
+      # the full validation regardless of this list.
+      - name: Compute submitted files
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
+              git diff --name-only --diff-filter=d "$BASE_SHA"..."$HEAD_SHA" > submitted-artifact-files.txt
+            else
+              git fetch origin "$BASE_REF"
+              git diff --name-only --diff-filter=d "origin/$BASE_REF"...HEAD > submitted-artifact-files.txt
+            fi
+          else
+            : > submitted-artifact-files.txt
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22.23.1
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint + format
+        run: |
+          npm run lint
+          npm run format:check
+
+      # Drift gate: these compare the COMMITTED contract (openapi.json, the schema
+      # bundle, generated types + client) against what the schemas regenerate, so
+      # they MUST run before the build step below overwrites those committed files.
+      # This is the gate CONTRIBUTING.md references — without it a stale or
+      # hand-edited committed contract could land on main undetected.
+      - name: Validate committed contract (drift)
+        run: |
+          npm run validate:contract-drift
+          npm run validate:schema-enums
+          npm run validate:openapi-examples
+          npm run validate:generated-client
+          npm run validate:committed-seed
+
+      - name: Build artifacts
+        env:
+          METAGRAPH_PRESERVE_PROBE_HEALTH: "1"
+        run: npm run build
+
+      - name: Verify submitted public artifacts are reproducible
+        if: github.event_name == 'pull_request'
+        run: node scripts/ci-verify-submitted-artifacts.mjs --changed-files submitted-artifact-files.txt
+
+      - name: Validate registry
+        run: npm run validate
+
+      - name: Generate R2 manifest
+        run: npm run r2:manifest
+
+      # #1025: committed derived artifacts under public/ must match a fresh
+      # build. The validators above run AFTER `npm run build`, so they only ever
+      # see freshly-rebuilt files — never the committed-stale ones — and
+      # ci-verify is diff-scoped, so a source-only PR never re-checks untouched
+      # derived files. This gate closes that silent-drift hole: a full rebuild
+      # has just run (build + r2:manifest), so any working-tree change here means
+      # a committed artifact was left stale. The deterministic derived artifacts
+      # use a fixed reproducible `generated_at` placeholder; the R2-only dist/
+      # tree is gitignored and excluded automatically.
+      #
+      # r2-manifest.json is excluded: its `*_artifact_size_bytes` totals sum the
+      # R2-only artifacts, whose byte sizes vary slightly build-to-build, so it
+      # is inherently non-deterministic. It is publish infrastructure regenerated
+      # on every publish (and by the r2:manifest step above), so its committed
+      # copy is a best-effort lockfile, not a served/contract surface.
+      - name: Verify committed derived artifacts are fresh
+        run: |
+          # Only CONTRACT artifacts are gated here — openapi.json / types.d.ts /
+          # contracts.json / api-index.json — because they change only with reviewed
+          # schema/source PRs and MUST be regenerated + committed. DATA/CONTENT-derived
+          # artifacts are NOT gated: they re-drift on every registry/data edit and would
+          # red-line build-less community surface PRs (the single-file model makes adding
+          # a surface a one-file data PR). Those are handled out-of-band: public/datasets/
+          # + the llms.txt catalogs are gitignored (rebuilt + served via ASSETS on
+          # deploy); r2-manifest.json is the publish lockfile; schemas/index.json is a
+          # network-capture cache the build reconciles in place (a new openapi surface
+          # legitimately adds a not-captured placeholder); and operational-surfaces.json
+          # is CONTENT-derived — the prober's input list regenerates whenever a
+          # probe-enabled, public-safe operational-kind surface (subnet-api / sse /
+          # data-artifact / wss / rpc) is added or changed, which a one-file community
+          # surface PR does NOT regenerate (there is no authority/review gate on that
+          # list). It stays committed so the prober's ASSETS read succeeds on a cold
+          # start, but the served copy is rebuilt fresh on every deploy — so a
+          # momentarily-stale git copy is a tolerated cache, not a runtime fault.
+          excludes=(
+            ':(exclude)public/metagraph/r2-manifest.json'
+            ':(exclude)public/metagraph/schemas/index.json'
+            ':(exclude)public/metagraph/operational-surfaces.json'
+            ':(exclude)public/datasets'
+          )
+          status=$(git status --porcelain --untracked-files=all -- public/ "${excludes[@]}")
+          if [ -n "$status" ]; then
+            echo "::error::Committed derived artifacts under public/ are stale (a fresh build changed, deleted, or recreated them). Run 'npm run build' and commit the result."
+            printf '%s\n' "$status"
+            git diff --name-only -- public/ "${excludes[@]}"
+            git diff --stat -- public/ "${excludes[@]}"
+            exit 1
+          fi
+          echo "All committed derived artifacts under public/ match a fresh build."
+
+      - name: Validate JSON schemas
+        run: npm run validate:schemas
+
+      - name: Validate Worker API
+        run: npm run validate:api
+
+      - name: Validate MCP server
+        run: npm run validate:mcp
+
+      - name: Validate AI routes
+        run: npm run validate:ai
+
+      - name: Validate OpenAPI
+        run: npm run validate:openapi
+
+      - name: Validate generated API types
+        run: npm run validate:types
+
+      # Client-SDK drift gate: a contract-only PR (schemas → generated →
+      # openapi.json) is NOT under packages/client/**, so release-please never
+      # bumps the `client` component and the published @jsonbored/metagraphed
+      # silently lags the live contract. This fails the PR when a contract file
+      # changed versus the merge base but packages/client/package.json "version"
+      # was not bumped. Diff-scoped: non-contract PRs never fire.
+      - name: Validate client-SDK sync (contract ↔ published version)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npm run validate:client-sdk-sync
+
+      - name: Validate artifact size budgets
+        run: npm run validate:artifact-budgets
+
+      - name: Validate documentation contracts
+        run: npm run validate:docs
+
+      # NOTE: the README subnet catalog is intentionally NOT gated here. It is a
+      # DATA-derived listing (regenerated by `npm run readme:catalog` from
+      # registry/subnets/), so gating it red-lined build-less community surface
+      # PRs that legitimately change a subnet's catalog row. README freshness is
+      # owned out-of-band by .github/workflows/readme-catalog-refresh.yml, which
+      # accumulates drift into a single chore/readme-catalog PR on every
+      # registry/subnets push. (Same rationale as the gitignored llms.txt
+      # catalogs + public/datasets — DATA artifacts are not PR-gated.)
+
+      - name: Validate intake templates
+        run: npm run validate:intake
+
+      - name: Validate registry subnet files
+        run: npm run validate:surface
+
+      - name: Validate workflows
+        run: npm run validate:workflows
+
+      - name: Validate migration sequence
+        run: npm run validate:migrations
+
+      - name: Validate Cloudflare config
+        run: npm run cloudflare:verify:dry-run
+
+      - name: Validate R2 manifest
+        run: |
+          npm run r2:manifest:dry-run
+          npm run r2:download:dry-run
+          npm run kv:publish:dry-run
+
+      - name: Worker deploy dry-run
+        run: npm run worker:deploy:dry-run
+
+      - name: Worker bundle-size budget
+        run: npm run worker:bundle:budget
+
+      - name: Public-safety scan
+        run: npm run scan:public-safety
+
+      - name: Validate private boundary
+        run: npm run validate:private-boundary
+
+  # The Python SDK (python/) ships its own hermetic unittest suite (37 cases) but
+  # was never run in CI — a regression in retry/backoff, Retry-After capping,
+  # pagination, JSON-RPC unwrap, or the SSRF-safe redirect handler could land on a
+  # PR (and reach PyPI) despite covering tests existing. This job runs it on every
+  # PR. It is independent of the Node jobs, so it adds no wall-clock to the
+  # test/checks long poles.
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      # `--extra test` installs the httpx-backed test deps (declared in pyproject's
+      # [test] extra) so the async cases run instead of skipping. uv provisions a
+      # Python within `requires-python = ">=3.9"`. No new runtime dependency.
+      - name: Test Python SDK
+        working-directory: python
+        run: uv run --extra test python -m unittest discover -s tests

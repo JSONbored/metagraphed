@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "bitrecs",
+  "name": "Bitrecs",
+  "kind": "subnet-team",
+  "website_url": "https://www.bitrecs.ai/",
+  "docs_url": "https://bitrecs.gitbook.io/bitrecs-docs/",
+  "github_url": "https://github.com/bitrecs/bitrecs-subnet",
+  "authority": "official",
+  "notes": "Provider entry for Bitrecs SN122 official website, documentation, and source repository."
+}

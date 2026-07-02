@@ -1,0 +1,251 @@
+{
+  "contract_version": "2026-06-06.1",
+  "dimensions": {
+    "crown": {
+      "captured_at": "2026-06-14T09:09:39.741Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "784b53f2db128f2fb95448b1d3ef9c99d1b79c8c175c3bdbd290ca28af5731e4",
+      "latency_ms": 77,
+      "shape": {
+        "array_fields": [],
+        "object_fields": [
+          {
+            "key": "BTC-TAO",
+            "key_count": 4
+          },
+          {
+            "key": "TAO-BTC",
+            "key_count": 4
+          }
+        ],
+        "redacted_key_count": 0,
+        "top_level_key_count": 2,
+        "top_level_keys": [
+          "BTC-TAO",
+          "TAO-BTC"
+        ],
+        "type": "object"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/crown"
+    },
+    "events_latest": {
+      "captured_at": "2026-06-14T09:09:39.735Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "ca6782dc0da799f42372f113a2ae4194c04e99c9935495196b14743c17af7b09",
+      "latency_ms": 78,
+      "shape": {
+        "first_item_keys": [
+          "amountRaw",
+          "blockNumber",
+          "configKey",
+          "createdAt",
+          "destChain",
+          "eventData",
+          "eventType",
+          "extensionTargetBlock",
+          "extrinsicIndex",
+          "id",
+          "isActive",
+          "reservedUntil",
+          "secondaryAmount",
+          "sourceChain",
+          "swapId",
+          "taoAmount",
+          "txHash",
+          "voteCount",
+          "voteType"
+        ],
+        "item_count": 20,
+        "redacted_key_count": 4,
+        "type": "array"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/events/latest"
+    },
+    "health": {
+      "captured_at": "2026-06-14T09:09:39.650Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "61ac5857feb130a1dc475db36bbe21604fddf30024110bb2bea9d8b23e8b1b44",
+      "latency_ms": 247,
+      "shape": {
+        "array_fields": [],
+        "object_fields": [],
+        "redacted_key_count": 0,
+        "top_level_key_count": 1,
+        "top_level_keys": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/health"
+    },
+    "leaderboard": {
+      "captured_at": "2026-06-14T09:09:40.287Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "0c72759bf44e489d687de32fb93f74189eaefa0e4c1fd9e8ae123abe5e26d344",
+      "latency_ms": 853,
+      "shape": {
+        "first_item_keys": [
+          "collateralRao",
+          "completedSwaps",
+          "crownShare",
+          "currentCrownDirections",
+          "isActive",
+          "successRate",
+          "timedOutSwaps",
+          "uid",
+          "volumeTao"
+        ],
+        "item_count": 86,
+        "redacted_key_count": 1,
+        "type": "array"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    },
+    "miners": {
+      "captured_at": "2026-06-14T09:09:39.674Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "01a02eb75a0bdb43351d27267abfd39144f8a724b741294962e907a76f784528",
+      "latency_ms": 241,
+      "shape": {
+        "first_item_keys": [
+          "collateralRao",
+          "counterRate",
+          "counterRateStr",
+          "destChain",
+          "hasActiveSwap",
+          "isActive",
+          "isReserved",
+          "rate",
+          "rateStr",
+          "sourceChain",
+          "uid",
+          "updatedAt"
+        ],
+        "item_count": 86,
+        "redacted_key_count": 3,
+        "type": "array"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/miners"
+    },
+    "network_overview": {
+      "captured_at": "2026-06-14T09:09:39.710Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "2bd7b7c6cde56e99ab557f65624f8eeecab207d74cfe4dc34e25fad97ca4106e",
+      "latency_ms": 278,
+      "shape": {
+        "array_fields": [
+          {
+            "item_count": 2,
+            "key": "pairMix"
+          }
+        ],
+        "object_fields": [],
+        "redacted_key_count": 0,
+        "top_level_key_count": 7,
+        "top_level_keys": [
+          "activeMiners",
+          "maxSwapAmountRao",
+          "networkSuccessRate",
+          "pairMix",
+          "scoringWindowVolumeTao",
+          "totalSwaps",
+          "volumeTao"
+        ],
+        "type": "object"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/network/overview"
+    },
+    "protocol_chain_state": {
+      "captured_at": "2026-06-14T09:09:39.664Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "4a2090c8ad1ecc17473bdee7af85f5ee18801b002df5271e35c46149fbca291d",
+      "latency_ms": 234,
+      "shape": {
+        "array_fields": [],
+        "object_fields": [],
+        "redacted_key_count": 0,
+        "top_level_key_count": 1,
+        "top_level_keys": [
+          "currentBlock"
+        ],
+        "type": "object"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/protocol/chain-state"
+    },
+    "protocol_constants": {
+      "captured_at": "2026-06-14T09:09:39.656Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "7a49de612a186c2614a967e6b4705402d512f0a3a1bed2159e91547032b00583",
+      "latency_ms": 227,
+      "shape": {
+        "array_fields": [],
+        "object_fields": [],
+        "redacted_key_count": 0,
+        "top_level_key_count": 4,
+        "top_level_keys": [
+          "challengeWindowBlocks",
+          "feeDivisor",
+          "maxExtensionsPerReservation",
+          "maxExtensionsPerSwap"
+        ],
+        "type": "object"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/protocol/constants"
+    },
+    "reliability": {
+      "captured_at": "2026-06-14T09:09:39.738Z",
+      "content_type": "application/json; charset=utf-8",
+      "hash": "a4741133dd127227465ed5d6f25719ab75748909154cb5d08d07412ee6f69a0f",
+      "latency_ms": 86,
+      "shape": {
+        "first_item_keys": [
+          "completed",
+          "destChain",
+          "sourceChain",
+          "total"
+        ],
+        "item_count": 146,
+        "redacted_key_count": 1,
+        "type": "array"
+      },
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/miners/reliability"
+    },
+    "sse": {
+      "captured_at": "2026-06-14T09:09:40.366Z",
+      "content_type": "text/event-stream",
+      "first_chunk_bytes": 25,
+      "latency_ms": 76,
+      "status": "captured",
+      "status_code": 200,
+      "url": "https://api.all-ways.io/sse"
+    }
+  },
+  "generated_at": "2026-06-14T09:03:05.163Z",
+  "netuid": 7,
+  "notes": [
+    "Allways adapter publishes response-shape, count, hash, and freshness metadata only.",
+    "Raw swap, miner, address, wallet, validator, and event payloads are not persisted."
+  ],
+  "schema_version": 1,
+  "slug": "allways",
+  "source": "adapter-snapshot",
+  "status": "captured"
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "vectorchat",
+  "name": "VectorChat",
+  "kind": "subnet-team",
+  "website_url": "https://subnet.chunking.com/",
+  "authority": "provider-claimed",
+  "public_notes": "Provider profile for public references that identify VectorChat as the team behind SN40 Chunking. Current official-looking website and source repository evidence is stale or degraded.",
+  "notes": "The current subnet.chunking.com TLS certificate is expired and the historical VectorChat/chunking_subnet repository returns 404, so this provider remains degraded until fresh official evidence is submitted."
+}

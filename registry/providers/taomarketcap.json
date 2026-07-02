@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "taomarketcap",
+  "name": "TaoMarketCap",
+  "kind": "data-provider",
+  "website_url": "https://taomarketcap.com",
+  "docs_url": "https://api.taomarketcap.com/developer/documentation/",
+  "authority": "provider-claimed",
+  "notes": "Third-party Bittensor market and subnet API. Used only as enrichment and candidate discovery, not canonical subnet existence authority."
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "taos-im",
+  "name": "TAOS IM",
+  "kind": "subnet-team",
+  "website_url": "https://taos.im/",
+  "docs_url": "https://simulate.trading/taos-im-paper",
+  "github_url": "https://github.com/taos-im/sn-79",
+  "authority": "official",
+  "notes": "Provider entry for MVTRX SN79 website, source repository, and public paper link."
+}

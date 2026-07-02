@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "ridges",
+  "name": "Ridges",
+  "kind": "subnet-team",
+  "website_url": "https://www.ridges.ai/",
+  "github_url": "https://github.com/ridgesai/ridges",
+  "authority": "official",
+  "notes": "Provider entry for Ridges SN62 source repository. The public website currently rate-limits simple probes and is not promoted as a monitored surface in this overlay."
+}

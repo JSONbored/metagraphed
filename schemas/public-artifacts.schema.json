@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/public-artifacts.schema.json",
+  "title": "Metagraphed Public Artifact Schemas",
+  "description": "Schema registry for generated backend artifacts served from metagraph.sh/metagraph.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "providers": {
+      "$ref": "#/$defs/providersArtifact"
+    },
+    "api_index": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "changelog": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "subnets": {
+      "$ref": "#/$defs/subnetsArtifact"
+    },
+    "subnet_detail": {
+      "$ref": "#/$defs/subnetDetailArtifact"
+    },
+    "surfaces": {
+      "$ref": "#/$defs/surfacesArtifact"
+    },
+    "surface_aliases": {
+      "$ref": "#/$defs/surfaceAliasesArtifact"
+    },
+    "endpoints": {
+      "$ref": "#/$defs/endpointsArtifact"
+    },
+    "candidates": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "search": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "search_index": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverageArtifact"
+    },
+    "curation": {
+      "$ref": "#/$defs/curationArtifact"
+    },
+    "gaps": {
+      "$ref": "#/$defs/gapsArtifact"
+    },
+    "verification": {
+      "$ref": "#/$defs/verificationArtifact"
+    },
+    "freshness": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "source_health": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "source_snapshots": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "evidence_ledger": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "health": {
+      "$ref": "#/$defs/healthArtifact"
+    },
+    "health_history": {
+      "$ref": "#/$defs/healthHistoryArtifact"
+    },
+    "rpc_endpoints": {
+      "$ref": "#/$defs/rpcEndpointsArtifact"
+    },
+    "endpoint_pools": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "contracts": {
+      "$ref": "#/$defs/contractsArtifact"
+    },
+    "r2_manifest": {
+      "$ref": "#/$defs/genericArtifact"
+    },
+    "schema_drift": {
+      "$ref": "#/$defs/schemaDriftArtifact"
+    },
+    "review": {
+      "$ref": "#/$defs/reviewArtifact"
+    }
+  },
+  "$defs": {
+    "artifactBase": {
+      "type": "object",
+      "required": ["schema_version", "generated_at"],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "contract_version": {
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "notes": {
+          "type": ["string", "array"]
+        }
+      }
+    },
+    "providersArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["providers"],
+          "properties": {
+            "providers": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "genericArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        }
+      ]
+    },
+    "subnetsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["network", "source", "subnets"],
+          "properties": {
+            "network": {
+              "const": "finney"
+            },
+            "source": {
+              "type": "object"
+            },
+            "subnets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/subnetIndexEntry"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "subnetDetailArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["subnet", "surfaces", "candidate_surfaces", "gaps"],
+          "properties": {
+            "subnet": {
+              "type": "object"
+            },
+            "surfaces": {
+              "type": "array"
+            },
+            "verified_surfaces": {
+              "type": "array"
+            },
+            "candidate_surfaces": {
+              "type": "array"
+            },
+            "gaps": {
+              "type": "object"
+            }
+          }
+        }
+      ]
+    },
+    "surfacesArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["surfaces"],
+          "properties": {
+            "surfaces": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/surface"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "surfaceAliasesArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["source", "summary", "aliases"],
+          "properties": {
+            "source": {
+              "const": "generated-surface-rename-aliases"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "aliases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["deprecated_id", "surface_key", "current_id"],
+                "properties": {
+                  "deprecated_id": {
+                    "type": "string"
+                  },
+                  "surface_key": {
+                    "type": "string"
+                  },
+                  "current_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "endpointsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["summary", "endpoints"],
+          "properties": {
+            "summary": {
+              "type": "object"
+            },
+            "endpoints": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "coverageArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": [
+            "chain_subnet_count",
+            "curated_overlay_count",
+            "native_only_count",
+            "surface_count",
+            "candidate_count"
+          ],
+          "properties": {
+            "chain_subnet_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "curated_overlay_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "native_only_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "surface_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "curationArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["curation"],
+          "properties": {
+            "curation": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "gapsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["gaps"],
+          "properties": {
+            "gaps": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "verificationArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["candidate_count", "results"],
+          "properties": {
+            "candidate_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "results": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "healthArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["summary", "surfaces"],
+          "properties": {
+            "summary": {
+              "type": "object"
+            },
+            "surfaces": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/healthSurface"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "contractsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["contract_version", "base_path", "artifacts"],
+          "properties": {
+            "contract_version": {
+              "type": "string"
+            },
+            "base_path": {
+              "const": "/metagraph"
+            },
+            "artifacts": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "healthHistoryArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["date", "summary", "surfaces"],
+          "properties": {
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "surfaces": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "rpcEndpointsArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["summary", "endpoints"],
+          "properties": {
+            "summary": {
+              "type": "object"
+            },
+            "endpoints": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "schemaDriftArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["source", "surfaces"],
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "surfaces": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "reviewArtifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifactBase"
+        },
+        {
+          "required": ["summary"],
+          "properties": {
+            "summary": {
+              "type": "object"
+            },
+            "gap_priorities": {
+              "type": "array"
+            },
+            "adapter_candidates": {
+              "type": "array"
+            }
+          }
+        }
+      ]
+    },
+    "subnetIndexEntry": {
+      "type": "object",
+      "required": [
+        "netuid",
+        "name",
+        "slug",
+        "coverage_level",
+        "curation_level",
+        "surface_count"
+      ],
+      "properties": {
+        "netuid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string"
+        },
+        "native_name": {
+          "type": ["string", "null"]
+        },
+        "native_name_quality": {
+          "enum": ["chain", "placeholder", "empty"]
+        },
+        "slug": {
+          "type": "string"
+        },
+        "coverage_level": {
+          "type": "string"
+        },
+        "curation_level": {
+          "type": "string"
+        },
+        "surface_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "surface": {
+      "type": "object",
+      "required": ["id", "netuid", "kind", "url", "provider", "public_safe"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "netuid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "public_safe": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "healthSurface": {
+      "type": "object",
+      "required": ["surface_id", "netuid", "status", "classification", "url"],
+      "properties": {
+        "surface_id": {
+          "type": "string"
+        },
+        "netuid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": ["ok", "degraded", "failed", "unknown"]
+        },
+        "classification": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "metagraphed",
+  "name": "Metagraphed",
+  "kind": "registry",
+  "website_url": "https://metagraph.sh",
+  "docs_url": "https://github.com/JSONbored/metagraphed",
+  "authority": "registry-observed",
+  "notes": "Registry and probe observations are not protocol authority."
+}

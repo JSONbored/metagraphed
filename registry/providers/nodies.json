@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "nodies",
+  "name": "Nodies",
+  "kind": "infrastructure-provider",
+  "website_url": "https://nodies.app",
+  "docs_url": "https://docs.nodies.app/rpc-services/public-endpoints",
+  "authority": "provider-claimed",
+  "notes": "Public RPC provider referenced by public endpoint directories. Exact endpoint entries require active verification before promotion."
+}

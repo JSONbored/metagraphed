@@ -1,0 +1,30 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Bitsota",
+  "netuid": 94,
+  "schema_version": 1,
+  "slug": "sn-94",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-alveus-labs-subnet-api",
+      "kind": "subnet-api",
+      "name": "Bitsota AutoResearch coordinator API",
+      "notes": "Public no-auth endpoint of the SN94 Bitsota AutoResearch coordinator — live research task list served by the production coordinator at autoresearch.bitsota.com (documented in the official bitsota.ai backend-routes docs).",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dev-miro26"
+      },
+      "source_urls": ["https://bitsota.ai/docs/autoresearch-backend-routes"],
+      "url": "https://autoresearch.bitsota.com/api/v1/tasks"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+name: Report endpoint or status issue
+description: Report a stale, down, misclassified, or unsafe public subnet interface.
+title: "status: "
+labels:
+  - status-report
+  - metagraphed-under-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Status reports trigger review or re-probes. They do not directly change uptime, latency, pool eligibility, or endpoint health; observed health is generated only by Metagraphed probes and adapters.
+  - type: input
+    id: netuid
+    attributes:
+      label: Netuid
+      placeholder: "7"
+    validations:
+      required: true
+  - type: input
+    id: surface_id
+    attributes:
+      label: Surface ID or URL
+      description: Use the Metagraphed surface ID if known; otherwise paste the URL.
+      placeholder: allways-api-health
+    validations:
+      required: true
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue type
+      options:
+        - down
+        - degraded
+        - stale
+        - wrong-auth-label
+        - wrong-rate-limit-label
+        - unsafe-or-private
+        - wrong-subnet
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include public error responses, docs links, timestamps, or repro steps. Do not include secrets or credentialed data.
+    validations:
+      required: true
+  - type: checkboxes
+    id: public_safety
+    attributes:
+      label: Public-safety confirmation
+      options:
+        - label: This report does not include secrets, credentialed flows, private dashboards, or validator-sensitive data.
+          required: true

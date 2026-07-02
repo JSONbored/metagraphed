@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "verathos",
+  "name": "Verathos",
+  "kind": "subnet-team",
+  "website_url": "https://verathos.ai/",
+  "docs_url": "https://verathos.ai/docs",
+  "github_url": "https://github.com/verathos-ai/verathos",
+  "authority": "official",
+  "notes": "Provider entry for Verathos SN96 website, docs, source repository, public OpenAPI schema, chat app, and safe model-list API."
+}

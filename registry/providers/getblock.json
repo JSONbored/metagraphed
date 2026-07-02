@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "getblock",
+  "name": "GetBlock",
+  "kind": "infrastructure-provider",
+  "website_url": "https://getblock.io",
+  "docs_url": "https://getblock.io/nodes/tao/",
+  "authority": "provider-claimed",
+  "notes": "Bittensor node provider. API-key gated endpoints are tracked as provider capability, not public probeable surfaces."
+}

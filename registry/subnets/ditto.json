@@ -1,0 +1,255 @@
+{
+  "baseline_excluded_surface_ids": [
+    "sn-118-taomarketcap-source-repo",
+    "sn-118-taomarketcap-website",
+    "sn-118-tensorplex-source-repo-1",
+    "sn-118-website-common-docs",
+    "sn-118-website-link-heyditto-ai-docs-5"
+  ],
+  "categories": [
+    "agent-memory",
+    "baseline-curated",
+    "identity-reviewed",
+    "official-docs",
+    "official-website"
+  ],
+  "contact": "peyton@omniaura.ai",
+  "curation": {
+    "gap_notes": [
+      "Official website, docs, assistant app, and GitHub organization repository listing are verified.",
+      "The GitHub organization repositories page is tracked as a repo registry, distinct from the canonical source repository below.",
+      "mobiusfund/etf appears unrelated to Ditto and is excluded from promoted source repository evidence.",
+      "Common API, health, OpenAPI, Swagger JSON, and Swagger UI paths currently return 404.",
+      "Canonical source repository verified: ditto-assistant/dittobench-starter-kit self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\" (not a fork, ditto-assistant org).",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T19:30:00.000Z",
+    "source_count": 8,
+    "verified_at": "2026-06-08T19:30:00.000Z"
+  },
+  "dashboard_url": "https://assistant.heyditto.ai/",
+  "docs_url": "https://heyditto.ai/docs/",
+  "name": "Ditto",
+  "netuid": 118,
+  "notes": "Reviewed overlay for SN118 Ditto using the public Ditto website, docs, assistant app, GitHub organization, and the official dittobench-starter-kit repository (whose description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\"). No public API, OpenAPI, SSE, or read-only data endpoint is verified yet.",
+  "schema_version": 1,
+  "slug": "sn-118",
+  "social": {
+    "x": "https://x.com/heydittoai"
+  },
+  "source_repo": "https://github.com/ditto-assistant/dittobench-starter-kit",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-website",
+      "kind": "website",
+      "name": "Ditto website",
+      "notes": "Official Ditto website.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": ["https://heyditto.ai/"],
+      "url": "https://heyditto.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-docs",
+      "kind": "docs",
+      "name": "Ditto docs",
+      "notes": "Official Ditto documentation.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": ["https://heyditto.ai/docs/", "https://heyditto.ai/"],
+      "url": "https://heyditto.ai/docs/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-openclaw-docs",
+      "kind": "docs",
+      "name": "Ditto OpenClaw docs",
+      "notes": "Ditto documentation for OpenClaw integration.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/openclaw/",
+        "https://heyditto.ai/docs/"
+      ],
+      "url": "https://heyditto.ai/docs/openclaw/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-hermes-docs",
+      "kind": "docs",
+      "name": "Ditto Hermes Agent docs",
+      "notes": "Ditto documentation for Hermes Agent integration.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/hermes-agent/",
+        "https://heyditto.ai/docs/"
+      ],
+      "url": "https://heyditto.ai/docs/hermes-agent/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-mcp-docs",
+      "kind": "docs",
+      "name": "Ditto MCP server docs",
+      "notes": "Ditto documentation for MCP server setup.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://heyditto.ai/docs/mcp-server/",
+        "https://heyditto.ai/docs/"
+      ],
+      "url": "https://heyditto.ai/docs/mcp-server/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-assistant",
+      "kind": "dashboard",
+      "name": "Ditto assistant app",
+      "notes": "Public Ditto assistant app surface.",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": ["https://assistant.heyditto.ai/", "https://heyditto.ai/"],
+      "url": "https://assistant.heyditto.ai/"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-repo-registry",
+      "kind": "repo-registry",
+      "name": "Ditto GitHub repositories",
+      "notes": "Public Ditto GitHub organization repository listing. Tracked as a repo registry, distinct from the canonical source repository.",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/orgs/ditto-assistant/repositories",
+        "https://heyditto.ai/"
+      ],
+      "url": "https://github.com/orgs/ditto-assistant/repositories"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-118-ditto-dittobench-starter-kit",
+      "kind": "source-repo",
+      "name": "DittoBench starter kit",
+      "notes": "Official DittoBench miner starter kit; its GitHub description self-declares \"Official DittoBench miner starter kit for Bittensor subnet 118\".",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/ditto-assistant/dittobench-starter-kit",
+        "https://heyditto.ai/"
+      ],
+      "url": "https://github.com/ditto-assistant/dittobench-starter-kit"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-118-ditto-assistant-sdk",
+      "kind": "sdk",
+      "name": "Ditto community sdk",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://heyditto.ai/docs/mcp-server"],
+      "url": "https://github.com/ditto-assistant/ditto-mcp"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-118-ditto-assistant-source-repo",
+      "kind": "source-repo",
+      "name": "Ditto community source-repo",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "ditto-assistant",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": [
+        "https://github.com/ditto-assistant/ditto-cli/blob/main/README.md"
+      ],
+      "url": "https://github.com/ditto-assistant/ditto-cli"
+    }
+  ],
+  "website_url": "https://heyditto.ai/"
+}

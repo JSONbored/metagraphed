@@ -1,0 +1,38 @@
+{
+  "categories": [],
+  "curation": {
+    "level": "community-seeded",
+    "review_state": "unreviewed"
+  },
+  "name": "Minos",
+  "netuid": 107,
+  "schema_version": 1,
+  "slug": "sn-107",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-subnet-api",
+      "kind": "subnet-api",
+      "name": "Minos Platform API",
+      "notes": "Public health/status endpoint of the Minos Platform (api.theminos.ai), the hosted round-coordination service documented in the official minos_subnet README. Unauthenticated GET returns JSON service status; the /v2/* task endpoints require hotkey auth.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorysr1209-png"
+      },
+      "source_urls": [
+        "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
+      ],
+      "url": "https://api.theminos.ai/health"
+    }
+  ]
+}

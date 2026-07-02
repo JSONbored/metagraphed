@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "taopedia-articles",
+  "name": "Taopedia Articles",
+  "kind": "docs-provider",
+  "website_url": "https://github.com/e35ventura/taopedia-articles",
+  "docs_url": "https://github.com/e35ventura/taopedia-articles",
+  "authority": "community",
+  "notes": "Public article source for Taopedia. Used to discover documentation candidates, not verified operational surfaces."
+}

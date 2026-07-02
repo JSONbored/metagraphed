@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "adtao",
+  "name": "AdTAO",
+  "kind": "subnet-team",
+  "website_url": "https://adtao.io/",
+  "github_url": "https://github.com/ippcteam/SN21-adtao",
+  "authority": "official",
+  "notes": "Provider entry for AdTAO SN21 website and source repository."
+}

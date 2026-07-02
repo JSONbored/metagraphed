@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "desearch",
+  "name": "Desearch",
+  "kind": "subnet-team",
+  "website_url": "https://www.desearch.ai/",
+  "docs_url": "https://www.desearch.ai/docs",
+  "github_url": "https://github.com/Desearch-ai/subnet-22",
+  "authority": "official",
+  "notes": "Provider entry for Desearch SN22 website, docs, public OpenAPI schema, console, and subnet source repository."
+}

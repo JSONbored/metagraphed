@@ -1,0 +1,896 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metagraph.sh/schemas/components/07-endpoints-rpc.schema.json",
+  "title": "Metagraphed OpenAPI components 07-endpoints-rpc",
+  "type": "object",
+  "components": {
+    "schemas": {
+      "RpcEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "url",
+          "provider",
+          "status",
+          "classification",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
+          "network",
+          "chain"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "kind": {
+            "enum": ["subtensor-rpc", "subtensor-wss"]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "chain": {
+            "const": "bittensor"
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "rpc_method_count": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "methods_supported": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method_tested": {
+            "type": "string"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "rate_limit_notes": {
+            "type": ["string", "null"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "last_checked": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcPool": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "endpoint_count",
+          "eligible_count",
+          "endpoints"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "best_endpoint_id": {
+            "type": ["string", "null"]
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "eligible_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RpcPoolEndpoint"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcPoolEndpoint": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "provider",
+          "status",
+          "score",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
+          "pool_eligible"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string",
+            "description": "Human-readable surface alias retained for display/back-compat."
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005) when the pool endpoint came from a catalogued surface."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "score": {
+            "type": "integer"
+          },
+          "score_reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EndpointScoreReason"
+            }
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "pool_eligibility_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointMonitoringPolicy": {
+        "type": "object",
+        "required": ["enabled", "method", "expect", "source"],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "method": {
+            "type": ["string", "null"]
+          },
+          "expect": {
+            "type": ["string", "null"]
+          },
+          "timeout_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointResource": {
+        "type": "object",
+        "required": [
+          "id",
+          "surface_id",
+          "surface_key",
+          "netuid",
+          "layer",
+          "kind",
+          "url",
+          "provider",
+          "operator",
+          "auth_required",
+          "public_safe",
+          "monitoring_policy",
+          "monitoring_status",
+          "publication_state",
+          "pool_eligible",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
+          "status",
+          "score"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url. Endpoint ids derive from this value so display slug renames do not break endpoint links."
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "chain": {
+            "const": "bittensor"
+          },
+          "network": {
+            "$ref": "#/components/schemas/BittensorNetwork"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/Authority"
+          },
+          "auth_required": {
+            "type": "boolean"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "monitoring_policy": {
+            "$ref": "#/components/schemas/EndpointMonitoringPolicy"
+          },
+          "monitoring_status": {
+            "enum": ["monitored", "not_monitored"]
+          },
+          "publication_state": {
+            "$ref": "#/components/schemas/EndpointPublicationState"
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "pool_eligibility_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "archive_support": {
+            "type": ["boolean", "null"]
+          },
+          "latest_block": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "method_support": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rpc_method_count": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "method_tested": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "latency_ms": {
+            "type": ["integer", "null"],
+            "minimum": 0
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": [
+              "probe-derived",
+              "missing-probe",
+              "not-monitored",
+              "live-cron-prober",
+              "unavailable"
+            ]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "score_reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EndpointScoreReason"
+            }
+          },
+          "last_checked": {
+            "type": ["string", "null"]
+          },
+          "last_ok": {
+            "type": ["string", "null"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          },
+          "rate_limit_notes": {
+            "type": ["string", "null"]
+          },
+          "source_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointScoreReason": {
+        "type": "object",
+        "required": ["reason", "points"],
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointProviderScore": {
+        "type": "object",
+        "required": [
+          "provider",
+          "endpoint_count",
+          "monitored_count",
+          "ok_count",
+          "failed_count",
+          "degraded_count",
+          "pool_eligible_count",
+          "average_score",
+          "operational_score"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monitored_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ok_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "degraded_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pool_eligible_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "average_score": {
+            "type": "integer"
+          },
+          "operational_score": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointIncident": {
+        "type": "object",
+        "required": [
+          "id",
+          "endpoint_id",
+          "surface_id",
+          "surface_key",
+          "netuid",
+          "layer",
+          "kind",
+          "provider",
+          "operator",
+          "status",
+          "classification",
+          "severity",
+          "state",
+          "reason",
+          "detected_at",
+          "observed_at",
+          "health_source",
+          "health_stale",
+          "last_ok",
+          "last_checked",
+          "pool_eligible",
+          "user_reported",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "endpoint_id": {
+            "type": "string"
+          },
+          "surface_id": {
+            "type": "string"
+          },
+          "surface_key": {
+            "type": "string",
+            "description": "Stable surface identity (#1005): hash of netuid|kind|url for the affected surface."
+          },
+          "netuid": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "subnet_slug": {
+            "type": "string"
+          },
+          "subnet_name": {
+            "type": "string"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/EndpointLayer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SurfaceKind"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/Classification"
+          },
+          "severity": {
+            "enum": ["critical", "warning", "info"]
+          },
+          "state": {
+            "enum": ["active", "resolved"]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "detected_at": {
+            "type": "string"
+          },
+          "observed_at": {
+            "type": ["string", "null"]
+          },
+          "health_source": {
+            "enum": ["probe-derived", "missing-probe", "not-monitored"]
+          },
+          "health_stale": {
+            "type": "boolean"
+          },
+          "last_ok": {
+            "type": ["string", "null"]
+          },
+          "last_checked": {
+            "type": ["string", "null"]
+          },
+          "pool_eligible": {
+            "type": "boolean"
+          },
+          "user_reported": {
+            "type": "boolean"
+          },
+          "source": {
+            "const": "probe-derived"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointIncidentSummary": {
+        "type": "object",
+        "required": ["incident_count", "active_count"],
+        "properties": {
+          "incident_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "by_kind": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_layer": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_provider": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_severity": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_status": {
+            "$ref": "#/components/schemas/CountMap"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EndpointSummary": {
+        "type": "object",
+        "required": [
+          "endpoint_count",
+          "monitored_count",
+          "pool_eligible_count"
+        ],
+        "properties": {
+          "endpoint_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "monitored_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pool_eligible_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "by_kind": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_layer": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_provider": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_publication_state": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "by_status": {
+            "$ref": "#/components/schemas/CountMap"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpcEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["summary", "endpoints"],
+            "properties": {
+              "summary": {
+                "type": "object",
+                "description": "Roll-up counts across the base-layer RPC endpoint set.",
+                "properties": {
+                  "endpoint_count": { "type": "integer", "minimum": 0 },
+                  "archive_supported_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "by_kind": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  },
+                  "by_provider": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  },
+                  "by_status": {
+                    "type": "object",
+                    "additionalProperties": { "type": "integer", "minimum": 0 }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RpcEndpoint"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "RpcPoolsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["pools"],
+            "properties": {
+              "disabled_proxy_contract": {
+                "type": "object",
+                "description": "The read-only RPC proxy contract (disabled by default behind a feature flag).",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "feature_flag": { "type": "string" },
+                  "allowed_methods": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "denied_method_patterns": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "rate_limit_required": { "type": "boolean" },
+                  "waf_required": { "type": "boolean" }
+                },
+                "additionalProperties": true
+              },
+              "eligibility_policy": {
+                "type": "object",
+                "description": "How endpoints qualify for a pool — derived from monitored state only.",
+                "properties": {
+                  "source": { "type": "string" },
+                  "eligible_layers": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "required_status": { "type": "string" },
+                  "requires_no_auth": { "type": "boolean" },
+                  "requires_public_safe": { "type": "boolean" },
+                  "user_reports_can_change_health": { "type": "boolean" },
+                  "notes": { "type": "string" }
+                },
+                "additionalProperties": true
+              },
+              "provider_scores": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointProviderScore"
+                }
+              },
+              "pools": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RpcPool"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "EndpointPoolsArtifact": {
+        "$ref": "#/components/schemas/RpcPoolsArtifact"
+      },
+      "EndpointIncidentsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["summary", "incidents"],
+            "properties": {
+              "summary": {
+                "$ref": "#/components/schemas/EndpointIncidentSummary"
+              },
+              "incidents": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointIncident"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "EndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["summary", "endpoints"],
+            "properties": {
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SubnetEndpointsArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "type": "object",
+            "required": ["netuid", "summary", "endpoints"],
+            "properties": {
+              "netuid": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/EndpointSummary"
+              },
+              "endpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/EndpointResource"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  }
+}

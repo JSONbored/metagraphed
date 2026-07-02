@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "macrocosmos",
+  "name": "Macrocosmos",
+  "kind": "subnet-team",
+  "website_url": "https://www.macrocosmos.ai/",
+  "docs_url": "https://docs.macrocosmos.ai/",
+  "github_url": "https://github.com/macrocosm-os/data-universe",
+  "authority": "official",
+  "notes": "Provider entry for Macrocosmos SN13 Data Universe website, documentation, source repositories, and public product surfaces."
+}

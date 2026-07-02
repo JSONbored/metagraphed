@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "natix",
+  "name": "NATIX",
+  "kind": "subnet-team",
+  "website_url": "https://www.natix.network/",
+  "docs_url": "https://docs.natix.network/whitepaper",
+  "github_url": "https://github.com/natixnetwork/streetvision-subnet",
+  "authority": "official",
+  "notes": "Provider entry for NATIX SN72 StreetVision website, whitepaper, source repository, product page, and Hugging Face organization."
+}

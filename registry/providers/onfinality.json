@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "onfinality",
+  "name": "OnFinality",
+  "kind": "infrastructure-provider",
+  "website_url": "https://onfinality.io",
+  "docs_url": "https://onfinality.io/en/networks/bittensor-finney",
+  "authority": "provider-claimed",
+  "notes": "Bittensor Finney RPC provider. Public endpoints are rate limited and suitable for testing according to provider docs."
+}

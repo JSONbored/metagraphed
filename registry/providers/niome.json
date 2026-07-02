@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/genomesio/subnet-niome",
+  "id": "niome",
+  "kind": "subnet-team",
+  "name": "NIOME",
+  "public_notes": "Subnet 55 (NIOME) team profile — a decentralized AI subnet on genomes.io. Identity from on-chain SubnetIdentitiesV3 (name, website, source repo). Review input only (authority: community).",
+  "schema_version": 1,
+  "website_url": "https://niome.genomes.io/"
+}

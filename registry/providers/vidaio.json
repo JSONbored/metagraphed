@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "vidaio",
+  "name": "Vidaio",
+  "kind": "subnet-team",
+  "website_url": "https://vidaio.io/",
+  "github_url": "https://github.com/vidaio-subnet/vidaio-subnet",
+  "authority": "official",
+  "notes": "Provider entry for Vidaio SN85 public website and source repository. Website dashboard/docs/OpenAPI-looking paths currently redirect to sign-in and are not promoted as public operational surfaces."
+}

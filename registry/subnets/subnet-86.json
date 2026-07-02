@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "netuid": 86,
+  "name": "Subnet 86",
+  "slug": "sn-86",
+  "status": "active",
+  "categories": [
+    "baseline-curated",
+    "identity-placeholder",
+    "identity-reviewed"
+  ],
+  "source_repo": null,
+  "website_url": null,
+  "docs_url": null,
+  "dashboard_url": null,
+  "notes": "Reviewed overlay for SN86. Native chain identity is placeholder-like and public directories do not expose a verified official project website, source repository, API, OpenAPI schema, or docs site.",
+  "curation": {
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-08T15:00:00.000Z",
+    "verified_at": "2026-06-08T15:00:00.000Z",
+    "source_count": 5,
+    "gap_notes": [
+      "Native chain name is placeholder-like.",
+      "No verified official website yet.",
+      "No verified live source repository yet.",
+      "No verified official docs site yet beyond public directory/community pages.",
+      "No verified machine-readable OpenAPI/Swagger schema yet.",
+      "No verified safe public subnet API endpoint yet.",
+      "No verified SSE/event stream yet.",
+      "No verified standalone static data artifact yet."
+    ]
+  },
+  "surfaces": []
+}

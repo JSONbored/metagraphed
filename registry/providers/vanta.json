@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "vanta",
+  "name": "Vanta Network",
+  "kind": "subnet-team",
+  "website_url": "https://www.vantanetwork.io/",
+  "github_url": "https://github.com/taoshidev/vanta-network",
+  "authority": "official",
+  "public_notes": "Provider profile for Vanta Network / SN8. Public surfaces include the Vanta website, dashboard, transparency page, tokenomics page, and source repository.",
+  "notes": "No safe public subnet API, OpenAPI schema, SSE stream, or standalone data artifact has been verified yet."
+}

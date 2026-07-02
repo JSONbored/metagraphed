@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "bitcast-network",
+  "name": "Bitcast",
+  "kind": "subnet-team",
+  "website_url": "https://www.bitcast.network",
+  "authority": "community",
+  "notes": "SN93 (Bitcast) team. Verified from public sources: stats.bitcast.network (the subnet's stats dashboard, which names Subnet 93) under bitcast.network."
+}

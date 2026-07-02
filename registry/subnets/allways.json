@@ -1,0 +1,318 @@
+{
+  "categories": ["bitcoin", "subnet-api", "pilot"],
+  "curation": {
+    "gap_notes": [
+      "No verified dashboard surface yet.",
+      "No verified data artifact yet."
+    ],
+    "level": "adapter-backed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-06-06T00:00:00.000Z",
+    "source_count": 3,
+    "verified_at": null
+  },
+  "dashboard_url": null,
+  "docs_url": "https://docs.all-ways.io/how-it-works.html",
+  "extensions": {
+    "allways": {
+      "authority_notes": [
+        "chain and contract truth are authoritative for settlement state",
+        "public API and probe data are convenience/status surfaces"
+      ],
+      "tracked_dimensions": [
+        "swaps",
+        "events",
+        "crown",
+        "miners",
+        "leaderboard",
+        "reliability",
+        "protocol_state",
+        "sse"
+      ]
+    }
+  },
+  "links": [],
+  "name": "Allways",
+  "netuid": 7,
+  "notes": "Pilot manifest. Registry observations are external status data, not Allways protocol authority.",
+  "schema_version": 1,
+  "slug": "allways",
+  "source_repo": "https://github.com/entrius/allways",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-docs",
+      "kind": "docs",
+      "name": "Allways docs",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://docs.all-ways.io/how-it-works.html"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-website",
+      "kind": "website",
+      "name": "Allways website",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://all-ways.io/"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-source-repo",
+      "kind": "source-repo",
+      "name": "Allways source repository",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "HEAD"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://github.com/entrius/allways"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-swagger",
+      "kind": "openapi",
+      "name": "Allways Swagger UI",
+      "probe": {
+        "enabled": true,
+        "expect": "html",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.all-ways.io/swagger-json",
+      "url": "https://api.all-ways.io/swagger"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-api-health",
+      "kind": "subnet-api",
+      "name": "Allways API health",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-protocol-constants",
+      "kind": "subnet-api",
+      "name": "Allways protocol constants",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/protocol/constants"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-protocol-chain-state",
+      "kind": "subnet-api",
+      "name": "Allways protocol chain state",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/protocol/chain-state"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-network-overview",
+      "kind": "subnet-api",
+      "name": "Allways network overview",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/network/overview"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-miners",
+      "kind": "subnet-api",
+      "name": "Allways miners",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-miners-leaderboard",
+      "kind": "subnet-api",
+      "name": "Allways miners leaderboard",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-miners-reliability",
+      "kind": "subnet-api",
+      "name": "Allways miners reliability",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/miners/reliability"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-events-latest",
+      "kind": "subnet-api",
+      "name": "Allways latest events",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/events/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-crown",
+      "kind": "subnet-api",
+      "name": "Allways crown",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/crown"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-crown-history",
+      "kind": "subnet-api",
+      "name": "Allways crown history",
+      "notes": "Listed as a public surface, but excluded from the default smoke probe because the endpoint may require query parameters and returns HTTP 400 for a blind GET.",
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "GET"
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/crown/history"
+    },
+    {
+      "auth_required": false,
+      "authority": "provider-claimed",
+      "id": "allways-sse",
+      "kind": "sse",
+      "name": "Allways SSE stream",
+      "probe": {
+        "enabled": true,
+        "expect": "sse",
+        "method": "GET",
+        "timeout_ms": 5000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "url": "https://api.all-ways.io/sse"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-data-artifact",
+      "kind": "data-artifact",
+      "name": "Allways community data-artifact",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "HEAD",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "kiannidev"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger-json"],
+      "url": "https://api.all-ways.io/miners/leaderboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-7-allways-subnet-api",
+      "kind": "subnet-api",
+      "name": "Allways swaps API",
+      "probe": {
+        "enabled": true,
+        "expect": "any",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "allways",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "jsonbored"
+      },
+      "source_urls": ["https://api.all-ways.io/swagger"],
+      "url": "https://api.all-ways.io/swaps"
+    }
+  ],
+  "website_url": "https://all-ways.io/"
+}
