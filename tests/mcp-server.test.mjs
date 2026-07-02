@@ -5288,6 +5288,40 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  test("list_global_validators groups a permit-holder across subnets", async () => {
+    const res = await callTool(
+      "list_global_validators",
+      { sort: "subnet_count" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              { ...ROW, netuid: 1, hotkey: "hk-a", coldkey: "ck-a" },
+              { ...ROW, netuid: 2, hotkey: "hk-a", coldkey: "ck-a" },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.validator_count, 1); // one hotkey identity across 2 subnets
+    assert.equal(out.validators[0].subnet_count, 2);
+  });
+
+  test("list_global_validators rejects an unsupported sort", async () => {
+    const res = await callTool("list_global_validators", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort must be one of/);
+  });
+
+  test("list_global_validators degrades to an empty list on cold D1", async () => {
+    const res = await callTool("list_global_validators", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+  });
+
   test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
     const present = await callTool(
       "get_neuron",

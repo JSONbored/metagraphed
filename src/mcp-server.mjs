@@ -99,6 +99,11 @@ import {
   loadNeuron,
   loadSubnetMetagraph,
   loadSubnetValidators,
+  loadGlobalValidators,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.mjs";
 import {
   INGESTED_EVENT_KINDS,
@@ -172,7 +177,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -261,7 +266,9 @@ export const MCP_INSTRUCTIONS =
   "usage analytics (request volume, latency, failover, cache hits, per-endpoint " +
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
-  "list_subnet_validators its validators ranked by stake, and get_neuron one " +
+  "list_subnet_validators its validators ranked by stake, list_global_validators " +
+  "the network-wide validator/operator leaderboard grouped by identity across " +
+  "subnets, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
@@ -2259,6 +2266,50 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "list_global_validators",
+    title: "List the network-wide validator leaderboard",
+    description:
+      "List the network-wide validator/operator leaderboard from the current " +
+      "neurons snapshot: permit-holding UIDs grouped by hotkey identity across " +
+      "ALL subnets, so you see an operator's cross-subnet footprint (subnet " +
+      "count, uid count, aggregate stake/emission, avg/max validator trust, and " +
+      "stake dominance) rather than one subnet at a time. The network-level " +
+      "companion of list_subnet_validators. Mirrors GET /api/v1/validators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: GLOBAL_VALIDATOR_SORTS,
+          description: `Ranking field (default ${DEFAULT_GLOBAL_VALIDATOR_SORT}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max operators to return (1-${GLOBAL_VALIDATOR_LIMIT_MAX}, default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalString(args, "sort") ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
+      if (!GLOBAL_VALIDATOR_SORTS.includes(sort)) {
+        throw toolError(
+          "invalid_params",
+          `sort must be one of: ${GLOBAL_VALIDATOR_SORTS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+      );
+      return loadGlobalValidators(mcpD1Runner(ctx), { sort, limit });
     },
   },
   {
@@ -5221,6 +5272,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_count: { type: "integer" },
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
+      validators: { type: "array", items: { type: "object" } },
+    },
+  },
+  list_global_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: NULLABLE_STRING,
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      validator_count: { type: "integer" },
       validators: { type: "array", items: { type: "object" } },
     },
   },
