@@ -3,7 +3,10 @@
 // timeline + previously_known_as provenance hints. Pure + injectable for tests.
 
 import { encodeCursor, decodeCursor } from "./cursor.mjs";
-import { sanitizeIdentityHistoryFields } from "./chain-identity-sanitize.mjs";
+import {
+  sanitizeIdentityHistoryFields,
+  sanitizeIdentityHistoryText,
+} from "./chain-identity-sanitize.mjs";
 import {
   clampLimit,
   clampOffset,
@@ -63,7 +66,10 @@ function toIso(ms) {
 }
 
 function normalizeName(value) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  const sanitized = sanitizeIdentityHistoryText(value);
+  return typeof sanitized === "string" && sanitized.trim()
+    ? sanitized.trim()
+    : null;
 }
 
 export function formatIdentityHistoryEntry(row) {

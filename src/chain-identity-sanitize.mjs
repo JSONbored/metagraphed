@@ -119,10 +119,17 @@ export function sanitizeIdentityHistoryLink(value) {
     : null;
 }
 
+export function sanitizeIdentityHistoryText(value) {
+  return sanitizeChainText(value).text;
+}
+
 export function sanitizeIdentityHistoryFields(fields) {
   if (!fields || typeof fields !== "object") return fields;
   return {
     ...fields,
+    subnet_name: sanitizeIdentityHistoryText(fields.subnet_name),
+    symbol: sanitizeIdentityHistoryText(fields.symbol),
+    description: sanitizeIdentityHistoryText(fields.description),
     github_repo: sanitizeIdentityHistoryLink(fields.github_repo),
     subnet_url: sanitizeIdentityHistoryLink(fields.subnet_url),
     logo_url: sanitizeIdentityHistoryLink(fields.logo_url),
