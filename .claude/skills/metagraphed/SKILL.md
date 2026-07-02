@@ -256,10 +256,12 @@ read from its committed path at publish time; `schemas/index.json` is a network-
 build reconciles in place) — see the "Verify committed derived artifacts are fresh" step in
 `.github/workflows/validate.yml`, which explicitly excludes both for this reason. A contributor
 build will **always** show them as changed for reasons unrelated to your change. After
-`npm run build`, always run:
+`npm run build`, always revert them against your **base** remote — `upstream/main` if you forked
+per Phase A0, or `origin/main` if you cloned this repo directly (no `upstream` configured):
 
 ```sh
-git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json
+git checkout "$(git remote | grep -qx upstream && echo upstream || echo origin)/main" -- \
+  public/metagraph/r2-manifest.json public/metagraph/schemas/index.json
 ```
 
 before staging/committing — even if they show as modified.
@@ -316,10 +318,9 @@ the PR template with the validation commands you actually ran. Sync with `main` 
       (auto-sync workflow handles it post-merge).
 - [ ] `public/metagraph/r2-manifest.json` and `public/metagraph/schemas/index.json` are **not** part of
       your diff — both always change on a local/CI build for reasons unrelated to your PR (they're
-      deploy/publish-pipeline-owned, not contract artifacts). Run
-      `git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`
-      before committing if `npm run build` touched them. `npm run build` itself warns you if either
-      changed.
+      deploy/publish-pipeline-owned, not contract artifacts). Revert them against your base remote
+      (the Phase B3 command above) before committing if `npm run build` touched them. `npm run build`
+      itself warns you if either changed.
 - [ ] `git diff --check` clean · `lint` + `format:check` clean · `npm run validate` green ·
       `npm run test:coverage` green · the focused `validate:*` for what you touched green.
 - [ ] Branch current with `main`; Conventional Commit (no AI attribution); PR template filled; `Closes #<issue>` if an issue tracks it (optional).

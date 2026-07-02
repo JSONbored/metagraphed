@@ -83,6 +83,7 @@ function warnIfDeployOwnedArtifactsChanged() {
   if (diff.status !== 0 || !diff.stdout.trim()) {
     return;
   }
+  const baseRemote = resolveBaseRemote();
   console.warn(
     [
       "",
@@ -93,10 +94,23 @@ function warnIfDeployOwnedArtifactsChanged() {
       '"Verify committed derived artifacts are fresh" step in',
       ".github/workflows/validate.yml). Revert them before committing:",
       "",
-      `  git checkout origin/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
+      `  git checkout ${baseRemote}/main -- ${DEPLOY_OWNED_ARTIFACTS.join(" ")}`,
       "",
     ].join("\n"),
   );
+}
+
+// Forks (Phase A0) set up `upstream` pointing at the canonical repo, with
+// `origin` as the contributor's own fork — possibly stale relative to it. A
+// direct clone of the canonical repo has no `upstream` remote at all, so
+// `origin` there IS canonical. Prefer `upstream` when present.
+function resolveBaseRemote() {
+  const result = spawnSync("git", ["remote"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+  const remotes = (result.stdout || "").split("\n").map((line) => line.trim());
+  return remotes.includes("upstream") ? "upstream" : "origin";
 }
 
 function localSteps() {

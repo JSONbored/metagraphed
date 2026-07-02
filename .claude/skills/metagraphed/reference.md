@@ -216,8 +216,8 @@ local paths, env dumps, or private notes.
 - Bundling `public/metagraph/r2-manifest.json` or `public/metagraph/schemas/index.json` into the diff —
   even on a Path A surface PR. `npm run build` always rewrites both locally; they are deploy/publish-
   pipeline-owned (see §8) and the gate's registry-review lane treats their presence as "bundling other
-  file changes" outside the one subnet file. Revert them before committing:
-  `git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`.
+  file changes" outside the one subnet file. Revert them before committing — see §8 for the exact
+  command.
 
 ---
 
@@ -248,9 +248,11 @@ local paths, env dumps, or private notes.
   inherently non-deterministic build-to-build; `schemas/index.json` is a network-capture cache the build
   "reconciles in place". Both are explicitly excluded from the derived-artifact freshness gate in
   `.github/workflows/validate.yml` (see the comment above that step) — CI won't catch this, but the
-  Gittensory Gate's registry-review lane will reject a PR that bundles them in. After `npm run build`:
-  `git checkout origin/main -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`.
-  `npm run build` itself prints a non-fatal warning if either changed.
+  Gittensory Gate's registry-review lane will reject a PR that bundles them in. After `npm run build`,
+  revert them against your **base** remote — `upstream/main` if you forked per Phase A0, or
+  `origin/main` if you cloned this repo directly (no `upstream` configured):
+  `git checkout "$(git remote | grep -qx upstream && echo upstream || echo origin)/main" -- public/metagraph/r2-manifest.json public/metagraph/schemas/index.json`.
+  `npm run build` itself prints a non-fatal warning if either changed, with the same command.
 - **`format:check`:** `main` is not fully prettier-clean — never `prettier --write` whole files you
   didn't change; format only your own lines.
 - **`pipeline:check`** is only trustworthy in isolation after a clean `npm run build`.
