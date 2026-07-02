@@ -74,18 +74,46 @@ must create the required scaffold fields before the first surface is added.
 
 **Every contributor PR runs the FULL validation — there is no reduced "ugc" fast-lane.** (It was
 retired: it skipped the safety scans and kept tripping a stale-base preflight false-positive.) A
-one-file surface PR runs the same gates as a code PR. Three parallel jobs (the two Node jobs both
+one-file surface PR runs the same gates as a code PR. Four parallel jobs (the two Node jobs both
 build):
 
+- **`changes`** — computes docs-fast-lane eligibility for `checks` (see below). Pure inline
+  `git diff`, no third-party action.
 - **`test`** — builds, then runs the suite in two non-overlapping passes: `test:ci` (everything
   except the two filesystem-mutating artifact writers, run in parallel, WITH coverage → the single
   Codecov upload) then `test:ci:artifacts` (those two writers, serial). Locally just use
-  `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe).
+  `npm test` / `npm run test:coverage` (full suite, serial — the config default is race-safe). Does
+  **not** participate in the docs fast lane below — coverage is a repo-wide delta gate, not
+  diff-scoped, and it isn't the wall-clock long pole regardless.
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
 - **`python`** — runs the Python SDK's unittest suite via `uv run --extra test python -m unittest
 discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
   it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
   `build` job before the artifact is built, so a red suite blocks a PyPI publish.
+
+**The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc
+fast-lane" rule above.** That rule is about _registry/community-surface_ content never getting a
+weaker gate. This is a separate, much narrower thing: when a PR's diff consists entirely of paths
+matching the glob `**/*.md` or the prefix `.claude/skills/` (pure contributor-facing prose — cannot
+touch registry data, schemas, code, or CI config), the `changes` job sets `docs_only=true` and
+`checks` skips only its build/contract/registry/deploy-dry-run steps via a **per-step**
+`if: env.DOCS_ONLY != 'true'` guard — never a job-level skip, so `checks` always reports a real
+`success`/`failure` conclusion, never `skipped`. `Lint + format`, `validate:docs`, `validate:intake`,
+and `scan:public-safety` still run unconditionally on every PR, docs-only or not — they're cheap (no
+build, no network) and are exactly what a stray secret or broken doc-contract reference in a
+"docs-only" PR would trip. **Hard guardrail, no exceptions:** any diff touching `registry/` forces
+`docs_only=false` regardless of what else is in the diff — computed as an independent override in the
+same `changes` job step, before the docs-pattern check even runs. This exists because the retired
+"ugc" lane above was scoped to registry/community-surface PRs specifically and caused a real
+stale-base preflight false-positive; registry-touching diffs get zero special treatment here. The
+filter is a plain `git diff --name-only` + `grep` in the trusted workflow — **not**
+`dorny/paths-filter` or any other third-party action: this repo's Actions allowlist
+(`repos/JSONbored/metagraphed/actions/permissions/selected-actions`) only allows GitHub-owned +
+verified-creator actions plus one explicit `peter-evans/create-pull-request` pattern, and
+`dorny/paths-filter` is published by an individual GitHub user (not a GitHub-verified-creator org) —
+using it as-is would hit a `startup_failure`. If a future change wants a real path-filter action, it
+needs an explicit allowlist pattern added via Settings → Actions → General first (a live settings
+change, not something a PR can do).
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
