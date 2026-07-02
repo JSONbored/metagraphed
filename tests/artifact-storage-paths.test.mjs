@@ -15,7 +15,10 @@ const SS58 = "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM";
 
 describe("artifactRelativePath", () => {
   test("strips a leading slash and /metagraph/ prefix for absolute paths", () => {
-    assert.equal(artifactRelativePath("/metagraph/openapi.json"), "openapi.json");
+    assert.equal(
+      artifactRelativePath("/metagraph/openapi.json"),
+      "openapi.json",
+    );
     assert.equal(artifactRelativePath("/openapi.json"), "openapi.json");
     assert.equal(
       artifactRelativePath("/metagraph/subnets/7/metagraph.json"),
@@ -188,16 +191,16 @@ describe("artifactStorageTierForPath", () => {
   });
 
   test("defaults a missing argument to git", () => {
-    assert.equal(
-      artifactStorageTierForPath(),
-      ARTIFACT_STORAGE_TIERS.git,
-    );
+    assert.equal(artifactStorageTierForPath(), ARTIFACT_STORAGE_TIERS.git);
   });
 });
 
 describe("isR2OnlyArtifactPath", () => {
   test("returns true for live-computed artifact paths", () => {
-    assert.equal(isR2OnlyArtifactPath(`/metagraph/accounts/${SS58}.json`), true);
+    assert.equal(
+      isR2OnlyArtifactPath(`/metagraph/accounts/${SS58}.json`),
+      true,
+    );
     assert.equal(
       isR2OnlyArtifactPath("/metagraph/subnets/7/metagraph.json"),
       true,
