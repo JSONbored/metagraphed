@@ -229,7 +229,10 @@ def _stake_transferred(a):  # StakeTransferred (#2556): stake moved between two 
         ck = a.get("origin_coldkey", a.get("coldkey"))
         hk = a.get("hotkey")
         netuid = a.get("origin_netuid", a.get("netuid"))
-        amount = a.get("amount")
+        # The tuple variant decodes positionally; the dict branch is a defensive
+        # fallback, so accept the raw-rao amount under either "amount" or the
+        # "amount_rao" macro field name a named decoding could surface.
+        amount = a.get("amount", a.get("amount_rao"))
     else:
         ck = a[0] if len(a) > 0 else None
         hk = a[2] if len(a) > 2 else None
