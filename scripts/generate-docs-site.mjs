@@ -73,9 +73,10 @@ const LOCAL_GENERATED_OUTPUTS = [
   "generated/api-playground.json",
 ];
 
-const OUTPUTS = [...ARTIFACT_PATHS, "generated/manifest.json"];
-
-export { COMMITTED_OUTPUTS as DOCS_SITE_OUTPUTS, ARTIFACT_PATHS as DOCS_SITE_ARTIFACTS };
+export {
+  COMMITTED_OUTPUTS as DOCS_SITE_OUTPUTS,
+  ARTIFACT_PATHS as DOCS_SITE_ARTIFACTS,
+};
 
 export function expectedGeneratedFilenames() {
   return [
