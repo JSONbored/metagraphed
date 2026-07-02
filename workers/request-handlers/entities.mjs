@@ -59,7 +59,6 @@ import {
   MAX_HISTORY_POINTS,
 } from "../../src/neuron-history.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
   INGESTED_EVENT_KINDS,
   buildAccountHistory,
   loadAccountSummary,
