@@ -60,11 +60,30 @@ jobs:
   # On push-to-main and workflow_dispatch (no base to diff against) this
   # always resolves docs_only=false — the fast lane only ever applies to a
   # `pull_request` event, where a real merge-base diff exists.
+  #
+  # Two further outputs, independent of docs_only and of each other: `Validate
+  # workflows` (scripts/validate-workflows.mjs) reads ONLY
+  # `.github/workflows/*.yml`/`.yaml`, and `Validate migration sequence`
+  # (scripts/validate-migrations.mjs) reads ONLY `migrations/*.sql` — verified
+  # by reading each script's full source; neither imports anything outside its
+  # own directory. A PR can be workflow-only or migration-only without being a
+  # docs PR, so these are computed as their own flags rather than folded into
+  # docs_only, and neither needs the registry guardrail above (neither path is
+  # registry-adjacent). Every other `checks` validator was evaluated for the
+  # same treatment and rejected: the contract/schema/route validators
+  # (validate:schemas/api/mcp/ai/openapi/types) all transitively import most of
+  # `src/` + `workers/**` via `workers/api.mjs`, so no path glob short of
+  # "almost the whole repo" would safely exclude them — see
+  # `.claude/skills/metagraphed/reference.md`'s "new artifact/route checklist"
+  # for why a route/handler change can trip a contract gate with no lexical
+  # hint in the diff.
   changes:
     name: changes
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.filter.outputs.docs_only }}
+      run_workflows_validation: ${{ steps.filter.outputs.run_workflows_validation }}
+      run_migrations_validation: ${{ steps.filter.outputs.run_migrations_validation }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -72,7 +91,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Compute docs-only fast-lane eligibility
+      - name: Compute fast-lane eligibility
         id: filter
         shell: bash
         env:
@@ -81,7 +100,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "docs_only=false"
+              echo "run_workflows_validation=true"
+              echo "run_migrations_validation=true"
+            } >> "$GITHUB_OUTPUT"
             echo "Not a pull_request event (${{ github.event_name }}) -- full validation runs."
             exit 0
           fi
@@ -95,13 +118,31 @@ jobs:
           git diff --name-only --diff-filter=d "$range" > changed-files.txt
 
           if [ ! -s changed-files.txt ]; then
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "docs_only=false"
+              echo "run_workflows_validation=true"
+              echo "run_migrations_validation=true"
+            } >> "$GITHUB_OUTPUT"
             echo "No changed files detected -- full validation runs."
             exit 0
           fi
 
           echo "Changed files:"
           cat changed-files.txt
+
+          # Narrow, independent skips -- see the job comment above for the
+          # file:line evidence that these two validators' entire footprint is
+          # their own directory.
+          if grep -qE '^\.github/workflows/' changed-files.txt; then
+            echo "run_workflows_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_workflows_validation=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^migrations/' changed-files.txt; then
+            echo "run_migrations_validation=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_migrations_validation=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # HARD GUARDRAIL: any registry/ path forces full validation,
           # unconditionally, regardless of every other path in the diff. See
@@ -114,8 +155,11 @@ jobs:
 
           # docs_only requires EVERY changed path to match one of the two safe
           # patterns below. A single non-matching path anywhere disqualifies
-          # the whole PR from the fast lane.
-          if grep -vE '(^|/)[^/]+\.md$|^\.claude/skills/' changed-files.txt > /dev/null; then
+          # the whole PR from the fast lane. Both patterns require a `.md`
+          # suffix -- a hypothetical future non-.md file under
+          # .claude/skills/** (e.g. a template or config) must NOT qualify,
+          # since only prose content is proven safe to skip validation for.
+          if grep -vE '(^|/)[^/]+\.md$|^\.claude/skills/.*\.md$' changed-files.txt > /dev/null; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
             echo "Diff includes non-docs paths -- full validation runs."
           else
@@ -143,6 +187,13 @@ jobs:
         with:
           node-version: 22.23.1
           cache: npm
+          # Without this, setup-node's cache key hashes EVERY package-lock.json
+          # in the tree (root + packages/client + deploy/wss-lb), so a routine
+          # SDK version bump in packages/client/package-lock.json (the
+          # sync-client-version workflow does this every few days) invalidates
+          # this job's cache even though `npm ci` here only ever reads the root
+          # lockfile (no npm `workspaces` config ties them together).
+          cache-dependency-path: package-lock.json
 
       - name: Install
         run: npm ci
@@ -270,6 +321,8 @@ jobs:
       # systems, at the cost of a few extra seconds on the one self-hosted
       # runner for `Setup Node` + `Install` + the guard evaluation itself.
       DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+      RUN_WORKFLOWS_VALIDATION: ${{ needs.changes.outputs.run_workflows_validation }}
+      RUN_MIGRATIONS_VALIDATION: ${{ needs.changes.outputs.run_migrations_validation }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -307,6 +360,9 @@ jobs:
         with:
           node-version: 22.23.1
           cache: npm
+          # See the `test` job's Setup Node step for why this is needed --
+          # same over-scoped-cache-key issue applies here.
+          cache-dependency-path: package-lock.json
 
       - name: Install
         run: npm ci
@@ -478,12 +534,20 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:surface
 
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-workflows.mjs
+      # reads ONLY .github/workflows/*.yml/.yaml, so a PR with zero changes under
+      # that path cannot affect this validator's result. See the `changes` job
+      # comment for the full rationale.
       - name: Validate workflows
-        if: env.DOCS_ONLY != 'true'
+        if: env.RUN_WORKFLOWS_VALIDATION == 'true'
         run: npm run validate:workflows
 
+      # Narrow, independent skip (not tied to DOCS_ONLY): scripts/validate-migrations.mjs
+      # reads ONLY migrations/*.sql, so a PR with zero changes under that path
+      # cannot affect this validator's result. See the `changes` job comment for
+      # the full rationale.
       - name: Validate migration sequence
-        if: env.DOCS_ONLY != 'true'
+        if: env.RUN_MIGRATIONS_VALIDATION == 'true'
         run: npm run validate:migrations
 
       - name: Validate Cloudflare config

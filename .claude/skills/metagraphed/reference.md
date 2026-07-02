@@ -94,19 +94,20 @@ discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). N
 **The docs fast lane (`checks` only) — narrower than, and does not weaken, the "no reduced ugc
 fast-lane" rule above.** That rule is about _registry/community-surface_ content never getting a
 weaker gate. This is a separate, much narrower thing: when a PR's diff consists entirely of paths
-matching the glob `**/*.md` or the prefix `.claude/skills/` (pure contributor-facing prose — cannot
-touch registry data, schemas, code, or CI config), the `changes` job sets `docs_only=true` and
-`checks` skips only its build/contract/registry/deploy-dry-run steps via a **per-step**
-`if: env.DOCS_ONLY != 'true'` guard — never a job-level skip, so `checks` always reports a real
-`success`/`failure` conclusion, never `skipped`. `Lint + format`, `validate:docs`, `validate:intake`,
-and `scan:public-safety` still run unconditionally on every PR, docs-only or not — they're cheap (no
-build, no network) and are exactly what a stray secret or broken doc-contract reference in a
-"docs-only" PR would trip. **Hard guardrail, no exceptions:** any diff touching `registry/` forces
-`docs_only=false` regardless of what else is in the diff — computed as an independent override in the
-same `changes` job step, before the docs-pattern check even runs. This exists because the retired
-"ugc" lane above was scoped to registry/community-surface PRs specifically and caused a real
-stale-base preflight false-positive; registry-touching diffs get zero special treatment here. The
-filter is a plain `git diff --name-only` + `grep` in the trusted workflow — **not**
+matching the glob `**/*.md` or `.claude/skills/**/*.md` (pure contributor-facing prose — cannot
+touch registry data, schemas, code, or CI config; a non-`.md` file anywhere, including a hypothetical
+future non-`.md` file under `.claude/skills/`, disqualifies the whole PR), the `changes` job sets
+`docs_only=true` and `checks` skips only its build/contract/registry/deploy-dry-run steps via a
+**per-step** `if: env.DOCS_ONLY != 'true'` guard — never a job-level skip, so `checks` always reports
+a real `success`/`failure` conclusion, never `skipped`. `Lint + format`, `validate:docs`,
+`validate:intake`, and `scan:public-safety` still run unconditionally on every PR, docs-only or
+not — they're cheap (no build, no network) and are exactly what a stray secret or broken
+doc-contract reference in a "docs-only" PR would trip. **Hard guardrail, no exceptions:** any diff
+touching `registry/` forces `docs_only=false` regardless of what else is in the diff — computed as an
+independent override in the same `changes` job step, before the docs-pattern check even runs. This
+exists because the retired "ugc" lane above was scoped to registry/community-surface PRs specifically
+and caused a real stale-base preflight false-positive; registry-touching diffs get zero special
+treatment here. The filter is a plain `git diff --name-only` + `grep` in the trusted workflow — **not**
 `dorny/paths-filter` or any other third-party action: this repo's Actions allowlist
 (`repos/JSONbored/metagraphed/actions/permissions/selected-actions`) only allows GitHub-owned +
 verified-creator actions plus one explicit `peter-evans/create-pull-request` pattern, and
@@ -114,6 +115,25 @@ verified-creator actions plus one explicit `peter-evans/create-pull-request` pat
 using it as-is would hit a `startup_failure`. If a future change wants a real path-filter action, it
 needs an explicit allowlist pattern added via Settings → Actions → General first (a live settings
 change, not something a PR can do).
+
+**Two further narrow, independent skips in the same `changes` job — unrelated to `docs_only`.**
+`Validate workflows` (`npm run validate:workflows`) reads only `.github/workflows/*.yml`/`.yaml`, and
+`Validate migration sequence` (`npm run validate:migrations`) reads only `migrations/*.sql` — each
+verified by reading its script's full source, neither imports anything outside its own directory. The
+`changes` job sets `run_workflows_validation`/`run_migrations_validation` to `true` only when the
+diff touches that specific path, and `checks` gates each validator step on its own flag
+(`env.RUN_WORKFLOWS_VALIDATION`/`env.RUN_MIGRATIONS_VALIDATION`), independent of `docs_only` and of
+each other — a PR can be workflow-only or migration-only without being a docs PR. These are the only
+two `checks` validators with a clean enough path boundary to skip safely; every other validator
+(`validate:schemas`/`api`/`mcp`/`ai`/`openapi`/`types`/`client-sdk-sync`) transitively imports most of
+`src/`+`workers/**` via `workers/api.mjs`, so no path glob short of "almost the whole repo" would
+safely exclude them — see the "new artifact/route checklist" in §8 for why a route/handler change can
+trip a contract gate with no lexical hint in the diff. Per-area **test** splitting (e.g. skip
+MCP-specific tests when `src/mcp-server.mjs` wasn't touched) was evaluated and rejected: the suite has
+no per-subject directory structure (all 154 files sit flat in `tests/`), a third of it imports
+`workers/api.mjs`'s shared router directly, and `vitest.config.mjs`'s `fileParallelism: false` exists
+for a filesystem-race reason (see below) unrelated to subject area — splitting by area would need a
+real test-tree/module-boundary refactor, not a CI config change.
 
 **Gates (all must pass):** `lint` · `format:check` · `validate:contract-drift` ·
 `validate:schema-enums` · `validate:openapi-examples` · `validate:generated-client` ·
@@ -284,6 +304,14 @@ local paths, env dumps, or private notes.
 - **`format:check`:** `main` is not fully prettier-clean — never `prettier --write` whole files you
   didn't change; format only your own lines.
 - **`pipeline:check`** is only trustworthy in isolation after a clean `npm run build`.
+- **`validate.yml`'s `actions/setup-node` steps set `cache-dependency-path: package-lock.json`
+  explicitly.** Without it, `setup-node`'s cache key hashes every `package-lock.json` in the tree
+  (root + `packages/client` + `deploy/wss-lb`), so a routine SDK version bump in
+  `packages/client/package-lock.json` (the `sync-client-version` workflow does this every few
+  days) would invalidate the CI npm cache even though `npm ci` in `validate.yml` only ever reads
+  the root lockfile (no npm `workspaces` config ties them together). If you ever add a new
+  `actions/setup-node` step to a workflow in this repo, set this explicitly rather than relying on
+  the default.
 - The Worker router is `workers/api.mjs`; serving/overlay/health live in `src/*.mjs`; the contract in
   `schemas/` + `src/contracts.mjs`.
 
