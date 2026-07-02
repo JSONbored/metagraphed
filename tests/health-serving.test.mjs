@@ -2898,7 +2898,12 @@ describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () 
     const sink = {};
     const out = await loadReliabilityAggregate({
       db: aggregateDb(
-        { samples: 1440, ok_count: 1080, avg_latency_ms: 600 },
+        {
+          covered_netuids: 2,
+          samples: 1440,
+          ok_count: 1080,
+          avg_latency_ms: 600,
+        },
         sink,
       ),
       netuids: [7, 12],
@@ -2911,8 +2916,24 @@ describe("loadReliabilityAggregate (D1-backed, one query for many subnets)", () 
     );
     assert.equal(out.uptime_ratio, 0.75);
     // One IN-list query over a deduped, sorted netuid set + the day cutoff.
+    assert.match(sink.sql, /COUNT\(DISTINCT netuid\)/);
     assert.match(sink.sql, /netuid IN \(\?,\?\)/);
     assert.deepEqual(sink.params, [7, 12, "2026-05-14"]);
+  });
+
+  test("returns null for a multi-subnet rollup when any netuid lacks in-window rows", async () => {
+    assert.equal(
+      await loadReliabilityAggregate({
+        db: aggregateDb({
+          covered_netuids: 1,
+          samples: 720,
+          ok_count: 700,
+          avg_latency_ms: 400,
+        }),
+        netuids: [7, 12],
+      }),
+      null,
+    );
   });
 
   test("weights the latency mean by healthy readings, not total probes", async () => {

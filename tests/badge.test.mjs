@@ -435,6 +435,41 @@ describe("badge — uptime / reliability metric", () => {
     assert.match(text, /n\/a/);
   });
 
+  test("provider uptime is n/a when only some subnets have in-window uptime rows", async () => {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/providers/partial/badge.svg?metric=uptime",
+    );
+    const db = {
+      prepare(sql) {
+        return {
+          bind() {
+            return this;
+          },
+          async first() {
+            // Only netuid 7 has rows in-window; netuid 9 is absent from DISTINCT.
+            return {
+              covered_netuids: 1,
+              samples: 100,
+              ok_count: 90,
+              avg_latency_ms: 500,
+              latency_samples: 90,
+            };
+          },
+        };
+      },
+    };
+    const res = await handleBadgeRequest(new Request(url), {}, url, {
+      readArtifact: makeReadArtifact({
+        "/metagraph/providers.json": {
+          providers: [{ slug: "partial", netuids: [7, 9] }],
+        },
+      }),
+      db,
+    });
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /n\/a/);
+  });
+
   test("label override applies to the uptime variant too", async () => {
     const { text } = await badge(
       "/api/v1/subnets/7/badge.svg?metric=uptime&label=uptime",

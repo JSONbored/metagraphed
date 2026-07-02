@@ -1265,7 +1265,8 @@ export async function loadReliabilityAggregate({
   try {
     const row = await db
       .prepare(
-        `SELECT SUM(samples) AS samples,
+        `SELECT COUNT(DISTINCT netuid) AS covered_netuids,
+                SUM(samples) AS samples,
                 SUM(ok_count) AS ok_count,
                 ${dailyLatencyColumns({ roundedAvg: true })}
          FROM surface_uptime_daily
@@ -1273,6 +1274,13 @@ export async function loadReliabilityAggregate({
       )
       .bind(...ids, cutoff)
       .first();
+    const covered = Number(row?.covered_netuids) || 0;
+    // Multi-subnet rollups (provider badges) require every netuid to have at
+    // least one in-window daily row. Summing only the subnets that happened to
+    // report would headline a partial provider as if it were fully covered.
+    if (ids.length > 1 && covered !== ids.length) {
+      return null;
+    }
     return scoreFromStats({
       samples: Number(row?.samples) || 0,
       okCount: Number(row?.ok_count) || 0,
