@@ -1792,4 +1792,25 @@ describe("resolveBaseRemote", () => {
     );
     assert.equal(resolveBaseRemote(dir), "origin");
   });
+
+  test("defaults to process.cwd() when called with no argument", () => {
+    const dir = initRepo();
+    execFileSync(
+      "git",
+      [
+        "remote",
+        "add",
+        "upstream",
+        "https://github.com/JSONbored/metagraphed.git",
+      ],
+      { cwd: dir },
+    );
+    const previousCwd = process.cwd();
+    process.chdir(dir);
+    try {
+      assert.equal(resolveBaseRemote(), "upstream");
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
 });
