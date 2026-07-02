@@ -58,12 +58,22 @@ function toIso(ms) {
 // Coerce a block-height cell to a non-negative integer, or null when missing,
 // non-finite, or negative. D1 can return an INTEGER column as a numeric string,
 // so a bare `r.block_number ?? null` would silently leak the string into the
-// history payload (and break downstream arithmetic/comparisons). Mirrors the
-// `toBlockNumber` already applied in blocks.mjs / account-events.mjs.
+// history payload (and break downstream arithmetic/comparisons). Only finite
+// numbers and all-digit strings are accepted — blank/whitespace strings and
+// booleans must not survive `Number()` coercion as 0/1.
 function toBlockNumber(value) {
   if (value == null) return null;
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 0 ? n : null;
+  if (typeof value === "boolean") return null;
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string") {
+    const digits = value.trim();
+    if (digits === "" || !/^\d+$/.test(digits)) return null;
+    const n = Number(digits);
+    return Number.isSafeInteger(n) && n >= 0 ? n : null;
+  }
+  return null;
 }
 
 /**

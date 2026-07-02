@@ -261,6 +261,22 @@ describe("history builders", () => {
     assert.equal(out.points[2].block_number, null);
   });
 
+  test("buildNeuronHistory rejects Number-coercible junk block_number cells to null", () => {
+    const out = buildNeuronHistory(
+      [
+        dailyRow({ block_number: "" }),
+        dailyRow({ block_number: "   " }),
+        dailyRow({ block_number: false }),
+        dailyRow({ block_number: true }),
+      ],
+      7,
+      3,
+    );
+    for (const point of out.points) {
+      assert.equal(point.block_number, null);
+    }
+  });
+
   test("buildSubnetHistory defaults window + every aggregate to null on sparse rows", () => {
     const out = buildSubnetHistory([{ snapshot_date: "2026-06-20" }], 7);
     assert.equal(out.window, null);
