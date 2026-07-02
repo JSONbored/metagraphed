@@ -2338,6 +2338,7 @@ export const MCP_TOOLS = [
       "amount, and timestamp. Optionally filter by event kind (e.g. StakeAdded, " +
       "NeuronRegistered, AxonServed, WeightsSet) and page with limit (1-1000, " +
       "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
+      "Optionally constrain block height with block_start/block_end (inclusive). " +
       "Use it to watch what is happening on one subnet right now. Events are " +
       "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
     inputSchema: {
@@ -2349,6 +2350,18 @@ export const MCP_TOOLS = [
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
             "Omit for all kinds; an unknown kind simply matches nothing.",
+        },
+        block_start: {
+          type: "integer",
+          description:
+            "Optional inclusive lower block bound; omit for no lower limit.",
+          minimum: 0,
+        },
+        block_end: {
+          type: "integer",
+          description:
+            "Optional inclusive upper block bound; omit for no upper limit.",
+          minimum: 0,
         },
         limit: {
           type: "integer",
@@ -2377,6 +2390,8 @@ export const MCP_TOOLS = [
       const cursor = optionalString(args, "cursor");
       return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
+        blockStart: optionalNonNegativeInt(args, "block_start"),
+        blockEnd: optionalNonNegativeInt(args, "block_end"),
         limit: args?.limit,
         offset: args?.offset,
         cursor,

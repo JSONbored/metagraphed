@@ -7572,6 +7572,60 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     assert.ok(q.params.includes("WeightsSet"));
   });
 
+  test("get_subnet_events applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        events: [
+          {
+            block_number: 150,
+            event_index: 4,
+            event_kind: "StakeAdded",
+            hotkey: "5Hk",
+            coldkey: null,
+            netuid: 1,
+            uid: 3,
+            amount_tao: 1.5,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_events",
+      {
+        netuid: 1,
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [1, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_subnet_events rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
+  });
+
   test("get_subnet_events clamps an over-range limit like the REST route", async () => {
     const capture = [];
     const env = parityD1({ events: [] }, capture);
