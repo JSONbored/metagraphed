@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
   MCP_TOOLS,
@@ -2400,6 +2400,347 @@ describe("MCP get_chain_transfers", () => {
     assert.equal(out.top_sender_share, null);
     assert.deepEqual(out.top_senders, []);
     assert.deepEqual(out.top_receivers, []);
+  });
+});
+
+describe("MCP stake-flow and movers economics tools", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function stakeFlowD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (
+                    /FROM account_events/.test(sql) &&
+                    /GROUP BY event_kind/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  if (
+                    /FROM account_events/.test(sql) &&
+                    /GROUP BY netuid, event_kind/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  function moversD1({ bounds, aggregateRows } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    return { results: bounds };
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return { results: aggregateRows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_stake_flow aggregates StakeAdded and StakeRemoved", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const capture = [];
+      const res = await callTool(
+        "get_subnet_stake_flow",
+        { netuid: 7, window: "30d" },
+        {
+          env: stakeFlowD1(
+            [
+              {
+                event_kind: "StakeAdded",
+                total_tao: 200,
+                event_count: 4,
+                last_observed: 1_717_000_000_000,
+              },
+              {
+                event_kind: "StakeRemoved",
+                total_tao: 50,
+                event_count: 2,
+                last_observed: 1_717_000_000_000,
+              },
+            ],
+            capture,
+          ),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.window, "30d");
+      assert.equal(out.total_staked_tao, 200);
+      assert.equal(out.total_unstaked_tao, 50);
+      assert.equal(out.net_flow_tao, 150);
+      assert.match(capture[0].sql, /FROM account_events/);
+      assert.equal(capture[0].params[0], 7);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_stake_flow", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_stake_flow rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_stake_flow", { window: "30d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("get_subnet_stake_flow degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.net_flow_tao, 0);
+    assert.equal(out.stake_events, 0);
+  });
+
+  test("get_account_stake_flow shapes per-subnet direction labels", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_account_stake_flow",
+        { ss58: SS58, window: "7d" },
+        {
+          env: stakeFlowD1([
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              total_tao: 100,
+              event_count: 2,
+              last_observed: 1_717_000_000_000,
+            },
+            {
+              netuid: 9,
+              event_kind: "StakeRemoved",
+              total_tao: 40,
+              event_count: 1,
+              last_observed: 1_717_000_000_000,
+            },
+          ]),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.address, SS58);
+      assert.equal(out.window, "7d");
+      assert.equal(out.subnet_count, 2);
+      assert.equal(out.subnets[0].direction, "accumulating");
+      assert.equal(out.direction, "accumulating");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_account_stake_flow rejects a missing ss58", async () => {
+    const res = await callTool("get_account_stake_flow", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/i);
+  });
+
+  test("get_account_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_account_stake_flow", {
+      ss58: SS58,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_flow degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_flow", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_subnet_movers ranks subnets by stake delta", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_subnet_movers",
+        { window: "30d", sort: "stake", limit: 5 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-05-31", end_date: "2026-06-30" }],
+            aggregateRows: [
+              {
+                netuid: 7,
+                snapshot_date: "2026-05-31",
+                neuron_count: 10,
+                validator_count: 3,
+                total_stake_tao: 100,
+                total_emission_tao: 5,
+              },
+              {
+                netuid: 7,
+                snapshot_date: "2026-06-30",
+                neuron_count: 12,
+                validator_count: 4,
+                total_stake_tao: 250,
+                total_emission_tao: 9,
+              },
+            ],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.window, "30d");
+      assert.equal(out.sort, "stake");
+      assert.equal(out.movers[0].netuid, 7);
+      assert.equal(out.movers[0].stake_delta_tao, 150);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_movers rejects an invalid sort", async () => {
+    const res = await callTool("get_subnet_movers", { sort: "liquidity" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort must be one of/);
+  });
+
+  test("get_subnet_movers rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_movers", { window: "1y" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_movers ranks subnets by emission delta", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_subnet_movers",
+        { window: "7d", sort: "emission", limit: 10 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-06-23", end_date: "2026-06-30" }],
+            aggregateRows: [
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-23",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 1,
+              },
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-30",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 4,
+              },
+            ],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, "emission");
+      assert.equal(out.movers[0].emission_delta_tao, 3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_movers degrades to an empty leaderboard on cold D1", async () => {
+    const res = await callTool("get_subnet_movers", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.deepEqual(out.movers, []);
+    assert.equal(out.subnet_count, 0);
+  });
+
+  test("stake-flow and movers payloads validate against outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const subnetStake = await callTool(
+        "get_subnet_stake_flow",
+        { netuid: 7, window: "30d" },
+        {
+          env: stakeFlowD1([
+            {
+              event_kind: "StakeAdded",
+              total_tao: 1,
+              event_count: 1,
+              last_observed: 1,
+            },
+          ]),
+        },
+      );
+      assert.ok(
+        validatorFor("get_subnet_stake_flow")(
+          subnetStake.body.result.structuredContent,
+        ),
+      );
+      const accountStake = await callTool(
+        "get_account_stake_flow",
+        { ss58: SS58 },
+        { env: stakeFlowD1([]) },
+      );
+      assert.ok(
+        validatorFor("get_account_stake_flow")(
+          accountStake.body.result.structuredContent,
+        ),
+      );
+      const movers = await callTool(
+        "get_subnet_movers",
+        { limit: 3 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+            aggregateRows: [],
+          }),
+        },
+      );
+      assert.ok(
+        validatorFor("get_subnet_movers")(movers.body.result.structuredContent),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
