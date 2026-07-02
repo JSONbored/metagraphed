@@ -201,6 +201,135 @@ describe("computeMovers", () => {
   });
 });
 
+describe("movers dominance shares", () => {
+  const startRows = [
+    agg(1, "s", { neurons: 10, validators: 3, stake: 100, emission: 5 }),
+    agg(2, "s", { neurons: 8, validators: 2, stake: 50, emission: 4 }),
+  ];
+  const endRows = [
+    agg(1, "e", { neurons: 12, validators: 4, stake: 250, emission: 9 }),
+    agg(2, "e", { neurons: 8, validators: 2, stake: 30, emission: 4 }),
+  ];
+
+  test("each subnet carries its share of network stake/emission at the end", () => {
+    const m = computeMovers(startRows, endRows, { sort: "stake" });
+    const s1 = m.find((x) => x.netuid === 1);
+    const s2 = m.find((x) => x.netuid === 2);
+    // end stake total 280 -> 250/280 = 89.29%, 30/280 = 10.71%.
+    assert.equal(s1.stake_share_pct, 89.29);
+    assert.equal(s2.stake_share_pct, 10.71);
+    // shares are over the whole network, so they sum to ~100.
+    assert.equal(
+      Math.round((s1.stake_share_pct + s2.stake_share_pct) * 100) / 100,
+      100,
+    );
+    // end emission total 13 -> 9/13 = 69.23%, 4/13 = 30.77%.
+    assert.equal(s1.emission_share_pct, 69.23);
+    assert.equal(s2.emission_share_pct, 30.77);
+  });
+
+  test("share is null when the network end total is zero (share of nothing)", () => {
+    // Every subnet removed by the end -> end totals are 0.
+    const m = computeMovers(
+      [agg(9, "s", { neurons: 4, validators: 1, stake: 60, emission: 3 })],
+      [],
+      { sort: "stake" },
+    );
+    assert.equal(m[0].stake_share_pct, null);
+    assert.equal(m[0].emission_share_pct, null);
+  });
+});
+
+describe("movers network summary", () => {
+  const startRows = [
+    agg(1, "s", { neurons: 10, validators: 3, stake: 100, emission: 5 }),
+    agg(2, "s", { neurons: 8, validators: 2, stake: 50, emission: 4 }),
+  ];
+  const endRows = [
+    agg(1, "e", { neurons: 12, validators: 4, stake: 250, emission: 9 }),
+    agg(2, "e", { neurons: 8, validators: 2, stake: 30, emission: 4 }),
+  ];
+  const opts = { window: "30d", startDate: "s", endDate: "e" };
+
+  test("totals stake/emission/validators across all subnets with their deltas", () => {
+    const { network } = buildMovers(startRows, endRows, opts);
+    assert.equal(network.total_stake_start_tao, 150);
+    assert.equal(network.total_stake_end_tao, 280);
+    assert.equal(network.total_stake_delta_tao, 130);
+    assert.equal(network.total_emission_start_tao, 9);
+    assert.equal(network.total_emission_end_tao, 13);
+    assert.equal(network.total_emission_delta_tao, 4);
+    assert.equal(network.total_validators_start, 5);
+    assert.equal(network.total_validators_end, 6);
+    assert.equal(network.total_validators_delta, 1);
+  });
+
+  test("gainer/loser/unchanged counts follow the active sort metric", () => {
+    // By stake: subnet 1 +150 (gainer), subnet 2 -20 (loser).
+    const byStake = buildMovers(startRows, endRows, { ...opts, sort: "stake" });
+    assert.deepEqual(
+      [
+        byStake.network.gainers,
+        byStake.network.losers,
+        byStake.network.unchanged,
+      ],
+      [1, 1, 0],
+    );
+    // By neurons: subnet 1 +2 (gainer), subnet 2 +0 (unchanged).
+    const byNeurons = buildMovers(startRows, endRows, {
+      ...opts,
+      sort: "neurons",
+    });
+    assert.deepEqual(
+      [
+        byNeurons.network.gainers,
+        byNeurons.network.losers,
+        byNeurons.network.unchanged,
+      ],
+      [1, 0, 1],
+    );
+  });
+
+  test("counts every subnet, not just the returned page", () => {
+    // limit 1 returns one mover, but the summary still counts both subnets.
+    const { network } = buildMovers(startRows, endRows, { ...opts, limit: 1 });
+    assert.equal(network.gainers + network.losers + network.unchanged, 2);
+  });
+
+  test("empty / non-comparable inputs yield an all-zero network summary", () => {
+    const { network } = buildMovers([], [], {
+      window: "30d",
+      startDate: null,
+      endDate: null,
+    });
+    assert.equal(network.total_stake_end_tao, 0);
+    assert.equal(network.total_validators_delta, 0);
+    assert.equal(network.gainers, 0);
+    assert.equal(network.losers, 0);
+    assert.equal(network.unchanged, 0);
+  });
+});
+
+describe("movers neurons sort", () => {
+  test("ranks by neuron-count delta, gainers first", () => {
+    const m = computeMovers(
+      [
+        agg(1, "s", { neurons: 10, validators: 0, stake: 0, emission: 0 }),
+        agg(2, "s", { neurons: 8, validators: 0, stake: 0, emission: 0 }),
+      ],
+      [
+        agg(1, "e", { neurons: 11, validators: 0, stake: 0, emission: 0 }), // +1
+        agg(2, "e", { neurons: 20, validators: 0, stake: 0, emission: 0 }), // +12
+      ],
+      { sort: "neurons" },
+    );
+    assert.deepEqual(
+      m.map((x) => x.netuid),
+      [2, 1],
+    );
+  });
+});
+
 describe("loadSubnetMovers", () => {
   test("resolves global boundary dates then reads the cross-subnet aggregate", async () => {
     vi.useFakeTimers();
@@ -242,6 +371,54 @@ describe("loadSubnetMovers", () => {
     assert.equal(data.subnet_count, 1);
     assert.equal(data.movers[0].stake_delta_tao, 150);
     vi.useRealTimers();
+  });
+
+  test("sort=neurons ranks by neuron-count delta through the public loader path", async () => {
+    const d1 = async (sql) => {
+      if (/MIN\(snapshot_date\)/.test(sql)) {
+        return [{ start_date: "2026-05-31", end_date: "2026-06-30" }];
+      }
+      return [
+        agg(1, "2026-05-31", {
+          neurons: 10,
+          validators: 2,
+          stake: 50,
+          emission: 3,
+        }),
+        agg(2, "2026-05-31", {
+          neurons: 8,
+          validators: 2,
+          stake: 50,
+          emission: 3,
+        }),
+        agg(1, "2026-06-30", {
+          neurons: 11, // +1
+          validators: 2,
+          stake: 50,
+          emission: 3,
+        }),
+        agg(2, "2026-06-30", {
+          neurons: 20, // +12
+          validators: 2,
+          stake: 50,
+          emission: 3,
+        }),
+      ];
+    };
+    const data = await loadSubnetMovers(d1, {
+      windowLabel: "30d",
+      sort: "neurons",
+    });
+    assert.equal(data.sort, "neurons"); // the public query value is accepted + echoed
+    assert.deepEqual(
+      data.movers.map((m) => m.netuid),
+      [2, 1], // biggest neuron gainer first
+    );
+    // both subnets gained neurons over the window -> 2 gainers, none lost or flat
+    assert.deepEqual(
+      [data.network.gainers, data.network.losers, data.network.unchanged],
+      [2, 0, 0],
+    );
   });
 
   test("defaults to the 30d window + stake sort", async () => {

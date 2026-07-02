@@ -1694,7 +1694,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
+        /** Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup. */
         get: operations["subnetMovers"];
         put?: never;
         post?: never;
@@ -4918,6 +4918,7 @@ export interface components {
                 emission_delta_tao: number;
                 emission_end_tao: number;
                 emission_pct_change: number | null;
+                emission_share_pct: number | null;
                 emission_start_tao: number;
                 netuid: number;
                 neurons_delta: number;
@@ -4926,14 +4927,30 @@ export interface components {
                 stake_delta_tao: number;
                 stake_end_tao: number;
                 stake_pct_change: number | null;
+                stake_share_pct: number | null;
                 stake_start_tao: number;
                 validators_delta: number;
                 validators_end: number;
                 validators_start: number;
             }[];
+            /** @description Network-wide aggregate context: total stake/emission/validator counts at each boundary, their deltas, and how many subnets gained, lost, or held flat on the active sort metric (counted over every subnet, not just the returned page). */
+            network: {
+                gainers: number;
+                losers: number;
+                total_emission_delta_tao: number;
+                total_emission_end_tao: number;
+                total_emission_start_tao: number;
+                total_stake_delta_tao: number;
+                total_stake_end_tao: number;
+                total_stake_start_tao: number;
+                total_validators_delta: number;
+                total_validators_end: number;
+                total_validators_start: number;
+                unchanged: number;
+            };
             schema_version: number;
             /** @enum {string} */
-            sort: "stake" | "emission" | "validators";
+            sort: "stake" | "emission" | "validators" | "neurons";
             start_date: string | null;
             subnet_count: number;
             /** @enum {string|null} */
@@ -19344,7 +19361,7 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d" | "90d";
-                sort?: "stake" | "emission" | "validators";
+                sort?: "stake" | "emission" | "validators" | "neurons";
                 limit?: number;
             };
             header?: never;
@@ -19371,6 +19388,7 @@ export interface operations {
                      *             "emission_delta_tao": 0.5,
                      *             "emission_end_tao": 0.5,
                      *             "emission_pct_change": 0.5,
+                     *             "emission_share_pct": 0.5,
                      *             "emission_start_tao": 0.5,
                      *             "netuid": 7,
                      *             "neurons_delta": 1,
@@ -19379,12 +19397,27 @@ export interface operations {
                      *             "stake_delta_tao": 0.5,
                      *             "stake_end_tao": 0.5,
                      *             "stake_pct_change": 0.5,
+                     *             "stake_share_pct": 0.5,
                      *             "stake_start_tao": 0.5,
                      *             "validators_delta": 1,
                      *             "validators_end": 1,
                      *             "validators_start": 1
                      *           }
                      *         ],
+                     *         "network": {
+                     *           "gainers": 1,
+                     *           "losers": 1,
+                     *           "total_emission_delta_tao": 0.5,
+                     *           "total_emission_end_tao": 0.5,
+                     *           "total_emission_start_tao": 0.5,
+                     *           "total_stake_delta_tao": 0.5,
+                     *           "total_stake_end_tao": 0.5,
+                     *           "total_stake_start_tao": 0.5,
+                     *           "total_validators_delta": 1,
+                     *           "total_validators_end": 1,
+                     *           "total_validators_start": 1,
+                     *           "unchanged": 1
+                     *         },
                      *         "schema_version": 1,
                      *         "sort": "stake",
                      *         "start_date": "2026-06-01",

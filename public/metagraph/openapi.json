@@ -12955,6 +12955,14 @@
                     "null"
                   ]
                 },
+                "emission_share_pct": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "emission_start_tao": {
                   "type": "number"
                 },
@@ -12985,6 +12993,14 @@
                     "null"
                   ]
                 },
+                "stake_share_pct": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
                 "stake_start_tao": {
                   "type": "number"
                 },
@@ -13006,10 +13022,12 @@
                 "stake_end_tao",
                 "stake_delta_tao",
                 "stake_pct_change",
+                "stake_share_pct",
                 "emission_start_tao",
                 "emission_end_tao",
                 "emission_delta_tao",
                 "emission_pct_change",
+                "emission_share_pct",
                 "validators_start",
                 "validators_end",
                 "validators_delta",
@@ -13021,6 +13039,68 @@
             },
             "type": "array"
           },
+          "network": {
+            "additionalProperties": false,
+            "description": "Network-wide aggregate context: total stake/emission/validator counts at each boundary, their deltas, and how many subnets gained, lost, or held flat on the active sort metric (counted over every subnet, not just the returned page).",
+            "properties": {
+              "gainers": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "losers": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_emission_delta_tao": {
+                "type": "number"
+              },
+              "total_emission_end_tao": {
+                "type": "number"
+              },
+              "total_emission_start_tao": {
+                "type": "number"
+              },
+              "total_stake_delta_tao": {
+                "type": "number"
+              },
+              "total_stake_end_tao": {
+                "type": "number"
+              },
+              "total_stake_start_tao": {
+                "type": "number"
+              },
+              "total_validators_delta": {
+                "type": "integer"
+              },
+              "total_validators_end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_validators_start": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "unchanged": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_stake_start_tao",
+              "total_stake_end_tao",
+              "total_stake_delta_tao",
+              "total_emission_start_tao",
+              "total_emission_end_tao",
+              "total_emission_delta_tao",
+              "total_validators_start",
+              "total_validators_end",
+              "total_validators_delta",
+              "gainers",
+              "losers",
+              "unchanged"
+            ],
+            "type": "object"
+          },
           "schema_version": {
             "type": "integer"
           },
@@ -13028,7 +13108,8 @@
             "enum": [
               "stake",
               "emission",
-              "validators"
+              "validators",
+              "neurons"
             ],
             "type": "string"
           },
@@ -13063,6 +13144,7 @@
           "end_date",
           "sort",
           "subnet_count",
+          "network",
           "movers"
         ],
         "type": "object"
@@ -35961,7 +36043,8 @@
               "enum": [
                 "stake",
                 "emission",
-                "validators"
+                "validators",
+                "neurons"
               ],
               "type": "string"
             }
@@ -35989,6 +36072,7 @@
                         "emission_delta_tao": 0.5,
                         "emission_end_tao": 0.5,
                         "emission_pct_change": 0.5,
+                        "emission_share_pct": 0.5,
                         "emission_start_tao": 0.5,
                         "netuid": 7,
                         "neurons_delta": 1,
@@ -35997,12 +36081,27 @@
                         "stake_delta_tao": 0.5,
                         "stake_end_tao": 0.5,
                         "stake_pct_change": 0.5,
+                        "stake_share_pct": 0.5,
                         "stake_start_tao": 0.5,
                         "validators_delta": 1,
                         "validators_end": 1,
                         "validators_start": 1
                       }
                     ],
+                    "network": {
+                      "gainers": 1,
+                      "losers": 1,
+                      "total_emission_delta_tao": 0.5,
+                      "total_emission_end_tao": 0.5,
+                      "total_emission_start_tao": 0.5,
+                      "total_stake_delta_tao": 0.5,
+                      "total_stake_end_tao": 0.5,
+                      "total_stake_start_tao": 0.5,
+                      "total_validators_delta": 1,
+                      "total_validators_end": 1,
+                      "total_validators_start": 1,
+                      "unchanged": 1
+                    },
                     "schema_version": 1,
                     "sort": "stake",
                     "start_date": "2026-06-01",
@@ -36108,7 +36207,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+        "summary": "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
         "tags": [
           "subnets",
           "analytics"
