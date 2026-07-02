@@ -15,30 +15,55 @@ export function applyQueryFilters(
   queryCollection,
   queryFilterNames = [],
 ) {
-  const params = url.searchParams;
   const config = API_QUERY_COLLECTIONS[queryCollection];
   if (!config) {
     return { data, meta: {} };
+  }
+  const normalizedConfig = normalizeListConfig(config, queryFilterNames);
+  const queryError = validateListQuery(
+    url.searchParams,
+    normalizedConfig,
+    queryFilterNames,
+  );
+  if (queryError) {
+    return { error: queryError };
   }
   if (!Array.isArray(data?.[config.data_key])) {
     return { data, meta: {} };
   }
   return applyListTransform(
     data,
-    params,
-    {
-      ...config,
-      filters: Object.fromEntries(
-        (queryFilterNames.length > 0
-          ? queryFilterNames
-          : Object.keys(config.filters ?? {})
-        )
-          .map((name) => [name, config.filters?.[name]])
-          .filter(([, schema]) => schema && typeof schema === "object"),
-      ),
-    },
+    url.searchParams,
+    normalizedConfig,
     queryFilterNames,
   );
+}
+
+export function validateListQueryRequest(
+  url,
+  queryCollection,
+  queryFilterNames = [],
+) {
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) {
+    return null;
+  }
+  const normalizedConfig = normalizeListConfig(config, queryFilterNames);
+  return validateListQuery(url.searchParams, normalizedConfig, queryFilterNames);
+}
+
+function normalizeListConfig(config, queryFilterNames = []) {
+  return {
+    ...config,
+    filters: Object.fromEntries(
+      (queryFilterNames.length > 0
+        ? queryFilterNames
+        : Object.keys(config.filters ?? {})
+      )
+        .map((name) => [name, config.filters?.[name]])
+        .filter(([, schema]) => schema && typeof schema === "object"),
+    ),
+  };
 }
 
 // RFC 8288 Link header for a cursor-paginated response (window from

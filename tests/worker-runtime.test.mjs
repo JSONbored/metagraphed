@@ -1726,8 +1726,8 @@ describe("Worker runtime", () => {
       assert.equal(secondBody.meta.parameter, "junk");
       assert.equal(
         r2Gets,
-        2,
-        "invalid list query still resolves live overlay before list validation",
+        0,
+        "invalid list query should fail before any overlay artifact read",
       );
       assert.equal(store.size, 0, "invalid list query must not populate cache");
       assert.deepEqual(cachePutKeys, []);

@@ -8,6 +8,7 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryRequest,
 } from "./list-query.mjs";
 import {
   apiHeaders,
@@ -2310,6 +2311,20 @@ async function handleApiRequest(
   const matched = matchRoute(url.pathname);
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
+  }
+  // Reject invalid list-query params before any artifact fetch/overlay work so
+  // malformed requests cannot force storage reads on live-overlay routes.
+  const queryError = validateListQueryRequest(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames,
+  );
+  if (queryError) {
+    const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
+    return errorResponse("invalid_query", queryError.message, 400, {
+      artifact_path: artifactPath,
+      parameter: queryError.parameter,
+    });
   }
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
