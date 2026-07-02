@@ -20,7 +20,17 @@ import {
   parseCompareDimensionList,
   parseCompareNetuidList,
 } from "./analytics-live.mjs";
+import {
+  loadAccountExtrinsics,
+  loadAccountHistory,
+  loadAccountSubnets,
+  loadAccountSummary,
+  loadAccountTransfers,
+} from "./account-events.mjs";
+import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
+import { loadCounterparties } from "./counterparties.mjs";
 import { KV_HEALTH_META } from "./kv-keys.mjs";
+import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../workers/config.mjs";
 
 export const GRAPHQL_MAX_DEPTH = 7;
 export const GRAPHQL_MAX_COMPLEXITY = 50;
@@ -54,6 +64,8 @@ export const SDL = `
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
+    "One Bittensor account with lazy chain-data relationships. Mirrors the /api/v1/accounts/{ss58} family."
+    account(ss58: String!): Account
   }
 
   type SubnetList {
@@ -117,6 +129,175 @@ export const SDL = `
     netuids: [Int]!
     "The subnets this provider operates surfaces on."
     subnets: [Subnet!]!
+  }
+
+  type Account {
+    ss58: String!
+    "Cross-subnet activity summary for this account."
+    summary: AccountSummary!
+    "Durable per-day activity series for this account."
+    history(netuid: Int, from: String, to: String, limit: Int, offset: Int, cursor: String): AccountHistory!
+    "Native-TAO transfers involving this account."
+    transfers(direction: String, block_start: Int, block_end: Int, limit: Int, offset: Int, cursor: String): AccountTransfers!
+    "Top native-TAO counterparties for this account."
+    counterparties(limit: Int): AccountCounterparties!
+    "Extrinsics signed by this account."
+    extrinsics(block_start: Int, block_end: Int, limit: Int, offset: Int, cursor: String): AccountExtrinsics!
+    "Subnets where this account's hotkey is currently registered."
+    subnets: AccountSubnets!
+    "Live finney TAO balance for this account. Null for non-finney or checksum-invalid SS58 addresses."
+    balance: AccountBalance
+  }
+
+  type AccountSummary {
+    schema_version: Int!
+    ss58: String!
+    event_count: Int!
+    subnet_count: Int!
+    first_block: Int
+    last_block: Int
+    first_seen_at: String
+    last_seen_at: String
+    event_kinds: [AccountEventKindCount!]!
+    registrations: [AccountRegistration!]!
+    recent_events: [AccountEvent!]!
+    activity: AccountActivity!
+  }
+
+  type AccountEventKindCount {
+    kind: String!
+    count: Int!
+  }
+
+  type AccountRegistration {
+    netuid: Int
+    uid: Int
+    stake_tao: Float
+    validator_permit: Boolean
+    active: Boolean
+  }
+
+  type AccountActivity {
+    tx_count: Int!
+    last_tx_block: Int
+    last_tx_at: String
+    total_fee_tao: Float
+    modules_called: [AccountModuleCall!]!
+  }
+
+  type AccountModuleCall {
+    call_module: String
+    count: Int!
+  }
+
+  type AccountEvent {
+    block_number: Int
+    event_index: Int
+    event_kind: String
+    hotkey: String
+    coldkey: String
+    netuid: Int
+    uid: Int
+    amount_tao: Float
+    alpha_amount: Float
+    observed_at: String
+    extrinsic_index: Int
+  }
+
+  type AccountHistory {
+    schema_version: Int!
+    ss58: String!
+    day_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    days: [AccountDay!]!
+  }
+
+  type AccountDay {
+    day: String
+    netuid: Int
+    event_count: Int
+    event_kinds: [String!]!
+    first_block: Int
+    last_block: Int
+  }
+
+  type AccountTransfers {
+    schema_version: Int!
+    ss58: String!
+    transfer_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    transfers: [AccountTransfer!]!
+  }
+
+  type AccountTransfer {
+    block_number: Int
+    event_index: Int
+    from: String
+    to: String
+    amount_tao: Float
+    direction: String
+    observed_at: String
+  }
+
+  type AccountCounterparties {
+    schema_version: Int!
+    ss58: String!
+    counterparty_count: Int!
+    transfers_scanned: Int
+    scan_capped: Boolean
+    total_sent_tao: Float
+    total_received_tao: Float
+    counterparties: [AccountCounterparty!]!
+  }
+
+  type AccountCounterparty {
+    address: String!
+    sent_tao: Float!
+    received_tao: Float!
+    net_tao: Float!
+    transfer_count: Int!
+    last_block: Int
+  }
+
+  type AccountExtrinsics {
+    schema_version: Int!
+    ss58: String!
+    extrinsic_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    extrinsics: [AccountExtrinsic!]!
+  }
+
+  type AccountExtrinsic {
+    block_number: Int
+    extrinsic_index: Int
+    extrinsic_hash: String
+    signer: String
+    call_module: String
+    call_function: String
+    success: Boolean
+    fee_tao: Float
+    tip_tao: Float
+    observed_at: String
+  }
+
+  type AccountSubnets {
+    schema_version: Int!
+    ss58: String!
+    subnet_count: Int!
+    subnets: [AccountRegistration!]!
+  }
+
+  type AccountBalance {
+    schema_version: Int!
+    ss58: String!
+    balance_tao: Float
+    queried_at: String
   }
 
   type EconomicsList {
@@ -327,6 +508,7 @@ const schema = buildSchema(SDL);
 export const DEFAULT_FIELD_COMPLEXITY = 1;
 const RELATIONSHIP_FIELD_COMPLEXITY = 5;
 export const FIELD_COMPLEXITY = {
+  account: RELATIONSHIP_FIELD_COMPLEXITY,
   subnets: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet: RELATIONSHIP_FIELD_COMPLEXITY,
   providers: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -337,6 +519,12 @@ export const FIELD_COMPLEXITY = {
   health: RELATIONSHIP_FIELD_COMPLEXITY,
   opportunity_boards: RELATIONSHIP_FIELD_COMPLEXITY,
   compare: RELATIONSHIP_FIELD_COMPLEXITY,
+  summary: RELATIONSHIP_FIELD_COMPLEXITY,
+  history: RELATIONSHIP_FIELD_COMPLEXITY,
+  transfers: RELATIONSHIP_FIELD_COMPLEXITY,
+  counterparties: RELATIONSHIP_FIELD_COMPLEXITY,
+  extrinsics: RELATIONSHIP_FIELD_COMPLEXITY,
+  balance: RELATIONSHIP_FIELD_COMPLEXITY,
 };
 
 function fieldComplexity(fieldName) {
@@ -686,6 +874,39 @@ function providerNode(provider) {
   };
 }
 
+function accountNode(ss58) {
+  return {
+    ss58,
+    summary: (_args, context) =>
+      once(context, `account:${ss58}:summary`, () =>
+        loadAccountSummary(graphqlD1(context), ss58),
+      ),
+    history: (args, context) =>
+      loadAccountHistory(graphqlD1(context), ss58, accountHistoryArgs(args)),
+    transfers: (args, context) =>
+      loadAccountTransfers(
+        graphqlD1(context),
+        ss58,
+        accountTransfersArgs(args),
+      ),
+    counterparties: (args, context) =>
+      loadCounterparties(graphqlD1(context), ss58, {
+        limit: args?.limit,
+      }),
+    extrinsics: (args, context) =>
+      loadAccountExtrinsics(
+        graphqlD1(context),
+        ss58,
+        accountExtrinsicsArgs(args),
+      ),
+    subnets: (_args, context) =>
+      once(context, `account:${ss58}:subnets`, () =>
+        loadAccountSubnets(graphqlD1(context), ss58),
+      ),
+    balance: (_args, context) => loadGraphqlAccountBalance(context, ss58),
+  };
+}
+
 async function loadSubnetHealth(context, netuid) {
   return subnetBadgeStatus(await loadLiveHealth(context), netuid);
 }
@@ -711,6 +932,87 @@ async function loadProviderSubnets(context, netuids) {
     .map((netuid) => byNetuid.get(netuid))
     .filter(Boolean)
     .map((row) => subnetNode(row));
+}
+
+function requireNonNegativeInt(value, name) {
+  if (value == null) return null;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new GraphQLError(`${name} must be a non-negative integer.`, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return value;
+}
+
+const GRAPHQL_ACCOUNT_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function requireDay(value, name) {
+  if (value == null) return null;
+  if (typeof value !== "string" || !GRAPHQL_ACCOUNT_DAY.test(value)) {
+    throw new GraphQLError(`${name} must be a YYYY-MM-DD date.`, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return value;
+}
+
+function accountHistoryArgs(args = {}) {
+  return {
+    netuid: requireNonNegativeInt(args.netuid, "netuid"),
+    from: requireDay(args.from, "from"),
+    to: requireDay(args.to, "to"),
+    limit: args.limit,
+    offset: requireNonNegativeInt(args.offset, "offset"),
+    cursor: args.cursor,
+  };
+}
+
+function accountTransfersArgs(args = {}) {
+  const direction = args.direction ?? null;
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "sent" &&
+    direction !== "received"
+  ) {
+    throw new GraphQLError("direction must be one of all, sent, or received.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return {
+    direction: direction === "all" ? null : direction,
+    blockStart: requireNonNegativeInt(args.block_start, "block_start"),
+    blockEnd: requireNonNegativeInt(args.block_end, "block_end"),
+    limit: args.limit,
+    offset: requireNonNegativeInt(args.offset, "offset"),
+    cursor: args.cursor,
+  };
+}
+
+function accountExtrinsicsArgs(args = {}) {
+  return {
+    blockStart: requireNonNegativeInt(args.block_start, "block_start"),
+    blockEnd: requireNonNegativeInt(args.block_end, "block_end"),
+    limit: args.limit,
+    offset: requireNonNegativeInt(args.offset, "offset"),
+    cursor: args.cursor,
+  };
+}
+
+async function loadGraphqlAccountBalance(context, ss58) {
+  if (!isFinneySs58Address(ss58)) return null;
+  if (context.env?.RPC_RATE_LIMITER?.limit) {
+    const { success } = await context.env.RPC_RATE_LIMITER.limit({
+      key: `balance:${resolveClientIp(context.request)}`,
+    });
+    if (!success) {
+      throw new GraphQLError(
+        "Too many live balance requests from this client; slow down.",
+        { extensions: { code: "RATE_LIMITED" } },
+      );
+    }
+  }
+  return loadAccountBalance(context.env, ss58);
 }
 
 // --- Resolvers ---
@@ -788,6 +1090,13 @@ const rootValue = {
     const data = await loadArtifact(context, `/metagraph/providers/${id}.json`);
     if (!data) return null;
     return providerNode(data.provider ?? data);
+  },
+
+  account({ ss58 }) {
+    if (typeof ss58 !== "string" || !SS58_ADDRESS_PATTERN.test(ss58)) {
+      return null;
+    }
+    return accountNode(ss58);
   },
 
   async economics({ limit, cursor }, context) {
@@ -1053,7 +1362,7 @@ export async function handleGraphQLRequest(request, env) {
     schema,
     document,
     rootValue,
-    contextValue: { env, cache: new Map() },
+    contextValue: { env, request, cache: new Map() },
     variableValues: variables ?? undefined,
     operationName: operationName ?? undefined,
   });

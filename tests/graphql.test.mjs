@@ -23,6 +23,8 @@ import {
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv = {};
+const ACCOUNT_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+const COUNTERPARTY_SS58 = "5F3sa2TJAWMqDhXG6jhV4N8ko9SxwGy8TpaNS1repoXhD3v8";
 
 async function gql(query, env = emptyEnv, extras = {}) {
   const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
@@ -65,6 +67,69 @@ function fixtureEnv(fixtures = {}, { reads, kv, kvReads } = {}) {
       },
     };
   }
+  return env;
+}
+
+function asRows(value) {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
+function accountRowsForSql(sql, rows) {
+  if (sql.includes("COUNT(DISTINCT netuid) AS sc")) {
+    return asRows(rows.agg);
+  }
+  if (sql.includes("GROUP BY event_kind")) return rows.kinds || [];
+  if (sql.includes("ORDER BY stake_tao DESC")) {
+    return rows.registrations || [];
+  }
+  if (sql.includes("LIMIT 10") && sql.includes("FROM account_events")) {
+    return rows.recent || [];
+  }
+  if (sql.includes("COUNT(*) AS tx_count")) {
+    return asRows(rows.activity);
+  }
+  if (sql.includes("SELECT call_module, COUNT(*) AS count")) {
+    return rows.modules || [];
+  }
+  if (sql.includes("FROM account_events_daily")) return rows.days || [];
+  if (sql.includes("ORDER BY netuid") && sql.includes("FROM neurons")) {
+    return rows.subnets || [];
+  }
+  if (
+    sql.includes("SELECT hotkey, coldkey, amount_tao, block_number FROM") &&
+    sql.includes("UNION ALL")
+  ) {
+    return rows.counterpartyTransfers || [];
+  }
+  if (
+    sql.includes("FROM extrinsics WHERE signer = ?") &&
+    sql.includes("extrinsic_hash")
+  ) {
+    return rows.extrinsics || [];
+  }
+  if (sql.includes("event_kind = 'Transfer'")) return rows.transfers || [];
+  return [];
+}
+
+function accountD1Env(rows = {}, { calls = [] } = {}) {
+  const env = fixtureEnv();
+  env.METAGRAPH_HEALTH_DB = {
+    prepare(sql) {
+      const call = { sql, params: [] };
+      calls.push(call);
+      return {
+        bind(...params) {
+          call.params = params;
+          return {
+            async all() {
+              return { results: accountRowsForSql(sql, rows) };
+            },
+          };
+        },
+      };
+    },
+  };
   return env;
 }
 
@@ -1022,6 +1087,408 @@ describe("graphql — broadened Subnet + nested relationships", () => {
   });
 });
 
+describe("graphql — account node + lazy account relationships", () => {
+  test("SDL advertises account(ss58) and the account relationship node", () => {
+    assert.match(SDL, /account\(ss58: String!\): Account/);
+    assert.match(SDL, /type Account \{/);
+    assert.match(SDL, /summary: AccountSummary!/);
+    assert.match(SDL, /balance: AccountBalance/);
+  });
+
+  test("invalid account ids return null before touching live account stores", async () => {
+    const calls = [];
+    const env = accountD1Env({}, { calls });
+    const { status, body } = await gql(
+      '{ account(ss58: "not-an-address") { ss58 } }',
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(body.data.account, null);
+    assert.equal(calls.length, 0);
+  });
+
+  test("account identity is lazy and does not read D1 until a relationship is selected", async () => {
+    const env = fixtureEnv();
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        throw new Error("account identity should not read D1");
+      },
+    };
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") { ss58 } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.deepEqual(body.data.account, { ss58: ACCOUNT_SS58 });
+  });
+
+  test("summary and subnets reuse the existing account summary/subnet loaders", async () => {
+    const firstSeen = Date.UTC(2026, 5, 1);
+    const lastSeen = Date.UTC(2026, 5, 3);
+    const calls = [];
+    const env = accountD1Env(
+      {
+        agg: { c: 3, sc: 2, fb: 10, lb: 30, fo: firstSeen, lo: lastSeen },
+        kinds: [
+          { kind: "StakeAdded", count: 2 },
+          { kind: "Transfer", count: 1 },
+        ],
+        registrations: [
+          {
+            netuid: 7,
+            uid: 12,
+            stake_tao: 123.45,
+            validator_permit: 1,
+            active: 1,
+          },
+        ],
+        recent: [
+          {
+            block_number: 30,
+            event_index: 4,
+            event_kind: "StakeAdded",
+            hotkey: ACCOUNT_SS58,
+            coldkey: null,
+            netuid: 7,
+            uid: 12,
+            amount_tao: 2,
+            alpha_amount: 0.5,
+            observed_at: lastSeen,
+            extrinsic_index: 2,
+          },
+        ],
+        activity: {
+          tx_count: 4,
+          last_tx_block: 31,
+          last_tx_at: lastSeen,
+          total_fee_tao: 0.123456789,
+        },
+        modules: [{ call_module: "SubtensorModule", count: 3 }],
+        subnets: [
+          {
+            netuid: 7,
+            uid: 12,
+            stake_tao: 123.45,
+            validator_permit: 1,
+            active: 1,
+          },
+          {
+            netuid: 8,
+            uid: 2,
+            stake_tao: 10,
+            validator_permit: 0,
+            active: 0,
+          },
+        ],
+      },
+      { calls },
+    );
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") {
+          summary {
+            event_count subnet_count first_block last_block first_seen_at last_seen_at
+            event_kinds { kind count }
+            registrations { netuid uid stake_tao validator_permit active }
+            recent_events { event_kind block_number observed_at }
+            activity { tx_count last_tx_block last_tx_at total_fee_tao modules_called { call_module count } }
+          }
+        } }`,
+      env,
+    );
+    const subnetsResult = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") {
+          subnets { subnet_count subnets { netuid uid stake_tao active } }
+        } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(subnetsResult.status, 200);
+    const account = body.data.account;
+    assert.equal(account.summary.event_count, 3);
+    assert.equal(account.summary.subnet_count, 2);
+    assert.equal(
+      account.summary.first_seen_at,
+      new Date(firstSeen).toISOString(),
+    );
+    assert.equal(
+      account.summary.last_seen_at,
+      new Date(lastSeen).toISOString(),
+    );
+    assert.deepEqual(account.summary.event_kinds, [
+      { kind: "StakeAdded", count: 2 },
+      { kind: "Transfer", count: 1 },
+    ]);
+    assert.deepEqual(account.summary.registrations[0], {
+      netuid: 7,
+      uid: 12,
+      stake_tao: 123.45,
+      validator_permit: true,
+      active: true,
+    });
+    assert.equal(account.summary.recent_events[0].event_kind, "StakeAdded");
+    assert.equal(account.summary.activity.tx_count, 4);
+    assert.equal(
+      account.summary.activity.modules_called[0].call_module,
+      "SubtensorModule",
+    );
+    assert.equal(subnetsResult.body.data.account.subnets.subnet_count, 2);
+    assert.equal(
+      subnetsResult.body.data.account.subnets.subnets[1].active,
+      false,
+    );
+    assert.ok(
+      calls.some((call) => call.sql.includes("ORDER BY stake_tao DESC")),
+    );
+    assert.ok(calls.some((call) => call.sql.includes("ORDER BY netuid")));
+  });
+
+  test("history, transfers, and counterparties resolve through shared account loaders", async () => {
+    const observedAt = Date.UTC(2026, 5, 30);
+    const env = accountD1Env({
+      days: [
+        {
+          day: "2026-06-30",
+          netuid: 7,
+          event_count: 5,
+          event_kinds: "StakeAdded,WeightsSet",
+          first_block: 10,
+          last_block: 20,
+        },
+      ],
+      transfers: [
+        {
+          block_number: 20,
+          event_index: 1,
+          event_kind: "Transfer",
+          hotkey: ACCOUNT_SS58,
+          coldkey: COUNTERPARTY_SS58,
+          amount_tao: 1.25,
+          observed_at: observedAt,
+        },
+      ],
+      counterpartyTransfers: [
+        {
+          hotkey: ACCOUNT_SS58,
+          coldkey: COUNTERPARTY_SS58,
+          amount_tao: 1.25,
+          block_number: 20,
+        },
+        {
+          hotkey: COUNTERPARTY_SS58,
+          coldkey: ACCOUNT_SS58,
+          amount_tao: 0.75,
+          block_number: 21,
+        },
+      ],
+    });
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") {
+          history(netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 1) {
+            day_count next_cursor days { day netuid event_count event_kinds }
+          }
+          transfers(direction: "sent", block_start: 10, block_end: 20, limit: 1) {
+            transfer_count next_cursor transfers { direction amount_tao from to observed_at }
+          }
+        } }`,
+      env,
+    );
+    const counterpartiesResult = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") {
+          counterparties(limit: 1) {
+            counterparty_count total_sent_tao total_received_tao
+            counterparties { address sent_tao received_tao net_tao transfer_count last_block }
+          }
+        } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(counterpartiesResult.status, 200);
+    const account = body.data.account;
+    assert.equal(account.history.day_count, 1);
+    assert.equal(account.history.next_cursor, "20260630.7");
+    assert.deepEqual(account.history.days[0], {
+      day: "2026-06-30",
+      netuid: 7,
+      event_count: 5,
+      event_kinds: ["StakeAdded", "WeightsSet"],
+    });
+    assert.equal(account.transfers.transfer_count, 1);
+    assert.equal(account.transfers.next_cursor, "20.1");
+    assert.equal(account.transfers.transfers[0].direction, "sent");
+    assert.equal(account.transfers.transfers[0].amount_tao, 1.25);
+    assert.equal(
+      account.transfers.transfers[0].observed_at,
+      new Date(observedAt).toISOString(),
+    );
+    const counterparties =
+      counterpartiesResult.body.data.account.counterparties;
+    assert.equal(counterparties.counterparty_count, 1);
+    assert.equal(counterparties.total_sent_tao, 1.25);
+    assert.equal(counterparties.total_received_tao, 0.75);
+    assert.deepEqual(counterparties.counterparties[0], {
+      address: COUNTERPARTY_SS58,
+      sent_tao: 1.25,
+      received_tao: 0.75,
+      net_tao: -0.5,
+      transfer_count: 2,
+      last_block: 21,
+    });
+  });
+
+  test("extrinsics resolves the account signer feed", async () => {
+    const observedAt = Date.UTC(2026, 5, 29);
+    const env = accountD1Env({
+      extrinsics: [
+        {
+          block_number: 30,
+          extrinsic_index: 2,
+          extrinsic_hash: "0xabc",
+          signer: ACCOUNT_SS58,
+          call_module: "Balances",
+          call_function: "transfer_keep_alive",
+          call_args: "{}",
+          success: 1,
+          fee_tao: 0.002,
+          tip_tao: 0,
+          observed_at: observedAt,
+        },
+      ],
+    });
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") {
+          extrinsics(block_start: 10, block_end: 30, limit: 1) {
+            extrinsic_count next_cursor
+            extrinsics { block_number extrinsic_index extrinsic_hash signer call_module success fee_tao observed_at }
+          }
+        } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(body.data.account.extrinsics.extrinsic_count, 1);
+    assert.equal(body.data.account.extrinsics.next_cursor, "30.2");
+    assert.deepEqual(body.data.account.extrinsics.extrinsics[0], {
+      block_number: 30,
+      extrinsic_index: 2,
+      extrinsic_hash: "0xabc",
+      signer: ACCOUNT_SS58,
+      call_module: "Balances",
+      success: true,
+      fee_tao: 0.002,
+      observed_at: new Date(observedAt).toISOString(),
+    });
+  });
+
+  test("balance uses the live balance limiter and KV-backed account balance loader", async () => {
+    const kvReads = new Map();
+    let limiterKey = null;
+    const env = fixtureEnv(
+      {},
+      {
+        kvReads,
+        kv: {
+          [`balance:${ACCOUNT_SS58}`]: {
+            schema_version: 1,
+            ss58: ACCOUNT_SS58,
+            balance_tao: 12.5,
+            queried_at: "2026-06-30T00:00:00.000Z",
+          },
+        },
+      },
+    );
+    env.RPC_RATE_LIMITER = {
+      async limit({ key }) {
+        limiterKey = key;
+        return { success: true };
+      },
+    };
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") { balance { ss58 balance_tao queried_at } } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(limiterKey, "balance:anonymous");
+    assert.equal(kvReads.get(`balance:${ACCOUNT_SS58}`), 1);
+    assert.deepEqual(body.data.account.balance, {
+      ss58: ACCOUNT_SS58,
+      balance_tao: 12.5,
+      queried_at: "2026-06-30T00:00:00.000Z",
+    });
+  });
+
+  test("balance rate-limit failures surface as GraphQL field errors", async () => {
+    const env = fixtureEnv();
+    env.RPC_RATE_LIMITER = {
+      async limit() {
+        return { success: false };
+      },
+    };
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") { balance { balance_tao } } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(body.data.account.balance, null);
+    assert.equal(body.errors[0].extensions.code, "RATE_LIMITED");
+  });
+
+  test("balance is null for a well-formed but non-finney ss58, before the limiter runs", async () => {
+    // Checksum-broken sibling of ACCOUNT_SS58: passes the loose SS58_ADDRESS_PATTERN
+    // (so the account node still resolves) but fails isFinneySs58Address, so balance
+    // short-circuits to null without consuming the live-RPC rate limiter or KV.
+    const NON_FINNEY_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc6";
+    let limiterCalled = false;
+    const env = fixtureEnv();
+    env.RPC_RATE_LIMITER = {
+      async limit() {
+        limiterCalled = true;
+        return { success: true };
+      },
+    };
+
+    const { status, body } = await gql(
+      `{ account(ss58: "${NON_FINNEY_SS58}") { ss58 balance { balance_tao } } }`,
+      env,
+    );
+
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account.ss58, NON_FINNEY_SS58);
+    assert.equal(body.data.account.balance, null);
+    assert.equal(limiterCalled, false);
+  });
+
+  test("relationship argument validation returns BAD_USER_INPUT", async () => {
+    const badHistory = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") { history(netuid: -1) { day_count } } }`,
+      accountD1Env(),
+    );
+    assert.equal(badHistory.status, 200);
+    assert.equal(badHistory.body.data.account, null);
+    assert.equal(badHistory.body.errors[0].extensions.code, "BAD_USER_INPUT");
+
+    const badDirection = await gql(
+      `{ account(ss58: "${ACCOUNT_SS58}") { transfers(direction: "sideways") { transfer_count } } }`,
+      accountD1Env(),
+    );
+    assert.equal(badDirection.status, 200);
+    assert.equal(badDirection.body.data.account, null);
+    assert.equal(badDirection.body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+});
+
 describe("graphql — surfaces / endpoints / health roots", () => {
   test("surfaces filters by netuid and paginates", async () => {
     const env = fixtureEnv({
@@ -1279,6 +1746,7 @@ describe("graphql — opportunity boards (reuse the leaderboard ranking)", () =>
 describe("graphql — complexity weights keep the guard meaningful", () => {
   test("FIELD_COMPLEXITY weights the read/fan-out fields above scalars", () => {
     for (const field of [
+      "account",
       "subnets",
       "subnet",
       "providers",
@@ -1288,6 +1756,12 @@ describe("graphql — complexity weights keep the guard meaningful", () => {
       "endpoints",
       "health",
       "opportunity_boards",
+      "summary",
+      "history",
+      "transfers",
+      "counterparties",
+      "extrinsics",
+      "balance",
     ]) {
       assert.equal(FIELD_COMPLEXITY[field], 5, `${field} should be weighted`);
     }
