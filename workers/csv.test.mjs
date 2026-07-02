@@ -152,9 +152,9 @@ describe("csvRequested", () => {
     assert.ok(csvRequested(url, makeReq()));
   });
 
-  test("returns false for ?format=json (explicit JSON opt-in)", () => {
-    const url = new URL("https://metagraph.sh/api/v1/foo?format=json");
-    assert.ok(!csvRequested(url, makeReq("text/csv")));
+  test("returns true for case-insensitive ?format=CSV and with whitespace", () => {
+    const url = new URL("https://metagraph.sh/api/v1/foo?format=  CSV  ");
+    assert.ok(csvRequested(url, makeReq()));
   });
 
   test("?format param wins over Accept header — format=json beats Accept:text/csv", () => {
@@ -165,6 +165,17 @@ describe("csvRequested", () => {
   test("returns true for Accept: text/csv (no format param)", () => {
     const url = new URL("https://metagraph.sh/api/v1/foo");
     assert.ok(csvRequested(url, makeReq("text/csv")));
+  });
+
+  test("returns true for Accept: text/csv; charset=utf-8 (supports media type parameters)", () => {
+    const url = new URL("https://metagraph.sh/api/v1/foo");
+    assert.ok(csvRequested(url, makeReq("text/csv; charset=utf-8")));
+  });
+
+  test("returns false for partial matches like Accept: text/csvx or Accept: text/csv-bogus", () => {
+    const url = new URL("https://metagraph.sh/api/v1/foo");
+    assert.ok(!csvRequested(url, makeReq("text/csvx")));
+    assert.ok(!csvRequested(url, makeReq("text/csv-bogus")));
   });
 
   test("returns true for Accept: text/csv, */* (multi-type accept)", () => {
@@ -211,6 +222,18 @@ describe("csvResponse", () => {
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="neurons-42.csv"',
+    );
+  });
+
+  test("Content-Disposition strips path separators and control characters, and escapes double quotes and backslashes", () => {
+    const res = csvResponse(
+      [{ a: 1 }],
+      'neurons/42\\test"name\r\n',
+      "standard",
+    );
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="neurons42test\\"name.csv"',
     );
   });
 

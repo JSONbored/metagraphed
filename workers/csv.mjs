@@ -70,8 +70,6 @@ export function rowsToCsv(rows, columns) {
   return lines.join("\r\n");
 }
 
-// ── Content negotiation ────────────────────────────────────────────────────
-
 /**
  * Return true when the client has requested CSV output via either:
  *   - `?format=csv` query parameter, OR
@@ -86,15 +84,31 @@ export function rowsToCsv(rows, columns) {
  * @returns {boolean}
  */
 export function csvRequested(url, request) {
-  const fmt = url.searchParams.get("format");
+  const fmt = url.searchParams.get("format")?.trim().toLowerCase();
   if (fmt != null) return fmt === "csv";
   const accept = request.headers.get("accept") || "";
-  return accept.split(",").some((part) => part.trim().startsWith("text/csv"));
+  return accept.split(",").some((part) => {
+    const mediaType = part.split(";", 1)[0].trim().toLowerCase();
+    return mediaType === "text/csv";
+  });
 }
 
 // ── Response builder ───────────────────────────────────────────────────────
 
 const CSV_CONTENT_TYPE = "text/csv; charset=utf-8";
+
+/**
+ * Sanitize or constrain the filename before interpolating it into Content-Disposition
+ * to avoid malformed headers or Headers.set throwing on CR/LF.
+ * Strips path separators and control characters, and escapes double quotes and backslashes.
+ */
+export function contentDispositionFilename(filename) {
+  const clean = String(filename || "export")
+    .replace(/[/\\]/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1f\x7f]/g, "");
+  return clean.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
 
 /**
  * Build a cacheable `text/csv` Response for a list of rows.
@@ -114,6 +128,10 @@ export function csvResponse(rows, filename, cacheProfile) {
   const body = rowsToCsv(rows);
   const headers = apiHeaders(cacheProfile);
   headers.set("content-type", CSV_CONTENT_TYPE);
-  headers.set("content-disposition", `attachment; filename="${filename}.csv"`);
+  const safeFilename = contentDispositionFilename(filename);
+  headers.set(
+    "content-disposition",
+    `attachment; filename="${safeFilename}.csv"`,
+  );
   return new Response(body, { status: 200, headers });
 }

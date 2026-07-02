@@ -684,6 +684,19 @@
       "url": "https://handshake58.com/openapi.json"
     },
     {
+      "drift_status": "not-captured",
+      "error": null,
+      "hash": null,
+      "netuid": 59,
+      "path": null,
+      "previous_hash": null,
+      "schema_url": "https://api.babelbit.ai/openapi.json",
+      "status": "not-captured",
+      "subnet_slug": "sn-59",
+      "surface_id": "sn-59-babelbit-openapi",
+      "url": "https://api.babelbit.ai/openapi.json"
+    },
+    {
       "content_type": "application/json",
       "drift_status": "new",
       "hash": "3b9020b3f79b2f5ab53ee4066a7bc6fff39c021350a4d04917ee128f71b56ace",
@@ -1026,12 +1039,14 @@
   "source": "openapi-snapshot",
   "summary": {
     "by_drift_status": {
-      "new": 24
+      "new": 24,
+      "not-captured": 1
     },
     "by_status": {
-      "captured": 24
+      "captured": 24,
+      "not-captured": 1
     },
     "schema_count": 24,
-    "surface_count": 24
+    "surface_count": 25
   }
 }
