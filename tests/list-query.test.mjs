@@ -729,6 +729,40 @@ describe("list-query unknown query parameters", () => {
       delete API_QUERY_COLLECTIONS.__test_no_filters_with_allowlist;
     }
   });
+
+  test("queryFilterNames drops names missing from configured filters", () => {
+    const endpoints = {
+      endpoints: [{ id: "a", kind: "docs", layer: "inference" }],
+    };
+    const result = applyQueryFilters(
+      endpoints,
+      query("/api/v1/endpoints?kind=docs&layer=inference"),
+      "endpoints",
+      ["kind", "not_a_real_filter"],
+    );
+    assert.equal(result.error.parameter, "layer");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("ignores malformed filter schemas in collection config", () => {
+    API_QUERY_COLLECTIONS.__test_malformed_filter_schema = {
+      data_key: "rows",
+      filters: { status: true },
+      search_keys: [],
+      sort_fields: ["netuid"],
+    };
+    try {
+      const result = applyQueryFilters(
+        { rows: [{ netuid: 1, status: "active" }] },
+        query("/api/v1/custom?status=active"),
+        "__test_malformed_filter_schema",
+      );
+      assert.equal(result.error.parameter, "status");
+      assert.equal(result.error.message, "unknown query parameter.");
+    } finally {
+      delete API_QUERY_COLLECTIONS.__test_malformed_filter_schema;
+    }
+  });
 });
 
 describe("list-query pagination Link header", () => {
