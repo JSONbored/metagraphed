@@ -11,7 +11,13 @@
 //   node scripts/generate-docs-site.mjs --check   # verify up-to-date (CI gate)
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { listToolDefinitions } from "../src/mcp-server.mjs";
@@ -61,9 +67,7 @@ export function expectedGeneratedFilenames() {
   ).map((relativePath) => relativePath.slice("generated/".length));
 }
 
-export function listUnexpectedGeneratedFiles(
-  generatedDir = GENERATED_DIR,
-) {
+export function listUnexpectedGeneratedFiles(generatedDir = GENERATED_DIR) {
   if (!existsSync(generatedDir)) {
     return [];
   }

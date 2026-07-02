@@ -53,7 +53,10 @@ export function buildSampleRouteUrl(
   baseUrl,
   { date = DOCS_SAMPLE_DATE } = {},
 ) {
-  const url = new URL(substituteRoutePlaceholders(routePath, { date }), baseUrl);
+  const url = new URL(
+    substituteRoutePlaceholders(routePath, { date }),
+    baseUrl,
+  );
   for (const [key, value] of Object.entries(sampleQueryParams(routePath))) {
     url.searchParams.set(key, value);
   }
