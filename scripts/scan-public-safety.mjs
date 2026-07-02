@@ -25,6 +25,10 @@ const patterns = [
     regex:
       /[?&](?:X-Amz-(?:Credential|Signature|Security-Token)|X-Goog-(?:Credential|Signature|Security-Token|SignedHeaders|Expires)|X-Oss-(?:Credential|Signature))=/i,
   },
+  // Google API key: the fixed "AIza" prefix + 35 URL-safe chars. A distinctive,
+  // unambiguous format that a leaked Maps/Cloud key takes; none of the URL/token
+  // rules above catch a bare key value.
+  { name: "google api key", regex: /AIza[0-9A-Za-z_-]{35}/ },
   {
     name: "private or loopback URL",
     // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint

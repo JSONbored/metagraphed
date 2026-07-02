@@ -257,6 +257,18 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("flags a bare Google API key", async () => {
+    // The AIza-prefixed 39-char key is a distinctive, unambiguous credential
+    // format that none of the URL/token rules caught.
+    const key = `AIza${"b".repeat(35)}`;
+    await fs.writeFile(TEST_PUBLIC_PATH, `${key}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: google api key`),
+      `Google API key must be flagged; got:\n${output}`,
+    );
+  });
+
   test("still flags a hard secret hidden in a fixture body value", async () => {
     await writeTestFixture({
       note: "token=ghp_abcdefghijklmnopqrstuvwxyz0123456789",
