@@ -119,6 +119,33 @@
         "timeout_ms": 10000
       },
       "notes": "Public source repository for Gopher Subnet 42 neuron logic."
+    },
+    {
+      "id": "sn-42-gopher-ai-subnet-api",
+      "name": "Gopher Data API live search",
+      "kind": "subnet-api",
+      "url": "https://data.gopher-ai.com/api/v1/search/live",
+      "provider": "gopher-ai",
+      "authority": "community",
+      "auth_required": true,
+      "public_safe": true,
+      "rate_limit_notes": "Bearer API key required (GOPHER_CLIENT_TOKEN). POST-only credentialed endpoint; recurring read probes are intentionally disabled.",
+      "source_urls": [
+        "https://github.com/gopher-lab/gopher-client/blob/main/client/client.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-client/blob/main/config/config.go#L15-L16",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L22-L23",
+        "https://github.com/gopher-lab/gopher-mcp-server/blob/main/data/internal/client/client.go#L75-L76"
+      ],
+      "probe": {
+        "enabled": false,
+        "expect": "json",
+        "method": "HEAD"
+      },
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "claytonlin1110"
+      },
+      "notes": "Official SN42 Gopher Data API live search (POST data.gopher-ai.com/api/v1/search/live). gopher-client defines jobEndpoint /v1/search/live on default base https://data.gopher-ai.com/api; gopher-mcp-server posts to /search/live on https://data.gopher-ai.com/api/v1."
     }
   ]
 }

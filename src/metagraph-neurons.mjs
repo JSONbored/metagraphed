@@ -105,12 +105,18 @@ export function formatNeuron(row) {
     coldkey: row.coldkey ?? null,
     active: toD1Flag(row.active),
     validator_permit: toD1Flag(row.validator_permit),
-    rank: row.rank ?? null,
-    trust: row.trust ?? null,
-    validator_trust: row.validator_trust ?? null,
-    consensus: row.consensus ?? null,
-    incentive: row.incentive ?? null,
-    dividends: row.dividends ?? null,
+    rank: row.rank == null ? null : round(nullableNumber(row.rank)),
+    trust: row.trust == null ? null : round(nullableNumber(row.trust)),
+    validator_trust:
+      row.validator_trust == null
+        ? null
+        : round(nullableNumber(row.validator_trust)),
+    consensus:
+      row.consensus == null ? null : round(nullableNumber(row.consensus)),
+    incentive:
+      row.incentive == null ? null : round(nullableNumber(row.incentive)),
+    dividends:
+      row.dividends == null ? null : round(nullableNumber(row.dividends)),
     emission_tao: row.emission_tao == null ? null : roundTao(row.emission_tao),
     stake_tao: row.stake_tao == null ? null : roundTao(row.stake_tao),
     registered_at_block:
@@ -127,7 +133,11 @@ function snapshotStamp(rows) {
   const first = rows[0] || {};
   return {
     captured_at: toIso(first.captured_at),
-    block_number: first.block_number ?? null,
+    // Coerce like buildGlobalValidators (#2611): block_number is a nullable D1
+    // INTEGER that can come back as a numeric string, so a bare `?? null` would
+    // leak "8454388" into the ["integer","null"] contract field. nonNegativeInt
+    // maps null→null and numeric strings→real integers.
+    block_number: nonNegativeInt(first.block_number),
   };
 }
 
@@ -165,7 +175,9 @@ export function buildNeuronDetail(row, netuid) {
     schema_version: 1,
     netuid,
     captured_at: toIso(row?.captured_at),
-    block_number: row?.block_number ?? null,
+    // Same D1 numeric-string coercion as snapshotStamp / buildGlobalValidators
+    // (#2611): keep the top-level block_number an integer or null, never a string.
+    block_number: nonNegativeInt(row?.block_number),
     neuron: formatNeuron(row),
   };
 }

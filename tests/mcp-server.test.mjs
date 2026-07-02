@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
   MCP_TOOLS,
@@ -1988,10 +1988,193 @@ describe("MCP get_chain_signers", () => {
     assert.equal(out.signer_count, 0);
     assert.deepEqual(out.signers, []);
   });
+
+  test("applies the data-tier limiter before the D1 signers aggregation", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: false };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /Too many data API requests/);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 0);
+  });
+
+  test("proceeds to the D1 signers aggregation when the data-tier limiter allows the request", async () => {
+    let d1Calls = 0;
+    const limiterKeys = [];
+    const res = await callTool(
+      "get_chain_signers",
+      {},
+      {
+        env: {
+          DATA_RATE_LIMITER: {
+            async limit({ key }) {
+              limiterKeys.push(key);
+              return { success: true };
+            },
+          },
+          METAGRAPH_HEALTH_DB: {
+            prepare() {
+              d1Calls += 1;
+              return {
+                bind() {
+                  return {
+                    async all() {
+                      return { results: [] };
+                    },
+                  };
+                },
+              };
+            },
+          },
+        },
+      },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("coalesces identical batched signers calls into one D1 query", async () => {
+    let d1Calls = 0;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 2);
+    assert.equal(d1Calls, 1);
+  });
+
+  test("returns an empty leaderboard when the signers D1 query times out", async () => {
+    const env = {
+      METAGRAPH_D1_TIMEOUT_MS: "1",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return new Promise(() => {});
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool("get_chain_signers", {}, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.signer_count, 0);
+    assert.deepEqual(out.signers, []);
+  });
+
+  test("a batch of identical signers calls shares one limiter charge, not one per duplicate", async () => {
+    let d1Calls = 0;
+    let limiterCalls = 0;
+    const env = {
+      DATA_RATE_LIMITER: {
+        async limit() {
+          limiterCalls += 1;
+          return { success: false };
+        },
+      },
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Calls += 1;
+          return {
+            bind() {
+              return {
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const message = (id) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: {
+        name: "get_chain_signers",
+        arguments: { window: "7d", limit: 50 },
+      },
+    });
+    const res = await rpc([message(1), message(2), message(3)], { env });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.length, 3);
+    for (const entry of res.body) {
+      assert.equal(entry.result.isError, true);
+      assert.match(entry.result.content[0].text, /Too many data API requests/);
+    }
+    assert.equal(
+      limiterCalls,
+      1,
+      "identical batched calls must share a single limiter charge",
+    );
+    assert.equal(d1Calls, 0);
+  });
 });
 
 describe("MCP get_chain_fees", () => {
   test("returns daily series and top payers from D1", async () => {
+    // The median query only runs for days the daily aggregate already proved
+    // are within the sample cap, so the mocked day must be one the real
+    // window actually covers — use today (UTC), which any window ending at
+    // the real "now" includes.
+    const today = new Date().toISOString().slice(0, 10);
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
@@ -2003,7 +2186,7 @@ describe("MCP get_chain_fees", () => {
                     return {
                       results: [
                         {
-                          day: "2026-06-01",
+                          day: today,
                           median_fee_tao: 0.4,
                           median_tip_tao: 0.05,
                         },
@@ -2014,7 +2197,7 @@ describe("MCP get_chain_fees", () => {
                     return {
                       results: [
                         {
-                          day: "2026-06-01",
+                          day: today,
                           extrinsic_count: 20,
                           total_fee_tao: 8,
                           total_tip_tao: 2,
@@ -2057,17 +2240,33 @@ describe("MCP get_chain_fees", () => {
   });
 
   test("scopes every chain-fees query by call_module", async () => {
-    const modules = [];
+    // The median query only runs for days the daily aggregate already proved
+    // are within the sample cap, so the mocked daily response must report a
+    // real day (today, UTC) rather than an empty result set.
+    const today = new Date().toISOString().slice(0, 10);
+    const calls = [];
     const env = {
       METAGRAPH_HEALTH_DB: {
         prepare(sql) {
           return {
             bind(...params) {
               if (sql.includes("call_module = ?")) {
-                modules.push(params[1]);
+                calls.push(params);
               }
               return {
                 async all() {
+                  if (/GROUP BY day/.test(sql)) {
+                    return {
+                      results: [
+                        {
+                          day: today,
+                          extrinsic_count: 10,
+                          total_fee_tao: 1,
+                          total_tip_tao: 1,
+                        },
+                      ],
+                    };
+                  }
                   return { results: [] };
                 },
               };
@@ -2081,7 +2280,15 @@ describe("MCP get_chain_fees", () => {
       { window: "30d", call_module: "Balances", limit: 10 },
       { env },
     );
-    assert.deepEqual(modules, ["Balances", "Balances", "Balances"]);
+    assert.equal(calls.length, 3);
+    assert.equal(calls[0][1], "Balances"); // daily series
+    assert.equal(calls[1][1], "Balances"); // top fee payers
+    // Median query: the call_module filter is bound ONCE (numbered ?1) and
+    // reused across every UNION ALL day block, followed by a
+    // day-start/day-end pair per safe UTC day.
+    const medianParams = calls[2];
+    assert.equal(medianParams[0], "Balances");
+    assert.equal((medianParams.length - 1) % 2, 0);
   });
 
   test("rejects an invalid window", async () => {
@@ -2106,6 +2313,434 @@ describe("MCP get_chain_fees", () => {
     assert.equal(out.day_count, 0);
     assert.deepEqual(out.daily, []);
     assert.deepEqual(out.top_fee_payers, []);
+  });
+});
+
+describe("MCP get_chain_transfers", () => {
+  function chainTransfersD1(
+    {
+      totals = {
+        transfer_count: 10,
+        total_volume_tao: 100,
+        unique_senders: 4,
+        unique_receivers: 6,
+      },
+      senders = [{ address: "5Sa", volume_tao: 80, transfer_count: 5 }],
+      receivers = [{ address: "5Rx", volume_tao: 60, transfer_count: 4 }],
+    } = {},
+    capture = [],
+  ) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                    return { results: [totals] };
+                  }
+                  if (/GROUP BY hotkey/.test(sql)) {
+                    return { results: senders };
+                  }
+                  if (/GROUP BY coldkey/.test(sql)) {
+                    return { results: receivers };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("aggregates volume and ranks top senders/receivers", async () => {
+    const capture = [];
+    const env = chainTransfersD1({}, capture);
+    const res = await callTool(
+      "get_chain_transfers",
+      { window: "7d", limit: 5 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.equal(out.total_volume_tao, 100);
+    assert.equal(out.top_senders[0].address, "5Sa");
+    assert.equal(out.top_receivers[0].address, "5Rx");
+    assert.equal(out.top_sender_share, 0.8);
+    const senders = capture.find((c) => /GROUP BY hotkey/.test(c.sql));
+    assert.match(senders.sql, /event_kind = \?/);
+    assert.equal(senders.params.at(-1), 5);
+  });
+
+  test("defaults to the 7d window", async () => {
+    const res = await callTool(
+      "get_chain_transfers",
+      {},
+      { env: chainTransfersD1() },
+    );
+    assert.equal(res.body.result.structuredContent.window, "7d");
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_transfers", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("degrades to schema-stable zeros on cold D1", async () => {
+    const res = await callTool("get_chain_transfers", { window: "30d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_volume_tao, 0);
+    assert.equal(out.top_sender_share, null);
+    assert.deepEqual(out.top_senders, []);
+    assert.deepEqual(out.top_receivers, []);
+  });
+});
+
+describe("MCP stake-flow and movers economics tools", () => {
+  const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function stakeFlowD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (
+                    /FROM account_events/.test(sql) &&
+                    /GROUP BY event_kind/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  if (
+                    /FROM account_events/.test(sql) &&
+                    /GROUP BY netuid, event_kind/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  function moversD1({ bounds, aggregateRows } = {}, capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+                    return { results: bounds };
+                  }
+                  if (/GROUP BY netuid, snapshot_date/.test(sql)) {
+                    return { results: aggregateRows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("get_subnet_stake_flow aggregates StakeAdded and StakeRemoved", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const capture = [];
+      const res = await callTool(
+        "get_subnet_stake_flow",
+        { netuid: 7, window: "30d" },
+        {
+          env: stakeFlowD1(
+            [
+              {
+                event_kind: "StakeAdded",
+                total_tao: 200,
+                event_count: 4,
+                last_observed: 1_717_000_000_000,
+              },
+              {
+                event_kind: "StakeRemoved",
+                total_tao: 50,
+                event_count: 2,
+                last_observed: 1_717_000_000_000,
+              },
+            ],
+            capture,
+          ),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.window, "30d");
+      assert.equal(out.total_staked_tao, 200);
+      assert.equal(out.total_unstaked_tao, 50);
+      assert.equal(out.net_flow_tao, 150);
+      assert.match(capture[0].sql, /FROM account_events/);
+      assert.equal(capture[0].params[0], 7);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_stake_flow", {
+      netuid: 7,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_stake_flow rejects a missing netuid", async () => {
+    const res = await callTool("get_subnet_stake_flow", { window: "30d" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
+  test("get_subnet_stake_flow degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_subnet_stake_flow", { netuid: 7 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "30d");
+    assert.equal(out.net_flow_tao, 0);
+    assert.equal(out.stake_events, 0);
+  });
+
+  test("get_account_stake_flow shapes per-subnet direction labels", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_account_stake_flow",
+        { ss58: SS58, window: "7d" },
+        {
+          env: stakeFlowD1([
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              total_tao: 100,
+              event_count: 2,
+              last_observed: 1_717_000_000_000,
+            },
+            {
+              netuid: 9,
+              event_kind: "StakeRemoved",
+              total_tao: 40,
+              event_count: 1,
+              last_observed: 1_717_000_000_000,
+            },
+          ]),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.address, SS58);
+      assert.equal(out.window, "7d");
+      assert.equal(out.subnet_count, 2);
+      assert.equal(out.subnets[0].direction, "accumulating");
+      assert.equal(out.direction, "accumulating");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_account_stake_flow rejects a missing ss58", async () => {
+    const res = await callTool("get_account_stake_flow", {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /ss58/i);
+  });
+
+  test("get_account_stake_flow rejects an unsupported window", async () => {
+    const res = await callTool("get_account_stake_flow", {
+      ss58: SS58,
+      window: "1y",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_flow degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_account_stake_flow", { ss58: SS58 });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.address, SS58);
+    assert.equal(out.window, "30d");
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_subnet_movers ranks subnets by stake delta", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_subnet_movers",
+        { window: "30d", sort: "stake", limit: 5 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-05-31", end_date: "2026-06-30" }],
+            aggregateRows: [
+              {
+                netuid: 7,
+                snapshot_date: "2026-05-31",
+                neuron_count: 10,
+                validator_count: 3,
+                total_stake_tao: 100,
+                total_emission_tao: 5,
+              },
+              {
+                netuid: 7,
+                snapshot_date: "2026-06-30",
+                neuron_count: 12,
+                validator_count: 4,
+                total_stake_tao: 250,
+                total_emission_tao: 9,
+              },
+            ],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.window, "30d");
+      assert.equal(out.sort, "stake");
+      assert.equal(out.movers[0].netuid, 7);
+      assert.equal(out.movers[0].stake_delta_tao, 150);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_movers rejects an invalid sort", async () => {
+    const res = await callTool("get_subnet_movers", { sort: "liquidity" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort must be one of/);
+  });
+
+  test("get_subnet_movers rejects an unsupported window", async () => {
+    const res = await callTool("get_subnet_movers", { window: "1y" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_subnet_movers ranks subnets by emission delta", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const res = await callTool(
+        "get_subnet_movers",
+        { window: "7d", sort: "emission", limit: 10 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-06-23", end_date: "2026-06-30" }],
+            aggregateRows: [
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-23",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 1,
+              },
+              {
+                netuid: 3,
+                snapshot_date: "2026-06-30",
+                neuron_count: 5,
+                validator_count: 2,
+                total_stake_tao: 50,
+                total_emission_tao: 4,
+              },
+            ],
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, "emission");
+      assert.equal(out.movers[0].emission_delta_tao, 3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("get_subnet_movers degrades to an empty leaderboard on cold D1", async () => {
+    const res = await callTool("get_subnet_movers", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.window, "7d");
+    assert.deepEqual(out.movers, []);
+    assert.equal(out.subnet_count, 0);
+  });
+
+  test("stake-flow and movers payloads validate against outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
+    try {
+      const subnetStake = await callTool(
+        "get_subnet_stake_flow",
+        { netuid: 7, window: "30d" },
+        {
+          env: stakeFlowD1([
+            {
+              event_kind: "StakeAdded",
+              total_tao: 1,
+              event_count: 1,
+              last_observed: 1,
+            },
+          ]),
+        },
+      );
+      assert.ok(
+        validatorFor("get_subnet_stake_flow")(
+          subnetStake.body.result.structuredContent,
+        ),
+      );
+      const accountStake = await callTool(
+        "get_account_stake_flow",
+        { ss58: SS58 },
+        { env: stakeFlowD1([]) },
+      );
+      assert.ok(
+        validatorFor("get_account_stake_flow")(
+          accountStake.body.result.structuredContent,
+        ),
+      );
+      const movers = await callTool(
+        "get_subnet_movers",
+        { limit: 3 },
+        {
+          env: moversD1({
+            bounds: [{ start_date: "2026-06-01", end_date: "2026-06-30" }],
+            aggregateRows: [],
+          }),
+        },
+      );
+      assert.ok(
+        validatorFor("get_subnet_movers")(movers.body.result.structuredContent),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -6581,7 +7216,7 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // parity loaders' WHERE/GROUP-BY clauses get realistic rows. `capture` records
   // each bound (sql, params) so a test can assert what reached the query.
   function parityD1(
-    { dailyAgg, dailyRows, concentrationRows, events } = {},
+    { dailyAgg, dailyRows, concentrationRows, events, identityHistory } = {},
     capture = [],
   ) {
     return {
@@ -6605,6 +7240,8 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
                   }
                   if (/FROM account_events/.test(sql))
                     return Promise.resolve({ results: events || [] });
+                  if (/FROM subnet_identity_history/.test(sql))
+                    return Promise.resolve({ results: identityHistory || [] });
                   return Promise.resolve({ results: [] });
                 },
               };
@@ -6682,6 +7319,36 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_subnet_identity_history returns the append-only identity timeline", async () => {
+    const env = parityD1({
+      identityHistory: [
+        {
+          id: 2,
+          block_number: 100,
+          observed_at: 1_700_000_000_000,
+          subnet_name: "MIAO",
+          symbol: "α",
+          description: "sound AI",
+          github_repo: null,
+          subnet_url: null,
+          discord: null,
+          logo_url: null,
+          identity_hash: "hash-1",
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_subnet_identity_history",
+      { netuid: 86, limit: 10 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 86);
+    assert.equal(out.entry_count, 1);
+    assert.equal(out.entries[0].subnet_name, "MIAO");
+    assert.equal(out.limit, 10);
   });
 
   test("get_neuron_history returns one UID's per-day series", async () => {

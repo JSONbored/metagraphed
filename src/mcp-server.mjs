@@ -15,14 +15,8 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
-// Aliased: the file-local clampLimit below is the per-tool number-arg clamp, a
-// different contract from the shared pagination-profile clamp used here.
-import {
-  FEED_PAGINATION,
-  clampLimit as clampPageLimit,
-  clampOffset,
-} from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
+import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
 import {
   loadSubnetConcentration,
@@ -35,6 +29,13 @@ import {
 } from "./chain-query-loaders.mjs";
 import { loadBulkHealthTrends } from "./bulk-health-trends.mjs";
 import { loadRpcUsage } from "./rpc-usage-loader.mjs";
+import {
+  loadChainTransfers,
+  CHAIN_TRANSFER_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_LIMIT_MAX,
+  CHAIN_TRANSFER_WINDOWS,
+  DEFAULT_CHAIN_TRANSFER_WINDOW,
+} from "./chain-transfers.mjs";
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
@@ -93,10 +94,9 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
-  buildSubnetEvents,
   loadAccountSummary,
   loadAccountEvents,
+  loadSubnetEvents,
   loadAccountSubnets,
   loadAccountHistory,
   loadAccountExtrinsics,
@@ -109,10 +109,25 @@ import {
   NEURON_DAILY_READ_COLUMNS,
   parseHistoryWindow,
 } from "./neuron-history.mjs";
+import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
+import {
+  loadSubnetStakeFlow,
+  STAKE_FLOW_WINDOWS,
+  DEFAULT_STAKE_FLOW_WINDOW,
+} from "./stake-flow.mjs";
+import { loadAccountStakeFlow } from "./account-stake-flow.mjs";
+import {
+  loadSubnetMovers,
+  MOVERS_WINDOWS,
+  MOVERS_SORTS,
+  DEFAULT_MOVERS_WINDOW,
+  DEFAULT_MOVERS_SORT,
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+} from "./movers.mjs";
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
-import { decodeCursor, encodeCursor } from "./cursor.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
 import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
@@ -147,7 +162,13 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.15.0";
+export const MCP_SERVER_VERSION = "1.17.0";
+
+// Window labels accepted by get_chain_transfers — derived from the loader constant
+// so input/output schemas and runtime validation cannot drift.
+const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
+const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
+const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
 export const MCP_SERVER_INFO = {
   name: "metagraphed",
@@ -216,7 +237,9 @@ export const MCP_INSTRUCTIONS =
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
-  "boundary snapshots, get_subnet_yield per-UID emission-per-stake return " +
+  "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
+  "subnet (StakeAdded vs StakeRemoved), get_subnet_movers the cross-subnet " +
+  "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
   "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
@@ -231,10 +254,12 @@ export const MCP_INSTRUCTIONS =
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
   "get_account_events returns its chain-event history (optional kind filter), and " +
-  "get_account_subnets the subnets where it is registered. For chain-wide " +
+  "get_account_subnets the subnets where it is registered, get_account_stake_flow " +
+  "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
-  "fee/tip market series plus top payers, get_network_activity the daily " +
+  "fee/tip market series plus top payers, get_chain_transfers network-wide " +
+  "native-TAO transfer volume plus top senders/receivers, get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
   "list_chain_events the raw recent decoded event feed (filterable by " +
@@ -344,17 +369,21 @@ function mcpContractVersion(ctx) {
 }
 
 // A (sql, params) => Promise<rows[]> runner over the health DB for the metagraph
-// / trajectory loaders. Like the REST d1All, a cold DB or query error yields []
-// (schema-stable empty payload). No withTimeout — unavailable to this pure module.
+// / trajectory loaders. Like the REST d1All, a cold DB, timeout, or query error
+// yields [] (schema-stable empty payload). The timeout keeps public MCP tools
+// from monopolizing D1/Worker time with expensive aggregates.
 function mcpD1Runner(ctx) {
   return async (sql, params) => {
     const db = ctx.env?.METAGRAPH_HEALTH_DB;
     if (!db?.prepare) return [];
     try {
-      const result = await db
-        .prepare(sql)
-        .bind(...params)
-        .all();
+      const result = await withTimeout(
+        db
+          .prepare(sql)
+          .bind(...params)
+          .all(),
+        d1TimeoutMs(ctx.env),
+      );
       return result?.results || [];
     } catch {
       return [];
@@ -512,6 +541,53 @@ async function loadChainEventsFeed(
   };
 }
 
+async function requireDataTierRateLimit(ctx) {
+  if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
+  const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+    key: `data:${ctx.clientIp}`,
+  });
+  if (!success) {
+    throw toolError(
+      "data_rate_limited",
+      "Too many data API requests from this client; slow down.",
+    );
+  }
+}
+
+function chainSignersCacheKey({ label, limit, callModule, sort }) {
+  return JSON.stringify([label, limit, callModule || "", sort]);
+}
+
+async function loadMcpChainSigners(ctx, options) {
+  ctx.chainSignersCache ||= new Map();
+  const key = chainSignersCacheKey(options);
+  if (!ctx.chainSignersCache.has(key)) {
+    // The limiter charge lives inside the cache-miss promise (not ahead of the
+    // cache check) so a batch of identical calls shares one limiter charge
+    // alongside the one D1 aggregation, instead of paying the limiter once per
+    // duplicate request in the batch.
+    ctx.chainSignersCache.set(
+      key,
+      requireDataTierRateLimit(ctx)
+        .then(() =>
+          loadChainSigners(mcpD1Runner(ctx), {
+            windowLabel: options.label,
+            windowDays: options.days,
+            observedAt: options.observedAt,
+            limit: options.limit,
+            callModule: options.callModule,
+            sort: options.sort,
+          }),
+        )
+        .catch((error) => {
+          ctx.chainSignersCache.delete(key);
+          throw error;
+        }),
+    );
+  }
+  return ctx.chainSignersCache.get(key);
+}
+
 async function mcpObservedAt(ctx) {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
@@ -557,6 +633,18 @@ async function loadSubnetHistory(ctx, netuid, { label, days }) {
   return buildSubnetHistory(rows, netuid, { window: label });
 }
 
+async function loadSubnetIdentityHistoryTool(
+  ctx,
+  netuid,
+  { limit, offset, cursor },
+) {
+  return loadSubnetIdentityHistory(mcpD1Runner(ctx), netuid, {
+    limit,
+    offset,
+    cursor,
+  });
+}
+
 // One UID's per-day time series — mirrors handleNeuronHistory: neuron_daily rows
 // for (netuid, uid), newest first, bounded, shaped by buildNeuronHistory. Cold D1
 // → point_count:0.
@@ -572,44 +660,6 @@ async function loadNeuronHistory(ctx, netuid, uid, { label, days }) {
   params.push(MAX_HISTORY_POINTS);
   const rows = await run(sql, params);
   return buildNeuronHistory(rows, netuid, uid, { window: label });
-}
-
-// One subnet's first-party chain-event stream — mirrors handleSubnetEvents:
-// account_events filtered by netuid, newest first, optional kind filter, keyset
-// (cursor) pagination on (block_number, event_index) with offset as the
-// deprecated fallback. Cold D1 → event_count:0.
-async function loadSubnetEvents(ctx, netuid, { kind, limit, offset, cursor }) {
-  const run = mcpD1Runner(ctx);
-  const resolvedLimit = clampPageLimit(limit, FEED_PAGINATION);
-  const resolvedOffset = clampOffset(offset);
-  const cur = decodeCursor(cursor, 2);
-  const useCursor = Boolean(cur);
-  const params = [netuid];
-  let sql = `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE netuid = ?`;
-  if (kind) {
-    sql += " AND event_kind = ?";
-    params.push(kind);
-  }
-  if (useCursor) {
-    sql += " AND (block_number, event_index) < (?, ?)";
-    params.push(cur[0], cur[1]);
-  }
-  sql += " ORDER BY block_number DESC, event_index DESC LIMIT ?";
-  params.push(resolvedLimit);
-  if (!useCursor) {
-    sql += " OFFSET ?";
-    params.push(resolvedOffset);
-  }
-  const rows = await run(sql, params);
-  const last = rows.length === resolvedLimit ? rows[rows.length - 1] : null;
-  const nextCursor = last
-    ? encodeCursor([last.block_number, last.event_index])
-    : null;
-  return buildSubnetEvents(rows, netuid, {
-    limit: resolvedLimit,
-    offset: resolvedOffset,
-    nextCursor,
-  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
@@ -1791,6 +1841,104 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_stake_flow",
+    title: "Get subnet net stake flow",
+    description:
+      "Fetch one subnet's net stake flow over the requested window " +
+      "(7d, 30d, or 90d; default 30d): TAO staked (StakeAdded) vs unstaked " +
+      "(StakeRemoved), the net capital flow, and event counts, summed live " +
+      "from the account_events stream. Use it to see whether capital is " +
+      "entering or leaving a subnet. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        window: {
+          type: "string",
+          enum: STAKE_FLOW_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadSubnetStakeFlow(mcpD1Runner(ctx), netuid, {
+        windowLabel: window,
+      });
+      return data;
+    },
+  },
+  {
+    name: "get_subnet_movers",
+    title: "Get cross-subnet momentum leaderboard",
+    description:
+      "Fetch the cross-subnet movers leaderboard over the requested window " +
+      "(7d, 30d, or 90d; default 30d): every subnet ranked by its change in " +
+      "stake, emission, or validator count between the window's start and end " +
+      "neuron_daily snapshots. Sort by stake (default), emission, or " +
+      "validators; cap with limit (1-100, default 20). Mirrors " +
+      "GET /api/v1/subnets/movers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: MOVERS_WINDOW_KEYS,
+          description: `Comparison window (default ${DEFAULT_MOVERS_WINDOW}).`,
+        },
+        sort: {
+          type: "string",
+          enum: MOVERS_SORTS,
+          description: `Rank metric (default ${DEFAULT_MOVERS_SORT}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max movers to return (1-${MOVERS_LIMIT_MAX}, default ${MOVERS_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: MOVERS_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window = optionalString(args, "window") ?? DEFAULT_MOVERS_WINDOW;
+      if (!Object.hasOwn(MOVERS_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${MOVERS_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const sort = optionalString(args, "sort") ?? DEFAULT_MOVERS_SORT;
+      if (!MOVERS_SORTS.includes(sort)) {
+        throw toolError(
+          "invalid_params",
+          `sort must be one of: ${MOVERS_SORTS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        MOVERS_LIMIT_DEFAULT,
+        MOVERS_LIMIT_MAX,
+      );
+      return loadSubnetMovers(mcpD1Runner(ctx), {
+        windowLabel: window,
+        sort,
+        limit,
+      });
+    },
+  },
+  {
     name: "get_subnet_uptime",
     title: "Get subnet uptime history",
     description:
@@ -2056,6 +2204,49 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_identity_history",
+    title: "Get a subnet's on-chain identity history",
+    description:
+      "Fetch the append-only on-chain identity timeline for one subnet (#1647): " +
+      "each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked " +
+      "field changed (name, symbol, description, repo, website, discord, logo). " +
+      "Newest first. Page with limit (1-1000, default 100) / offset, or follow " +
+      "next_cursor for stable keyset pagination. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/identity-history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+        limit: {
+          type: "integer",
+          description: "Max entries to return (1-1000, default 100).",
+          minimum: 1,
+          maximum: 1000,
+        },
+        offset: {
+          type: "integer",
+          description: "Deprecated offset fallback when cursor is omitted.",
+          minimum: 0,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a prior response's next_cursor.",
+        },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetIdentityHistoryTool(ctx, netuid, {
+        limit: args?.limit,
+        offset: args?.offset,
+        cursor: args?.cursor,
+      });
+    },
+  },
+  {
     name: "get_neuron_history",
     title: "Get one neuron's daily history",
     description:
@@ -2135,7 +2326,7 @@ export const MCP_TOOLS = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       const cursor = optionalString(args, "cursor");
-      return loadSubnetEvents(ctx, netuid, {
+      return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
         limit: args?.limit,
         offset: args?.offset,
@@ -2315,6 +2506,49 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       return loadAccountSubnets(mcpD1Runner(ctx), ss58);
+    },
+  },
+  {
+    name: "get_account_stake_flow",
+    title: "Get an account's staking flow scorecard",
+    description:
+      "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over the " +
+      "requested window (7d, 30d, or 90d; default 30d): per-subnet net and gross " +
+      "flow with direction labels, account totals, an HHI concentration of where " +
+      "its flow is focused, and the dominant subnet. Mirrors " +
+      "GET /api/v1/accounts/{ss58}/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ss58: {
+          type: "string",
+          description:
+            "The account's SS58 hotkey address, base58, 47-48 chars.",
+          pattern: SS58_PATTERN_SOURCE,
+        },
+        window: {
+          type: "string",
+          enum: STAKE_FLOW_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
+        },
+      },
+      required: ["ss58"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ss58 = requireSs58(args);
+      const window =
+        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadAccountStakeFlow(mcpD1Runner(ctx), ss58, {
+        windowLabel: window,
+      });
+      return data;
     },
   },
   {
@@ -3153,9 +3387,9 @@ export const MCP_TOOLS = [
           "call_module must be at most 100 characters.",
         );
       }
-      const { data } = await loadChainSigners(mcpD1Runner(ctx), {
-        windowLabel: label,
-        windowDays: days,
+      const { data } = await loadMcpChainSigners(ctx, {
+        label,
+        days,
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
@@ -3215,6 +3449,55 @@ export const MCP_TOOLS = [
         observedAt: await mcpObservedAt(ctx),
       });
       return data;
+    },
+  },
+  {
+    name: "get_chain_transfers",
+    title: "Get network-wide native-TAO transfer analytics",
+    description:
+      "Fetch network-wide Balances.Transfer analytics over the requested window " +
+      "(7d or 30d): total transfer volume and count, distinct senders/receivers, " +
+      "the top senders and receivers ranked by volume, and the top senders' share " +
+      "of total volume (a concentration signal). The network-level companion of " +
+      "get_account_transfers and get_account_counterparties. Mirrors " +
+      "GET /api/v1/chain/transfers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_TRANSFER_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_CHAIN_TRANSFER_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max top senders/receivers to return (1-${CHAIN_TRANSFER_LIMIT_MAX}, default ${CHAIN_TRANSFER_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_TRANSFER_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
+      if (!Object.hasOwn(CHAIN_TRANSFER_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_TRANSFER_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_TRANSFER_LIMIT_DEFAULT,
+        CHAIN_TRANSFER_LIMIT_MAX,
+      );
+      return loadChainTransfers(mcpD1Runner(ctx), {
+        windowLabel: window,
+        windowDays: CHAIN_TRANSFER_WINDOWS[window],
+        observedAt: await mcpObservedAt(ctx),
+        limit,
+      });
     },
   },
   {
@@ -4215,6 +4498,16 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const CHAIN_TRANSFER_PARTY_ITEM = {
+  type: "object",
+  additionalProperties: false,
+  required: ["address", "volume_tao", "transfer_count"],
+  properties: {
+    address: { type: "string" },
+    volume_tao: { type: "number" },
+    transfer_count: { type: "integer", minimum: 0 },
+  },
+};
 // Shared block item shape for list_blocks (each block in the feed).
 const BLOCK_ITEM = {
   block_number: NULLABLE_INT,
@@ -4623,6 +4916,59 @@ const TOOL_OUTPUT_SCHEMAS = {
       neurons: { type: "array", items: { type: "object" } },
     },
   },
+  get_subnet_stake_flow: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "netuid",
+      "window",
+      "total_staked_tao",
+      "total_unstaked_tao",
+      "net_flow_tao",
+      "stake_events",
+      "unstake_events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      window: NULLABLE_STRING,
+      total_staked_tao: ANY,
+      total_unstaked_tao: ANY,
+      net_flow_tao: ANY,
+      stake_events: { type: "integer" },
+      unstake_events: { type: "integer" },
+    },
+  },
+  get_subnet_movers: {
+    type: "object",
+    additionalProperties: true,
+    required: ["window", "sort", "subnet_count", "movers"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      sort: NULLABLE_STRING,
+      subnet_count: { type: "integer" },
+      movers: objectItems({
+        netuid: { type: "integer" },
+        stake_start_tao: ANY,
+        stake_end_tao: ANY,
+        stake_delta_tao: ANY,
+        stake_pct_change: { type: ["number", "null"] },
+        emission_start_tao: ANY,
+        emission_end_tao: ANY,
+        emission_delta_tao: ANY,
+        emission_pct_change: { type: ["number", "null"] },
+        validators_start: { type: "integer" },
+        validators_end: { type: "integer" },
+        validators_delta: { type: "integer" },
+        neurons_start: { type: "integer" },
+        neurons_end: { type: "integer" },
+        neurons_delta: { type: "integer" },
+      }),
+    },
+  },
   get_subnet_turnover: {
     type: "object",
     additionalProperties: true,
@@ -4760,6 +5106,31 @@ const TOOL_OUTPUT_SCHEMAS = {
       }),
     },
   },
+  get_subnet_identity_history: {
+    type: "object",
+    additionalProperties: true,
+    required: ["schema_version", "netuid", "entry_count", "entries"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      entry_count: { type: "integer" },
+      limit: NULLABLE_INT,
+      offset: NULLABLE_INT,
+      next_cursor: NULLABLE_STRING,
+      entries: objectItems({
+        block_number: NULLABLE_INT,
+        observed_at: NULLABLE_STRING,
+        subnet_name: NULLABLE_STRING,
+        symbol: NULLABLE_STRING,
+        description: NULLABLE_STRING,
+        github_repo: NULLABLE_STRING,
+        subnet_url: NULLABLE_STRING,
+        discord: NULLABLE_STRING,
+        logo_url: NULLABLE_STRING,
+        identity_hash: { type: "string" },
+      }),
+    },
+  },
   get_neuron_history: {
     type: "object",
     additionalProperties: true,
@@ -4850,6 +5221,50 @@ const TOOL_OUTPUT_SCHEMAS = {
       ss58: { type: "string" },
       subnet_count: { type: "integer" },
       subnets: objectItems(ACCOUNT_REGISTRATION_ITEM),
+    },
+  },
+  get_account_stake_flow: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "address",
+      "window",
+      "total_staked_tao",
+      "total_unstaked_tao",
+      "net_flow_tao",
+      "gross_flow_tao",
+      "direction",
+      "stake_events",
+      "unstake_events",
+      "subnet_count",
+      "subnets",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      address: { type: "string" },
+      window: NULLABLE_STRING,
+      total_staked_tao: ANY,
+      total_unstaked_tao: ANY,
+      net_flow_tao: ANY,
+      gross_flow_tao: ANY,
+      flow_ratio: { type: ["number", "null"] },
+      direction: NULLABLE_STRING,
+      stake_events: { type: "integer" },
+      unstake_events: { type: "integer" },
+      subnet_count: { type: "integer" },
+      concentration: { type: ["number", "null"] },
+      dominant_netuid: NULLABLE_INT,
+      subnets: objectItems({
+        netuid: { type: "integer" },
+        staked_tao: ANY,
+        unstaked_tao: ANY,
+        net_flow_tao: ANY,
+        gross_flow_tao: ANY,
+        flow_ratio: { type: ["number", "null"] },
+        direction: NULLABLE_STRING,
+        stake_events: { type: "integer" },
+        unstake_events: { type: "integer" },
+      }),
     },
   },
   get_account_history: {
@@ -5112,6 +5527,43 @@ const TOOL_OUTPUT_SCHEMAS = {
         total_tip_tao: { type: ["number", "null"] },
         extrinsic_count: NULLABLE_INT,
       }),
+    },
+  },
+  get_chain_transfers: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "schema_version",
+      "window",
+      "observed_at",
+      "total_volume_tao",
+      "transfer_count",
+      "unique_senders",
+      "unique_receivers",
+      "top_sender_share",
+      "top_senders",
+      "top_receivers",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: {
+        type: ["string", "null"],
+        enum: [...CHAIN_TRANSFER_WINDOW_KEYS, null],
+      },
+      observed_at: NULLABLE_STRING,
+      total_volume_tao: { type: "number" },
+      transfer_count: { type: "integer", minimum: 0 },
+      unique_senders: { type: "integer", minimum: 0 },
+      unique_receivers: { type: "integer", minimum: 0 },
+      top_sender_share: { type: ["number", "null"] },
+      top_senders: {
+        type: "array",
+        items: CHAIN_TRANSFER_PARTY_ITEM,
+      },
+      top_receivers: {
+        type: "array",
+        items: CHAIN_TRANSFER_PARTY_ITEM,
+      },
     },
   },
   get_network_activity: {

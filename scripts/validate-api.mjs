@@ -215,6 +215,14 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/identity-history?limit=5",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.entries), true);
+      assert.equal(body.data.entries.length <= 5, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/neurons/0/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);

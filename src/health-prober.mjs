@@ -24,6 +24,7 @@ import {
 } from "./health-probe-core.mjs";
 import { latencyStatColumns, rankedChecksCte } from "./health-sql.mjs";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.mjs";
+import { recordSubnetIdentityChanges } from "./subnet-identity-history.mjs";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -814,6 +815,13 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     : [];
   if (!profiles.length) return { ok: false, reason: "no_profiles" };
 
+  const capturedAt = now();
+  const identityHistory = await recordSubnetIdentityChanges(env, {
+    profiles,
+    now: capturedAt,
+    db,
+  });
+
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
@@ -830,8 +838,7 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
     ).map((row) => [row.netuid, row]),
   );
 
-  const date = new Date(now()).toISOString().slice(0, 10);
-  const capturedAt = now();
+  const date = new Date(capturedAt).toISOString().slice(0, 10);
   // The structural columns + captured_at are owned by the first same-day fire.
   // The economics columns can arrive late (economics.json is pure chain state
   // with no committed-asset fallback, unlike profiles.json), so DO NOTHING
@@ -876,8 +883,17 @@ export async function writeSubnetSnapshot(env, overrides = {}) {
   if (!statements.length) return { ok: false, reason: "no_rows" };
   try {
     await runD1StatementBatches(db, statements);
-    return { ok: true, date, rows: statements.length };
+    return {
+      ok: true,
+      date,
+      rows: statements.length,
+      identity_history: identityHistory,
+    };
   } catch {
-    return { ok: false, reason: "write_failed" };
+    return {
+      ok: false,
+      reason: "write_failed",
+      identity_history: identityHistory,
+    };
   }
 }

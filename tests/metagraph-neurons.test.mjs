@@ -87,18 +87,25 @@ describe("metagraph-neurons builders", () => {
     assert.equal(n.is_immunity_period, false);
   });
 
-  test("formatNeuron coerces string-typed uid/registered_at_block and stake/emission cells", () => {
+  test("formatNeuron coerces string-typed uid/registered_at_block, stake/emission, and ratio cells", () => {
     // D1 can return INTEGER / REAL columns as numeric strings ("3" not 3,
     // "1000.5" not 1000.5); the bare `?? null` pass-through this replaced would
     // have leaked strings into the API payload. Same shape as the coercion in
     // blocks.mjs (#2435), extrinsics.mjs (#2439), and account-events.mjs
     // (#2481, #2489). stake/emission additionally round to rao precision so
-    // accumulated IEEE-754 float noise never reaches the payload.
+    // accumulated IEEE-754 float noise never reaches the payload. Ratio fields
+    // use nullableNumber + round, matching buildGlobalValidators (#2611).
     const n = formatNeuron({
       uid: "3",
       registered_at_block: "6702485",
       stake_tao: "1000.5",
       emission_tao: "22.123456789",
+      rank: "12",
+      trust: "0.25",
+      validator_trust: "0.4",
+      consensus: "0.88",
+      incentive: "0.01",
+      dividends: "0.02",
     });
     assert.equal(n.uid, 3);
     assert.equal(typeof n.uid, "number");
@@ -108,6 +115,25 @@ describe("metagraph-neurons builders", () => {
     assert.equal(typeof n.stake_tao, "number");
     assert.equal(n.emission_tao, 22.123456789);
     assert.equal(typeof n.emission_tao, "number");
+    assert.equal(n.rank, 12);
+    assert.equal(typeof n.rank, "number");
+    assert.equal(n.trust, 0.25);
+    assert.equal(typeof n.trust, "number");
+    assert.equal(n.validator_trust, 0.4);
+    assert.equal(n.consensus, 0.88);
+    assert.equal(n.incentive, 0.01);
+    assert.equal(n.dividends, 0.02);
+  });
+
+  test("formatNeuron nulls invalid or absent ratio cells", () => {
+    const n = formatNeuron({
+      rank: null,
+      trust: "not-a-number",
+      validator_trust: undefined,
+    });
+    assert.equal(n.rank, null);
+    assert.equal(n.trust, null);
+    assert.equal(n.validator_trust, null);
   });
 
   test("formatNeuron rounds stake_tao / emission_tao to rao precision (no IEEE-754 leak)", () => {
@@ -165,6 +191,30 @@ describe("metagraph-neurons builders", () => {
     const data = buildSubnetValidators([ROW], 7);
     assert.equal(data.validator_count, 1);
     assert.equal(data.validators[0].validator_permit, true);
+  });
+
+  test("coerces a string-typed D1 block_number to an integer in the snapshot stamp + neuron detail", () => {
+    // block_number is a nullable D1 INTEGER that can come back as a numeric
+    // string; the snapshot stamp (metagraph/validators) and neuron-detail top
+    // level must emit an integer or null, never leak the string into the
+    // ["integer","null"] contract field. Mirrors the buildGlobalValidators fix
+    // (#2611) for the remaining emission sites.
+    const meta = buildSubnetMetagraph([{ ...ROW, block_number: "8454388" }], 7);
+    assert.equal(meta.block_number, 8454388);
+    assert.equal(typeof meta.block_number, "number");
+    const vals = buildSubnetValidators(
+      [{ ...ROW, block_number: "8454388" }],
+      7,
+    );
+    assert.equal(vals.block_number, 8454388);
+    const detail = buildNeuronDetail({ ...ROW, block_number: "8454388" }, 7);
+    assert.equal(detail.block_number, 8454388);
+    assert.equal(typeof detail.block_number, "number");
+    // a null block_number stays null (not a fabricated 0).
+    assert.equal(
+      buildNeuronDetail({ ...ROW, block_number: null }, 7).block_number,
+      null,
+    );
   });
 
   test("buildGlobalValidators groups validator identities across subnets", () => {

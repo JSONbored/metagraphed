@@ -146,6 +146,16 @@ describe("buildSubnetYield", () => {
     assert.equal(d.block_number, null); // non-finite block -> null
   });
 
+  test("a null D1 block_number stays null, not a fabricated genesis 0", () => {
+    // block_number is a nullable INTEGER; Number(null) === 0 must not surface
+    // as the real chain height 0 (the contract models it as ["integer","null"]).
+    const d = buildSubnetYield(
+      [neuron(0, { validator: true, stake: 10, emission: 1, block: null })],
+      7,
+    );
+    assert.equal(d.block_number, null);
+  });
+
   test("ties break by uid, extra zero-stake UIDs sink, and a missing hotkey is null", () => {
     const d = buildSubnetYield(
       [
