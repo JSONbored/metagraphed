@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
+import * as healthServing from "../src/health-serving.mjs";
 import {
   economicsQueryUrl,
   GET_ECONOMICS_MCP_TOOL,
@@ -100,6 +101,11 @@ describe("network-economics — economicsQueryUrl", () => {
     const url = economicsQueryUrl({ limit: 0 });
     assert.equal(url.searchParams.get("limit"), "100");
   });
+
+  test("falls back when limit is not a number", () => {
+    const url = economicsQueryUrl({ limit: "50" });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
 });
 
 describe("network-economics — loadNetworkEconomics", () => {
@@ -165,6 +171,27 @@ describe("network-economics — loadNetworkEconomics", () => {
     assert.equal(out.summary, null);
     assert.equal(out.network, null);
     assert.equal(out.captured_at, FRESH_RUN);
+  });
+
+  test("null-fills captured_at when the snapshot omits it", async () => {
+    const out = await loadNetworkEconomics(
+      makeCtx(),
+      {},
+      makeDeps({ subnets: [ECON_ROW], summary: ECON_BLOB.summary }),
+    );
+    assert.equal(out.captured_at, null);
+  });
+
+  test("defaults source when the live tier returns data without a source label", async () => {
+    const spy = vi
+      .spyOn(healthServing, "resolveLiveEconomics")
+      .mockResolvedValue({ data: ECON_BLOB, source: null });
+    try {
+      const out = await loadNetworkEconomics(makeCtx(), {}, makeDeps(null));
+      assert.equal(out.source, "r2-fallback");
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test("surfaces not_found when neither tier has data", async () => {
