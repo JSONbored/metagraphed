@@ -1461,6 +1461,16 @@ export async function handleExtrinsics(request, env, url) {
   const fromMs = numericFilters.from ?? null;
   const toMs = numericFilters.to ?? null;
   const successRaw = sp.get("success");
+  if (
+    successRaw !== null &&
+    successRaw !== "true" &&
+    successRaw !== "false"
+  ) {
+    return analyticsQueryError({
+      parameter: "success",
+      message: "success must be one of: true, false.",
+    });
+  }
   const data = await loadExtrinsics(d1Runner(env), {
     block: numericFilters.block ?? undefined,
     signer: sp.get("signer") || undefined,
