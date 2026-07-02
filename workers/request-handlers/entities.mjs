@@ -107,6 +107,7 @@ import {
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
   DEFAULT_STAKE_FLOW_DIRECTION,
+  STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
 import {
@@ -506,12 +507,7 @@ export function canonicalSubnetStakeFlowCachePath(url) {
     return `${url.pathname}${url.search}`;
   }
   const direction = url.searchParams.get("direction");
-  if (
-    direction !== null &&
-    direction !== "all" &&
-    direction !== "in" &&
-    direction !== "out"
-  ) {
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
     return `${url.pathname}${url.search}`;
   }
   let path = `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
@@ -656,15 +652,10 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
     });
   }
   const direction = url.searchParams.get("direction");
-  if (
-    direction !== null &&
-    direction !== "all" &&
-    direction !== "in" &&
-    direction !== "out"
-  ) {
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
     return analyticsQueryError({
       parameter: "direction",
-      message: `"${direction}" is not a valid direction. Supported: all, in, out.`,
+      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
     });
   }
   const normalizedDirection =

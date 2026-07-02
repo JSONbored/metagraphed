@@ -947,7 +947,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-stake-flow",
     "/metagraph/subnets/{netuid}/stake-flow.json",
-    "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
+    "Net stake flow for one subnet over a recent window (7d/30d/90d): total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and event counts, with optional ?direction=all|in|out to filter inflow or outflow only, summed live from the account_events stream at /api/v1/subnets/{netuid}/stake-flow (no static file).",
     "SubnetStakeFlowArtifact",
   ),
   artifact(

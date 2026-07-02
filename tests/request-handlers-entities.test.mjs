@@ -1693,6 +1693,15 @@ describe("handleSubnetStakeFlow", () => {
       assert.equal(path, "/api/v1/subnets/7/stake-flow?bogus=1");
     });
 
+    test("passes an invalid direction through unchanged (the handler rejects it)", () => {
+      const path = canonicalSubnetStakeFlowCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/7/stake-flow?direction=bogus",
+        ),
+      );
+      assert.equal(path, "/api/v1/subnets/7/stake-flow?direction=bogus");
+    });
+
     test("canonicalizes omitted and explicit default direction to one cache key", () => {
       const omitted = canonicalSubnetStakeFlowCachePath(
         new URL(
