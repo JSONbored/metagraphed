@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -307,5 +307,72 @@ describe("GET /api/v1/chain/identity-history", () => {
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.count, 1);
+  });
+});
+
+describe("chain/identity-history edge cache", () => {
+  let originalCaches;
+  afterEach(() => {
+    globalThis.caches = originalCaches;
+  });
+
+  function identityEnv(rows) {
+    return {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind: () => ({
+              all: () =>
+                Promise.resolve({
+                  results: /MAX\(observed_at\)/.test(sql)
+                    ? [{ observed_at: 1_700_000_000_000 }]
+                    : rows,
+                }),
+            }),
+          };
+        },
+      },
+    };
+  }
+
+  test("engages the edge cache, busting on the newest identity observed_at", async () => {
+    originalCaches = globalThis.caches;
+    const store = new Map();
+    globalThis.caches = {
+      default: {
+        async match(request) {
+          const cached = store.get(request.url);
+          return cached ? cached.clone() : undefined;
+        },
+        async put(request, response) {
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/identity-history"),
+      identityEnv([
+        {
+          id: 1,
+          netuid: 1,
+          block_number: 400,
+          observed_at: 1_700_000_000_000,
+          subnet_name: "Alpha",
+          symbol: "α",
+          description: "d",
+          github_repo: null,
+          subnet_url: null,
+          discord: null,
+          logo_url: null,
+          identity_hash: "h1",
+        },
+      ]),
+      { waitUntil: (promise) => promise },
+    );
+    assert.equal(res.status, 200);
+    // A non-null stamp resolver + 200 means the response was cached: proof the
+    // readIdentityHistoryCacheStamp arrow ran and returned the network observed_at.
+    assert.equal(store.size, 1);
   });
 });
