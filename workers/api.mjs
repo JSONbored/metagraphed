@@ -648,14 +648,18 @@ export async function handleNeuronBackfill(request, env) {
     );
   }
   const rows = validNeuronDailyRows(incoming);
+  // Sum D1 meta.changes so idempotent re-upserts report inserted:0 instead of
+  // rows.length (mirrors handleEventIngest / handleBlockIngest).
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(neuronDailyUpsertStatements(db, rows));
+    const results = await db.batch(neuronDailyUpsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
   return new Response(
     JSON.stringify({
       ok: true,
       received: incoming.length,
-      inserted: rows.length,
+      inserted,
     }),
     { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
   );
@@ -736,14 +740,16 @@ export async function handleEconomicsBackfill(request, env) {
     );
   }
   const rows = validEconomicsBackfillRows(incoming);
+  let inserted = 0;
   if (rows.length) {
-    await db.batch(economicsSnapshotUpsertStatements(db, rows));
+    const results = await db.batch(economicsSnapshotUpsertStatements(db, rows));
+    for (const result of results) inserted += result?.meta?.changes ?? 0;
   }
   return new Response(
     JSON.stringify({
       ok: true,
       received: incoming.length,
-      inserted: rows.length,
+      inserted,
     }),
     { status: 200, headers: { "content-type": JSON_CONTENT_TYPE } },
   );

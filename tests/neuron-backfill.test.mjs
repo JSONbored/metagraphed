@@ -50,6 +50,7 @@ function dbCapture(captured) {
     },
     async batch(stmts) {
       captured.push(stmts.length);
+      return stmts.map(() => ({ meta: { changes: 1 } }));
     },
   };
 }
@@ -101,6 +102,26 @@ test("backfill upserts valid rows + filters invalid (200, parameterized)", async
   assert.equal(body.received, 5);
   assert.equal(body.inserted, 2);
   assert.deepEqual(captured, [2]); // one batch of the 2 valid rows
+});
+
+test("backfill reports inserted:0 on idempotent re-upsert (meta.changes)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch(stmts) {
+        return stmts.map(() => ({ meta: { changes: 0 } }));
+      },
+    },
+  };
+  const res = await handleNeuronBackfill(
+    post([row(), row({ uid: 2 })], { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).inserted, 0);
 });
 
 test("backfill accepts the {rows:[...]} envelope + no-ops on empty", async () => {

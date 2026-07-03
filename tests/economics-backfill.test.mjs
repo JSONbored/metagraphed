@@ -40,6 +40,7 @@ function dbCapture(captured) {
     },
     async batch(stmts) {
       captured.push(stmts);
+      return stmts.map(() => ({ meta: { changes: 1 } }));
     },
   };
 }
@@ -106,6 +107,26 @@ test("economics backfill upserts valid rows + filters invalid (200, parameterize
     /alpha_price_tao = COALESCE\(subnet_snapshots\.alpha_price_tao, excluded\.alpha_price_tao\)/,
   );
   assert.deepEqual(first.v, [8, "2025-12-01", 0.030678787, 1700000000000]);
+});
+
+test("economics backfill reports inserted:0 on idempotent re-upsert (meta.changes)", async () => {
+  const env = {
+    METAGRAPH_EVENTS_INGEST_SECRET: SECRET,
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return { bind: (...v) => ({ sql, v }) };
+      },
+      async batch(stmts) {
+        return stmts.map(() => ({ meta: { changes: 0 } }));
+      },
+    },
+  };
+  const res = await handleEconomicsBackfill(
+    post([row(), row({ netuid: 9 })], { secret: SECRET }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).inserted, 0);
 });
 
 test("economics backfill accepts the {rows:[...]} envelope + no-ops on empty", async () => {
