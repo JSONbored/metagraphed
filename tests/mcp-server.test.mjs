@@ -5976,6 +5976,51 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.windows["30d"].subnets, []);
   });
 
+  test("get_network_health returns unknown when the live store is cold", async () => {
+    const res = await callTool("get_network_health", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.scope, "operational");
+    assert.equal(out.health_source, "unavailable");
+    assert.equal(out.global.surface_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_network_health overlays the live KV rollup", async () => {
+    const globalLiveKv = {
+      generated_at: "2026-06-11T00:00:00.000Z",
+      last_run_at: FRESH_RUN,
+      health_source: "live-cron-prober",
+      summary: {
+        surface_count: 58,
+        status_counts: { ok: 57, degraded: 1, failed: 0, unknown: 0 },
+      },
+      subnets: [{ netuid: 0, status: "ok", surface_count: 2, ok_count: 2 }],
+    };
+    const deps = makeDeps({}, { "health:current": globalLiveKv });
+    const res = await callTool("get_network_health", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.health_source, "live-cron-prober");
+    assert.equal(out.operational_observed_at, FRESH_RUN);
+    assert.equal(out.global.surface_count, 58);
+    assert.equal(out.subnets[0].netuid, 0);
+  });
+
+  test("get_network_health payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_network_health",
+    )?.outputSchema;
+    const globalLiveKv = {
+      last_run_at: FRESH_RUN,
+      summary: { surface_count: 1, status_counts: { ok: 1 } },
+      subnets: [{ netuid: 0, status: "ok" }],
+    };
+    const deps = makeDeps({}, { "health:current": globalLiveKv });
+    const res = await callTool("get_network_health", {}, { deps });
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_health_trends aggregates bulk trend rows from D1", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: {
@@ -7047,6 +7092,24 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.day_count, 0);
     assert.deepEqual(res.body.result.structuredContent.days, []);
+  });
+
+  test("get_account_history rejects malformed from/to dates before D1", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      from: "June",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /YYYY-MM-DD/i);
+  });
+
+  test("get_account_history rejects a non-integer netuid filter", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      netuid: 7.5,
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
   });
 
   test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {

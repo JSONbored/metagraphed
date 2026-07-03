@@ -15,6 +15,7 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
@@ -24,6 +25,12 @@ import {
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
 } from "./network-economics.mjs";
+import {
+  GET_NETWORK_HEALTH_INSTRUCTIONS,
+  GET_NETWORK_HEALTH_MCP_TOOL,
+  GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  loadGlobalOperationalHealth,
+} from "./global-operational-health.mjs";
 import {
   loadChainConcentration,
   loadSubnetConcentration,
@@ -251,7 +258,9 @@ export const MCP_INSTRUCTIONS =
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
-  "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
+  "long-term surface uptime history, " +
+  GET_NETWORK_HEALTH_INSTRUCTIONS +
+  "get_health_trends the all-subnet 7d/30d " +
   "uptime + latency matrix, get_subnet_health_trends one subnet's per-surface " +
   "health trends, get_subnet_health_percentiles its " +
   "per-surface p50/p95/p99 request-latency distribution, " +
@@ -878,6 +887,16 @@ function optionalString(args, key) {
     );
   }
   return value.trim();
+}
+
+// Optional YYYY-MM-DD day bound — mirrors parseDateRange() on REST history routes.
+function optionalDayArg(args, key) {
+  const value = optionalString(args, key);
+  if (value === null) return null;
+  if (!DAY_PATTERN.test(value)) {
+    throw toolError("invalid_params", "from/to must be YYYY-MM-DD dates.");
+  }
+  return value;
 }
 
 // Reject unknown event-kind filters before D1, parity with the REST event feeds
@@ -1520,6 +1539,19 @@ export const MCP_TOOLS = [
       );
       const live = await mcpLiveHealth(ctx);
       return overlayOverviewHealth(overview, live, netuid) || overview;
+    },
+  },
+  {
+    ...GET_NETWORK_HEALTH_MCP_TOOL,
+    async handler(_args, ctx) {
+      return loadGlobalOperationalHealth(
+        {
+          env: ctx.env,
+          readHealthKv: ctx.readHealthKv,
+          db: ctx.env?.METAGRAPH_HEALTH_DB,
+        },
+        { contractVersion: () => mcpContractVersion(ctx) },
+      );
     },
   },
   {
@@ -2792,10 +2824,9 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      const netuid =
-        typeof args?.netuid === "number" ? Math.floor(args.netuid) : undefined;
-      const from = optionalString(args, "from");
-      const to = optionalString(args, "to");
+      const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
+      const from = optionalDayArg(args, "from");
+      const to = optionalDayArg(args, "to");
       const cursor = optionalString(args, "cursor");
       return loadAccountHistory(mcpD1Runner(ctx), ss58, {
         netuid,
@@ -5109,6 +5140,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
+  get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,

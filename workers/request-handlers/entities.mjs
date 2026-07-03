@@ -881,6 +881,7 @@ export async function handleAccount(request, env, ss58) {
 export async function handleAccountEvents(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "kind",
+    "netuid",
     "block_start",
     "block_end",
     "limit",
@@ -902,6 +903,11 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  const netuid = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuid.error) return analyticsQueryError(netuid.error);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -918,6 +924,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
     kind,
+    netuid: netuid.value,
     cursor: url.searchParams.get("cursor"),
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,

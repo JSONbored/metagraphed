@@ -308,6 +308,11 @@ EXTRACTORS = {
     "StakeRemoved": _stake,
     "StakeMoved": _moved,
     "AxonServed": _axon,
+    # Forward-compat (#2555): axon clear/withdraw counterpart to AxonServed.
+    # [netuid, hotkey] — same tuple as AxonServed/PrometheusServed. Not present in
+    # finney spec-424 metadata today (verified 2026-07-03); poller skips unknown kinds
+    # harmlessly until upstream ships the variant — no rows emitted until then.
+    "AxonInfoRemoved": _axon,
     "PrometheusServed": _axon,  # [netuid, hotkey]
     "WeightsSet": _weights,
     "RootClaimed": _root,

@@ -565,6 +565,43 @@ describe("feeds — filterUntil", () => {
   });
 });
 
+describe("feeds — ?limit= filter", () => {
+  test("?limit caps the number of returned items", async () => {
+    const full = JSON.parse(
+      (await feed("/api/v1/feeds/registry.json")).text,
+    ).items;
+    assert.ok(full.length > 1, "fixture must have >1 item to exercise the cap");
+    const { res, text } = await feed("/api/v1/feeds/registry.json?limit=1");
+    assert.equal(res.status, 200);
+    assert.equal(JSON.parse(text).items.length, 1);
+  });
+
+  test("?limit above the 50-item cap clamps instead of erroring", async () => {
+    const { res, text } = await feed("/api/v1/feeds/registry.json?limit=100");
+    assert.equal(res.status, 200);
+    assert.ok(JSON.parse(text).items.length <= 50);
+  });
+
+  test("?limit composes with ?tag=", async () => {
+    const { res, text } = await feed(
+      "/api/v1/feeds/registry.json?limit=1&tag=registry",
+    );
+    assert.equal(res.status, 200);
+    const items = JSON.parse(text).items;
+    assert.equal(items.length, 1);
+    assert.ok((items[0].tags || []).includes("registry"));
+  });
+
+  test("a malformed ?limit is rejected with 400", async () => {
+    for (const value of ["0", "-1", "1.5", "abc", "10x"]) {
+      const { res } = await feed(
+        `/api/v1/feeds/registry.json?limit=${encodeURIComponent(value)}`,
+      );
+      assert.equal(res.status, 400, value);
+    }
+  });
+});
+
 describe("feeds — ?since= filter", () => {
   test("a future since yields an empty but valid feed (200)", async () => {
     const { res, text } = await feed(
@@ -1309,6 +1346,37 @@ describe("feeds — Worker dispatch integration", () => {
     assert.equal(
       invalid.headers.get("x-metagraph-error-code"),
       "invalid_until",
+    );
+  });
+
+  test("handleRequest keys edge-cached feeds by limit", async () => {
+    installMockCache();
+    const env = createLocalArtifactEnv();
+    const ctx = { waitUntil: (promise) => promise };
+
+    // ?limit is threaded into the feed edge-cache key, so a capped request and a
+    // later unlimited request do not share a cache slot.
+    const capped = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=1",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(capped.status, 200);
+    assert.ok((await capped.json()).items.length <= 1);
+
+    const invalid = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/feeds/registry.json?limit=0",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(invalid.status, 400);
+    assert.equal(
+      invalid.headers.get("x-metagraph-error-code"),
+      "invalid_limit",
     );
   });
 

@@ -2045,6 +2045,70 @@ describe("handleAccountEvents", () => {
     assert.equal(body.meta.parameter, "block_end");
   });
 
+  test("rejects a malformed netuid with 400", async () => {
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      emptyEnv(),
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "netuid");
+  });
+
+  test("netuid filter narrows results to one subnet", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ netuid: 7 })],
+    });
+    await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=7`),
+    );
+    assert.ok(
+      captures.sql.some((s) => /AND netuid = \?/.test(s)),
+      "expected netuid filter in SQL",
+    );
+    const eventsSql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.equal(
+      eventsSql.match(/AND netuid = \?/g)?.length,
+      2,
+      "expected netuid filter on both union branches",
+    );
+  });
+
+  test("netuid absent leaves the feed unfiltered", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow()],
+    });
+    await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events`),
+    );
+    assert.ok(
+      captures.sql.every((s) => !/AND netuid = \?/.test(s)),
+      "expected no netuid filter when param is absent",
+    );
+  });
+
+  test("netuid combines with kind filter", async () => {
+    const { env, captures } = dbWith({
+      accountEvents: [accountEventRow({ event_kind: "WeightsSet", netuid: 3 })],
+    });
+    await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?netuid=3&kind=WeightsSet`),
+    );
+    const eventsSql = captures.sql.find((s) => /FROM account_events/.test(s));
+    assert.ok(/AND event_kind = \?/.test(eventsSql));
+    assert.equal(eventsSql.match(/AND netuid = \?/g)?.length, 2);
+  });
+
   test("short-circuits an inverted block_start>block_end window before D1", async () => {
     const { env, captures } = dbWith({
       accountEvents: [accountEventRow()],

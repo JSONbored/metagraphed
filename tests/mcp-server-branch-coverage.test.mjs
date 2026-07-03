@@ -580,6 +580,35 @@ describe("get_economics — branch coverage", () => {
   });
 });
 
+// ── get_network_health — global operational rollup ──────────────────────
+describe("get_network_health — branch coverage", () => {
+  test("serves unknown when ctx has no METAGRAPH_HEALTH_DB binding", async () => {
+    const res = await callTool("get_network_health", {}, { env: {} });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.health_source, "unavailable");
+    assert.equal(out.global.surface_count, 0);
+  });
+
+  test("overlays live KV when health:current is present", async () => {
+    const deps = makeDeps(
+      {},
+      {
+        "health:current": {
+          last_run_at: FRESH_RUN,
+          summary: { surface_count: 3, status_counts: { ok: 3 } },
+          subnets: [{ netuid: 1, status: "ok" }],
+        },
+      },
+    );
+    const res = await callTool("get_network_health", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.health_source, "live-cron-prober");
+    assert.equal(out.global.surface_count, 3);
+    assert.equal(out.subnets[0].netuid, 1);
+  });
+});
+
 // ── list_subnet_apis fallbacks ────────────────────────────
 describe("list_subnet_apis — detail fallback fields", () => {
   test("falls back to the requested netuid + empty services when detail is bare", async () => {
