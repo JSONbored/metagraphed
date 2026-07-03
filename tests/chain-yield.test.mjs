@@ -126,6 +126,32 @@ describe("buildChainYield", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("rejects invalid captured_at cells instead of leaking junk stamps (no RangeError)", () => {
+    for (const captured_at of [
+      "0",
+      "not-a-date",
+      "9".repeat(400),
+      -1,
+      0,
+      true,
+      8_640_000_000_000_001,
+      "8640000000000001",
+    ]) {
+      const out = buildChainYield([
+        { stake_tao: 1, emission_tao: 0, captured_at },
+      ]);
+      assert.equal(out.captured_at, null, `expected null for ${captured_at}`);
+    }
+  });
+
+  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+    const out = buildChainYield([
+      { stake_tao: 1, emission_tao: 0, captured_at: "1750000000000" },
+      { stake_tao: 1, emission_tao: 0, captured_at: "1750000060000" },
+    ]);
+    assert.equal(out.captured_at, "2025-06-15T15:07:40.000Z");
+  });
+
   test("coerces numeric-string stake/emission cells from D1", () => {
     const out = buildChainYield([
       {
