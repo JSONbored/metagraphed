@@ -38,6 +38,12 @@ import {
   loadGlobalOperationalHealth,
 } from "./global-operational-health.mjs";
 import {
+  GET_COVERAGE_INSTRUCTIONS,
+  GET_COVERAGE_MCP_TOOL,
+  GET_COVERAGE_OUTPUT_SCHEMA,
+  loadRegistryCoverage,
+} from "./registry-coverage.mjs";
+import {
   GET_SUBNET_PROFILE_MCP_TOOL,
   GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
   LIST_PROFILES_INSTRUCTIONS,
@@ -215,7 +221,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.23.0";
+export const MCP_SERVER_VERSION = "1.24.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -269,6 +275,7 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  GET_COVERAGE_INSTRUCTIONS +
   LIST_CURATION_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
@@ -4372,6 +4379,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_COVERAGE_MCP_TOOL,
+    async handler(_args, ctx) {
+      return loadRegistryCoverage(ctx);
+    },
+  },
+  {
     name: "list_enrichment_targets",
     title: "List ranked enrichment targets",
     description:
@@ -6399,6 +6412,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       generated_at: NULLABLE_STRING,
     },
   },
+  get_coverage: GET_COVERAGE_OUTPUT_SCHEMA,
   list_enrichment_targets: {
     type: "object",
     additionalProperties: true,
