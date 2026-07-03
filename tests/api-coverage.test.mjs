@@ -1353,7 +1353,7 @@ describe("coverage-depth CSV export", () => {
   const parseCoverageCsv = async (res) => {
     assert.match(res.headers.get("content-type"), /^text\/csv/);
     const lines = (await res.text())
-      .split("\r\n")
+      .split(/\r\n|\r|\n/)
       .filter((line) => line !== "");
     const header = parseCsvLine(lines[0]);
     const rows = lines.slice(1).map((line) => {
