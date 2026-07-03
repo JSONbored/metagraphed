@@ -30,14 +30,30 @@ function round(value) {
   return Math.round(value * factor) / factor;
 }
 
+// Stamp a positive, in-range epoch-ms as { ms, value:ISO }, or null. Guarding
+// getTime() matters: a finite but out-of-range epoch (|ms| > 8.64e15, the JS
+// Date limit) makes toISOString() throw a RangeError, which would 500 the whole
+// performance route on one corrupt captured_at cell. Mirrors epochMsStamp in
+// concentration.mjs.
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  if (value == null) return null;
+  // D1 can hand the INTEGER captured_at back as a numeric string; route a bare
+  // digit run through the epoch path (Date.parse would misread it) so a
+  // string-typed cell still stamps instead of dropping to null. Mirrors
+  // captureStamp in concentration.mjs.
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
     const ms = Date.parse(value);
-    if (Number.isFinite(ms)) return { ms, value };
+    return Number.isFinite(ms) ? { ms, value } : null;
   }
+  if (typeof value === "number") return epochMsStamp(value);
   return null;
 }
 

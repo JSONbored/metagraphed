@@ -90,6 +90,30 @@ describe("buildSubnetPerformance", () => {
     assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
+  test("stamps a string-typed (D1) captured_at and survives an out-of-range one", () => {
+    // D1 can return the INTEGER captured_at as a numeric string; it must still
+    // stamp, not drop to null (Date.parse would misread a bare digit run).
+    const strRows = ROWS.map((r) => ({
+      ...r,
+      captured_at: String(r.captured_at),
+    }));
+    assert.equal(
+      buildSubnetPerformance(strRows, 7).captured_at,
+      new Date(1_750_000_000_000).toISOString(),
+    );
+
+    // A finite but out-of-range captured_at must degrade to null, not throw a
+    // RangeError that 500s the performance route.
+    let out;
+    assert.doesNotThrow(() => {
+      out = buildSubnetPerformance(
+        ROWS.map((r) => ({ ...r, captured_at: 9e15 })),
+        7,
+      );
+    });
+    assert.equal(out.captured_at, null);
+  });
+
   test("incentive concentration is over ALL neurons with a positive incentive", () => {
     const out = buildSubnetPerformance(ROWS, 7);
     // incentives 0.6/0.3/0.1 are positive (the 0 is dropped) → 3 holders.
