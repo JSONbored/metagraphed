@@ -860,10 +860,11 @@ describe("workerWebSocketConnector", () => {
     );
     const promise = connect("wss://node.example/rpc", RPC_CALLS, 1000);
 
-    // ws→http rewrite + Upgrade header.
+    // ws→http rewrite + Upgrade header + redirect guard.
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, "https://node.example/rpc");
     assert.equal(calls[0].init.headers.Upgrade, "websocket");
+    assert.equal(calls[0].init.redirect, "manual");
 
     // Wait for the fetch().then() to run so accept()/send() have happened.
     await Promise.resolve();
