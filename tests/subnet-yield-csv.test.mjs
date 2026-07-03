@@ -32,7 +32,7 @@ function neuronEnv(rows) {
     METAGRAPH_HEALTH_DB: {
       prepare(sql) {
         return {
-          bind(...params) {
+          bind(..._params) {
             return {
               all: async () => {
                 if (/FROM neurons WHERE netuid = \?/.test(sql)) {
