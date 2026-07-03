@@ -30,13 +30,29 @@ function round(value) {
   return Math.round(value * factor) / factor;
 }
 
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
+// Coerce a D1 captured_at cell (epoch-ms number/string or ISO string) to the
+// newest-stamp shape buildSubnetPerformance expects. Mirrors captureStamp in
+// concentration.mjs (#2725) — D1 can return INTEGER columns as numeric strings,
+// and an out-of-range epoch-ms must degrade to null (never a RangeError).
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  if (value == null) return null;
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      return epochMsStamp(Number(value));
+    }
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
+    return null;
+  }
+  if (typeof value === "number") {
+    return epochMsStamp(value);
   }
   return null;
 }

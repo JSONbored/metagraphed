@@ -127,6 +127,33 @@ describe("buildSubnetPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z"); // newest of the two
   });
 
+  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+    const out = buildSubnetPerformance(
+      [
+        { incentive: 0.2, captured_at: "1750000000000" },
+        { incentive: 0.3, captured_at: "1750000060000" },
+      ],
+      7,
+    );
+    assert.equal(out.captured_at, "2025-06-15T15:07:40.000Z");
+  });
+
+  test("rejects invalid captured_at cells instead of leaking junk stamps", () => {
+    for (const captured_at of [
+      "0",
+      "not-a-date",
+      "9".repeat(400),
+      -1,
+      0,
+      true,
+      8_640_000_000_000_001,
+      "8640000000000001",
+    ]) {
+      const out = buildSubnetPerformance([{ incentive: 0.2, captured_at }], 7);
+      assert.equal(out.captured_at, null, `expected null for ${captured_at}`);
+    }
+  });
+
   test("cold/empty subnet → schema-stable zero (every metric null)", () => {
     const out = buildSubnetPerformance([], 3);
     assert.equal(out.neuron_count, 0);
