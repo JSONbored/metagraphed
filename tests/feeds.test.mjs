@@ -765,6 +765,19 @@ describe("feeds — serializers", () => {
     assert.match(xml, /<pubDate>.*GMT<\/pubDate>/);
   });
 
+  test("rssFeed omits pubDate for corrupt item timestamps instead of throwing", () => {
+    const xml = rssFeed(meta, [
+      {
+        id: "bad-ts",
+        url: "https://example.com/x",
+        title: "bad",
+        summary: "bad",
+        timestamp: "not-a-date",
+      },
+    ]);
+    assert.doesNotMatch(xml, /<pubDate>/);
+  });
+
   test("atomFeed has the required feed + entry structure", () => {
     const xml = atomFeed(meta, items);
     assert.match(xml, /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/);
