@@ -17,16 +17,13 @@
       "kind": "docs",
       "name": "ChronoLLM miner docs",
       "notes": "Public miner guide linked from the official ChronoLLM README.",
-      "provider": "chronollm",
+      "provider": "tao-colosseum",
       "public_safe": true,
       "review": {
         "state": "community-submitted",
         "submitted_by": "Paral1995"
       },
-      "source_urls": [
-        "https://github.com/chronollm/sn38/blob/main/README.md",
-        "https://api.taomarketcap.com/public/v1/subnets/38"
-      ],
+      "source_urls": ["https://github.com/chronollm/sn38/blob/main/README.md"],
       "url": "https://github.com/chronollm/sn38/blob/main/docs/miner.md"
     }
   ]
