@@ -192,6 +192,15 @@ const GLOBAL_VALIDATOR_CSV_COLUMNS = [
   "latest_block_number",
   "subnets",
 ];
+const SUBNET_YIELD_CSV_COLUMNS = [
+  "uid",
+  "hotkey",
+  "role",
+  "stake_tao",
+  "emission_tao",
+  "yield",
+  "vs_median",
+];
 
 // CSV projection for the recent-block feed (#2528). The block rows are already
 // flat (formatBlock), so the feed's own fields are the columns in read order.
@@ -320,9 +329,18 @@ export async function handleSubnetMetagraph(request, env, netuid, url) {
 // mean, p25/median/p75/p90), a validator/miner split, and a per-UID vs-median label.
 // neurons-tier (source "metagraph-snapshot"). Cold/absent store → schema-stable empties.
 export async function handleSubnetYield(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
   const data = await loadSubnetYield(d1Runner(env), netuid);
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.neurons,
+      `subnet-${netuid}-yield`,
+      "short",
+      request,
+      SUBNET_YIELD_CSV_COLUMNS,
+    );
+  }
   return envelopeResponse(
     request,
     {
@@ -869,6 +887,12 @@ export function canonicalSubnetMetagraphCachePath(url, request = null) {
 // Canonical edge-cache key for the subnet validators route. The default JSON
 // envelope and explicit ?format=json share one cache slot; CSV receives its own.
 export function canonicalSubnetValidatorsCachePath(url, request = null) {
+  const validationError = validateEntityQuery(url, ["format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  return csvCacheVariant(url, request, url.pathname);
+}
+
+export function canonicalSubnetYieldCachePath(url, request = null) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);

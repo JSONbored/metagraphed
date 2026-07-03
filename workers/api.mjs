@@ -99,6 +99,7 @@ import {
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
+  canonicalSubnetYieldCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -120,6 +121,7 @@ import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,
   canonicalLeaderboardsCachePath,
+  canonicalTrajectoryCachePath,
   canonicalUptimeCachePath,
   configureAnalyticsRoutes,
   handleCompare,
@@ -1304,13 +1306,19 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     }
     const trajectoryMatch = TRAJECTORY_PATH_PATTERN.exec(resolved.url.pathname);
     if (trajectoryMatch) {
-      return withEdgeCache(request, ctx, env, "trajectory", () =>
-        handleTrajectory(
-          request,
-          env,
-          Number(trajectoryMatch[1]),
-          resolved.url,
-        ),
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "trajectory",
+        () =>
+          handleTrajectory(
+            request,
+            env,
+            Number(trajectoryMatch[1]),
+            resolved.url,
+          ),
+        canonicalTrajectoryCachePath(resolved.url, request),
       );
     }
     const uptimeMatch = UPTIME_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1411,11 +1419,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     // live from the neurons D1 tier, like the sibling metagraph route.
     const yieldMatch = SUBNET_YIELD_PATH_PATTERN.exec(resolved.url.pathname);
     if (yieldMatch) {
-      return handleSubnetYield(
+      return withNeuronsEdgeCache(
         request,
+        ctx,
         env,
         Number(yieldMatch[1]),
-        resolved.url,
+        "subnet-yield",
+        () =>
+          handleSubnetYield(request, env, Number(yieldMatch[1]), resolved.url),
+        canonicalSubnetYieldCachePath(resolved.url, request),
       );
     }
     // Reward-distribution + score-spread over the current neurons snapshot —

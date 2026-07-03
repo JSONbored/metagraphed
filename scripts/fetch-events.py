@@ -182,7 +182,19 @@ def _idx(v):
 
 
 def _tao(v):
-    return (v / RAO) if isinstance(v, (int, float)) and v >= 0 else None
+    # Whole/remainder split so the integer TAO part is always exact -- plain
+    # `v / RAO` routes the whole rao integer through double rounding before
+    # the division even happens, silently corrupting values above 2**53 rao
+    # (~9M TAO) (metagraphed#2921). v is already an exact arbitrary-precision
+    # Python int from substrate-interface's SCALE decode, so this loses
+    # nothing that wasn't already lost by the old `v / RAO`.
+    if not (isinstance(v, (int, float)) and v >= 0):
+        return None
+    if isinstance(v, float):
+        return v / RAO  # already a float (unexpected for a rao amount) — nothing to preserve
+    whole = v // 1_000_000_000
+    remainder = (v % 1_000_000_000) / 1e9
+    return whole + remainder
 
 
 # Each extractor maps a decoded attribute tuple -> the entity fields we store.

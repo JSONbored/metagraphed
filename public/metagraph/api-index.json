@@ -4605,14 +4605,26 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/trajectory.json",
       "cache": "short",
-      "description": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
+      "description": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-trajectory",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/trajectory",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/concentration.json",
@@ -4906,14 +4918,26 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/yield.json",
       "cache": "short",
-      "description": "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
+      "description": "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV.",
       "id": "subnet-yield",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/yield",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/events.json",

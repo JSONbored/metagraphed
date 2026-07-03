@@ -31,6 +31,20 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Sum in rao-integer BigInt space, not float space -- summing potentially
+// thousands of network-wide stake_tao/emission_tao floats with plain `+=`
+// compounds rounding error across the accumulation even when each individual
+// value is itself exact (metagraphed#2922, mirrors the toRao pattern already
+// proven in src/account-balance.mjs for #2070). Convert back to TAO only
+// once, at the very end. Callers always pass an already-finite toNumber()
+// result, so no isFinite guard here.
+function toRaoBig(tao) {
+  return BigInt(Math.round(tao * 1e9));
+}
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+}
+
 // Coerce a D1 netuid cell to a non-negative integer, or null. Accept ONLY a real
 // number or an all-digits string: a bare Number() would turn "", null, or false
 // into a valid subnet 0 (Number("") === Number(null) === Number(false) === 0), so
@@ -114,10 +128,10 @@ export function buildChainYield(rows) {
   const list = Array.isArray(rows) ? rows : [];
   let capturedAt = null;
   let validatorCount = 0;
-  let totalStake = 0;
-  let totalEmission = 0;
-  let validatorStake = 0;
-  let validatorEmission = 0;
+  let totalStakeRao = 0n;
+  let totalEmissionRao = 0n;
+  let validatorStakeRao = 0n;
+  let validatorEmissionRao = 0n;
   const netuids = new Set();
   const yields = [];
   for (const row of list) {
@@ -132,18 +146,24 @@ export function buildChainYield(rows) {
     // Match the neuron formatter's SQLite 0/1 convention: only an integer 1 is a
     // validator, so a numeric-string "0" cannot slip through as truthy.
     const isValidator = Number(row?.validator_permit) === 1;
-    totalStake += stake;
-    totalEmission += emission;
+    const stakeRao = toRaoBig(stake);
+    const emissionRao = toRaoBig(emission);
+    totalStakeRao += stakeRao;
+    totalEmissionRao += emissionRao;
     if (isValidator) {
       validatorCount += 1;
-      validatorStake += stake;
-      validatorEmission += emission;
+      validatorStakeRao += stakeRao;
+      validatorEmissionRao += emissionRao;
     }
     const value = computeYieldValue(emission, stake);
     if (value != null) yields.push(value);
   }
-  const minerStake = totalStake - validatorStake;
-  const minerEmission = totalEmission - validatorEmission;
+  const totalStake = raoBigToTao(totalStakeRao);
+  const totalEmission = raoBigToTao(totalEmissionRao);
+  const validatorStake = raoBigToTao(validatorStakeRao);
+  const validatorEmission = raoBigToTao(validatorEmissionRao);
+  const minerStake = raoBigToTao(totalStakeRao - validatorStakeRao);
+  const minerEmission = raoBigToTao(totalEmissionRao - validatorEmissionRao);
   return {
     schema_version: 1,
     subnet_count: netuids.size,

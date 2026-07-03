@@ -646,6 +646,35 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("sums a hotkey's per-UID stake in exact rao space, not compounding float error (#2922)", () => {
+    // One hotkey validating on thousands of subnets, each contributing a real
+    // sub-TAO fractional stake -- plain `+=` float accumulation across many
+    // rows would drift from the true sum. Summing in rao BigInt space must not.
+    const rows = [];
+    let expectedTotalRao = 0n;
+    for (let i = 0; i < 5000; i += 1) {
+      const stakeTao = 1234.987654321 + i * 0.000000001;
+      rows.push({
+        ...ROW,
+        netuid: i,
+        uid: 0,
+        hotkey: "hk-precision",
+        stake_tao: stakeTao,
+        emission_tao: 0,
+      });
+      expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
+    }
+    const data = buildGlobalValidators(rows, {
+      sort: "total_stake",
+      limit: 10,
+    });
+    const expectedTotal =
+      Number(expectedTotalRao / 1_000_000_000n) +
+      Number(expectedTotalRao % 1_000_000_000n) / 1e9;
+    const entry = data.validators.find((v) => v.hotkey === "hk-precision");
+    assert.equal(entry.total_stake_tao, Math.round(expectedTotal * 1e9) / 1e9);
+  });
+
   test("builders drop malformed rows and count only real neurons", () => {
     // A null/non-object row can't be a Neuron, so it must not leak into the
     // array — and the count tracks the array (neuron_count === neurons.length),

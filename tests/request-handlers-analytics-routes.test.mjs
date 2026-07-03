@@ -9,6 +9,7 @@ import {
   canonicalCompareCachePath,
   canonicalEconomicsTrendsCachePath,
   canonicalLeaderboardsCachePath,
+  canonicalTrajectoryCachePath,
   canonicalUptimeCachePath,
   composeCompareData,
   configureAnalyticsRoutes,
@@ -130,6 +131,150 @@ describe("handleTrajectory", () => {
       ["2026-06-01", "2026-06-02"],
     );
     assert.equal(body.data.points[1].completeness_score, 40);
+  });
+
+  test("returns CSV response when ?format=csv is present", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          completeness_score: 40,
+          surface_count: 2,
+          endpoint_count: 1,
+          validator_count: 8,
+          miner_count: 64,
+          total_stake_tao: 100,
+          alpha_price_tao: 0.01,
+          emission_share: 0.02,
+        },
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: 35,
+          surface_count: 1,
+          endpoint_count: 1,
+          validator_count: 8,
+          miner_count: 60,
+          total_stake_tao: 90,
+          alpha_price_tao: 0.01,
+          emission_share: 0.02,
+        },
+      ],
+    });
+    const res = await handleTrajectory(
+      req("/"),
+      env,
+      NETUID,
+      url("/?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="subnet-7-trajectory.csv"'),
+    );
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+    );
+    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02");
+    assert.equal(lines[2], "2026-06-02,40,2,1,8,64,100,0.01,0.02");
+  });
+
+  test("returns CSV response when Accept: text/csv header is present", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: 35,
+          surface_count: 1,
+          endpoint_count: 1,
+          validator_count: 8,
+          miner_count: 60,
+          total_stake_tao: 90,
+          alpha_price_tao: 0.01,
+          emission_share: 0.02,
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleTrajectory(request, env, NETUID, url("/"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(lines[1], "2026-06-01,35,1,1,8,60,90,0.01,0.02");
+  });
+
+  test("returns header-only CSV when D1 is cold", async () => {
+    const res = await handleTrajectory(
+      req("/"),
+      {},
+      NETUID,
+      url("/?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+    );
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleTrajectory(
+      req("/"),
+      {},
+      NETUID,
+      url("/?format=pdf"),
+    );
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("rejects an empty format parameter", async () => {
+    const res = await handleTrajectory(req("/"), {}, NETUID, url("/?format="));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: 35,
+          surface_count: 1,
+          endpoint_count: 1,
+          validator_count: 8,
+          miner_count: 60,
+          total_stake_tao: 90,
+          alpha_price_tao: 0.01,
+          emission_share: 0.02,
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleTrajectory(
+      request,
+      env,
+      NETUID,
+      url("/?format=json"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    const body = await res.json();
+    assert.equal(body.data.point_count, 1);
   });
 });
 
@@ -747,6 +892,63 @@ describe("canonicalEconomicsTrendsCachePath", () => {
   test("falls back to raw search on invalid format", () => {
     const raw = "/api/v1/economics/trends?format=pdf";
     assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
+  });
+});
+
+describe("canonicalTrajectoryCachePath", () => {
+  test("bare path stays canonical for JSON", () => {
+    assert.equal(
+      canonicalTrajectoryCachePath(url("/api/v1/subnets/7/trajectory")),
+      "/api/v1/subnets/7/trajectory",
+    );
+  });
+
+  test("adds format=csv to the cache key when CSV is requested", () => {
+    assert.equal(
+      canonicalTrajectoryCachePath(
+        url("/api/v1/subnets/7/trajectory?format=csv"),
+      ),
+      "/api/v1/subnets/7/trajectory?format=csv",
+    );
+  });
+
+  test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+    const csv = canonicalTrajectoryCachePath(
+      url("/api/v1/subnets/7/trajectory?format=csv"),
+    );
+    assert.equal(csv, "/api/v1/subnets/7/trajectory?format=csv");
+
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const json = canonicalTrajectoryCachePath(
+      url("/api/v1/subnets/7/trajectory?format=json"),
+      csvAccept,
+    );
+    assert.equal(json, "/api/v1/subnets/7/trajectory");
+  });
+
+  test("adds format=csv when only Accept: text/csv is present", () => {
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    assert.equal(
+      canonicalTrajectoryCachePath(
+        url("/api/v1/subnets/7/trajectory"),
+        csvAccept,
+      ),
+      "/api/v1/subnets/7/trajectory?format=csv",
+    );
+  });
+
+  test("falls back to raw search on unknown query param", () => {
+    const raw = "/api/v1/subnets/7/trajectory?bogus=1";
+    assert.equal(canonicalTrajectoryCachePath(url(raw)), raw);
+  });
+
+  test("falls back to raw search on invalid format", () => {
+    const raw = "/api/v1/subnets/7/trajectory?format=pdf";
+    assert.equal(canonicalTrajectoryCachePath(url(raw)), raw);
   });
 });
 

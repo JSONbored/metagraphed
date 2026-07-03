@@ -85,6 +85,21 @@ function roundTao(value) {
   return Math.round(numberOrZero(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
+// Sum in rao-integer BigInt space, not float space -- summing every validator
+// UID's stake_tao/emission_tao per hotkey (network-wide, unbounded) with plain
+// `+=` compounds rounding error across the accumulation even when each
+// individual value is itself exact (metagraphed#2922, mirrors the toRaoBig
+// pattern in src/chain-yield.mjs and the toRao helper proven in
+// src/account-balance.mjs for #2070). Convert back to TAO only once, at the
+// very end. Callers always pass an already-finite numberOrZero()/roundTao()
+// result, so no isFinite guard here.
+function toRaoBig(tao) {
+  return BigInt(Math.round(tao * RAO_PER_TAO));
+}
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+}
+
 function round(value, dp = 6) {
   if (value == null || !Number.isFinite(value)) return null;
   const factor = 10 ** dp;
@@ -221,8 +236,8 @@ function buildGlobalValidatorEntry(entry) {
     coldkey_count: entry.coldkeys.size,
     subnet_count: entry.netuids.size,
     uid_count: entry.uidCount,
-    total_stake_tao: roundTao(entry.stakeTotal),
-    total_emission_tao: roundTao(entry.emissionTotal),
+    total_stake_tao: roundTao(raoBigToTao(entry.stakeTotalRao)),
+    total_emission_tao: roundTao(raoBigToTao(entry.emissionTotalRao)),
     avg_validator_trust: round(avgTrust),
     max_validator_trust: round(entry.maxValidatorTrust),
     latest_captured_at: toIso(entry.latestCapturedAt),
@@ -232,10 +247,16 @@ function buildGlobalValidatorEntry(entry) {
 }
 
 function applyStakeDominance(validators) {
-  const networkStakeTotal = validators.reduce(
-    (sum, entry) => sum + numberOrZero(entry.total_stake_tao),
-    0,
+  // Same rao-BigInt treatment as the per-hotkey accumulation above: summing
+  // every validator's already-rounded total_stake_tao (one per hotkey,
+  // network-wide) with plain `+=` reintroduces the same float-compounding risk
+  // this fix removed upstream. total_stake_tao is already rao-precision here
+  // (roundTao'd from an exact BigInt sum), so re-deriving its rao value is exact.
+  const networkStakeRao = validators.reduce(
+    (sum, entry) => sum + toRaoBig(entry.total_stake_tao),
+    0n,
   );
+  const networkStakeTotal = raoBigToTao(networkStakeRao);
   if (!(networkStakeTotal > 0) || !Number.isFinite(networkStakeTotal)) {
     return validators.map((entry) => ({ ...entry, stake_dominance: null }));
   }
@@ -286,8 +307,8 @@ export function buildGlobalValidators(
         coldkeys: new Map(),
         netuids: new Set(),
         uidCount: 0,
-        stakeTotal: 0,
-        emissionTotal: 0,
+        stakeTotalRao: 0n,
+        emissionTotalRao: 0n,
         validatorTrustTotal: 0,
         validatorTrustCount: 0,
         maxValidatorTrust: null,
@@ -305,8 +326,8 @@ export function buildGlobalValidators(
     }
     entry.netuids.add(netuid);
     entry.uidCount += 1;
-    entry.stakeTotal += stake;
-    entry.emissionTotal += emission;
+    entry.stakeTotalRao += toRaoBig(stake);
+    entry.emissionTotalRao += toRaoBig(emission);
     if (trust != null) {
       entry.validatorTrustTotal += trust;
       entry.validatorTrustCount += 1;

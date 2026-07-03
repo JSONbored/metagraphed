@@ -16,7 +16,9 @@ and emit the exact `neuron_daily` row shape to the secret-gated ingest (idempote
 (netuid,uid,snapshot_date), so re-runs are safe/resumable).
 
 Units match scripts/fetch-metagraph-native.py: consensus/incentive/dividends/
-validator_trust = u16/65535; emission_tao = u64/1e9; rank derived (1-based incentive
+validator_trust = u16/65535; emission_tao = exact u64-rao whole/remainder split,
+not plain u64/1e9, which loses precision above 2**53 rao (metagraphed#2921);
+rank derived (1-based incentive
 desc); trust = 0.0 (dead in dTAO). hotkey/coldkey/registered_at_block/axon come from a
 one-shot CURRENT-snapshot overlay (get_all_metagraphs_info at head) applied to all
 backfilled rows — accurate for stable UIDs (documented approximation). stake_tao is
@@ -111,6 +113,20 @@ def decode_vec_bool(hexval):
 
 def u16_ratio(v):
     return round(int(v) / 65535, 9) if v is not None else None
+
+
+def rao_to_tao_exact(rao):
+    """Whole/remainder split so the integer TAO part is always exact — plain
+    `rao / 1e9` routes the whole rao integer through double rounding before
+    the division even happens, silently corrupting values above 2**53 rao
+    (~9M TAO) (metagraphed#2921). `rao` here is already an exact
+    arbitrary-precision int from decode_vec_uint, so this loses nothing that
+    wasn't already lost by the old `round(emission[uid] / 1e9, 9)`."""
+    if rao is None:
+        return None
+    whole = rao // 1_000_000_000
+    remainder = (rao % 1_000_000_000) / 1e9
+    return whole + remainder
 
 
 def fmt_axon(axon):
@@ -242,7 +258,7 @@ def build_rows(raw, overlay, netuids, block, captured_at, snapshot_date):
                     "dividends": u16_ratio(dividends[uid])
                     if uid < len(dividends)
                     else None,
-                    "emission_tao": round(emission[uid] / 1e9, 9),
+                    "emission_tao": rao_to_tao_exact(emission[uid]),
                     "stake_tao": None,  # deferred: runtime-only in dTAO
                     "registered_at_block": reg,
                     "is_immunity_period": 1

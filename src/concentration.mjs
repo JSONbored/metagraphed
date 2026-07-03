@@ -36,6 +36,20 @@ function roundRatio(value, dp = 6) {
   return rounded >= 1 && value < 1 ? (factor - 1) / factor : rounded;
 }
 
+// Sum in rao-integer BigInt space, not float space -- summing potentially
+// thousands of network-wide stake_tao/emission_tao floats (per controlling
+// entity, or as a distribution total) with plain `+=` compounds rounding error
+// across the accumulation even when each individual value is itself exact
+// (metagraphed#2922, mirrors the toRaoBig pattern in src/chain-yield.mjs and
+// src/metagraph-neurons.mjs). Convert back to TAO only once, at the very end.
+function toRaoBig(taoValue) {
+  const n = typeof taoValue === "number" ? taoValue : Number(taoValue);
+  return Number.isFinite(n) ? BigInt(Math.round(n * 1e9)) : 0n;
+}
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+}
+
 function epochMsStamp(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return null;
   const date = new Date(ms);
@@ -152,7 +166,12 @@ export function computeConcentration(values) {
   const positives = positiveValues(Array.isArray(values) ? values : []);
   const holders = positives.length;
   if (holders === 0) return null;
-  const total = positives.reduce((sum, v) => sum + v, 0);
+  // The distribution total is the ratio denominator for every metric below
+  // (gini/hhi/entropy/topShares) -- summing potentially thousands of holders'
+  // values in rao-BigInt space, not plain float `+=`, keeps it exact (#2922).
+  const total = raoBigToTao(
+    positives.reduce((sum, v) => sum + toRaoBig(v), 0n),
+  );
   if (total <= 0) return null;
   const ascending = [...positives].sort((a, b) => a - b);
   const descending = [...positives].sort((a, b) => b - a);
@@ -171,32 +190,30 @@ export function computeConcentration(values) {
   };
 }
 
-// Coerce one raw cell to a finite number (or 0) for summation — when totaling a
-// coldkey's UIDs a non-finite cell must contribute 0, not poison the sum.
-function numeric(value) {
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
 // Collapse a subnet's UID rows into one holder per controlling entity (coldkey),
 // summing stake + emission across all of an entity's hotkeys. A row with no
 // coldkey becomes its own singleton entity (a fresh object key), so the entity
-// count never under-counts unknown owners. Returns per-entity value arrays + the
-// distinct-entity count, all consistent.
+// count never under-counts unknown owners. Sums in rao-BigInt space per entity
+// (network-wide, potentially thousands of UIDs collapsing into one coldkey's
+// total) and converts to TAO once per entity, not per row (#2922). Returns
+// per-entity value arrays + the distinct-entity count, all consistent.
 function groupByEntity(rows) {
-  const stake = new Map();
-  const emission = new Map();
+  const stakeRao = new Map();
+  const emissionRao = new Map();
   for (const row of rows) {
     const hasColdkey =
       typeof row?.coldkey === "string" && row.coldkey.length > 0;
     const key = hasColdkey ? row.coldkey : {};
-    stake.set(key, (stake.get(key) ?? 0) + numeric(row?.stake_tao));
-    emission.set(key, (emission.get(key) ?? 0) + numeric(row?.emission_tao));
+    stakeRao.set(key, (stakeRao.get(key) ?? 0n) + toRaoBig(row?.stake_tao));
+    emissionRao.set(
+      key,
+      (emissionRao.get(key) ?? 0n) + toRaoBig(row?.emission_tao),
+    );
   }
   return {
-    stake: [...stake.values()],
-    emission: [...emission.values()],
-    count: stake.size,
+    stake: [...stakeRao.values()].map(raoBigToTao),
+    emission: [...emissionRao.values()].map(raoBigToTao),
+    count: stakeRao.size,
   };
 }
 

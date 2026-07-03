@@ -38642,6 +38642,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -38702,9 +38715,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share\r\n2026-06-01,35,1,1,8,60,90,0.01,0.02",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -38761,7 +38780,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
+        "summary": "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV.",
         "tags": [
           "subnets",
           "analytics"
@@ -39314,6 +39333,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -39398,9 +39430,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median\r\n0,hk_sample,validator,1000,22.1,0.0221,above",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -39457,7 +39495,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier.",
+        "summary": "Fetch the per-UID emission yield (emission/stake return rate) for one subnet over the current metagraph snapshot, ranked high to low with a distribution summary (subnet aggregate yield, mean, p25/median/p75/p90 percentiles), a validator/miner split, and a per-UID above/below-median label, computed live from the neurons D1 tier. Pass ?format=csv to download the ranked neuron rows as CSV.",
         "tags": [
           "subnets",
           "analytics"

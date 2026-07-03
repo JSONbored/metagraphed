@@ -165,6 +165,30 @@ describe("buildChainYield", () => {
     assert.equal(out.distribution, null);
   });
 
+  test("sums thousands of rows in exact rao space, not compounding float error (#2922)", () => {
+    // Each row's stake carries a real sub-TAO fractional component (not a
+    // round number) -- plain `+=` float accumulation across many rows would
+    // drift from the true sum. Summing in rao BigInt space must not.
+    const rows = [];
+    let expectedTotalRao = 0n;
+    for (let i = 0; i < 5000; i += 1) {
+      const stakeTao = 1234.987654321 + i * 0.000000001;
+      rows.push({
+        validator_permit: 0,
+        stake_tao: stakeTao,
+        emission_tao: 0,
+        netuid: i % 129,
+        captured_at: 1_750_000_000_000,
+      });
+      expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
+    }
+    const out = buildChainYield(rows);
+    const expectedTotal =
+      Number(expectedTotalRao / 1_000_000_000n) +
+      Number(expectedTotalRao % 1_000_000_000n) / 1e9;
+    assert.equal(out.total_stake_tao, Math.round(expectedTotal * 1e9) / 1e9);
+  });
+
   test("loadChainYield issues one un-filtered SELECT and shapes it", async () => {
     let seen;
     const d1 = async (sql, params) => {
