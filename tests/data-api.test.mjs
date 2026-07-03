@@ -70,6 +70,36 @@ test("GET /api/v1/chain-events returns the feed with a cursor (filters + before)
   expect(typeof body.events[0].observed_at).toBe("number");
 });
 
+test("GET /api/v1/chain-events?format=csv returns text/csv with the event columns", async () => {
+  const res = await req("/api/v1/chain-events?limit=1&format=csv");
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toMatch(/text\/csv/);
+  const text = await res.text();
+  const [header, firstRow] = text.split("\r\n");
+  // Explicit columns → stable header (a cold/empty feed still emits it).
+  expect(header).toBe(
+    "block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at",
+  );
+  // args serializes as a JSON-string cell; the row carries the coerced values.
+  expect(firstRow).toContain("123,0,System,ExtrinsicSuccess,");
+});
+
+test("chain-events ?pallet=Balances&format=csv still applies the pallet filter", async () => {
+  const res = await req(
+    "/api/v1/chain-events?pallet=Balances&format=csv&limit=1",
+  );
+  expect(res.status).toBe(200);
+  expect(res.headers.get("content-type")).toMatch(/text\/csv/);
+  expect(queryText()).toContain("AND pallet =");
+});
+
+test("chain-events rejects a ?format value outside json|csv", async () => {
+  const res = await req("/api/v1/chain-events?format=xml");
+  expect(res.status).toBe(400);
+  const body = await res.json();
+  expect(body.error).toMatch(/format must be one of/);
+});
+
 test("chain-events cursor seeks by block_number and event_index", async () => {
   const res = await req("/api/v1/chain-events?limit=1&cursor=123.4&before=500");
   expect(res.status).toBe(200);

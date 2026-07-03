@@ -11,10 +11,25 @@
 // closed via ctx.waitUntil so it never blocks the response.
 import postgres from "postgres";
 import { decodeCursor, encodeCursor } from "../src/cursor.mjs";
+import { csvRequested, csvResponse } from "./csv.mjs";
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
 const FILTER_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+// Explicit CSV column order for the chain-events ?format=csv export (#2530).
+// Passed to csvResponse so an empty feed still emits a header row and the column
+// order stays stable; `args` serializes as a JSON string cell.
+const CHAIN_EVENTS_CSV_COLUMNS = [
+  "block_number",
+  "event_index",
+  "pallet",
+  "method",
+  "args",
+  "phase",
+  "extrinsic_index",
+  "observed_at",
+];
 
 function validEventFilter(value) {
   return value == null || value === "" || FILTER_PATTERN.test(value);
@@ -120,6 +135,10 @@ export default {
             400,
           );
         }
+        const format = url.searchParams.get("format");
+        if (format !== null && format !== "json" && format !== "csv") {
+          return json({ error: "format must be one of: json, csv" }, 400);
+        }
         const numParam = (k) => {
           const v = url.searchParams.get(k);
           if (v == null || v === "") return null;
@@ -160,11 +179,21 @@ export default {
         const nextCursor = last
           ? encodeCursor([nextBlock, numberOrNull(last.event_index)])
           : null;
+        const events = rows.map(coerceEvent);
+        if (csvRequested(url, request)) {
+          return csvResponse(
+            events,
+            "chain-events",
+            "short",
+            request,
+            CHAIN_EVENTS_CSV_COLUMNS,
+          );
+        }
         return json({
           count: rows.length,
           next_before: nextBlock,
           next_cursor: nextCursor,
-          events: rows.map(coerceEvent),
+          events,
         });
       }
 

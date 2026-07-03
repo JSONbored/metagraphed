@@ -8524,6 +8524,8 @@ export interface operations {
                 cursor?: string;
                 before?: number;
                 limit?: number;
+                /** @description Response format override. Use `csv` to download the raw all-events feed as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8531,7 +8533,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8584,6 +8586,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainEventsFeedArtifact"];
                     };
+                    /**
+                     * @example block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at
+                     *     8454388,0,System,ExtrinsicSuccess,{},ApplyExtrinsic,2,1719792000000
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

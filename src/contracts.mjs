@@ -2309,24 +2309,36 @@ export const API_ROUTES = [
     "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
     "short",
     ["chain", "analytics"],
-    [
-      { name: "pallet", schema: { type: "string", maxLength: 64 } },
-      { name: "method", schema: { type: "string", maxLength: 64 } },
-      { name: "block", schema: { type: "integer", minimum: 0 } },
-      { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
-      {
-        name: "cursor",
-        schema: {
-          type: "string",
-          pattern: "^\\d+\\.\\d+$",
-          maxLength: 33,
-          description:
-            "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "pallet", schema: { type: "string", maxLength: 64 } },
+        { name: "method", schema: { type: "string", maxLength: 64 } },
+        { name: "block", schema: { type: "integer", minimum: 0 } },
+        { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
+        {
+          name: "cursor",
+          schema: {
+            type: "string",
+            pattern: "^\\d+\\.\\d+$",
+            maxLength: 33,
+            description:
+              "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
+          },
         },
-      },
-      { name: "before", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
-    ],
+        { name: "before", schema: { type: "integer", minimum: 0 } },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 200 },
+        },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the raw all-events feed as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
@@ -3292,6 +3304,12 @@ function csvExampleForRoute(entry) {
     return [
       "extrinsic_id,block_number,signer,call_module,call_function,success",
       "8454388-2,8454388,5Signer,SubtensorModule,add_stake,true",
+    ].join("\r\n");
+  }
+  if (entry.id === "chain-events-feed") {
+    return [
+      "block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at",
+      "8454388,0,System,ExtrinsicSuccess,{},ApplyExtrinsic,2,1719792000000",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

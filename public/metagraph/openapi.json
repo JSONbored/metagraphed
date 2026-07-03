@@ -20219,6 +20219,19 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the raw all-events feed as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20279,9 +20292,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "block_number,event_index,pallet,method,args,phase,extrinsic_index,observed_at\r\n8454388,0,System,ExtrinsicSuccess,{},ApplyExtrinsic,2,1719792000000",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
