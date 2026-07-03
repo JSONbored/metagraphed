@@ -997,7 +997,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-events",
     "/metagraph/subnets/{netuid}/events.json",
-    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events (no static file).",
+    "First-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, served live from the account_events D1 tier filtered by netuid at /api/v1/subnets/{netuid}/events; pass ?format=csv to download the filtered event rows as CSV (no static file).",
     "SubnetEventsArtifact",
   ),
   artifact(
@@ -1033,7 +1033,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-events",
     "/metagraph/accounts/{ss58}/events.json",
-    "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events (no static file).",
+    "Paginated first-party chain-event history for one account (hotkey or coldkey), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/events; pass ?format=csv to download the filtered event rows as CSV (no static file).",
     "AccountEventsArtifact",
   ),
   artifact(
@@ -1045,13 +1045,13 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "account-extrinsics",
     "/metagraph/accounts/{ss58}/extrinsics.json",
-    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics (no static file).",
+    "Paginated extrinsics this account signed (by signer), newest first, served live from the extrinsics D1 tier at /api/v1/accounts/{ss58}/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
     "AccountExtrinsicsArtifact",
   ),
   artifact(
     "account-transfers",
     "/metagraph/accounts/{ss58}/transfers.json",
-    "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers (no static file).",
+    "The native-TAO Balances.Transfer feed for one account (directional sent/received), served live from the account_events D1 tier at /api/v1/accounts/{ss58}/transfers; pass ?format=csv to download the filtered transfer rows as CSV (no static file).",
     "AccountTransfersArtifact",
   ),
   artifact(
@@ -2002,16 +2002,16 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/events",
     "/metagraph/subnets/{netuid}/events.json",
-    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
+    "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the filtered event rows as CSV.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       { name: "kind", schema: { type: "string" } },
       { name: "block_start", schema: { type: "integer", minimum: 0 } },
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2097,10 +2097,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/events",
     "/metagraph/accounts/{ss58}/events.json",
-    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+    "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). Pass ?format=csv to download the filtered event rows as CSV.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       { name: "kind", schema: { type: "string" } },
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "block_start", schema: { type: "integer", minimum: 0 } },
@@ -2108,7 +2108,7 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -2133,16 +2133,16 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/extrinsics",
     "/metagraph/accounts/{ss58}/extrinsics.json",
-    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the filtered extrinsic rows as CSV.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       { name: "block_start", schema: { type: "integer", minimum: 0 } },
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -2150,10 +2150,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/transfers",
     "/metagraph/accounts/{ss58}/transfers.json",
-    "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+    "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the filtered transfer rows as CSV.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "direction",
         schema: { type: "string", enum: ["all", "sent", "received"] },
@@ -2163,7 +2163,7 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3370,6 +3370,24 @@ function csvExampleForRoute(entry) {
     return [
       "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
       "8454388,0xblock,0xparent,5Author,3,12,204,2026-07-03T00:00:00.000Z",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-events" || entry.id === "account-events") {
+    return [
+      "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index",
+      "8454388,1,StakeAdded,5Hotkey,,7,3,1.5,,2026-07-03T00:00:00.000Z,2",
+    ].join("\r\n");
+  }
+  if (entry.id === "account-extrinsics") {
+    return [
+      "block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+      "8454388,2,0xhash,5Signer,SubtensorModule,add_stake,true,0.0125,,2026-07-03T00:00:00.000Z",
+    ].join("\r\n");
+  }
+  if (entry.id === "account-transfers") {
+    return [
+      "block_number,event_index,from,to,amount_tao,direction,observed_at",
+      "8454388,1,5FromAddress,5ToAddress,4.2,sent,2026-07-03T00:00:00.000Z",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

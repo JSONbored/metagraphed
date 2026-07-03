@@ -4904,7 +4904,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/events.json",
       "cache": "short",
-      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset.",
+      "description": "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the filtered event rows as CSV.",
       "id": "subnet-events",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/events",
@@ -4945,6 +4945,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -5082,7 +5093,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/events.json",
       "cache": "short",
-      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). Pass ?format=csv to download the filtered event rows as CSV.",
       "id": "account-events",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/events",
@@ -5135,6 +5146,17 @@
         {
           "name": "cursor",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
@@ -5192,7 +5214,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/extrinsics.json",
       "cache": "short",
-      "description": "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "description": "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the filtered extrinsic rows as CSV.",
       "id": "account-extrinsics",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/extrinsics",
@@ -5234,13 +5256,24 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
     {
       "artifact_path": "/metagraph/accounts/{ss58}/transfers.json",
       "cache": "short",
-      "description": "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging.",
+      "description": "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the filtered transfer rows as CSV.",
       "id": "account-transfers",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/transfers",
@@ -5291,6 +5324,17 @@
         {
           "name": "cursor",
           "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }

@@ -5256,6 +5256,136 @@ describe("canonicalSubnetHistoryCachePath", () => {
   });
 });
 
+describe("event & account-activity feed CSV export (#2533, #2534)", () => {
+  const EVENT_HEADER =
+    "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
+
+  async function csvLines(res, filename) {
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      `attachment; filename="${filename}"`,
+    );
+    return (await res.text()).split("\r\n");
+  }
+
+  test("subnet-events ?format=csv returns the event columns", async () => {
+    const { env } = dbWith({
+      subnetEvents: [accountEventRow(), accountEventRow({ event_index: 2 })],
+    });
+    const lines = await csvLines(
+      await handleSubnetEvents(
+        req(`/api/v1/subnets/${NETUID}/events?format=csv`),
+        env,
+        NETUID,
+        url(`/api/v1/subnets/${NETUID}/events?format=csv`),
+      ),
+      "subnet-events.csv",
+    );
+    assert.equal(lines[0], EVENT_HEADER);
+    assert.equal(lines.length, 3);
+  });
+
+  test("account-events negotiates CSV via Accept: text/csv", async () => {
+    const { env } = dbWith({ accountEvents: [accountEventRow()] });
+    const lines = await csvLines(
+      await handleAccountEvents(
+        new Request(`https://api.metagraph.sh/api/v1/accounts/${SS58}/events`, {
+          headers: { accept: "text/csv" },
+        }),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events`),
+      ),
+      "account-events.csv",
+    );
+    assert.equal(lines[0], EVENT_HEADER);
+    assert.equal(lines.length, 2);
+  });
+
+  test("account-extrinsics ?format=csv returns the extrinsic columns", async () => {
+    const { env } = dbWith({ extrinsics: [extrinsicRow()] });
+    const lines = await csvLines(
+      await handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
+      ),
+      "account-extrinsics.csv",
+    );
+    assert.equal(
+      lines[0],
+      "block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+    );
+    assert.equal(lines.length, 2);
+    assert.match(lines[1], /SubtensorModule,add_stake/);
+  });
+
+  test("account-transfers ?format=csv returns the transfer columns", async () => {
+    const { env } = dbWith({ transfers: [transferEventRow()] });
+    const lines = await csvLines(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers?format=csv`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/transfers?format=csv`),
+      ),
+      "account-transfers.csv",
+    );
+    assert.equal(
+      lines[0],
+      "block_number,event_index,from,to,amount_tao,direction,observed_at",
+    );
+    assert.equal(lines.length, 2);
+    assert.match(lines[1], /,sent,/);
+  });
+
+  test("an empty feed still emits the header row", async () => {
+    const { env } = dbWith({ accountEvents: [] });
+    const res = await handleAccountEvents(
+      req(`/api/v1/accounts/${SS58}/events?format=csv`),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/events?format=csv`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(await res.text(), EVENT_HEADER);
+  });
+
+  test("?format=json keeps the JSON envelope under Accept: text/csv", async () => {
+    const { env } = dbWith({ transfers: [transferEventRow()] });
+    const res = await handleAccountTransfers(
+      new Request(
+        `https://api.metagraph.sh/api/v1/accounts/${SS58}/transfers?format=json`,
+        { headers: { accept: "text/csv" } },
+      ),
+      env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/transfers?format=json`),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(Array.isArray(body.data.transfers), true);
+  });
+
+  test("rejects an unsupported format value with 400", async () => {
+    const { env } = dbWith({ accountEvents: [] });
+    await errorJson(
+      await handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events?format=xml`),
+        env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?format=xml`),
+      ),
+    );
+  });
+});
+
 // Fixture documentation: each factory above mirrors the D1 column contracts used
 // by workers/request-handlers/entities.mjs. When adding a new handler test,
 // prefer reusing these rows so formatters stay aligned with production schemas.
