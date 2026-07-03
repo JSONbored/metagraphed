@@ -45,6 +45,7 @@ function toNumber(value) {
 // explicitly so a null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0).
 function normalizedNetuid(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }

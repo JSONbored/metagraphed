@@ -181,6 +181,18 @@ describe("buildAccountStakeFlow", () => {
     assert.equal(d.stake_events, 0); // undefined event_count -> 0
     assert.equal(d.subnet_count, 1);
   });
+
+  test("skips blank netuid cells that would coerce to subnet 0", () => {
+    const d = buildAccountStakeFlow(
+      [
+        { netuid: "", event_kind: STAKE_ADDED_KIND, total_tao: 5 },
+        { netuid: 7, event_kind: STAKE_ADDED_KIND, total_tao: 3 },
+      ],
+      ADDR,
+    );
+    assert.equal(d.subnet_count, 1);
+    assert.equal(d.subnets[0].netuid, 7);
+  });
 });
 
 describe("loadAccountStakeFlow", () => {
