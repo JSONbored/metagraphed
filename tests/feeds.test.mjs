@@ -39,6 +39,7 @@ function installMockCache() {
 }
 
 const {
+  toIso,
   registryItems,
   incidentItems,
   gapsItems,
@@ -425,6 +426,11 @@ describe("feeds — item builders", () => {
     assert.ok(Number.isFinite(Date.parse(item.timestamp)));
   });
 
+  test("toIso drops out-of-range string epoch-ms without RangeError (#2809 parity)", () => {
+    assert.equal(toIso("8640000000000001"), null);
+    assert.equal(toIso("1750000000000"), "2025-06-15T15:06:40.000Z");
+  });
+
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
     const items = gapsItems(ENRICHMENT_QUEUE);
     assert.equal(items.length, 3);
@@ -763,6 +769,21 @@ describe("feeds — serializers", () => {
     assert.match(xml, /<channel>[\s\S]*<\/channel>/);
     assert.ok((xml.match(/<item>/g) || []).length === items.length);
     assert.match(xml, /<pubDate>.*GMT<\/pubDate>/);
+  });
+
+  test("rssFeed omits pubDate for corrupt item timestamps instead of throwing", () => {
+    const xml = rssFeed(meta, [
+      {
+        id: "bad-ts",
+        url: "https://example.com/x",
+        title: "bad",
+        summary: "bad",
+        timestamp: "not-a-date",
+        tags: [],
+      },
+    ]);
+    assert.doesNotMatch(xml, /<pubDate>/);
+    assert.match(xml, /<item>/);
   });
 
   test("atomFeed has the required feed + entry structure", () => {
