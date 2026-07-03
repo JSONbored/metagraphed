@@ -383,6 +383,49 @@ describe("runHealthProber", () => {
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
   });
 
+  test("survives an out-of-range prior last_ok from D1 (no RangeError)", async () => {
+    // A corrupt surface_status.last_ok beyond the ±8.64e15 JS Date limit is carried
+    // forward on a failed probe. iso() must drop it to null instead of throwing a
+    // RangeError and aborting the whole 15-minute cron — mirrors #2807 / isoFromMs.
+    const kv = makeKv();
+    const db = makeDb({
+      priorStatus: [
+        {
+          surface_id: "sn7-api",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 8640000000000001,
+          consecutive_failures: 0,
+        },
+      ],
+    });
+    const result = await runHealthProber(
+      {},
+      {},
+      {
+        now: () => 50000,
+        db,
+        kv,
+        loadSurfaces: async () => [SURFACES[0]],
+        probeSurface: async () => ({
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          status_code: 404,
+        }),
+        probeOptions: {},
+      },
+    );
+    assert.equal(result.ok, true);
+    const apiRow = kv
+      .json(KV_HEALTH_CURRENT)
+      .surfaces.find((s) => s.surface_id === "sn7-api");
+    assert.equal(apiRow.last_ok, null);
+    const subnet = kv
+      .json(KV_HEALTH_CURRENT)
+      .subnets.find((s) => s.netuid === 7);
+    assert.equal(subnet.last_ok, null);
+  });
+
   test("folds unrecognized probe status into unknown in global status_counts", async () => {
     const kv = makeKv();
     const result = await runHealthProber(

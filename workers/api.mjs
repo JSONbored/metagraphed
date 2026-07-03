@@ -2773,6 +2773,17 @@ function matchRoute(pathname) {
   return null;
 }
 
+// Epoch-ms → ISO string for /health observability fields. A finite but
+// out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes toISOString()
+// throw a RangeError, which would 500 GET /health on one corrupt observed_at
+// cell. Range-guard via getTime() and drop to null — mirrors isoFromMs in
+// health-serving.mjs (#2807).
+function isoFromFiniteMs(ms) {
+  if (!Number.isFinite(ms)) return null;
+  const date = new Date(ms);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 // Lightweight readiness probe for uptime checks and load balancers. Reports
 // which bindings are wired; KV reads are in-isolate memoized.
 async function handleHealthRequest(request, env) {
@@ -2837,13 +2848,11 @@ async function handleHealthRequest(request, env) {
   if (bindings.health_db) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
-    const chainEventsFresh = Number.isFinite(chainEventsAtMs);
+    const chainEventsAtIso = isoFromFiniteMs(chainEventsAtMs);
     chainEvents = {
       latest_indexed_block: chainEventsRow?.block ?? null,
-      latest_event_at: chainEventsFresh
-        ? new Date(chainEventsAtMs).toISOString()
-        : null,
-      age_seconds: chainEventsFresh
+      latest_event_at: chainEventsAtIso,
+      age_seconds: chainEventsAtIso
         ? Math.round((Date.now() - chainEventsAtMs) / 1000)
         : null,
     };
