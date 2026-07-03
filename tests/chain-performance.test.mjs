@@ -137,6 +137,26 @@ describe("buildChainPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
   });
 
+  test("coerces a D1 numeric-string captured_at to an ISO timestamp", () => {
+    // D1 hands back the INTEGER captured_at as a numeric string; it must stamp
+    // like the numeric form, not drop to null via Date.parse("<digits>") === NaN.
+    const out = buildChainPerformance([
+      { incentive: 0.2, captured_at: "1750000000000" },
+      { incentive: 0.3, captured_at: "1750000060000" }, // newer
+    ]);
+    assert.equal(out.captured_at, new Date(1_750_000_060_000).toISOString());
+  });
+
+  test("drops a non-positive, out-of-range, or non-scalar captured_at to null", () => {
+    // Guard branches of the epoch coercion: "0" is non-positive, the 16-digit
+    // string is a finite-but-out-of-range epoch (new Date → Invalid Date, no
+    // RangeError leak), and a boolean is neither string nor number.
+    for (const captured_at of ["0", "8640000000000001", true]) {
+      const out = buildChainPerformance([{ incentive: 0.2, captured_at }]);
+      assert.equal(out.captured_at, null);
+    }
+  });
+
   test("cold/empty network → schema-stable zero (every metric null)", () => {
     const out = buildChainPerformance([]);
     assert.equal(out.subnet_count, 0);
