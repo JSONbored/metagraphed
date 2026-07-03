@@ -1,54 +1,46 @@
 name: PR Overlap Notice
 
-# Purely advisory: comments on a PR when another currently-open PR touches at
-# least one of the same file paths, so either author can check for conflicts
-# before merging. Never a required/blocking check — the job only ever posts a
-# comment (or does nothing); it does not fail the PR's checks list.
+# Purely advisory: flags when another currently-open PR touches at least one
+# of the same file paths, so either author can check for conflicts before
+# merging. Never a required/blocking check.
 #
-# Uses `pull_request_target`, not `pull_request` -- deliberately. GitHub
-# downgrades GITHUB_TOKEN to read-only for `pull_request` on a forked PR
-# (the normal case for external contributors here), which would silently
-# break the `pull-requests: write` comment upsert below for exactly the PRs
-# this workflow exists to help. `pull_request_target` runs in the BASE repo's
-# context, so the token keeps its declared permissions regardless of fork
-# origin. This is safe ONLY because this workflow never checks out or
-# executes the contributor's head commit/code -- every input comes from
-# already-public PR metadata over the GitHub REST API (gh api), and the one
-# checkout step below has no `ref:` override, so it pulls the TRUSTED base
-# branch's copy of this very workflow file, never the PR's own version.
+# Split into two workflows deliberately (detect here, comment in
+# pr-overlap-notice-comment.yml) rather than a single `pull_request_target`
+# job. `pull_request_target` runs in the base repo's context with whatever
+# permissions are declared, directly reachable by ANY fork PR author's event
+# -- a larger, harder-to-audit attack surface than necessary when a clean
+# alternative exists (this is GitHub's own documented recommendation for
+# "I need write access triggered by PR activity, but the PR content itself
+# is untrusted"). This workflow runs on the untrusted `pull_request` event
+# with NO permissions granted at all; it only ever reads already-public PR
+# metadata over the GitHub API and writes its result to an artifact. The
+# second workflow, triggered by `workflow_run` (never directly reachable by
+# PR event content -- only by a workflow run completing on this repo's own
+# trusted ref), downloads that artifact and is the only place
+# `pull-requests: write` is ever granted.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
-permissions:
-  # Intentionally omits `contents:`. The lone checkout step below is an empty
-  # sparse checkout of this public repo's own ref (added only to satisfy
-  # validate:workflows' "every workflow has a checkout step" rule -- it reads
-  # zero files and nothing downstream depends on the working tree); an
-  # anonymous git clone of a public GitHub repository succeeds regardless of
-  # the workflow's declared permissions, and this has been verified green in
-  # CI end-to-end (checkout + API calls + comment upsert all succeeded with
-  # only `pull-requests: write` declared). If GitHub's checkout behavior for
-  # public repos ever changes, add `contents: read` here.
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: pr-overlap-notice-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  overlap-notice:
+  detect:
     runs-on: ubuntu-latest
     steps:
       # No contributor code is checked out or executed anywhere in this
       # workflow -- every input below comes from already-public PR metadata
       # fetched over the GitHub REST API (gh api), same trusted-workflow-only
       # pattern as validate.yml's "Compute submitted files" step. This checkout
-      # is an empty sparse checkout of the trusted workflow's own base-branch
-      # ref, present only because validate:workflows requires every workflow to
-      # include a checkout step; it reads zero files and needs no `contents`
-      # permission (a public repo's default GITHUB_TOKEN can still perform an
-      # anonymous, credential-less clone).
+      # is an empty sparse checkout of the trusted workflow's own ref, present
+      # only because validate:workflows requires every workflow to include a
+      # checkout step; it reads zero files and needs no `contents` permission
+      # (a public repo's default GITHUB_TOKEN can still perform an anonymous,
+      # credential-less clone).
       - name: Checkout (no content read; satisfies workflow checkout guard)
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -57,7 +49,7 @@ jobs:
             .github/workflows/pr-overlap-notice.yml
           sparse-checkout-cone-mode: false
 
-      - name: Find and comment on overlapping open PRs
+      - name: Find overlapping open PRs
         id: overlap
         env:
           GH_TOKEN: ${{ github.token }}
@@ -68,6 +60,33 @@ jobs:
           PER_PAGE: "100"
         run: |
           set -euo pipefail
+
+          result_dir="$RUNNER_TEMP/overlap-result"
+          mkdir -p "$result_dir"
+          result_file="$result_dir/result.json"
+
+          # `checked` is the single source of truth for "a real comparison
+          # actually ran": written true only on the two paths below that follow
+          # a genuine file-list comparison. Every early-exit skip path (API
+          # failure, rate limiting, zero other open PRs) writes checked=false
+          # BEFORE any comparison logic runs, and every exit below is reached
+          # only after write_result has already run -- so the comment workflow
+          # can never misread "detection didn't finish" as "no overlap" and
+          # clear an existing, still-valid notice. jq's --arg/--argjson both
+          # produce valid JSON regardless of what a PR-controlled file name
+          # contains (embedded quotes, newlines, etc.), so this is also safe
+          # from the output-smuggling concern the prior single-workflow design
+          # needed a random heredoc delimiter to guard against.
+          write_result() {
+            jq -n \
+              --argjson pr_number "$PR_NUMBER" \
+              --argjson checked "$1" \
+              --argjson has_overlap "$2" \
+              --arg body "$3" \
+              '{pr_number: $pr_number, checked: $checked, has_overlap: $has_overlap, body: $body}' \
+              > "$result_file"
+          }
+          write_result false null ""
 
           # Gracefully skip on any transient API failure (rate limiting, etc.)
           # -- this workflow must never fail the PR's checks list.
@@ -92,14 +111,6 @@ jobs:
             printf '%s' "$flat" | jq -R -s -c 'split("\n") | map(select(length > 0))'
           }
 
-          # `checked` is the single source of truth for "a real comparison
-          # actually ran": it is set true immediately before EVERY has_overlap
-          # write below (the only two paths that follow a genuine file-list
-          # comparison), and left unset on every early-exit skip path (API
-          # failure, rate limiting, zero other open PRs). The upsert step is
-          # gated on `checked == 'true'`, so a skip can never be misread as
-          # "no overlap" and clear an existing, still-valid overlap-notice
-          # comment.
           this_pr_files_json=$(files_json_for_pr "$PR_NUMBER") || {
             echo "Could not fetch this PR's changed files; skipping overlap check." >&2
             exit 0
@@ -133,9 +144,6 @@ jobs:
           fi
 
           if [ "${#other_pr_numbers[@]}" -eq 0 ]; then
-            # No `checked` output -- same as every other early-exit skip, this
-            # leaves the upsert step correctly un-run rather than posting or
-            # clearing a comment with nothing actually compared.
             echo "No other open PRs to compare against; skipping."
             exit 0
           fi
@@ -157,73 +165,25 @@ jobs:
           done
 
           if [ "${#overlap_lines[@]}" -eq 0 ]; then
-            echo "checked=true" >> "$GITHUB_OUTPUT"
-            echo "has_overlap=false" >> "$GITHUB_OUTPUT"
+            write_result true false ""
             exit 0
           fi
 
-          echo "checked=true" >> "$GITHUB_OUTPUT"
-          echo "has_overlap=true" >> "$GITHUB_OUTPUT"
-          # Random per-run delimiter for the multiline $GITHUB_OUTPUT body -- the
-          # shared file-path list embedded below ultimately derives from PR-
-          # controlled filenames, so a fixed delimiter could in principle be used
-          # to smuggle extra output keys.
-          delimiter="COMMENT_BODY_$(python3 -c 'import uuid; print(uuid.uuid4().hex)' 2>/dev/null || date +%s%N)"
-          {
-            echo "body<<$delimiter"
-            echo "$MARKER"
-            echo "This PR touches file(s) that are also being changed in other currently-open PR(s) — worth checking for overlap before either merges."
-            echo ""
-            printf '%s\n' "${overlap_lines[@]}"
-            echo "$delimiter"
-          } >> "$GITHUB_OUTPUT"
+          body=$(
+            {
+              echo "$MARKER"
+              echo "This PR touches file(s) that are also being changed in other currently-open PR(s) — worth checking for overlap before either merges."
+              echo ""
+              printf '%s\n' "${overlap_lines[@]}"
+            }
+          )
+          write_result true true "$body"
 
-      - name: Upsert overlap-notice comment
-        # Gate strictly on `checked == 'true'` -- set only after a genuine
-        # file-list comparison completed. Every early-exit skip in the
-        # detection step (API failure, rate limiting, zero other open PRs)
-        # leaves `checked` unset, so this step is correctly skipped rather
-        # than misreading "no output yet" as "no overlap" and clearing an
-        # existing, still-valid notice.
-        if: steps.overlap.outputs.checked == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          MARKER: "<!-- overlap-notice:v1 -->"
-          HAS_OVERLAP: ${{ steps.overlap.outputs.has_overlap }}
-          BODY: ${{ steps.overlap.outputs.body }}
-        run: |
-          set -euo pipefail
-
-          # Same per-page pagination shape as the overlap-detection step: emit
-          # bare scalar ids (one per matching comment, across all pages) rather
-          # than a bracketed array literal per page, and take the first match.
-          # A PR should carry at most one marker comment (this workflow always
-          # upserts), so the first match is the one to update.
-          existing_comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
-            --paginate --jq "[.[] | select(.body | startswith(\"$MARKER\")) | .id][]" 2>/dev/null \
-            | head -n1) || {
-            echo "Could not list existing comments; skipping." >&2
-            exit 0
-          }
-
-          if [ "$HAS_OVERLAP" = "true" ]; then
-            if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
-              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
-                -f body="$BODY" >/dev/null 2>&1 || echo "Failed to update overlap comment; skipping." >&2
-            else
-              gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" \
-                -f body="$BODY" >/dev/null 2>&1 || echo "Failed to post overlap comment; skipping." >&2
-            fi
-          else
-            # No overlap now. If a prior overlap-notice comment exists (from an
-            # earlier, now-resolved overlap), update it to say so rather than
-            # leaving a stale warning. If no such comment exists, do nothing --
-            # never post an empty/no-op comment.
-            if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
-              cleared_body=$(printf '%s\nThis PR no longer overlaps with any other open PR'"'"'s changed files.' "$MARKER")
-              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
-                -f body="$cleared_body" >/dev/null 2>&1 || echo "Failed to clear overlap comment; skipping." >&2
-            fi
-          fi
+      - name: Upload overlap result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: overlap-result
+          path: ${{ runner.temp }}/overlap-result/result.json
+          retention-days: 1
+          if-no-files-found: ignore
