@@ -375,6 +375,8 @@ function statefulEnv(
     failPruneUntil = 0,
     failUpsertOnBatch = 0,
     failRollbackRun = false,
+    omitPruneChangesMeta = false,
+    bareSelectResponse = false,
   } = {},
 ) {
   const deleted = [];
@@ -418,7 +420,9 @@ function statefulEnv(
               v,
               async all() {
                 if (sql.startsWith("SELECT")) {
-                  return { results: applyNeuronSelect(table, sql, v) };
+                  return bareSelectResponse
+                    ? {}
+                    : { results: applyNeuronSelect(table, sql, v) };
                 }
                 return { results: [] };
               },
@@ -438,18 +442,22 @@ function statefulEnv(
                       },
                     };
                   }
-                  return {
-                    meta: {
-                      changes: applyNeuronSnapshotPrune(table, sql, v),
-                    },
-                  };
+                  return omitPruneChangesMeta
+                    ? {}
+                    : {
+                        meta: {
+                          changes: applyNeuronSnapshotPrune(table, sql, v),
+                        },
+                      };
                 }
                 return { meta: { changes: 0 } };
               },
             }),
             async all() {
               if (sql.startsWith("SELECT")) {
-                return { results: applyNeuronSelect(table, sql, []) };
+                return bareSelectResponse
+                  ? {}
+                  : { results: applyNeuronSelect(table, sql, []) };
               }
               return { results: [] };
             },
@@ -706,6 +714,62 @@ test("loadStagedNeurons rolls back legacy bare-array snapshots on mid-load failu
   );
   assert.equal(table.get("1:0").captured_at, T1);
   assert.equal(table.get("1:0").stake_tao, 77);
+});
+
+test("loadStagedNeurons treats missing atomic prune meta.changes as zero purged", async () => {
+  const rows = Array.from({ length: 12 }, (_, i) => neuronRow(1, i));
+  const m = mockEnv({ rows: signedEnvelope(rows) });
+  const baseBatch = m.env.METAGRAPH_HEALTH_DB.batch.bind(m.env.METAGRAPH_HEALTH_DB);
+  m.env.METAGRAPH_HEALTH_DB.batch = async (stmts) => {
+    const out = await baseBatch(stmts);
+    out[out.length - 1] = {};
+    return out;
+  };
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
+});
+
+test("loadStagedNeurons treats missing multi-batch prune meta.changes as zero purged", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  const m = statefulEnv(table, { omitPruneChangesMeta: true });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, true);
+  assert.equal(r.purged, 0);
+});
+
+test("loadStagedNeurons multi-batch backup tolerates D1 select without results field", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1, stake_tao: 55 });
+  const m = statefulEnv(table, {
+    bareSelectResponse: true,
+    failUpsertOnBatch: 2,
+  });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2, stake_tao: 200 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snap2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "load_failed");
+  assert.equal(
+    [...table.values()].some((row) => row.captured_at === T2),
+    false,
+    "partial snapshot rows must be rolled back even without prior backup rows",
+  );
 });
 
 test("loadStagedNeurons survives rollback failure after mid-load upsert failure", async () => {
