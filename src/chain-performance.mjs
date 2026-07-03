@@ -8,6 +8,7 @@
 // Every function is pure + exported for unit tests; the Worker does the D1 read +
 // envelope. Null-safe: an empty snapshot yields a schema-stable `null` block.
 
+import { captureStamp } from "./capture-stamp.mjs";
 import { computeConcentration } from "./concentration.mjs";
 
 // The neurons-tier columns the network performance handler reads — like the
@@ -27,17 +28,6 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 function round(value) {
   const factor = 1e6;
   return Math.round(value * factor) / factor;
-}
-
-function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
-  if (typeof value === "string") {
-    const ms = Date.parse(value);
-    if (Number.isFinite(ms)) return { ms, value };
-  }
-  return null;
 }
 
 // Coerce a raw column array to the finite values present. A score of exactly 0 is

@@ -8,6 +8,7 @@
 // Null-safe by design: an empty / all-zero distribution yields a schema-stable
 // `null` block (never throws), matching the concentration tier it mirrors.
 
+import { captureStamp } from "./capture-stamp.mjs";
 import { computeConcentration } from "./concentration.mjs";
 
 // The neurons-tier columns the performance handler reads — the D1 read contract
@@ -28,33 +29,6 @@ const SCORE_PERCENTILES = [10, 25, 50, 75, 90];
 function round(value) {
   const factor = 1e6;
   return Math.round(value * factor) / factor;
-}
-
-function epochMsStamp(ms) {
-  if (!Number.isFinite(ms) || ms <= 0) return null;
-  const date = new Date(ms);
-  if (!Number.isFinite(date.getTime())) return null;
-  return { ms, value: date.toISOString() };
-}
-
-// Coerce a D1 captured_at cell (epoch-ms number/string or ISO string) to the
-// newest-stamp shape buildSubnetPerformance expects. Mirrors captureStamp in
-// concentration.mjs (#2725) — D1 can return INTEGER columns as numeric strings,
-// and an out-of-range epoch-ms must degrade to null (never a RangeError).
-function captureStamp(value) {
-  if (value == null) return null;
-  if (typeof value === "string") {
-    if (/^\d+$/.test(value)) {
-      return epochMsStamp(Number(value));
-    }
-    const ms = Date.parse(value);
-    if (Number.isFinite(ms)) return { ms, value };
-    return null;
-  }
-  if (typeof value === "number") {
-    return epochMsStamp(value);
-  }
-  return null;
 }
 
 // Coerce a raw column array to the finite values present. Unlike the concentration
