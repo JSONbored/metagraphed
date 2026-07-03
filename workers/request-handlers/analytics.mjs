@@ -66,6 +66,11 @@ import {
 } from "../../src/chain-transfer-pairs.mjs";
 import { loadChainTransfers } from "../../src/chain-transfers.mjs";
 import {
+  loadChainWeights,
+  CHAIN_WEIGHTS_LIMIT_DEFAULT,
+  CHAIN_WEIGHTS_LIMIT_MAX,
+} from "../../src/chain-weights.mjs";
+import {
   loadChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
@@ -1106,6 +1111,55 @@ export async function handleChainStakeFlow(request, env, url, ctx = {}) {
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/stake-flow.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// GET /api/v1/chain/weights: network-wide validator weight-setting activity across every subnet
+// over a 7d/30d window, read from the account_events WeightsSet stream. Mirrors chain-transfers:
+// window + limit params, HEAD probes normalized through the GET cache key so they cannot bypass
+// the edge cache and repeatedly force the network-wide aggregations, cache keyed on the analytics
+// cron freshness. The leaderboard is fixed to most-active-first (total WeightsSet events).
+export async function handleChainWeights(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_WEIGHTS_LIMIT_DEFAULT,
+    maxLimit: CHAIN_WEIGHTS_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-weights",
+    async () => {
+      const data = await loadChainWeights(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/weights.json",
             data.observed_at,
           ),
         },

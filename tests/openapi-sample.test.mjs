@@ -450,6 +450,90 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.total_volume_tao, 100);
   });
 
+  test("chain weights samples keep events-per-setter consistent", () => {
+    const setterProps = {
+      distinct_setters: { type: "integer" },
+      weight_sets: { type: "integer" },
+      sets_per_setter: { type: ["number", "null"] },
+    };
+    const weightsSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: ["distinct_setters", "weight_sets", "sets_per_setter"],
+          properties: setterProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_setters",
+              "weight_sets",
+              "sets_per_setter",
+            ],
+            properties: { netuid: { type: "integer" }, ...setterProps },
+          },
+        },
+      },
+    };
+    const sample = s(weightsSchema, "data");
+
+    // The worked example is internally consistent: each subnet's sets_per_setter equals its
+    // WeightsSet count divided by its distinct setters, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.sets_per_setter,
+        subnet.weight_sets / subnet.distinct_setters,
+      );
+    }
+    assert.equal(
+      sample.network.sets_per_setter,
+      sample.network.weight_sets / sample.network.distinct_setters,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks sets_per_setter is not a weights artifact and is left
+    // untouched (guard branch).
+    const notWeights = JSON.parse(JSON.stringify(weightsSchema));
+    delete notWeights.properties.network.properties.sets_per_setter;
+    notWeights.properties.network.required =
+      notWeights.properties.network.required.filter(
+        (key) => key !== "sets_per_setter",
+      );
+    const untouched = s(notWeights, "data");
+    assert.notEqual(untouched.network.weight_sets, 70);
+  });
+
   test("chain transfer-pair samples keep the top-pair share consistent", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const pairSchema = {
