@@ -170,6 +170,20 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/performance",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(typeof body.data.neuron_count, "number");
+      // Cold D1 → schema-stable null blocks; with rows → metric objects.
+      assert.ok(
+        body.data.incentive === null || typeof body.data.incentive === "object",
+      );
+      assert.ok(
+        body.data.trust === null || typeof body.data.trust === "object",
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/7/concentration/history?window=7d",
     (body) => {
       assert.equal(body.data.netuid, 7);

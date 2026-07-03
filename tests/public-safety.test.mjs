@@ -196,6 +196,26 @@ describe("captured-fixture body scan", () => {
     }
   });
 
+  test("flags every GitHub token prefix, not just ghp_", async () => {
+    // ghp_ is the personal-access prefix, but gho_/ghu_/ghs_/ghr_ (OAuth,
+    // user-to-server, App installation, refresh) are the same leakable family.
+    // Assemble each token from a prefix + shared body at runtime so the source
+    // never commits a contiguous token-shaped literal (which secret scanners
+    // would flag as a leaked credential in the diff).
+    const body = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const leaks = ["ghp", "gho", "ghu", "ghs", "ghr"].map(
+      (prefix) => `${prefix}_${body}`,
+    );
+    await fs.writeFile(TEST_PUBLIC_PATH, `${leaks.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of leaks.entries()) {
+      assert.ok(
+        output.includes(`${TEST_PUBLIC_FILE}:${index + 1}: github token`),
+        `github token on line ${index + 1} must be flagged; got:\n${output}`,
+      );
+    }
+  });
+
   test("flags a link-local cloud-metadata URL as a private/loopback leak", async () => {
     // 169.254.169.254 is the AWS/GCP metadata endpoint — the canonical SSRF /
     // credential-theft target and unsafe per lib.mjs isUnsafeUrl, so a leaked URL
@@ -213,6 +233,22 @@ describe("captured-fixture body scan", () => {
           `${TEST_PUBLIC_FILE}:${index + 1}: private or loopback URL`,
         ),
         `link-local URL on line ${index + 1} must be flagged; got:\n${output}`,
+      );
+    }
+  });
+
+  test("flags a bare AWS access key id", async () => {
+    // The signed-URL rule only catches request params; a long-term (AKIA) or
+    // temporary (ASIA) access key id pasted into a doc/config is the common leak.
+    // Assemble prefix + shared body at runtime so the source never commits a
+    // contiguous key-shaped literal (which secret scanners flag in the diff).
+    const leaks = ["AKIA", "ASIA"].map((prefix) => `${prefix}IOSFODNN7EXAMPLE`);
+    await fs.writeFile(TEST_PUBLIC_PATH, `${leaks.join("\n")}\n`, "utf8");
+    const output = runScanOutput();
+    for (const [index] of leaks.entries()) {
+      assert.ok(
+        output.includes(`${TEST_PUBLIC_FILE}:${index + 1}: aws access key id`),
+        `AWS access key id on line ${index + 1} must be flagged; got:\n${output}`,
       );
     }
   });
@@ -254,6 +290,18 @@ describe("captured-fixture body scan", () => {
         `${TEST_FIXTURE}:response.body.seed phrase key: wallet/key wording`,
       ),
       `sensitive wallet/key wording must still fire on fixture body keys; got:\n${output}`,
+    );
+  });
+
+  test("flags a bare Google API key", async () => {
+    // The AIza-prefixed 39-char key is a distinctive, unambiguous credential
+    // format that none of the URL/token rules caught.
+    const key = `AIza${"b".repeat(35)}`;
+    await fs.writeFile(TEST_PUBLIC_PATH, `${key}\n`, "utf8");
+    const output = runScanOutput();
+    assert.ok(
+      output.includes(`${TEST_PUBLIC_FILE}:1: google api key`),
+      `Google API key must be flagged; got:\n${output}`,
     );
   });
 

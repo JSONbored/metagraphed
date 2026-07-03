@@ -1,0 +1,112 @@
+// Regression coverage for the enum-mismatch message clarity fix: both
+// scripts/validate-surface.mjs and scripts/validate-schemas.mjs previously
+// surfaced ajv's bare "must be equal to one of the allowed values" for an
+// invalid `kind`, with no indication of what those values actually are.
+// Both scripts now append the allowed-values list (and the offending value)
+// to enum-keyword error messages.
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, describe, test } from "vitest";
+import { listJsonFiles, readJson, repoRoot } from "../scripts/lib.mjs";
+
+function runNode(args) {
+  try {
+    const stdout = execFileSync(process.execPath, args, {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+    return { status: 0, output: stdout };
+  } catch (err) {
+    return {
+      status: err.status ?? 1,
+      output: `${err.stdout ?? ""}${err.stderr ?? ""}`,
+    };
+  }
+}
+
+describe("validate-surface.mjs enum error messages", () => {
+  let tempDir;
+
+  afterEach(() => {
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = undefined;
+    }
+  });
+
+  test("lists the allowed kind values and the offending value on an invalid kind", async () => {
+    const [sourceFile] = await listJsonFiles(
+      path.join(repoRoot, "registry/subnets"),
+    );
+    const document = JSON.parse(readFileSync(sourceFile, "utf8"));
+    assert.ok(
+      Array.isArray(document.surfaces) && document.surfaces.length > 0,
+      "fixture subnet file must have at least one surface",
+    );
+    document.surfaces[0].kind = "totally-invalid-kind";
+
+    tempDir = mkdtempSync(`${tmpdir()}/metagraphed-validate-surface-`);
+    const fixturePath = path.join(tempDir, "fixture.json");
+    writeFileSync(fixturePath, JSON.stringify(document, null, 2));
+
+    const { status, output } = runNode([
+      "scripts/validate-surface.mjs",
+      fixturePath,
+    ]);
+
+    assert.equal(status, 1);
+    assert.match(output, /must be equal to one of the allowed values/);
+    // The allowed-values list must actually be present, not just the bare
+    // ajv message — this is the behavior being fixed.
+    assert.match(output, /subnet-api/);
+    assert.match(output, /data-artifact/);
+    assert.match(output, /got "totally-invalid-kind"/);
+  });
+});
+
+describe("validate-schemas.mjs enum error messages", () => {
+  let mutatedFile;
+  let originalContents;
+
+  afterEach(() => {
+    if (mutatedFile) {
+      writeFileSync(mutatedFile, originalContents);
+      mutatedFile = undefined;
+      originalContents = undefined;
+    }
+  });
+
+  test("lists the allowed kind values and the offending value on an invalid kind", async () => {
+    const subnetFiles = await listJsonFiles(
+      path.join(repoRoot, "registry/subnets"),
+    );
+    let targetFile;
+    let targetDocument;
+    for (const file of subnetFiles) {
+      const document = await readJson(file);
+      if (Array.isArray(document.surfaces) && document.surfaces.length > 0) {
+        targetFile = file;
+        targetDocument = document;
+        break;
+      }
+    }
+    assert.ok(targetFile, "at least one subnet file must have a surface");
+
+    mutatedFile = targetFile;
+    originalContents = readFileSync(mutatedFile, "utf8");
+    targetDocument.surfaces[0].kind = "totally-invalid-kind";
+    writeFileSync(mutatedFile, JSON.stringify(targetDocument, null, 2));
+
+    const { status, output } = runNode(["scripts/validate-schemas.mjs"]);
+
+    assert.equal(status, 1);
+    assert.match(output, /must be equal to one of the allowed values/);
+    assert.match(output, /subnet-api/);
+    assert.match(output, /data-artifact/);
+    assert.match(output, /got "totally-invalid-kind"/);
+  });
+});

@@ -83,9 +83,11 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetYield,
+  handleSubnetPerformance,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
   handleGlobalValidators,
+  canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
   handleAccount,
   handleAccountHistory,
@@ -268,6 +270,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
+  SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1186,13 +1189,15 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
   // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
+    const validatorsCache = canonicalGlobalValidatorsCachePath(url);
+    if (validatorsCache.response) return validatorsCache.response;
     return withEdgeCache(
       request,
       ctx,
       env,
       "global-validators",
       () => handleGlobalValidators(request, env, url),
-      null,
+      validatorsCache.cachePathAndSearch,
       (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
     );
   }
@@ -1395,6 +1400,28 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(yieldMatch[1]),
         resolved.url,
+      );
+    }
+    // Reward-distribution + score-spread over the current neurons snapshot —
+    // per-UID read of the neurons tier, so it edge-caches on the subnet's neuron
+    // captured_at stamp like /concentration, not the health prober tick.
+    const performanceMatch = SUBNET_PERFORMANCE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (performanceMatch) {
+      return withNeuronsEdgeCache(
+        request,
+        ctx,
+        env,
+        Number(performanceMatch[1]),
+        "subnet-performance",
+        () =>
+          handleSubnetPerformance(
+            request,
+            env,
+            Number(performanceMatch[1]),
+            resolved.url,
+          ),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -1746,6 +1773,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
+    SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||

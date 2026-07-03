@@ -234,6 +234,7 @@ export const API_QUERY_COLLECTIONS = {
       "score",
       "status",
     ],
+    rangeFilters: ["latency_ms", "score"],
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -932,6 +933,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/concentration.json",
     "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
     "SubnetConcentrationArtifact",
+  ),
+  artifact(
+    "subnet-performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+    "SubnetPerformanceArtifact",
   ),
   artifact(
     "subnet-concentration-history",
@@ -1771,6 +1778,17 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-performance",
+    "GET",
+    "/api/v1/subnets/{netuid}/performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-concentration-history",
     "GET",
     "/api/v1/subnets/{netuid}/concentration/history",
@@ -2112,13 +2130,17 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/stake-flow",
     "/metagraph/accounts/{ss58}/stake-flow.json",
-    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
+    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "in", "out"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],

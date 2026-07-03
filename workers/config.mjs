@@ -55,6 +55,10 @@ export const SUBNET_STAKE_FLOW_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/stake-flow$/;
 // Per-UID emission yield distribution over the current neurons snapshot, no static file.
 export const SUBNET_YIELD_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/yield$/;
+// Reward-distribution + score-spread metrics over the current neurons snapshot
+// (reward concentration + trust/consensus percentiles), no static file.
+export const SUBNET_PERFORMANCE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/performance$/;
 export const UPTIME_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/uptime$/;
 // Per-UID metagraph routes (#1304/#1305): computed live from the neurons D1 tier.
 export const SUBNET_METAGRAPH_PATH_PATTERN =
