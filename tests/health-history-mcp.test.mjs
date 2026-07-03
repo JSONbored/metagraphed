@@ -3,6 +3,7 @@ import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
 import { latestArtifactDate } from "../scripts/lib.mjs";
 import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
+import * as listQuery from "../workers/list-query.mjs";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,
@@ -101,6 +102,50 @@ describe("health-history-mcp — healthHistoryQueryUrl", () => {
     const url = healthHistoryQueryUrl({ limit: "50" });
     assert.equal(url.searchParams.get("limit"), "100");
   });
+
+  test("clamps zero and negative numeric limits to the default", () => {
+    assert.equal(
+      healthHistoryQueryUrl({ limit: 0 }).searchParams.get("limit"),
+      "100",
+    );
+    assert.equal(
+      healthHistoryQueryUrl({ limit: -5 }).searchParams.get("limit"),
+      "100",
+    );
+  });
+
+  test("accepts a valid cursor and maps every optional filter", () => {
+    const url = healthHistoryQueryUrl({
+      kind: "openapi",
+      provider: "allways",
+      status: "ok",
+      classification: "live",
+      order: "desc",
+      fields: "netuid,surface_id",
+      cursor: 0,
+    });
+    assert.equal(url.searchParams.get("kind"), "openapi");
+    assert.equal(url.searchParams.get("provider"), "allways");
+    assert.equal(url.searchParams.get("status"), "ok");
+    assert.equal(url.searchParams.get("classification"), "live");
+    assert.equal(url.searchParams.get("order"), "desc");
+    assert.equal(url.searchParams.get("fields"), "netuid,surface_id");
+    assert.equal(url.searchParams.get("cursor"), "0");
+  });
+
+  test("rejects non-string optional string arguments", () => {
+    assert.throws(
+      () => healthHistoryQueryUrl({ provider: 123 }),
+      /provider.*must be a non-empty string/,
+    );
+  });
+
+  test("rejects invalid kind enums", () => {
+    assert.throws(
+      () => healthHistoryQueryUrl({ kind: "not-a-kind" }),
+      /kind.*must be one of:/,
+    );
+  });
 });
 
 describe("health-history-mcp — loadHealthHistory", () => {
@@ -181,17 +226,51 @@ describe("health-history-mcp — loadHealthHistory", () => {
   });
 
   test("defaults pagination totals when the list-query meta omits page fields", async () => {
-    const out = await loadHealthHistory(
-      makeCtx(),
-      { date: HISTORY_BLOB.date },
-      makeDeps(),
-    );
-    assert.equal(out.surfaces.length, 2);
-    assert.equal(out.total, 2);
-    assert.equal(out.returned, 2);
-    assert.equal(out.limit, 2);
-    assert.equal(out.cursor, 0);
-    assert.equal(out.next_cursor, null);
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: [SURFACE_ROW] },
+      meta: {},
+    });
+    try {
+      const out = await loadHealthHistory(
+        makeCtx(),
+        { date: HISTORY_BLOB.date },
+        makeDeps(),
+      );
+      assert.equal(out.surfaces.length, 1);
+      assert.equal(out.total, 1);
+      assert.equal(out.returned, 1);
+      assert.equal(out.limit, 1);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+      assert.equal(out.sort, null);
+      assert.equal(out.order, null);
+      assert.equal(out.date, HISTORY_BLOB.date);
+      assert.equal(out.summary, null);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("falls back when list-query data omits date, summary, and surface rows", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { surfaces: null },
+      meta: { pagination: { total: 0, returned: 0, limit: 0, cursor: 0 } },
+    });
+    try {
+      const out = await loadHealthHistory(
+        makeCtx(),
+        { date: HISTORY_BLOB.date },
+        makeDeps(),
+      );
+      assert.deepEqual(out.surfaces, []);
+      assert.equal(out.date, HISTORY_BLOB.date);
+      assert.equal(out.summary, null);
+      assert.equal(out.total, 0);
+      assert.equal(out.returned, 0);
+      assert.equal(out.limit, 0);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

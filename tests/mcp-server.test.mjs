@@ -6137,6 +6137,44 @@ describe("MCP economics + metagraph data tools", () => {
     );
   });
 
+  test("get_health_history maps loader not_found when artifact data is empty", async () => {
+    const path = `/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`;
+    const deps = {
+      ...makeDeps(),
+      readArtifact(_env, artifactPath) {
+        if (artifactPath === path) {
+          return Promise.resolve({ ok: true, data: null, source: "test" });
+        }
+        return makeDeps().readArtifact(_env, artifactPath);
+      },
+    };
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No health-history snapshot/);
+  });
+
+  test("get_health_history callTool rethrows unexpected readArtifact failures", async () => {
+    const deps = {
+      ...makeDeps({
+        [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
+          HEALTH_HISTORY_BLOB,
+      }),
+      readArtifact() {
+        return Promise.reject(new Error("kaboom"));
+      },
+    };
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date },
+      { deps },
+    );
+    assert.equal(res.body.error?.message || res.body.result?.isError, true);
+  });
+
   test("get_health_history handler rethrows unexpected loader failures", async () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
     await assert.rejects(
