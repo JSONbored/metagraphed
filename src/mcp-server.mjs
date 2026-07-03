@@ -72,6 +72,13 @@ import {
   DEFAULT_CHAIN_TRANSFER_WINDOW,
 } from "./chain-transfers.mjs";
 import {
+  loadChainTurnover,
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
+  CHAIN_TURNOVER_LIMIT_MAX,
+  CHAIN_TURNOVER_WINDOWS,
+  DEFAULT_CHAIN_TURNOVER_WINDOW,
+} from "./chain-turnover.mjs";
+import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.mjs";
@@ -214,11 +221,12 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.23.0";
+export const MCP_SERVER_VERSION = "1.24.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
 const CHAIN_TRANSFER_WINDOW_KEYS = Object.keys(CHAIN_TRANSFER_WINDOWS);
+const CHAIN_TURNOVER_WINDOW_KEYS = Object.keys(CHAIN_TURNOVER_WINDOWS);
 const STAKE_FLOW_WINDOW_KEYS = Object.keys(STAKE_FLOW_WINDOWS);
 const MOVERS_WINDOW_KEYS = Object.keys(MOVERS_WINDOWS);
 
@@ -328,6 +336,8 @@ export const MCP_INSTRUCTIONS =
   "score spread across all subnets, " +
   "get_chain_yield the network-wide emission-yield (return rate) and its " +
   "distribution across all subnets, " +
+  "get_chain_turnover the network-wide validator-turnover leaderboard " +
+  "(per-subnet churn, retention, and stability) across all subnets, " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1956,6 +1966,56 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainYield(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_turnover",
+    title: "Get network-wide validator turnover",
+    description:
+      "Fetch the network-wide validator-set turnover leaderboard across ALL " +
+      "subnets between the window's boundary neuron_daily snapshots (7d, 30d, " +
+      "or 90d; default 30d): each subnet ranked by gross validator churn " +
+      "(validators entered + exited) with Jaccard retention and a 0–100 " +
+      "stability score, a network rollup over the union validator set, and the " +
+      "count/mean/min/p25/median/p75/p90/max spread of per-subnet stability. " +
+      "The network-level companion of get_subnet_turnover, mirroring how " +
+      "get_chain_concentration companions get_subnet_concentration. Mirrors " +
+      "GET /api/v1/chain/turnover.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: CHAIN_TURNOVER_WINDOW_KEYS,
+          description: `Comparison window (default ${DEFAULT_CHAIN_TURNOVER_WINDOW}).`,
+        },
+        limit: {
+          type: "integer",
+          description: `Max subnets in the turnover leaderboard (1-${CHAIN_TURNOVER_LIMIT_MAX}, default ${CHAIN_TURNOVER_LIMIT_DEFAULT}).`,
+          minimum: 1,
+          maximum: CHAIN_TURNOVER_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_CHAIN_TURNOVER_WINDOW;
+      if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${CHAIN_TURNOVER_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_TURNOVER_LIMIT_DEFAULT,
+        CHAIN_TURNOVER_LIMIT_MAX,
+      );
+      return loadChainTurnover(mcpD1Runner(ctx), {
+        windowLabel: window,
+        limit,
+      });
     },
   },
   {
@@ -5404,6 +5464,22 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_yield: { type: ["number", "null"] },
       miner_yield: { type: ["number", "null"] },
       distribution: { type: ["object", "null"] },
+    },
+  },
+  get_chain_turnover: {
+    type: "object",
+    additionalProperties: true,
+    required: ["comparable", "subnet_count", "network", "subnets"],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      start_date: NULLABLE_STRING,
+      end_date: NULLABLE_STRING,
+      comparable: { type: "boolean" },
+      subnet_count: { type: "integer" },
+      network: { type: "object" },
+      stability_distribution: { type: ["object", "null"] },
+      subnets: { type: "array", items: { type: "object" } },
     },
   },
   get_subnet_concentration_history: {

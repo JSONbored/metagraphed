@@ -6040,6 +6040,175 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.distribution.count, 2);
   });
 
+  test("get_chain_turnover returns schema-stable empty on cold D1", async () => {
+    const res = await callTool("get_chain_turnover", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.comparable, false);
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.stability_distribution, null);
+    assert.equal(out.network.validators_start, 0);
+  });
+
+  test("get_chain_turnover ranks per-subnet churn across the network", async () => {
+    const res = await callTool(
+      "get_chain_turnover",
+      { window: "30d", limit: 10 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              // netuid 1: one validator swapped (V2 -> V3) — churn of 2.
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+              // netuid 2: stable set (V4 both boundaries) — churn of 0.
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 2,
+                hotkey: "V4",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 2,
+                hotkey: "V4",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.comparable, true);
+    assert.equal(out.window, "30d");
+    assert.equal(out.start_date, "2026-06-01");
+    assert.equal(out.end_date, "2026-06-30");
+    assert.equal(out.subnet_count, 2);
+    // Most volatile subnet first: netuid 1 (churn 2) ranks above netuid 2 (churn 0).
+    assert.equal(out.subnets[0].netuid, 1);
+    assert.equal(out.subnets[0].validators_entered, 1);
+    assert.equal(out.subnets[0].validators_exited, 1);
+    // Network union set (V1,V2,V4) -> (V1,V3,V4): one entered, one exited.
+    assert.equal(out.network.validators_entered, 1);
+    assert.equal(out.network.validators_exited, 1);
+    assert.equal(out.stability_distribution.count, 2);
+  });
+
+  test("get_chain_turnover rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_turnover", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("get_chain_turnover caps the leaderboard by limit", async () => {
+    const res = await callTool(
+      "get_chain_turnover",
+      { limit: 1 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 2,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 2,
+                hotkey: "V4",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    // Both subnets are counted in the rollup/distribution, but the leaderboard is capped.
+    assert.equal(out.subnet_count, 2);
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.stability_distribution.count, 2);
+  });
+
+  test("get_chain_turnover payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_chain_turnover",
+    )?.outputSchema;
+    const res = await callTool(
+      "get_chain_turnover",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                netuid: 1,
+                hotkey: "V1",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                netuid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",
