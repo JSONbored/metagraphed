@@ -107,6 +107,33 @@ test("chain-events accepts block + extrinsic filters (extrinsic-detail view)", a
   expect(res2.status).toBe(200);
 });
 
+test("chain-events ignores malformed integer position filters", async () => {
+  const cases = [
+    "/api/v1/chain-events?block=1.5&extrinsic=2&before=3",
+    "/api/v1/chain-events?block=-1&extrinsic=2&before=3",
+    "/api/v1/chain-events?block=1e3&extrinsic=2&before=3",
+    "/api/v1/chain-events?block=9007199254740993&extrinsic=2&before=3",
+    "/api/v1/chain-events?block=12&extrinsic=3.5",
+    "/api/v1/chain-events?block=12&extrinsic=-3",
+    "/api/v1/chain-events?before=3.5",
+    "/api/v1/chain-events?before=-3",
+    "/api/v1/chain-events?before=1e3",
+    "/api/v1/chain-events?before=9007199254740993",
+  ];
+
+  for (const path of cases) {
+    sqlCalls.length = 0;
+    const res = await req(path);
+    expect(res.status).toBe(200);
+    const values = sqlCalls.flatMap((call) => call.values);
+    expect(values).not.toContain(1.5);
+    expect(values).not.toContain(3.5);
+    expect(values).not.toContain(-1);
+    expect(values).not.toContain(-3);
+    expect(values).not.toContain(1000);
+  }
+});
+
 test("chain-events ignores extrinsic without block to avoid global scans", async () => {
   const res = await req("/api/v1/chain-events?extrinsic=999999&limit=1");
   expect(res.status).toBe(200);

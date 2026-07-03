@@ -51,6 +51,15 @@ function clampStatsBlocks(raw) {
 function numberOrNull(v) {
   return v == null ? null : Number(v);
 }
+
+function nonNegativeIntegerParam(params, key) {
+  const value = params.get(key);
+  if (value == null || value === "") return null;
+  if (!/^\d+$/.test(value)) return null;
+  const n = Number(value);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
 function coerceEvent(row) {
   return {
     ...row,
@@ -120,16 +129,15 @@ export default {
             400,
           );
         }
-        const numParam = (k) => {
-          const v = url.searchParams.get(k);
-          if (v == null || v === "") return null;
-          const n = Number(v);
-          return Number.isFinite(n) ? n : null;
-        };
-        const blockN = numParam("block");
-        const extrN = blockN != null ? numParam("extrinsic") : null;
+        const blockN = nonNegativeIntegerParam(url.searchParams, "block");
+        const extrN =
+          blockN != null
+            ? nonNegativeIntegerParam(url.searchParams, "extrinsic")
+            : null;
         const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
-        const beforeBn = cursor ? null : numParam("before"); // legacy block_number cursor
+        const beforeBn = cursor
+          ? null
+          : nonNegativeIntegerParam(url.searchParams, "before"); // legacy block_number cursor
         if (method && !pallet && blockN == null) {
           return json(
             {
