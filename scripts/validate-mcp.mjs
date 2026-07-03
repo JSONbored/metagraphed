@@ -389,6 +389,19 @@ assert.ok(
   Array.isArray(vals.validators),
   "list_subnet_validators must return validators[]",
 );
+const globalVals = await callOk("list_global_validators", {
+  sort: "subnet_count",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(globalVals.validators),
+  "list_global_validators must return validators[]",
+);
+assert.equal(
+  globalVals.sort,
+  "subnet_count",
+  "list_global_validators must echo sort",
+);
 const yieldCard = await callOk("get_subnet_yield", { netuid: 7 });
 assert.ok(
   Array.isArray(yieldCard.neurons),

@@ -5288,6 +5288,79 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  test("list_global_validators returns schema-stable empty list on cold D1", async () => {
+    const res = await callTool("list_global_validators", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.limit, 20);
+  });
+
+  test("list_global_validators groups hotkeys across subnets and applies sort/limit", async () => {
+    const globalEnv = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        neurons: [
+          {
+            netuid: 1,
+            uid: 0,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 50,
+            emission_tao: 4,
+            validator_trust: 0.6,
+            block_number: 100,
+            captured_at: 1750000000000,
+          },
+          {
+            netuid: 2,
+            uid: 1,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 70,
+            emission_tao: 6,
+            validator_trust: 0.8,
+            block_number: 101,
+            captured_at: 1750000001000,
+          },
+          {
+            netuid: 3,
+            uid: 0,
+            hotkey: "5Hk-op-b",
+            coldkey: "5Co-b",
+            validator_permit: 1,
+            stake_tao: 500,
+            emission_tao: 40,
+            validator_trust: 0.95,
+            block_number: 102,
+            captured_at: 1750000002000,
+          },
+        ],
+      }),
+    };
+    const res = await callTool(
+      "list_global_validators",
+      { sort: "subnet_count", limit: 1 },
+      { env: globalEnv },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.limit, 1);
+    assert.equal(out.validators.length, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-op-a");
+    assert.equal(out.validators[0].subnet_count, 2);
+    assert.equal(out.validators[0].uid_count, 2);
+    assert.equal(out.validators[0].subnets.length, 2);
+  });
+
+  test("list_global_validators rejects an invalid sort", async () => {
+    const res = await callTool("list_global_validators", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort must be one of/);
+  });
+
   test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
     const present = await callTool(
       "get_neuron",
