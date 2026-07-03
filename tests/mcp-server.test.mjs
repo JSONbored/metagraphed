@@ -1316,6 +1316,22 @@ describe("MCP tools (injected deps)", () => {
     );
   });
 
+  test("list_curation payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_curation",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/curation.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: "ok",
+        curation: [{ netuid: 7, coverage_level: "probed" }],
+      },
+    });
+    const res = await callTool("list_curation", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);

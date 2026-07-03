@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import Ajv2020 from "ajv/dist/2020.js";
+import * as listQuery from "../workers/list-query.mjs";
 import {
   CURATION_ARTIFACT,
   LIST_CURATION_INSTRUCTIONS,
@@ -93,6 +94,40 @@ describe("curation-mcp", () => {
     );
   });
 
+  test("curationQueryUrl rejects non-string fields", () => {
+    assert.throws(
+      () => curationQueryUrl({ fields: 42 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
+  test("curationQueryUrl trims and forwards a fields projection", () => {
+    const url = curationQueryUrl({ fields: " netuid,name " });
+    assert.equal(url.searchParams.get("fields"), "netuid,name");
+  });
+
+  test("curationQueryUrl clamps a non-numeric limit to the default", () => {
+    const url = curationQueryUrl({ limit: "lots" });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("curationQueryUrl clamps a sub-minimum numeric limit to the default", () => {
+    const url = curationQueryUrl({ limit: 0 });
+    assert.equal(url.searchParams.get("limit"), "50");
+  });
+
+  test("curationQueryUrl clamps limit above the MCP maximum", () => {
+    const url = curationQueryUrl({ limit: 500 });
+    assert.equal(url.searchParams.get("limit"), "100");
+  });
+
+  test("curationQueryUrl rejects a fractional netuid", () => {
+    assert.throws(
+      () => curationQueryUrl({ netuid: 1.5 }),
+      (err) => err.code === "invalid_params",
+    );
+  });
+
   test("loadCurationList returns filtered rows with pagination meta", async () => {
     const out = await loadCurationList(
       { env: {}, readArtifact },
@@ -166,9 +201,69 @@ describe("curation-mcp", () => {
   test("loadCurationList rejects invalid list-query params from REST parity", async () => {
     await assert.rejects(
       () =>
-        loadCurationList({ env: {}, readArtifact }, { sort: "not_a_field" }),
+        loadCurationList({ env: {}, readArtifact }, { fields: "not_a_column" }),
       (err) => err.code === "invalid_params",
     );
+  });
+
+  test("loadCurationList projects row fields when requested", async () => {
+    const out = await loadCurationList(
+      { env: {}, readArtifact },
+      { fields: "netuid,coverage_level", limit: 1 },
+    );
+    assert.deepEqual(out.curation[0], {
+      netuid: 7,
+      coverage_level: "probed",
+    });
+  });
+
+  test("loadCurationList omits nullable artifact metadata when absent", async () => {
+    const out = await loadCurationList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { curation: [{ netuid: 0 }] },
+        }),
+      },
+      {},
+    );
+    assert.equal(out.generated_at, null);
+    assert.equal(out.notes, null);
+  });
+
+  test("loadCurationList treats a non-array curation key as empty", async () => {
+    const out = await loadCurationList(
+      {
+        env: {},
+        readArtifact: async () => ({
+          ok: true,
+          data: { curation: null },
+        }),
+      },
+      {},
+    );
+    assert.deepEqual(out.curation, []);
+    assert.equal(out.total, 0);
+  });
+
+  test("loadCurationList falls back when pagination meta is absent", async () => {
+    const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
+      data: { curation: [{ netuid: 9 }, { netuid: 10 }] },
+      meta: {},
+    });
+    try {
+      const out = await loadCurationList({ env: {}, readArtifact }, {});
+      assert.equal(out.total, 2);
+      assert.equal(out.returned, 2);
+      assert.equal(out.limit, 2);
+      assert.equal(out.cursor, 0);
+      assert.equal(out.next_cursor, null);
+      assert.equal(out.sort, null);
+      assert.equal(out.order, null);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test("loadCurationList rejects a malformed artifact payload", async () => {
