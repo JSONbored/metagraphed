@@ -4712,6 +4712,28 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const GLOBAL_VALIDATOR_SUBNET_ITEM = {
+  netuid: NULLABLE_INT,
+  uid: NULLABLE_INT,
+  stake_tao: ANY,
+  emission_tao: ANY,
+  validator_trust: { type: ["number", "null"] },
+};
+const GLOBAL_VALIDATOR_ITEM = {
+  hotkey: NULLABLE_STRING,
+  coldkey: NULLABLE_STRING,
+  coldkey_count: { type: "integer" },
+  subnet_count: { type: "integer" },
+  uid_count: { type: "integer" },
+  total_stake_tao: ANY,
+  total_emission_tao: ANY,
+  avg_validator_trust: { type: ["number", "null"] },
+  max_validator_trust: { type: ["number", "null"] },
+  latest_captured_at: NULLABLE_STRING,
+  latest_block_number: NULLABLE_INT,
+  stake_dominance: { type: ["number", "null"] },
+  subnets: objectItems(GLOBAL_VALIDATOR_SUBNET_ITEM),
+};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -5349,21 +5371,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       validator_count: { type: "integer" },
-      validators: objectItems({
-        hotkey: NULLABLE_STRING,
-        coldkey: NULLABLE_STRING,
-        coldkey_count: NULLABLE_INT,
-        subnet_count: NULLABLE_INT,
-        uid_count: NULLABLE_INT,
-        total_stake_tao: ANY,
-        total_emission_tao: ANY,
-        avg_validator_trust: ANY,
-        max_validator_trust: ANY,
-        stake_dominance: ANY,
-        latest_captured_at: NULLABLE_STRING,
-        latest_block_number: NULLABLE_INT,
-        subnets: { type: "array", items: { type: "object" } },
-      }),
+      validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
   get_neuron: {

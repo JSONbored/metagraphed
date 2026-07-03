@@ -402,6 +402,12 @@ assert.equal(
   "subnet_count",
   "list_global_validators must echo sort",
 );
+assert.equal(globalVals.limit, 5, "list_global_validators must echo limit");
+assert.equal(
+  typeof globalVals.validator_count,
+  "number",
+  "list_global_validators must return validator_count",
+);
 const yieldCard = await callOk("get_subnet_yield", { netuid: 7 });
 assert.ok(
   Array.isArray(yieldCard.neurons),

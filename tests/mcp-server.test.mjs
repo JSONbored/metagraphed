@@ -5412,6 +5412,92 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].subnet_count, 2);
     assert.equal(out.validators[0].total_stake_tao, 110);
     assert.equal(out.validators[0].subnets.length, 2);
+    const membershipByNetuid = Object.fromEntries(
+      out.validators[0].subnets.map((row) => [row.netuid, row]),
+    );
+    assert.deepEqual(membershipByNetuid[1], {
+      netuid: 1,
+      uid: 0,
+      stake_tao: 50,
+      emission_tao: 1,
+      validator_trust: 0.8,
+    });
+    assert.deepEqual(membershipByNetuid[2], {
+      netuid: 2,
+      uid: 0,
+      stake_tao: 60,
+      emission_tao: 2,
+      validator_trust: 0.9,
+    });
+    assert.equal(typeof out.validators[0].stake_dominance, "number");
+  });
+
+  test("list_global_validators honors each REST-supported sort key", async () => {
+    const globalEnv = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        neurons: [
+          {
+            netuid: 1,
+            uid: 0,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 50,
+            emission_tao: 4,
+            validator_trust: 0.6,
+            block_number: 100,
+            captured_at: 1750000000000,
+          },
+          {
+            netuid: 2,
+            uid: 1,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 70,
+            emission_tao: 6,
+            validator_trust: 0.8,
+            block_number: 101,
+            captured_at: 1750000001000,
+          },
+          {
+            netuid: 3,
+            uid: 0,
+            hotkey: "5Hk-op-b",
+            coldkey: "5Co-b",
+            validator_permit: 1,
+            stake_tao: 500,
+            emission_tao: 40,
+            validator_trust: 0.95,
+            block_number: 102,
+            captured_at: 1750000002000,
+          },
+        ],
+      }),
+    };
+    const cases = [
+      ["subnet_count", "5Hk-op-a"],
+      ["uid_count", "5Hk-op-a"],
+      ["total_stake", "5Hk-op-b"],
+      ["total_emission", "5Hk-op-b"],
+      ["max_validator_trust", "5Hk-op-b"],
+      ["avg_validator_trust", "5Hk-op-b"],
+      ["stake_dominance", "5Hk-op-b"],
+    ];
+    for (const [sort, expectedHotkey] of cases) {
+      const res = await callTool(
+        "list_global_validators",
+        { sort, limit: 1 },
+        { env: globalEnv },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort, `sort echo for ${sort}`);
+      assert.equal(
+        out.validators[0]?.hotkey,
+        expectedHotkey,
+        `top hotkey for sort=${sort}`,
+      );
+    }
   });
 
   test("list_global_validators rejects an invalid sort", async () => {
