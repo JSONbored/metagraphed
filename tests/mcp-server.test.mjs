@@ -1397,6 +1397,58 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_interface_gaps returns the network-wide gap report artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/gaps.json": {
+        schema_version: 1,
+        generated_at: "2026-07-01T00:00:00Z",
+        gaps: [
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            coverage_level: "callable",
+            curation_level: "verified",
+            gap_priority: 72,
+            gap_severity: "warning",
+            gaps: {
+              missing_kinds: ["openapi", "sdk"],
+              supported_kinds: ["docs", "website"],
+              gap_notes: ["No machine-readable interface published yet."],
+            },
+          },
+          {
+            netuid: 12,
+            slug: "compute",
+            name: "Compute",
+            coverage_level: "listed",
+            curation_level: "observed",
+            gap_priority: 40,
+            gap_severity: "info",
+            gaps: {
+              missing_kinds: ["openapi"],
+              supported_kinds: [],
+              gap_notes: [],
+            },
+          },
+        ],
+      },
+    });
+    const res = await callTool("get_interface_gaps", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.gaps.length, 2);
+    assert.equal(out.gaps[0].netuid, 7);
+    assert.equal(out.gaps[0].gap_severity, "warning");
+    assert.equal(out.gaps[0].gaps.missing_kinds[0], "openapi");
+    assert.equal(out.gaps[1].slug, "compute");
+  });
+
+  test("get_interface_gaps is not_found when the artifact is missing", async () => {
+    const res = await callTool("get_interface_gaps", {});
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
   const opportunityDeps = makeDeps({
     "/metagraph/economics.json": {
       captured_at: "2026-06-20T00:00:00Z",

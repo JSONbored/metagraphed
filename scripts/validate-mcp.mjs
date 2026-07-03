@@ -291,6 +291,24 @@ if (existsSync(gapsArtifactPath)) {
   );
 }
 
+// The network-wide gaps.json artifact is R2-only as well; exercise the happy
+// path when staged, otherwise assert the not_found guard loadArtifactData maps.
+const interfaceGapsPath = artifactFilePath("gaps.json");
+if (existsSync(interfaceGapsPath)) {
+  const interfaceGaps = await callOk("get_interface_gaps", {});
+  assert.ok(
+    Array.isArray(interfaceGaps.gaps),
+    "get_interface_gaps must return gaps[]",
+  );
+} else {
+  const interfaceGapsCold = await call("get_interface_gaps", {});
+  assert.equal(
+    interfaceGapsCold.isError,
+    true,
+    "get_interface_gaps must isError when the gaps artifact is absent",
+  );
+}
+
 // Economic opportunity boards project from the committed economics.json in the
 // cold local env; assert the call succeeds and returns the economic boards.
 const opportunities = await callOk("find_subnet_opportunities", { limit: 5 });

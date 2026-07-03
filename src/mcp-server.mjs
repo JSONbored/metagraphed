@@ -192,7 +192,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -4377,6 +4377,26 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_interface_gaps",
+    title: "Get the network-wide interface gap report",
+    description:
+      "Fetch the registry-wide interface gap report: for every subnet its " +
+      "netuid, slug, name, resolved coverage_level and curation_level, the " +
+      "0-100 gap_priority (the backend's weighted reviewPriorityScore), the " +
+      "resolved gap_severity (critical/warning/info), and the list of missing " +
+      "surface kinds. Use it to rank the whole network by where contributor " +
+      "enrichment matters most in one call, rather than paging get_subnet_gaps " +
+      "subnet by subnet. Mirrors GET /api/v1/gaps.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/gaps.json");
+    },
+  },
+  {
     name: "find_subnet_opportunities",
     title: "Rank subnets by economic opportunity",
     description:
@@ -6263,6 +6283,36 @@ const TOOL_OUTPUT_SCHEMAS = {
       name: NULLABLE_STRING,
       priorities: { type: "array", items: { type: "object" } },
       enrichment_queue: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_interface_gaps: {
+    type: "object",
+    additionalProperties: true,
+    required: ["gaps"],
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      notes: ANY,
+      gaps: objectItems({
+        netuid: { type: "integer" },
+        slug: { type: "string" },
+        name: { type: "string" },
+        coverage_level: NULLABLE_STRING,
+        curation_level: NULLABLE_STRING,
+        gap_priority: NULLABLE_INT,
+        gap_severity: NULLABLE_STRING,
+        // Nested Gaps object: the resolved missing/supported surface kinds and
+        // free-text notes for this subnet (not a flat list).
+        gaps: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            missing_kinds: { type: "array" },
+            supported_kinds: { type: "array" },
+            gap_notes: { type: "array" },
+          },
+        },
+      }),
     },
   },
   find_subnet_for_task: {
