@@ -127,27 +127,38 @@ describe("buildSubnetPerformance", () => {
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z"); // newest of the two
   });
 
-  test("coerces a D1 numeric-string captured_at to an ISO timestamp", () => {
-    // D1 hands back the INTEGER captured_at as a numeric string; it must stamp
-    // like the numeric form, not drop to null via Date.parse("<digits>") === NaN.
-    const out = buildSubnetPerformance(
+  test("rejects a zero/negative captured_at instead of stamping the 1970 epoch", () => {
+    // A blank/sentinel D1 cell arrives as 0 (or negative). Alone it must yield a
+    // null captured_at — never the 1970 epoch. Mirrors #2776/#2777.
+    const zero = buildSubnetPerformance(
+      [{ incentive: 0.5, captured_at: 0 }],
+      7,
+    );
+    assert.equal(zero.captured_at, null);
+    const negative = buildSubnetPerformance(
+      [{ incentive: 0.5, captured_at: -5 }],
+      7,
+    );
+    assert.equal(negative.captured_at, null);
+    // …and a real timestamp still wins over the 0 sentinel when both are present.
+    const mixed = buildSubnetPerformance(
       [
-        { incentive: 0.2, captured_at: "1750000000000" },
-        { incentive: 0.3, captured_at: "1750000060000" }, // newer
+        { incentive: 0.5, captured_at: 0 },
+        { incentive: 0.2, captured_at: 1_750_000_000_000 },
       ],
       7,
     );
-    assert.equal(out.captured_at, new Date(1_750_000_060_000).toISOString());
+    assert.equal(mixed.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
-  test("drops a non-positive, out-of-range, or non-scalar captured_at to null", () => {
-    // Guard branches of the epoch coercion: "0" is non-positive, the 16-digit
-    // string is a finite-but-out-of-range epoch (new Date → Invalid Date, no
-    // RangeError leak), and a boolean is neither string nor number.
-    for (const captured_at of ["0", "8640000000000001", true]) {
-      const out = buildSubnetPerformance([{ incentive: 0.2, captured_at }], 7);
-      assert.equal(out.captured_at, null);
-    }
+  test("coerces a numeric-epoch string captured_at (D1 INTEGER as string)", () => {
+    // D1 can return the INTEGER captured_at as a numeric string; Date.parse
+    // returns NaN for a bare epoch string, so it was silently dropped.
+    const out = buildSubnetPerformance(
+      [{ incentive: 0.2, captured_at: "1750000000000" }],
+      7,
+    );
+    assert.equal(out.captured_at, new Date(1_750_000_000_000).toISOString());
   });
 
   test("cold/empty subnet → schema-stable zero (every metric null)", () => {
