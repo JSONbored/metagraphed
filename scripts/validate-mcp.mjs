@@ -347,6 +347,18 @@ assert.ok(
     Number.isInteger(economics.total),
   "get_economics must return subnets[] with pagination totals",
 );
+const profilesList = await callOk("list_profiles", { limit: 5 });
+assert.ok(
+  Array.isArray(profilesList.profiles) &&
+    profilesList.profiles.length <= 5 &&
+    Number.isInteger(profilesList.total),
+  "list_profiles must return profiles[] with pagination totals",
+);
+const subnetProfile = await callOk("get_subnet_profile", { netuid: 7 });
+assert.ok(
+  subnetProfile?.subnet?.netuid === 7 || subnetProfile?.profile,
+  "get_subnet_profile must return subnet profile detail for netuid 7",
+);
 
 // The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
 // has no neurons DB, so each tool must degrade to its schema-stable empty

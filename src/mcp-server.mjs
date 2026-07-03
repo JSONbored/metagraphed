@@ -32,6 +32,15 @@ import {
   loadGlobalOperationalHealth,
 } from "./global-operational-health.mjs";
 import {
+  GET_SUBNET_PROFILE_MCP_TOOL,
+  GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
+  LIST_PROFILES_INSTRUCTIONS,
+  LIST_PROFILES_MCP_TOOL,
+  LIST_PROFILES_OUTPUT_SCHEMA,
+  loadProfilesList,
+  loadSubnetProfile,
+} from "./profiles-mcp.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -191,7 +200,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -277,7 +286,9 @@ export const MCP_INSTRUCTIONS =
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
-  "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
+  "cross-subnet health/economics boards, " +
+  LIST_PROFILES_INSTRUCTIONS +
+  "get_subnet_profile one subnet's public-safe profile detail, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_chain_signers the windowed most-active-account " +
   "leaderboard (extrinsic counts + fees), get_rpc_usage the RPC reverse-proxy " +
@@ -2165,6 +2176,37 @@ export const MCP_TOOLS = [
         limit,
         observedAt: await mcpObservedAt(ctx),
       });
+    },
+  },
+  {
+    ...LIST_PROFILES_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadProfilesList(ctx, args, {
+          readOptionalArtifact: loadOptionalArtifact,
+        });
+      } catch (err) {
+        if (err?.profilesMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
+    },
+  },
+  {
+    ...GET_SUBNET_PROFILE_MCP_TOOL,
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      try {
+        return await loadSubnetProfile(ctx, netuid, {
+          readArtifact: loadArtifactData,
+        });
+      } catch (err) {
+        if (err?.profilesMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
     },
   },
   {
@@ -5141,6 +5183,8 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
+  get_subnet_profile: GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,
