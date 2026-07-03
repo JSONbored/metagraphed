@@ -2974,6 +2974,29 @@ describe("formatGlobalIncidents (cross-subnet ledger)", () => {
     });
     assert.equal(capped.summary.incident_count, 1);
   });
+
+  test("skips blank netuid cells that would coerce to subnet 0", () => {
+    const out = formatGlobalIncidents({
+      incidentRows: [
+        {
+          netuid: "",
+          surface_id: "a",
+          started_at: 1,
+          ended_at: 2,
+          failed_samples: 1,
+        },
+        {
+          netuid: 7,
+          surface_id: "b",
+          started_at: 3,
+          ended_at: 4,
+          failed_samples: 1,
+        },
+      ],
+    });
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].netuid, 7);
+  });
 });
 
 describe("global incidents route", () => {

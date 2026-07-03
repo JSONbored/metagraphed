@@ -680,7 +680,9 @@ export function formatGlobalIncidents({
     if (acceptedIncidents >= incidentLimit) {
       break;
     }
-    const netuid = Number(row.netuid);
+    const rawNetuid = row.netuid;
+    if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
+    const netuid = Number(rawNetuid);
     const key = `${netuid}/${surfaceLookupKey(row)}`;
     const entry = bySurface.get(key) || {
       netuid,
