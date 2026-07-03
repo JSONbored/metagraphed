@@ -36,6 +36,25 @@
         "https://github.com/minos-protocol/minos_subnet/blob/main/README.md"
       ],
       "url": "https://api.theminos.ai/health"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-107-minos-docs",
+      "kind": "docs",
+      "name": "Minos documentation",
+      "notes": "Official Minos subnet documentation, hosted on the subnet's own domain (docs.theminos.ai) and linked from the official website theminos.ai.",
+      "provider": "minos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "devmixa702"
+      },
+      "source_urls": [
+        "https://theminos.ai/",
+        "https://docs.theminos.ai/overview"
+      ],
+      "url": "https://docs.theminos.ai"
     }
   ]
 }
