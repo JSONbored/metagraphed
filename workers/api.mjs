@@ -9,6 +9,7 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryParams,
 } from "./list-query.mjs";
 import { csvRequested, csvResponse } from "./csv.mjs";
 import {
@@ -2360,6 +2361,19 @@ async function handleApiRequest(
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
+  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
+  const queryError = validateListQueryParams(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames,
+    { csvResponse: matched.csvResponse === true },
+  );
+  if (queryError) {
+    return errorResponse("invalid_query", queryError.message, 400, {
+      artifact_path: artifactPath,
+      parameter: queryError.parameter,
+    });
+  }
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
@@ -2430,7 +2444,6 @@ async function handleApiRequest(
   }
   // Mainnet (default) reads the unprefixed artifact (no-op); non-default networks
   // read metagraph/{prefix}/… — see artifactPathForNetwork.
-  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
 
   // Live operational-health overlay (Phase 3): current health is live-only.
   // Static current-health artifacts are not read for mainnet health routes, so
@@ -2583,6 +2596,7 @@ async function handleApiRequest(
     url,
     matched.queryCollection,
     matched.queryFilterNames,
+    { csvResponse: matched.csvResponse === true },
   );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {

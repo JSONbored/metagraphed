@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryParams,
 } from "../workers/list-query.mjs";
 
 function query(path) {
@@ -473,6 +475,229 @@ describe("list-query numeric range filters", () => {
   });
 });
 
+describe("list-query unknown parameter validation (#2578)", () => {
+  const data = {
+    subnets: [
+      {
+        netuid: 1,
+        name: "Alpha Inference",
+        slug: "alpha",
+        status: "active",
+        categories: ["inference"],
+        block: 150,
+      },
+      {
+        netuid: 2,
+        name: "Beta Compute",
+        slug: "beta",
+        status: "inactive",
+        categories: ["compute"],
+        block: 50,
+      },
+    ],
+  };
+
+  test("rejects a typoed query parameter before silently returning an unfiltered list", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?statuss=active"),
+      "subnets",
+    );
+
+    assert.equal(result.error.parameter, "statuss");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("accepts every supported list parameter family", () => {
+    const result = applyQueryFilters(
+      data,
+      query(
+        "/api/v1/subnets?q=alpha&fields=netuid,name&limit=10&cursor=0" +
+          "&sort=netuid&order=asc&status=active&netuids=1" +
+          "&domain=inference&min_block=100&max_block=200",
+      ),
+      "subnets",
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(result.data.subnets, [
+      { netuid: 1, name: "Alpha Inference" },
+    ]);
+    assert.equal(result.meta.pagination.total, 1);
+  });
+
+  test("accepts format=csv on csv-enabled list routes", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?format=csv&status=active"),
+      "subnets",
+      [],
+      { csvResponse: true },
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.subnets.map((row) => row.netuid),
+      [1],
+    );
+  });
+
+  test("accepts format=json on csv-enabled list routes", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?format=json&status=active"),
+      "subnets",
+      [],
+      { csvResponse: true },
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.subnets.map((row) => row.netuid),
+      [1],
+    );
+  });
+
+  test("rejects an unsupported format value on csv-enabled list routes", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?format=xml"),
+      "subnets",
+      [],
+      { csvResponse: true },
+    );
+
+    assert.equal(result.error.parameter, "format");
+    assert.equal(result.error.message, "format must be json or csv.");
+  });
+
+  test("preflight rejects an unsupported format value before artifact reads", () => {
+    const error = validateListQueryParams(
+      query("/api/v1/subnets?format=xml"),
+      "subnets",
+      [],
+      { csvResponse: true },
+    );
+
+    assert.equal(error.parameter, "format");
+    assert.equal(error.message, "format must be json or csv.");
+  });
+
+  test("rejects format on routes without csv export", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?format=csv"),
+      "subnets",
+    );
+
+    assert.equal(result.error.parameter, "format");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("accepts an empty query string", () => {
+    const result = applyQueryFilters(data, query("/api/v1/subnets"), "subnets");
+
+    assert.equal(result.error, undefined);
+    assert.equal(result.data.subnets.length, 2);
+  });
+
+  test("rejects filters excluded by a route-level queryFilterNames allowlist", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?curation_level=native"),
+      "subnets",
+      ["netuid"],
+    );
+
+    assert.equal(result.error.parameter, "curation_level");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("rejects all filters when a route allowlist has no configured filter names", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?status=active"),
+      "subnets",
+      ["not_a_configured_filter"],
+    );
+
+    assert.equal(result.error.parameter, "status");
+    assert.equal(result.error.message, "unknown query parameter.");
+  });
+
+  test("preflight skips routes without list-query contracts", () => {
+    assert.equal(
+      validateListQueryParams(
+        query("/api/v1/not-a-list?anything=1"),
+        undefined,
+      ),
+      null,
+    );
+    assert.equal(
+      validateListQueryParams(query("/api/v1/not-a-list?anything=1"), "nope"),
+      null,
+    );
+  });
+
+  test("allowlist keeps only configured filter names that exist on the collection", () => {
+    const result = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?netuid=1"),
+      "subnets",
+      ["netuid", "not_a_configured_filter"],
+    );
+
+    assert.equal(result.error, undefined);
+    assert.deepEqual(
+      result.data.subnets.map((row) => row.netuid),
+      [1],
+    );
+  });
+
+  test("transform stays a no-op when the artifact data key is not a list", () => {
+    const result = applyQueryFilters(
+      { subnets: null },
+      query("/api/v1/subnets?statuss=active"),
+      "subnets",
+    );
+
+    assert.deepEqual(result, { data: { subnets: null }, meta: {} });
+  });
+
+  test("handles sparse collection configs without optional filter families", () => {
+    const collection = "__test_sparse_rows";
+    const previous = API_QUERY_COLLECTIONS[collection];
+    API_QUERY_COLLECTIONS[collection] = { data_key: "rows" };
+    try {
+      assert.equal(
+        validateListQueryParams(query("/api/v1/sparse?limit=1"), collection),
+        null,
+      );
+
+      const sortError = validateListQueryParams(
+        query("/api/v1/sparse?sort=name"),
+        collection,
+      );
+      assert.equal(sortError.parameter, "sort");
+      assert.equal(sortError.message, "sort is not supported for rows.");
+
+      const result = applyQueryFilters(
+        { rows: [] },
+        query("/api/v1/sparse?surprise=1"),
+        collection,
+      );
+      assert.equal(result.error.parameter, "surprise");
+      assert.equal(result.error.message, "unknown query parameter.");
+    } finally {
+      if (previous === undefined) {
+        delete API_QUERY_COLLECTIONS[collection];
+      } else {
+        API_QUERY_COLLECTIONS[collection] = previous;
+      }
+    }
+  });
+});
+
 // #2085: integration_readiness was sortable/filterable via MCP list_subnets but
 // not on the equivalent REST subnets collection. After wiring it into the
 // contract's sort + rangeFilters, the generic list-query engine reads row[key]
@@ -735,8 +960,12 @@ describe("list-query pagination Link header", () => {
 
   test("drops ignored query parameters from cacheable page links", () => {
     const links = parseLink(
-      pageLink(
-        "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+      paginationLinkHeader(
+        query(
+          "/api/v1/subnets?sort=netuid&limit=2&utm_campaign=evil&token=SECRET123",
+        ),
+        { cursor: 0, limit: 2, next_cursor: 2, total: 5 },
+        { queryCollection: "subnets" },
       ),
     );
 
@@ -858,6 +1087,28 @@ describe("list-query canonicalListSearch (cache-key safety)", () => {
 
   test("an unknown collection canonicalizes to an empty search", () => {
     assert.equal(canonicalListSearch(query("/api/v1/x?a=1"), "nope"), "");
+  });
+
+  test("sparse collection configs without filter families still canonicalize static controls", () => {
+    const collection = "__test_sparse_canonical";
+    const previous = API_QUERY_COLLECTIONS[collection];
+    API_QUERY_COLLECTIONS[collection] = { data_key: "rows" };
+    try {
+      const search = canonicalListSearch(
+        query("/api/v1/sparse?limit=5&cursor=2"),
+        collection,
+      );
+      const p = params(search);
+      assert.equal(p.get("limit"), "5");
+      assert.equal(p.get("cursor"), "2");
+      assert.equal(p.has("status"), false);
+    } finally {
+      if (previous === undefined) {
+        delete API_QUERY_COLLECTIONS[collection];
+      } else {
+        API_QUERY_COLLECTIONS[collection] = previous;
+      }
+    }
   });
 
   test("an explicit queryFilterNames allowlist overrides the collection filters", () => {
