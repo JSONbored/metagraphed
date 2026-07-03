@@ -229,6 +229,8 @@ test("formatBlock rejects a negative or non-integer block_number cell to null", 
   assert.equal(formatBlock({ block_number: -1 }).block_number, null);
   assert.equal(formatBlock({ block_number: 1.5 }).block_number, null);
   assert.equal(formatBlock({ block_number: "abc" }).block_number, null);
+  assert.equal(formatBlock({ block_number: "" }).block_number, null);
+  assert.equal(formatBlock({ block_number: "   " }).block_number, null);
 });
 
 test("loadBlock resolves neighbors when D1 returns a string-typed block_number (#1853)", async () => {

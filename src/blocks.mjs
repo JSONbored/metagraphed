@@ -44,6 +44,7 @@ function toIso(ms) {
 // and the `nullableInteger` coercion added to counterparties in #2414.
 function toBlockNumber(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
