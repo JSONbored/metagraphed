@@ -77,6 +77,7 @@ function nonNegativeInt(value) {
   // nullable INTEGER) would masquerade as the real chain height / netuid / uid 0
   // instead of "absent". A numeric string like "10" from D1 must still pass.
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }

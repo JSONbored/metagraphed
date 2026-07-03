@@ -57,6 +57,11 @@ describe("metagraph-neurons builders", () => {
     assert.equal(formatNeuron(undefined), null);
   });
 
+  test("formatNeuron rejects blank uid cells to null", () => {
+    assert.equal(formatNeuron({ uid: "" }).uid, null);
+    assert.equal(formatNeuron({ uid: "   " }).uid, null);
+  });
+
   test("formatNeuron defaults every missing field to null/false", () => {
     // Exercises the ?? null + Boolean(falsy) branches (sparse chain row).
     const n = formatNeuron({ uid: 3 });
