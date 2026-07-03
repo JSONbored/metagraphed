@@ -220,6 +220,14 @@ describe("public contract registry", () => {
         "/api/v1/subnets/{netuid}/trajectory",
         "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
       ],
+      [
+        "/api/v1/accounts/{ss58}/extrinsics",
+        "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+      ],
+      [
+        "/api/v1/accounts/{ss58}/transfers",
+        "block_number,event_index,from,to,amount_tao,direction,observed_at",
+      ],
     ];
     for (const [path, expectedHeader] of csvExamples) {
       const csvContent =

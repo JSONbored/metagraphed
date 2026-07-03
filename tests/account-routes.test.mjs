@@ -242,6 +242,61 @@ test("GET /accounts/{ss58}/extrinsics is schema-stable when D1 is cold (never 40
   assert.equal(Array.isArray(body.data.extrinsics), true);
 });
 
+test("GET /accounts/{ss58}/extrinsics?format=csv exports extrinsic_id/block_number/call_module columns (#2534)", async () => {
+  const env = dbWith({
+    extrinsics: [
+      {
+        block_number: 200,
+        extrinsic_index: 2,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: SS58,
+        call_module: "SubtensorModule",
+        call_function: "add_stake",
+        call_args: null,
+        fee_tao: 0.0125,
+        success: 1,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/csv/);
+  assert.equal(
+    res.headers.get("content-disposition"),
+    'attachment; filename="account-extrinsics.csv"',
+  );
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(
+    lines[0],
+    "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+  );
+  assert.equal(
+    lines[1],
+    `200-2,200,2,0x${"a".repeat(64)},${SS58},SubtensorModule,add_stake,true,0.0125,,2025-06-15T17:36:40.000Z`,
+  );
+  assert.equal(lines.length, 2);
+});
+
+test("GET /accounts/{ss58}/extrinsics?format=csv emits a header-only CSV when D1 is cold", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/extrinsics?format=csv`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(
+    lines[0],
+    "extrinsic_id,block_number,extrinsic_index,extrinsic_hash,signer,call_module,call_function,success,fee_tao,tip_tao,observed_at",
+  );
+  assert.equal(lines.length, 1);
+});
+
 test("GET /accounts/{ss58}/transfers reshapes Transfer rows directionally (#1850)", async () => {
   const env = dbWith({
     // The poller stores hotkey=from / coldkey=to for Transfer events.
@@ -306,6 +361,60 @@ test("GET /accounts/{ss58}/transfers is schema-stable when D1 is cold (never 404
   assert.equal(body.data.ss58, SS58);
   assert.equal(body.data.transfer_count, 0);
   assert.equal(Array.isArray(body.data.transfers), true);
+});
+
+test("GET /accounts/{ss58}/transfers?direction=sent&format=csv filters direction and exports from/to/amount_tao columns (#2534)", async () => {
+  const env = dbWith({
+    events: [
+      {
+        block_number: 300,
+        event_index: 0,
+        event_kind: "Transfer",
+        hotkey: SS58, // sender == queried account -> "sent"
+        coldkey: "5Recipient",
+        netuid: null,
+        uid: null,
+        amount_tao: 4.2,
+        observed_at: 1750009000000,
+      },
+    ],
+  });
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?direction=sent&format=csv`),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/csv/);
+  assert.equal(
+    res.headers.get("content-disposition"),
+    'attachment; filename="account-transfers.csv"',
+  );
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(
+    lines[0],
+    "block_number,event_index,from,to,amount_tao,direction,observed_at",
+  );
+  assert.equal(
+    lines[1],
+    `300,0,${SS58},5Recipient,4.2,sent,2025-06-15T17:36:40.000Z`,
+  );
+  assert.equal(lines.length, 2);
+});
+
+test("GET /accounts/{ss58}/transfers?format=csv emits a header-only CSV when D1 is cold", async () => {
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/transfers?format=csv`),
+    {},
+    {},
+  );
+  assert.equal(res.status, 200);
+  const lines = (await res.text()).split("\r\n");
+  assert.equal(
+    lines[0],
+    "block_number,event_index,from,to,amount_tao,direction,observed_at",
+  );
+  assert.equal(lines.length, 1);
 });
 
 test("GET /accounts/{ss58}/stake-flow routes to the per-account stake-flow handler", async () => {

@@ -219,6 +219,28 @@ const BLOCK_CSV_COLUMNS = [
   "spec_version",
   "observed_at",
 ];
+const ACCOUNT_EXTRINSICS_CSV_COLUMNS = [
+  "extrinsic_id",
+  "block_number",
+  "extrinsic_index",
+  "extrinsic_hash",
+  "signer",
+  "call_module",
+  "call_function",
+  "success",
+  "fee_tao",
+  "tip_tao",
+  "observed_at",
+];
+const ACCOUNT_TRANSFERS_CSV_COLUMNS = [
+  "block_number",
+  "event_index",
+  "from",
+  "to",
+  "amount_tao",
+  "direction",
+  "observed_at",
+];
 
 function validateResponseFormat(url) {
   const raw = url.searchParams.get("format");
@@ -1440,12 +1462,13 @@ export async function handleAccountHistory(request, env, ss58, url) {
 // constrain block height; ?limit (<=1000) / ?offset, or ?cursor=. Cold/absent store →
 // schema-stable zero (never 404).
 export async function handleAccountExtrinsics(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "block_start",
     "block_end",
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const blockStart = parseNonNegativeIntParam(
@@ -1465,6 +1488,19 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
+  if (csvRequested(url, request)) {
+    const csvRows = data.extrinsics.map((extrinsic) => ({
+      ...extrinsic,
+      extrinsic_id: `${extrinsic.block_number}-${extrinsic.extrinsic_index}`,
+    }));
+    return csvResponse(
+      csvRows,
+      "account-extrinsics",
+      "short",
+      request,
+      ACCOUNT_EXTRINSICS_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {
@@ -1487,13 +1523,14 @@ export async function handleAccountExtrinsics(request, env, ss58, url) {
 // transfer feed only, NOT a full balance ledger. Cold/absent store →
 // schema-stable zero (never 404).
 export async function handleAccountTransfers(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, [
+  const validationError = validateEntityQuery(url, [
     "direction",
     "block_start",
     "block_end",
     "limit",
     "offset",
     "cursor",
+    "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const direction = url.searchParams.get("direction");
@@ -1529,6 +1566,15 @@ export async function handleAccountTransfers(request, env, ss58, url) {
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
   });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.transfers,
+      "account-transfers",
+      "short",
+      request,
+      ACCOUNT_TRANSFERS_CSV_COLUMNS,
+    );
+  }
   return accountEnvelopeResponse(
     request,
     {
