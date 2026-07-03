@@ -330,3 +330,18 @@ test("csvResponse keeps conditional requests on the buffered ETag path when stre
   assert.equal(matched.status, 304);
   assert.equal(await matched.text(), "");
 });
+
+test("csvResponse returns a buffered 200 with an ETag for stale conditional requests when streaming is requested", async () => {
+  const response = await csvResponse(
+    [{ netuid: 7, provider: "allways", status: "ok" }],
+    "endpoints",
+    "short",
+    req({ "if-none-match": 'W/"not-a-match"' }),
+    ["netuid", "provider", "status"],
+    {},
+    { stream: true },
+  );
+  assert.equal(response.status, 200);
+  assert.ok(response.headers.get("etag"));
+  assert.equal(await response.text(), "netuid,provider,status\r\n7,allways,ok");
+});
