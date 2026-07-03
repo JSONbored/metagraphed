@@ -5136,6 +5136,146 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /not_found/);
   });
 
+  const PROFILES_BLOB = {
+    captured_at: "2026-06-20T00:00:00Z",
+    profiles: [
+      {
+        netuid: 7,
+        slug: "allways",
+        name: "Allways",
+        completeness_score: 82,
+        curation_level: "machine-verified",
+        review_state: "verified",
+        confidence: "high",
+        profile_level: "complete",
+      },
+      {
+        netuid: 1,
+        slug: "alpha",
+        name: "Alpha",
+        completeness_score: 60,
+        confidence: "medium",
+      },
+    ],
+  };
+
+  test("list_profiles serves profiles.json with REST list-query filters", async () => {
+    const res = await callTool(
+      "list_profiles",
+      { netuid: 7, sort: "completeness_score", order: "desc" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.profiles.length, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+    assert.equal(out.total, 1);
+  });
+
+  test("list_profiles rejects an invalid sort field", async () => {
+    const res = await callTool(
+      "list_profiles",
+      { sort: "not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("list_profiles surfaces not_found when profiles.json is absent", async () => {
+    const res = await callTool(
+      "list_profiles",
+      {},
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  test("list_profiles handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          {},
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_subnet_profile returns the per-netuid profile artifact", async () => {
+    const detail = {
+      subnet: { netuid: 7, slug: "allways" },
+      profile: { completeness_score: 82 },
+    };
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal(out.profile.completeness_score, 82);
+  });
+
+  test("get_subnet_profile surfaces not_found for a missing netuid", async () => {
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 99999 },
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  test("get_subnet_profile handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_profile");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          { netuid: 7 },
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("list_profiles payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "list_profiles")
+        .outputSchema,
+    );
+    const res = await callTool(
+      "list_profiles",
+      { sort: "netuid", order: "asc" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
   // mirroring the metagraph-neurons unit-test fixtures.
   const ROW = {

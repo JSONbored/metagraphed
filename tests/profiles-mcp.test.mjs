@@ -89,6 +89,8 @@ describe("profiles-mcp — profilesQueryUrl", () => {
       [{ netuid: -1 }, /netuid must be a non-negative integer/],
       [{ cursor: -1 }, /cursor must be a non-negative integer/],
       [{ sort: "not_a_field" }, /must be one of:/],
+      [{ q: "   " }, /must be a non-empty string/],
+      [{ review_state: "   " }, /must be a non-empty string/],
     ]) {
       assert.throws(
         () => profilesQueryUrl(args),
@@ -100,6 +102,23 @@ describe("profiles-mcp — profilesQueryUrl", () => {
         },
       );
     }
+  });
+
+  test("maps every optional filter onto the internal URL", () => {
+    const url = profilesQueryUrl({
+      subnet_type: "application",
+      review_state: "verified",
+      confidence: "high",
+      profile_level: "operational",
+      fields: "netuid,name",
+      limit: 0,
+    });
+    assert.equal(url.searchParams.get("subnet_type"), "application");
+    assert.equal(url.searchParams.get("review_state"), "verified");
+    assert.equal(url.searchParams.get("confidence"), "high");
+    assert.equal(url.searchParams.get("profile_level"), "operational");
+    assert.equal(url.searchParams.get("fields"), "netuid,name");
+    assert.equal(url.searchParams.get("limit"), "100");
   });
 });
 
@@ -125,6 +144,45 @@ describe("profiles-mcp — loadProfilesList", () => {
         return true;
       },
     );
+  });
+
+  test("surfaces invalid_params from list-query validation", async () => {
+    await assert.rejects(
+      () =>
+        loadProfilesList(
+          makeCtx(),
+          { fields: "netuid,not_a_field" },
+          makeDeps(),
+        ),
+      (err) => {
+        assert.equal(err.profilesMcp, true);
+        assert.equal(err.code, "invalid_params");
+        return true;
+      },
+    );
+  });
+
+  test("supports q search, fields projection, and pagination metadata", async () => {
+    const out = await loadProfilesList(
+      makeCtx(),
+      {
+        q: "allways",
+        fields: "netuid,name,completeness_score",
+        sort: "completeness_score",
+        order: "desc",
+        limit: 1,
+      },
+      makeDeps(),
+    );
+    assert.equal(out.profiles.length, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+    assert.equal(out.limit, 1);
+    assert.equal(out.returned, 1);
+    assert.deepEqual(Object.keys(out.profiles[0]).sort(), [
+      "completeness_score",
+      "name",
+      "netuid",
+    ]);
   });
 });
 
