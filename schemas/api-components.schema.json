@@ -10928,6 +10928,68 @@
         ],
         "type": "object"
       },
+      "ScoreDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution summary of a 0–1 per-UID score across a subnet's neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty subnet).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p10": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p25": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p50": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p90": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "SearchArtifact": {
         "allOf": [
           {
@@ -12139,6 +12201,13 @@
         "additionalProperties": false,
         "description": "Per-subnet validator and economic metrics derived from the chain metagraph (#1009). TAO-denominated fields are floats; emission_share is the subnet's alpha price as a fraction of the network total (the dTAO emission weight). Owner keys are public on-chain SS58 addresses.",
         "properties": {
+          "alpha_fdv_tao": {
+            "description": "Fully-diluted valuation proxy: alpha_price_tao multiplied by the fixed per-subnet alpha max supply (21,000,000). Null when alpha price is missing or non-finite.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "alpha_in_pool": {
             "type": [
               "number",
@@ -12282,6 +12351,7 @@
           "registration_cost_tao",
           "alpha_price_tao",
           "alpha_market_cap_tao",
+          "alpha_fdv_tao",
           "total_stake_tao",
           "max_stake_tao",
           "tao_in_pool_tao",
@@ -13194,6 +13264,62 @@
             "type": "object"
           }
         ]
+      },
+      "SubnetPerformanceArtifact": {
+        "additionalProperties": true,
+        "description": "Reward-distribution & score-spread metrics for one subnet, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. The reward-flow companion to SubnetConcentrationArtifact.",
+        "properties": {
+          "active_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          },
+          "dividends": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "incentive": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "netuid": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_trust": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "neuron_count",
+          "incentive",
+          "dividends",
+          "trust",
+          "consensus"
+        ],
+        "type": "object"
       },
       "SubnetProfile": {
         "additionalProperties": false,

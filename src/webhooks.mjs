@@ -149,29 +149,42 @@ export function isPublicWebhookUrl(value) {
   return host.includes(".");
 }
 
-export async function isResolvedPublicWebhookUrl(value, resolveHostnames) {
-  if (!isPublicWebhookUrl(value)) return false;
-  if (typeof resolveHostnames !== "function") return true;
+// Resolve + classify a webhook URL into one of three outcomes:
+//   "ok"            — public URL that resolves to public address(es)
+//   "unsafe"        — a non-public URL, or one that resolves to a private /
+//                     link-local address: a TERMINAL reject (drop the delivery)
+//   "resolve-error" — the DNS resolver threw (e.g. a transient EAI_AGAIN / SERVFAIL
+//                     blip): a RETRYABLE condition, NOT a terminal reject
+// Splitting the transient resolver failure out from a genuine "unsafe" verdict is
+// what lets deliverChangeEvent park + retry it instead of silently dropping an
+// owed at-least-once delivery when DNS momentarily fails during a sweep.
+export async function resolvedWebhookUrlStatus(value, resolveHostnames) {
+  if (!isPublicWebhookUrl(value)) return "unsafe";
+  if (typeof resolveHostnames !== "function") return "ok";
 
-  let host;
-  try {
-    host = normalizedHostname(new URL(String(value)).hostname);
-  } catch {
-    return false;
-  }
-  if (isLiteralIp(host)) return isPublicWebhookAddress(host);
+  // isPublicWebhookUrl already parsed the URL above, so new URL cannot throw here.
+  const host = normalizedHostname(new URL(String(value)).hostname);
+  // A literal IP already passed isPublicWebhookUrl's public-address check and has
+  // nothing to resolve, so it is "ok" (its private-IP case was rejected upstream).
+  if (isLiteralIp(host)) return "ok";
 
   let addresses;
   try {
     addresses = await resolveHostnames(host);
   } catch {
-    return false;
+    return "resolve-error";
   }
-  return (
+  const allPublic =
     Array.isArray(addresses) &&
     addresses.length > 0 &&
-    addresses.every((address) => isPublicWebhookAddress(address))
-  );
+    addresses.every((address) => isPublicWebhookAddress(address));
+  return allPublic ? "ok" : "unsafe";
+}
+
+// Boolean convenience wrapper, preserved for existing callers/tests. A transient
+// "resolve-error" is not a public resolution, so it returns false here.
+export async function isResolvedPublicWebhookUrl(value, resolveHostnames) {
+  return (await resolvedWebhookUrlStatus(value, resolveHostnames)) === "ok";
 }
 
 // --- subscription validation --------------------------------------------------
@@ -478,9 +491,6 @@ export async function deliverChangeEvent({
   if (typeof subscription.secret !== "string" || !subscription.secret) {
     return { id: subscription.id, status: "skipped", reason: "no-secret" };
   }
-  if (!(await isResolvedPublicWebhookUrl(subscription.url, resolveHostnames))) {
-    return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
-  }
 
   const bodyText =
     typeof providedBodyText === "string"
@@ -502,6 +512,29 @@ export async function deliverChangeEvent({
     [WEBHOOK_IDEMPOTENCY_HEADER]: idempotencyKey,
   };
   const identity = { event_id: eventId, idempotency_key: idempotencyKey };
+
+  // Resolve + classify the URL AFTER identity is computed, so a transient resolver
+  // failure can be parked (it needs an event_id) and retried instead of dropped.
+  // A statically-unsafe URL, or one that resolves to a private address, is a
+  // terminal "skipped"; a resolver THROW (a DNS blip) is a retryable "failed" —
+  // returning "skipped" there would delete the parked record on the redelivery
+  // sweep and silently lose an owed at-least-once delivery to a healthy endpoint.
+  const urlStatus = await resolvedWebhookUrlStatus(
+    subscription.url,
+    resolveHostnames,
+  );
+  if (urlStatus === "resolve-error") {
+    return {
+      id: subscription.id,
+      status: "failed",
+      reason: "resolve-error",
+      retryable: true,
+      ...identity,
+    };
+  }
+  if (urlStatus !== "ok") {
+    return { id: subscription.id, status: "skipped", reason: "unsafe-url" };
+  }
 
   let lastReason = "unknown";
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

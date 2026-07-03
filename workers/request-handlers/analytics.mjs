@@ -830,8 +830,17 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     maxLimit: 100,
   });
   if (limitError) return analyticsQueryError(limitError);
-  return withEdgeCache(
-    request,
+
+  // HEAD probes are globally allowed for read-only API routes. Normalize them
+  // through the GET cache key so a transfer-analytics probe cannot bypass the
+  // edge cache and repeatedly force the network-wide D1 aggregations. The
+  // response is stripped back to HEAD semantics after the cache lookup/miss.
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
     ctx,
     env,
     "chain-transfers",
@@ -844,7 +853,7 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
         limit,
       });
       return envelopeResponse(
-        request,
+        cacheRequest,
         {
           data,
           meta: await analyticsMeta(
@@ -858,6 +867,9 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     },
     canonicalAnalyticsCacheRoute(url, ["limit"]),
   );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
 }
 
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,

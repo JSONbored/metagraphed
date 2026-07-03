@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -8,6 +8,32 @@ import {
 } from "../src/chain-analytics.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+
+function installMapCache() {
+  const store = new Map();
+  const putKeys = [];
+  let matchCalls = 0;
+  globalThis.caches = {
+    default: {
+      async match(request) {
+        matchCalls += 1;
+        const cached = store.get(request.url);
+        return cached ? cached.clone() : undefined;
+      },
+      async put(request, response) {
+        putKeys.push(request.url);
+        store.set(request.url, response.clone());
+      },
+    },
+  };
+  return {
+    store,
+    putKeys,
+    get matchCalls() {
+      return matchCalls;
+    },
+  };
+}
 
 // A D1 mock that routes the two grouped aggregations by table and records the
 // bound SQL/params so a test can assert the query shape + the merged response.
@@ -674,6 +700,105 @@ test("GET /api/v1/chain/transfers aggregates volume + ranks senders/receivers", 
   assert.equal(senders.params.at(-1), 5); // limit
 });
 
+test("HEAD /api/v1/chain/transfers shares the GET edge cache", async () => {
+  const originalCaches = globalThis.caches;
+  const cache = installMapCache();
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_CONTROL: {
+      async get(key) {
+        return key === "health:meta"
+          ? { last_run_at: "2026-07-02T00:00:00.000Z" }
+          : null;
+      },
+    },
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return {
+              all: () => {
+                if (/COUNT\(DISTINCT hotkey\)/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        transfer_count: 1,
+                        total_volume_tao: 2,
+                        unique_senders: 1,
+                        unique_receivers: 1,
+                      },
+                    ],
+                  });
+                }
+                if (/GROUP BY hotkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      { address: "5Sender", volume_tao: 2, transfer_count: 1 },
+                    ],
+                  });
+                }
+                if (/GROUP BY coldkey/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        address: "5Receiver",
+                        volume_tao: 2,
+                        transfer_count: 1,
+                      },
+                    ],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+
+  try {
+    const url = "https://api.metagraph.sh/api/v1/chain/transfers?window=7d";
+    const first = await handleRequest(
+      new Request(url, { method: "HEAD" }),
+      env,
+      {
+        waitUntil(promise) {
+          return promise;
+        },
+      },
+    );
+    assert.equal(first.status, 200);
+    assert.equal(await first.text(), "");
+    assert.equal(captured.length, 3);
+    assert.equal(cache.putKeys.length, 1);
+
+    const second = await handleRequest(
+      new Request(url, { method: "HEAD" }),
+      env,
+      {},
+    );
+    assert.equal(second.status, 200);
+    assert.equal(await second.text(), "");
+    assert.equal(captured.length, 3, "warm HEAD must not re-run D1");
+    assert.equal(cache.matchCalls, 2);
+
+    const get = await handleRequest(new Request(url), env, {});
+    assert.equal(get.status, 200);
+    const body = await get.json();
+    assert.equal(body.data.total_volume_tao, 2);
+    assert.equal(
+      captured.length,
+      3,
+      "GET should reuse the HEAD-populated body",
+    );
+  } finally {
+    globalThis.caches = originalCaches;
+  }
+});
+
 test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=1y"),
@@ -871,66 +996,78 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
-  const captured = [];
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            const rows = /ROW_NUMBER\(\) OVER/.test(sql)
-              ? [
-                  {
-                    day: "2026-06-25",
-                    median_fee_tao: 0.006,
-                    median_tip_tao: 0,
-                  },
-                ]
-              : /GROUP BY day/.test(sql)
+  // loadChainFees's day-safety window is computed from the real Date.now() at
+  // request time (handleRequest doesn't thread a `now` override through from
+  // the HTTP layer), so a hardcoded mock day drifts out of the 7d window as
+  // real time passes and the day-boundary loop silently stops matching it.
+  // Freeze the clock to a fixed instant one day after the mocked day so this
+  // test never goes stale.
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-06-26T12:00:00.000Z"));
+  try {
+    const captured = [];
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              captured.push({ sql, params });
+              const rows = /ROW_NUMBER\(\) OVER/.test(sql)
                 ? [
                     {
                       day: "2026-06-25",
-                      extrinsic_count: 50,
-                      total_fee_tao: 0.5,
-                      total_tip_tao: 0,
+                      median_fee_tao: 0.006,
+                      median_tip_tao: 0,
                     },
                   ]
-                : /GROUP BY signer/.test(sql)
+                : /GROUP BY day/.test(sql)
                   ? [
                       {
-                        signer: "5Pay",
+                        day: "2026-06-25",
+                        extrinsic_count: 50,
                         total_fee_tao: 0.5,
                         total_tip_tao: 0,
-                        extrinsic_count: 50,
                       },
                     ]
-                  : [];
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
+                  : /GROUP BY signer/.test(sql)
+                    ? [
+                        {
+                          signer: "5Pay",
+                          total_fee_tao: 0.5,
+                          total_tip_tao: 0,
+                          extrinsic_count: 50,
+                        },
+                      ]
+                    : [];
+              return { all: () => Promise.resolve({ results: rows }) };
+            },
+          };
+        },
       },
-    },
-  };
-  const res = await handleRequest(
-    new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
-  assert.equal(body.data.daily[0].median_fee_tao, 0.006);
-  assert.equal(body.data.daily[0].median_tip_tao, 0);
-  assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
-  const daily = captured.find(
-    (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
-  );
-  assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
-  const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
-  assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
-  assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
-  assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
+    assert.equal(body.data.daily[0].median_fee_tao, 0.006);
+    assert.equal(body.data.daily[0].median_tip_tao, 0);
+    assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
+    const daily = captured.find(
+      (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
+    );
+    assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+    const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
+    assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
+    assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
+    assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {

@@ -129,6 +129,10 @@ test("INGESTED_EVENT_KINDS accepts expanded Subtensor lifecycle event filters", 
   }
 });
 
+test("INGESTED_EVENT_KINDS accepts ColdkeySwapScheduled for kind filters", () => {
+  assert.ok(INGESTED_EVENT_KINDS.includes("ColdkeySwapScheduled"));
+});
+
 test("formatAccountEvent maps a D1 row to an API event (ISO time)", () => {
   const out = formatAccountEvent({
     block_number: 1000,

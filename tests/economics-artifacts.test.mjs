@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  ALPHA_MAX_SUPPLY,
+  computeAlphaFdvTao,
   computeAlphaMarketCapTao,
   computeMinerReadiness,
   buildEconomicsArtifact,
@@ -145,6 +147,27 @@ describe("computeAlphaMarketCapTao", () => {
   });
 });
 
+// --- computeAlphaFdvTao ------------------------------------------------------
+
+describe("computeAlphaFdvTao", () => {
+  test("multiplies finite alpha price by the fixed max supply", () => {
+    assert.equal(computeAlphaFdvTao(0.04), 0.04 * ALPHA_MAX_SUPPLY);
+  });
+
+  test("returns null when alpha price is null", () => {
+    assert.equal(computeAlphaFdvTao(null), null);
+  });
+
+  test("returns null when alpha price is undefined", () => {
+    assert.equal(computeAlphaFdvTao(undefined), null);
+  });
+
+  test("returns null for non-finite alpha price", () => {
+    assert.equal(computeAlphaFdvTao(Number.NaN), null);
+    assert.equal(computeAlphaFdvTao(Number.POSITIVE_INFINITY), null);
+  });
+});
+
 // --- buildEconomicsArtifact -------------------------------------------------
 
 function econSubnet(netuid, overrides = {}) {
@@ -201,6 +224,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(row.block, 1_234_567);
     assert.equal(row.emission_share, 1); // only priced subnet → 100% of total
     assert.equal(row.alpha_market_cap_tao, 40);
+    assert.equal(row.alpha_fdv_tao, 0.04 * ALPHA_MAX_SUPPLY);
     assert.equal(row.open_slots, 47); // 256 − 9 − 200
     // 40 registration + 30 open slots + 20 cost≤1 + 10 active.
     assert.equal(row.miner_readiness, 100);
@@ -225,6 +249,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(artifact.subnets.length, 1);
     assert.equal(artifact.subnets[0].netuid, 1);
     assert.equal(artifact.subnets[0].alpha_market_cap_tao, 0.2);
+    assert.equal(artifact.subnets[0].alpha_fdv_tao, 0.04 * ALPHA_MAX_SUPPLY);
     assert.equal(artifact.summary.subnet_count, 2);
     assert.equal(artifact.summary.with_economics_count, 1);
   });
@@ -294,6 +319,7 @@ describe("buildEconomicsArtifact", () => {
     });
     assert.equal(artifact.subnets[0].emission_share, null);
     assert.equal(artifact.subnets[0].alpha_market_cap_tao, null);
+    assert.equal(artifact.subnets[0].alpha_fdv_tao, 0);
   });
 
   test("open_slots is null without max_uids and clamps to zero when oversubscribed", () => {

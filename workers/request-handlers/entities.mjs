@@ -98,6 +98,10 @@ import {
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
 import {
+  PERFORMANCE_READ_COLUMNS,
+  buildSubnetPerformance,
+} from "../../src/subnet-performance.mjs";
+import {
   loadCounterparties,
   loadCounterpartyRelationship,
 } from "../../src/counterparties.mjs";
@@ -258,28 +262,47 @@ export async function handleSubnetValidators(request, env, netuid, url) {
 // operator footprint rather than only one subnet at a time. Stake/emission values stay
 // scoped to each membership row because those source units are not globally aggregated.
 // Cold/absent D1 returns a schema-stable empty list.
-export async function handleGlobalValidators(request, env, url) {
+function parseGlobalValidatorsQuery(url) {
   const validationError = validateQueryParams(url, ["sort", "limit"]);
-  if (validationError) return analyticsQueryError(validationError);
-  const sortParam =
-    url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
-  if (!GLOBAL_VALIDATOR_SORTS.includes(sortParam)) {
-    return analyticsQueryError({
-      parameter: "sort",
-      message: `"${sortParam}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
-        ", ",
-      )}.`,
-    });
+  if (validationError) return { error: validationError };
+
+  const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
+  if (!GLOBAL_VALIDATOR_SORTS.includes(sort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
+          ", ",
+        )}.`,
+      },
+    };
   }
+
   const limit = parseBoundedIntParam(url, "limit", {
     def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
     min: 1,
     max: GLOBAL_VALIDATOR_LIMIT_MAX,
   });
-  if (limit.error) return analyticsQueryError(limit.error);
+  if (limit.error) return { error: limit.error };
+
+  return { sort, limit: limit.value };
+}
+
+export function canonicalGlobalValidatorsCachePath(url) {
+  const parsed = parseGlobalValidatorsQuery(url);
+  if (parsed.error) {
+    return { response: analyticsQueryError(parsed.error) };
+  }
+  const search = `sort=${encodeURIComponent(parsed.sort)}&limit=${parsed.limit}`;
+  return { cachePathAndSearch: `${url.pathname}?${search}` };
+}
+
+export async function handleGlobalValidators(request, env, url) {
+  const parsed = parseGlobalValidatorsQuery(url);
+  if (parsed.error) return analyticsQueryError(parsed.error);
   const data = await loadGlobalValidators(d1Runner(env), {
-    sort: sortParam,
-    limit: limit.value,
+    sort: parsed.sort,
+    limit: parsed.limit,
   });
   return envelopeResponse(
     request,
@@ -429,6 +452,36 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/performance: reward-distribution + score-spread
+// metrics for one subnet — how concentrated the actual REWARDS are (Gini/HHI/
+// Nakamoto/top-share of incentive across neurons and dividends across validators)
+// and how the 0..1 trust/consensus/validator_trust scores are spread (p10..p90).
+// The reward-flow companion to /concentration (which measures stake/emission).
+// Computed from the neurons D1 tier; a cold/absent store or empty subnet → 200
+// with null blocks (schema-stable, never 404), mirroring the sibling routes.
+export async function handleSubnetPerformance(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  const data = buildSubnetPerformance(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/performance.json`,
         data.captured_at,
       ),
     },
@@ -767,7 +820,7 @@ async function accountEnvelopeResponse(
 // its flow is focused, and a direction label. account_events-derived (source
 // "chain-events"). Cold/absent store → schema-stable zeros (never 404).
 export async function handleAccountStakeFlow(request, env, ss58, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "direction"]);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
@@ -777,11 +830,23 @@ export async function handleAccountStakeFlow(request, env, ss58, url) {
       message: unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
     });
   }
+  // ?direction=all|in|out narrows to inflow/outflow only; omitted sums both.
+  // Mirrors the subnet stake-flow route (#2694).
+  const direction = url.searchParams.get("direction");
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+    });
+  }
+  const normalizedDirection =
+    direction === "in" || direction === "out" ? direction : undefined;
   const { data, generatedAt } = await loadAccountStakeFlow(
     d1Runner(env),
     ss58,
     {
       windowLabel: windowParam,
+      direction: normalizedDirection,
     },
   );
   return accountEnvelopeResponse(
@@ -843,10 +908,22 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  const kind = url.searchParams.get("kind");
+  // Reject an unknown ?kind= up front, validated against the FULL ingested set
+  // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
+  // etc.). A typo/nonexistent kind otherwise matches nothing and forces a full
+  // index walk on this public, ~60s-cached route — parity with handleSubnetEvents
+  // (#2081).
+  if (kind != null && !INGESTED_EVENT_KINDS.includes(kind)) {
+    return analyticsQueryError({
+      parameter: "kind",
+      message: `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
+    });
+  }
   const data = await loadAccountEvents(d1Runner(env), ss58, {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
-    kind: url.searchParams.get("kind"),
+    kind,
     cursor: url.searchParams.get("cursor"),
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,

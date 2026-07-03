@@ -156,6 +156,39 @@ describe("buildSubnetYield", () => {
     assert.equal(d.block_number, null);
   });
 
+  test("coerces string-typed captured_at cells to ISO timestamps", () => {
+    const d = buildSubnetYield(
+      [
+        neuron(0, {
+          validator: true,
+          stake: 10,
+          emission: 1,
+          captured: "1717000000000",
+        }),
+      ],
+      7,
+    );
+    assert.equal(d.captured_at, new Date(1717000000000).toISOString());
+  });
+
+  test("a null D1 captured_at stays null, not a fabricated epoch 1970", () => {
+    const d = buildSubnetYield(
+      [neuron(0, { validator: true, stake: 10, emission: 1, captured: null })],
+      7,
+    );
+    assert.equal(d.captured_at, null);
+  });
+
+  test("drops blank or out-of-range captured_at strings to null", () => {
+    for (const captured of ["", "   ", "not-a-date", "8640000000000001"]) {
+      const d = buildSubnetYield(
+        [neuron(0, { validator: true, stake: 10, emission: 1, captured })],
+        7,
+      );
+      assert.equal(d.captured_at, null, `captured=${JSON.stringify(captured)}`);
+    }
+  });
+
   test("ties break by uid, extra zero-stake UIDs sink, and a missing hotkey is null", () => {
     const d = buildSubnetYield(
       [

@@ -51,13 +51,16 @@ function nullableInteger(value) {
 }
 
 function nullableTimestamp(value) {
-  if (value == null) return null;
+  if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? n : null;
 }
 
-function toIso(timestamp) {
-  return timestamp == null ? null : new Date(timestamp).toISOString();
+function toIso(value) {
+  const n = nullableTimestamp(value);
+  return n == null ? null : new Date(n).toISOString();
 }
 
 // Aggregate an account's Transfer rows into per-counterparty fund flow: for each
@@ -202,7 +205,7 @@ export function buildCounterpartyRelationship(
       to,
       amount_tao: amount,
       direction: sent ? "sent" : "received",
-      observed_at: toIso(observed),
+      observed_at: toIso(row.observed_at),
     });
   }
 

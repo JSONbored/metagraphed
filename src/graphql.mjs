@@ -132,6 +132,7 @@ export const SDL = `
     emission_share: Float
     alpha_price_tao: Float
     alpha_market_cap_tao: Float
+    alpha_fdv_tao: Float
     registration_allowed: Boolean
     registration_cost_tao: Float
     open_slots: Int

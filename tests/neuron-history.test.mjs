@@ -237,6 +237,46 @@ describe("history builders", () => {
     assert.equal(sparse.points[0].block_number, null);
   });
 
+  test("buildNeuronHistory coerces string-typed captured_at cells to ISO timestamps", () => {
+    const out = buildNeuronHistory(
+      [dailyRow({ captured_at: "1780000000000" })],
+      7,
+      3,
+    );
+    assert.equal(
+      out.points[0].captured_at,
+      new Date(1780000000000).toISOString(),
+    );
+  });
+
+  test("buildNeuronHistory preserves null captured_at as null (not epoch 1970)", () => {
+    const out = buildNeuronHistory([dailyRow({ captured_at: null })], 7, 3);
+    assert.equal(out.points[0].captured_at, null);
+  });
+
+  test("buildNeuronHistory drops invalid captured_at strings to null", () => {
+    const out = buildNeuronHistory(
+      [dailyRow({ captured_at: "not-a-timestamp" })],
+      7,
+      3,
+    );
+    assert.equal(out.points[0].captured_at, null);
+  });
+
+  test("buildNeuronHistory drops blank captured_at strings to null (not epoch 1970)", () => {
+    const out = buildNeuronHistory([dailyRow({ captured_at: "" })], 7, 3);
+    assert.equal(out.points[0].captured_at, null);
+  });
+
+  test("buildNeuronHistory drops out-of-range captured_at strings to null", () => {
+    const out = buildNeuronHistory(
+      [dailyRow({ captured_at: "8640000000000001" })],
+      7,
+      3,
+    );
+    assert.equal(out.points[0].captured_at, null);
+  });
+
   test("buildSubnetHistory defaults window + every aggregate to null on sparse rows", () => {
     const out = buildSubnetHistory([{ snapshot_date: "2026-06-20" }], 7);
     assert.equal(out.window, null);
@@ -244,6 +284,43 @@ describe("history builders", () => {
     assert.equal(out.points[0].validator_count, null);
     assert.equal(out.points[0].total_stake_tao, null);
     assert.equal(out.points[0].total_emission_tao, null);
+  });
+
+  test("buildSubnetHistory coerces string-typed aggregate counts to integers", () => {
+    const out = buildSubnetHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: "256",
+          validator_count: "64",
+        },
+      ],
+      7,
+    );
+    assert.equal(out.points[0].neuron_count, 256);
+    assert.equal(out.points[0].validator_count, 64);
+  });
+
+  test("buildSubnetHistory rejects invalid aggregate counts to null", () => {
+    const out = buildSubnetHistory(
+      [
+        {
+          snapshot_date: "2026-06-20",
+          neuron_count: -1,
+          validator_count: 1.5,
+        },
+        {
+          snapshot_date: "2026-06-19",
+          neuron_count: "abc",
+          validator_count: null,
+        },
+      ],
+      7,
+    );
+    assert.equal(out.points[0].neuron_count, null);
+    assert.equal(out.points[0].validator_count, null);
+    assert.equal(out.points[1].neuron_count, null);
+    assert.equal(out.points[1].validator_count, null);
   });
 
   test("buildEconomicsTrends rolls per-subnet rows up to one network point per day", () => {

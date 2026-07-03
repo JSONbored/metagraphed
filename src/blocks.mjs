@@ -31,7 +31,9 @@ export const BLOCK_INSERT_COLUMNS = [
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);
-  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const d = new Date(n);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
 // Coerce a block-height cell to a non-negative integer, or null when missing,
@@ -142,8 +144,10 @@ export function buildBlock(row, ref, { prev, next } = {}) {
     schema_version: 1,
     ref: ref ?? null,
     block,
-    prev_block_number: block ? (prev ?? null) : null,
-    next_block_number: block ? (next ?? null) : null,
+    // D1 can return INTEGER neighbor heights as numeric strings; coerce like
+    // formatBlock's block_number so chain-walk nav never leaks string cells.
+    prev_block_number: block ? toBlockNumber(prev) : null,
+    next_block_number: block ? toBlockNumber(next) : null,
   };
 }
 

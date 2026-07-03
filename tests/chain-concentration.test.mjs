@@ -76,6 +76,18 @@ describe("buildChainConcentration", () => {
     assert.equal(out.captured_at, new Date(1_700_000_001_000).toISOString());
   });
 
+  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+    const out = buildChainConcentration([
+      {
+        stake_tao: 5,
+        coldkey: "a",
+        netuid: 1,
+        captured_at: "1750000060000",
+      },
+    ]);
+    assert.equal(out.captured_at, "2025-06-15T15:07:40.000Z");
+  });
+
   test("validator lens is null when no UID holds a validator permit", () => {
     const out = buildChainConcentration([
       { stake_tao: 10, coldkey: "a", validator_permit: 0, netuid: 1 },

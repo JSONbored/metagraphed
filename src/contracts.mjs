@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-07-01.1";
+export const CONTRACT_VERSION = "2026-07-02.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -193,6 +193,7 @@ export const API_QUERY_COLLECTIONS = {
     },
     search: ["name", "slug"],
     sort: [
+      "alpha_fdv_tao",
       "alpha_market_cap_tao",
       "alpha_price_tao",
       "block",
@@ -233,6 +234,7 @@ export const API_QUERY_COLLECTIONS = {
       "score",
       "status",
     ],
+    rangeFilters: ["latency_ms", "score"],
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -773,7 +775,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "economics",
     "/metagraph/economics.json",
-    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived price-weighted emission share, and on-chain registration block height.",
+    "Per-subnet validator and economic metrics from the chain: validator/miner counts, total + max stake, registration cost, alpha price, derived alpha market-cap and FDV proxies, price-weighted emission share, and on-chain registration block height.",
     "EconomicsArtifact",
   ),
   artifact(
@@ -931,6 +933,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/concentration.json",
     "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
     "SubnetConcentrationArtifact",
+  ),
+  artifact(
+    "subnet-performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+    "SubnetPerformanceArtifact",
   ),
   artifact(
     "subnet-concentration-history",
@@ -1336,7 +1344,7 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    listQuery("subnets"),
+    csvListQuery("subnets"),
   ),
   route(
     "subnet-detail",
@@ -1520,7 +1528,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/economics",
     "/metagraph/economics.json",
-    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
+    "List per-subnet validator and economic metrics (counts, stake, registration cost, alpha price, alpha market-cap proxy, alpha FDV proxy, emission share, and registration block height). Default order is emission share descending. Filter by netuid/registration_allowed, search by name/slug, and sort with `sort=<field>&order=asc|desc` — the two are separate parameters (e.g. `?sort=alpha_market_cap_tao&order=desc` or `?sort=block&order=asc`), NOT a combined `field:desc` token.",
     "standard",
     ["subnets"],
     listQuery("economics"),
@@ -1764,6 +1772,17 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
     "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-performance",
+    "GET",
+    "/api/v1/subnets/{netuid}/performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -2111,13 +2130,17 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/stake-flow",
     "/metagraph/accounts/{ss58}/stake-flow.json",
-    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
+    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "in", "out"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
@@ -2731,6 +2754,23 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         },
       ],
     };
+    const successContent = {
+      "application/json": {
+        schema: responseSchema,
+        // Deterministic worked example (schema-valid, no live data) so
+        // Swagger UI + agents see a concrete response shape. Generated
+        // from the schema; enforced by validate-openapi-examples.
+        example: sampleFromSchema(responseSchema, componentSchemas),
+      },
+      ...(entry.csv_response
+        ? {
+            "text/csv": {
+              schema: { type: "string" },
+              example: "netuid,name\r\n7,Allways",
+            },
+          }
+        : {}),
+    };
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -2754,18 +2794,11 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         ],
         responses: {
           200: {
-            description:
-              "Canonical artifact wrapped in the Metagraphed API envelope.",
+            description: entry.csv_response
+              ? "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested."
+              : "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: successContent,
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2939,6 +2972,7 @@ function route(
     query_collection: querySpec.collection,
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
+    csv_response: querySpec.csvResponse,
     path_parameters: pathParameters,
   };
 }
@@ -3020,12 +3054,30 @@ function listQuery(collection, options = {}) {
   };
 }
 
+function csvListQuery(collection, options = {}) {
+  const spec = listQuery(collection, options);
+  return {
+    ...spec,
+    csvResponse: true,
+    parameters: [
+      ...spec.parameters,
+      {
+        name: "format",
+        description:
+          "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
+        schema: { type: "string", enum: ["json", "csv"] },
+      },
+    ],
+  };
+}
+
 function normalizeQueryParameters(queryParameters) {
   if (Array.isArray(queryParameters)) {
     return { collection: null, filterNames: [], parameters: queryParameters };
   }
   return {
     collection: queryParameters.collection || null,
+    csvResponse: Boolean(queryParameters.csvResponse),
     filterNames: queryParameters.filterNames || [],
     parameters: queryParameters.parameters || [],
   };

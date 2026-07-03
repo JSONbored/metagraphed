@@ -188,6 +188,36 @@ describe("buildConcentration", () => {
     assert.equal(data.captured_at, "2025-06-15T15:07:40.000Z");
   });
 
+  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+    const data = buildConcentration(
+      [
+        { stake_tao: 1, emission_tao: 1, captured_at: "1750000000000" },
+        { stake_tao: 2, emission_tao: 2, captured_at: "1750000060000" },
+      ],
+      9,
+    );
+    assert.equal(data.captured_at, "2025-06-15T15:07:40.000Z");
+  });
+
+  test("rejects invalid captured_at cells instead of leaking junk stamps", () => {
+    for (const captured_at of [
+      "0",
+      "not-a-date",
+      "9".repeat(400),
+      -1,
+      0,
+      true,
+      8_640_000_000_000_001,
+      "8640000000000001",
+    ]) {
+      const data = buildConcentration(
+        [{ stake_tao: 1, emission_tao: 1, captured_at }],
+        9,
+      );
+      assert.equal(data.captured_at, null, `expected null for ${captured_at}`);
+    }
+  });
+
   test("tolerates rows missing captured_at / value columns", () => {
     const data = buildConcentration(
       [
