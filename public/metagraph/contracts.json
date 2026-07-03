@@ -294,7 +294,7 @@
       "description": "A captured, sanitized live request/response sample for one surface.",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",
-      "schema_ref": "#/components/schemas/JsonObject",
+      "schema_ref": "#/components/schemas/FixtureArtifact",
       "storage_tier": "r2"
     },
     {
@@ -475,6 +475,15 @@
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-02.1",
+      "description": "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+      "id": "subnet-performance",
+      "path": "/metagraph/subnets/{netuid}/performance.json",
+      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
       "storage_tier": "r2"
     },
     {

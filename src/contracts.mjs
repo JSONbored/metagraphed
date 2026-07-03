@@ -234,6 +234,7 @@ export const API_QUERY_COLLECTIONS = {
       "score",
       "status",
     ],
+    rangeFilters: ["latency_ms", "score"],
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -811,7 +812,7 @@ export const PUBLIC_ARTIFACTS = [
     "fixture-detail",
     "/metagraph/fixtures/{surface_id}.json",
     "A captured, sanitized live request/response sample for one surface.",
-    "JsonObject",
+    "FixtureArtifact",
   ),
   artifact(
     "curation",
@@ -932,6 +933,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/concentration.json",
     "Stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across three lenses — per-UID, per-entity (coldkeys collapsed to the true control distribution), and validator-only consensus power — served live from the neurons D1 tier at /api/v1/subnets/{netuid}/concentration (no static file).",
     "SubnetConcentrationArtifact",
+  ),
+  artifact(
+    "subnet-performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+    "SubnetPerformanceArtifact",
   ),
   artifact(
     "subnet-concentration-history",
@@ -1565,9 +1572,28 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/fixtures",
     "/metagraph/fixtures.json",
-    "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+    "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json.",
     "standard",
     ["registry", "api-dx"],
+  ),
+  route(
+    "fixture-detail",
+    "GET",
+    "/api/v1/fixtures/{surface_id}",
+    "/metagraph/fixtures/{surface_id}.json",
+    "Fetch one captured, sanitized live request/response fixture by surface id.",
+    "standard",
+    ["registry", "api-dx"],
+    [],
+    [
+      {
+        name: "surface_id",
+        schema: {
+          type: "string",
+          pattern: "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+        },
+      },
+    ],
   ),
   route(
     "agent-resources",
@@ -1765,6 +1791,17 @@ export const API_ROUTES = [
     "/api/v1/subnets/{netuid}/concentration",
     "/metagraph/subnets/{netuid}/concentration.json",
     "Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons D1 tier).",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-performance",
+    "GET",
+    "/api/v1/subnets/{netuid}/performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
     "short",
     ["subnets", "analytics"],
     [],
@@ -2742,7 +2779,11 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         // Deterministic worked example (schema-valid, no live data) so
         // Swagger UI + agents see a concrete response shape. Generated
         // from the schema; enforced by validate-openapi-examples.
-        example: sampleFromSchema(responseSchema, componentSchemas),
+        example: openApiExampleForRoute(
+          entry,
+          responseSchema,
+          componentSchemas,
+        ),
       },
       ...(entry.csv_response
         ? {
@@ -2876,6 +2917,42 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
   };
 }
 
+const FIXTURE_DETAIL_OPENAPI_EXAMPLE = {
+  schema_version: 1,
+  generated_at: "1970-01-01T00:00:00.000Z",
+  surface_id: "7:subnet-api:new_v2",
+  netuid: 7,
+  subnet_slug: "allways",
+  subnet_name: "AllWays",
+  kind: "subnet-api",
+  captured_at: "2026-06-16T12:00:00.000Z",
+  request: { method: "GET", url: "https://api.all-ways.io/health" },
+  response: {
+    status: 200,
+    content_type: "application/json",
+    body: { ok: true },
+  },
+};
+
+function openApiExampleForRoute(entry, responseSchema, componentSchemas) {
+  const example = sampleFromSchema(responseSchema, componentSchemas);
+  if (entry.id !== "fixture-detail") {
+    return example;
+  }
+  return {
+    ...example,
+    data: FIXTURE_DETAIL_OPENAPI_EXAMPLE,
+    meta: {
+      artifact_path: "/metagraph/fixtures/7:subnet-api:new_v2.json",
+      cache: "standard",
+      contract_version: CONTRACT_VERSION,
+      generated_at: FIXTURE_DETAIL_OPENAPI_EXAMPLE.generated_at,
+      published_at: null,
+      source: "r2",
+    },
+  };
+}
+
 export function artifactPathFromTemplate(template, params = {}) {
   return template
     .replace("{netuid}", String(params.netuid ?? ""))
@@ -2908,7 +2985,10 @@ export function compileRoutePattern(pathTemplate) {
     .replace(/__METAGRAPH_SS58__/g, "(?<ss58>[1-9A-HJ-NP-Za-km-z]{47,48})")
     .replace(/__METAGRAPH_SLUG__/g, "(?<slug>[a-z0-9-]+)")
     .replace(/__METAGRAPH_DATE__/g, "(?<date>\\d{4}-\\d{2}-\\d{2})")
-    .replace(/__METAGRAPH_SURFACE_ID__/g, "(?<surface_id>[a-z0-9-]+)")
+    .replace(
+      /__METAGRAPH_SURFACE_ID__/g,
+      "(?<surface_id>[A-Za-z0-9][A-Za-z0-9:._-]*)",
+    )
     .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
     .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)");
   return new RegExp(`^${pattern}\\/?$`);

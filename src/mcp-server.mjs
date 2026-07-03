@@ -96,14 +96,14 @@ import {
   resolveLiveHealth,
 } from "./health-serving.mjs";
 import {
-  DEFAULT_GLOBAL_VALIDATOR_SORT,
-  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-  GLOBAL_VALIDATOR_LIMIT_MAX,
-  GLOBAL_VALIDATOR_SORTS,
-  loadGlobalValidators,
   loadNeuron,
   loadSubnetMetagraph,
   loadSubnetValidators,
+  loadGlobalValidators,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.mjs";
 import {
   INGESTED_EVENT_KINDS,
@@ -125,6 +125,7 @@ import {
 import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
+import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -145,7 +146,13 @@ import {
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
-import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
+import { loadExtrinsics } from "./extrinsics.mjs";
+import { loadExtrinsicDetail } from "./extrinsic-detail.mjs";
+import {
+  dataApiFetchJson,
+  loadBlockChainEvents,
+  loadExtrinsicChainEvents,
+} from "./data-api-mcp.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -252,6 +259,8 @@ export const MCP_INSTRUCTIONS =
   "incidents, " +
   "get_subnet_concentration stake and " +
   "emission decentralization metrics (Gini, HHI, Nakamoto), " +
+  "get_subnet_performance the reward distribution (incentive/dividends " +
+  "concentration) and trust/consensus score spread, " +
   "get_subnet_concentration_history the decentralization trend over time, " +
   "get_subnet_turnover validator-set and registration churn between two " +
   "boundary snapshots, get_subnet_stake_flow net capital in/out for one " +
@@ -267,8 +276,7 @@ export const MCP_INSTRUCTIONS =
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
   "list_subnet_validators its validators ranked by stake, list_global_validators " +
-  "the cross-subnet validator-operator leaderboard grouped by hotkey, and " +
-  "get_neuron one " +
+  "the network-wide validator leaderboard grouped by hotkey, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
@@ -436,50 +444,11 @@ async function loadSubnetEconomics(ctx, netuid) {
 // the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
 // this Worker's bundle; MCP handlers reach it through the DATA_API service
 // binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
-// A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
-// upstream response surfaces as a clean tool error, never an exception.
 async function loadChainActivity(ctx, blocks) {
-  // Optional in previews/local runs; production binds this beside DATA_API so
-  // MCP calls pay the same data-tier rate limit as REST proxy calls.
-  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
-      key: `data:${ctx.clientIp}`,
-    });
-    if (!success) {
-      throw toolError(
-        "data_rate_limited",
-        "Too many data API requests from this client; slow down.",
-      );
-    }
-  }
-
-  const dataApi = ctx.env?.DATA_API;
-  if (!dataApi?.fetch) {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier is unavailable (the all-events data Worker is " +
-        "not bound to this deployment). Try again against the production endpoint.",
-    );
-  }
-  let response;
-  try {
-    response = await dataApi.fetch(
-      new Request(`https://d/api/v1/chain-events/stats?blocks=${blocks}`),
-    );
-  } catch {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier could not be reached. Try again shortly.",
-    );
-  }
-  if (!response.ok) {
-    throw toolError(
-      "tier_unavailable",
-      `The chain activity tier returned an error (status ${response.status}). ` +
-        "Try again shortly.",
-    );
-  }
-  const data = await response.json();
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
   return {
     window_blocks: data?.window_blocks ?? blocks,
     groups: data?.groups ?? 0,
@@ -1826,6 +1795,31 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_subnet_performance",
+    title: "Get subnet reward distribution & score spread",
+    description:
+      "Fetch one subnet's live reward-distribution scorecard: the concentration " +
+      "(Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) of the " +
+      "actual rewards — incentive across all neurons and dividends across the " +
+      "validators — plus the p10–p90 spread of the 0–1 trust, consensus, and " +
+      "validator_trust scores. The reward-flow companion of get_subnet_concentration " +
+      "(which measures stake/emission): use it to see whether a subnet's emissions " +
+      "are broadly earned or captured by a few UIDs. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/performance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        netuid: { type: "integer", description: "Subnet netuid.", minimum: 0 },
+      },
+      required: ["netuid"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      return loadSubnetPerformance(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
     name: "get_chain_concentration",
     title: "Get network-wide stake/emission concentration",
     description:
@@ -1887,8 +1881,10 @@ export const MCP_TOOLS = [
       "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
       "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
       "retention for validators and neurons, UID deregistrations, and a 0–100 " +
-      "stability score. Use it to see how stable a subnet's participation base " +
-      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+      "stability score. Set changes to true to include entered/exited validator " +
+      "hotkeys and UID reassignment detail (mirrors ?changes=true on REST). " +
+      "Use it to see how stable a subnet's participation base is over time. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/turnover.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1897,6 +1893,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d", "90d", "1y", "all"],
           description: "History window (default 30d).",
+        },
+        changes: {
+          type: "boolean",
+          description:
+            "When true, include entered/exited validator hotkeys and UID " +
+            "reassignment detail under `changes` (REST ?changes=true parity).",
         },
       },
       required: ["netuid"],
@@ -1908,6 +1910,7 @@ export const MCP_TOOLS = [
       return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
         windowLabel: label,
         windowDays: days,
+        includeChanges: optionalBoolean(args, "changes"),
       });
     },
   },
@@ -2055,7 +2058,9 @@ export const MCP_TOOLS = [
       "Fetch one subnet's long-term daily uptime history for its operational " +
       "surfaces from the live surface_uptime_daily rollup. Returns per-surface " +
       "day series, window-wide uptime ratios, and reliability scores for the " +
-      "requested window (90d or 1y). Mirrors GET /api/v1/subnets/{netuid}/uptime.",
+      "requested window (90d or 1y). ?min_samples drops low-sample day rows " +
+      "(daily probe count below the threshold, incl. zero-sample 'unknown' days). " +
+      "Mirrors GET /api/v1/subnets/{netuid}/uptime.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2064,6 +2069,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["90d", "1y"],
           description: "History window (default 90d).",
+        },
+        min_samples: {
+          type: "integer",
+          minimum: 0,
+          description:
+            "Drop day rows whose daily probe count is below this threshold.",
         },
       },
       required: ["netuid"],
@@ -2078,6 +2089,7 @@ export const MCP_TOOLS = [
       return loadSubnetUptime(mcpD1Runner(ctx), netuid, {
         window: window || "90d",
         observedAt: await mcpObservedAt(ctx),
+        minSamples: optionalNonNegativeInt(args, "min_samples"),
       });
     },
   },
@@ -2261,25 +2273,28 @@ export const MCP_TOOLS = [
   },
   {
     name: "list_global_validators",
-    title: "List cross-subnet validator operators",
+    title: "List the network-wide validator leaderboard",
     description:
-      "List the network-wide validator-operator leaderboard from the current " +
-      "neurons snapshot: validator-permit UIDs grouped by hotkey with subnet " +
-      "footprint, stake/emission totals, and trust aggregates. Sort by " +
-      "subnet_count (default), uid_count, avg_validator_trust, " +
-      "max_validator_trust, total_stake, total_emission, or stake_dominance; " +
-      "cap with limit (1-100, default 20). Mirrors GET /api/v1/validators.",
+      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
+      "identities grouped by hotkey across all current subnet memberships, with " +
+      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
+      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
+      "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
+      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      "GET /api/v1/validators.",
     inputSchema: {
       type: "object",
       properties: {
         sort: {
           type: "string",
           enum: GLOBAL_VALIDATOR_SORTS,
-          description: `Rank metric (default ${DEFAULT_GLOBAL_VALIDATOR_SORT}).`,
+          description:
+            "Ranking key (default subnet_count). See tool description for options.",
         },
         limit: {
           type: "integer",
-          description: `Max operators to return (1-${GLOBAL_VALIDATOR_LIMIT_MAX}, default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}).`,
+          description: "Max validators to return (1-100, default 20).",
           minimum: 1,
           maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
         },
@@ -2287,13 +2302,9 @@ export const MCP_TOOLS = [
       additionalProperties: false,
     },
     async handler(args, ctx) {
-      const sort = optionalString(args, "sort") ?? DEFAULT_GLOBAL_VALIDATOR_SORT;
-      if (!GLOBAL_VALIDATOR_SORTS.includes(sort)) {
-        throw toolError(
-          "invalid_params",
-          `sort must be one of: ${GLOBAL_VALIDATOR_SORTS.join(", ")}.`,
-        );
-      }
+      const sort =
+        optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
+        DEFAULT_GLOBAL_VALIDATOR_SORT;
       const limit = clampLimit(
         args?.limit,
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -3324,9 +3335,12 @@ export const MCP_TOOLS = [
     title: "Get an extrinsic by hash or composite ref",
     description:
       "Fetch the detail for one extrinsic by its 0x extrinsic hash (e.g. '0xabc...') " +
-      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). Returns " +
-      "extrinsic:null when the ref is unknown or the store is cold — never errors. " +
-      "Use list_extrinsics to find extrinsic refs.",
+      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). " +
+      "Includes up to 50 curated account_events the extrinsic emitted (#1849). " +
+      "Returns extrinsic:null when the ref is unknown or the store is cold — never " +
+      "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
+      "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
+      "GET /api/v1/extrinsics/{ref}.",
     inputSchema: {
       type: "object",
       properties: {
@@ -3342,7 +3356,76 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return loadExtrinsic(mcpD1Runner(ctx), ref);
+      return loadExtrinsicDetail(mcpD1Runner(ctx), ref);
+    },
+  },
+  {
+    name: "get_block_chain_events",
+    title: "Get every raw chain event in one block",
+    description:
+      "Fetch every raw pallet.method event in one block from the Postgres-backed " +
+      "all-events tier (ADR 0013), in natural read order (event_index ASC). " +
+      "Distinct from get_block_events (the curated account-attributed D1 stream). " +
+      "Returns event_count:0 + events:[] when the tier is empty for that block. " +
+      "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
+      "Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block_number: {
+          type: "integer",
+          description: "Numeric block height.",
+          minimum: 0,
+        },
+      },
+      required: ["block_number"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const blockNumber = requireNonNegativeInt(args, "block_number");
+      return loadBlockChainEvents(ctx, blockNumber);
+    },
+  },
+  {
+    name: "get_extrinsic_chain_events",
+    title: "Get raw chain events emitted by one extrinsic",
+    description:
+      "Fetch raw pallet.method events one extrinsic emitted from the Postgres-backed " +
+      "all-events tier (newest first). ref must be the composite id " +
+      "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
+      "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
+      "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
+      "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Composite extrinsic id 'block_number-extrinsic_index' (e.g. '4200000-3').",
+        },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-200, default 50).",
+          minimum: 1,
+          maximum: 200,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor for the next page.",
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      const cursor = optionalString(args, "cursor");
+      return loadExtrinsicChainEvents(ctx, ref, {
+        limit: args?.limit,
+        cursor: cursor ?? undefined,
+      });
     },
   },
   {
@@ -4725,6 +4808,17 @@ const EXTRINSIC_ITEM = {
   tip_tao: ANY,
   observed_at: NULLABLE_STRING,
 };
+// Raw all-events tier item (pallet.method events from Postgres chain_events).
+const CHAIN_EVENT_ITEM = {
+  block_number: NULLABLE_INT,
+  event_index: NULLABLE_INT,
+  pallet: NULLABLE_STRING,
+  method: NULLABLE_STRING,
+  args: ANY,
+  phase: ANY,
+  extrinsic_index: NULLABLE_INT,
+  observed_at: NULLABLE_INT,
+};
 // RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
 // schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
 const RPC_USAGE_LATENCY_MS = {
@@ -5065,6 +5159,24 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_stake: { type: ["object", "null"] },
     },
   },
+  get_subnet_performance: {
+    type: "object",
+    additionalProperties: true,
+    required: ["netuid", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      netuid: { type: "integer" },
+      neuron_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      active_count: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      incentive: { type: ["object", "null"] },
+      dividends: { type: ["object", "null"] },
+      trust: { type: ["object", "null"] },
+      consensus: { type: ["object", "null"] },
+      validator_trust: { type: ["object", "null"] },
+    },
+  },
   get_chain_concentration: {
     type: "object",
     additionalProperties: true,
@@ -5211,6 +5323,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+      changes: {
+        type: "object",
+        properties: {
+          validators_entered_count: { type: "integer" },
+          validators_exited_count: { type: "integer" },
+          uid_reassignment_count: { type: "integer" },
+          validators_entered: { type: "array", items: { type: "object" } },
+          validators_exited: { type: "array", items: { type: "object" } },
+          uid_reassignments: { type: "array", items: { type: "object" } },
+        },
+      },
     },
   },
   get_subnet_uptime: {
@@ -5646,6 +5769,39 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
+      events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
+  get_block_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_number", "event_count", "events"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_number: NULLABLE_INT,
+      event_count: { type: "integer" },
+      events: objectItems(CHAIN_EVENT_ITEM),
+    },
+  },
+  get_extrinsic_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "ref",
+      "block_number",
+      "extrinsic_index",
+      "event_count",
+      "events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block_number: NULLABLE_INT,
+      extrinsic_index: NULLABLE_INT,
+      limit: NULLABLE_INT,
+      event_count: { type: "integer" },
+      next_cursor: NULLABLE_STRING,
+      events: objectItems(CHAIN_EVENT_ITEM),
     },
   },
   get_chain_activity: {

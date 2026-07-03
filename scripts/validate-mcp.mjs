@@ -414,6 +414,14 @@ assert.ok(
   "get_subnet_yield must return neurons[]",
 );
 assert.equal(yieldCard.netuid, 7, "get_subnet_yield must echo the netuid");
+const uptimeFiltered = await callOk("get_subnet_uptime", {
+  netuid: 7,
+  min_samples: 5,
+});
+assert.ok(
+  Array.isArray(uptimeFiltered.surfaces),
+  "get_subnet_uptime must accept the min_samples filter",
+);
 const stakeFlowCold = await callOk("get_subnet_stake_flow", {
   netuid: 7,
   window: "30d",
@@ -523,6 +531,22 @@ assert.equal(
   activityCold.isError,
   true,
   "get_chain_activity must isError without the DATA_API binding",
+);
+const blockChainEventsCold = await call("get_block_chain_events", {
+  block_number: 4200000,
+});
+assert.equal(
+  blockChainEventsCold.isError,
+  true,
+  "get_block_chain_events must isError without the DATA_API binding",
+);
+const extrinsicChainEventsCold = await call("get_extrinsic_chain_events", {
+  ref: "4200000-3",
+});
+assert.equal(
+  extrinsicChainEventsCold.isError,
+  true,
+  "get_extrinsic_chain_events must isError without the DATA_API binding",
 );
 const signersCold = await callOk("get_chain_signers", {
   window: "7d",
