@@ -50,6 +50,7 @@ import {
   handleChainCalls,
   handleChainFees,
   handleChainSigners,
+  handleChainTransferPairs,
   handleChainTransfers,
   handleGlobalIncidents,
   loadGlobalIncidentsLedger,
@@ -1690,6 +1691,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/transfers") {
       return handleChainTransfers(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/transfer-pairs") {
+      return handleChainTransferPairs(request, env, resolved.url, ctx);
+    }
     // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
     // busts on the newest neuron captured_at across ALL subnets, not the health
     // prober tick (like the per-subnet concentration route, but network-scoped).
@@ -1807,6 +1811,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
     pathname === "/api/v1/chain/transfers" ||
+    pathname === "/api/v1/chain/transfer-pairs" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/identity-history" ||

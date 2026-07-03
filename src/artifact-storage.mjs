@@ -99,6 +99,7 @@ export const R2_ONLY_PATTERNS = [
   /^chain\/signers\.json$/,
   /^chain\/fees\.json$/,
   /^chain\/transfers\.json$/,
+  /^chain\/transfer-pairs\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,

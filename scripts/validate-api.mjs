@@ -500,6 +500,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/transfer-pairs?window=7d&limit=5",
+    (body) => {
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(typeof body.data.unique_pairs, "number");
+      assert.equal(Array.isArray(body.data.pairs), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);

@@ -100,9 +100,10 @@ future non-`.md` file under `.claude/skills/`, disqualifies the whole PR), the `
 `docs_only=true` and `checks` skips only its build/contract/registry/deploy-dry-run steps via a
 **per-step** `if: env.DOCS_ONLY != 'true'` guard — never a job-level skip, so `checks` always reports
 a real `success`/`failure` conclusion, never `skipped`. `Lint + format`, `validate:docs`,
-`validate:intake`, and `scan:public-safety` still run unconditionally on every PR, docs-only or
-not — they're cheap (no build, no network) and are exactly what a stray secret or broken
-doc-contract reference in a "docs-only" PR would trip. **Hard guardrail, no exceptions:** any diff
+`validate:intake`, `scan:public-safety`, and `validate:private-boundary` still run
+unconditionally on every PR, docs-only or not — they're cheap (no build, no network) and are
+exactly what a stray secret, private-boundary leak, or broken doc-contract reference in a
+"docs-only" PR would trip. **Hard guardrail, no exceptions:** any diff
 touching `registry/` forces `docs_only=false` regardless of what else is in the diff — computed as an
 independent override in the same `changes` job step, before the docs-pattern check even runs. This
 exists because the retired "ugc" lane above was scoped to registry/community-surface PRs specifically

@@ -2430,6 +2430,69 @@
         },
         "additionalProperties": false
       },
+      "ChainTransferPair": {
+        "type": "object",
+        "description": "One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount.",
+        "required": [
+          "from",
+          "to",
+          "volume_tao",
+          "transfer_count",
+          "last_block",
+          "last_observed_at"
+        ],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "volume_tao": { "type": "number", "minimum": 0 },
+          "transfer_count": { "type": "integer", "minimum": 0 },
+          "last_block": { "type": ["integer", "null"], "minimum": 0 },
+          "last_observed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ChainTransferPairsArtifact": {
+        "type": "object",
+        "description": "Network-wide directed native-TAO transfer-pair analytics over a 7d/30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share of total pairable volume, and top sender -> receiver pairs ranked by volume or transfer count. Served live from the account_events D1 tier at /api/v1/chain/transfer-pairs (no static file); zeros + an empty pairs list when cold.",
+        "required": [
+          "schema_version",
+          "window",
+          "sort",
+          "observed_at",
+          "total_volume_tao",
+          "transfer_count",
+          "unique_pairs",
+          "pair_count",
+          "top_pair_share",
+          "pairs"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": { "type": ["string", "null"] },
+          "sort": { "type": "string", "enum": ["volume", "count"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "total_volume_tao": { "type": "number", "minimum": 0 },
+          "transfer_count": { "type": "integer", "minimum": 0 },
+          "unique_pairs": { "type": "integer", "minimum": 0 },
+          "pair_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of pair rows returned after applying limit. unique_pairs is the full-window pair count."
+          },
+          "top_pair_share": {
+            "type": ["number", "null"],
+            "description": "Highest-volume pair's full-window volume divided by total pairable volume, independent of sort and limit; null when the window has no pairable volume."
+          },
+          "pairs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChainTransferPair" }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainFeeDay": {
         "type": "object",
         "additionalProperties": false,
