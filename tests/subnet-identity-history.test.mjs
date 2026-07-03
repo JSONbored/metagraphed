@@ -240,6 +240,47 @@ describe("formatIdentityHistoryEntry", () => {
     assert.equal(out.observed_at, null);
   });
 
+  test("coerces string-typed observed_at cells to ISO timestamps", () => {
+    const out = formatIdentityHistoryEntry({
+      block_number: 1,
+      observed_at: "1700000000000",
+      subnet_name: "MIAO",
+      identity_hash: "abc",
+    });
+    assert.equal(out.observed_at, new Date(1700000000000).toISOString());
+  });
+
+  test("preserves null observed_at as null (not epoch 1970)", () => {
+    const out = formatIdentityHistoryEntry({
+      block_number: 1,
+      observed_at: null,
+      subnet_name: "MIAO",
+      identity_hash: "abc",
+    });
+    assert.equal(out.observed_at, null);
+  });
+
+  test("drops invalid or blank observed_at strings to null", () => {
+    for (const observed_at of [
+      "",
+      "   ",
+      "not-a-timestamp",
+      "8640000000000001",
+    ]) {
+      const out = formatIdentityHistoryEntry({
+        block_number: 1,
+        observed_at,
+        subnet_name: "MIAO",
+        identity_hash: "abc",
+      });
+      assert.equal(
+        out.observed_at,
+        null,
+        `observed_at=${JSON.stringify(observed_at)}`,
+      );
+    }
+  });
+
   test("sanitizes URI and discord fields to match the published contract", () => {
     const out = formatIdentityHistoryEntry({
       block_number: 1,

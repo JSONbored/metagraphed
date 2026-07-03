@@ -661,6 +661,9 @@ export async function loadChainFees(
   if (safeDayBoundaries.length > 0) {
     const medianModuleParam = callModuleFilter ? 1 : null;
     const medianFirstDayParam = callModuleFilter ? 2 : 1;
+    const medianTable = callModuleFilter
+      ? "extrinsics INDEXED BY idx_extrinsics_module_observed"
+      : "extrinsics";
     const medianModuleClause = callModuleFilter
       ? ` AND call_module = ?${medianModuleParam}`
       : "";
@@ -670,7 +673,7 @@ export async function loadChainFees(
       return `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
                 COALESCE(fee_tao, 0) AS fee_tao,
                 COALESCE(tip_tao, 0) AS tip_tao
-         FROM extrinsics
+         FROM ${medianTable}
          WHERE observed_at >= ?${startParam} AND observed_at < ?${endParam}${medianModuleClause}`;
     });
     const medianParams = [

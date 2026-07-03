@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -996,75 +996,78 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  // Use yesterday UTC so the mocked day stays inside handleChainFees' 7d window
-  // and the median safe-day scan (utcDayFloor(cutoff)..now). A fixed 2026-06-25
-  // label ages out of that loop and skips the ROW_NUMBER median query entirely.
-  const windowDay = new Date(
-    Math.floor((Date.now() - DAY_MS) / DAY_MS) * DAY_MS,
-  )
-    .toISOString()
-    .slice(0, 10);
-  const captured = [];
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql) {
-        return {
-          bind(...params) {
-            captured.push({ sql, params });
-            const rows = /ROW_NUMBER\(\) OVER/.test(sql)
-              ? [
-                  {
-                    day: windowDay,
-                    median_fee_tao: 0.006,
-                    median_tip_tao: 0,
-                  },
-                ]
-              : /GROUP BY day/.test(sql)
+  // loadChainFees's day-safety window is computed from the real Date.now() at
+  // request time (handleRequest doesn't thread a `now` override through from
+  // the HTTP layer), so a hardcoded mock day drifts out of the 7d window as
+  // real time passes and the day-boundary loop silently stops matching it.
+  // Freeze the clock to a fixed instant one day after the mocked day so this
+  // test never goes stale.
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-06-26T12:00:00.000Z"));
+  try {
+    const captured = [];
+    const env = {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              captured.push({ sql, params });
+              const rows = /ROW_NUMBER\(\) OVER/.test(sql)
                 ? [
                     {
-                      day: windowDay,
-                      extrinsic_count: 50,
-                      total_fee_tao: 0.5,
-                      total_tip_tao: 0,
+                      day: "2026-06-25",
+                      median_fee_tao: 0.006,
+                      median_tip_tao: 0,
                     },
                   ]
-                : /GROUP BY signer/.test(sql)
+                : /GROUP BY day/.test(sql)
                   ? [
                       {
-                        signer: "5Pay",
+                        day: "2026-06-25",
+                        extrinsic_count: 50,
                         total_fee_tao: 0.5,
                         total_tip_tao: 0,
-                        extrinsic_count: 50,
                       },
                     ]
-                  : [];
-            return { all: () => Promise.resolve({ results: rows }) };
-          },
-        };
+                  : /GROUP BY signer/.test(sql)
+                    ? [
+                        {
+                          signer: "5Pay",
+                          total_fee_tao: 0.5,
+                          total_tip_tao: 0,
+                          extrinsic_count: 50,
+                        },
+                      ]
+                    : [];
+              return { all: () => Promise.resolve({ results: rows }) };
+            },
+          };
+        },
       },
-    },
-  };
-  const res = await handleRequest(
-    new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
-    env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
-  assert.equal(body.data.daily[0].median_fee_tao, 0.006);
-  assert.equal(body.data.daily[0].median_tip_tao, 0);
-  assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
-  const daily = captured.find(
-    (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
-  );
-  assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
-  const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
-  assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
-  assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
-  assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+    };
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.daily[0].avg_fee_tao, 0.01); // 0.5/50
+    assert.equal(body.data.daily[0].median_fee_tao, 0.006);
+    assert.equal(body.data.daily[0].median_tip_tao, 0);
+    assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
+    const daily = captured.find(
+      (q) => /GROUP BY day/.test(q.sql) && !/ROW_NUMBER\(\) OVER/.test(q.sql),
+    );
+    assert.match(daily.sql, /COALESCE\(fee_tao, 0\)/);
+    const median = captured.find((q) => /ROW_NUMBER\(\) OVER/.test(q.sql));
+    assert.match(median.sql, /PARTITION BY day ORDER BY fee_tao/);
+    assert.match(median.sql, /PARTITION BY day ORDER BY tip_tao/);
+    assert.doesNotMatch(median.sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {
