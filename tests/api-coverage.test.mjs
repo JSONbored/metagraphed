@@ -62,7 +62,7 @@ const COVERAGE_DEPTH_ARTIFACT = {
     {
       netuid: 7,
       slug: "allways",
-      name: "Allways",
+      name: 'Allways, "callable"',
       tier: "agent-ready",
       score: 77,
       priority_score: 86,
@@ -117,7 +117,7 @@ function withCoverageDepthArchive(overrides = {}) {
       const text = JSON.stringify(COVERAGE_DEPTH_ARTIFACT);
       return {
         async json() {
-          return COVERAGE_DEPTH_ARTIFACT;
+          return JSON.parse(text);
         },
         async text() {
           return text;
@@ -1320,41 +1320,107 @@ describe("registry list CSV export", () => {
 });
 
 describe("coverage-depth CSV export", () => {
+  const parseCsvLine = (line) => {
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+          continue;
+        }
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (char === "," && !inQuotes) {
+        values.push(current);
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    values.push(current);
+    return values;
+  };
+
+  const parseCoverageCsv = async (res) => {
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const lines = (await res.text())
+      .split("\r\n")
+      .filter((line) => line !== "");
+    const header = parseCsvLine(lines[0]);
+    const rows = lines.slice(1).map((line) => {
+      const values = parseCsvLine(line);
+      return Object.fromEntries(
+        header.map((name, index) => [name, values[index] ?? ""]),
+      );
+    });
+    return { header, rows };
+  };
+
   test("?format=csv returns projected coverage-depth rows", async () => {
     const res = await handleRequest(
       req(
-        "/api/v1/coverage-depth?format=csv&fields=netuid,tier,agent_status,priority_score,score&sort=netuid&limit=2",
+        "/api/v1/coverage-depth?format=csv&fields=netuid,tier,agent_status,priority_score,score,name&sort=netuid&limit=2",
       ),
       withCoverageDepthArchive(),
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
     assert.equal(
       res.headers.get("content-disposition"),
       'attachment; filename="coverage-depth.csv"',
     );
 
-    const lines = (await res.text()).split("\r\n");
-    assert.equal(lines[0], "netuid,tier,agent_status,priority_score,score");
-    assert.equal(lines.length, 3);
-    assert.equal(lines[1].startsWith("7,agent-ready,callable,86,77"), true);
-    assert.equal(lines[2].startsWith("31,missing-interface,blocked,67,18"), true);
+    const { header, rows } = await parseCoverageCsv(res);
+    assert.equal(
+      header.join(","),
+      "netuid,tier,agent_status,priority_score,score,name",
+    );
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows[0], {
+      netuid: "7",
+      tier: "agent-ready",
+      agent_status: "callable",
+      priority_score: "86",
+      score: "77",
+      name: 'Allways, "callable"',
+    });
+    assert.deepEqual(rows[1], {
+      netuid: "31",
+      tier: "missing-interface",
+      agent_status: "blocked",
+      priority_score: "67",
+      score: "18",
+      name: "Recall",
+    });
   });
 
-  test("?tier=agent-ready&format=csv applies coverage-depth filter", async () => {
+  test("?tier=agent-ready&format=csv applies coverage-depth filter and keeps CSV escaping", async () => {
     const res = await handleRequest(
-      req("/api/v1/coverage-depth?tier=agent-ready&format=csv&fields=netuid,tier"),
+      req(
+        "/api/v1/coverage-depth?tier=agent-ready&format=csv&fields=netuid,tier,name",
+      ),
       withCoverageDepthArchive(),
       {},
     );
     assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type"), /^text\/csv/);
-
-    const lines = (await res.text()).split("\r\n");
-    assert.equal(lines[0], "netuid,tier");
-    assert.equal(lines.length, 2);
-    assert.equal(lines[1], "7,agent-ready");
+    const { header, rows } = await parseCoverageCsv(res);
+    assert.equal(header.join(","), "netuid,tier,name");
+    assert.deepEqual(rows, [
+      {
+        netuid: "7",
+        tier: "agent-ready",
+        name: 'Allways, "callable"',
+      },
+    ]);
   });
 });
 
