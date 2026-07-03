@@ -340,8 +340,18 @@ describe("feeds — item builders", () => {
     assert.equal(toIso("2026-06-12T00:00:00.000Z"), "2026-06-12T00:00:00.000Z");
   });
 
+  test("toIso normalizes a D1 numeric-string epoch-ms", () => {
+    assert.equal(
+      toIso(String(1781266255266)),
+      new Date(1781266255266).toISOString(),
+    );
+  });
+
   test("toIso drops an out-of-range numeric string to null", () => {
-    assert.equal(toIso("9000000000000000"), null);
+    // Date.parse ignores bare epoch-ms strings; D1 returns them as numeric
+    // strings, so coerce via /^\d+$/ first. One ms past the JS Date max yields
+    // a finite Number but an invalid Date — must return null, not throw.
+    assert.equal(toIso("8640000000000001"), null);
   });
 
   test("toIso drops an unparseable string to null", () => {
@@ -439,15 +449,14 @@ describe("feeds — item builders", () => {
   });
 
   test("incidentItems survives a string-typed out-of-range started_at (no RangeError)", () => {
-    // D1 can return INTEGER observed_at/captured_at as a numeric string; the
-    // string branch of toIso must apply the same Date-range guard as the number
-    // branch — Date.parse succeeds but toISOString() would throw on 9e15 ms.
+    // D1 can return INTEGER epoch-ms as a numeric string; coerce first (Date.parse
+    // ignores bare digits) and guard when the epoch is beyond the JS Date range.
     const incidents = {
       surfaces: [
         {
           netuid: 1,
           surface_id: "api",
-          incidents: [{ started_at: "9000000000000000" }],
+          incidents: [{ started_at: "8640000000000001" }],
         },
       ],
     };

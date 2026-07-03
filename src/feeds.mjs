@@ -103,7 +103,7 @@ function toIso(value) {
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   if (typeof value === "string") {
-    const t = Date.parse(value);
+    const t = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
     if (!Number.isNaN(t)) {
       const date = new Date(t);
       return Number.isFinite(date.getTime()) ? date.toISOString() : null;
