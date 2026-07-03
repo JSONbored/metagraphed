@@ -3,22 +3,43 @@ import argparse
 import json
 from datetime import datetime, timezone
 
-import bittensor as bt
 
-
-def to_tao(value):
-    """Coerce a bittensor Balance (or plain number) to a float.
-
-    Balance.__float__ already returns the tao-denominated value; plain ints and
-    floats pass through. Anything else (None, unexpected type) becomes None so a
-    single odd field never aborts the per-subnet economics block.
-    """
-    if value is None:
+def to_rao_exact(balance):
+    """Extract the exact rao integer from a Balance, for sum-then-convert
+    aggregation. Summing already-float-converted TAO values (the prior
+    approach) compounds double-precision rounding across every per-UID entry
+    before the total is even computed; summing rao (Python int, arbitrary
+    precision) first and converting once at the end avoids that entirely
+    (metagraphed#2921). Falls back to a best-effort rao estimate for plain
+    numbers (never expected in practice — MetagraphInfo's per-UID arrays are
+    Balance objects — but keeps this defensive like to_tao)."""
+    if balance is None:
         return None
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        return balance.rao
+    except AttributeError:
+        try:
+            return int(round(float(balance) * 1_000_000_000))
+        except (TypeError, ValueError):
+            return None
+
+
+def rao_to_tao_exact(rao):
+    """Whole/remainder split so the integer TAO part is always exact, only
+    crossing to a float for the sub-TAO remainder (metagraphed#2921)."""
+    if rao is None:
         return None
+    whole = rao // 1_000_000_000
+    remainder = (rao % 1_000_000_000) / 1e9
+    return whole + remainder
+
+
+def to_tao_exact(balance):
+    """Single-value equivalent of to_rao_exact + rao_to_tao_exact, for fields
+    that aren't aggregated (registration_cost_tao, alpha_price_tao, pool
+    reserves, etc.) — same exact-conversion guarantee as to_tao without ever
+    routing through Balance.__float__/.tao internally (metagraphed#2921)."""
+    return rao_to_tao_exact(to_rao_exact(balance))
 
 
 def normalize_economics(info):
@@ -32,31 +53,36 @@ def normalize_economics(info):
     permits = list(getattr(info, "validator_permit", []) or [])
     validator_count = sum(1 for permit in permits if permit)
     num_uids = int(getattr(info, "num_uids", 0) or 0)
-    stakes = [
-        stake
-        for stake in (
-            to_tao(entry) for entry in (getattr(info, "total_stake", []) or [])
+    # Sum in rao-integer space (exact, arbitrary precision), not float space —
+    # summing already-converted TAO floats compounds rounding across every
+    # per-UID entry before the subnet total is even computed (metagraphed#2921).
+    stake_rao_values = [
+        rao
+        for rao in (
+            to_rao_exact(entry) for entry in (getattr(info, "total_stake", []) or [])
         )
-        if stake is not None
+        if rao is not None
     ]
+    total_stake_rao = sum(stake_rao_values) if stake_rao_values else None
+    max_stake_rao = max(stake_rao_values) if stake_rao_values else None
     return {
         "max_uids": int(getattr(info, "max_uids", 0) or 0),
         "validator_count": validator_count,
         "max_validators": int(getattr(info, "max_validators", 0) or 0),
         "miner_count": max(0, num_uids - validator_count),
         "registration_allowed": bool(getattr(info, "registration_allowed", False)),
-        "registration_cost_tao": to_tao(getattr(info, "burn", None)),
+        "registration_cost_tao": to_tao_exact(getattr(info, "burn", None)),
         # dTAO emission is price-weighted: a subnet's share of network TAO
         # emission tracks its alpha price (moving_price), not the now-zeroed
         # subnet_emission/tao_in_emission fields. We capture the price here and
         # derive each subnet's emission_share at build time (price / Σ price).
-        "alpha_price_tao": to_tao(getattr(info, "moving_price", None)),
-        "total_stake_tao": round(sum(stakes), 9) if stakes else None,
-        "max_stake_tao": round(max(stakes), 9) if stakes else None,
-        "tao_in_pool_tao": to_tao(getattr(info, "tao_in", None)),
-        "alpha_in_pool": to_tao(getattr(info, "alpha_in", None)),
-        "alpha_out_pool": to_tao(getattr(info, "alpha_out", None)),
-        "subnet_volume_tao": to_tao(getattr(info, "subnet_volume", None)),
+        "alpha_price_tao": to_tao_exact(getattr(info, "moving_price", None)),
+        "total_stake_tao": rao_to_tao_exact(total_stake_rao),
+        "max_stake_tao": rao_to_tao_exact(max_stake_rao),
+        "tao_in_pool_tao": to_tao_exact(getattr(info, "tao_in", None)),
+        "alpha_in_pool": to_tao_exact(getattr(info, "alpha_in", None)),
+        "alpha_out_pool": to_tao_exact(getattr(info, "alpha_out", None)),
+        "subnet_volume_tao": to_tao_exact(getattr(info, "subnet_volume", None)),
         "owner_hotkey": str(getattr(info, "owner_hotkey", "") or "") or None,
         "owner_coldkey": str(getattr(info, "owner_coldkey", "") or "") or None,
     }
@@ -136,6 +162,9 @@ def classify_name(raw_name, netuid):
 
 
 def main():
+    import bittensor as bt  # lazy: keeps this module loadable (e.g. for unit tests)
+    # without the heavy SDK installed, matching fetch-events.py's convention.
+
     parser = argparse.ArgumentParser(description="Fetch decoded Bittensor Finney subnet metadata.")
     parser.add_argument("--network", default="finney")
     args = parser.parse_args()
