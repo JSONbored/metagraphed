@@ -3645,6 +3645,90 @@ describe("handleBlocks", () => {
     assert.equal(body.data.limit, 25);
   });
 
+  test("?format=csv returns a named text/csv download with block columns (#2528)", async () => {
+    const { env } = dbWith({
+      blocksFeed: [
+        blockRow(),
+        blockRow({
+          block_number: BLOCK_NUM - 1,
+          block_hash: `0x${"c".repeat(64)}`,
+        }),
+      ],
+    });
+    const res = await handleBlocks(
+      req("/api/v1/blocks?format=csv"),
+      env,
+      url("/api/v1/blocks?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="blocks.csv"',
+    );
+    const lines = (await res.text()).split("\r\n");
+    assert.equal(
+      lines[0],
+      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
+    );
+    assert.equal(lines.length, 3);
+    assert.match(lines[1], new RegExp(`^${BLOCK_NUM},`));
+  });
+
+  test("Accept: text/csv negotiates CSV without an explicit format", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    const res = await handleBlocks(
+      new Request("https://api.metagraph.sh/api/v1/blocks", {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      url("/api/v1/blocks"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+  });
+
+  test("empty CSV export still emits the header row", async () => {
+    const { env } = dbWith({ blocksFeed: [] });
+    const res = await handleBlocks(
+      req("/api/v1/blocks?format=csv"),
+      env,
+      url("/api/v1/blocks?format=csv"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      await res.text(),
+      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
+    );
+  });
+
+  test("?format=json keeps the JSON envelope even under Accept: text/csv", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
+    const res = await handleBlocks(
+      new Request("https://api.metagraph.sh/api/v1/blocks?format=json", {
+        headers: { accept: "text/csv" },
+      }),
+      env,
+      url("/api/v1/blocks?format=json"),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(Array.isArray(body.data.blocks), true);
+  });
+
+  test("rejects an unsupported format value with 400", async () => {
+    await errorJson(
+      await handleBlocks(
+        req("/api/v1/blocks?format=xml"),
+        emptyEnv(),
+        url("/api/v1/blocks?format=xml"),
+      ),
+    );
+  });
+
   test("clamps limit to <=100", async () => {
     const { env } = dbWith({ blocksFeed: [] });
     const body = await json(

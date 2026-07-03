@@ -1081,7 +1081,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "blocks-feed",
     "/metagraph/blocks.json",
-    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+    "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
     "BlocksFeedArtifact",
   ),
   artifact(
@@ -2244,10 +2244,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/blocks",
     "/metagraph/blocks.json",
-    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+    "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345).",
     "short",
     ["blocks", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "cursor", schema: { type: "string" } },
@@ -2259,7 +2259,7 @@ export const API_ROUTES = [
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "min_extrinsics", schema: { type: "integer", minimum: 0 } },
       { name: "min_events", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [],
   ),
   route(
@@ -3364,6 +3364,12 @@ function csvExampleForRoute(entry) {
     return [
       "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
       "2026-07-01,15000,42.5,0.002833,0.0025,0,0,0",
+    ].join("\r\n");
+  }
+  if (entry.id === "blocks-feed") {
+    return [
+      "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at",
+      "8454388,0xblock,0xparent,5Author,3,12,204,2026-07-03T00:00:00.000Z",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";
