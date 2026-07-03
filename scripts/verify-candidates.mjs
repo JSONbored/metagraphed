@@ -22,6 +22,7 @@ import {
   optionalHttpStatus,
   preservePreviousGithubMetadata,
 } from "./verification-quality.mjs";
+import { fetchGithubJson } from "./verification-github-fetch.mjs";
 
 const args = new Set(process.argv.slice(2));
 const shouldWrite = args.has("--write");
@@ -223,7 +224,7 @@ function stripNullish(value) {
 
 async function verifyGithubRepo(base, repo) {
   const apiUrl = `https://api.github.com/repos/${repo.owner}/${repo.repo}`;
-  const api = await fetchJson(apiUrl, githubHeaders());
+  const api = await fetchGithubJson(apiUrl, githubHeaders());
   if (api.ok) {
     return githubMetadataResult(base, apiUrl, api.body, {
       classification: "live",
@@ -249,7 +250,7 @@ async function verifyGithubRepo(base, repo) {
   const redirectedRepo = parseGithubRepo(fallback.redirect_target);
   if (redirectedRepo) {
     const redirectApiUrl = `https://api.github.com/repos/${redirectedRepo.owner}/${redirectedRepo.repo}`;
-    const redirectApi = await fetchJson(redirectApiUrl, githubHeaders());
+    const redirectApi = await fetchGithubJson(redirectApiUrl, githubHeaders());
     if (redirectApi.ok) {
       return githubMetadataResult(base, redirectApiUrl, redirectApi.body, {
         api_error: api.error || null,
@@ -447,34 +448,6 @@ async function probeUrl(url, method, accept, redirectCount = 0) {
       error_class: error.name,
       latency_ms: Math.round(performance.now() - started),
       method_tested: method,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function fetchJson(url, headers = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/vnd.github+json",
-        "user-agent": "metagraphed-candidate-verifier/0.0",
-        ...headers,
-      },
-      signal: controller.signal,
-    });
-    const text = await response.text();
-    return {
-      ok: response.ok,
-      body: text ? JSON.parse(text) : null,
-      status_code: response.status,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error.message,
     };
   } finally {
     clearTimeout(timer);
