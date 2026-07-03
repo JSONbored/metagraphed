@@ -500,6 +500,15 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/transfer-pairs?window=7d&limit=5",
+    (body) => {
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(typeof body.data.unique_pairs, "number");
+      assert.equal(Array.isArray(body.data.pairs), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);
@@ -520,6 +529,25 @@ const checks = [
       );
       assert.equal(
         body.data.trust === null || typeof body.data.trust === "object",
+        true,
+      );
+    },
+  ],
+  [
+    "/api/v1/chain/yield",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      // aggregate yield + distribution are a number/object or null on cold store.
+      assert.equal(
+        body.data.network_yield === null ||
+          typeof body.data.network_yield === "number",
+        true,
+      );
+      assert.equal(
+        body.data.distribution === null ||
+          typeof body.data.distribution === "object",
         true,
       );
     },

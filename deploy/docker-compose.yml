@@ -1,6 +1,10 @@
 # Bare-metal "own the core" stack (ADR 0013) — one-command bring-up for the
-# dedicated server: TimescaleDB + Redis + a subtensor node + the continuous
-# indexer, all on one private bridge network (localhost-fast, zero egress).
+# dedicated server: TimescaleDB + Redis + a subtensor node, one private
+# bridge network (localhost-fast, zero egress). The continuous indexer is
+# NOT included here — it's the Rust implementation (faster + more capable
+# than the retired Python scripts/index-chain.py / backfill-chain.py), whose
+# source doesn't have a git home in this repo yet (tracked: give it one, then
+# add its compose service back here alongside a real Dockerfile).
 #
 #   cd /path/to/metagraphed
 #   cp deploy/.env.example deploy/.env   # set POSTGRES_PASSWORD
@@ -22,9 +26,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Applied once on an empty data dir (uncomment the TimescaleDB section in
-      # schema.sql to get compressed hypertables).
+      # Both applied once, in order, on an empty data dir. schema.sql is the
+      # portable base (no extensions); schema-timescaledb.sql layers on the
+      # hypertable/compression upgrade (JSO-2054's decided option (a)) — safe
+      # here since this image has the extension, unlike plain Railway Postgres.
       - ./postgres/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./postgres/schema-timescaledb.sql:/docker-entrypoint-initdb.d/20-schema-timescaledb.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U metagraphed -d metagraphed"]
       interval: 10s
@@ -79,25 +86,14 @@ services:
     expose:
       - "9944"
 
-  indexer:
-    build:
-      context: ..
-      dockerfile: deploy/indexer.Dockerfile
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://metagraphed:${POSTGRES_PASSWORD}@postgres:5432/metagraphed
-      REDIS_URL: redis://redis:6379
-      EVENTS_RPC_URL: ${EVENTS_RPC_URL:-ws://subtensor:9944}
-      EVENTS_WINDOW: ${EVENTS_WINDOW:-256}
-      # Raise against the archive node to recover long historical gaps in one run.
-      EVENTS_MAX_LOOKBACK: ${EVENTS_MAX_LOOKBACK:-512}
-      START_BLOCK: ${START_BLOCK:-}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  # indexer: intentionally not defined here yet. The Rust implementation
+  # (live-follow + sharded historical backfill in one binary) is the real
+  # indexer going forward, but its source currently has no git remote —
+  # give it one, then restore this service pointing at its real Dockerfile.
+  # Expected env until then: DATABASE_URL (postgres above), EVENTS_RPC_URL
+  # (the subtensor service above, or the archive node's RPC), INDEX_MODE=live
+  # for the continuous follower vs. BACKFILL_FROM/BACKFILL_TO for a
+  # historical run — see that project's own README once it has a home.
 
 volumes:
   pgdata:

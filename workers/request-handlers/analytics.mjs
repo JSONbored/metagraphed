@@ -59,6 +59,10 @@ import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
 } from "../../src/chain-query-loaders.mjs";
+import {
+  CHAIN_TRANSFER_PAIR_SORTS,
+  loadChainTransferPairs,
+} from "../../src/chain-transfer-pairs.mjs";
 import { loadChainTransfers } from "../../src/chain-transfers.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
@@ -866,6 +870,60 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
       );
     },
     canonicalAnalyticsCacheRoute(url, ["limit"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// Network-wide native-TAO transfer-pair analytics: top sender -> receiver pairs by
+// volume or count over the window, from the same account_events Transfer feed as
+// /chain/transfers. Excludes malformed/self-transfer rows so every row represents
+// a real directed account corridor.
+export async function handleChainTransferPairs(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "sort"]);
+  if (error) return analyticsQueryError(error);
+  const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
+  if (sortError) return analyticsQueryError(sortError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const sort = url.searchParams.get("sort") || "volume";
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-transfer-pairs",
+    async () => {
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainTransferPairs(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: meta?.last_run_at || null,
+        limit,
+        sort,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/transfer-pairs.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit", "sort"]),
   );
   return request.method === "HEAD"
     ? new Response(null, { status: response.status, headers: response.headers })
