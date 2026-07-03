@@ -39,6 +39,7 @@ function installMockCache() {
 }
 
 const {
+  toIso,
   registryItems,
   incidentItems,
   gapsItems,
@@ -423,6 +424,12 @@ describe("feeds — item builders", () => {
     });
     // The item is still emitted with a valid fallback (request-time) timestamp.
     assert.ok(Number.isFinite(Date.parse(item.timestamp)));
+  });
+
+  test("toIso string branch drops out-of-range parsed epochs to null", () => {
+    assert.equal(toIso("not-a-date"), null);
+    assert.equal(toIso(9e15), null);
+    assert.ok(toIso("2026-06-15T00:00:00.000Z")?.startsWith("2026-"));
   });
 
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {

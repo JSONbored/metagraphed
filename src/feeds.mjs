@@ -104,7 +104,10 @@ function toIso(value) {
   }
   if (typeof value === "string") {
     const t = Date.parse(value);
-    if (!Number.isNaN(t)) return new Date(t).toISOString();
+    if (!Number.isNaN(t)) {
+      const date = new Date(t);
+      return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+    }
   }
   return null;
 }
@@ -743,6 +746,7 @@ export function feedLinkHeader(originUrl, netuid) {
 
 // Exported for unit tests.
 export const __test = {
+  toIso,
   registryItems,
   incidentItems,
   gapsItems,
