@@ -140,6 +140,21 @@ async function runStatementBatches(db, statements) {
   }
 }
 
+// D1 hands INTEGER columns back as numeric strings on GROUP BY / JOIN read paths
+// (the convention account-events.mjs and analytics-routes.mjs coerce for). Accept
+// ONLY a real number or an all-digits string so a blank/null/false cell is rejected
+// rather than read as a valid subnet 0 (Number("") === Number(null) === 0). A raw
+// string key otherwise silently misses the integer netuid the callers look up by.
+function rowNetuid(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+  return null;
+}
+
 async function latestIdentityHashes(db) {
   const res = await db
     .prepare(
@@ -152,9 +167,12 @@ async function latestIdentityHashes(db) {
        ) latest ON h.netuid = latest.netuid AND h.id = latest.max_id`,
     )
     .all();
-  return new Map(
-    (res?.results || []).map((row) => [row.netuid, row.identity_hash]),
-  );
+  const map = new Map();
+  for (const row of res?.results || []) {
+    const netuid = rowNetuid(row.netuid);
+    if (netuid != null) map.set(netuid, row.identity_hash);
+  }
+  return map;
 }
 
 async function latestBlockNumber(db) {
@@ -298,8 +316,13 @@ export async function loadPreviouslyKnownAsForNetuids(d1, entries) {
   );
   const grouped = new Map();
   for (const row of rows || []) {
-    let list = grouped.get(row.netuid);
-    if (!list) grouped.set(row.netuid, (list = []));
+    // Coerce so the group keys on the same integer the caller and currentByNetuid
+    // use — a raw string key both drops the alias from the agent-catalog lookup
+    // and lets the current name leak into the history.
+    const netuid = rowNetuid(row.netuid);
+    if (netuid == null) continue;
+    let list = grouped.get(netuid);
+    if (!list) grouped.set(netuid, (list = []));
     list.push(row);
   }
   const out = new Map();

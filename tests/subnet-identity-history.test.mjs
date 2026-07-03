@@ -550,6 +550,51 @@ describe("recordSubnetIdentityChanges", () => {
     assert.equal(result.rows, 0);
   });
 
+  test("skips unchanged when D1 returns a string netuid; ignores blank cells", async () => {
+    // D1 hands the INTEGER netuid back as the string "7"; the dedup map must key
+    // on 7 so the integer profile.netuid lookup hits — otherwise the cron re-inserts
+    // an identical row every run (unbounded growth). A blank netuid cell must be
+    // dropped, not coerced to a valid subnet 0.
+    const snapshot = identitySnapshotFromProfile({
+      netuid: 7,
+      symbol: "T",
+      native_identity: { subnet_name: "Subnet" },
+    });
+    const hash = await identityHash(snapshot);
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => ({
+            results: [
+              { netuid: "", identity_hash: "junk" }, // blank → ignored
+              { netuid: "7", identity_hash: hash }, // string netuid → key on 7
+            ],
+          }),
+        };
+      },
+      batch: async () => {
+        throw new Error("should not write for an unchanged identity");
+      },
+    };
+    const result = await recordSubnetIdentityChanges(
+      {},
+      {
+        profiles: [
+          {
+            netuid: 7,
+            symbol: "T",
+            native_identity: { subnet_name: "Subnet" },
+          },
+        ],
+        db,
+      },
+    );
+    assert.equal(result.rows, 0);
+  });
+
   test("returns unavailable when profiles are missing", async () => {
     assert.deepEqual(await recordSubnetIdentityChanges({}, { profiles: [] }), {
       recorded: false,
@@ -842,6 +887,28 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
     ]);
     assert.deepEqual(map.get(86), ["MIAO"]);
     assert.deepEqual(map.get(7), ["Old7"]);
+  });
+
+  test("coerces string netuid to int; rejects blank/null/non-numeric (never subnet 0)", async () => {
+    // D1 hands the INTEGER netuid back as the string "1"; the map must key on the
+    // integer 1 so the caller's aliasMap.get(1) hits and the current name is
+    // excluded. Blank/null/non-numeric cells must be dropped, NOT coerced to a
+    // valid subnet 0 (Number("") === Number(null) === 0).
+    const d1 = async () => [
+      { netuid: "1", subnet_name: "OldName", observed_at: 1000 },
+      { netuid: "1", subnet_name: "CurrentName", observed_at: 2000 },
+      { netuid: "", subnet_name: "Blank", observed_at: 3000 }, // dropped
+      { netuid: null, subnet_name: "Null", observed_at: 4000 }, // dropped
+      { netuid: "bad", subnet_name: "Junk", observed_at: 5000 }, // dropped
+      { netuid: -5, subnet_name: "Neg", observed_at: 6000 }, // negative num → dropped
+    ];
+    const map = await loadPreviouslyKnownAsForNetuids(d1, [
+      { netuid: 1, name: "CurrentName" },
+    ]);
+    assert.deepEqual(map.get(1), ["OldName"]); // attached under int key
+    assert.equal(map.get("1"), undefined);
+    assert.equal(map.get(0), undefined); // blank/null were NOT read as subnet 0
+    assert.ok(!(map.get(1) || []).includes("CurrentName")); // current excluded
   });
 
   test("merges multiple rows for the same netuid", async () => {

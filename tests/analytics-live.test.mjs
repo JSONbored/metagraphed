@@ -179,6 +179,23 @@ describe("analytics-live projections", () => {
       [{ netuid: 7, delta: 60 }],
     );
   });
+
+  test("growthRowsFromSamples emits an integer netuid; drops blank/null/non-numeric", () => {
+    // D1 hands the INTEGER netuid back as the string "5"; the emitted netuid keys
+    // the integer-keyed subnetMeta map in formatLeaderboards, so it must be an
+    // integer. Blank/null/non-numeric cells are dropped, never read as subnet 0.
+    const rows = growthRowsFromSamples([
+      { netuid: "5", completeness_score: 20 },
+      { netuid: "5", completeness_score: 50 },
+      { netuid: "", completeness_score: 9 }, // blank → dropped (not subnet 0)
+      { netuid: null, completeness_score: 9 }, // dropped
+      { netuid: false, completeness_score: 9 }, // dropped
+      { netuid: "abc", completeness_score: 9 }, // non-numeric → dropped
+      { netuid: -1, completeness_score: 9 }, // negative → dropped
+    ]);
+    assert.deepEqual(rows, [{ netuid: 5, delta: 30 }]);
+    assert.equal(typeof rows[0].netuid, "number");
+  });
 });
 
 describe("analytics-live loaders", () => {

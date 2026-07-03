@@ -64,7 +64,19 @@ export function profilesProjectionFromRows(profiles) {
 export function growthRowsFromSamples(growthSamples) {
   const growthByNetuid = new Map();
   for (const row of growthSamples || []) {
-    const entry = growthByNetuid.get(row.netuid) || {
+    // D1 can hand the INTEGER netuid back as a numeric string on this GROUP BY
+    // read path; the emitted netuid keys the integer-keyed subnetMeta map in
+    // formatLeaderboards, so a raw string netuid drops the fastest-growing entry's
+    // slug/name metadata. Accept only a real number or an all-digits string so a
+    // blank/null/false cell is dropped, never read as subnet 0.
+    const netuid =
+      typeof row.netuid === "number"
+        ? row.netuid
+        : typeof row.netuid === "string" && /^\d+$/.test(row.netuid)
+          ? Number(row.netuid)
+          : null;
+    if (netuid == null || !Number.isInteger(netuid) || netuid < 0) continue;
+    const entry = growthByNetuid.get(netuid) || {
       first: null,
       last: null,
     };
@@ -83,7 +95,7 @@ export function growthRowsFromSamples(growthSamples) {
       if (entry.first == null) entry.first = score;
       entry.last = score;
     }
-    growthByNetuid.set(row.netuid, entry);
+    growthByNetuid.set(netuid, entry);
   }
   return [...growthByNetuid.entries()].map(([netuid, entry]) => ({
     netuid,
