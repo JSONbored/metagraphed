@@ -5683,6 +5683,53 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_trust.count, 1);
   });
 
+  test("get_chain_yield returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_chain_yield", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.network_yield, null);
+    assert.equal(out.validator_yield, null);
+    assert.equal(out.distribution, null);
+  });
+
+  test("get_chain_yield summarizes network return + distribution", async () => {
+    const res = await callTool(
+      "get_chain_yield",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                ...ROW,
+                netuid: 1,
+                validator_permit: 1,
+                stake_tao: 1000,
+                emission_tao: 50,
+              },
+              {
+                ...MINER,
+                netuid: 2,
+                validator_permit: 0,
+                stake_tao: 100,
+                emission_tao: 10,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1); // only ROW carries a permit
+    assert.ok(Math.abs(out.network_yield - 60 / 1100) < 1e-6);
+    assert.equal(out.validator_yield, 0.05); // 50 / 1000
+    assert.equal(out.miner_yield, 0.1); // 10 / 100
+    assert.equal(out.distribution.count, 2);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",

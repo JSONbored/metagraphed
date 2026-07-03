@@ -525,6 +525,25 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/yield",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      // aggregate yield + distribution are a number/object or null on cold store.
+      assert.equal(
+        body.data.network_yield === null ||
+          typeof body.data.network_yield === "number",
+        true,
+      );
+      assert.equal(
+        body.data.distribution === null ||
+          typeof body.data.distribution === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);
