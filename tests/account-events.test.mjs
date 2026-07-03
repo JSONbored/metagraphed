@@ -283,6 +283,25 @@ test("formatAccountEvent rejects non-integer or negative netuid/uid cells to nul
   assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
 });
 
+test("formatAccountEvent rejects blank integer cells that coerce to 0 (not block 0 / subnet 0 / uid 0)", () => {
+  // Mirrors the blank-cell guard in blocks.mjs (#2879): Number("") and
+  // Number("   ") are 0, which would fabricate genesis height / subnet / uid 0.
+  for (const blank of ["", "   "]) {
+    const out = formatAccountEvent({
+      block_number: blank,
+      event_index: blank,
+      netuid: blank,
+      uid: blank,
+      extrinsic_index: blank,
+    });
+    assert.equal(out.block_number, null, `block_number for ${JSON.stringify(blank)}`);
+    assert.equal(out.event_index, null, `event_index for ${JSON.stringify(blank)}`);
+    assert.equal(out.netuid, null, `netuid for ${JSON.stringify(blank)}`);
+    assert.equal(out.uid, null, `uid for ${JSON.stringify(blank)}`);
+    assert.equal(out.extrinsic_index, null, `extrinsic_index for ${JSON.stringify(blank)}`);
+  }
+});
+
 test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells to Numbers", () => {
   // D1 can return a REAL column as a numeric string; the bare `?? null`
   // pass-through this replaced would have leaked strings into the JSON payload.

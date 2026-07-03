@@ -103,6 +103,8 @@ function toIso(ms) {
 // missing, non-finite, or negative — chain positions are never negative.
 function toBlockNumber(value) {
   if (value == null) return null;
+  // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
