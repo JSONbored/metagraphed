@@ -30,14 +30,26 @@ function round(value) {
   return Math.round(value * factor) / factor;
 }
 
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  // D1 returns the INTEGER captured_at as a numeric string, so match the all-digit
+  // form and coerce it as epoch-ms before falling back to Date.parse for ISO text —
+  // Date.parse("1750000000000") is NaN, which would silently drop the timestamp to
+  // null. Mirrors the canonical captureStamp/epochMsStamp in concentration.mjs.
+  if (value == null) return null;
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) return epochMsStamp(Number(value));
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
+    return null;
   }
+  if (typeof value === "number") return epochMsStamp(value);
   return null;
 }
 
