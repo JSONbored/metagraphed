@@ -340,6 +340,13 @@ assert.ok(
   econ.economics && Number.isInteger(econ.economics.netuid),
   "get_subnet_economics must return the per-subnet economics row",
 );
+const economics = await callOk("get_economics", { limit: 5 });
+assert.ok(
+  Array.isArray(economics.subnets) &&
+    economics.subnets.length <= 5 &&
+    Number.isInteger(economics.total),
+  "get_economics must return subnets[] with pagination totals",
+);
 
 // The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
 // has no neurons DB, so each tool must degrade to its schema-stable empty
@@ -401,6 +408,14 @@ assert.ok(
   "get_subnet_yield must return neurons[]",
 );
 assert.equal(yieldCard.netuid, 7, "get_subnet_yield must echo the netuid");
+const uptimeFiltered = await callOk("get_subnet_uptime", {
+  netuid: 7,
+  min_samples: 5,
+});
+assert.ok(
+  Array.isArray(uptimeFiltered.surfaces),
+  "get_subnet_uptime must accept the min_samples filter",
+);
 const stakeFlowCold = await callOk("get_subnet_stake_flow", {
   netuid: 7,
   window: "30d",

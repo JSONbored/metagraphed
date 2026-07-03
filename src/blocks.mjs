@@ -31,7 +31,9 @@ export const BLOCK_INSERT_COLUMNS = [
 function toIso(ms) {
   if (ms == null) return null;
   const n = Number(ms);
-  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const d = new Date(n);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
 // Coerce a block-height cell to a non-negative integer, or null when missing,

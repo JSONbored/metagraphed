@@ -1049,6 +1049,7 @@ describe("neurons-tier edge cache", () => {
       ["subnet-metagraph", "/api/v1/subnets/7/metagraph"],
       ["subnet-validators", "/api/v1/subnets/7/validators"],
       ["subnet-concentration", "/api/v1/subnets/7/concentration"],
+      ["subnet-performance", "/api/v1/subnets/7/performance"],
     ]) {
       await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),
@@ -1069,6 +1070,67 @@ describe("neurons-tier edge cache", () => {
         `${keyParts}: cache key must not use health last_run_at`,
       );
     }
+  });
+
+  test("global validators rejects invalid queries before reading the neuron cache stamp", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = neuronsEnv(queries);
+
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/validators?bogus=1"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+
+    assert.equal(res.status, 400);
+    assert.equal(queries.length, 0, "invalid queries must not read D1 stamp");
+    assert.deepEqual(cache.putKeys, []);
+    assert.equal(cache.store.size, 0);
+  });
+
+  test("global validators canonicalizes equivalent query variants before caching", async () => {
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries = [];
+    const env = neuronsEnv(queries);
+
+    const first = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/validators?limit=1"),
+      env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(first.status, 200);
+    const queriesAfterMiss = queries.length;
+
+    const hit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/validators?limit=01&sort=subnet_count",
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(hit.status, 200);
+    assert.equal(
+      queries.length,
+      queriesAfterMiss + 1,
+      "a cache HIT reads only the stamp and skips validator data queries",
+    );
+    assert.match(queries.at(-1).sql, /MAX\(captured_at\)/);
+    assert.deepEqual(cache.putKeys, [
+      expectedStampKey(
+        NEURON_CAPTURED_AT,
+        "global-validators",
+        "/api/v1/validators",
+        "?sort=subnet_count&limit=1",
+      ),
+    ]);
+    assert.equal(cache.store.size, 1);
   });
 
   test("a new neuron captured_at busts cache while health last_run_at is unchanged", async () => {

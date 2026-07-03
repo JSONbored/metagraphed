@@ -14,7 +14,7 @@ const DOMAIN_TAG_RULES = [
   ],
   [
     "compute",
-    /\b(gpu|cuda|compute (?:network|layer|subnet)|decentrali[sz]ed comput\w*|hpc|parallel comput\w*|render(?:ing)? farm)\b/i,
+    /\b(gpu|cuda|compute (?:network|layer|subnet)|decentrali[sz]ed comput\w*|hpc|parallel comput\w*|distributed comput\w*|render(?:ing)? farm)\b/i,
   ],
   [
     "data",

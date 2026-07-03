@@ -5,6 +5,7 @@ import {
   formatIncidents,
   formatLeaderboards,
   formatTrajectory,
+  loadSubnetTrajectory,
   LEADERBOARD_BOARDS,
 } from "../src/health-serving.mjs";
 import { writeSubnetSnapshot } from "../src/health-prober.mjs";
@@ -686,6 +687,99 @@ describe("formatTrajectory", () => {
     assert.deepEqual(out.points, []);
     assert.equal(out.deltas["7d"], null);
   });
+  test("coerces D1 numeric-string snapshot cells to schema types", () => {
+    const out = formatTrajectory({
+      netuid: 3,
+      rows: [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: "80",
+          surface_count: "5",
+          endpoint_count: "3",
+          validator_count: "9",
+          miner_count: "247",
+          total_stake_tao: "2522266",
+          alpha_price_tao: "0.04",
+          emission_share: "0.01",
+        },
+      ],
+    });
+    const point = out.points[0];
+    assert.equal(typeof point.completeness_score, "number");
+    assert.equal(typeof point.surface_count, "number");
+    assert.equal(typeof point.endpoint_count, "number");
+    assert.equal(typeof point.validator_count, "number");
+    assert.equal(typeof point.miner_count, "number");
+    assert.equal(typeof point.total_stake_tao, "number");
+    assert.equal(typeof point.alpha_price_tao, "number");
+    assert.equal(typeof point.emission_share, "number");
+    assert.equal(point.surface_count, 5);
+    assert.equal(point.validator_count, 9);
+    assert.equal(point.miner_count, 247);
+    assert.equal(point.total_stake_tao, 2522266);
+    assert.equal(point.alpha_price_tao, 0.04);
+    assert.equal(point.emission_share, 0.01);
+  });
+  test("nulls non-finite D1 economics strings instead of leaking NaN", () => {
+    const out = formatTrajectory({
+      netuid: 5,
+      rows: [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: "70",
+          surface_count: "2",
+          endpoint_count: "1",
+          total_stake_tao: "not-a-number",
+          alpha_price_tao: "bad",
+          emission_share: "Infinity",
+        },
+      ],
+    });
+    const point = out.points[0];
+    assert.equal(point.total_stake_tao, null);
+    assert.equal(point.alpha_price_tao, null);
+    assert.equal(point.emission_share, null);
+    assert.equal(point.completeness_score, 70);
+  });
+  test("loadSubnetTrajectory threads D1 string cells through formatTrajectory", async () => {
+    const d1 = async (sql, params) => {
+      assert.ok(sql.includes("FROM subnet_snapshots"));
+      assert.deepEqual(params, [11]);
+      return [
+        {
+          snapshot_date: "2026-06-15",
+          completeness_score: "88",
+          surface_count: "6",
+          endpoint_count: "4",
+          validator_count: "12",
+          miner_count: "300",
+          total_stake_tao: "1000000",
+          alpha_price_tao: "0.055",
+          emission_share: "0.000049",
+        },
+      ];
+    };
+    const out = await loadSubnetTrajectory(d1, 11);
+    const point = out.points[0];
+    assert.equal(point.validator_count, 12);
+    assert.equal(point.alpha_price_tao, 0.055);
+    assert.equal(point.emission_share, 0.000049);
+  });
+  test("preserves sub-4dp emission_share when coercing D1 strings", () => {
+    const out = formatTrajectory({
+      netuid: 4,
+      rows: [
+        {
+          snapshot_date: "2026-06-01",
+          completeness_score: 80,
+          surface_count: 5,
+          endpoint_count: 3,
+          emission_share: "0.000049",
+        },
+      ],
+    });
+    assert.equal(out.points[0].emission_share, 0.000049);
+  });
 });
 
 // --- writeSubnetSnapshot ----------------------------------------------------
@@ -940,15 +1034,25 @@ function rowsForSql(sql) {
     return [
       {
         snapshot_date: "2026-06-01",
-        completeness_score: 90,
-        surface_count: 10,
-        endpoint_count: 12,
+        completeness_score: "90",
+        surface_count: "10",
+        endpoint_count: "12",
+        validator_count: "8",
+        miner_count: "200",
+        total_stake_tao: "1500000",
+        alpha_price_tao: "0.03",
+        emission_share: "0.008",
       },
       {
         snapshot_date: "2026-06-10",
-        completeness_score: 97,
-        surface_count: 13,
-        endpoint_count: 15,
+        completeness_score: "97",
+        surface_count: "13",
+        endpoint_count: "15",
+        validator_count: "9",
+        miner_count: "205",
+        total_stake_tao: "1600000",
+        alpha_price_tao: "0.035",
+        emission_share: "0.009",
       },
     ];
   }
@@ -1349,6 +1453,11 @@ describe("analytics routes (fake D1 with data)", () => {
     );
     assert.equal(body.data.point_count, 2);
     assert.equal(body.data.deltas["7d"].completeness_score, 7);
+    const latest = body.data.points[1];
+    assert.equal(typeof latest.total_stake_tao, "number");
+    assert.equal(typeof latest.alpha_price_tao, "number");
+    assert.equal(typeof latest.emission_share, "number");
+    assert.equal(latest.emission_share, 0.009);
   });
   test("leaderboards combines D1 health with registry growth", async () => {
     const { body } = await getJson(

@@ -480,6 +480,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-02.1",
+      "description": "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+      "id": "subnet-performance",
+      "path": "/metagraph/subnets/{netuid}/performance.json",
+      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-02.1",
       "description": "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
       "id": "subnet-concentration-history",
       "path": "/metagraph/subnets/{netuid}/concentration/history.json",

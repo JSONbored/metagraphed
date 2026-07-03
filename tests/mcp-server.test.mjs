@@ -1858,6 +1858,62 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
+describe("MCP get_subnet_performance", () => {
+  test("returns reward-distribution + score-spread from D1", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              return {
+                async all() {
+                  assert.match(sql, /FROM neurons WHERE netuid = \?/);
+                  assert.ok(params.includes(7));
+                  return {
+                    results: [
+                      {
+                        incentive: 0.6,
+                        dividends: 0.5,
+                        trust: 0.9,
+                        consensus: 0.8,
+                        validator_trust: 0.95,
+                        active: 1,
+                        validator_permit: 1,
+                        captured_at: 1_750_000_000_000,
+                      },
+                      {
+                        incentive: 0.1,
+                        dividends: 0,
+                        trust: 0.3,
+                        consensus: 0.2,
+                        validator_trust: 0,
+                        active: 1,
+                        validator_permit: 0,
+                        captured_at: 1_750_000_000_000,
+                      },
+                    ],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_performance",
+      { netuid: 7 },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 7);
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1);
+    assert.ok(out.incentive === null || typeof out.incentive === "object");
+    assert.ok(out.trust === null || typeof out.trust === "object");
+  });
+});
+
 describe("MCP get_chain_signers", () => {
   test("returns signers ranked by tx_count from D1", async () => {
     const env = {
@@ -4863,6 +4919,223 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /not_found/);
   });
 
+  test("get_economics serves the live KV economics tier with REST list-query filters", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        {
+          ...ECON_ROW,
+          netuid: 9,
+          name: "Beta",
+          slug: "beta",
+          registration_allowed: false,
+          emission_share: 0,
+        },
+      ],
+      summary: {
+        ...ECON_BLOB.summary,
+        subnet_count: 2,
+        with_economics_count: 2,
+      },
+    };
+    const res = await callTool(
+      "get_economics",
+      { registration_allowed: "true", sort: "emission_share", order: "desc" },
+      {
+        deps: makeDeps({}, { "economics:current": blob }),
+        env: { METAGRAPH_CONTRACT_VERSION: "test-contract" },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "live-kv");
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.subnets[0].netuid, 7);
+    assert.equal(out.total, 1);
+  });
+
+  test("get_economics falls back to R2 and pages with limit/cursor", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8, emission_share: 0.5 },
+        { ...ECON_ROW, netuid: 9, emission_share: 0.1 },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { limit: 2, cursor: 1, sort: "netuid", order: "asc" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 2);
+    assert.equal(out.cursor, 1);
+    assert.equal(out.next_cursor, null);
+    assert.deepEqual(
+      out.subnets.map((row) => row.netuid),
+      [8, 9],
+    );
+  });
+
+  test("get_economics rejects an invalid sort field", async () => {
+    const res = await callTool(
+      "get_economics",
+      { sort: "not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("get_economics rejects invalid netuid and cursor before loading data", async () => {
+    const deps = makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {});
+    for (const [args, pattern] of [
+      [{ netuid: -1 }, /netuid must be a non-negative integer/],
+      [{ cursor: -1 }, /cursor must be a non-negative integer/],
+    ]) {
+      const res = await callTool("get_economics", args, { deps, env: {} });
+      assert.equal(res.body.result.isError, true, JSON.stringify(args));
+      assert.match(res.body.result.content[0].text, pattern);
+    }
+  });
+
+  test("get_economics supports q search, fields projection, and netuid filter", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      network: "finney",
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8, name: "Other", slug: "other" },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { q: "allways", fields: "netuid,name,emission_share" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.network, "finney");
+    assert.equal(out.subnets.length, 1);
+    assert.deepEqual(Object.keys(out.subnets[0]).sort(), [
+      "emission_share",
+      "name",
+      "netuid",
+    ]);
+
+    const byNetuid = await callTool(
+      "get_economics",
+      { netuid: 8 },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    assert.equal(byNetuid.body.result.structuredContent.subnets[0].netuid, 8);
+  });
+
+  test("get_economics rejects unsupported fields projection", async () => {
+    const res = await callTool(
+      "get_economics",
+      { fields: "netuid,not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /fields includes unsupported/,
+    );
+  });
+
+  test("get_economics returns next_cursor when more pages remain", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        ECON_ROW,
+        { ...ECON_ROW, netuid: 8 },
+        { ...ECON_ROW, netuid: 9 },
+      ],
+    };
+    const res = await callTool(
+      "get_economics",
+      { limit: 1, sort: "netuid", order: "asc" },
+      { deps: makeDeps({ "/metagraph/economics.json": blob }, {}), env: {} },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.next_cursor, 1);
+    assert.equal(out.subnets[0].netuid, 7);
+  });
+
+  test("get_economics defaults pagination when limit and cursor are omitted", async () => {
+    const res = await callTool(
+      "get_economics",
+      {},
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.source, "r2-fallback");
+    assert.equal(out.subnets.length, 1);
+    assert.equal(out.total, 1);
+    assert.equal(out.returned, 1);
+    assert.equal(out.cursor, 0);
+    assert.equal(out.next_cursor, null);
+    assert.equal(out.captured_at, FRESH_RUN);
+  });
+
+  test("get_economics handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_economics");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          {},
+          {
+            env: {},
+            readHealthKv: async () => null,
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_economics payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "get_economics")
+        .outputSchema,
+    );
+    const res = await callTool(
+      "get_economics",
+      { sort: "netuid", order: "asc" },
+      {
+        deps: makeDeps({ "/metagraph/economics.json": ECON_BLOB }, {}),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  test("get_economics surfaces not_found when neither tier has data", async () => {
+    const res = await callTool(
+      "get_economics",
+      {},
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
   // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
   // mirroring the metagraph-neurons unit-test fixtures.
   const ROW = {
@@ -6458,6 +6731,30 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.match(res.body.result.content[0].text, /block_start/i);
   });
 
+  test("get_account_events rejects an unknown event kind before D1", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              called = true;
+              return { all: () => Promise.resolve({ results: [] }) };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: "Nonexistent" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /supported event kind/i);
+    assert.equal(called, false);
+  });
+
   test("get_account_events emits next_cursor for a full page", async () => {
     const env = accountD1({
       events: [
@@ -7682,6 +7979,119 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     const q = capture.find((c) => /FROM account_events/.test(c.sql));
     assert.ok(/AND event_kind = \?/.test(q.sql));
     assert.ok(q.params.includes("WeightsSet"));
+  });
+
+  test("get_subnet_events rejects an unknown event kind before D1", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              called = true;
+              return { all: () => Promise.resolve({ results: [] }) };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, kind: "Nonexistent" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /supported event kind/i);
+    assert.equal(called, false);
+  });
+
+  test("get_subnet_events accepts an ingested non-indexed kind (Transfer)", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        events: [
+          {
+            block_number: 100,
+            event_index: 1,
+            event_kind: "Transfer",
+            hotkey: "5Hk",
+            coldkey: "5Ck",
+            netuid: 1,
+            uid: null,
+            amount_tao: 1,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, kind: "Transfer" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(
+      res.body.result.structuredContent.events[0].event_kind,
+      "Transfer",
+    );
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/event_kind = \?/.test(q.sql));
+  });
+
+  test("get_subnet_events applies block_start/block_end and cursor pagination", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        events: [
+          {
+            block_number: 150,
+            event_index: 4,
+            event_kind: "StakeAdded",
+            hotkey: "5Hk",
+            coldkey: null,
+            netuid: 1,
+            uid: 3,
+            amount_tao: 1.5,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_events",
+      {
+        netuid: 1,
+        block_start: 100,
+        block_end: 900,
+        cursor: "200.2",
+        limit: 1,
+        offset: 99,
+      },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "150.4");
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/block_number >= \?/.test(q.sql));
+    assert.ok(/block_number <= \?/.test(q.sql));
+    assert.ok(/\(block_number, event_index\) < \(\?, \?\)/.test(q.sql));
+    assert.ok(!/OFFSET/.test(q.sql));
+    assert.deepEqual(q.params, [1, 100, 900, 200, 2, 1]);
+  });
+
+  test("get_subnet_events rejects a non-integer block_start", async () => {
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, block_start: "bad" },
+      {},
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /block_start/i);
   });
 
   test("get_subnet_events clamps an over-range limit like the REST route", async () => {

@@ -234,6 +234,7 @@ export const API_QUERY_COLLECTIONS = {
       "score",
       "status",
     ],
+    rangeFilters: ["latency_ms", "score"],
   }),
   "endpoint-pools": queryCollection("pools", {
     filters: {
@@ -934,6 +935,12 @@ export const PUBLIC_ARTIFACTS = [
     "SubnetConcentrationArtifact",
   ),
   artifact(
+    "subnet-performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Reward-distribution & score-spread metrics for one subnet: concentration of the actual rewards (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores — the reward-flow companion to concentration, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/performance (no static file).",
+    "SubnetPerformanceArtifact",
+  ),
+  artifact(
     "subnet-concentration-history",
     "/metagraph/subnets/{netuid}/concentration/history.json",
     "Per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) over a 7d/30d/90d window for one subnet, served live from the neuron_daily D1 rollup at /api/v1/subnets/{netuid}/concentration/history (no static file).",
@@ -1337,7 +1344,7 @@ export const API_ROUTES = [
     "List active Finney subnets.",
     "standard",
     ["subnets"],
-    listQuery("subnets"),
+    csvListQuery("subnets"),
   ),
   route(
     "subnet-detail",
@@ -1771,6 +1778,17 @@ export const API_ROUTES = [
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
+    "subnet-performance",
+    "GET",
+    "/api/v1/subnets/{netuid}/performance",
+    "/metagraph/subnets/{netuid}/performance.json",
+    "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
     "subnet-concentration-history",
     "GET",
     "/api/v1/subnets/{netuid}/concentration/history",
@@ -2112,13 +2130,17 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/accounts/{ss58}/stake-flow",
     "/metagraph/accounts/{ss58}/stake-flow.json",
-    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier.",
+    "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all.",
     "short",
     ["accounts", "analytics"],
     [
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "in", "out"] },
       },
     ],
     [{ name: "ss58", schema: { type: "string" } }],
@@ -2732,6 +2754,23 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         },
       ],
     };
+    const successContent = {
+      "application/json": {
+        schema: responseSchema,
+        // Deterministic worked example (schema-valid, no live data) so
+        // Swagger UI + agents see a concrete response shape. Generated
+        // from the schema; enforced by validate-openapi-examples.
+        example: sampleFromSchema(responseSchema, componentSchemas),
+      },
+      ...(entry.csv_response
+        ? {
+            "text/csv": {
+              schema: { type: "string" },
+              example: "netuid,name\r\n7,Allways",
+            },
+          }
+        : {}),
+    };
     paths[openApiPath] = {
       ...(paths[openApiPath] || {}),
       [entry.method.toLowerCase()]: {
@@ -2755,18 +2794,11 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         ],
         responses: {
           200: {
-            description:
-              "Canonical artifact wrapped in the Metagraphed API envelope.",
+            description: entry.csv_response
+              ? "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested."
+              : "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
-            content: {
-              "application/json": {
-                schema: responseSchema,
-                // Deterministic worked example (schema-valid, no live data) so
-                // Swagger UI + agents see a concrete response shape. Generated
-                // from the schema; enforced by validate-openapi-examples.
-                example: sampleFromSchema(responseSchema, componentSchemas),
-              },
-            },
+            content: successContent,
           },
           304: {
             description: "ETag matched and the cached response is still valid.",
@@ -2940,6 +2972,7 @@ function route(
     query_collection: querySpec.collection,
     query_filter_names: querySpec.filterNames,
     query_parameters: querySpec.parameters,
+    csv_response: querySpec.csvResponse,
     path_parameters: pathParameters,
   };
 }
@@ -3021,12 +3054,30 @@ function listQuery(collection, options = {}) {
   };
 }
 
+function csvListQuery(collection, options = {}) {
+  const spec = listQuery(collection, options);
+  return {
+    ...spec,
+    csvResponse: true,
+    parameters: [
+      ...spec.parameters,
+      {
+        name: "format",
+        description:
+          "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
+        schema: { type: "string", enum: ["json", "csv"] },
+      },
+    ],
+  };
+}
+
 function normalizeQueryParameters(queryParameters) {
   if (Array.isArray(queryParameters)) {
     return { collection: null, filterNames: [], parameters: queryParameters };
   }
   return {
     collection: queryParameters.collection || null,
+    csvResponse: Boolean(queryParameters.csvResponse),
     filterNames: queryParameters.filterNames || [],
     parameters: queryParameters.parameters || [],
   };

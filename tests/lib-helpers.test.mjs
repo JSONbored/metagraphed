@@ -42,7 +42,9 @@ import {
   resolveSurfaceCurationLevel,
   flattenSurfaces,
   withSurfaceFreshness,
+  resolveBaseRemote,
 } from "../scripts/lib.mjs";
+import { execFileSync } from "node:child_process";
 
 describe("buildEconomicsArtifact", () => {
   const base = {
@@ -1741,5 +1743,82 @@ describe("withSurfaceFreshness curation_level re-resolution (#1757)", () => {
     const [row] = withSurfaceFreshness(surfaces, nowMs);
     assert.equal(row.stale, false);
     assert.equal(row.curation_level, "machine-verified");
+  });
+});
+
+describe("resolveBaseRemote", () => {
+  function initRepo() {
+    const dir = mkdtempSync(path.join(tmpdir(), "wj-base-remote-"));
+    execFileSync("git", ["init", "-q"], { cwd: dir });
+    return dir;
+  }
+
+  test("prefers upstream when a fork has both origin and upstream configured", () => {
+    const dir = initRepo();
+    execFileSync(
+      "git",
+      [
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/contributor/metagraphed.git",
+      ],
+      { cwd: dir },
+    );
+    execFileSync(
+      "git",
+      [
+        "remote",
+        "add",
+        "upstream",
+        "https://github.com/JSONbored/metagraphed.git",
+      ],
+      { cwd: dir },
+    );
+    assert.equal(resolveBaseRemote(dir), "upstream");
+  });
+
+  test("falls back to origin for a direct clone with no upstream remote", () => {
+    const dir = initRepo();
+    execFileSync(
+      "git",
+      [
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/JSONbored/metagraphed.git",
+      ],
+      { cwd: dir },
+    );
+    assert.equal(resolveBaseRemote(dir), "origin");
+  });
+
+  test("defaults to process.cwd() when called with no argument", () => {
+    const dir = initRepo();
+    execFileSync(
+      "git",
+      [
+        "remote",
+        "add",
+        "upstream",
+        "https://github.com/JSONbored/metagraphed.git",
+      ],
+      { cwd: dir },
+    );
+    const previousCwd = process.cwd();
+    process.chdir(dir);
+    try {
+      assert.equal(resolveBaseRemote(), "upstream");
+    } finally {
+      process.chdir(previousCwd);
+    }
+  });
+
+  test("falls back to origin when git remote produces no output at all", () => {
+    // A repo with zero configured remotes: `git remote` exits 0 with empty
+    // stdout, exercising the `result.stdout || ""` fallback (falsy empty
+    // string on both sides) rather than a non-empty remote list.
+    const dir = initRepo();
+    assert.equal(resolveBaseRemote(dir), "origin");
   });
 });

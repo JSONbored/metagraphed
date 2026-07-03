@@ -119,10 +119,25 @@ export function sanitizeIdentityHistoryLink(value) {
     : null;
 }
 
+// Defang prompt-injection markers in free-text chain fields (subnet_name,
+// symbol, description). Deliberately does NOT trim the result — callers that
+// need a trimmed/blank-collapsed value (e.g. normalizeName in
+// subnet-identity-history.mjs, which trims after sanitizing to decide whether
+// a snapshot/row name is present) must trim on top of this. Snapshot and row
+// fields are stored/served with sanitized-but-untrimmed spacing so the
+// "[scrubbed]" replacement stays visually distinguishable from the original
+// text; only alias-derived display names collapse that spacing.
+export function sanitizeIdentityHistoryText(value) {
+  return sanitizeChainText(value).text;
+}
+
 export function sanitizeIdentityHistoryFields(fields) {
   if (!fields || typeof fields !== "object") return fields;
   return {
     ...fields,
+    subnet_name: sanitizeIdentityHistoryText(fields.subnet_name),
+    symbol: sanitizeIdentityHistoryText(fields.symbol),
+    description: sanitizeIdentityHistoryText(fields.description),
     github_repo: sanitizeIdentityHistoryLink(fields.github_repo),
     subnet_url: sanitizeIdentityHistoryLink(fields.subnet_url),
     logo_url: sanitizeIdentityHistoryLink(fields.logo_url),
