@@ -308,7 +308,6 @@ EXTRACTORS = {
     "StakeRemoved": _stake,
     "StakeMoved": _moved,
     "AxonServed": _axon,
-    "AxonInfoRemoved": _axon,  # [netuid, hotkey] — axon clear/withdraw counterpart to AxonServed
     "PrometheusServed": _axon,  # [netuid, hotkey]
     "WeightsSet": _weights,
     "RootClaimed": _root,
