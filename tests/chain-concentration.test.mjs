@@ -103,10 +103,21 @@ describe("buildChainConcentration", () => {
       { stake_tao: 1, coldkey: "b", netuid: 5 }, // same subnet, not double-counted
       { stake_tao: 1, coldkey: "c", netuid: null }, // never counts as subnet 0
       { stake_tao: 1, coldkey: "d" }, // missing netuid entirely
-      { stake_tao: 1, coldkey: "e", netuid: -3 }, // negative -> rejected by the >=0 guard
-      { stake_tao: 1, coldkey: "f", netuid: "x" }, // non-numeric -> NaN, rejected by isInteger
+      { stake_tao: 1, coldkey: "e", netuid: "" }, // blank -> must not coerce to subnet 0
+      { stake_tao: 1, coldkey: "f", netuid: "   " }, // whitespace-only -> same
+      { stake_tao: 1, coldkey: "g", netuid: -3 }, // negative -> rejected by the >=0 guard
+      { stake_tao: 1, coldkey: "h", netuid: "x" }, // non-numeric -> NaN, rejected by isInteger
     ]);
     assert.equal(out.subnet_count, 1); // still only subnet 5
+  });
+
+  test("counts root subnet (netuid 0) when explicitly present", () => {
+    const out = buildChainConcentration([
+      { stake_tao: 1, coldkey: "a", netuid: 0 },
+      { stake_tao: 1, coldkey: "b", netuid: "0" },
+      { stake_tao: 1, coldkey: "c", netuid: 7 },
+    ]);
+    assert.equal(out.subnet_count, 2); // root + subnet 7
   });
 
   test("is schema-stable-zero on a cold store (no rows)", () => {
