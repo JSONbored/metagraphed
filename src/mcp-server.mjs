@@ -15,6 +15,7 @@ import {
   resolveClientIp,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.mjs";
+import { DAY_PATTERN } from "../workers/request-params.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 import { d1TimeoutMs, withTimeout } from "../workers/storage.mjs";
 import { CONTRACT_VERSION, PRIMARY_DOMAIN } from "./contracts.mjs";
@@ -24,6 +25,12 @@ import {
   GET_ECONOMICS_OUTPUT_SCHEMA,
   loadNetworkEconomics,
 } from "./network-economics.mjs";
+import {
+  GET_NETWORK_HEALTH_INSTRUCTIONS,
+  GET_NETWORK_HEALTH_MCP_TOOL,
+  GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  loadGlobalOperationalHealth,
+} from "./global-operational-health.mjs";
 import {
   loadChainConcentration,
   loadSubnetConcentration,
@@ -99,6 +106,11 @@ import {
   loadNeuron,
   loadSubnetMetagraph,
   loadSubnetValidators,
+  loadGlobalValidators,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.mjs";
 import {
   INGESTED_EVENT_KINDS,
@@ -142,7 +154,13 @@ import {
 import { isFinneySs58Address, loadAccountBalance } from "./account-balance.mjs";
 import { loadBlocks, loadBlock } from "./blocks.mjs";
 import { loadBlockEvents, loadBlockExtrinsics } from "./block-subresources.mjs";
-import { loadExtrinsics, loadExtrinsic } from "./extrinsics.mjs";
+import { loadExtrinsics } from "./extrinsics.mjs";
+import { loadExtrinsicDetail } from "./extrinsic-detail.mjs";
+import {
+  dataApiFetchJson,
+  loadBlockChainEvents,
+  loadExtrinsicChainEvents,
+} from "./data-api-mcp.mjs";
 import {
   aiEnabled,
   askQuestion,
@@ -241,7 +259,9 @@ export const MCP_INSTRUCTIONS =
   "get_economics_trends the network-wide " +
   "per-day economics series (stake, alpha price, validator/miner counts), " +
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
-  "long-term surface uptime history, get_health_trends the all-subnet 7d/30d " +
+  "long-term surface uptime history, " +
+  GET_NETWORK_HEALTH_INSTRUCTIONS +
+  "get_health_trends the all-subnet 7d/30d " +
   "uptime + latency matrix, get_subnet_health_trends one subnet's per-surface " +
   "health trends, get_subnet_health_percentiles its " +
   "per-surface p50/p95/p99 request-latency distribution, " +
@@ -265,7 +285,8 @@ export const MCP_INSTRUCTIONS =
   "usage analytics (request volume, latency, failover, cache hits, per-endpoint " +
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
-  "list_subnet_validators its validators ranked by stake, and get_neuron one " +
+  "list_subnet_validators its validators ranked by stake, list_global_validators " +
+  "the network-wide validator leaderboard grouped by hotkey, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
@@ -435,50 +456,11 @@ async function loadSubnetEconomics(ctx, netuid) {
 // the dedicated data Worker (ADR 0013) so the postgres.js driver stays out of
 // this Worker's bundle; MCP handlers reach it through the DATA_API service
 // binding, the same binding the REST proxy uses for /api/v1/chain-events/stats.
-// A missing binding (e.g. a preview deploy without the data Worker) or a non-OK
-// upstream response surfaces as a clean tool error, never an exception.
 async function loadChainActivity(ctx, blocks) {
-  // Optional in previews/local runs; production binds this beside DATA_API so
-  // MCP calls pay the same data-tier rate limit as REST proxy calls.
-  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
-      key: `data:${ctx.clientIp}`,
-    });
-    if (!success) {
-      throw toolError(
-        "data_rate_limited",
-        "Too many data API requests from this client; slow down.",
-      );
-    }
-  }
-
-  const dataApi = ctx.env?.DATA_API;
-  if (!dataApi?.fetch) {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier is unavailable (the all-events data Worker is " +
-        "not bound to this deployment). Try again against the production endpoint.",
-    );
-  }
-  let response;
-  try {
-    response = await dataApi.fetch(
-      new Request(`https://d/api/v1/chain-events/stats?blocks=${blocks}`),
-    );
-  } catch {
-    throw toolError(
-      "tier_unavailable",
-      "The chain activity tier could not be reached. Try again shortly.",
-    );
-  }
-  if (!response.ok) {
-    throw toolError(
-      "tier_unavailable",
-      `The chain activity tier returned an error (status ${response.status}). ` +
-        "Try again shortly.",
-    );
-  }
-  const data = await response.json();
+  const data = await dataApiFetchJson(
+    ctx,
+    `/api/v1/chain-events/stats?blocks=${blocks}`,
+  );
   return {
     window_blocks: data?.window_blocks ?? blocks,
     groups: data?.groups ?? 0,
@@ -908,6 +890,16 @@ function optionalString(args, key) {
     );
   }
   return value.trim();
+}
+
+// Optional YYYY-MM-DD day bound — mirrors parseDateRange() on REST history routes.
+function optionalDayArg(args, key) {
+  const value = optionalString(args, key);
+  if (value === null) return null;
+  if (!DAY_PATTERN.test(value)) {
+    throw toolError("invalid_params", "from/to must be YYYY-MM-DD dates.");
+  }
+  return value;
 }
 
 // Reject unknown event-kind filters before D1, parity with the REST event feeds
@@ -1553,6 +1545,19 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_NETWORK_HEALTH_MCP_TOOL,
+    async handler(_args, ctx) {
+      return loadGlobalOperationalHealth(
+        {
+          env: ctx.env,
+          readHealthKv: ctx.readHealthKv,
+          db: ctx.env?.METAGRAPH_HEALTH_DB,
+        },
+        { contractVersion: () => mcpContractVersion(ctx) },
+      );
+    },
+  },
+  {
     name: "get_subnet_health",
     title: "Get subnet health",
     description:
@@ -1932,8 +1937,10 @@ export const MCP_TOOLS = [
       "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
       "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
       "retention for validators and neurons, UID deregistrations, and a 0–100 " +
-      "stability score. Use it to see how stable a subnet's participation base " +
-      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+      "stability score. Set changes to true to include entered/exited validator " +
+      "hotkeys and UID reassignment detail (mirrors ?changes=true on REST). " +
+      "Use it to see how stable a subnet's participation base is over time. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/turnover.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1942,6 +1949,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d", "90d", "1y", "all"],
           description: "History window (default 30d).",
+        },
+        changes: {
+          type: "boolean",
+          description:
+            "When true, include entered/exited validator hotkeys and UID " +
+            "reassignment detail under `changes` (REST ?changes=true parity).",
         },
       },
       required: ["netuid"],
@@ -1953,6 +1966,7 @@ export const MCP_TOOLS = [
       return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
         windowLabel: label,
         windowDays: days,
+        includeChanges: optionalBoolean(args, "changes"),
       });
     },
   },
@@ -2311,6 +2325,48 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "list_global_validators",
+    title: "List the network-wide validator leaderboard",
+    description:
+      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
+      "identities grouped by hotkey across all current subnet memberships, with " +
+      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
+      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
+      "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
+      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      "GET /api/v1/validators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: GLOBAL_VALIDATOR_SORTS,
+          description:
+            "Ranking key (default subnet_count). See tool description for options.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max validators to return (1-100, default 20).",
+          minimum: 1,
+          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
+        DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+      );
+      return loadGlobalValidators(mcpD1Runner(ctx), { sort, limit });
     },
   },
   {
@@ -2792,10 +2848,9 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
-      const netuid =
-        typeof args?.netuid === "number" ? Math.floor(args.netuid) : undefined;
-      const from = optionalString(args, "from");
-      const to = optionalString(args, "to");
+      const netuid = optionalNonNegativeInt(args, "netuid") ?? undefined;
+      const from = optionalDayArg(args, "from");
+      const to = optionalDayArg(args, "to");
       const cursor = optionalString(args, "cursor");
       return loadAccountHistory(mcpD1Runner(ctx), ss58, {
         netuid,
@@ -3335,9 +3390,12 @@ export const MCP_TOOLS = [
     title: "Get an extrinsic by hash or composite ref",
     description:
       "Fetch the detail for one extrinsic by its 0x extrinsic hash (e.g. '0xabc...') " +
-      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). Returns " +
-      "extrinsic:null when the ref is unknown or the store is cold — never errors. " +
-      "Use list_extrinsics to find extrinsic refs.",
+      "or composite ref '<block_number>-<extrinsic_index>' (e.g. '4200000-3'). " +
+      "Includes up to 50 curated account_events the extrinsic emitted (#1849). " +
+      "Returns extrinsic:null when the ref is unknown or the store is cold — never " +
+      "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
+      "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
+      "GET /api/v1/extrinsics/{ref}.",
     inputSchema: {
       type: "object",
       properties: {
@@ -3353,7 +3411,76 @@ export const MCP_TOOLS = [
     },
     async handler(args, ctx) {
       const ref = requireString(args, "ref");
-      return loadExtrinsic(mcpD1Runner(ctx), ref);
+      return loadExtrinsicDetail(mcpD1Runner(ctx), ref);
+    },
+  },
+  {
+    name: "get_block_chain_events",
+    title: "Get every raw chain event in one block",
+    description:
+      "Fetch every raw pallet.method event in one block from the Postgres-backed " +
+      "all-events tier (ADR 0013), in natural read order (event_index ASC). " +
+      "Distinct from get_block_events (the curated account-attributed D1 stream). " +
+      "Returns event_count:0 + events:[] when the tier is empty for that block. " +
+      "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
+      "Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        block_number: {
+          type: "integer",
+          description: "Numeric block height.",
+          minimum: 0,
+        },
+      },
+      required: ["block_number"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const blockNumber = requireNonNegativeInt(args, "block_number");
+      return loadBlockChainEvents(ctx, blockNumber);
+    },
+  },
+  {
+    name: "get_extrinsic_chain_events",
+    title: "Get raw chain events emitted by one extrinsic",
+    description:
+      "Fetch raw pallet.method events one extrinsic emitted from the Postgres-backed " +
+      "all-events tier (newest first). ref must be the composite id " +
+      "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
+      "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
+      "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
+      "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: {
+          type: "string",
+          description:
+            "Composite extrinsic id 'block_number-extrinsic_index' (e.g. '4200000-3').",
+        },
+        limit: {
+          type: "integer",
+          description: "Max events to return (1-200, default 50).",
+          minimum: 1,
+          maximum: 200,
+        },
+        cursor: {
+          type: "string",
+          description:
+            "Opaque keyset cursor from a previous response's next_cursor for the next page.",
+        },
+      },
+      required: ["ref"],
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const ref = requireString(args, "ref");
+      const cursor = optionalString(args, "cursor");
+      return loadExtrinsicChainEvents(ctx, ref, {
+        limit: args?.limit,
+        cursor: cursor ?? undefined,
+      });
     },
   },
   {
@@ -4679,6 +4806,28 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const GLOBAL_VALIDATOR_SUBNET_ITEM = {
+  netuid: NULLABLE_INT,
+  uid: NULLABLE_INT,
+  stake_tao: ANY,
+  emission_tao: ANY,
+  validator_trust: { type: ["number", "null"] },
+};
+const GLOBAL_VALIDATOR_ITEM = {
+  hotkey: NULLABLE_STRING,
+  coldkey: NULLABLE_STRING,
+  coldkey_count: { type: "integer" },
+  subnet_count: { type: "integer" },
+  uid_count: { type: "integer" },
+  total_stake_tao: ANY,
+  total_emission_tao: ANY,
+  avg_validator_trust: { type: ["number", "null"] },
+  max_validator_trust: { type: ["number", "null"] },
+  latest_captured_at: NULLABLE_STRING,
+  latest_block_number: NULLABLE_INT,
+  stake_dominance: { type: ["number", "null"] },
+  subnets: objectItems(GLOBAL_VALIDATOR_SUBNET_ITEM),
+};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -4713,6 +4862,17 @@ const EXTRINSIC_ITEM = {
   fee_tao: ANY,
   tip_tao: ANY,
   observed_at: NULLABLE_STRING,
+};
+// Raw all-events tier item (pallet.method events from Postgres chain_events).
+const CHAIN_EVENT_ITEM = {
+  block_number: NULLABLE_INT,
+  event_index: NULLABLE_INT,
+  pallet: NULLABLE_STRING,
+  method: NULLABLE_STRING,
+  args: ANY,
+  phase: ANY,
+  extrinsic_index: NULLABLE_INT,
+  observed_at: NULLABLE_INT,
 };
 // RpcUsageArtifact item shapes — shared by get_rpc_usage outputSchema (mirrors
 // schemas/api-components.schema.json#/components/schemas/RpcUsageArtifact).
@@ -5004,6 +5164,7 @@ const TOOL_OUTPUT_SCHEMAS = {
     },
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
+  get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,
@@ -5236,6 +5397,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+      changes: {
+        type: "object",
+        properties: {
+          validators_entered_count: { type: "integer" },
+          validators_exited_count: { type: "integer" },
+          uid_reassignment_count: { type: "integer" },
+          validators_entered: { type: "array", items: { type: "object" } },
+          validators_exited: { type: "array", items: { type: "object" } },
+          uid_reassignments: { type: "array", items: { type: "object" } },
+        },
+      },
     },
   },
   get_subnet_uptime: {
@@ -5310,6 +5482,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       validators: { type: "array", items: { type: "object" } },
+    },
+  },
+  list_global_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      validator_count: { type: "integer" },
+      validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
   get_neuron: {
@@ -5657,6 +5843,39 @@ const TOOL_OUTPUT_SCHEMAS = {
       schema_version: { type: "integer" },
       ref: ANY,
       extrinsic: { type: ["object", "null"], additionalProperties: true },
+      events: objectItems(ACCOUNT_EVENT_ITEM),
+    },
+  },
+  get_block_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_number", "event_count", "events"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_number: NULLABLE_INT,
+      event_count: { type: "integer" },
+      events: objectItems(CHAIN_EVENT_ITEM),
+    },
+  },
+  get_extrinsic_chain_events: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "ref",
+      "block_number",
+      "extrinsic_index",
+      "event_count",
+      "events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      ref: ANY,
+      block_number: NULLABLE_INT,
+      extrinsic_index: NULLABLE_INT,
+      limit: NULLABLE_INT,
+      event_count: { type: "integer" },
+      next_cursor: NULLABLE_STRING,
+      events: objectItems(CHAIN_EVENT_ITEM),
     },
   },
   get_chain_activity: {

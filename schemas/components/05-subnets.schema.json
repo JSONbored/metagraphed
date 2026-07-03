@@ -3613,6 +3613,60 @@
             "additionalProperties": true
           }
         ]
+      },
+      "FixtureArtifact": {
+        "description": "Captured, sanitized live request/response sample for one no-auth GET surface.",
+        "allOf": [
+          { "$ref": "#/components/schemas/ArtifactBase" },
+          {
+            "type": "object",
+            "required": ["surface_id", "netuid", "kind", "request", "response"],
+            "properties": {
+              "surface_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$"
+              },
+              "netuid": { "type": "integer", "minimum": 0 },
+              "subnet_slug": { "type": ["string", "null"] },
+              "subnet_name": { "type": ["string", "null"] },
+              "kind": { "$ref": "#/components/schemas/SurfaceKind" },
+              "captured_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "request": {
+                "type": "object",
+                "required": ["method", "url"],
+                "properties": {
+                  "method": { "const": "GET" },
+                  "url": { "type": "string", "format": "uri" }
+                },
+                "additionalProperties": true
+              },
+              "response": {
+                "type": "object",
+                "required": ["status", "body"],
+                "properties": {
+                  "status": { "type": "integer" },
+                  "content_type": { "type": ["string", "null"] },
+                  "body": {
+                    "anyOf": [
+                      { "$ref": "#/components/schemas/JsonObject" },
+                      { "type": "array", "items": {} },
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "boolean" },
+                      { "type": "null" }
+                    ],
+                    "description": "Sanitized JSON response body; sensitive fields and private URLs are redacted before publish."
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
       }
     }
   }

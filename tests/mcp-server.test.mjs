@@ -1679,7 +1679,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     const res = await callTool("get_chain_activity", {}, { env: {} });
     assert.equal(res.body.result.isError, true);
     assert.ok(
-      res.body.result.content[0].text.includes("chain activity tier"),
+      res.body.result.content[0].text.includes("all-events data tier"),
       "must surface a clear tier-unavailable message",
     );
   });
@@ -5344,6 +5344,168 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validators[0].validator_permit, true);
   });
 
+  test("list_global_validators returns schema-stable empty list on cold D1", async () => {
+    const res = await callTool("list_global_validators", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "subnet_count");
+    assert.equal(out.limit, 20);
+    assert.equal(out.validator_count, 0);
+    assert.deepEqual(out.validators, []);
+    assert.equal(out.captured_at, null);
+  });
+
+  test("list_global_validators groups hotkeys across subnets and applies sort/limit", async () => {
+    const res = await callTool(
+      "list_global_validators",
+      { sort: "total_stake", limit: 1 },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                netuid: 1,
+                uid: 0,
+                hotkey: "5Hk-wide",
+                coldkey: "5Co-wide",
+                validator_permit: 1,
+                stake_tao: 50,
+                emission_tao: 1,
+                validator_trust: 0.8,
+                captured_at: 1750000000000,
+                block_number: 100,
+              },
+              {
+                netuid: 2,
+                uid: 0,
+                hotkey: "5Hk-wide",
+                coldkey: "5Co-wide",
+                validator_permit: 1,
+                stake_tao: 60,
+                emission_tao: 2,
+                validator_trust: 0.9,
+                captured_at: 1750000001000,
+                block_number: 101,
+              },
+              {
+                netuid: 3,
+                uid: 0,
+                hotkey: "5Hk-small",
+                coldkey: "5Co-small",
+                validator_permit: 1,
+                stake_tao: 10,
+                emission_tao: 1,
+                validator_trust: 0.5,
+                captured_at: 1750000000000,
+                block_number: 100,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "total_stake");
+    assert.equal(out.limit, 1);
+    assert.equal(out.validator_count, 2);
+    assert.equal(out.validators.length, 1);
+    assert.equal(out.validators[0].hotkey, "5Hk-wide");
+    assert.equal(out.validators[0].subnet_count, 2);
+    assert.equal(out.validators[0].total_stake_tao, 110);
+    assert.equal(out.validators[0].subnets.length, 2);
+    const membershipByNetuid = Object.fromEntries(
+      out.validators[0].subnets.map((row) => [row.netuid, row]),
+    );
+    assert.deepEqual(membershipByNetuid[1], {
+      netuid: 1,
+      uid: 0,
+      stake_tao: 50,
+      emission_tao: 1,
+      validator_trust: 0.8,
+    });
+    assert.deepEqual(membershipByNetuid[2], {
+      netuid: 2,
+      uid: 0,
+      stake_tao: 60,
+      emission_tao: 2,
+      validator_trust: 0.9,
+    });
+    assert.equal(typeof out.validators[0].stake_dominance, "number");
+  });
+
+  test("list_global_validators honors each REST-supported sort key", async () => {
+    const globalEnv = {
+      METAGRAPH_HEALTH_DB: metagraphD1({
+        neurons: [
+          {
+            netuid: 1,
+            uid: 0,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 50,
+            emission_tao: 4,
+            validator_trust: 0.6,
+            block_number: 100,
+            captured_at: 1750000000000,
+          },
+          {
+            netuid: 2,
+            uid: 1,
+            hotkey: "5Hk-op-a",
+            coldkey: "5Co-a",
+            validator_permit: 1,
+            stake_tao: 70,
+            emission_tao: 6,
+            validator_trust: 0.8,
+            block_number: 101,
+            captured_at: 1750000001000,
+          },
+          {
+            netuid: 3,
+            uid: 0,
+            hotkey: "5Hk-op-b",
+            coldkey: "5Co-b",
+            validator_permit: 1,
+            stake_tao: 500,
+            emission_tao: 40,
+            validator_trust: 0.95,
+            block_number: 102,
+            captured_at: 1750000002000,
+          },
+        ],
+      }),
+    };
+    const cases = [
+      ["subnet_count", "5Hk-op-a"],
+      ["uid_count", "5Hk-op-a"],
+      ["total_stake", "5Hk-op-b"],
+      ["total_emission", "5Hk-op-b"],
+      ["max_validator_trust", "5Hk-op-b"],
+      ["avg_validator_trust", "5Hk-op-b"],
+      ["stake_dominance", "5Hk-op-b"],
+    ];
+    for (const [sort, expectedHotkey] of cases) {
+      const res = await callTool(
+        "list_global_validators",
+        { sort, limit: 1 },
+        { env: globalEnv },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(out.sort, sort, `sort echo for ${sort}`);
+      assert.equal(
+        out.validators[0]?.hotkey,
+        expectedHotkey,
+        `top hotkey for sort=${sort}`,
+      );
+    }
+  });
+
+  test("list_global_validators rejects an invalid sort", async () => {
+    const res = await callTool("list_global_validators", { sort: "bogus" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /sort/i);
+  });
+
   test("get_neuron returns one UID, neuron:null for an absent UID", async () => {
     const present = await callTool(
       "get_neuron",
@@ -5666,6 +5828,96 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_retention, 1);
   });
 
+  test("get_subnet_turnover omits changes detail unless changes=true", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "30d" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    assert.equal("changes" in res.body.result.structuredContent, false);
+  });
+
+  test("get_subnet_turnover with changes=true returns schema-stable empty detail on cold D1", async () => {
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 7,
+      changes: true,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.comparable, false);
+    assert.deepEqual(out.changes.validators_entered, []);
+    assert.deepEqual(out.changes.validators_exited, []);
+    assert.deepEqual(out.changes.uid_reassignments, []);
+  });
+
+  test("get_subnet_turnover with changes=true returns entry, exit, and UID reassignment detail", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "30d", changes: true },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.changes.validators_entered, [
+      { hotkey: "V3", uid: 1 },
+    ]);
+    assert.deepEqual(out.changes.validators_exited, [{ hotkey: "V2", uid: 1 }]);
+    assert.deepEqual(out.changes.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
+  });
+
+  test("get_subnet_turnover rejects a non-boolean changes flag", async () => {
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 7,
+      changes: "true",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /changes.*boolean/);
+  });
+
   test("get_subnet_yield returns schema-stable empty on cold D1", async () => {
     const res = await callTool("get_subnet_yield", { netuid: 7 });
     const out = res.body.result.structuredContent;
@@ -5757,6 +6009,51 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.windows["7d"].subnets, []);
     assert.equal(out.windows["30d"].subnet_count, 0);
     assert.deepEqual(out.windows["30d"].subnets, []);
+  });
+
+  test("get_network_health returns unknown when the live store is cold", async () => {
+    const res = await callTool("get_network_health", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.scope, "operational");
+    assert.equal(out.health_source, "unavailable");
+    assert.equal(out.global.surface_count, 0);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_network_health overlays the live KV rollup", async () => {
+    const globalLiveKv = {
+      generated_at: "2026-06-11T00:00:00.000Z",
+      last_run_at: FRESH_RUN,
+      health_source: "live-cron-prober",
+      summary: {
+        surface_count: 58,
+        status_counts: { ok: 57, degraded: 1, failed: 0, unknown: 0 },
+      },
+      subnets: [{ netuid: 0, status: "ok", surface_count: 2, ok_count: 2 }],
+    };
+    const deps = makeDeps({}, { "health:current": globalLiveKv });
+    const res = await callTool("get_network_health", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.health_source, "live-cron-prober");
+    assert.equal(out.operational_observed_at, FRESH_RUN);
+    assert.equal(out.global.surface_count, 58);
+    assert.equal(out.subnets[0].netuid, 0);
+  });
+
+  test("get_network_health payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_network_health",
+    )?.outputSchema;
+    const globalLiveKv = {
+      last_run_at: FRESH_RUN,
+      summary: { surface_count: 1, status_counts: { ok: 1 } },
+      subnets: [{ netuid: 0, status: "ok" }],
+    };
+    const deps = makeDeps({}, { "health:current": globalLiveKv });
+    const res = await callTool("get_network_health", {}, { deps });
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   test("get_health_trends aggregates bulk trend rows from D1", async () => {
@@ -6832,6 +7129,24 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
     assert.deepEqual(res.body.result.structuredContent.days, []);
   });
 
+  test("get_account_history rejects malformed from/to dates before D1", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      from: "June",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /YYYY-MM-DD/i);
+  });
+
+  test("get_account_history rejects a non-integer netuid filter", async () => {
+    const res = await callTool("get_account_history", {
+      ss58: SS58,
+      netuid: 7.5,
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /netuid/i);
+  });
+
   test("get_account_extrinsics returns signed extrinsics with correct fields", async () => {
     const env = tailD1({
       extrinsics: [
@@ -7153,6 +7468,14 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
                   )
                     return Promise.resolve({
                       results: fixtures.extrinsic ? [fixtures.extrinsic] : [],
+                    });
+                  if (
+                    /FROM account_events WHERE block_number = \? AND extrinsic_index = \?/.test(
+                      sql,
+                    )
+                  )
+                    return Promise.resolve({
+                      results: fixtures.extrinsicEvents || [],
                     });
                   if (
                     /FROM account_events WHERE block_number = \? ORDER BY event_index/.test(
@@ -7551,6 +7874,17 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.ok(q.params.includes(4200000) && q.params.includes(3));
   });
 
+  test("get_extrinsic embeds emitted account_events (#1849)", async () => {
+    const env = chainD1({
+      extrinsic: EXTRINSIC_ROW,
+      extrinsicEvents: [EVENT_ROW],
+    });
+    const res = await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.events.length, 1);
+    assert.equal(out.events[0].event_kind, "WeightsSet");
+  });
+
   test("get_extrinsic returns extrinsic:null for an unknown ref (cold store)", async () => {
     const res = await callTool("get_extrinsic", { ref: "0x" + "f".repeat(64) });
     assert.equal(res.body.result.isError, false);
@@ -7588,7 +7922,14 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         { ref: "4200000" },
       ],
       ["list_extrinsics", chainD1({ extrinsics: [EXTRINSIC_ROW] }), {}],
-      ["get_extrinsic", chainD1({ extrinsic: EXTRINSIC_ROW }), { ref: hash }],
+      [
+        "get_extrinsic",
+        chainD1({
+          extrinsic: EXTRINSIC_ROW,
+          extrinsicEvents: [EVENT_ROW],
+        }),
+        { ref: hash },
+      ],
     ];
     for (const [name, env, args] of cases) {
       const res = await callTool(name, args, { env });
@@ -7598,6 +7939,231 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
         `${name}: ${JSON.stringify(validate.errors)}`,
       );
     }
+  });
+});
+
+describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain_events)", () => {
+  // Exact upstream JSON from workers/data-api.mjs (see tests/data-api.test.mjs).
+  const DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD = {
+    block_number: 123,
+    count: 1,
+    events: [
+      {
+        event_index: 0,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: { x: 1 },
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 100,
+      },
+    ],
+  };
+  const DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD = {
+    count: 1,
+    next_before: 123,
+    next_cursor: "123.0",
+    events: [
+      {
+        block_number: 123,
+        event_index: 0,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: { x: 1 },
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 100,
+      },
+    ],
+  };
+
+  function makeDataApi({ payload, status = 200 } = {}) {
+    const calls = [];
+    return {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        return Promise.resolve(
+          new Response(status === 200 ? JSON.stringify(payload) : "err", {
+            status,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+  }
+
+  test("get_block_chain_events returns raw events for a block", async () => {
+    const dataApi = makeDataApi({
+      payload: {
+        block_number: 4200000,
+        count: 1,
+        events: [
+          {
+            event_index: 0,
+            pallet: "Balances",
+            method: "Transfer",
+            observed_at: 1,
+          },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 4200000 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.events[0].pallet, "Balances");
+    assert.match(dataApi.calls[0].pathname, /\/blocks\/4200000\/chain-events$/);
+  });
+
+  test("get_block_chain_events round-trips the DATA_API block chain-events contract", async () => {
+    const dataApi = makeDataApi({
+      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 123 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_number, 123);
+    assert.equal(out.event_count, 1);
+    assert.deepEqual(out.events, DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events);
+    assert.equal(typeof out.events[0].observed_at, "number");
+  });
+
+  test("get_extrinsic_chain_events forwards block+extrinsic filters", async () => {
+    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(dataApi.calls[0].searchParams.get("block"), "4200000");
+    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+    assert.equal(dataApi.calls[0].searchParams.get("limit"), "50");
+    assert.deepEqual(res.body.result.structuredContent.events, []);
+  });
+
+  test("get_extrinsic_chain_events round-trips the DATA_API chain-events feed contract", async () => {
+    const dataApi = makeDataApi({
+      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+    });
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "5870000-3" },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.event_count, 1);
+    assert.equal(out.next_cursor, "123.0");
+    assert.deepEqual(
+      out.events,
+      DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD.events,
+    );
+    assert.equal(typeof out.events[0].observed_at, "number");
+    assert.equal(dataApi.calls[0].searchParams.get("block"), "5870000");
+    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+  });
+
+  test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {
+    const calls = [];
+    const dataApi = {
+      calls,
+      fetch(request) {
+        calls.push(new URL(request.url));
+        const cursor = new URL(request.url).searchParams.get("cursor");
+        const payload = cursor
+          ? {
+              count: 1,
+              events: [{ pallet: "System", method: "ExtrinsicSuccess" }],
+            }
+          : { count: 0, next_cursor: "4200000.9", events: [] };
+        return Promise.resolve(
+          new Response(JSON.stringify(payload), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      },
+    };
+    const first = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3", limit: 10 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(first.body.result.isError, false);
+    assert.equal(first.body.result.structuredContent.next_cursor, "4200000.9");
+    const second = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "4200000-3", cursor: "4200000.9" },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.equal(second.body.result.isError, false);
+    assert.equal(calls[1].searchParams.get("cursor"), "4200000.9");
+    assert.equal(
+      second.body.result.structuredContent.events[0].method,
+      "ExtrinsicSuccess",
+    );
+  });
+
+  test("get_extrinsic_chain_events rejects a hash ref", async () => {
+    const res = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "0x" + "a".repeat(64) },
+      { env: { DATA_API: makeDataApi({ payload: {} }) } },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /composite/i);
+  });
+
+  test("tier_unavailable when DATA_API is absent", async () => {
+    for (const [name, args] of [
+      ["get_block_chain_events", { block_number: 1 }],
+      ["get_extrinsic_chain_events", { ref: "1-0" }],
+    ]) {
+      const res = await callTool(name, args, { env: {} });
+      assert.equal(res.body.result.isError, true, name);
+      assert.match(res.body.result.content[0].text, /unavailable/i);
+    }
+  });
+
+  test("all-events tool payloads validate against their declared outputSchemas", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validatorFor = (name) =>
+      ajv.compile(
+        listToolDefinitions().find((t) => t.name === name).outputSchema,
+      );
+    const dataApi = makeDataApi({
+      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
+    });
+    const blockRes = await callTool(
+      "get_block_chain_events",
+      { block_number: 123 },
+      { env: { DATA_API: dataApi } },
+    );
+    assert.ok(
+      validatorFor("get_block_chain_events")(
+        blockRes.body.result.structuredContent,
+      ),
+    );
+    const extrinsicDataApi = makeDataApi({
+      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+    });
+    const extrinsicRes = await callTool(
+      "get_extrinsic_chain_events",
+      { ref: "5870000-3", limit: 10 },
+      { env: { DATA_API: extrinsicDataApi } },
+    );
+    assert.ok(
+      validatorFor("get_extrinsic_chain_events")(
+        extrinsicRes.body.result.structuredContent,
+      ),
+    );
   });
 });
 

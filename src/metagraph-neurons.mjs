@@ -50,7 +50,16 @@ const GLOBAL_VALIDATOR_SUBNET_LIMIT = 10;
 const RAO_PER_TAO = 1e9;
 
 function toIso(ms) {
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  // D1 can return the INTEGER captured_at as a numeric string; a bare
+  // Number.isFinite(ms) is false for a string, so the old form dropped a real
+  // snapshot timestamp to null. Coerce first and require n > 0 so null/blank/
+  // invalid cells stay null (never epoch 1970). Mirrors the blocks/extrinsics
+  // toIso fixes (#2708/#2714) and the captured_at coercion in #2725.
+  if (ms == null) return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const d = new Date(n);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
 function numberOrZero(value) {

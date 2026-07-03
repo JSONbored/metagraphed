@@ -155,7 +155,8 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/api/v1/registry/summary`: fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).
 - `/api/v1/coverage-depth`: fetch the machine-usable scorecard and ranked enrichment queue for prioritizing schema, fixture, example, provenance, and review work.
 - `/api/v1/lineage`: fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).
-- `/api/v1/fixtures`: fetch the index of captured live request/response fixtures (per-surface samples are at `/metagraph/fixtures/{surface_id}.json`, also via the `get_fixture` MCP tool).
+- `/api/v1/fixtures`: fetch the index of captured live request/response fixtures (per-surface samples are available through `/api/v1/fixtures/{surface_id}`, `/metagraph/fixtures/{surface_id}.json`, and the `get_fixture` MCP tool).
+- `/api/v1/fixtures/{surface_id}`: fetch one captured, sanitized live request/response fixture by surface id.
 - `/api/v1/agent-resources`: fetch the AI-resources index (the copyable agent at `/agent.md`, the MCP server + tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs).
 - `/api/v1/subnets/{netuid}/health/percentiles`: fetch p50/p95/p99 latency percentiles per operational surface over a 7d/30d window (live from D1).
 - `/api/v1/subnets/{netuid}/health/incidents`: fetch SLA (uptime ratio) + reconstructed downtime incidents per operational surface over a 7d/30d window (live from D1).

@@ -237,6 +237,34 @@ describe("history builders", () => {
     assert.equal(sparse.points[0].block_number, null);
   });
 
+  test("buildNeuronHistory coerces string-typed block_number cells to integers", () => {
+    const out = buildNeuronHistory(
+      [dailyRow({ block_number: "5000000" })],
+      7,
+      3,
+    );
+    assert.equal(out.points[0].block_number, 5_000_000);
+  });
+
+  test("buildNeuronHistory rejects invalid block_number cells to null", () => {
+    const out = buildNeuronHistory(
+      [
+        dailyRow({ block_number: -1 }),
+        dailyRow({ block_number: 1.5 }),
+        dailyRow({ block_number: "abc" }),
+        dailyRow({ block_number: "" }),
+        dailyRow({ block_number: " " }),
+      ],
+      7,
+      3,
+    );
+    assert.equal(out.points[0].block_number, null);
+    assert.equal(out.points[1].block_number, null);
+    assert.equal(out.points[2].block_number, null);
+    assert.equal(out.points[3].block_number, null);
+    assert.equal(out.points[4].block_number, null);
+  });
+
   test("buildNeuronHistory coerces string-typed captured_at cells to ISO timestamps", () => {
     const out = buildNeuronHistory(
       [dailyRow({ captured_at: "1780000000000" })],

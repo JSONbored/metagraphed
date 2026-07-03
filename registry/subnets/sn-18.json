@@ -28,6 +28,27 @@
       },
       "source_urls": ["https://api.zeussubnet.com/openapi.json"],
       "url": "https://api.zeussubnet.com/v1/meta"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-18-zeus-openapi",
+      "kind": "openapi",
+      "name": "Zeus BOREAS Edge API (public)",
+      "notes": "Machine-readable spec for the public BOREAS Edge API documented by Zeus.",
+      "provider": "zeus",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dragunovx16"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://api.zeussubnet.com/openapi.json",
+      "source_urls": [
+        "https://docs.zeussubnet.com/docs/introduction",
+        "https://api.zeussubnet.com/openapi.json"
+      ],
+      "url": "https://api.zeussubnet.com/openapi.json"
     }
   ],
   "website_url": "https://www.zeussubnet.com/"

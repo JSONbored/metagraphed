@@ -22,9 +22,12 @@ if (
 
 async function runLiveSmoke() {
   const healthDate = await discoverHealthHistoryDate();
-  const apiChecks = API_ROUTES.map((route) => ({
+  const fixtureSurfaceId =
+    process.env.METAGRAPH_LIVE_FIXTURE_SURFACE_ID ||
+    (await discoverFixtureSurfaceId());
+  const apiChecks = liveSmokeApiRoutes(fixtureSurfaceId).map((route) => ({
     route: route.path,
-    url: apiRouteUrl(route.path, healthDate),
+    url: apiRouteUrl(route.path, healthDate, { surfaceId: fixtureSurfaceId }),
   }));
   const rawArtifactChecks = [
     "/metagraph/openapi.json",
@@ -369,7 +372,7 @@ async function discoverHealthHistoryDate() {
   });
 }
 
-export function apiRouteUrl(routePath, date) {
+export function apiRouteUrl(routePath, date, options = {}) {
   // D1-tier detail routes carry id placeholders beyond {netuid}/{slug}/{date}.
   // Substitute constant, dependency-free sample ids that resolve to a live 200:
   // uid 0 always exists; an all-zero hash / block 0 hit the cold→null wrapper
@@ -384,6 +387,7 @@ export function apiRouteUrl(routePath, date) {
     .replace("{uid}", "0")
     .replace("{hash}", `0x${"0".repeat(64)}`)
     .replace("{ref}", "0")
+    .replace("{surface_id}", options.surfaceId || "7:subnet-api:new_v2")
     .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM");
   // Guard against the recurring #1682 class: any leftover `{` means a route
   // placeholder was never substituted, which silently 404s against a live URL
@@ -409,6 +413,31 @@ export function apiRouteUrl(routePath, date) {
     url.searchParams.set("limit", "3");
   }
   return url.toString();
+}
+
+export function liveSmokeApiRoutes(fixtureSurfaceId = null) {
+  // Fixture detail is a live, R2-only detail route whose path requires a
+  // currently published surface id. The smoke runner derives that id from the
+  // fixture index when the deployment does not supply an explicit override.
+  return API_ROUTES.filter(
+    (route) => route.id !== "fixture-detail" || fixtureSurfaceId,
+  );
+}
+
+export async function discoverFixtureSurfaceId() {
+  const result = await fetchJson(`${baseUrl}/api/v1/fixtures`);
+  return fixtureSurfaceIdFromIndex(result.body);
+}
+
+export function fixtureSurfaceIdFromIndex(body) {
+  const fixtures = body?.data?.fixtures;
+  if (!Array.isArray(fixtures)) {
+    return null;
+  }
+  return (
+    fixtures.find((fixture) => typeof fixture?.surface_id === "string")
+      ?.surface_id || null
+  );
 }
 
 async function fetchJson(url, options = {}) {

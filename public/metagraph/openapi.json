@@ -5630,6 +5630,117 @@
         ],
         "type": "object"
       },
+      "FixtureArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "captured_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "request": {
+                "additionalProperties": true,
+                "properties": {
+                  "method": {
+                    "const": "GET"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method",
+                  "url"
+                ],
+                "type": "object"
+              },
+              "response": {
+                "additionalProperties": true,
+                "properties": {
+                  "body": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/JsonObject"
+                      },
+                      {
+                        "items": {},
+                        "type": "array"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Sanitized JSON response body; sensitive fields and private URLs are redacted before publish."
+                  },
+                  "content_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "status",
+                  "body"
+                ],
+                "type": "object"
+              },
+              "subnet_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subnet_slug": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "surface_id": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "surface_id",
+              "netuid",
+              "kind",
+              "request",
+              "response"
+            ],
+            "type": "object"
+          }
+        ],
+        "description": "Captured, sanitized live request/response sample for one no-auth GET surface."
+      },
       "FixturesIndexArtifact": {
         "allOf": [
           {
@@ -16368,6 +16479,15 @@
           },
           {
             "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
             "name": "block_start",
             "required": false,
             "schema": {
@@ -16530,7 +16650,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+        "summary": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
         "tags": [
           "accounts",
           "analytics"
@@ -23966,7 +24086,139 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+        "summary": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json.",
+        "tags": [
+          "registry",
+          "api-dx"
+        ]
+      }
+    },
+    "/api/v1/fixtures/{surface_id}": {
+      "get": {
+        "operationId": "fixtureDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "surface_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-16T12:00:00.000Z",
+                    "generated_at": "1970-01-01T00:00:00.000Z",
+                    "kind": "subnet-api",
+                    "netuid": 7,
+                    "request": {
+                      "method": "GET",
+                      "url": "https://api.all-ways.io/health"
+                    },
+                    "response": {
+                      "body": {
+                        "ok": true
+                      },
+                      "content_type": "application/json",
+                      "status": 200
+                    },
+                    "schema_version": 1,
+                    "subnet_name": "AllWays",
+                    "subnet_slug": "allways",
+                    "surface_id": "7:subnet-api:new_v2"
+                  },
+                  "meta": {
+                    "artifact_path": "/metagraph/fixtures/7:subnet-api:new_v2.json",
+                    "cache": "standard",
+                    "contract_version": "2026-07-02.1",
+                    "generated_at": "1970-01-01T00:00:00.000Z",
+                    "published_at": null,
+                    "source": "r2"
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/FixtureArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one captured, sanitized live request/response fixture by surface id.",
         "tags": [
           "registry",
           "api-dx"

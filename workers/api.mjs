@@ -164,7 +164,6 @@ import {
 } from "../src/health-prober.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import {
-  buildGlobalHealth,
   mergeFreshness,
   mergeRpcEndpoints,
   overlayArtifactEndpoints,
@@ -210,6 +209,7 @@ import {
   economicsSnapshotUpsertStatements,
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
+import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -1053,6 +1053,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     const until = url.searchParams.get("until");
     if (until != null) {
       feedCacheParams.push(`until=${encodeURIComponent(until)}`);
+    }
+    const limit = url.searchParams.get("limit");
+    if (limit != null) {
+      feedCacheParams.push(`limit=${encodeURIComponent(limit)}`);
     }
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
@@ -2461,17 +2465,12 @@ async function handleApiRequest(
     // Live-only global operational health: KV health:current → D1
     // surface_status, and an explicit `unknown` global when the live store is
     // cold. There is no stored health summary to fall back to (live-only).
-    const liveSnapshot = await resolveLiveHealth({
-      readHealthKv,
-      env,
-      db: env.METAGRAPH_HEALTH_DB,
-    });
-    const liveData = liveSnapshot
-      ? buildGlobalHealth(liveSnapshot, {
-          contract_version: contractVersion(env),
-        })
-      : null;
-    live = { data: liveData || unknownGlobalHealth(contractVersion(env)) };
+    live = {
+      data: await loadGlobalOperationalHealth(
+        { env, readHealthKv, db: env.METAGRAPH_HEALTH_DB },
+        { contractVersion: (e) => contractVersion(e) },
+      ),
+    };
     artifact = { ok: false };
   } else if (matched.id === "subnet-health") {
     artifact = { ok: false };
@@ -3334,24 +3333,6 @@ async function handleAskRequest(request, env) {
       502,
     );
   }
-}
-
-// Explicit `unknown` health payloads for the live-only routes when the live
-// store (KV + D1) is cold — served instead of a stale baked value or a 404.
-function unknownGlobalHealth(contractVersionValue) {
-  return {
-    schema_version: 1,
-    contract_version: contractVersionValue,
-    source: "unavailable",
-    scope: "operational",
-    operational_observed_at: null,
-    health_source: "unavailable",
-    global: {
-      surface_count: 0,
-      status_counts: { ok: 0, degraded: 0, failed: 0, unknown: 0 },
-    },
-    subnets: [],
-  };
 }
 
 function unknownSubnetHealth(netuid) {

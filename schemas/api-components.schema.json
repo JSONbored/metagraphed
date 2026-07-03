@@ -5616,6 +5616,117 @@
         ],
         "type": "object"
       },
+      "FixtureArtifact": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ArtifactBase"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "captured_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kind": {
+                "$ref": "#/components/schemas/SurfaceKind"
+              },
+              "netuid": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "request": {
+                "additionalProperties": true,
+                "properties": {
+                  "method": {
+                    "const": "GET"
+                  },
+                  "url": {
+                    "format": "uri",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "method",
+                  "url"
+                ],
+                "type": "object"
+              },
+              "response": {
+                "additionalProperties": true,
+                "properties": {
+                  "body": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/JsonObject"
+                      },
+                      {
+                        "items": {},
+                        "type": "array"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Sanitized JSON response body; sensitive fields and private URLs are redacted before publish."
+                  },
+                  "content_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "status": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "status",
+                  "body"
+                ],
+                "type": "object"
+              },
+              "subnet_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "subnet_slug": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "surface_id": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "surface_id",
+              "netuid",
+              "kind",
+              "request",
+              "response"
+            ],
+            "type": "object"
+          }
+        ],
+        "description": "Captured, sanitized live request/response sample for one no-auth GET surface."
+      },
       "FixturesIndexArtifact": {
         "allOf": [
           {

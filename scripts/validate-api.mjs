@@ -26,6 +26,23 @@ const ajv = new Ajv2020({
 });
 addFormats(ajv);
 
+const fixtureDetail = {
+  schema_version: 1,
+  generated_at: "1970-01-01T00:00:00.000Z",
+  surface_id: "7:subnet-api:new_v2",
+  netuid: 7,
+  subnet_slug: "allways",
+  subnet_name: "AllWays",
+  kind: "subnet-api",
+  captured_at: "2026-06-16T12:00:00.000Z",
+  request: { method: "GET", url: "https://api.all-ways.io/health" },
+  response: {
+    status: 200,
+    content_type: "application/json",
+    body: { ok: true },
+  },
+};
+
 // Register the OpenAPI components block ONCE under an absolute id (mirroring
 // validate-schemas.mjs) instead of re-inlining all ~198 schemas into every
 // per-route compile. Response schemas resolve their `#/components/...` refs
@@ -76,6 +93,7 @@ function compileResponseValidator(schema) {
 // service binding). It's a separate Worker not present in this harness, so mock it
 // with the bare response shapes it serves (ADR 0013) — api.mjs rewraps them in the
 // canonical envelope, which is what the checks below assert.
+const baseEnv = createLocalArtifactEnv();
 const env = createLocalArtifactEnv({
   DATA_API: {
     async fetch(request) {
@@ -97,6 +115,18 @@ const env = createLocalArtifactEnv({
         JSON.stringify({ block_number: 100, count: 0, events: [] }),
         { status: 200, headers },
       );
+    },
+  },
+  METAGRAPH_ARCHIVE: {
+    async get(key) {
+      if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
+        return {
+          async json() {
+            return fixtureDetail;
+          },
+        };
+      }
+      return baseEnv.METAGRAPH_ARCHIVE.get(key);
     },
   },
 });
@@ -734,6 +764,14 @@ const checks = [
     (body) => {
       assert.equal(typeof body.data.fixture_count, "number");
       assert.equal(Array.isArray(body.data.fixtures), true);
+    },
+  ],
+  [
+    "/api/v1/fixtures/7:subnet-api:new_v2",
+    (body) => {
+      assert.equal(body.data.surface_id, "7:subnet-api:new_v2");
+      assert.equal(body.data.response.status, 200);
+      assert.deepEqual(body.data.response.body, { ok: true });
     },
   ],
   [
