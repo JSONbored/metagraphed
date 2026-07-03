@@ -1322,6 +1322,7 @@ describe("registry list CSV export", () => {
       res.headers.get("content-disposition"),
       'attachment; filename="subnet-endpoints.csv"',
     );
+    assert.equal(res.headers.get("etag"), null);
 
     const lines = (await res.text()).split("\r\n");
     assert.equal(lines[0], "layer,kind,status,latency_ms");

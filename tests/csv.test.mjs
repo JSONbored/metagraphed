@@ -18,6 +18,19 @@ function req(headers = {}, method = "GET") {
   });
 }
 
+async function drainCsvStream(stream) {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    text += decoder.decode(chunk.value, { stream: true });
+  }
+  text += decoder.decode();
+  return text;
+}
+
 test("rowsToCsv returns an empty body for empty rows without explicit columns", () => {
   assert.equal(rowsToCsv([]), "");
 });
@@ -259,6 +272,26 @@ test("csvBodyStream emits continuation newlines when a large export spans multip
 
   const done = await reader.read();
   assert.equal(done.done, true);
+});
+
+test("csvBodyStream matches rowsToCsv for small and multi-chunk exports", async () => {
+  const smallRows = [
+    { netuid: 7, name: "Allways" },
+    { netuid: 8, name: "Templar" },
+  ];
+  assert.equal(
+    await drainCsvStream(csvBodyStream(smallRows, ["netuid", "name"])),
+    rowsToCsv(smallRows, ["netuid", "name"]),
+  );
+
+  const largeRows = Array.from({ length: 129 }, (_, index) => ({
+    netuid: index,
+    status: index % 2 === 0 ? "ok" : "degraded",
+  }));
+  assert.equal(
+    await drainCsvStream(csvBodyStream(largeRows, ["netuid", "status"])),
+    rowsToCsv(largeRows, ["netuid", "status"]),
+  );
 });
 
 test("csvResponse can stream endpoint-sized exports without eager ETags", async () => {

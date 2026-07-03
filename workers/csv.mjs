@@ -1,6 +1,8 @@
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.mjs";
 
 const SPREADSHEET_FORMULA_PREFIX = /^[=+\-@\t\r\n]/;
+// Keep each stream pull bounded without fragmenting typical endpoint exports
+// into overly small chunks.
 const CSV_STREAM_ROWS_PER_CHUNK = 128;
 
 function normalizeColumns(rows, columns) {
