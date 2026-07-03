@@ -49,7 +49,7 @@ function makeCtx() {
   return { env: {} };
 }
 
-function makeDeps({ listBlob = PROFILES_BLOB, detailBlob = PROFILE_ROW } = {}) {
+function makeDeps({ listBlob = PROFILES_BLOB } = {}) {
   return {
     readOptionalArtifact: async (_ctx, path) =>
       path === "/metagraph/profiles.json" ? listBlob : null,
