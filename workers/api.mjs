@@ -109,6 +109,7 @@ import {
   handleAccountStakeFlow,
   handleAccountSubnets,
   handleBlocks,
+  handleBlocksSummary,
   handleBlock,
   handleBlockExtrinsics,
   handleBlockEvents,
@@ -1668,6 +1669,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (blockEventsMatch) {
       return handleBlockEvents(request, env, blockEventsMatch[1], resolved.url);
     }
+    // Exact-match the block-production summary BEFORE the {ref} detail pattern so
+    // "summary" is never parsed as a block reference. Edge-cached like the sibling
+    // live analytics routes (busts on the prober tick).
+    if (resolved.url.pathname === "/api/v1/blocks/summary") {
+      return withEdgeCache(request, ctx, env, "blocks-summary", () =>
+        handleBlocksSummary(request, env, resolved.url),
+      );
+    }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1839,6 +1848,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
+    pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

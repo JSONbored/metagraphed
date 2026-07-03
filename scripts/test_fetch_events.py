@@ -32,6 +32,7 @@ AURA_ENGINE_ID = _fe.AURA_ENGINE_ID
 PRUNE_HORIZON = _fe.PRUNE_HORIZON
 event_rows_for_events = _fe.event_rows_for_events
 _can_append_event_block = _fe._can_append_event_block
+_tao = _fe._tao
 
 
 class ComputeFromBlockTest(unittest.TestCase):
@@ -862,6 +863,34 @@ class BurnSetExtractorTest(unittest.TestCase):
         result = _extract("BurnSet", [])
         self.assertIsNone(result["netuid"])
         self.assertIsNone(result["amount_tao"])
+
+
+class TaoConversionTest(unittest.TestCase):
+    """_tao's exact rao->TAO conversion (#2921) -- the whole-TAO part must
+    always match exact integer division, unlike the old plain `v / RAO`."""
+
+    def test_none_and_invalid_inputs(self):
+        self.assertIsNone(_tao(None))
+        self.assertIsNone(_tao(-1))
+        self.assertIsNone(_tao("100"))
+
+    def test_zero(self):
+        self.assertEqual(_tao(0), 0)
+
+    def test_small_value_matches_plain_division(self):
+        self.assertEqual(_tao(2_500_000_000), 2.5)
+
+    def test_large_transfer_whole_part_exact(self):
+        # A large native-TAO transfer or whale stake-add -- above the ~9.007M
+        # ceiling, a plausible real-world magnitude for this event class.
+        rao = 50_000_000 * 10**9 + 123_456_789
+        result = _tao(rao)
+        self.assertEqual(int(result), 50_000_000)
+
+    def test_extreme_magnitude_whole_part_exact(self):
+        rao = 9_007_199_254_740_993_123
+        result = _tao(rao)
+        self.assertEqual(int(result), rao // 1_000_000_000)
 
 
 if __name__ == "__main__":

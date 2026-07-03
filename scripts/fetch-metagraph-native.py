@@ -7,7 +7,8 @@ SubtensorModule storage (MetagraphInfo doesn't carry them in dTAO). Emits the ex
 Worker's token-free `loadStagedNeurons`. No Taostats, no API key.
 
 Units (verified by the parity check vs the prior Taostats data, #1348):
-  stake_tao/emission_tao = float(Balance, alpha-denominated)
+  stake_tao/emission_tao = Balance.rao / 1e9, alpha-denominated, computed exactly
+    (not float(Balance)/.tao, which loses precision above 2**53 rao — #2921)
   consensus/incentive/dividends = on-chain 0..1 floats
   rank/validator_trust = SubtensorModule u16 (0..65535) ÷ 65535
   trust = 0.0 (dead in dTAO — 0 across all neurons, Taostats included)
@@ -21,8 +22,6 @@ import os
 import sys
 import time
 
-import bittensor as bt
-
 OUT = os.environ.get("METAGRAPH_NEURONS_JSON", "dist/metagraph-neurons.json")
 
 
@@ -33,6 +32,23 @@ def to_float(value):
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def to_tao_exact(balance):
+    """Convert a Balance to TAO without going through float(Balance)/.tao, which
+    computes the rao->TAO division in double precision internally and silently
+    loses low-order digits above 2**53 rao (~9M TAO). balance.rao is the exact
+    arbitrary-precision int; splitting whole/remainder before the final float
+    conversion keeps the integer TAO part exact (metagraphed#2921)."""
+    if balance is None:
+        return None
+    try:
+        rao = balance.rao
+    except AttributeError:
+        return to_float(balance)  # not a Balance (e.g. already a plain number) — fall back
+    whole = rao // 1_000_000_000
+    remainder = (rao % 1_000_000_000) / 1e9
+    return whole + remainder
 
 
 def u16_ratio(value):
@@ -64,6 +80,9 @@ def _at(arr, i):
 
 
 def main():
+    import bittensor as bt  # lazy: keeps this module loadable (e.g. for unit tests)
+    # without the heavy SDK installed, matching fetch-events.py's convention.
+
     parser = argparse.ArgumentParser()
     # Default from the SUBTENSOR_RPC_URL env (the hidden chain-RPC secret; ADR 0012)
     # so the metagraph fetch routes through our own node without exposing its URL;
@@ -129,8 +148,8 @@ def main():
                     "consensus": to_float(_at(consensus, uid)),
                     "incentive": to_float(_at(incentives, uid)),
                     "dividends": to_float(_at(dividends, uid)),
-                    "emission_tao": to_float(_at(emission, uid)),
-                    "stake_tao": to_float(_at(stake, uid)),
+                    "emission_tao": to_tao_exact(_at(emission, uid)),
+                    "stake_tao": to_tao_exact(_at(stake, uid)),
                     "registered_at_block": reg,
                     "is_immunity_period": 1
                     if (reg is not None and block - reg < immunity)

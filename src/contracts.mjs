@@ -1085,6 +1085,12 @@ export const PUBLIC_ARTIFACTS = [
     "BlocksFeedArtifact",
   ),
   artifact(
+    "blocks-summary",
+    "/metagraph/blocks/summary.json",
+    "Block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread — computed live from the blocks D1 tier at /api/v1/blocks/summary (no static file).",
+    "BlocksSummaryArtifact",
+  ),
+  artifact(
     "block-detail",
     "/metagraph/blocks/{ref}.json",
     "Per-block detail (by numeric block_number or 0x block_hash) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks/{ref} (no static file).",
@@ -2266,6 +2272,17 @@ export const API_ROUTES = [
       { name: "min_extrinsics", schema: { type: "integer", minimum: 0 } },
       { name: "min_events", schema: { type: "integer", minimum: 0 } },
     ]),
+    [],
+  ),
+  route(
+    "blocks-summary",
+    "GET",
+    "/api/v1/blocks/summary",
+    "/metagraph/blocks/summary.json",
+    "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
+    "short",
+    ["blocks", "analytics"],
+    [],
     [],
   ),
   route(
