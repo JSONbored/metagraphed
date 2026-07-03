@@ -57,6 +57,72 @@
         "submitted_by": "glorydavid03023"
       },
       "notes": "Official Eirel whitepaper (application/pdf), linked as \"Whitepaper\" from the homepage and footer."
+    },
+    {
+      "id": "sn-36-eirel-openapi",
+      "name": "Eirel owner-api OpenAPI spec",
+      "kind": "openapi",
+      "url": "https://api.eirel.ai/openapi.json",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "schema_url": "https://api.eirel.ai/openapi.json",
+      "schema_status": "machine-readable",
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Machine-readable OpenAPI 3.1 spec (owner-api, 121 paths) served on the project's own api.eirel.ai host; documents the public dashboard and metagraph read endpoints registered below."
+    },
+    {
+      "id": "sn-36-eirel-dashboard-overview",
+      "name": "Eirel network overview",
+      "kind": "subnet-api",
+      "url": "https://api.eirel.ai/api/v1/dashboard/overview",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Public dashboard summary (miner/validator/family counts, current run) that self-reports \"netuid\": 36 and \"network\": \"finney\"; GET /api/v1/dashboard/overview in the OpenAPI spec."
+    },
+    {
+      "id": "sn-36-eirel-dashboard-runs",
+      "name": "Eirel evaluation runs",
+      "kind": "subnet-api",
+      "url": "https://api.eirel.ai/api/v1/dashboard/runs",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Public feed of Eirel evaluation runs (id, sequence, status, schedule window); GET /api/v1/dashboard/runs in the OpenAPI spec."
+    },
+    {
+      "id": "sn-36-eirel-metagraph-status",
+      "name": "Eirel metagraph status",
+      "kind": "subnet-api",
+      "url": "https://api.eirel.ai/v1/metagraph/status",
+      "provider": "eirel",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": ["https://api.eirel.ai/openapi.json", "https://eirel.ai/"],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "codevector96"
+      },
+      "notes": "Public metagraph status for netuid 36 on finney (validator/miner counts, timestamp); GET /v1/metagraph/status in the OpenAPI spec."
     }
   ],
   "social": {

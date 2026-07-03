@@ -59,10 +59,8 @@ import {
   MAX_HISTORY_POINTS,
 } from "../../src/neuron-history.mjs";
 import {
-  ACCOUNT_EVENT_COLUMNS,
   INGESTED_EVENT_KINDS,
   buildAccountHistory,
-  formatAccountEvent,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
@@ -80,15 +78,12 @@ import {
   buildBlock,
   loadBlocks,
 } from "../../src/blocks.mjs";
-import {
-  EXTRINSIC_READ_COLUMNS,
-  buildExtrinsic,
-  loadExtrinsics,
-} from "../../src/extrinsics.mjs";
+import { loadExtrinsics } from "../../src/extrinsics.mjs";
 import {
   loadBlockEvents,
   loadBlockExtrinsics,
 } from "../../src/block-subresources.mjs";
+import { loadExtrinsicDetail } from "../../src/extrinsic-detail.mjs";
 import {
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_READ_COLUMNS,
@@ -97,6 +92,10 @@ import {
   loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import {
+  PERFORMANCE_READ_COLUMNS,
+  buildSubnetPerformance,
+} from "../../src/subnet-performance.mjs";
 import {
   loadCounterparties,
   loadCounterpartyRelationship,
@@ -148,7 +147,6 @@ function parseBoundedIntParam(url, parameter, { def, min, max }) {
 // 1e3, empty/extra halves) into a wrong-but-valid lookup; require bare decimal
 // segments + Number.isSafeInteger (same convention as parseBoundedIntParam).
 const STRICT_UINT_RE = /^\d+$/;
-const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 
 // A strict non-negative block_number, or null for a non-decimal ref (so the
 // caller skips the lookup and serves the schema-stable miss).
@@ -448,6 +446,36 @@ export async function handleSubnetConcentration(request, env, netuid, url) {
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/concentration.json`,
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/performance: reward-distribution + score-spread
+// metrics for one subnet — how concentrated the actual REWARDS are (Gini/HHI/
+// Nakamoto/top-share of incentive across neurons and dividends across validators)
+// and how the 0..1 trust/consensus/validator_trust scores are spread (p10..p90).
+// The reward-flow companion to /concentration (which measures stake/emission).
+// Computed from the neurons D1 tier; a cold/absent store or empty subnet → 200
+// with null blocks (schema-stable, never 404), mirroring the sibling routes.
+export async function handleSubnetPerformance(request, env, netuid, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const rows = await d1All(
+    env,
+    `SELECT ${PERFORMANCE_READ_COLUMNS} FROM neurons WHERE netuid = ?`,
+    [netuid],
+  );
+  const data = buildSubnetPerformance(rows, netuid);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/performance.json`,
         data.captured_at,
       ),
     },
@@ -853,6 +881,7 @@ export async function handleAccount(request, env, ss58) {
 export async function handleAccountEvents(request, env, ss58, url) {
   const validationError = validateQueryParams(url, [
     "kind",
+    "netuid",
     "block_start",
     "block_end",
     "limit",
@@ -874,6 +903,11 @@ export async function handleAccountEvents(request, env, ss58, url) {
     "block_end",
   );
   if (blockEnd.error) return analyticsQueryError(blockEnd.error);
+  const netuid = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if (netuid.error) return analyticsQueryError(netuid.error);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -890,6 +924,7 @@ export async function handleAccountEvents(request, env, ss58, url) {
     limit: url.searchParams.get("limit"),
     offset: url.searchParams.get("offset"),
     kind,
+    netuid: netuid.value,
     cursor: url.searchParams.get("cursor"),
     blockStart: blockStart.value,
     blockEnd: blockEnd.value,
@@ -1603,50 +1638,7 @@ export async function handleExtrinsics(request, env, url) {
 // embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
 // Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
 export async function handleExtrinsic(request, env, ref) {
-  const isHash = /^0x[0-9a-fA-F]{64}$/.test(ref);
-  let rows;
-  if (isHash) {
-    rows = await d1All(
-      env,
-      `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE extrinsic_hash = ? ORDER BY block_number DESC, extrinsic_index DESC LIMIT 1`,
-      [ref.toLowerCase()],
-    );
-  } else {
-    // Composite "<block>-<index>": exactly two strict decimal halves, so a
-    // malformed ref (extra segment, empty half, hex, sci-notation) is a clean
-    // miss (extrinsic:null) rather than a coerced wrong-but-valid row.
-    const composite = COMPOSITE_REF_RE.exec(ref);
-    const blockNumber = composite ? Number(composite[1]) : NaN;
-    const extrinsicIndex = composite ? Number(composite[2]) : NaN;
-    rows =
-      composite &&
-      Number.isSafeInteger(blockNumber) &&
-      Number.isSafeInteger(extrinsicIndex)
-        ? await d1All(
-            env,
-            `SELECT ${EXTRINSIC_READ_COLUMNS} FROM extrinsics WHERE block_number = ? AND extrinsic_index = ? LIMIT 1`,
-            [blockNumber, extrinsicIndex],
-          )
-        : [];
-  }
-  // Embed the emitted events once we have the resolved (block_number,
-  // extrinsic_index). A second sequential read; d1All swallows a missing-column
-  // error pre-migration → [] (the embed is additive, never breaks the detail).
-  let events = [];
-  const resolved = rows[0];
-  if (
-    resolved &&
-    resolved.block_number != null &&
-    resolved.extrinsic_index != null
-  ) {
-    const eventRows = await d1All(
-      env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM account_events WHERE block_number = ? AND extrinsic_index = ? ORDER BY event_index ASC LIMIT 50`,
-      [resolved.block_number, resolved.extrinsic_index],
-    );
-    events = eventRows.map(formatAccountEvent).filter(Boolean);
-  }
-  const data = buildExtrinsic(resolved, ref, events);
+  const data = await loadExtrinsicDetail(d1Runner(env), ref);
   return envelopeResponse(
     request,
     {

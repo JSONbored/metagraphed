@@ -389,12 +389,39 @@ assert.ok(
   Array.isArray(vals.validators),
   "list_subnet_validators must return validators[]",
 );
+const globalVals = await callOk("list_global_validators", {
+  sort: "subnet_count",
+  limit: 5,
+});
+assert.ok(
+  Array.isArray(globalVals.validators),
+  "list_global_validators must return validators[]",
+);
+assert.equal(
+  globalVals.sort,
+  "subnet_count",
+  "list_global_validators must echo sort",
+);
+assert.equal(globalVals.limit, 5, "list_global_validators must echo limit");
+assert.equal(
+  typeof globalVals.validator_count,
+  "number",
+  "list_global_validators must return validator_count",
+);
 const yieldCard = await callOk("get_subnet_yield", { netuid: 7 });
 assert.ok(
   Array.isArray(yieldCard.neurons),
   "get_subnet_yield must return neurons[]",
 );
 assert.equal(yieldCard.netuid, 7, "get_subnet_yield must echo the netuid");
+const uptimeFiltered = await callOk("get_subnet_uptime", {
+  netuid: 7,
+  min_samples: 5,
+});
+assert.ok(
+  Array.isArray(uptimeFiltered.surfaces),
+  "get_subnet_uptime must accept the min_samples filter",
+);
 const stakeFlowCold = await callOk("get_subnet_stake_flow", {
   netuid: 7,
   window: "30d",
@@ -505,6 +532,22 @@ assert.equal(
   true,
   "get_chain_activity must isError without the DATA_API binding",
 );
+const blockChainEventsCold = await call("get_block_chain_events", {
+  block_number: 4200000,
+});
+assert.equal(
+  blockChainEventsCold.isError,
+  true,
+  "get_block_chain_events must isError without the DATA_API binding",
+);
+const extrinsicChainEventsCold = await call("get_extrinsic_chain_events", {
+  ref: "4200000-3",
+});
+assert.equal(
+  extrinsicChainEventsCold.isError,
+  true,
+  "get_extrinsic_chain_events must isError without the DATA_API binding",
+);
 const signersCold = await callOk("get_chain_signers", {
   window: "7d",
   limit: 5,
@@ -553,6 +596,13 @@ assert.ok(
   healthTrendsCold.windows?.["7d"] &&
     Array.isArray(healthTrendsCold.windows["7d"].subnets),
   "get_health_trends must return windows.7d.subnets[] on cold D1",
+);
+const networkHealthCold = await callOk("get_network_health", {});
+assert.ok(
+  networkHealthCold.scope === "operational" &&
+    networkHealthCold.global &&
+    Array.isArray(networkHealthCold.subnets),
+  "get_network_health must return scope + global + subnets[] on cold KV",
 );
 const blockExtrinsicsCold = await callOk("list_block_extrinsics", {
   ref: "4200000",

@@ -80,9 +80,15 @@ export const INGESTED_EVENT_KINDS = [
 ];
 
 function toIso(ms) {
+  // D1 can return the INTEGER observed_at as a numeric string; coerce first, and
+  // require n > 0 so a null/blank/zero/invalid cell stays null instead of epoch
+  // 1970. Mirrors the toIso guards in blocks.mjs (#2708) and extrinsics.mjs
+  // (#2714).
   if (ms == null) return null;
   const n = Number(ms);
-  return Number.isFinite(n) ? new Date(n).toISOString() : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const d = new Date(n);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
 // Coerce a block height or index cell to a non-negative integer, or null when
@@ -696,7 +702,7 @@ export async function loadAccountSummary(d1, ss58) {
 export async function loadAccountEvents(
   d1,
   ss58,
-  { limit, offset, kind, cursor, blockStart, blockEnd } = {},
+  { limit, offset, kind, netuid, cursor, blockStart, blockEnd } = {},
 ) {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
@@ -714,6 +720,10 @@ export async function loadAccountEvents(
   if (kind) {
     filterParts.push("AND event_kind = ?");
     filterParams.push(kind);
+  }
+  if (netuid != null) {
+    filterParts.push("AND netuid = ?");
+    filterParams.push(netuid);
   }
   // Block-height range filter, parity with the extrinsics and chain-events
   // feeds: the per-branch hotkey/coldkey indexes both lead block_number, so a

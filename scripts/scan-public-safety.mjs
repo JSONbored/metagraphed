@@ -17,14 +17,28 @@ const targetRoots = [
 const patterns = [
   { name: "local absolute path", regex: /\/Users\/|\/home\/|C:\\Users\\/ },
   { name: "private key marker", regex: /BEGIN [A-Z ]*PRIVATE KEY/ },
-  { name: "github token", regex: /ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+/ },
+  // Covers every GitHub token prefix, not just the personal-access ghp_: gho_
+  // (OAuth), ghu_ (user-to-server), ghs_ (server-to-server / App installation),
+  // and ghr_ (refresh) are all real, leakable credentials in the same family.
+  {
+    name: "github token",
+    regex: /(?:gh[opsur]|github_pat)_[A-Za-z0-9_]+/,
+  },
   { name: "openai-style token", regex: /sk-[A-Za-z0-9]{20,}/ },
   { name: "slack-style token", regex: /xox[baprs]-[A-Za-z0-9-]+/ },
+  // AWS access key id: AKIA (long-term) / ASIA (temporary STS) + 16 upper-alnum.
+  // The signed-URL rule below catches request params, but a bare access key id
+  // pasted into a doc/config is the more common leak and went undetected.
+  { name: "aws access key id", regex: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/ },
   {
     name: "signed object-storage URL parameter",
     regex:
       /[?&](?:X-Amz-(?:Credential|Signature|Security-Token)|X-Goog-(?:Credential|Signature|Security-Token|SignedHeaders|Expires)|X-Oss-(?:Credential|Signature))=/i,
   },
+  // Google API key: the fixed "AIza" prefix + 35 URL-safe chars. A distinctive,
+  // unambiguous format that a leaked Maps/Cloud key takes; none of the URL/token
+  // rules above catch a bare key value.
+  { name: "google api key", regex: /AIza[0-9A-Za-z_-]{35}/ },
   {
     name: "private or loopback URL",
     // Includes link-local 169.254.0.0/16 — the cloud-metadata endpoint

@@ -228,7 +228,7 @@
       "contract_version": "2026-07-02.1",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",
-      "schema_ref": "#/components/schemas/JsonObject",
+      "schema_ref": "#/components/schemas/FixtureArtifact",
       "storage_tier": "r2"
     },
     {
@@ -369,6 +369,13 @@
       "id": "subnet-concentration",
       "path": "/metagraph/subnets/{netuid}/concentration.json",
       "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-02.1",
+      "id": "subnet-performance",
+      "path": "/metagraph/subnets/{netuid}/performance.json",
+      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
       "storage_tier": "r2"
     },
     {
@@ -1610,6 +1617,30 @@
           }
         },
         {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -1754,6 +1785,30 @@
               "unknown"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
           }
         },
         {
@@ -2232,6 +2287,30 @@
           }
         },
         {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
           "name": "fields",
           "schema": {
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
@@ -2564,10 +2643,22 @@
     {
       "artifact_path": "/metagraph/fixtures.json",
       "cache": "standard",
-      "description": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with get_fixture / GET /metagraph/fixtures/{surface_id}.json.",
+      "description": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json.",
       "id": "fixtures",
       "method": "GET",
       "path": "/api/v1/fixtures",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/fixtures/{surface_id}.json",
+      "cache": "standard",
+      "description": "Fetch one captured, sanitized live request/response fixture by surface id.",
+      "id": "fixture-detail",
+      "method": "GET",
+      "path": "/api/v1/fixtures/{surface_id}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
@@ -4322,6 +4413,18 @@
       "query_parameters": []
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/performance.json",
+      "cache": "short",
+      "description": "Fetch reward-distribution & score-spread metrics for one subnet: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores (computed live from the neurons D1 tier). The reward-flow companion to /concentration.",
+      "id": "subnet-performance",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/performance",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/concentration/history.json",
       "cache": "short",
       "description": "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup).",
@@ -4701,7 +4804,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/events.json",
       "cache": "short",
-      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
+      "description": "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851).",
       "id": "account-events",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/events",
@@ -4713,6 +4816,13 @@
           "name": "kind",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         {
@@ -6008,6 +6118,30 @@
               "unknown"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "min_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_latency_ms",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "min_score",
+          "schema": {
+            "type": "number"
+          }
+        },
+        {
+          "name": "max_score",
+          "schema": {
+            "type": "number"
           }
         },
         {

@@ -66,6 +66,7 @@ function toIso(ms) {
 // blocks.mjs / account-events.mjs.
 function toNonNegativeInt(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
@@ -318,7 +319,7 @@ export function buildNeuronHistory(rows, netuid, uid, { window } = {}) {
       return {
         snapshot_date: r.snapshot_date,
         captured_at: toIso(r.captured_at),
-        block_number: r.block_number ?? null,
+        block_number: toNonNegativeInt(r.block_number),
         ...neuron,
       };
     })

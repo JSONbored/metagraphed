@@ -151,9 +151,14 @@ function compareDimensionsFromTokens(tokens) {
 export async function loadSubnetUptime(
   d1,
   netuid,
-  { window = "90d", observedAt = null, now = null } = {},
+  { window = "90d", observedAt = null, now = null, minSamples = null } = {},
 ) {
   const windowParam = Object.hasOwn(UPTIME_WINDOWS, window) ? window : "90d";
+  // Optional min_samples floor: drop low-sample day rows (daily probe count below
+  // the threshold, incl. zero-sample "unknown" days) via HAVING, mirroring the
+  // REST /uptime route (#2700). Null → no filter.
+  const sampleFloor =
+    Number.isInteger(minSamples) && minSamples >= 0 ? minSamples : null;
   const days = UPTIME_WINDOWS[windowParam];
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -181,9 +186,11 @@ export async function loadSubnetUptime(
      FROM surface_uptime_daily
      WHERE netuid = ? AND day >= ?
      GROUP BY COALESCE(surface_key, surface_id), day
-     ORDER BY day DESC
+     ${sampleFloor !== null ? "HAVING SUM(samples) >= ?\n     " : ""}ORDER BY day DESC
      LIMIT ?`,
-    [netuid, cutoff, MAX_UPTIME_ROWS],
+    sampleFloor !== null
+      ? [netuid, cutoff, sampleFloor, MAX_UPTIME_ROWS]
+      : [netuid, cutoff, MAX_UPTIME_ROWS],
   );
   return formatUptime({
     netuid,

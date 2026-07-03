@@ -1049,6 +1049,7 @@ describe("neurons-tier edge cache", () => {
       ["subnet-metagraph", "/api/v1/subnets/7/metagraph"],
       ["subnet-validators", "/api/v1/subnets/7/validators"],
       ["subnet-concentration", "/api/v1/subnets/7/concentration"],
+      ["subnet-performance", "/api/v1/subnets/7/performance"],
     ]) {
       await handleRequest(
         new Request(`https://api.metagraph.sh${path}`),

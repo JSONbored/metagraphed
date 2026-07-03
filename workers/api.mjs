@@ -83,6 +83,7 @@ import {
   handleSubnetStakeFlow,
   canonicalSubnetStakeFlowCachePath,
   handleSubnetYield,
+  handleSubnetPerformance,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
   handleGlobalValidators,
@@ -162,7 +163,6 @@ import {
 } from "../src/health-prober.mjs";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.mjs";
 import {
-  buildGlobalHealth,
   mergeFreshness,
   mergeRpcEndpoints,
   overlayArtifactEndpoints,
@@ -208,6 +208,7 @@ import {
   economicsSnapshotUpsertStatements,
   validEconomicsBackfillRows,
 } from "../src/economics-backfill.mjs";
+import { loadGlobalOperationalHealth } from "../src/global-operational-health.mjs";
 import { handleMcpRequest } from "../src/mcp-server.mjs";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.mjs";
 import { handleBadgeRequest } from "../src/badge.mjs";
@@ -269,6 +270,7 @@ import {
   SUBNET_TURNOVER_PATH_PATTERN,
   SUBNET_STAKE_FLOW_PATH_PATTERN,
   SUBNET_YIELD_PATH_PATTERN,
+  SUBNET_PERFORMANCE_PATH_PATTERN,
   TRENDS_PATH_PATTERN,
   UPTIME_PATH_PATTERN,
   WEBHOOK_SUBSCRIPTION_TOKEN_HEADER,
@@ -1051,6 +1053,10 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (until != null) {
       feedCacheParams.push(`until=${encodeURIComponent(until)}`);
     }
+    const limit = url.searchParams.get("limit");
+    if (limit != null) {
+      feedCacheParams.push(`limit=${encodeURIComponent(limit)}`);
+    }
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
       request.method === "HEAD"
@@ -1398,6 +1404,28 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         Number(yieldMatch[1]),
         resolved.url,
+      );
+    }
+    // Reward-distribution + score-spread over the current neurons snapshot —
+    // per-UID read of the neurons tier, so it edge-caches on the subnet's neuron
+    // captured_at stamp like /concentration, not the health prober tick.
+    const performanceMatch = SUBNET_PERFORMANCE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (performanceMatch) {
+      return withNeuronsEdgeCache(
+        request,
+        ctx,
+        env,
+        Number(performanceMatch[1]),
+        "subnet-performance",
+        () =>
+          handleSubnetPerformance(
+            request,
+            env,
+            Number(performanceMatch[1]),
+            resolved.url,
+          ),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -1749,6 +1777,7 @@ function isMainnetOnlyApiPath(pathname) {
     SUBNET_TURNOVER_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_FLOW_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
+    SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PATH_PATTERN.test(pathname) ||
     ACCOUNT_EVENTS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -2420,17 +2449,12 @@ async function handleApiRequest(
     // Live-only global operational health: KV health:current → D1
     // surface_status, and an explicit `unknown` global when the live store is
     // cold. There is no stored health summary to fall back to (live-only).
-    const liveSnapshot = await resolveLiveHealth({
-      readHealthKv,
-      env,
-      db: env.METAGRAPH_HEALTH_DB,
-    });
-    const liveData = liveSnapshot
-      ? buildGlobalHealth(liveSnapshot, {
-          contract_version: contractVersion(env),
-        })
-      : null;
-    live = { data: liveData || unknownGlobalHealth(contractVersion(env)) };
+    live = {
+      data: await loadGlobalOperationalHealth(
+        { env, readHealthKv, db: env.METAGRAPH_HEALTH_DB },
+        { contractVersion: (e) => contractVersion(e) },
+      ),
+    };
     artifact = { ok: false };
   } else if (matched.id === "subnet-health") {
     artifact = { ok: false };
@@ -3293,24 +3317,6 @@ async function handleAskRequest(request, env) {
       502,
     );
   }
-}
-
-// Explicit `unknown` health payloads for the live-only routes when the live
-// store (KV + D1) is cold — served instead of a stale baked value or a 404.
-function unknownGlobalHealth(contractVersionValue) {
-  return {
-    schema_version: 1,
-    contract_version: contractVersionValue,
-    source: "unavailable",
-    scope: "operational",
-    operational_observed_at: null,
-    health_source: "unavailable",
-    global: {
-      surface_count: 0,
-      status_counts: { ok: 0, degraded: 0, failed: 0, unknown: 0 },
-    },
-    subnets: [],
-  };
 }
 
 function unknownSubnetHealth(netuid) {
