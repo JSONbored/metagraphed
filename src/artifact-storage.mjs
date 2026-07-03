@@ -114,6 +114,9 @@ export const R2_ONLY_PATTERNS = [
   // Network-wide validator weight-setting activity across every subnet, computed live from
   // the account_events WeightsSet stream at /api/v1/chain/weights — never a file.
   /^chain\/weights\.json$/,
+  // Network-wide axon-serving announcement activity across every subnet, computed live from
+  // the account_events AxonServed stream at /api/v1/chain/serving — never a file.
+  /^chain\/serving\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,

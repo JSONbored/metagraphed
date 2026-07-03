@@ -3561,6 +3561,160 @@
         ],
         "type": "object"
       },
+      "ChainServingArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide axon-serving announcement activity over a 7d/30d window across the subnets with observed serving activity: a per-subnet leaderboard (distinct servers, AxonServed count, announcements per server) plus a network rollup with the true distinct server count and a distribution of per-subnet re-announcement intensity. Served live from the account_events AxonServed stream at /api/v1/chain/serving (no static file); subnet_count 0 and the leaderboard empty when cold.",
+        "properties": {
+          "intensity_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet announcements-per-server intensity across the subnets that announced an axon in the window (null when no subnet announced an axon). subnet_count and this distribution cover only subnets with observed AxonServed activity, not every registered subnet.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "mean": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "min": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p25": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p75": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p90": {
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the window: the true distinct servers across all subnets (a hotkey announcing on several subnets counts once, so NOT the sum of the per-subnet counts), total AxonServed events, and the network announcements-per-server intensity (null when no axon was announced).",
+            "properties": {
+              "announcements": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "announcements_per_server": {
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "distinct_servers": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "distinct_servers",
+              "announcements",
+              "announcements_per_server"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "announcements": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "announcements_per_server": {
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "distinct_servers": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "distinct_servers",
+                "announcements",
+                "announcements_per_server"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "intensity_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
       "ChainSignerEntry": {
         "additionalProperties": false,
         "description": "One leaderboard row: an account (extrinsic signer) with its windowed activity.",

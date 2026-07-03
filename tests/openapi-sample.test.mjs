@@ -534,6 +534,94 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.network.weight_sets, 70);
   });
 
+  test("chain serving samples keep announcements-per-server consistent", () => {
+    const serverProps = {
+      distinct_servers: { type: "integer" },
+      announcements: { type: "integer" },
+      announcements_per_server: { type: ["number", "null"] },
+    };
+    const servingSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "observed_at",
+        "subnet_count",
+        "network",
+        "intensity_distribution",
+        "subnets",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        observed_at: { type: "string", format: "date-time" },
+        subnet_count: { type: "integer" },
+        network: {
+          type: "object",
+          required: [
+            "distinct_servers",
+            "announcements",
+            "announcements_per_server",
+          ],
+          properties: serverProps,
+        },
+        intensity_distribution: {
+          type: ["object", "null"],
+          properties: {
+            count: { type: "integer" },
+            mean: { type: "number" },
+            min: { type: "number" },
+            p25: { type: "number" },
+            median: { type: "number" },
+            p75: { type: "number" },
+            p90: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+        subnets: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "netuid",
+              "distinct_servers",
+              "announcements",
+              "announcements_per_server",
+            ],
+            properties: { netuid: { type: "integer" }, ...serverProps },
+          },
+        },
+      },
+    };
+    const sample = s(servingSchema, "data");
+
+    // The worked example is internally consistent: each subnet's announcements_per_server equals
+    // its AxonServed count divided by its distinct servers, and the network rollup does the same.
+    for (const subnet of sample.subnets) {
+      assert.equal(
+        subnet.announcements_per_server,
+        subnet.announcements / subnet.distinct_servers,
+      );
+    }
+    assert.equal(
+      sample.network.announcements_per_server,
+      sample.network.announcements / sample.network.distinct_servers,
+    );
+    assert.equal(sample.subnet_count, sample.subnets.length);
+    assert.equal(sample.intensity_distribution.count, sample.subnets.length);
+
+    // A shape whose network lacks announcements_per_server is not a serving artifact and is left
+    // untouched (guard branch).
+    const notServing = JSON.parse(JSON.stringify(servingSchema));
+    delete notServing.properties.network.properties.announcements_per_server;
+    notServing.properties.network.required =
+      notServing.properties.network.required.filter(
+        (key) => key !== "announcements_per_server",
+      );
+    const untouched = s(notServing, "data");
+    assert.notEqual(untouched.network.announcements, 70);
+  });
+
   test("chain transfer-pair samples keep the top-pair share consistent", () => {
     const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
     const pairSchema = {

@@ -667,6 +667,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-serving",
+      "path": "/metagraph/chain/serving.json",
+      "schema_ref": "#/components/schemas/ChainServingArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
@@ -6138,6 +6145,37 @@
       "id": "chain-weights",
       "method": "GET",
       "path": "/api/v1/chain/weights",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/serving.json",
+      "cache": "short",
+      "description": "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold.",
+      "id": "chain-serving",
+      "method": "GET",
+      "path": "/api/v1/chain/serving",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
