@@ -1088,6 +1088,32 @@
         },
         "additionalProperties": false
       },
+      "ChainStakeFlowArtifact": {
+        "type": "object",
+        "description": "Network-wide net stake flow over a recent window, summed live from the account_events stream across every subnet: TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts. The network companion of SubnetStakeFlowArtifact.",
+        "required": [
+          "schema_version",
+          "window",
+          "total_staked_tao",
+          "total_unstaked_tao",
+          "net_flow_tao",
+          "stake_events",
+          "unstake_events"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "total_staked_tao": { "type": "number" },
+          "total_unstaked_tao": { "type": "number" },
+          "net_flow_tao": { "type": "number" },
+          "stake_events": { "type": "integer", "minimum": 0 },
+          "unstake_events": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
       "SubnetMoversArtifact": {
         "type": "object",
         "description": "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end neuron_daily snapshots.",

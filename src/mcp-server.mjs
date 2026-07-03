@@ -50,6 +50,7 @@ import {
   CHAIN_TRANSFER_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_WINDOW,
 } from "./chain-transfers.mjs";
+import { loadChainStakeFlow } from "./chain-stake-flow.mjs";
 import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
@@ -192,7 +193,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -295,8 +296,9 @@ export const MCP_INSTRUCTIONS =
   "its per-subnet staking flow with direction and concentration labels. For chain-wide " +
   "activity analytics, get_chain_calls returns the extrinsic call-mix " +
   "(count + share per pallet/module) over a 7d/30d window, get_chain_fees the " +
-  "fee/tip market series plus top payers, get_chain_transfers network-wide " +
-  "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
+      "fee/tip market series plus top payers, get_chain_transfers network-wide " +
+      "native-TAO transfer volume plus top senders/receivers, get_chain_stake_flow " +
+      "network-wide net capital in/out (StakeAdded vs StakeRemoved), get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
   "score spread across all subnets, " +
@@ -3809,6 +3811,58 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_chain_stake_flow",
+    title: "Get network-wide net stake flow",
+    description:
+      "Fetch network-wide net stake flow over the requested window " +
+      "(7d, 30d, or 90d; default 30d): TAO staked (StakeAdded) vs unstaked " +
+      "(StakeRemoved), the net capital flow, and event counts, summed live " +
+      "from the account_events stream across every subnet. Use it to see " +
+      "whether capital is entering or leaving the network. ?direction narrows " +
+      "to inflow (in) or outflow (out) only; all (default) reports both sides. " +
+      "The network companion of get_subnet_stake_flow and get_chain_transfers. " +
+      "Mirrors GET /api/v1/chain/stake-flow.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window: {
+          type: "string",
+          enum: STAKE_FLOW_WINDOW_KEYS,
+          description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
+        },
+        direction: {
+          type: "string",
+          enum: STAKE_FLOW_DIRECTIONS,
+          description: `Flow side to report: in | out | all (default ${DEFAULT_STAKE_FLOW_DIRECTION}).`,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const window =
+        optionalString(args, "window") ?? DEFAULT_STAKE_FLOW_WINDOW;
+      if (!Object.hasOwn(STAKE_FLOW_WINDOWS, window)) {
+        throw toolError(
+          "invalid_params",
+          `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
+        );
+      }
+      const direction =
+        optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
+      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+        throw toolError(
+          "invalid_params",
+          `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        );
+      }
+      const { data } = await loadChainStakeFlow(mcpD1Runner(ctx), {
+        windowLabel: window,
+        direction,
+      });
+      return data;
+    },
+  },
+  {
     name: "get_network_activity",
     title: "Get daily network-activity aggregates",
     description:
@@ -6019,6 +6073,27 @@ const TOOL_OUTPUT_SCHEMAS = {
         type: "array",
         items: CHAIN_TRANSFER_PARTY_ITEM,
       },
+    },
+  },
+  get_chain_stake_flow: {
+    type: "object",
+    additionalProperties: true,
+    required: [
+      "window",
+      "total_staked_tao",
+      "total_unstaked_tao",
+      "net_flow_tao",
+      "stake_events",
+      "unstake_events",
+    ],
+    properties: {
+      schema_version: { type: "integer" },
+      window: NULLABLE_STRING,
+      total_staked_tao: ANY,
+      total_unstaked_tao: ANY,
+      net_flow_tao: ANY,
+      stake_events: { type: "integer" },
+      unstake_events: { type: "integer" },
     },
   },
   get_network_activity: {

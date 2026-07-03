@@ -1,855 +1,22 @@
 {
-  "artifact_contracts": [
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "contracts",
-      "path": "/metagraph/contracts.json",
-      "schema_ref": "#/components/schemas/ContractsArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "providers",
-      "path": "/metagraph/providers.json",
-      "schema_ref": "#/components/schemas/ProvidersArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "provider-detail",
-      "path": "/metagraph/providers/{slug}.json",
-      "schema_ref": "#/components/schemas/ProviderArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "provider-endpoints",
-      "path": "/metagraph/providers/{slug}/endpoints.json",
-      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "api-index",
-      "path": "/metagraph/api-index.json",
-      "schema_ref": "#/components/schemas/ApiIndexArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "openapi",
-      "path": "/metagraph/openapi.json",
-      "schema_ref": "#/components/schemas/OpenApiArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "type-definitions",
-      "path": "/metagraph/types.d.ts",
-      "schema_ref": null,
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "changelog",
-      "path": "/metagraph/changelog.json",
-      "schema_ref": "#/components/schemas/ChangelogArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnets",
-      "path": "/metagraph/subnets.json",
-      "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "metagraph-latest",
-      "path": "/metagraph/metagraph/latest.json",
-      "schema_ref": "#/components/schemas/SubnetsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-detail",
-      "path": "/metagraph/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetDetailArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-overview",
-      "path": "/metagraph/overview/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetOverviewArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "profiles",
-      "path": "/metagraph/profiles.json",
-      "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "profile-detail",
-      "path": "/metagraph/profiles/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetProfileArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "surfaces",
-      "path": "/metagraph/surfaces.json",
-      "schema_ref": "#/components/schemas/SurfacesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "surface-aliases",
-      "path": "/metagraph/surface-aliases.json",
-      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "surfaces-subnet",
-      "path": "/metagraph/surfaces/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "endpoints",
-      "path": "/metagraph/endpoints.json",
-      "schema_ref": "#/components/schemas/EndpointsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "endpoints-subnet",
-      "path": "/metagraph/endpoints/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "candidates",
-      "path": "/metagraph/candidates.json",
-      "schema_ref": "#/components/schemas/CandidatesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "candidates-subnet",
-      "path": "/metagraph/candidates/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-queue",
-      "path": "/metagraph/review-queue.json",
-      "schema_ref": "#/components/schemas/ReviewQueueArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "search",
-      "path": "/metagraph/search.json",
-      "schema_ref": "#/components/schemas/SearchArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "search-index",
-      "path": "/metagraph/search-index.json",
-      "schema_ref": "#/components/schemas/SearchIndexArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "coverage",
-      "path": "/metagraph/coverage.json",
-      "schema_ref": "#/components/schemas/CoverageArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "coverage-depth",
-      "path": "/metagraph/coverage-depth.json",
-      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "economics",
-      "path": "/metagraph/economics.json",
-      "schema_ref": "#/components/schemas/EconomicsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "economics-trends",
-      "path": "/metagraph/economics/trends.json",
-      "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "registry-summary",
-      "path": "/metagraph/registry-summary.json",
-      "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "lineage",
-      "path": "/metagraph/lineage.json",
-      "schema_ref": "#/components/schemas/LineageArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "fixtures-index",
-      "path": "/metagraph/fixtures.json",
-      "schema_ref": "#/components/schemas/FixturesIndexArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "agent-resources",
-      "path": "/metagraph/agent-resources.json",
-      "schema_ref": "#/components/schemas/AgentResourcesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "fixture-detail",
-      "path": "/metagraph/fixtures/{surface_id}.json",
-      "schema_ref": "#/components/schemas/FixtureArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "curation",
-      "path": "/metagraph/curation.json",
-      "schema_ref": "#/components/schemas/CurationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "gaps",
-      "path": "/metagraph/gaps.json",
-      "schema_ref": "#/components/schemas/GapsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "verification",
-      "path": "/metagraph/verification/latest.json",
-      "schema_ref": "#/components/schemas/VerificationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "verification-subnet",
-      "path": "/metagraph/verification/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetVerificationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "freshness",
-      "path": "/metagraph/freshness.json",
-      "schema_ref": "#/components/schemas/FreshnessArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "source-health",
-      "path": "/metagraph/source-health.json",
-      "schema_ref": "#/components/schemas/SourceHealthArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "source-snapshots",
-      "path": "/metagraph/source-snapshots.json",
-      "schema_ref": "#/components/schemas/SourceSnapshotsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "evidence-ledger",
-      "path": "/metagraph/evidence-ledger.json",
-      "schema_ref": "#/components/schemas/EvidenceLedgerArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "evidence-subnet",
-      "path": "/metagraph/evidence/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetEvidenceArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-latest",
-      "path": "/metagraph/health/latest.json",
-      "schema_ref": "#/components/schemas/HealthLatestArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-summary",
-      "path": "/metagraph/health/summary.json",
-      "schema_ref": "#/components/schemas/HealthSummaryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-history",
-      "path": "/metagraph/health/history/{date}.json",
-      "schema_ref": "#/components/schemas/HealthHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-subnet",
-      "path": "/metagraph/health/subnets/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthSubnetArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-badge",
-      "path": "/metagraph/health/badges/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthBadgeArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-trends",
-      "path": "/metagraph/health/trends/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthTrendsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-trends-bulk",
-      "path": "/metagraph/health/trends.json",
-      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-percentiles",
-      "path": "/metagraph/health/percentiles/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "health-incidents",
-      "path": "/metagraph/health/incidents/{netuid}.json",
-      "schema_ref": "#/components/schemas/HealthIncidentsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-trajectory",
-      "path": "/metagraph/subnets/{netuid}/trajectory.json",
-      "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-concentration",
-      "path": "/metagraph/subnets/{netuid}/concentration.json",
-      "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-performance",
-      "path": "/metagraph/subnets/{netuid}/performance.json",
-      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-concentration-history",
-      "path": "/metagraph/subnets/{netuid}/concentration/history.json",
-      "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-turnover",
-      "path": "/metagraph/subnets/{netuid}/turnover.json",
-      "schema_ref": "#/components/schemas/SubnetTurnoverArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-stake-flow",
-      "path": "/metagraph/subnets/{netuid}/stake-flow.json",
-      "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-movers",
-      "path": "/metagraph/subnets/movers.json",
-      "schema_ref": "#/components/schemas/SubnetMoversArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "global-validators",
-      "path": "/metagraph/validators.json",
-      "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-metagraph",
-      "path": "/metagraph/subnets/{netuid}/metagraph.json",
-      "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-neuron",
-      "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
-      "schema_ref": "#/components/schemas/NeuronDetailArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-validators",
-      "path": "/metagraph/subnets/{netuid}/validators.json",
-      "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-yield",
-      "path": "/metagraph/subnets/{netuid}/yield.json",
-      "schema_ref": "#/components/schemas/SubnetYieldArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-events",
-      "path": "/metagraph/subnets/{netuid}/events.json",
-      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-neuron-history",
-      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
-      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-history",
-      "path": "/metagraph/subnets/{netuid}/history.json",
-      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-identity-history",
-      "path": "/metagraph/subnets/{netuid}/identity-history.json",
-      "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-summary",
-      "path": "/metagraph/accounts/{ss58}.json",
-      "schema_ref": "#/components/schemas/AccountSummaryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-events",
-      "path": "/metagraph/accounts/{ss58}/events.json",
-      "schema_ref": "#/components/schemas/AccountEventsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-history",
-      "path": "/metagraph/accounts/{ss58}/history.json",
-      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-extrinsics",
-      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
-      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-transfers",
-      "path": "/metagraph/accounts/{ss58}/transfers.json",
-      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-counterparties",
-      "path": "/metagraph/accounts/{ss58}/counterparties.json",
-      "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-stake-flow",
-      "path": "/metagraph/accounts/{ss58}/stake-flow.json",
-      "schema_ref": "#/components/schemas/AccountStakeFlowArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-subnets",
-      "path": "/metagraph/accounts/{ss58}/subnets.json",
-      "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "account-balance",
-      "path": "/metagraph/accounts/{ss58}/balance.json",
-      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "blocks-feed",
-      "path": "/metagraph/blocks.json",
-      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "block-detail",
-      "path": "/metagraph/blocks/{ref}.json",
-      "schema_ref": "#/components/schemas/BlockDetailArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "block-extrinsics",
-      "path": "/metagraph/blocks/{ref}/extrinsics.json",
-      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "block-events",
-      "path": "/metagraph/blocks/{ref}/events.json",
-      "schema_ref": "#/components/schemas/BlockEventsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-events-feed",
-      "path": "/metagraph/chain-events.json",
-      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "block-chain-events",
-      "path": "/metagraph/blocks/{ref}/chain-events.json",
-      "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-events-stats",
-      "path": "/metagraph/chain-events/stats.json",
-      "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "extrinsics-feed",
-      "path": "/metagraph/extrinsics.json",
-      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "extrinsic-detail",
-      "path": "/metagraph/extrinsics/{hash}.json",
-      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-activity",
-      "path": "/metagraph/chain/activity.json",
-      "schema_ref": "#/components/schemas/ChainActivityArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-calls",
-      "path": "/metagraph/chain/calls.json",
-      "schema_ref": "#/components/schemas/ChainCallsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-signers",
-      "path": "/metagraph/chain/signers.json",
-      "schema_ref": "#/components/schemas/ChainSignersArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-transfers",
-      "path": "/metagraph/chain/transfers.json",
-      "schema_ref": "#/components/schemas/ChainTransfersArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-fees",
-      "path": "/metagraph/chain/fees.json",
-      "schema_ref": "#/components/schemas/ChainFeesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-concentration",
-      "path": "/metagraph/chain/concentration.json",
-      "schema_ref": "#/components/schemas/ChainConcentrationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "chain-performance",
-      "path": "/metagraph/chain/performance.json",
-      "schema_ref": "#/components/schemas/ChainPerformanceArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-uptime",
-      "path": "/metagraph/subnets/{netuid}/uptime.json",
-      "schema_ref": "#/components/schemas/UptimeArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "global-incidents",
-      "path": "/metagraph/incidents.json",
-      "schema_ref": "#/components/schemas/GlobalIncidentsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "registry-leaderboards",
-      "path": "/metagraph/registry/leaderboards.json",
-      "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "compare",
-      "path": "/metagraph/compare.json",
-      "schema_ref": "#/components/schemas/CompareArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "rpc-usage",
-      "path": "/metagraph/rpc/usage.json",
-      "schema_ref": "#/components/schemas/RpcUsageArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "rpc-endpoints",
-      "path": "/metagraph/rpc-endpoints.json",
-      "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "rpc-pools",
-      "path": "/metagraph/rpc/pools.json",
-      "schema_ref": "#/components/schemas/RpcPoolsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "endpoint-pools",
-      "path": "/metagraph/endpoint-pools.json",
-      "schema_ref": "#/components/schemas/EndpointPoolsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "endpoint-incidents",
-      "path": "/metagraph/endpoint-incidents.json",
-      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "operational-surfaces",
-      "path": "/metagraph/operational-surfaces.json",
-      "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "agent-catalog",
-      "path": "/metagraph/agent-catalog.json",
-      "schema_ref": "#/components/schemas/AgentCatalogArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "agent-catalog-subnet",
-      "path": "/metagraph/agent-catalog/{netuid}.json",
-      "schema_ref": "#/components/schemas/AgentCatalogSubnetArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "schema-drift",
-      "path": "/metagraph/schema-drift.json",
-      "schema_ref": "#/components/schemas/SchemaDriftArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "schema-index",
-      "path": "/metagraph/schemas/index.json",
-      "schema_ref": "#/components/schemas/SchemaIndexArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "schema-snapshot",
-      "path": "/metagraph/schemas/{surface_id}.json",
-      "schema_ref": "#/components/schemas/JsonObject",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "adapter",
-      "path": "/metagraph/adapters/{slug}.json",
-      "schema_ref": "#/components/schemas/AdapterArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "r2-manifest",
-      "path": "/metagraph/r2-manifest.json",
-      "schema_ref": "#/components/schemas/R2ManifestArtifact",
-      "storage_tier": "dual"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-curation",
-      "path": "/metagraph/review/curation.json",
-      "schema_ref": "#/components/schemas/ReviewCurationArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-gap-priorities",
-      "path": "/metagraph/review/gap-priorities.json",
-      "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "subnet-gaps",
-      "path": "/metagraph/review/gaps/{netuid}.json",
-      "schema_ref": "#/components/schemas/SubnetGapsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-profile-completeness",
-      "path": "/metagraph/review/profile-completeness.json",
-      "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-adapter-candidates",
-      "path": "/metagraph/review/adapter-candidates.json",
-      "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-enrichment-queue",
-      "path": "/metagraph/review/enrichment-queue.json",
-      "schema_ref": "#/components/schemas/ReviewEnrichmentQueueArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-enrichment-evidence",
-      "path": "/metagraph/review/enrichment-evidence.json",
-      "schema_ref": "#/components/schemas/ReviewEnrichmentEvidenceArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-enrichment-targets",
-      "path": "/metagraph/review/enrichment-targets.json",
-      "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "review-decisions",
-      "path": "/metagraph/review/maintainer-decisions.json",
-      "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
-      "storage_tier": "r2"
-    },
-    {
-      "contract_version": "2026-07-03.1",
-      "id": "build-summary",
-      "path": "/metagraph/build-summary.json",
-      "schema_ref": "#/components/schemas/BuildSummaryArtifact",
-      "storage_tier": "r2"
-    }
-  ],
-  "base_path": "/api/v1",
+  "schema_version": 1,
   "contract_version": "2026-07-03.1",
   "generated_at": "1970-01-01T00:00:00.000Z",
-  "openapi_url": "/api/v1/openapi.json",
   "primary_domain": "api.metagraph.sh",
+  "base_path": "/api/v1",
+  "openapi_url": "/api/v1/openapi.json",
+  "type_definitions_url": "/metagraph/types.d.ts",
   "response_envelope": {
-    "error_schema_ref": "#/components/schemas/ErrorEnvelope",
+    "schema_version": 1,
     "fields": [
       "ok",
       "data",
       "meta",
       "error"
     ],
-    "notes": "Worker API routes wrap canonical /metagraph artifacts without changing artifact truth.",
-    "schema_version": 1,
-    "success_schema_ref": "#/components/schemas/SuccessEnvelope"
+    "success_schema_ref": "#/components/schemas/SuccessEnvelope",
+    "error_schema_ref": "#/components/schemas/ErrorEnvelope",
+    "notes": "Worker API routes wrap canonical /metagraph artifacts without changing artifact truth."
   },
   "routes": [
     {
@@ -886,32 +53,33 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "netuids",
           "schema": {
+            "type": "string",
             "maxLength": 767,
-            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
-            "type": "string"
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$"
           }
         },
         {
           "name": "coverage_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native-only",
               "manifested",
               "probed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -919,13 +87,13 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "domain",
           "schema": {
+            "type": "string",
             "enum": [
               "agents",
               "compute",
@@ -941,28 +109,27 @@
               "security",
               "storage",
               "training"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "active",
               "inactive"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "subnet_type",
           "schema": {
+            "type": "string",
             "enum": [
               "root",
               "application"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1070,29 +237,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "block",
               "candidate_count",
@@ -1108,13 +276,12 @@
               "subnet_type",
               "surface_count",
               "tempo"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1123,14 +290,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1168,23 +335,24 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "subnet_type",
           "schema": {
+            "type": "string",
             "enum": [
               "root",
               "application"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -1192,8 +360,7 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1205,25 +372,25 @@
         {
           "name": "confidence",
           "schema": {
+            "type": "string",
             "enum": [
               "low",
               "medium",
               "high"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "profile_level",
           "schema": {
+            "type": "string",
             "enum": [
               "directory-only",
               "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1235,29 +402,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate_count",
               "completeness_score",
@@ -1269,13 +437,12 @@
               "operational_interface_count",
               "profile_level",
               "review_state"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1284,14 +451,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1362,13 +529,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -1384,8 +552,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1397,42 +564,42 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "id",
               "kind",
               "name",
               "netuid",
               "provider"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1441,14 +608,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1470,6 +637,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -1485,8 +653,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1498,42 +665,42 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "id",
               "kind",
               "name",
               "netuid",
               "provider"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1542,14 +709,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1576,6 +743,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -1591,37 +759,36 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "layer",
           "schema": {
+            "type": "string",
             "enum": [
               "bittensor-base",
               "data-provider",
               "docs-provider",
               "subnet-app"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "pool_eligible",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1633,6 +800,7 @@
         {
           "name": "publication_state",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate",
               "verified",
@@ -1640,20 +808,19 @@
               "pool-eligible",
               "disabled",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1683,29 +850,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "last_checked",
@@ -1717,13 +885,12 @@
               "publication_state",
               "score",
               "status"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1732,14 +899,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1765,6 +932,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -1780,30 +948,29 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "layer",
           "schema": {
+            "type": "string",
             "enum": [
               "bittensor-base",
               "data-provider",
               "docs-provider",
               "subnet-app"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "pool_eligible",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1815,6 +982,7 @@
         {
           "name": "publication_state",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate",
               "verified",
@@ -1822,20 +990,19 @@
               "pool-eligible",
               "disabled",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1865,29 +1032,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "last_checked",
@@ -1899,13 +1067,12 @@
               "publication_state",
               "score",
               "status"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -1914,14 +1081,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -1945,13 +1112,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -1967,8 +1135,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -1980,6 +1147,7 @@
         {
           "name": "state",
           "schema": {
+            "type": "string",
             "enum": [
               "schema-invalid",
               "schema-valid",
@@ -1987,36 +1155,36 @@
               "verified",
               "stale",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "confidence",
               "id",
@@ -2025,13 +1193,12 @@
               "netuid",
               "provider",
               "state"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2040,14 +1207,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2070,6 +1237,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -2085,8 +1253,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -2098,6 +1265,7 @@
         {
           "name": "state",
           "schema": {
+            "type": "string",
             "enum": [
               "schema-invalid",
               "schema-valid",
@@ -2105,36 +1273,36 @@
               "verified",
               "stale",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "confidence",
               "id",
@@ -2143,13 +1311,12 @@
               "netuid",
               "provider",
               "state"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2158,14 +1325,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2194,66 +1361,66 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "data-provider",
               "docs-provider",
               "infrastructure-provider",
               "registry",
               "subnet-team"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "authority",
           "schema": {
+            "type": "string",
             "enum": [
               "community",
               "official",
               "provider-claimed",
               "registry-observed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "authority",
               "id",
               "kind",
               "name"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2296,6 +1463,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -2311,42 +1479,42 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "layer",
           "schema": {
+            "type": "string",
             "enum": [
               "bittensor-base",
               "data-provider",
               "docs-provider",
               "subnet-app"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "pool_eligible",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "publication_state",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate",
               "verified",
@@ -2354,20 +1522,19 @@
               "pool-eligible",
               "disabled",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -2397,29 +1564,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "last_checked",
@@ -2431,13 +1599,12 @@
               "publication_state",
               "score",
               "status"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2446,14 +1613,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2489,13 +1656,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "tier",
           "schema": {
+            "type": "string",
             "enum": [
               "agent-ready",
               "machine-usable",
@@ -2503,33 +1671,32 @@
               "needs-evidence",
               "hard-blocked",
               "missing-interface"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "agent_status",
           "schema": {
+            "type": "string",
             "enum": [
               "callable",
               "base-layer",
               "candidate",
               "needs-evidence",
               "blocked"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "blocker_level",
           "schema": {
+            "type": "string",
             "enum": [
               "none",
               "hard-blocked",
               "needs-review",
               "missing-data"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -2541,29 +1708,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "agent_status",
               "blocker_level",
@@ -2572,13 +1740,12 @@
               "priority_score",
               "score",
               "tier"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2587,14 +1754,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2616,18 +1783,18 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "registration_allowed",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -2639,29 +1806,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "alpha_fdv_tao",
               "alpha_market_cap_tao",
@@ -2680,13 +1848,12 @@
               "subnet_volume_tao",
               "total_stake_tao",
               "validator_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2695,14 +1862,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2721,14 +1888,14 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d",
               "1y",
               "all"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -2810,59 +1977,59 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "coverage_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native-only",
               "manifested",
               "probed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "coverage_level",
               "curation_level",
               "name",
               "netuid"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2890,24 +2057,25 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "coverage_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native-only",
               "manifested",
               "probed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -2915,49 +2083,48 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "coverage_level",
               "curation_level",
               "gap_count",
               "name",
               "netuid"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -2985,13 +2152,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -2999,8 +2167,7 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -3012,29 +2179,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate_count",
               "curation_level",
@@ -3044,13 +2212,12 @@
               "priority_score",
               "surface_count",
               "verified_candidate_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3059,14 +2226,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -3088,6 +2255,7 @@
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -3095,8 +2263,7 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -3108,29 +2275,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate_count",
               "curation_level",
@@ -3140,13 +2308,12 @@
               "priority_score",
               "surface_count",
               "verified_candidate_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3177,49 +2344,50 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "profile_level",
           "schema": {
+            "type": "string",
             "enum": [
               "directory-only",
               "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "confidence",
           "schema": {
+            "type": "string",
             "enum": [
               "low",
               "medium",
               "high"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "identity_level",
           "schema": {
+            "type": "string",
             "enum": [
               "none",
               "directory",
               "partial",
               "complete"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "identity_promotion_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3235,47 +2403,47 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "native_name_quality",
           "schema": {
+            "type": "string",
             "enum": [
               "chain",
               "placeholder",
               "empty"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate_count",
               "completeness_score",
@@ -3291,13 +2459,12 @@
               "priority_score",
               "profile_level",
               "stale_identity_candidate_kind_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3306,14 +2473,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -3339,13 +2506,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -3353,13 +2521,13 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "candidate_api_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3375,13 +2543,13 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "operational_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3397,8 +2565,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -3410,41 +2577,42 @@
         {
           "name": "recommended_adapter_kind",
           "schema": {
+            "type": "string",
             "enum": [
               "custom-adapter",
               "data-artifact-adapter",
               "generic-openapi-or-custom",
               "stream-adapter"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate_api_count",
               "candidate_api_kinds",
@@ -3455,13 +2623,12 @@
               "operational_surface_count",
               "priority_score",
               "recommended_adapter_kind"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3470,14 +2637,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -3508,6 +2675,7 @@
         {
           "name": "curation_level",
           "schema": {
+            "type": "string",
             "enum": [
               "native",
               "candidate-discovered",
@@ -3515,13 +2683,13 @@
               "machine-verified",
               "maintainer-reviewed",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "direct_submission_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3537,13 +2705,13 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "evidence_action",
           "schema": {
+            "type": "string",
             "enum": [
               "submit-new-evidence",
               "verify-existing-evidence",
@@ -3551,38 +2719,38 @@
               "review-existing-evidence",
               "maintainer-review-existing-evidence",
               "monitor"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "identity_level",
           "schema": {
+            "type": "string",
             "enum": [
               "none",
               "directory",
               "partial",
               "complete"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "lane",
           "schema": {
+            "type": "string",
             "enum": [
               "direct-submission",
               "maintainer-review",
               "adapter-candidate",
               "monitoring-followup",
               "baseline-monitoring"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "missing_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3598,28 +2766,27 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "profile_level",
           "schema": {
+            "type": "string",
             "enum": [
               "directory-only",
               "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -3637,11 +2804,11 @@
         {
           "name": "manual_review_required",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -3653,29 +2820,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "adapter_score",
               "candidate_count",
@@ -3695,13 +2863,12 @@
               "stale_candidate_count",
               "surface_count",
               "verified_candidate_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3710,14 +2877,14 @@
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -3742,6 +2909,7 @@
         {
           "name": "direct_submission_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3757,13 +2925,13 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "evidence_action",
           "schema": {
+            "type": "string",
             "enum": [
               "submit-new-evidence",
               "verify-existing-evidence",
@@ -3771,26 +2939,26 @@
               "review-existing-evidence",
               "maintainer-review-existing-evidence",
               "monitor"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "lane",
           "schema": {
+            "type": "string",
             "enum": [
               "direct-submission",
               "maintainer-review",
               "adapter-candidate",
               "monitoring-followup",
               "baseline-monitoring"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "missing_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3806,15 +2974,14 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -3826,42 +2993,42 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "evidence_action",
               "lane",
               "name",
               "netuid",
               "priority_score"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -3899,16 +3066,17 @@
         {
           "name": "auto_review_candidate",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "evidence_action",
           "schema": {
+            "type": "string",
             "enum": [
               "submit-new-evidence",
               "verify-existing-evidence",
@@ -3916,25 +3084,25 @@
               "review-existing-evidence",
               "maintainer-review-existing-evidence",
               "monitor"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "identity_level",
           "schema": {
+            "type": "string",
             "enum": [
               "none",
               "directory",
               "partial",
               "complete"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3950,36 +3118,36 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "lane",
           "schema": {
+            "type": "string",
             "enum": [
               "direct-submission",
               "maintainer-review",
               "adapter-candidate",
               "monitoring-followup",
               "baseline-monitoring"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "manual_review_required",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "missing_kinds",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -3995,28 +3163,27 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "profile_level",
           "schema": {
+            "type": "string",
             "enum": [
               "directory-only",
               "identity-partial",
               "identity-complete",
               "operational",
               "adapter-backed"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -4028,18 +3195,19 @@
         {
           "name": "submission_route",
           "schema": {
+            "type": "string",
             "enum": [
               "direct-candidate-pr",
               "adapter-request",
               "maintainer-review",
               "status-report"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "target_action",
           "schema": {
+            "type": "string",
             "enum": [
               "submit-new-candidate",
               "replace-stale-candidate",
@@ -4048,20 +3216,19 @@
               "adapter-review",
               "maintainer-review",
               "monitoring-followup"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "target_type",
           "schema": {
+            "type": "string",
             "enum": [
               "surface-candidate",
               "adapter-review",
               "maintainer-review",
               "monitoring-followup"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -4073,29 +3240,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "auto_review_candidate",
               "evidence_action",
@@ -4110,13 +3278,12 @@
               "submission_route",
               "target_action",
               "target_type"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -4143,48 +3310,49 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "avg_latency_ms",
               "degraded_count",
@@ -4197,13 +3365,12 @@
               "status",
               "surface_count",
               "unknown_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -4233,13 +3400,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -4255,8 +3423,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -4268,18 +3435,19 @@
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "classification",
           "schema": {
+            "type": "string",
             "enum": [
               "auth-required",
               "content-mismatch",
@@ -4292,36 +3460,36 @@
               "unsupported",
               "unsafe",
               "wrong-chain"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "classification",
               "kind",
@@ -4334,13 +3502,12 @@
               "status_code",
               "surface_id",
               "verified_at"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -4369,6 +3536,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -4384,8 +3552,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -4397,18 +3564,19 @@
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "classification",
           "schema": {
+            "type": "string",
             "enum": [
               "auth-required",
               "content-mismatch",
@@ -4421,36 +3589,36 @@
               "unsupported",
               "unsafe",
               "wrong-chain"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "classification",
               "kind",
@@ -4463,13 +3631,12 @@
               "status_code",
               "surface_id",
               "verified_at"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -4517,11 +3684,11 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4540,11 +3707,11 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4599,12 +3766,12 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4623,23 +3790,23 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d",
               "1y",
               "all"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "changes",
           "schema": {
+            "type": "string",
             "enum": [
               "true"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4658,23 +3825,23 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "direction",
           "schema": {
+            "type": "string",
             "enum": [
               "all",
               "in",
               "out"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4693,42 +3860,42 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "sort",
           "schema": {
+            "type": "string",
             "enum": [
               "stake",
               "emission",
               "validators"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4747,6 +3914,7 @@
         {
           "name": "sort",
           "schema": {
+            "type": "string",
             "enum": [
               "avg_validator_trust",
               "max_validator_trust",
@@ -4755,27 +3923,26 @@
               "total_emission",
               "total_stake",
               "uid_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4794,21 +3961,21 @@
         {
           "name": "validator_permit",
           "schema": {
+            "type": "string",
             "enum": [
               "true"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4837,14 +4004,14 @@
       "query_filter_names": [],
       "query_parameters": [
         {
-          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "schema": {
+            "type": "string",
             "enum": [
               "json",
               "csv"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4881,30 +4048,30 @@
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -4923,14 +4090,14 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d",
               "1y",
               "all"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4949,14 +4116,14 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d",
               "1y",
               "all"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -4975,16 +4142,16 @@
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5027,37 +4194,37 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5082,37 +4249,37 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "from",
           "schema": {
-            "format": "date",
-            "type": "string"
+            "type": "string",
+            "format": "date"
           }
         },
         {
           "name": "to",
           "schema": {
-            "format": "date",
-            "type": "string"
+            "type": "string",
+            "format": "date"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5131,30 +4298,30 @@
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5179,41 +4346,41 @@
         {
           "name": "direction",
           "schema": {
+            "type": "string",
             "enum": [
               "all",
               "sent",
               "received"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5238,18 +4405,18 @@
         {
           "name": "counterparty",
           "schema": {
-            "description": "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58.",
+            "type": "string",
             "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
-            "type": "string"
+            "description": "Optional second SS58 address: switch from the ranked counterparties list to one relationship drilldown (fund-flow totals plus recent transfer evidence). Must differ from ss58."
           }
         },
         {
           "name": "limit",
           "schema": {
-            "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100,
+            "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50)."
           }
         }
       ]
@@ -5268,23 +4435,23 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d",
               "90d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "direction",
           "schema": {
+            "type": "string",
             "enum": [
               "all",
               "in",
               "out"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -5327,16 +4494,16 @@
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5354,50 +4521,50 @@
         {
           "name": "spec_version",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "from",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "to",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "min_extrinsics",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "min_events",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5428,16 +4595,16 @@
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5456,16 +4623,16 @@
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5484,53 +4651,53 @@
         {
           "name": "pallet",
           "schema": {
-            "maxLength": 64,
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           }
         },
         {
           "name": "method",
           "schema": {
-            "maxLength": 64,
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           }
         },
         {
           "name": "block",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "extrinsic",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
-            "maxLength": 33,
+            "type": "string",
             "pattern": "^\\d+\\.\\d+$",
-            "type": "string"
+            "maxLength": 33,
+            "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers."
           }
         },
         {
           "name": "before",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 200,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 200
           }
         }
       ]
@@ -5549,9 +4716,9 @@
         {
           "name": "blocks",
           "schema": {
-            "maximum": 5000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 5000
           }
         }
       ]
@@ -5582,16 +4749,16 @@
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "offset",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5603,8 +4770,8 @@
         {
           "name": "block",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
@@ -5628,39 +4795,39 @@
         {
           "name": "success",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "block_start",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "block_end",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "from",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "to",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5691,11 +4858,11 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -5714,36 +4881,36 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "group_by",
           "schema": {
+            "type": "string",
             "enum": [
               "module",
               "module_function"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "call_module",
           "schema": {
-            "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "maxLength": 100
           }
         }
       ]
@@ -5762,36 +4929,36 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "sort",
           "schema": {
+            "type": "string",
             "enum": [
               "tx_count",
               "total_fee_tao"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "call_module",
           "schema": {
-            "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "maxLength": 100
           }
         }
       ]
@@ -5810,19 +4977,54 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/stake-flow.json",
+      "cache": "short",
+      "description": "Fetch network-wide net stake flow over a 7d/30d/90d window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and stake/unstake event counts. ?direction=all|in|out narrows to one side. Computed live from the account_events stream; schema-stable zeros when cold.",
+      "id": "chain-stake-flow",
+      "method": "GET",
+      "path": "/api/v1/chain/stake-flow",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ]
+          }
+        },
+        {
+          "name": "direction",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "all",
+              "in",
+              "out"
+            ]
           }
         }
       ]
@@ -5841,26 +5043,26 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         },
         {
           "name": "call_module",
           "schema": {
-            "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "maxLength": 100
           }
         }
       ]
@@ -5903,18 +5105,18 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "90d",
               "1y"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "min_samples",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         }
       ]
@@ -5933,6 +5135,7 @@
         {
           "name": "board",
           "schema": {
+            "type": "string",
             "enum": [
               "healthiest",
               "fastest-rpc",
@@ -5944,16 +5147,15 @@
               "cheapest-registration",
               "highest-emission",
               "validator-headroom"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 100,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 100
           }
         }
       ]
@@ -5972,9 +5174,9 @@
         {
           "name": "netuids",
           "schema": {
+            "type": "string",
             "maxLength": 767,
-            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$",
-            "type": "string"
+            "pattern": "^\\d{1,5}(,\\d{1,5}){0,127}$"
           }
         },
         {
@@ -5999,11 +5201,11 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -6052,41 +5254,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "claim",
               "source_url",
               "subject",
               "verified_at"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6116,41 +5318,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "claim",
               "source_url",
               "subject",
               "verified_at"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6192,41 +5394,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "id",
               "kind",
               "path",
               "record_count"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6258,6 +5460,7 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -6273,37 +5476,36 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "layer",
           "schema": {
+            "type": "string",
             "enum": [
               "bittensor-base",
               "data-provider",
               "docs-provider",
               "subnet-app"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "pool_eligible",
           "schema": {
+            "type": "string",
             "enum": [
               "true",
               "false"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -6315,6 +5517,7 @@
         {
           "name": "publication_state",
           "schema": {
+            "type": "string",
             "enum": [
               "candidate",
               "verified",
@@ -6322,20 +5525,19 @@
               "pool-eligible",
               "disabled",
               "rejected"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -6365,29 +5567,30 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "last_checked",
@@ -6399,13 +5602,12 @@
               "publication_state",
               "score",
               "status"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6450,12 +5652,12 @@
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "subtensor-rpc",
               "subtensor-wss",
               "archive"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -6485,41 +5687,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "eligible_count",
               "endpoint_count",
               "id",
               "kind"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6550,13 +5752,14 @@
         {
           "name": "netuid",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
           "name": "kind",
           "schema": {
+            "type": "string",
             "enum": [
               "archive",
               "dashboard",
@@ -6572,8 +5775,7 @@
               "subtensor-rpc",
               "subtensor-wss",
               "website"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
@@ -6585,62 +5787,63 @@
         {
           "name": "status",
           "schema": {
+            "type": "string",
             "enum": [
               "ok",
               "degraded",
               "failed",
               "unknown"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "severity",
           "schema": {
+            "type": "string",
             "enum": [
               "critical",
               "warning",
               "info"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "state",
           "schema": {
+            "type": "string",
             "enum": [
               "active",
               "resolved"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "detected_at",
               "endpoint_id",
@@ -6651,13 +5854,12 @@
               "severity",
               "state",
               "status"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6681,11 +5883,11 @@
         {
           "name": "window",
           "schema": {
+            "type": "string",
             "enum": [
               "7d",
               "30d"
-            ],
-            "type": "string"
+            ]
           }
         }
       ]
@@ -6734,41 +5936,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "netuid",
               "slug",
               "title"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6798,41 +6000,41 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-            "type": "string"
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "maximum": 1000,
+            "type": "integer",
             "minimum": 1,
-            "type": "integer"
+            "maximum": 1000
           }
         },
         {
           "name": "cursor",
           "schema": {
-            "minimum": 0,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
           }
         },
         {
-          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "name": "sort",
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_tao`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
           "schema": {
+            "type": "string",
             "enum": [
               "kind",
               "netuid",
               "slug",
               "title"
-            ],
-            "type": "string"
+            ]
           }
         },
         {
-          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "name": "order",
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
           "schema": {
             "enum": [
               "asc",
@@ -6879,6 +6081,846 @@
       "query_parameters": []
     }
   ],
-  "schema_version": 1,
-  "type_definitions_url": "/metagraph/types.d.ts"
+  "artifact_contracts": [
+    {
+      "id": "contracts",
+      "path": "/metagraph/contracts.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ContractsArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "providers",
+      "path": "/metagraph/providers.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ProvidersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "provider-detail",
+      "path": "/metagraph/providers/{slug}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ProviderArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "provider-endpoints",
+      "path": "/metagraph/providers/{slug}/endpoints.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ProviderEndpointsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "api-index",
+      "path": "/metagraph/api-index.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ApiIndexArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "openapi",
+      "path": "/metagraph/openapi.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/OpenApiArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "type-definitions",
+      "path": "/metagraph/types.d.ts",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": null,
+      "storage_tier": "dual"
+    },
+    {
+      "id": "changelog",
+      "path": "/metagraph/changelog.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChangelogArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnets",
+      "path": "/metagraph/subnets.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "metagraph-latest",
+      "path": "/metagraph/metagraph/latest.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-detail",
+      "path": "/metagraph/subnets/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-overview",
+      "path": "/metagraph/overview/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetOverviewArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "profiles",
+      "path": "/metagraph/profiles.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetProfilesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "profile-detail",
+      "path": "/metagraph/profiles/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetProfileArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "surfaces",
+      "path": "/metagraph/surfaces.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SurfacesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "surface-aliases",
+      "path": "/metagraph/surface-aliases.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SurfaceAliasesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "surfaces-subnet",
+      "path": "/metagraph/surfaces/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetSurfacesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "endpoints",
+      "path": "/metagraph/endpoints.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EndpointsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "endpoints-subnet",
+      "path": "/metagraph/endpoints/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetEndpointsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "candidates",
+      "path": "/metagraph/candidates.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/CandidatesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "candidates-subnet",
+      "path": "/metagraph/candidates/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetCandidatesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-queue",
+      "path": "/metagraph/review-queue.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewQueueArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "search",
+      "path": "/metagraph/search.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SearchArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "search-index",
+      "path": "/metagraph/search-index.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SearchIndexArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "coverage",
+      "path": "/metagraph/coverage.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/CoverageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "coverage-depth",
+      "path": "/metagraph/coverage-depth.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/CoverageDepthArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "economics",
+      "path": "/metagraph/economics.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EconomicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "economics-trends",
+      "path": "/metagraph/economics/trends.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EconomicsTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "registry-summary",
+      "path": "/metagraph/registry-summary.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/RegistrySummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "lineage",
+      "path": "/metagraph/lineage.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/LineageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "fixtures-index",
+      "path": "/metagraph/fixtures.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/FixturesIndexArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "agent-resources",
+      "path": "/metagraph/agent-resources.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AgentResourcesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "fixture-detail",
+      "path": "/metagraph/fixtures/{surface_id}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/FixtureArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "curation",
+      "path": "/metagraph/curation.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/CurationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "gaps",
+      "path": "/metagraph/gaps.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/GapsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "verification",
+      "path": "/metagraph/verification/latest.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/VerificationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "verification-subnet",
+      "path": "/metagraph/verification/subnets/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetVerificationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "freshness",
+      "path": "/metagraph/freshness.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/FreshnessArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "source-health",
+      "path": "/metagraph/source-health.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SourceHealthArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "source-snapshots",
+      "path": "/metagraph/source-snapshots.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SourceSnapshotsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "evidence-ledger",
+      "path": "/metagraph/evidence-ledger.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EvidenceLedgerArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "evidence-subnet",
+      "path": "/metagraph/evidence/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-latest",
+      "path": "/metagraph/health/latest.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthLatestArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-summary",
+      "path": "/metagraph/health/summary.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-history",
+      "path": "/metagraph/health/history/{date}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-subnet",
+      "path": "/metagraph/health/subnets/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthSubnetArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-badge",
+      "path": "/metagraph/health/badges/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthBadgeArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-trends",
+      "path": "/metagraph/health/trends/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-trends-bulk",
+      "path": "/metagraph/health/trends.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BulkHealthTrendsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-percentiles",
+      "path": "/metagraph/health/percentiles/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthPercentilesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "health-incidents",
+      "path": "/metagraph/health/incidents/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/HealthIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-trajectory",
+      "path": "/metagraph/subnets/{netuid}/trajectory.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-concentration",
+      "path": "/metagraph/subnets/{netuid}/concentration.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-performance",
+      "path": "/metagraph/subnets/{netuid}/performance.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetPerformanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-concentration-history",
+      "path": "/metagraph/subnets/{netuid}/concentration/history.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetConcentrationHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-turnover",
+      "path": "/metagraph/subnets/{netuid}/turnover.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetTurnoverArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-stake-flow",
+      "path": "/metagraph/subnets/{netuid}/stake-flow.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-movers",
+      "path": "/metagraph/subnets/movers.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetMoversArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "global-validators",
+      "path": "/metagraph/validators.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/GlobalValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-metagraph",
+      "path": "/metagraph/subnets/{netuid}/metagraph.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetMetagraphArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-neuron",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/NeuronDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-validators",
+      "path": "/metagraph/subnets/{netuid}/validators.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetValidatorsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-yield",
+      "path": "/metagraph/subnets/{netuid}/yield.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetYieldArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-events",
+      "path": "/metagraph/subnets/{netuid}/events.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-neuron-history",
+      "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-history",
+      "path": "/metagraph/subnets/{netuid}/history.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-identity-history",
+      "path": "/metagraph/subnets/{netuid}/identity-history.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetIdentityHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-summary",
+      "path": "/metagraph/accounts/{ss58}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-events",
+      "path": "/metagraph/accounts/{ss58}/events.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-history",
+      "path": "/metagraph/accounts/{ss58}/history.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountHistoryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-extrinsics",
+      "path": "/metagraph/accounts/{ss58}/extrinsics.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-transfers",
+      "path": "/metagraph/accounts/{ss58}/transfers.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-counterparties",
+      "path": "/metagraph/accounts/{ss58}/counterparties.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountCounterpartiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-stake-flow",
+      "path": "/metagraph/accounts/{ss58}/stake-flow.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-subnets",
+      "path": "/metagraph/accounts/{ss58}/subnets.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountSubnetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "account-balance",
+      "path": "/metagraph/accounts/{ss58}/balance.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AccountBalanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "blocks-feed",
+      "path": "/metagraph/blocks.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "block-detail",
+      "path": "/metagraph/blocks/{ref}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BlockDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "block-extrinsics",
+      "path": "/metagraph/blocks/{ref}/extrinsics.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BlockExtrinsicsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "block-events",
+      "path": "/metagraph/blocks/{ref}/events.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BlockEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-events-feed",
+      "path": "/metagraph/chain-events.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainEventsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "block-chain-events",
+      "path": "/metagraph/blocks/{ref}/chain-events.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BlockChainEventsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-events-stats",
+      "path": "/metagraph/chain-events/stats.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainEventsStatsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "extrinsics-feed",
+      "path": "/metagraph/extrinsics.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "extrinsic-detail",
+      "path": "/metagraph/extrinsics/{hash}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ExtrinsicDetailArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-activity",
+      "path": "/metagraph/chain/activity.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainActivityArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-calls",
+      "path": "/metagraph/chain/calls.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainCallsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-signers",
+      "path": "/metagraph/chain/signers.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainSignersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-transfers",
+      "path": "/metagraph/chain/transfers.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainTransfersArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-stake-flow",
+      "path": "/metagraph/chain/stake-flow.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-fees",
+      "path": "/metagraph/chain/fees.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainFeesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-concentration",
+      "path": "/metagraph/chain/concentration.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainConcentrationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "chain-performance",
+      "path": "/metagraph/chain/performance.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ChainPerformanceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-uptime",
+      "path": "/metagraph/subnets/{netuid}/uptime.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/UptimeArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "global-incidents",
+      "path": "/metagraph/incidents.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/GlobalIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "registry-leaderboards",
+      "path": "/metagraph/registry/leaderboards.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/RegistryLeaderboardsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "compare",
+      "path": "/metagraph/compare.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/CompareArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "rpc-usage",
+      "path": "/metagraph/rpc/usage.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/RpcUsageArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "rpc-endpoints",
+      "path": "/metagraph/rpc-endpoints.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/RpcEndpointsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "rpc-pools",
+      "path": "/metagraph/rpc/pools.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/RpcPoolsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "endpoint-pools",
+      "path": "/metagraph/endpoint-pools.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EndpointPoolsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "endpoint-incidents",
+      "path": "/metagraph/endpoint-incidents.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/EndpointIncidentsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "operational-surfaces",
+      "path": "/metagraph/operational-surfaces.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/OperationalSurfacesArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "agent-catalog",
+      "path": "/metagraph/agent-catalog.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AgentCatalogArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "agent-catalog-subnet",
+      "path": "/metagraph/agent-catalog/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AgentCatalogSubnetArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "schema-drift",
+      "path": "/metagraph/schema-drift.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SchemaDriftArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "schema-index",
+      "path": "/metagraph/schemas/index.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SchemaIndexArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "schema-snapshot",
+      "path": "/metagraph/schemas/{surface_id}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/JsonObject",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "adapter",
+      "path": "/metagraph/adapters/{slug}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/AdapterArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "r2-manifest",
+      "path": "/metagraph/r2-manifest.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/R2ManifestArtifact",
+      "storage_tier": "dual"
+    },
+    {
+      "id": "review-curation",
+      "path": "/metagraph/review/curation.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewCurationArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-gap-priorities",
+      "path": "/metagraph/review/gap-priorities.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewGapPrioritiesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "subnet-gaps",
+      "path": "/metagraph/review/gaps/{netuid}.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/SubnetGapsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-profile-completeness",
+      "path": "/metagraph/review/profile-completeness.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewProfileCompletenessArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-adapter-candidates",
+      "path": "/metagraph/review/adapter-candidates.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewAdapterCandidatesArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-enrichment-queue",
+      "path": "/metagraph/review/enrichment-queue.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentQueueArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-enrichment-evidence",
+      "path": "/metagraph/review/enrichment-evidence.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentEvidenceArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-enrichment-targets",
+      "path": "/metagraph/review/enrichment-targets.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewEnrichmentTargetsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "review-decisions",
+      "path": "/metagraph/review/maintainer-decisions.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/ReviewDecisionsArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "id": "build-summary",
+      "path": "/metagraph/build-summary.json",
+      "contract_version": "2026-07-03.1",
+      "schema_ref": "#/components/schemas/BuildSummaryArtifact",
+      "storage_tier": "r2"
+    }
+  ]
 }

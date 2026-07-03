@@ -1151,6 +1151,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainTransfersArtifact",
   ),
   artifact(
+    "chain-stake-flow",
+    "/metagraph/chain/stake-flow.json",
+    "Network-wide net stake flow over a 7d/30d/90d window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream at /api/v1/chain/stake-flow (no static file).",
+    "ChainStakeFlowArtifact",
+  ),
+  artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
     "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
@@ -2407,6 +2413,23 @@ export const API_ROUTES = [
     [
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-stake-flow",
+    "GET",
+    "/api/v1/chain/stake-flow",
+    "/metagraph/chain/stake-flow.json",
+    "Fetch network-wide net stake flow over a 7d/30d/90d window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and stake/unstake event counts. ?direction=all|in|out narrows to one side. Computed live from the account_events stream; schema-stable zeros when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d", "90d"] } },
+      {
+        name: "direction",
+        schema: { type: "string", enum: ["all", "in", "out"] },
+      },
     ],
     [],
   ),

@@ -99,6 +99,9 @@ export const R2_ONLY_PATTERNS = [
   /^chain\/signers\.json$/,
   /^chain\/fees\.json$/,
   /^chain\/transfers\.json$/,
+  // Network-wide net stake flow (StakeAdded vs StakeRemoved), computed live from
+  // the account_events stream at /api/v1/chain/stake-flow — never a file.
+  /^chain\/stake-flow\.json$/,
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,
