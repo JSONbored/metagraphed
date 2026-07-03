@@ -902,26 +902,46 @@ async function fetchGithubRepo(fullName) {
   }
 }
 
+export async function fetchGithubHtmlHead(url, redirectCount = 0) {
+  const response = await fetch(url, {
+    method: "HEAD",
+    headers: {
+      accept: "text/html",
+      "user-agent": "metagraphed-adapter-snapshot/0.0",
+    },
+    redirect: "manual",
+  });
+  const location = response.headers.get("location");
+  if (
+    [301, 302, 303, 307, 308].includes(response.status) &&
+    location &&
+    redirectCount < 5
+  ) {
+    const redirectTarget = new URL(location, url).toString();
+    if (await isUnsafeResolvedUrl(redirectTarget)) {
+      await response.body?.cancel();
+      return { ok: false, private_redirect_blocked: true };
+    }
+    await response.body?.cancel();
+    return fetchGithubHtmlHead(redirectTarget, redirectCount + 1);
+  }
+  return { ok: response.ok, response };
+}
+
 async function githubHtmlFallback(fullName, failure) {
   const started = performance.now();
   try {
-    const response = await fetch(`https://github.com/${fullName}`, {
-      method: "HEAD",
-      headers: {
-        accept: "text/html",
-        "user-agent": "metagraphed-adapter-snapshot/0.0",
-      },
-    });
-    await response.body?.cancel?.();
-    if (!response.ok) {
+    const head = await fetchGithubHtmlHead(`https://github.com/${fullName}`);
+    if (!head.ok) {
       return failure;
     }
+    await head.response.body?.cancel?.();
     return {
       ...failure,
       status: "html-fallback",
       html_url: `https://github.com/${fullName}`,
       fallback_reason: failure.status,
-      fallback_status_code: response.status,
+      fallback_status_code: head.response.status,
       fallback_latency_ms: Math.round(performance.now() - started),
     };
   } catch {

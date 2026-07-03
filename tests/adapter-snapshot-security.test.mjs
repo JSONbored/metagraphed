@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
-import { fetchJson } from "../scripts/snapshot-adapters.mjs";
+import { fetchJson, fetchGithubHtmlHead } from "../scripts/snapshot-adapters.mjs";
 
 const originalFetch = globalThis.fetch;
 
@@ -99,5 +99,25 @@ describe("adapter snapshot fetch body limits", () => {
     assert.equal(result.ok, false);
     assert.equal(result.status, "too-large");
     assert.equal(result.max_bytes, 2 * 1024 * 1024);
+  });
+});
+
+describe("adapter snapshot GitHub HEAD redirect safety", () => {
+  test("blocks redirects from github.com to private addresses", async () => {
+    const fetchCalls = [];
+    globalThis.fetch = async (url, init) => {
+      fetchCalls.push({ init, url: String(url) });
+      return new Response(null, {
+        status: 302,
+        headers: { location: "http://127.0.0.1/repo" },
+      });
+    };
+
+    const result = await fetchGithubHtmlHead("https://github.com/foo/bar");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.private_redirect_blocked, true);
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0].init.redirect, "manual");
   });
 });
