@@ -88,15 +88,19 @@ describe("public contract registry", () => {
       "/metagraph/schemas/sn-56-gradients-openapi.json",
     );
     assert.equal(schemaMatch.groups.surface_id, "sn-56-gradients-openapi");
+    const aliasMatch = schemaPattern.exec(
+      "/metagraph/schemas/7:subnet-api:new_v2.json",
+    );
+    assert.equal(aliasMatch.groups.surface_id, "7:subnet-api:new_v2");
     assert.equal(
-      schemaPattern.test("/metagraph/schemas/SN-56-gradients-openapi.json"),
+      schemaPattern.test("/metagraph/schemas/../secrets.json"),
       false,
     );
     assert.equal(
       artifactPathFromTemplate("/metagraph/schemas/{surface_id}.json", {
-        surface_id: "sn-56-gradients-openapi",
+        surface_id: "7:subnet-api:new_v2",
       }),
-      "/metagraph/schemas/sn-56-gradients-openapi.json",
+      "/metagraph/schemas/7:subnet-api:new_v2.json",
     );
   });
 
@@ -133,6 +137,36 @@ describe("public contract registry", () => {
     assert.equal(openapi.openapi, "3.1.0");
     assert.equal(openapi.info.version, CONTRACT_VERSION);
     assert.equal(Object.keys(openapi.paths).length, API_ROUTES.length);
+    const fixtureArtifactSchema = openapi.components.schemas.FixtureArtifact;
+    assert.equal(
+      fixtureArtifactSchema.allOf.some(
+        (branch) => branch.$ref === "#/components/schemas/ArtifactBase",
+      ),
+      true,
+    );
+    const fixtureDetailSchema = fixtureArtifactSchema.allOf.find(
+      (branch) => branch.properties?.response,
+    );
+    assert.equal(
+      fixtureDetailSchema.properties.surface_id.pattern,
+      "^[A-Za-z0-9][A-Za-z0-9:._-]*$",
+    );
+    assert.equal(
+      fixtureDetailSchema.properties.request.properties.method.const,
+      "GET",
+    );
+    assert.equal(
+      fixtureDetailSchema.properties.kind.$ref,
+      "#/components/schemas/SurfaceKind",
+    );
+    const fixtureBodySchema =
+      fixtureDetailSchema.properties.response.properties.body;
+    assert.equal(
+      fixtureBodySchema.anyOf.some(
+        (branch) => branch.$ref === "#/components/schemas/JsonObject",
+      ),
+      true,
+    );
     assert.equal(Boolean(openapi.components.schemas.SuccessEnvelope), true);
     assert.equal(Boolean(openapi.components.schemas.ErrorEnvelope), true);
     assert.equal(Boolean(openapi.components.schemas.Surface), true);
@@ -145,6 +179,21 @@ describe("public contract registry", () => {
       true,
     );
     assert.equal(openapi["x-metagraphed"].generated_at, generatedAt);
+
+    const fixtureExample =
+      openapi.paths["/api/v1/fixtures/{surface_id}"].get.responses["200"]
+        .content["application/json"].example;
+    assert.equal(fixtureExample.data.surface_id, "7:subnet-api:new_v2");
+    assert.equal(fixtureExample.data.response.status, 200);
+    assert.deepEqual(fixtureExample.data.response.body, { ok: true });
+    assert.equal(
+      fixtureExample.meta.artifact_path,
+      "/metagraph/fixtures/7:subnet-api:new_v2.json",
+    );
+    assert.equal(fixtureExample.meta.cache, "standard");
+    assert.equal(fixtureExample.meta.source, "r2");
+    assert.equal(fixtureExample.meta.pagination, undefined);
+    assert.equal(fixtureExample.meta.stale_contract, undefined);
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
     assert.equal(

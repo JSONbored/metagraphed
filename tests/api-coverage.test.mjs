@@ -353,6 +353,44 @@ describe("/health readiness", () => {
 
 // --- raw artifact route -------------------------------------------------------
 describe("raw artifact route", () => {
+  const fixture = {
+    schema_version: 1,
+    generated_at: "1970-01-01T00:00:00.000Z",
+    surface_id: "7:subnet-api:new_v2",
+    netuid: 7,
+    subnet_slug: "allways",
+    subnet_name: "AllWays",
+    kind: "subnet-api",
+    captured_at: "2026-06-16T12:00:00.000Z",
+    request: { method: "GET", url: "https://api.all-ways.io/health" },
+    response: {
+      status: 200,
+      content_type: "application/json",
+      body: { ok: true },
+    },
+  };
+
+  function fixtureEnv() {
+    return createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
+            const body = JSON.stringify(fixture);
+            return {
+              async json() {
+                return fixture;
+              },
+              async text() {
+                return body;
+              },
+            };
+          }
+          return null;
+        },
+      },
+    });
+  }
+
   test("serves a raw artifact with source + storage-tier headers", async () => {
     const env = createLocalArtifactEnv();
     const res = await handleRequest(req("/metagraph/subnets.json"), env, {});
@@ -399,6 +437,86 @@ describe("raw artifact route", () => {
     assert.equal(res.status, 404);
     const body = await res.json();
     assert.equal(body.meta.artifact_path, "/metagraph/subnets.json");
+  });
+
+  test("serves R2-only fixture details with rich surface ids", async () => {
+    const res = await handleRequest(
+      req("/metagraph/fixtures/7:subnet-api:new_v2.json"),
+      fixtureEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-storage-tier"), "r2");
+    const body = await res.json();
+    assert.equal(body.surface_id, "7:subnet-api:new_v2");
+    assert.deepEqual(body.response.body, { ok: true });
+  });
+});
+
+// --- fixture detail API --------------------------------------------------------
+describe("fixture detail API", () => {
+  const fixture = {
+    schema_version: 1,
+    generated_at: "1970-01-01T00:00:00.000Z",
+    surface_id: "7:subnet-api:new_v2",
+    netuid: 7,
+    subnet_slug: "allways",
+    subnet_name: "AllWays",
+    kind: "subnet-api",
+    captured_at: "2026-06-16T12:00:00.000Z",
+    request: { method: "GET", url: "https://api.all-ways.io/health" },
+    response: {
+      status: 200,
+      content_type: "application/json",
+      body: { ok: true },
+    },
+  };
+
+  function env() {
+    return createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get(key) {
+          if (key === "latest/fixtures/7:subnet-api:new_v2.json") {
+            return {
+              async json() {
+                return fixture;
+              },
+            };
+          }
+          return null;
+        },
+      },
+    });
+  }
+
+  test("GET /api/v1/fixtures/{surface_id} returns an enveloped fixture", async () => {
+    const res = await handleRequest(
+      req("/api/v1/fixtures/7:subnet-api:new_v2"),
+      env(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.data.surface_id, "7:subnet-api:new_v2");
+    assert.equal(body.data.request.method, "GET");
+    assert.deepEqual(body.data.response.body, { ok: true });
+    assert.equal(
+      body.meta.artifact_path,
+      "/metagraph/fixtures/7:subnet-api:new_v2.json",
+    );
+  });
+
+  test("fixture detail route rejects traversal-like surface ids", async () => {
+    const res = await handleRequest(
+      req("/api/v1/fixtures/..%2Fsecrets"),
+      env(),
+      {},
+    );
+    assert.equal(res.status, 404);
+    assert.equal((await res.json()).error.code, "not_found");
   });
 });
 

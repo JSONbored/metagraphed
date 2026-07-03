@@ -99,6 +99,11 @@ import {
   loadNeuron,
   loadSubnetMetagraph,
   loadSubnetValidators,
+  loadGlobalValidators,
+  GLOBAL_VALIDATOR_SORTS,
+  DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "./metagraph-neurons.mjs";
 import {
   INGESTED_EVENT_KINDS,
@@ -264,7 +269,8 @@ export const MCP_INSTRUCTIONS =
   "usage analytics (request volume, latency, failover, cache hits, per-endpoint " +
   "distribution) over a 7d/30d window, get_subnet_metagraph the " +
   "per-UID neuron snapshot (validator_permit filters to validators), " +
-  "list_subnet_validators its validators ranked by stake, and get_neuron one " +
+  "list_subnet_validators its validators ranked by stake, list_global_validators " +
+  "the network-wide validator leaderboard grouped by hotkey, and get_neuron one " +
   "UID — use these to decide where to mine or validate. For wallet lookup, " +
   "get_account summarizes what one hotkey or coldkey does across the network, " +
   "get_account_balance its live native-TAO balance (free+reserved) from finney RPC, " +
@@ -1908,8 +1914,10 @@ export const MCP_TOOLS = [
       "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
       "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
       "retention for validators and neurons, UID deregistrations, and a 0–100 " +
-      "stability score. Use it to see how stable a subnet's participation base " +
-      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+      "stability score. Set changes to true to include entered/exited validator " +
+      "hotkeys and UID reassignment detail (mirrors ?changes=true on REST). " +
+      "Use it to see how stable a subnet's participation base is over time. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/turnover.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1918,6 +1926,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d", "90d", "1y", "all"],
           description: "History window (default 30d).",
+        },
+        changes: {
+          type: "boolean",
+          description:
+            "When true, include entered/exited validator hotkeys and UID " +
+            "reassignment detail under `changes` (REST ?changes=true parity).",
         },
       },
       required: ["netuid"],
@@ -1929,6 +1943,7 @@ export const MCP_TOOLS = [
       return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
         windowLabel: label,
         windowDays: days,
+        includeChanges: optionalBoolean(args, "changes"),
       });
     },
   },
@@ -2287,6 +2302,48 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       return loadSubnetValidators(mcpD1Runner(ctx), netuid);
+    },
+  },
+  {
+    name: "list_global_validators",
+    title: "List the network-wide validator leaderboard",
+    description:
+      "Fetch the network-wide validator/operator leaderboard: validator-permit " +
+      "identities grouped by hotkey across all current subnet memberships, with " +
+      "trust metrics, cross-subnet stake/emission totals, stake dominance, and " +
+      "top membership rows. Sort by subnet_count (default), uid_count, " +
+      "avg_validator_trust, max_validator_trust, total_stake, total_emission, " +
+      "or stake_dominance; limit caps the list (default 20, max 100). Use it to " +
+      "find operators spanning many subnets or dominating network stake. Mirrors " +
+      "GET /api/v1/validators.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        sort: {
+          type: "string",
+          enum: GLOBAL_VALIDATOR_SORTS,
+          description:
+            "Ranking key (default subnet_count). See tool description for options.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max validators to return (1-100, default 20).",
+          minimum: 1,
+          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
+        },
+      },
+      additionalProperties: false,
+    },
+    async handler(args, ctx) {
+      const sort =
+        optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
+        DEFAULT_GLOBAL_VALIDATOR_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+        GLOBAL_VALIDATOR_LIMIT_MAX,
+      );
+      return loadGlobalValidators(mcpD1Runner(ctx), { sort, limit });
     },
   },
   {
@@ -4655,6 +4712,28 @@ const ACCOUNT_EVENT_ITEM = {
   observed_at: NULLABLE_STRING,
   extrinsic_index: NULLABLE_INT,
 };
+const GLOBAL_VALIDATOR_SUBNET_ITEM = {
+  netuid: NULLABLE_INT,
+  uid: NULLABLE_INT,
+  stake_tao: ANY,
+  emission_tao: ANY,
+  validator_trust: { type: ["number", "null"] },
+};
+const GLOBAL_VALIDATOR_ITEM = {
+  hotkey: NULLABLE_STRING,
+  coldkey: NULLABLE_STRING,
+  coldkey_count: { type: "integer" },
+  subnet_count: { type: "integer" },
+  uid_count: { type: "integer" },
+  total_stake_tao: ANY,
+  total_emission_tao: ANY,
+  avg_validator_trust: { type: ["number", "null"] },
+  max_validator_trust: { type: ["number", "null"] },
+  latest_captured_at: NULLABLE_STRING,
+  latest_block_number: NULLABLE_INT,
+  stake_dominance: { type: ["number", "null"] },
+  subnets: objectItems(GLOBAL_VALIDATOR_SUBNET_ITEM),
+};
 const CHAIN_TRANSFER_PARTY_ITEM = {
   type: "object",
   additionalProperties: false,
@@ -5194,6 +5273,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+      changes: {
+        type: "object",
+        properties: {
+          validators_entered_count: { type: "integer" },
+          validators_exited_count: { type: "integer" },
+          uid_reassignment_count: { type: "integer" },
+          validators_entered: { type: "array", items: { type: "object" } },
+          validators_exited: { type: "array", items: { type: "object" } },
+          uid_reassignments: { type: "array", items: { type: "object" } },
+        },
+      },
     },
   },
   get_subnet_uptime: {
@@ -5268,6 +5358,20 @@ const TOOL_OUTPUT_SCHEMAS = {
       captured_at: NULLABLE_STRING,
       block_number: NULLABLE_INT,
       validators: { type: "array", items: { type: "object" } },
+    },
+  },
+  list_global_validators: {
+    type: "object",
+    additionalProperties: true,
+    required: ["sort", "limit", "validator_count", "validators"],
+    properties: {
+      schema_version: { type: "integer" },
+      sort: { type: "string", enum: GLOBAL_VALIDATOR_SORTS },
+      limit: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      block_number: NULLABLE_INT,
+      validator_count: { type: "integer" },
+      validators: objectItems(GLOBAL_VALIDATOR_ITEM),
     },
   },
   get_neuron: {
