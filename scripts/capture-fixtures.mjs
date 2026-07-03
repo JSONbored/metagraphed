@@ -13,6 +13,7 @@ import {
   flattenSurfaces,
   isJsonContentType,
   isUnsafeUrl,
+  resolveFixtureRedirectTarget,
   resolvePublicUrlAddresses,
   loadSubnets,
   sanitizeFixtureBody,
@@ -80,9 +81,12 @@ async function fetchSample(url, redirectCount = 0) {
       location &&
       redirectCount < 5
     ) {
-      const target = new URL(location, url).toString();
+      const redirect = resolveFixtureRedirectTarget(url, location);
       response.destroy();
-      return fetchSample(target, redirectCount + 1);
+      if (!redirect.ok) {
+        return { ok: false, error: redirect.error };
+      }
+      return fetchSample(redirect.target, redirectCount + 1);
     }
     const contentType = headerValue(response, "content-type") || "";
     const ok = response.statusCode >= 200 && response.statusCode < 300;

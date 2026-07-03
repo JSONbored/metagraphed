@@ -876,6 +876,18 @@ export function isUnsafeUrl(value) {
   }
 }
 
+export function resolveFixtureRedirectTarget(sourceUrl, location) {
+  try {
+    const target = new URL(location, sourceUrl).toString();
+    if (isUnsafeUrl(target)) {
+      return { ok: false, error: "redirect target is unsafe" };
+    }
+    return { ok: true, target };
+  } catch {
+    return { ok: false, error: "invalid redirect location" };
+  }
+}
+
 export async function resolvePublicUrlAddresses(value, resolver = lookup) {
   try {
     const url = new URL(value);
