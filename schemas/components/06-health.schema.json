@@ -1098,6 +1098,7 @@
           "end_date",
           "sort",
           "subnet_count",
+          "network",
           "movers"
         ],
         "properties": {
@@ -1116,9 +1117,42 @@
           },
           "sort": {
             "type": "string",
-            "enum": ["stake", "emission", "validators"]
+            "enum": ["stake", "emission", "validators", "neurons"]
           },
           "subnet_count": { "type": "integer", "minimum": 0 },
+          "network": {
+            "type": "object",
+            "description": "Network-wide aggregate context: total stake/emission/validator counts at each boundary, their deltas, and how many subnets gained, lost, or held flat on the active sort metric (counted over every subnet, not just the returned page).",
+            "required": [
+              "total_stake_start_tao",
+              "total_stake_end_tao",
+              "total_stake_delta_tao",
+              "total_emission_start_tao",
+              "total_emission_end_tao",
+              "total_emission_delta_tao",
+              "total_validators_start",
+              "total_validators_end",
+              "total_validators_delta",
+              "gainers",
+              "losers",
+              "unchanged"
+            ],
+            "properties": {
+              "total_stake_start_tao": { "type": "number" },
+              "total_stake_end_tao": { "type": "number" },
+              "total_stake_delta_tao": { "type": "number" },
+              "total_emission_start_tao": { "type": "number" },
+              "total_emission_end_tao": { "type": "number" },
+              "total_emission_delta_tao": { "type": "number" },
+              "total_validators_start": { "type": "integer", "minimum": 0 },
+              "total_validators_end": { "type": "integer", "minimum": 0 },
+              "total_validators_delta": { "type": "integer" },
+              "gainers": { "type": "integer", "minimum": 0 },
+              "losers": { "type": "integer", "minimum": 0 },
+              "unchanged": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
           "movers": {
             "type": "array",
             "items": {
@@ -1129,10 +1163,12 @@
                 "stake_end_tao",
                 "stake_delta_tao",
                 "stake_pct_change",
+                "stake_share_pct",
                 "emission_start_tao",
                 "emission_end_tao",
                 "emission_delta_tao",
                 "emission_pct_change",
+                "emission_share_pct",
                 "validators_start",
                 "validators_end",
                 "validators_delta",
@@ -1146,10 +1182,20 @@
                 "stake_end_tao": { "type": "number" },
                 "stake_delta_tao": { "type": "number" },
                 "stake_pct_change": { "type": ["number", "null"] },
+                "stake_share_pct": {
+                  "type": ["number", "null"],
+                  "minimum": 0,
+                  "maximum": 100
+                },
                 "emission_start_tao": { "type": "number" },
                 "emission_end_tao": { "type": "number" },
                 "emission_delta_tao": { "type": "number" },
                 "emission_pct_change": { "type": ["number", "null"] },
+                "emission_share_pct": {
+                  "type": ["number", "null"],
+                  "minimum": 0,
+                  "maximum": 100
+                },
                 "validators_start": { "type": "integer", "minimum": 0 },
                 "validators_end": { "type": "integer", "minimum": 0 },
                 "validators_delta": { "type": "integer" },

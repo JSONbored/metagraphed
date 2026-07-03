@@ -29,13 +29,25 @@ function round(value) {
   return Math.round(value * factor) / factor;
 }
 
+function epochMsStamp(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return null;
+  return { ms, value: date.toISOString() };
+}
+
 function captureStamp(value) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { ms: value, value: new Date(value).toISOString() };
-  }
+  if (value == null) return null;
   if (typeof value === "string") {
+    if (/^\d+$/.test(value)) {
+      return epochMsStamp(Number(value));
+    }
     const ms = Date.parse(value);
     if (Number.isFinite(ms)) return { ms, value };
+    return null;
+  }
+  if (typeof value === "number") {
+    return epochMsStamp(value);
   }
   return null;
 }
@@ -108,8 +120,10 @@ export function buildChainPerformance(rows) {
     if (Number(row?.active) === 1) activeCount += 1;
     const rawNetuid = row?.netuid;
     if (rawNetuid != null) {
+      // Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only.
+      if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
       const netuid = Number(rawNetuid);
-      // Guard the coercion: a blank/non-numeric cell must not count as subnet 0.
+      // Guard the coercion: a non-numeric cell must not count as subnet 0.
       if (Number.isInteger(netuid) && netuid >= 0) netuids.add(netuid);
     }
   }

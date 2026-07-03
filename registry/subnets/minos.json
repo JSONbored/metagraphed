@@ -8,7 +8,10 @@
   "netuid": 107,
   "schema_version": 1,
   "slug": "sn-107",
+  "social": { "x": "https://x.com/theminos_ai" },
+  "source_repo": "https://github.com/minos-protocol/minos_subnet",
   "status": "active",
+  "website_url": "https://theminos.ai/",
   "surfaces": [
     {
       "auth_required": false,

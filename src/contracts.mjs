@@ -961,7 +961,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-movers",
     "/metagraph/subnets/movers.json",
-    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between a window's start and end snapshots, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
+    "Cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between a window's start and end snapshots, with each subnet's share of network stake/emission and a network aggregate summary, computed live from the neuron_daily D1 rollup at /api/v1/subnets/movers (no static file).",
     "SubnetMoversArtifact",
   ),
   artifact(
@@ -1871,7 +1871,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/movers",
     "/metagraph/subnets/movers.json",
-    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
+    "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
     "short",
     ["subnets", "analytics"],
     csvRouteQuery([
@@ -1881,7 +1881,10 @@ export const API_ROUTES = [
       },
       {
         name: "sort",
-        schema: { type: "string", enum: ["stake", "emission", "validators"] },
+        schema: {
+          type: "string",
+          enum: ["stake", "emission", "validators", "neurons"],
+        },
       },
       {
         name: "limit",

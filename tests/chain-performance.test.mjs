@@ -116,15 +116,18 @@ describe("buildChainPerformance", () => {
     assert.equal(out.validator_trust.min, 0.85);
   });
 
-  test("subnet_count ignores null and non-integer netuid cells", () => {
+  test("subnet_count ignores null, blank, and non-integer netuid cells", () => {
     const out = buildChainPerformance([
       { incentive: 0.5, netuid: 7 },
+      { incentive: 0.5, netuid: "7" }, // numeric string — same subnet, not double-counted
       { incentive: 0.5, netuid: null }, // rawNetuid == null → skipped
+      { incentive: 0.5, netuid: "" }, // blank → must not coerce to subnet 0
+      { incentive: 0.5, netuid: "   " }, // whitespace-only → must not coerce to subnet 0
       { incentive: 0.5, netuid: "abc" }, // non-integer → skipped
       { incentive: 0.5, netuid: -1 }, // negative → skipped
     ]);
     assert.equal(out.subnet_count, 1); // only netuid 7 counts
-    assert.equal(out.neuron_count, 4);
+    assert.equal(out.neuron_count, 7);
   });
 
   test("accepts a string (ISO) captured_at, ignoring null/unparseable stamps", () => {
@@ -135,6 +138,30 @@ describe("buildChainPerformance", () => {
       { incentive: 0.1, captured_at: "not-a-date" }, // unparseable → ignored
     ]);
     assert.equal(out.captured_at, "2026-06-15T00:00:00.000Z");
+  });
+
+  test("converts D1 string-typed epoch-millisecond captured_at to ISO strings", () => {
+    const out = buildChainPerformance([
+      { incentive: 0.2, captured_at: "1750000000000" },
+      { incentive: 0.3, captured_at: "1750000060000" },
+    ]);
+    assert.equal(out.captured_at, "2025-06-15T15:07:40.000Z");
+  });
+
+  test("rejects invalid captured_at cells instead of leaking junk stamps", () => {
+    for (const captured_at of [
+      "0",
+      "not-a-date",
+      "9".repeat(400),
+      -1,
+      0,
+      true,
+      8_640_000_000_000_001,
+      "8640000000000001",
+    ]) {
+      const out = buildChainPerformance([{ incentive: 0.1, captured_at }]);
+      assert.equal(out.captured_at, null, `expected null for ${captured_at}`);
+    }
   });
 
   test("cold/empty network → schema-stable zero (every metric null)", () => {
