@@ -295,6 +295,25 @@ if (existsSync(gapsArtifactPath)) {
   );
 }
 
+// curation.json is an R2-only artifact staged into the cold env only after
+// `npm run build`; exercise the happy path when present, else the not_found
+// guard loadArtifactData maps.
+const curationPath = artifactFilePath("curation.json");
+if (existsSync(curationPath)) {
+  const curationStates = await callOk("get_curation_states", {});
+  assert.ok(
+    Array.isArray(curationStates.curation),
+    "get_curation_states must return curation[]",
+  );
+} else {
+  const curationCold = await call("get_curation_states", {});
+  assert.equal(
+    curationCold.isError,
+    true,
+    "get_curation_states must isError when the curation artifact is absent",
+  );
+}
+
 // Economic opportunity boards project from the committed economics.json in the
 // cold local env; assert the call succeeds and returns the economic boards.
 const opportunities = await callOk("find_subnet_opportunities", { limit: 5 });

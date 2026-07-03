@@ -1424,6 +1424,47 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.isError, true);
   });
 
+  test("get_curation_states returns the network-wide curation artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/curation.json": {
+        schema_version: 1,
+        curation: [
+          {
+            netuid: 7,
+            slug: "allways",
+            name: "Allways",
+            coverage_level: "callable",
+            surface_count: 4,
+            candidate_count: 1,
+            gaps: {
+              missing_kinds: ["docs"],
+              supported_kinds: [],
+              gap_notes: [],
+            },
+            curation: {
+              level: "verified",
+              review_state: "maintainer-reviewed",
+              source_count: 3,
+              gap_notes: ["Docs pending official confirmation."],
+            },
+          },
+        ],
+      },
+    });
+    const res = await callTool("get_curation_states", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.curation.length, 1);
+    assert.equal(out.curation[0].netuid, 7);
+    assert.equal(out.curation[0].curation.review_state, "maintainer-reviewed");
+    assert.equal(out.curation[0].curation.level, "verified");
+  });
+
+  test("get_curation_states is not_found when the artifact is missing", async () => {
+    const res = await callTool("get_curation_states", {});
+    assert.equal(res.body.result.isError, true);
+    assert.equal(res.body.result.structuredContent.error.code, "not_found");
+  });
+
   const opportunityDeps = makeDeps({
     "/metagraph/economics.json": {
       captured_at: "2026-06-20T00:00:00Z",

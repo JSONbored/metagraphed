@@ -208,7 +208,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.22.0";
+export const MCP_SERVER_VERSION = "1.23.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -4464,6 +4464,26 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_curation_states",
+    title: "Get per-subnet curation states",
+    description:
+      "Fetch the network-wide curation-state report: for every subnet its " +
+      "netuid, slug, name, resolved coverage_level, surface_count and " +
+      "candidate_count, its list of missing surface kinds, and the curation " +
+      "metadata block (curation level, review_state, reviewed_at/verified_at " +
+      "timestamps, source_count, and gap_notes). Use it to see, across the " +
+      "whole registry, which subnets are maintainer-reviewed vs merely observed " +
+      "and how well each is curated. Mirrors GET /api/v1/curation.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadArtifactData(ctx, "/metagraph/curation.json");
+    },
+  },
+  {
     name: "find_subnet_opportunities",
     title: "Rank subnets by economic opportunity",
     description:
@@ -6372,6 +6392,47 @@ const TOOL_OUTPUT_SCHEMAS = {
       name: NULLABLE_STRING,
       priorities: { type: "array", items: { type: "object" } },
       enrichment_queue: { type: "array", items: { type: "object" } },
+    },
+  },
+  get_curation_states: {
+    type: "object",
+    additionalProperties: true,
+    required: ["curation"],
+    properties: {
+      schema_version: { type: "integer" },
+      generated_at: NULLABLE_STRING,
+      curation: objectItems({
+        netuid: { type: "integer" },
+        slug: { type: "string" },
+        name: { type: "string" },
+        coverage_level: NULLABLE_STRING,
+        surface_count: NULLABLE_INT,
+        candidate_count: NULLABLE_INT,
+        gap_count: NULLABLE_INT,
+        // Nested Gaps object: resolved missing/supported surface kinds + notes.
+        gaps: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            missing_kinds: { type: "array" },
+            supported_kinds: { type: "array" },
+            gap_notes: { type: "array" },
+          },
+        },
+        // Nested CurationMetadata: the resolved review posture for this subnet.
+        curation: {
+          type: "object",
+          additionalProperties: true,
+          properties: {
+            level: NULLABLE_STRING,
+            review_state: NULLABLE_STRING,
+            reviewed_at: NULLABLE_STRING,
+            verified_at: NULLABLE_STRING,
+            source_count: NULLABLE_INT,
+            gap_notes: { type: "array" },
+          },
+        },
+      }),
     },
   },
   find_subnet_for_task: {
