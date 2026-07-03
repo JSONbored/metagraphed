@@ -103,7 +103,13 @@ function toIso(value) {
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   if (typeof value === "string") {
-    const t = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
+    let t = Date.parse(value);
+    // D1 can return INTEGER epoch-ms as a numeric string Date.parse cannot read
+    // (e.g. "1781266255266"). Only fall back to Number() for long digit runs —
+    // short ones like "2026" must keep Date.parse semantics (year → 2026-01-01).
+    if (Number.isNaN(t) && /^\d{10,}$/.test(value)) {
+      t = Number(value);
+    }
     if (!Number.isNaN(t)) {
       const date = new Date(t);
       return Number.isFinite(date.getTime()) ? date.toISOString() : null;

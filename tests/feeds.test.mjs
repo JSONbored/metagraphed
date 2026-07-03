@@ -340,6 +340,10 @@ describe("feeds — item builders", () => {
     assert.equal(toIso("2026-06-12T00:00:00.000Z"), "2026-06-12T00:00:00.000Z");
   });
 
+  test("toIso keeps Date.parse semantics for digit-only date strings", () => {
+    assert.equal(toIso("2026"), "2026-01-01T00:00:00.000Z");
+  });
+
   test("toIso normalizes a D1 numeric-string epoch-ms", () => {
     assert.equal(
       toIso(String(1781266255266)),
@@ -348,9 +352,9 @@ describe("feeds — item builders", () => {
   });
 
   test("toIso drops an out-of-range numeric string to null", () => {
-    // Date.parse ignores bare epoch-ms strings; D1 returns them as numeric
-    // strings, so coerce via /^\d+$/ first. One ms past the JS Date max yields
-    // a finite Number but an invalid Date — must return null, not throw.
+    // Date.parse ignores bare epoch-ms strings; D1 returns them as long numeric
+    // strings (10+ digits), so coerce only after parse fails. One ms past the
+    // JS Date max yields a finite Number but an invalid Date — null, not throw.
     assert.equal(toIso("8640000000000001"), null);
   });
 
