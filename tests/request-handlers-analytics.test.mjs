@@ -13,6 +13,10 @@ import {
   handleHealthPercentiles,
   handleHealthIncidents,
   handleGlobalIncidents,
+  handleChainActivity,
+  handleChainCalls,
+  handleChainSigners,
+  handleChainFees,
   validateQueryParams,
   analyticsWindow,
   d1All,
@@ -1629,5 +1633,148 @@ describe("analytics handler invariants", () => {
     );
     await Promise.resolve();
     assert.deepEqual(cache.putKeys, []);
+  });
+});
+
+// ---- Chain-analytics CSV export (#2532) ------------------------------------
+
+describe("chain analytics ?format=csv export", () => {
+  const cases = [
+    {
+      name: "chain-activity",
+      path: "/api/v1/chain/activity",
+      handler: handleChainActivity,
+      header:
+        "day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers",
+    },
+    {
+      name: "chain-calls",
+      path: "/api/v1/chain/calls",
+      handler: handleChainCalls,
+      header: "call_module,count,share",
+    },
+    {
+      name: "chain-signers",
+      path: "/api/v1/chain/signers",
+      handler: handleChainSigners,
+      header: "signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block",
+    },
+    {
+      name: "chain-fees",
+      path: "/api/v1/chain/fees",
+      handler: handleChainFees,
+      header:
+        "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao",
+    },
+  ];
+
+  for (const { name, path, handler, header } of cases) {
+    test(`${name} ?window=7d&format=csv emits its columns as text/csv`, async () => {
+      const { env } = dbWith({ rows: [] });
+      const p = `${path}?window=7d&format=csv`;
+      const res = await handler(req(p), env, url(p));
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type") || "", /text\/csv/);
+      // Explicit columns → a cold store still emits a header-only CSV (never empty).
+      const text = await res.text();
+      assert.equal(text.split("\r\n")[0], header);
+    });
+
+    test(`${name} keeps the JSON envelope when format is absent`, async () => {
+      const { env } = dbWith({ rows: [] });
+      const res = await handler(
+        req(`${path}?window=7d`),
+        env,
+        url(`${path}?window=7d`),
+      );
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type") || "", /application\/json/);
+    });
+
+    test(`${name} rejects a ?format value outside the json|csv enum`, async () => {
+      const p = `${path}?window=7d&format=xml`;
+      const res = await handler(req(p), emptyEnv(), url(p));
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "format");
+    });
+
+    test(`${name} degraded D1 still emits header-only CSV, marked fallback (not edge-cached)`, async () => {
+      // A degraded D1 read yields fallback-marked rows; the CSV response must
+      // still be a valid header-only CSV (never a 500) AND be tagged as fallback
+      // so withEdgeCache never persists the degraded body.
+      originalCaches = globalThis.caches;
+      const cache = mockCaches();
+      cache.install();
+      const { env } = dbWith({ d1Error: new Error("d1 down") });
+      const p = `${path}?window=7d&format=csv`;
+      const res = await handler(req(p), env, url(p), ctx);
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type") || "", /text\/csv/);
+      const text = await res.text();
+      assert.equal(text.split("\r\n")[0], header);
+      assert.deepEqual(cache.putKeys, []);
+    });
+  }
+
+  test("Accept: text/csv negotiates CSV without an explicit ?format", async () => {
+    const { env } = dbWith({ rows: [] });
+    const p = "/api/v1/chain/signers?window=7d";
+    const res = await handleChainSigners(
+      req(p, { headers: { accept: "text/csv" } }),
+      env,
+      url(p),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /text\/csv/);
+  });
+
+  test("?format=json forces JSON even when Accept prefers text/csv", async () => {
+    const { env } = dbWith({ rows: [] });
+    const p = "/api/v1/chain/signers?window=7d&format=json";
+    const res = await handleChainSigners(
+      req(p, { headers: { accept: "text/csv" } }),
+      env,
+      url(p),
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /application\/json/);
+  });
+
+  test("chain-calls ?group_by=module_function adds the call_function column", async () => {
+    const { env } = dbWith({ rows: [] });
+    const p =
+      "/api/v1/chain/calls?window=7d&group_by=module_function&format=csv";
+    const res = await handleChainCalls(req(p), env, url(p));
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.equal(
+      text.split("\r\n")[0],
+      "call_module,call_function,count,share",
+    );
+  });
+
+  test("chain-calls scoped by ?call_module still exports CSV", async () => {
+    const { env } = dbWith({ rows: [] });
+    const p =
+      "/api/v1/chain/calls?window=7d&call_module=SubtensorModule&format=csv";
+    const res = await handleChainCalls(req(p), env, url(p));
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") || "", /text\/csv/);
+  });
+
+  test("a healthy CSV response is edge-cached under a distinct format=csv key", async () => {
+    // Proves the CSV path participates in the edge cache (so the degraded
+    // not-cached assertion above is meaningful) and that CSV gets its own cache
+    // entry, never colliding with the JSON envelope for the same URL.
+    originalCaches = globalThis.caches;
+    const cache = mockCaches();
+    cache.install();
+    const { env } = dbWith({ rows: [] });
+    const p = "/api/v1/chain/activity?window=7d&format=csv";
+    const res = await handleChainActivity(req(p), env, url(p), ctx);
+    assert.equal(res.status, 200);
+    assert.equal(cache.putKeys.length, 1);
+    assert.match(cache.putKeys[0], /format=csv/);
   });
 });

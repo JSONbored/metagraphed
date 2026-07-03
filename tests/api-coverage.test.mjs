@@ -54,6 +54,81 @@ const RPC_POOL = {
   ],
 };
 
+const COVERAGE_DEPTH_ARTIFACT = {
+  schema_version: 1,
+  generated_at: "1970-01-01T00:00:00.000Z",
+  coverage_depth_version: 1,
+  rows: [
+    {
+      netuid: 7,
+      slug: "allways",
+      name: 'Allways, "callable"',
+      tier: "agent-ready",
+      score: 77,
+      priority_score: 86,
+      agent_status: "callable",
+      blocker_level: "none",
+      top_gap_codes: ["missing-fixture"],
+      recommended_next_action: "capture a sanitized fixture",
+    },
+    {
+      netuid: 31,
+      slug: "recall",
+      name: "Recall",
+      tier: "missing-interface",
+      score: 18,
+      priority_score: 67,
+      agent_status: "blocked",
+      blocker_level: "missing-data",
+      top_gap_codes: ["missing-callable-service"],
+      recommended_next_action: "find an official callable surface",
+    },
+  ],
+  ranked_queue: [
+    {
+      rank: 1,
+      netuid: 31,
+      tier: "missing-interface",
+      score: 18,
+      priority_score: 67,
+      severity: "missing-data",
+      top_gap_codes: ["missing-callable-service"],
+      recommended_next_action: "find an official callable surface",
+    },
+    {
+      rank: 2,
+      netuid: 7,
+      tier: "agent-ready",
+      score: 77,
+      priority_score: 86,
+      severity: "missing-data",
+      top_gap_codes: ["missing-fixture"],
+      recommended_next_action: "capture a sanitized fixture",
+    },
+  ],
+};
+
+function withCoverageDepthArchive(overrides = {}) {
+  const env = createLocalArtifactEnv(overrides);
+  const originalGet = env.METAGRAPH_ARCHIVE.get;
+  env.METAGRAPH_ARCHIVE.get = async (key) => {
+    const normalized = String(key).replace(/^latest\//, "");
+    if (normalized === "coverage-depth.json") {
+      const text = JSON.stringify(COVERAGE_DEPTH_ARTIFACT);
+      return {
+        async json() {
+          return JSON.parse(text);
+        },
+        async text() {
+          return text;
+        },
+      };
+    }
+    return originalGet(key);
+  };
+  return env;
+}
+
 // RPC-proxy env that serves the pool artifact through ASSETS + R2.
 function rpcEnv(overrides = {}) {
   return {
@@ -1241,6 +1316,150 @@ describe("registry list CSV export", () => {
     assert.equal(body.ok, true);
     // The economics collection projects onto the shared `subnets` data key.
     assert.equal(Array.isArray(body.data.subnets), true);
+  });
+});
+
+describe("coverage-depth CSV export", () => {
+  const parseCsvRows = (text) => {
+    const rows = [];
+    let currentRow = [];
+    let currentField = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && next === '"') {
+          currentField += '"';
+          i += 1;
+          continue;
+        }
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (!inQuotes && char === ",") {
+        currentRow.push(currentField);
+        currentField = "";
+        continue;
+      }
+
+      if (!inQuotes && char === "\r") {
+        if (next === "\n") {
+          i += 1;
+        }
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      if (!inQuotes && char === "\n") {
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      currentField += char;
+    }
+
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField);
+    }
+
+    if (currentRow.length > 0 && currentRow.some((value) => value !== "")) {
+      rows.push(currentRow);
+    }
+
+    return rows;
+  };
+
+  const parseCoverageCsv = async (res) => {
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const text = await res.text();
+    const lines = parseCsvRows(text).filter(
+      (line) => line.length !== 0 && !line.every((value) => value === ""),
+    );
+    const header = lines[0];
+    const rows = lines.slice(1).map((values, index) => {
+      assert.equal(
+        values.length,
+        header.length,
+        `row ${index + 1} should have the same number of columns as header`,
+      );
+      return Object.fromEntries(
+        header.map((name, index) => [name, values[index] ?? ""]),
+      );
+    });
+    return { header, rows, text };
+  };
+
+  test("?format=csv returns projected coverage-depth rows", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/coverage-depth?format=csv&fields=netuid,tier,agent_status,priority_score,score,name&sort=netuid&limit=2",
+      ),
+      withCoverageDepthArchive(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="coverage-depth.csv"',
+    );
+
+    const { header, rows } = await parseCoverageCsv(res);
+    assert.equal(
+      header.join(","),
+      "netuid,tier,agent_status,priority_score,score,name",
+    );
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows[0], {
+      netuid: "7",
+      tier: "agent-ready",
+      agent_status: "callable",
+      priority_score: "86",
+      score: "77",
+      name: 'Allways, "callable"',
+    });
+    assert.deepEqual(rows[1], {
+      netuid: "31",
+      tier: "missing-interface",
+      agent_status: "blocked",
+      priority_score: "67",
+      score: "18",
+      name: "Recall",
+    });
+  });
+
+  test("?tier=agent-ready&format=csv applies coverage-depth filter and keeps CSV escaping", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/coverage-depth?tier=agent-ready&format=csv&fields=netuid,tier,name",
+      ),
+      withCoverageDepthArchive(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const { header, rows, text } = await parseCoverageCsv(res);
+    assert.equal(
+      text.includes('"Allways, ""callable""'),
+      true,
+      "escaped name must be emitted as quoted CSV text",
+    );
+    assert.equal(header.join(","), "netuid,tier,name");
+    assert.deepEqual(rows, [
+      {
+        netuid: "7",
+        tier: "agent-ready",
+        name: 'Allways, "callable"',
+      },
+    ]);
   });
 });
 

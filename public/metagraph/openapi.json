@@ -2233,6 +2233,157 @@
         ],
         "type": "object"
       },
+      "BlocksSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file).",
+        "properties": {
+          "author_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+          },
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_time": {
+            "$ref": "#/components/schemas/BlockTimeDistribution"
+          },
+          "distinct_authors": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "distinct_spec_versions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_spec_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "throughput": {
+            "additionalProperties": true,
+            "properties": {
+              "max_extrinsics_in_block": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean_events_per_block": {
+                "type": "number"
+              },
+              "mean_extrinsics_per_block": {
+                "type": "number"
+              },
+              "total_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_extrinsics": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "block_count",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at",
+          "block_time",
+          "throughput",
+          "distinct_authors",
+          "author_concentration",
+          "distinct_spec_versions",
+          "latest_spec_version"
+        ],
+        "type": "object"
+      },
+      "BlockTimeDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mean_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p50_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p90_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "BuildSummaryArtifact": {
         "allOf": [
           {
@@ -3311,6 +3462,313 @@
         ],
         "type": "object"
       },
+      "ChainStakeFlowArtifact": {
+        "additionalProperties": false,
+        "description": "Cross-subnet capital flow over a 7d/30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO, with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow. subnet_count, the rollup, and the distribution cover only subnets with stake events in the window (quiet subnets are excluded). Served live from the account_events D1 tier at /api/v1/chain/stake-flow (no static file); zeros + empty leaderboard when cold.",
+        "properties": {
+          "net_flow_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet net flow (TAO, can be negative) across every subnet in the window; null when no subnet moved stake.",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "type": "number"
+              },
+              "mean": {
+                "type": "number"
+              },
+              "median": {
+                "type": "number"
+              },
+              "min": {
+                "type": "number"
+              },
+              "p25": {
+                "type": "number"
+              },
+              "p75": {
+                "type": "number"
+              },
+              "p90": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "properties": {
+              "flat": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gaining": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "gross_flow_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "losing": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "net_flow_tao": {
+                "type": "number"
+              },
+              "stake_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_staked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "total_unstaked_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "unstake_events": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total_staked_tao",
+              "total_unstaked_tao",
+              "net_flow_tao",
+              "gross_flow_tao",
+              "stake_events",
+              "unstake_events",
+              "gaining",
+              "losing",
+              "flat"
+            ],
+            "type": "object"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "inflow",
+                    "outflow",
+                    "balanced"
+                  ],
+                  "type": "string"
+                },
+                "gross_flow_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "net_flow_tao": {
+                  "type": "number"
+                },
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_staked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "total_unstaked_tao": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "unstake_events": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "total_staked_tao",
+                "total_unstaked_tao",
+                "net_flow_tao",
+                "gross_flow_tao",
+                "stake_events",
+                "unstake_events",
+                "direction"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "observed_at",
+          "subnet_count",
+          "network",
+          "net_flow_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "ChainTransferPair": {
+        "additionalProperties": false,
+        "description": "One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount.",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "to": {
+            "type": "string"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "volume_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "volume_tao",
+          "transfer_count",
+          "last_block",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "ChainTransferPairsArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide directed native-TAO transfer-pair analytics over a 7d/30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share of total pairable volume, and top sender -> receiver pairs ranked by volume or transfer count. Served live from the account_events D1 tier at /api/v1/chain/transfer-pairs (no static file); zeros + an empty pairs list when cold.",
+        "properties": {
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pair_count": {
+            "description": "Number of pair rows returned after applying limit. unique_pairs is the full-window pair count.",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/ChainTransferPair"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "sort": {
+            "enum": [
+              "volume",
+              "count"
+            ],
+            "type": "string"
+          },
+          "top_pair_share": {
+            "description": "Highest-volume pair's full-window volume divided by total pairable volume, independent of sort and limit; null when the window has no pairable volume.",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_volume_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "transfer_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unique_pairs": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "sort",
+          "observed_at",
+          "total_volume_tao",
+          "transfer_count",
+          "unique_pairs",
+          "pair_count",
+          "top_pair_share",
+          "pairs"
+        ],
+        "type": "object"
+      },
       "ChainTransferParty": {
         "additionalProperties": false,
         "description": "One account on a chain-transfers leaderboard: its total transfer volume and count over the window.",
@@ -3398,6 +3856,286 @@
           "top_sender_share",
           "top_senders",
           "top_receivers"
+        ],
+        "type": "object"
+      },
+      "ChainTurnoverArtifact": {
+        "additionalProperties": false,
+        "description": "Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot.",
+        "properties": {
+          "comparable": {
+            "type": "boolean"
+          },
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "network": {
+            "additionalProperties": false,
+            "description": "Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide).",
+            "properties": {
+              "stability_score": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "validator_retention": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "validators_end": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_entered": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_exited": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "validators_start": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "validators_start",
+              "validators_end",
+              "validators_entered",
+              "validators_exited",
+              "validator_retention",
+              "stability_score"
+            ],
+            "type": "object"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "stability_distribution": {
+            "additionalProperties": false,
+            "description": "Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable).",
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "max": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "number"
+              },
+              "median": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "min": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p25": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p75": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p90": {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "subnets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "netuid": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "stability_score": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "validator_retention": {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "validators_end": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_entered": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_exited": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "validators_start": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "netuid",
+                "validators_start",
+                "validators_end",
+                "validators_entered",
+                "validators_exited",
+                "validator_retention",
+                "stability_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              null
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "comparable",
+          "subnet_count",
+          "network",
+          "stability_distribution",
+          "subnets"
+        ],
+        "type": "object"
+      },
+      "ChainYieldArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact.",
+        "properties": {
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "distribution": {
+            "$ref": "#/components/schemas/YieldDistribution"
+          },
+          "miner_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "network_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "total_emission_tao": {
+            "type": "number"
+          },
+          "total_stake_tao": {
+            "type": "number"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_yield": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "network_yield",
+          "distribution"
         ],
         "type": "object"
       },
@@ -12590,6 +13328,167 @@
           }
         ]
       },
+      "SubnetEventCategorySummary": {
+        "additionalProperties": false,
+        "description": "One coarse event-category aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "event_count",
+          "kind_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
+      "SubnetEventKindSummary": {
+        "additionalProperties": false,
+        "description": "One event-kind aggregate in a subnet's windowed account_events summary.",
+        "properties": {
+          "alpha_amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amount_tao": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "category": {
+            "enum": [
+              "registration",
+              "stake",
+              "serving",
+              "consensus",
+              "delegation",
+              "identity",
+              "governance",
+              "transfer",
+              "other"
+            ],
+            "type": "string"
+          },
+          "coldkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kind": {
+            "type": "string"
+          },
+          "first_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hotkey_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last_block": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "event_kind",
+          "category",
+          "event_count",
+          "hotkey_count",
+          "coldkey_count",
+          "amount_tao",
+          "alpha_amount",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at"
+        ],
+        "type": "object"
+      },
       "SubnetEventsArtifact": {
         "additionalProperties": true,
         "description": "First-party chain-event stream for one subnet (#1345 block explorer), newest first, from the account_events D1 tier filtered by netuid (registrations, stake, weights, axon, delegation, lifecycle, transfers). Served live at /api/v1/subnets/{netuid}/events (no static file).",
@@ -12628,6 +13527,87 @@
           "netuid",
           "event_count",
           "events"
+        ],
+        "type": "object"
+      },
+      "SubnetEventSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice. Served live at /api/v1/subnets/{netuid}/event-summary (no static file).",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventCategorySummary"
+            },
+            "type": "array"
+          },
+          "category_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "event_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEventKindSummary"
+            },
+            "type": "array"
+          },
+          "kind_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "netuid": {
+            "type": "integer"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recent_event_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recent_events": {
+            "items": {
+              "$ref": "#/components/schemas/AccountEvent"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "total_events": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "observed_at",
+          "total_events",
+          "kind_count",
+          "category_count",
+          "recent_event_count",
+          "limit",
+          "categories",
+          "event_kinds",
+          "recent_events"
         ],
         "type": "object"
       },
@@ -15885,13 +16865,75 @@
           "verified_at"
         ],
         "type": "object"
+      },
+      "YieldDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution summary of the per-neuron emission/stake return rate across the network: count, mean, median, min, max, and the p10/p25/p75/p90 nearest-rank percentiles. Null when no neuron carries a defined yield (a cold store, an empty network, or every neuron zero-stake).",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "min": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p10": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p25": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p75": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p90": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
       }
     }
   },
   "info": {
     "description": "Public, read-only API over canonical Metagraphed registry artifacts for Bittensor subnet interfaces. **No authentication** — every operation is an unauthenticated GET. Responses use a stable JSON envelope `{ ok, schema_version, data, meta }` (errors: `{ ok: false, error }`) and carry `ETag` + `Cache-Control` for conditional caching. Rate-limited per client. Multi-network: insert a `/{network}/` segment after `/api/v1/` (mainnet is the default — omit it) to read testnet data, e.g. `/api/v1/testnet/subnets`. Testnet exposes the subset of routes that have data; `/api/v1/lineage` tracks which testnet subnets have graduated.",
     "title": "Metagraphed API",
-    "version": "2026-07-03.1"
+    "version": "2026-07-03.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -18329,6 +19371,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -18388,9 +19443,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "block_number,block_hash,parent_hash,author,extrinsic_count,event_count,spec_version,observed_at\r\n8454388,0xblock,0xparent,5Author,3,12,204,2026-07-03T00:00:00.000Z",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -18447,7 +19508,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+        "summary": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345).",
         "tags": [
           "blocks",
           "analytics"
@@ -19039,6 +20100,161 @@
           }
         },
         "summary": "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
+        "tags": [
+          "blocks",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/blocks/summary": {
+      "get": {
+        "operationId": "blocksSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "author_concentration": {
+                      "entropy": 0.5,
+                      "entropy_normalized": 0.5,
+                      "gini": 0.5,
+                      "hhi": 0.5,
+                      "hhi_normalized": 0.5,
+                      "holders": 1,
+                      "nakamoto_coefficient": 1,
+                      "top_10pct_share": 0.5,
+                      "top_1pct_share": 0.5,
+                      "top_20pct_share": 0.5,
+                      "top_5pct_share": 0.5,
+                      "total": 1
+                    },
+                    "block_count": 5000000,
+                    "block_time": {
+                      "count": 1,
+                      "max_ms": 1,
+                      "mean_ms": 1,
+                      "min_ms": 1,
+                      "p50_ms": 1,
+                      "p90_ms": 1
+                    },
+                    "distinct_authors": 1,
+                    "distinct_spec_versions": 1,
+                    "first_block": 5000000,
+                    "first_observed_at": "2026-06-01T00:00:00.000Z",
+                    "last_block": 5000000,
+                    "last_observed_at": "2026-06-01T00:00:00.000Z",
+                    "latest_spec_version": 1,
+                    "schema_version": 1,
+                    "throughput": {
+                      "max_extrinsics_in_block": 5000000,
+                      "mean_events_per_block": 5000000,
+                      "mean_extrinsics_per_block": 5000000,
+                      "total_events": 1,
+                      "total_extrinsics": 1
+                    }
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BlocksSummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
         "tags": [
           "blocks",
           "analytics"
@@ -19798,6 +21014,19 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -19862,9 +21091,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers\r\n2026-07-01,7200,15000,42000,14950,0.9967,320",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -19974,6 +21209,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20037,9 +21285,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "call_module,count,share\r\nSubtensorModule,8200,0.5467",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -20330,6 +21584,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20403,9 +21670,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao\r\n2026-07-01,15000,42.5,0.002833,0.0025,0,0,0",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -20699,6 +21972,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20756,6 +22042,189 @@
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/ChainSignersArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "text/csv": {
+                "example": "signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block\r\n5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY,1200,3.42,0,8454388",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/stake-flow": {
+      "get": {
+        "operationId": "chainStakeFlow",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "net_flow_distribution": {
+                      "count": 1,
+                      "max": 0.5,
+                      "mean": 0.5,
+                      "median": 0.5,
+                      "min": 0.5,
+                      "p25": 0.5,
+                      "p75": 0.5,
+                      "p90": 0.5
+                    },
+                    "network": {
+                      "flat": 1,
+                      "gaining": 1,
+                      "gross_flow_tao": 0.5,
+                      "losing": 1,
+                      "net_flow_tao": 0.5,
+                      "stake_events": 1,
+                      "total_staked_tao": 0.5,
+                      "total_unstaked_tao": 0.5,
+                      "unstake_events": 1
+                    },
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "direction": "inflow",
+                        "gross_flow_tao": 0.5,
+                        "net_flow_tao": 0.5,
+                        "netuid": 7,
+                        "stake_events": 1,
+                        "total_staked_tao": 0.5,
+                        "total_unstaked_tao": 0.5,
+                        "unstake_events": 1
+                      }
+                    ],
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainStakeFlowArtifact"
                         }
                       },
                       "type": "object"
@@ -20821,7 +22290,178 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
+        "summary": "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/transfer-pairs": {
+      "get": {
+        "operationId": "chainTransferPairs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "enum": [
+                "volume",
+                "count"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "pair_count": 1,
+                    "pairs": [
+                      {
+                        "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z",
+                        "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                        "transfer_count": 5,
+                        "volume_tao": 80
+                      }
+                    ],
+                    "schema_version": 1,
+                    "sort": "volume",
+                    "top_pair_share": 0.8,
+                    "total_volume_tao": 100,
+                    "transfer_count": 10,
+                    "unique_pairs": 2,
+                    "window": "30d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainTransferPairsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -20994,6 +22634,321 @@
           }
         },
         "summary": "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/turnover": {
+      "get": {
+        "operationId": "chainTurnover",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "comparable": false,
+                    "end_date": "2026-06-01",
+                    "network": {
+                      "stability_score": 100,
+                      "validator_retention": 0.5,
+                      "validators_end": 1,
+                      "validators_entered": 1,
+                      "validators_exited": 1,
+                      "validators_start": 1
+                    },
+                    "schema_version": 1,
+                    "stability_distribution": {
+                      "count": 1,
+                      "max": 1,
+                      "mean": 0.5,
+                      "median": 1,
+                      "min": 1,
+                      "p25": 1,
+                      "p75": 1,
+                      "p90": 1
+                    },
+                    "start_date": "2026-06-01",
+                    "subnet_count": 1,
+                    "subnets": [
+                      {
+                        "netuid": 7,
+                        "stability_score": 100,
+                        "validator_retention": 0.5,
+                        "validators_end": 1,
+                        "validators_entered": 1,
+                        "validators_exited": 1,
+                        "validators_start": 1
+                      }
+                    ],
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainTurnoverArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold.",
+        "tags": [
+          "chain",
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/chain/yield": {
+      "get": {
+        "operationId": "chainYield",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "captured_at": "2026-06-01T00:00:00.000Z",
+                    "distribution": {
+                      "count": 1,
+                      "max": 0.5,
+                      "mean": 0.5,
+                      "median": 0.5,
+                      "min": 0.5,
+                      "p10": 0.5,
+                      "p25": 0.5,
+                      "p75": 0.5,
+                      "p90": 0.5
+                    },
+                    "miner_count": 1,
+                    "miner_yield": 0.5,
+                    "network_yield": 0.5,
+                    "neuron_count": 1,
+                    "schema_version": 1,
+                    "subnet_count": 1,
+                    "total_emission_tao": 0.5,
+                    "total_stake_tao": 0.5,
+                    "validator_count": 1,
+                    "validator_yield": 0.5
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainYieldArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold.",
         "tags": [
           "chain",
           "analytics"
@@ -23856,6 +25811,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -23916,9 +25884,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "extrinsic_id,block_number,signer,call_module,call_function,success\r\n8454388-2,8454388,5Signer,SubtensorModule,add_stake,true",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -23975,7 +25949,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+        "summary": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
         "tags": [
           "extrinsics",
           "analytics"
@@ -24313,7 +26287,7 @@
                   "meta": {
                     "artifact_path": "/metagraph/fixtures/7:subnet-api:new_v2.json",
                     "cache": "standard",
-                    "contract_version": "2026-07-03.1",
+                    "contract_version": "2026-07-03.2",
                     "generated_at": "1970-01-01T00:00:00.000Z",
                     "published_at": null,
                     "source": "r2"
@@ -32881,6 +34855,199 @@
         ]
       }
     },
+    "/api/v1/subnets/{netuid}/event-summary": {
+      "get": {
+        "operationId": "subnetEventSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "categories": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "event_count": 1,
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "kind_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "category_count": 1,
+                    "event_kinds": [
+                      {
+                        "alpha_amount": 0.5,
+                        "amount_tao": 0.5,
+                        "category": "registration",
+                        "coldkey_count": 1,
+                        "event_count": 1,
+                        "event_kind": "example",
+                        "first_block": 5000000,
+                        "first_observed_at": "2026-06-01T00:00:00.000Z",
+                        "hotkey_count": 1,
+                        "last_block": 5000000,
+                        "last_observed_at": "2026-06-01T00:00:00.000Z"
+                      }
+                    ],
+                    "kind_count": 1,
+                    "limit": 1,
+                    "netuid": 7,
+                    "observed_at": "2026-06-01T00:00:00.000Z",
+                    "recent_event_count": 1,
+                    "recent_events": [
+                      {
+                        "block_number": 5000000,
+                        "event_kind": "example"
+                      }
+                    ],
+                    "schema_version": 1,
+                    "total_events": 1,
+                    "window": "7d"
+                  },
+                  "meta": {
+                    "artifact_path": "example",
+                    "cache": "short",
+                    "contract_version": "2026-06-29.1",
+                    "generated_at": "2026-06-01T00:00:00.000Z",
+                    "pagination": {
+                      "collection": "example",
+                      "cursor": 1,
+                      "limit": 1,
+                      "next_cursor": 1,
+                      "order": "asc",
+                      "returned": 1,
+                      "sort": "example",
+                      "total": 1
+                    },
+                    "published_at": "2026-06-01T00:00:00.000Z",
+                    "source": "live-cron-prober",
+                    "stale_contract": {
+                      "built_under": "example",
+                      "live": "example"
+                    }
+                  },
+                  "ok": true,
+                  "schema_version": 1
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetEventSummaryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+        "tags": [
+          "subnets",
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/subnets/{netuid}/events": {
       "get": {
         "operationId": "subnetEvents",
@@ -37966,7 +40133,7 @@
   ],
   "x-metagraphed": {
     "canonical_artifact_base_path": "/metagraph",
-    "contract_version": "2026-07-03.1",
+    "contract_version": "2026-07-03.2",
     "generated_at": "1970-01-01T00:00:00.000Z",
     "notes": "OpenAPI describes Worker response envelopes and canonical artifact payloads. Raw /metagraph JSON remains the reviewed source contract.",
     "schema_version": 1

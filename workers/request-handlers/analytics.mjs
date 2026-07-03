@@ -35,6 +35,7 @@ import {
 } from "../config.mjs";
 import { parseLimitParam } from "../request-params.mjs";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.mjs";
+import { csvRequested, csvResponse } from "../csv.mjs";
 import {
   contractVersion,
   envelopeResponse,
@@ -59,7 +60,16 @@ import {
   CHAIN_SIGNERS_SORTS,
   loadChainSigners,
 } from "../../src/chain-query-loaders.mjs";
+import {
+  CHAIN_TRANSFER_PAIR_SORTS,
+  loadChainTransferPairs,
+} from "../../src/chain-transfer-pairs.mjs";
 import { loadChainTransfers } from "../../src/chain-transfers.mjs";
+import {
+  loadChainStakeFlow,
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  CHAIN_STAKE_FLOW_LIMIT_MAX,
+} from "../../src/chain-stake-flow.mjs";
 
 // Injected once from api.mjs (see configureAnalytics). The in-isolate memoized
 // snapshot-meta read lives in api.mjs because the deferred handler clusters and a
@@ -159,6 +169,13 @@ function validateEnumParam(url, parameter, allowedValues) {
     parameter,
     message: `${parameter} must be one of: ${allowedValues.join(", ")}.`,
   };
+}
+
+// Enforce the declared `format` enum (json|csv). The per-handler allow-list only
+// gates the param NAME, not its value — without this a `?format=xml` would be
+// silently accepted, contradicting the contract's `enum: [json, csv]` (#2532).
+function validateFormatParam(url) {
+  return validateEnumParam(url, "format", ["json", "csv"]);
 }
 
 // Bound an optional free-text filter so an oversized value never reaches D1.
@@ -333,6 +350,24 @@ export async function readNeuronsCacheStamp(env) {
   const rows = await d1All(
     env,
     "SELECT MAX(captured_at) AS captured_at FROM neurons",
+    [],
+  );
+  if (hasD1FallbackRows(rows)) return null;
+  const capturedAt = rows[0]?.captured_at;
+  return Number.isInteger(capturedAt) && capturedAt > 0
+    ? String(capturedAt)
+    : null;
+}
+
+// Edge-cache stamp for routes derived from the neuron_daily rollup (the daily-snapshot tier), NOT
+// the live `neurons` tier: reads MAX(captured_at) from neuron_daily so the stamp advances exactly
+// when a new daily snapshot lands, invalidating the cached artifact on that refresh rather than on
+// the more-frequent live-neurons cadence. Used by neuron_daily-derived network routes (e.g.
+// /chain/turnover) whose data source is neuron_daily, not neurons.
+export async function readNeuronDailyCacheStamp(env) {
+  const rows = await d1All(
+    env,
+    "SELECT MAX(captured_at) AS captured_at FROM neuron_daily",
     [],
   );
   if (hasD1FallbackRows(rows)) return null;
@@ -652,6 +687,48 @@ export async function handleGlobalIncidents(request, env, url) {
     : response;
 }
 
+// Explicit CSV column order for the chain-analytics ?format=csv exports (#2532).
+// Passed to csvResponse so a cold store (empty array) still emits a header row,
+// and column order stays stable regardless of row-key insertion order.
+const CHAIN_ACTIVITY_CSV_COLUMNS = [
+  "day",
+  "block_count",
+  "extrinsic_count",
+  "event_count",
+  "successful_extrinsics",
+  "success_rate",
+  "unique_signers",
+];
+// group_by=module rows carry call_function:null, so the default export omits that
+// column; group_by=module_function adds it — keeping the CSV header honest per grouping.
+const CHAIN_CALLS_CSV_COLUMNS = ["call_module", "count", "share"];
+const CHAIN_CALLS_FUNCTION_CSV_COLUMNS = [
+  "call_module",
+  "call_function",
+  "count",
+  "share",
+];
+const CHAIN_SIGNERS_CSV_COLUMNS = [
+  "signer",
+  "tx_count",
+  "total_fee_tao",
+  "total_tip_tao",
+  "last_tx_block",
+];
+// The fee-market CSV exports the per-day fee series (data.daily) — the primary
+// row-shaped table, mirroring chain-activity; the top_fee_payers leaderboard
+// stays JSON-only in the envelope.
+const CHAIN_FEES_CSV_COLUMNS = [
+  "day",
+  "extrinsic_count",
+  "total_fee_tao",
+  "avg_fee_tao",
+  "median_fee_tao",
+  "total_tip_tao",
+  "avg_tip_tao",
+  "median_tip_tao",
+];
+
 // Daily network-activity aggregates over the first-party chain D1 tiers (#1987):
 // per-UTC-day extrinsic/event/block counts, success rate, and unique signers —
 // the foundation time-series for the block-explorer "network at a glance" view
@@ -659,8 +736,11 @@ export async function handleGlobalIncidents(request, env, url) {
 // run in parallel and merge in the pure builder, so the route is schema-stable
 // (day_count:0, days:[]) on a cold store and never re-aggregates on an edge hit.
 export async function handleChainActivity(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url);
+  const { label, error } = analyticsWindow(url, ["format"]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
+  const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
     ctx,
@@ -675,6 +755,18 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
           observedAt: meta?.last_run_at || null,
         },
       );
+      if (csv) {
+        const csvRes = await csvResponse(
+          data.days,
+          "chain-activity",
+          "short",
+          request,
+          CHAIN_ACTIVITY_CSV_COLUMNS,
+        );
+        return hasD1FallbackRows(extrinsicRows, blockRows)
+          ? markD1FallbackResponse(csvRes)
+          : csvRes;
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -695,7 +787,7 @@ export async function handleChainActivity(request, env, url, ctx = {}) {
     // explicit ?window=<default>, and reordered/duplicate variants all share one
     // entry instead of fragmenting the cache (mirrors the percentiles/incidents/
     // economics-trends windowed routes). `label` is the validated window.
-    `${url.pathname}?window=${encodeURIComponent(label)}`,
+    `${url.pathname}?window=${encodeURIComponent(label)}${csv ? "&format=csv" : ""}`,
   );
 }
 
@@ -707,8 +799,11 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
     "group_by",
     "limit",
     "call_module",
+    "format",
   ]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const groupByError = validateEnumParam(url, "group_by", [
     "module",
     "module_function",
@@ -723,6 +818,7 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
+  const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
     ctx,
@@ -743,6 +839,18 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
         limit,
         observedAt: meta?.last_run_at || null,
       });
+      if (csv) {
+        const csvRes = await csvResponse(
+          data.calls,
+          "chain-calls",
+          "short",
+          request,
+          groupBy === "module_function"
+            ? CHAIN_CALLS_FUNCTION_CSV_COLUMNS
+            : CHAIN_CALLS_CSV_COLUMNS,
+        );
+        return usedFallback ? markD1FallbackResponse(csvRes) : csvRes;
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -757,7 +865,7 @@ export async function handleChainCalls(request, env, url, ctx = {}) {
       );
       return usedFallback ? markD1FallbackResponse(response) : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["group_by", "limit", "call_module"]),
+    `${canonicalAnalyticsCacheRoute(url, ["group_by", "limit", "call_module"])}${csv ? "&format=csv" : ""}`,
   );
 }
 
@@ -769,8 +877,11 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
     "limit",
     "call_module",
     "sort",
+    "format",
   ]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const sortError = validateEnumParam(url, "sort", CHAIN_SIGNERS_SORTS);
   if (sortError) return analyticsQueryError(sortError);
   const { limit, error: limitError } = parseLimitParam(url, {
@@ -783,6 +894,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
+  const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
     ctx,
@@ -798,6 +910,18 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         callModule,
         sort,
       });
+      if (csv) {
+        const csvRes = await csvResponse(
+          data.signers,
+          "chain-signers",
+          "short",
+          request,
+          CHAIN_SIGNERS_CSV_COLUMNS,
+        );
+        return hasD1FallbackRows(rows)
+          ? markD1FallbackResponse(csvRes)
+          : csvRes;
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -814,7 +938,7 @@ export async function handleChainSigners(request, env, url, ctx = {}) {
         ? markD1FallbackResponse(response)
         : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"]),
+    `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module", "sort"])}${csv ? "&format=csv" : ""}`,
   );
 }
 
@@ -872,12 +996,122 @@ export async function handleChainTransfers(request, env, url, ctx = {}) {
     : response;
 }
 
+// Network-wide native-TAO transfer-pair analytics: top sender -> receiver pairs by
+// volume or count over the window, from the same account_events Transfer feed as
+// /chain/transfers. Excludes malformed/self-transfer rows so every row represents
+// a real directed account corridor.
+export async function handleChainTransferPairs(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit", "sort"]);
+  if (error) return analyticsQueryError(error);
+  const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
+  if (sortError) return analyticsQueryError(sortError);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: 25,
+    maxLimit: 100,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+  const sort = url.searchParams.get("sort") || "volume";
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-transfer-pairs",
+    async () => {
+      const meta = await readHealthMetaKv(env);
+      const data = await loadChainTransferPairs(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        observedAt: meta?.last_run_at || null,
+        limit,
+        sort,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/transfer-pairs.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit", "sort"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
+// Network-wide cross-subnet capital flow: rank every subnet by net StakeAdded - StakeRemoved
+// over the window from the account_events stream, with a network rollup and a net-flow
+// distribution. The network companion to /api/v1/subnets/{netuid}/stake-flow; edge-cached like
+// the sibling chain-transfers route (account_events-derived, analytics cron freshness).
+export async function handleChainStakeFlow(request, env, url, ctx = {}) {
+  const { label, days, error } = analyticsWindow(url, ["limit"]);
+  if (error) return analyticsQueryError(error);
+  const { limit, error: limitError } = parseLimitParam(url, {
+    defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+    maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
+  });
+  if (limitError) return analyticsQueryError(limitError);
+
+  // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
+  // repeatedly force the network-wide account_events aggregation (mirrors chain-transfers).
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  const response = await withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    "chain-stake-flow",
+    async () => {
+      const data = await loadChainStakeFlow(d1Runner(env), {
+        windowLabel: label,
+        windowDays: days,
+        limit,
+      });
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/stake-flow.json",
+            data.observed_at,
+          ),
+        },
+        "short",
+      );
+    },
+    canonicalAnalyticsCacheRoute(url, ["limit"]),
+  );
+  return request.method === "HEAD"
+    ? new Response(null, { status: response.status, headers: response.headers })
+    : response;
+}
+
 // Fee/tip market analytics (#1988): a per-UTC-day fee series (totals, averages,
 // exact medians) plus a windowed top-fee-payer list. COALESCE keeps NULL
 // fees/tips out of the SUMs and medians.
 export async function handleChainFees(request, env, url, ctx = {}) {
-  const { label, error } = analyticsWindow(url, ["limit", "call_module"]);
+  const { label, error } = analyticsWindow(url, [
+    "limit",
+    "call_module",
+    "format",
+  ]);
   if (error) return analyticsQueryError(error);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { limit, error: limitError } = parseLimitParam(url, {
     defaultLimit: 25,
     maxLimit: 100,
@@ -888,6 +1122,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
   const callModule = url.searchParams.get("call_module");
   const callModuleError = validateMaxLength(url, "call_module", 100);
   if (callModuleError) return analyticsQueryError(callModuleError);
+  const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
     ctx,
@@ -904,6 +1139,18 @@ export async function handleChainFees(request, env, url, ctx = {}) {
           observedAt: meta?.last_run_at || null,
         },
       );
+      if (csv) {
+        const csvRes = await csvResponse(
+          data.daily,
+          "chain-fees",
+          "short",
+          request,
+          CHAIN_FEES_CSV_COLUMNS,
+        );
+        return hasD1FallbackRows(dailyRows, payerRows, medianRows)
+          ? markD1FallbackResponse(csvRes)
+          : csvRes;
+      }
       const response = await envelopeResponse(
         request,
         {
@@ -920,7 +1167,7 @@ export async function handleChainFees(request, env, url, ctx = {}) {
         ? markD1FallbackResponse(response)
         : response;
     },
-    canonicalAnalyticsCacheRoute(url, ["limit", "call_module"]),
+    `${canonicalAnalyticsCacheRoute(url, ["limit", "call_module"])}${csv ? "&format=csv" : ""}`,
   );
 }
 
