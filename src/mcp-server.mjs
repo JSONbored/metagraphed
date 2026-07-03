@@ -26,11 +26,26 @@ import {
   loadNetworkEconomics,
 } from "./network-economics.mjs";
 import {
+  LIST_CURATION_INSTRUCTIONS,
+  LIST_CURATION_MCP_TOOL,
+  LIST_CURATION_OUTPUT_SCHEMA,
+  loadCurationList,
+} from "./curation-mcp.mjs";
+import {
   GET_NETWORK_HEALTH_INSTRUCTIONS,
   GET_NETWORK_HEALTH_MCP_TOOL,
   GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   loadGlobalOperationalHealth,
 } from "./global-operational-health.mjs";
+import {
+  GET_SUBNET_PROFILE_MCP_TOOL,
+  GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
+  LIST_PROFILES_INSTRUCTIONS,
+  LIST_PROFILES_MCP_TOOL,
+  LIST_PROFILES_OUTPUT_SCHEMA,
+  loadProfilesList,
+  loadSubnetProfile,
+} from "./profiles-mcp.mjs";
 import {
   GET_HEALTH_HISTORY_INSTRUCTIONS,
   GET_HEALTH_HISTORY_MCP_TOOL,
@@ -141,6 +156,7 @@ import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import { loadChainYield } from "./chain-yield.mjs";
+import { loadBlocksSummary } from "./blocks-summary.mjs";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -204,7 +220,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.21.0";
+export const MCP_SERVER_VERSION = "1.23.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -258,6 +274,7 @@ export const MCP_INSTRUCTIONS =
   "language answer with citations; get_subnet / get_subnet_health for detail, " +
   "list_subnet_apis + get_api_schema to integrate a subnet's API, and " +
   "get_best_rpc_endpoint for a live-healthy Bittensor base-layer RPC endpoint. " +
+  LIST_CURATION_INSTRUCTIONS +
   "Use list_enrichment_targets to plan coverage-depth work across schemas, " +
   "fixtures, examples, provenance, and candidate-review gaps, and " +
   "get_subnet_gaps for one subnet's interface gap priorities and contributor " +
@@ -291,7 +308,9 @@ export const MCP_INSTRUCTIONS =
   "stake/emission/validator momentum leaderboard, get_subnet_yield per-UID " +
   "rates plus distribution percentiles over the current metagraph snapshot, " +
   "get_registry_leaderboards the live " +
-  "cross-subnet health/economics boards, compare_subnets a side-by-side view " +
+  "cross-subnet health/economics boards, " +
+  LIST_PROFILES_INSTRUCTIONS +
+  "get_subnet_profile one subnet's public-safe profile detail, compare_subnets a side-by-side view " +
   "across structure/economics/health, get_global_incidents recent cross-subnet " +
   "probe failures, get_chain_signers the windowed most-active-account " +
   "leaderboard (extrinsic counts + fees), get_rpc_usage the RPC reverse-proxy " +
@@ -316,6 +335,8 @@ export const MCP_INSTRUCTIONS =
   "recent subnet-identity-change feed across all subnets, " +
   "get_chain_yield the network-wide emission-yield (return rate) and its " +
   "distribution across all subnets, " +
+  "get_blocks_summary block-production analytics (inter-block time, throughput, " +
+  "and block-author decentralization), " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1978,6 +1999,24 @@ export const MCP_TOOLS = [
     },
   },
   {
+    name: "get_blocks_summary",
+    title: "Get block-production analytics",
+    description:
+      "Block-production analytics over recent blocks: inter-block time " +
+      "distribution, extrinsic/event throughput, block-author decentralization " +
+      "(concentration over each author's block count, distinct from " +
+      "get_chain_signers), and the spec-version spread. Mirrors GET " +
+      "/api/v1/blocks/summary.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadBlocksSummary(mcpD1Runner(ctx));
+    },
+  },
+  {
     name: "get_subnet_concentration_history",
     title: "Get subnet concentration history",
     description:
@@ -2271,6 +2310,37 @@ export const MCP_TOOLS = [
         limit,
         observedAt: await mcpObservedAt(ctx),
       });
+    },
+  },
+  {
+    ...LIST_PROFILES_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadProfilesList(ctx, args, {
+          readOptionalArtifact: loadOptionalArtifact,
+        });
+      } catch (err) {
+        if (err?.profilesMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
+    },
+  },
+  {
+    ...GET_SUBNET_PROFILE_MCP_TOOL,
+    async handler(args, ctx) {
+      const netuid = requireNetuid(args);
+      try {
+        return await loadSubnetProfile(ctx, netuid, {
+          readArtifact: loadArtifactData,
+        });
+      } catch (err) {
+        if (err?.profilesMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
     },
   },
   {
@@ -2834,7 +2904,8 @@ export const MCP_TOOLS = [
       "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over the " +
       "requested window (7d, 30d, or 90d; default 30d): per-subnet net and gross " +
       "flow with direction labels, account totals, an HHI concentration of where " +
-      "its flow is focused, and the dominant subnet. Mirrors " +
+      "its flow is focused, and the dominant subnet. ?direction narrows to inflow " +
+      "(in) or outflow (out) only; all (default) reports both sides. Mirrors " +
       "GET /api/v1/accounts/{ss58}/stake-flow.",
     inputSchema: {
       type: "object",
@@ -2850,6 +2921,11 @@ export const MCP_TOOLS = [
           enum: STAKE_FLOW_WINDOW_KEYS,
           description: `Lookback window (default ${DEFAULT_STAKE_FLOW_WINDOW}).`,
         },
+        direction: {
+          type: "string",
+          enum: STAKE_FLOW_DIRECTIONS,
+          description: `Flow side to report: in | out | all (default ${DEFAULT_STAKE_FLOW_DIRECTION}).`,
+        },
       },
       required: ["ss58"],
       additionalProperties: false,
@@ -2864,8 +2940,17 @@ export const MCP_TOOLS = [
           `window must be one of: ${STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
+      const direction =
+        optionalString(args, "direction") ?? DEFAULT_STAKE_FLOW_DIRECTION;
+      if (!STAKE_FLOW_DIRECTIONS.includes(direction)) {
+        throw toolError(
+          "invalid_params",
+          `direction must be one of: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+        );
+      }
       const { data } = await loadAccountStakeFlow(mcpD1Runner(ctx), ss58, {
         windowLabel: window,
+        direction,
       });
       return data;
     },
@@ -4109,6 +4194,12 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...LIST_CURATION_MCP_TOOL,
+    async handler(args, ctx) {
+      return loadCurationList(ctx, args);
+    },
+  },
+  {
     name: "get_lineage",
     title: "Get cross-network subnet lineage",
     description:
@@ -5247,6 +5338,8 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
+  get_subnet_profile: GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
   get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
@@ -5392,6 +5485,25 @@ const TOOL_OUTPUT_SCHEMAS = {
       validator_yield: { type: ["number", "null"] },
       miner_yield: { type: ["number", "null"] },
       distribution: { type: ["object", "null"] },
+    },
+  },
+  get_blocks_summary: {
+    type: "object",
+    additionalProperties: true,
+    required: ["block_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      block_count: { type: "integer" },
+      first_block: { type: ["integer", "null"] },
+      last_block: { type: ["integer", "null"] },
+      first_observed_at: NULLABLE_STRING,
+      last_observed_at: NULLABLE_STRING,
+      block_time: { type: ["object", "null"] },
+      throughput: { type: ["object", "null"] },
+      distinct_authors: { type: "integer" },
+      author_concentration: { type: ["object", "null"] },
+      distinct_spec_versions: { type: "integer" },
+      latest_spec_version: { type: ["integer", "null"] },
     },
   },
   get_subnet_concentration_history: {
@@ -6260,6 +6372,7 @@ const TOOL_OUTPUT_SCHEMAS = {
       notes: NULLABLE_STRING,
     },
   },
+  list_curation: LIST_CURATION_OUTPUT_SCHEMA,
   get_lineage: {
     type: "object",
     additionalProperties: true,

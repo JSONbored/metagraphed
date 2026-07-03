@@ -870,6 +870,126 @@
         },
         "additionalProperties": true
       },
+      "ChainTurnoverArtifact": {
+        "type": "object",
+        "description": "Network-wide validator-set turnover across all subnets between a window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered/exited, Jaccard retention, 0-100 stability score) ranked by gross churn, plus a network rollup over the union of every subnet's validator hotkeys. comparable is false (and the leaderboard empty) when the store is cold or has a single snapshot.",
+        "required": [
+          "schema_version",
+          "window",
+          "start_date",
+          "end_date",
+          "comparable",
+          "subnet_count",
+          "network",
+          "stability_distribution",
+          "subnets"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "window": {
+            "type": ["string", "null"],
+            "enum": ["7d", "30d", "90d", null]
+          },
+          "start_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "end_date": {
+            "type": ["string", "null"],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "comparable": { "type": "boolean" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "stability_distribution": {
+            "type": ["object", "null"],
+            "description": "Spread of the per-subnet 0-100 stability scores across every subnet in the window (null when no subnet is comparable).",
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "p25",
+              "median",
+              "p75",
+              "p90",
+              "max"
+            ],
+            "properties": {
+              "count": { "type": "integer", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0, "maximum": 100 },
+              "min": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "p25": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "median": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "p75": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "p90": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "max": { "type": "integer", "minimum": 0, "maximum": 100 }
+            },
+            "additionalProperties": false
+          },
+          "network": {
+            "type": "object",
+            "description": "Rollup over the union of every subnet's validator hotkeys (a hotkey validating on several subnets counts once network-wide).",
+            "required": [
+              "validators_start",
+              "validators_end",
+              "validators_entered",
+              "validators_exited",
+              "validator_retention",
+              "stability_score"
+            ],
+            "properties": {
+              "validators_start": { "type": "integer", "minimum": 0 },
+              "validators_end": { "type": "integer", "minimum": 0 },
+              "validators_entered": { "type": "integer", "minimum": 0 },
+              "validators_exited": { "type": "integer", "minimum": 0 },
+              "validator_retention": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "stability_score": {
+                "type": ["integer", "null"],
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "subnets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "netuid",
+                "validators_start",
+                "validators_end",
+                "validators_entered",
+                "validators_exited",
+                "validator_retention",
+                "stability_score"
+              ],
+              "properties": {
+                "netuid": { "type": "integer", "minimum": 0 },
+                "validators_start": { "type": "integer", "minimum": 0 },
+                "validators_end": { "type": "integer", "minimum": 0 },
+                "validators_entered": { "type": "integer", "minimum": 0 },
+                "validators_exited": { "type": "integer", "minimum": 0 },
+                "validator_retention": {
+                  "type": ["number", "null"],
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "stability_score": {
+                  "type": ["integer", "null"],
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "ChainConcentrationArtifact": {
         "type": "object",
         "description": "Network-wide stake and emission concentration metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier across three lenses: per-UID (stake, emission), per-entity (entity_stake, entity_emission, with coldkeys collapsed across subnets into the network-level control distribution), and validator-only consensus power (validator_stake). subnet_count reports how many subnets the snapshot spans; every lens and stamp field is always present as a value or null.",

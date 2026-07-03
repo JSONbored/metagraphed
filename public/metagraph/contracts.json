@@ -579,6 +579,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, and a small newest-first evidence slice, served live from D1 at /api/v1/subnets/{netuid}/event-summary (no static file).",
+      "id": "subnet-event-summary",
+      "path": "/metagraph/subnets/{netuid}/event-summary.json",
+      "schema_ref": "#/components/schemas/SubnetEventSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
@@ -687,10 +696,19 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks (no static file).",
+      "description": "The recent-block feed (newest first) for the block explorer (#1345), served live from the first-party blocks D1 tier at /api/v1/blocks; pass ?format=csv to download the filtered block rows as CSV (no static file).",
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread — computed live from the blocks D1 tier at /api/v1/blocks/summary (no static file).",
+      "id": "blocks-summary",
+      "path": "/metagraph/blocks/summary.json",
+      "schema_ref": "#/components/schemas/BlocksSummaryArtifact",
       "storage_tier": "r2"
     },
     {
@@ -750,7 +768,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics (no static file).",
+      "description": "The recent-extrinsic feed (newest first) for the block explorer (#1345), served live from the first-party extrinsics D1 tier at /api/v1/extrinsics; pass ?format=csv to download the filtered extrinsic rows as CSV (no static file).",
       "id": "extrinsics-feed",
       "path": "/metagraph/extrinsics.json",
       "schema_ref": "#/components/schemas/ExtrinsicsFeedArtifact",
@@ -813,6 +831,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded), with per-subnet staked/unstaked/net/gross totals + a direction label, a network rollup, and a distribution of the per-subnet net flow, computed live from the account_events stake stream at /api/v1/chain/stake-flow (no static file).",
+      "id": "chain-stake-flow",
+      "path": "/metagraph/chain/stake-flow.json",
+      "schema_ref": "#/components/schemas/ChainStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
@@ -853,6 +880,15 @@
       "id": "chain-yield",
       "path": "/metagraph/chain/yield.json",
       "schema_ref": "#/components/schemas/ChainYieldArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Network-wide validator-set turnover (churn) across all subnets between a window's start and end neuron_daily snapshots: each subnet's validators entered, exited, Jaccard retention, and a 0-100 stability score ranked into a leaderboard, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary of the per-subnet stability scores (count, mean, min, p25, median, p75, p90, max), computed live from the neuron_daily D1 rollup at /api/v1/chain/turnover (no static file).",
+      "id": "chain-turnover",
+      "path": "/metagraph/chain/turnover.json",
+      "schema_ref": "#/components/schemas/ChainTurnoverArtifact",
       "storage_tier": "r2"
     },
     {

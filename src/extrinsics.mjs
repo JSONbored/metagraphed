@@ -196,6 +196,31 @@ export function buildExtrinsic(row, ref, events = []) {
 // Recent-extrinsic feed artifact (newest first). Null-safe on a cold/absent store
 // (returns a schema-stable zero). next_cursor (#1851) is the opaque keyset token
 // for the next page, or null at end-of-window; the caller computes it.
+export const EXTRINSICS_CSV_COLUMNS = [
+  "extrinsic_id",
+  "block_number",
+  "signer",
+  "call_module",
+  "call_function",
+  "success",
+];
+
+// Narrow CSV projection for the extrinsics feed (#2529): composite id plus the
+// core call metadata columns requested by the bounty issue.
+export function extrinsicsToCsvRows(extrinsics) {
+  return (extrinsics || []).map((row) => ({
+    extrinsic_id:
+      row?.block_number != null && row?.extrinsic_index != null
+        ? `${row.block_number}-${row.extrinsic_index}`
+        : null,
+    block_number: row?.block_number ?? null,
+    signer: row?.signer ?? null,
+    call_module: row?.call_module ?? null,
+    call_function: row?.call_function ?? null,
+    success: row?.success ?? null,
+  }));
+}
+
 export function buildExtrinsicFeed(rows, { limit, offset, nextCursor } = {}) {
   const extrinsics = (rows || []).map(formatExtrinsic).filter(Boolean);
   return {

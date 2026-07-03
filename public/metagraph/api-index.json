@@ -450,6 +450,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-event-summary",
+      "path": "/metagraph/subnets/{netuid}/event-summary.json",
+      "schema_ref": "#/components/schemas/SubnetEventSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
@@ -537,6 +544,13 @@
       "id": "blocks-feed",
       "path": "/metagraph/blocks.json",
       "schema_ref": "#/components/schemas/BlocksFeedArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "blocks-summary",
+      "path": "/metagraph/blocks/summary.json",
+      "schema_ref": "#/components/schemas/BlocksSummaryArtifact",
       "storage_tier": "r2"
     },
     {
@@ -632,6 +646,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "chain-stake-flow",
+      "path": "/metagraph/chain/stake-flow.json",
+      "schema_ref": "#/components/schemas/ChainStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
@@ -663,6 +684,13 @@
       "id": "chain-yield",
       "path": "/metagraph/chain/yield.json",
       "schema_ref": "#/components/schemas/ChainYieldArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-turnover",
+      "path": "/metagraph/chain/turnover.json",
+      "schema_ref": "#/components/schemas/ChainTurnoverArtifact",
       "storage_tier": "r2"
     },
     {
@@ -4943,6 +4971,38 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/subnets/{netuid}/event-summary.json",
+      "cache": "short",
+      "description": "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
+      "id": "subnet-event-summary",
+      "method": "GET",
+      "path": "/api/v1/subnets/{netuid}/event-summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "cache": "short",
       "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
@@ -5349,7 +5409,7 @@
     {
       "artifact_path": "/metagraph/blocks.json",
       "cache": "short",
-      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Computed live from the first-party blocks D1 tier (#1345).",
+      "description": "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345).",
       "id": "blocks-feed",
       "method": "GET",
       "path": "/api/v1/blocks",
@@ -5432,8 +5492,31 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/summary.json",
+      "cache": "short",
+      "description": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
+      "id": "blocks-summary",
+      "method": "GET",
+      "path": "/api/v1/blocks/summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/blocks/{ref}.json",
@@ -5604,7 +5687,7 @@
     {
       "artifact_path": "/metagraph/extrinsics.json",
       "cache": "short",
-      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Computed live from the first-party extrinsics D1 tier (#1345).",
+      "description": "Fetch the recent-extrinsic feed (newest first) for the block explorer; ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging, #1851) and a conjunctive filter set (#1846): ?block=<n>, ?signer=, ?call_module=, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered extrinsic rows as CSV. Computed live from the first-party extrinsics D1 tier (#1345).",
       "id": "extrinsics-feed",
       "method": "GET",
       "path": "/api/v1/extrinsics",
@@ -5695,6 +5778,17 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -5727,6 +5821,17 @@
             "enum": [
               "7d",
               "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }
@@ -5778,6 +5883,17 @@
             "maxLength": 100,
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -5824,6 +5940,17 @@
           "name": "call_module",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
@@ -5902,6 +6029,37 @@
       ]
     },
     {
+      "artifact_path": "/metagraph/chain/stake-flow.json",
+      "cache": "short",
+      "description": "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
+      "id": "chain-stake-flow",
+      "method": "GET",
+      "path": "/api/v1/chain/stake-flow",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
       "artifact_path": "/metagraph/chain/fees.json",
       "cache": "short",
       "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
@@ -5934,6 +6092,17 @@
           "name": "call_module",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
@@ -5995,6 +6164,38 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/turnover.json",
+      "cache": "short",
+      "description": "Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold.",
+      "id": "chain-turnover",
+      "method": "GET",
+      "path": "/api/v1/chain/turnover",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",

@@ -609,6 +609,23 @@ describe("get_network_health — branch coverage", () => {
   });
 });
 
+// ── list_curation — curation artifact list ────────────────────────────────
+describe("list_curation — branch coverage", () => {
+  test("surfaces non-not_found artifact failures", async () => {
+    const deps = {
+      readArtifact: async () => ({
+        ok: false,
+        code: "artifact_timeout",
+      }),
+      readHealthKv: async () => null,
+    };
+    const res = await callTool("list_curation", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /artifact_timeout/);
+    assert.match(res.body.result.content[0].text, /curation\.json/);
+  });
+});
+
 // ── list_subnet_apis fallbacks ────────────────────────────
 describe("list_subnet_apis — detail fallback fields", () => {
   test("falls back to the requested netuid + empty services when detail is bare", async () => {

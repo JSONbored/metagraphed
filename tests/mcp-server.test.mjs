@@ -10,6 +10,7 @@ import {
   listToolDefinitions,
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
+import * as profilesMcp from "../src/profiles-mcp.mjs";
 import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
 import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
@@ -1315,6 +1316,47 @@ describe("MCP tools (injected deps)", () => {
       { deps: emptyDeps },
     );
     assert.equal(res.body.result.structuredContent.eligible_count, 0);
+  });
+
+  test("list_curation returns filtered curation rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/curation.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        curation: [
+          { netuid: 7, coverage_level: "probed", curation_level: "verified" },
+          { netuid: 31, coverage_level: "manifested" },
+        ],
+      },
+    });
+    const res = await callTool("list_curation", { netuid: 7 }, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.returned, 1);
+    assert.equal(out.curation[0].netuid, 7);
+  });
+
+  test("list_curation reports not_found when the artifact is absent", async () => {
+    const res = await callTool("list_curation", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /Curation snapshot unavailable/,
+    );
+  });
+
+  test("list_curation payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "list_curation",
+    )?.outputSchema;
+    const deps = makeDeps({
+      "/metagraph/curation.json": {
+        generated_at: "2026-07-01T00:00:00.000Z",
+        notes: "ok",
+        curation: [{ netuid: 7, coverage_level: "probed" }],
+      },
+    });
+    const res = await callTool("list_curation", { limit: 1 }, { deps });
+    const validate = new Ajv2020({ strict: false }).compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
   });
 
   test("registry_summary returns the summary artifact", async () => {
@@ -2694,6 +2736,43 @@ describe("MCP stake-flow and movers economics tools", () => {
     });
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /window must be one of/);
+  });
+
+  test("get_account_stake_flow narrows to one side with direction=in", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58, window: "30d", direction: "in" },
+      {
+        env: stakeFlowD1(
+          [
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              total_tao: 200,
+              event_count: 4,
+              last_observed: 1_717_000_000_000,
+            },
+          ],
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_staked_tao, 200);
+    assert.equal(out.total_unstaked_tao, 0);
+    // direction=in binds only the StakeAdded kind, not StakeRemoved.
+    assert.ok(capture[0].params.includes("StakeAdded"));
+    assert.ok(!capture[0].params.includes("StakeRemoved"));
+  });
+
+  test("get_account_stake_flow rejects an unsupported direction", async () => {
+    const res = await callTool("get_account_stake_flow", {
+      ss58: SS58,
+      direction: "sideways",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /direction must be one of/);
   });
 
   test("get_account_stake_flow degrades to zeros on cold D1", async () => {
@@ -5162,6 +5241,211 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /not_found/);
   });
 
+  const PROFILES_BLOB = {
+    captured_at: "2026-06-20T00:00:00Z",
+    profiles: [
+      {
+        netuid: 7,
+        slug: "allways",
+        name: "Allways",
+        completeness_score: 82,
+        curation_level: "machine-verified",
+        review_state: "verified",
+        confidence: "high",
+        profile_level: "complete",
+      },
+      {
+        netuid: 1,
+        slug: "alpha",
+        name: "Alpha",
+        completeness_score: 60,
+        confidence: "medium",
+      },
+    ],
+  };
+
+  test("list_profiles serves profiles.json with REST list-query filters", async () => {
+    const res = await callTool(
+      "list_profiles",
+      { netuid: 7, sort: "completeness_score", order: "desc" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.profiles.length, 1);
+    assert.equal(out.profiles[0].netuid, 7);
+    assert.equal(out.total, 1);
+  });
+
+  test("list_profiles rejects an invalid sort field", async () => {
+    const res = await callTool(
+      "list_profiles",
+      { sort: "not_a_field" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("list_profiles surfaces not_found when profiles.json is absent", async () => {
+    const res = await callTool(
+      "list_profiles",
+      {},
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  test("list_profiles handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          {},
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_subnet_profile returns the per-netuid profile artifact", async () => {
+    const detail = {
+      subnet: { netuid: 7, slug: "allways" },
+      profile: { completeness_score: 82 },
+    };
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
+        env: {},
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet.netuid, 7);
+    assert.equal(out.profile.completeness_score, 82);
+  });
+
+  test("get_subnet_profile surfaces not_found for a missing netuid", async () => {
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 99999 },
+      { deps: makeDeps({}, {}), env: {} },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /not_found/);
+  });
+
+  test("get_subnet_profile handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_profile");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          { netuid: 7 },
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_subnet_profile maps profilesMcp loader errors to tool errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_profile");
+    const err = profilesMcp.profilesMcpError("not_found", "Profile gone.");
+    const spy = vi
+      .spyOn(profilesMcp, "loadSubnetProfile")
+      .mockRejectedValue(err);
+    try {
+      await assert.rejects(
+        () => tool.handler({ netuid: 7 }, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "not_found");
+          assert.match(thrown.message, /Profile gone/);
+          return true;
+        },
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("list_profiles maps profilesMcp loader errors to tool errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "list_profiles");
+    const err = profilesMcp.profilesMcpError("invalid_params", "bad filter");
+    const spy = vi
+      .spyOn(profilesMcp, "loadProfilesList")
+      .mockRejectedValue(err);
+    try {
+      await assert.rejects(
+        () => tool.handler({}, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "invalid_params");
+          assert.match(thrown.message, /bad filter/);
+          return true;
+        },
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("list_profiles payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "list_profiles")
+        .outputSchema,
+    );
+    const res = await callTool(
+      "list_profiles",
+      { sort: "netuid", order: "asc" },
+      {
+        deps: makeDeps({ "/metagraph/profiles.json": PROFILES_BLOB }),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  test("get_subnet_profile payload validates against its declared outputSchema", async () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(
+      listToolDefinitions().find((t) => t.name === "get_subnet_profile")
+        .outputSchema,
+    );
+    const detail = {
+      subnet: { netuid: 7, slug: "allways" },
+      profile: { completeness_score: 82 },
+      surfaces: [],
+      endpoints: [],
+    };
+    const res = await callTool(
+      "get_subnet_profile",
+      { netuid: 7 },
+      {
+        deps: makeDeps({ "/metagraph/profiles/7.json": detail }),
+        env: {},
+      },
+    );
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
   // A D1 `neurons` row (booleans as 0/1 INTEGER, stake/emission already TAO floats),
   // mirroring the metagraph-neurons unit-test fixtures.
   const ROW = {
@@ -5222,6 +5506,7 @@ describe("MCP economics + metagraph data tools", () => {
     neuronDaily = [],
     turnoverBounds = [],
     turnoverRows = [],
+    blocks = [],
   } = {}) {
     return {
       prepare(sql) {
@@ -5253,6 +5538,9 @@ describe("MCP economics + metagraph data tools", () => {
                     return Promise.resolve({ results: turnoverRows });
                   }
                   return Promise.resolve({ results: neuronDaily });
+                }
+                if (sql.includes("FROM blocks")) {
+                  return Promise.resolve({ results: blocks });
                 }
                 if (sql.includes("FROM surface_uptime_daily")) {
                   return Promise.resolve({ results: uptimeRows });
@@ -5825,6 +6113,52 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_yield, 0.05); // 50 / 1000
     assert.equal(out.miner_yield, 0.1); // 10 / 100
     assert.equal(out.distribution.count, 2);
+  });
+
+  test("get_blocks_summary returns a schema-stable zeroed card on cold D1", async () => {
+    const res = await callTool("get_blocks_summary", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 0);
+    assert.equal(out.block_time, null);
+    assert.equal(out.throughput, null);
+    assert.equal(out.author_concentration, null);
+  });
+
+  test("get_blocks_summary summarizes recent block production", async () => {
+    const res = await callTool(
+      "get_blocks_summary",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            blocks: [
+              {
+                block_number: 100,
+                author: "5Alice",
+                extrinsic_count: 3,
+                event_count: 10,
+                spec_version: 200,
+                observed_at: 1_750_000_000_000,
+              },
+              {
+                block_number: 101,
+                author: "5Bob",
+                extrinsic_count: 1,
+                event_count: 4,
+                spec_version: 200,
+                observed_at: 1_750_000_012_000,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.block_count, 2);
+    assert.equal(out.block_time.count, 1); // one consecutive interval
+    assert.equal(out.block_time.mean_ms, 12000);
+    assert.equal(out.distinct_authors, 2);
+    assert.equal(out.throughput.total_extrinsics, 4);
   });
 
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {

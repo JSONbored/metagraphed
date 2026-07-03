@@ -311,6 +311,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const env = createLocalArtifactEnv();
     for (const path of [
       "/api/v1/testnet/blocks",
+      "/api/v1/testnet/blocks/summary",
       "/api/v1/testnet/blocks/12345",
       "/api/v1/testnet/extrinsics",
       `/api/v1/testnet/accounts/${SS58}`,

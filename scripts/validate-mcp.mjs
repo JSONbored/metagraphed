@@ -267,6 +267,11 @@ assert.ok(
 
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
+const curationPage = await callOk("list_curation", { limit: 3 });
+assert.ok(
+  Array.isArray(curationPage.curation),
+  "list_curation must return curation[]",
+);
 await callOk("registry_summary", {});
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
@@ -350,6 +355,18 @@ assert.ok(
     economics.subnets.length <= 5 &&
     Number.isInteger(economics.total),
   "get_economics must return subnets[] with pagination totals",
+);
+const profilesList = await callOk("list_profiles", { limit: 5 });
+assert.ok(
+  Array.isArray(profilesList.profiles) &&
+    profilesList.profiles.length <= 5 &&
+    Number.isInteger(profilesList.total),
+  "list_profiles must return profiles[] with pagination totals",
+);
+const subnetProfile = await callOk("get_subnet_profile", { netuid: 7 });
+assert.ok(
+  subnetProfile?.subnet?.netuid === 7 || subnetProfile?.profile,
+  "get_subnet_profile must return subnet profile detail for netuid 7",
 );
 
 // The trajectory/metagraph/validators/neuron tiers are D1-backed; this cold env
@@ -491,6 +508,15 @@ assert.equal(
   accountStakeFlow.address,
   SS58,
   "get_account_stake_flow must echo the address",
+);
+const accountStakeFlowIn = await callOk("get_account_stake_flow", {
+  ss58: SS58,
+  direction: "in",
+});
+assert.equal(
+  accountStakeFlowIn.address,
+  SS58,
+  "get_account_stake_flow must accept the direction filter",
 );
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(

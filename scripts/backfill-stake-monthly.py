@@ -12,12 +12,13 @@ the last ~8 months is therefore the feasible enrichment: ~8 blocks x ~129 subnet
 
 For each month offset we resolve the block nearest a fixed UTC time-of-day, then for
 every subnet pull the FULL runtime metagraph and emit the SAME `neuron_daily` row shape
-as the daily backfiller — only now `stake_tao = float(total_stake[uid])` is populated.
+as the daily backfiller — only now `stake_tao = to_tao_exact(total_stake[uid])` is populated.
 The ingest upsert is idempotent on (netuid,uid,snapshot_date), so these monthly days are
 overwritten in place with complete, stake-included rows (re-runs are safe/resumable).
 
 Units match scripts/fetch-metagraph-native.py exactly:
-  stake_tao / emission_tao = float(Balance, alpha-denominated)
+  stake_tao / emission_tao = Balance.rao / 1e9, alpha-denominated, computed exactly
+    (not float(Balance)/.tao, which loses precision above 2**53 rao — #2921)
   consensus / incentive / dividends = runtime 0..1 floats
   validator_trust = SubtensorModule u16 (0..65535) / 65535
   trust = 0.0 (dead in dTAO)
@@ -40,8 +41,6 @@ import time
 import urllib.error
 import urllib.request
 
-import bittensor as bt
-
 # OnFinality public archive — free, no key, no rate limit, retains historical state.
 NETWORK = "wss://bittensor-finney.api.onfinality.io/public-ws"
 BLOCK_MS = 12_000  # finney block time, empirically exactly 12.0s
@@ -61,6 +60,23 @@ def to_float(value):
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def to_tao_exact(balance):
+    """Convert a Balance to TAO without going through float(Balance)/.tao, which
+    computes the rao->TAO division in double precision internally and silently
+    loses low-order digits above 2**53 rao (~9M TAO). balance.rao is the exact
+    arbitrary-precision int; splitting whole/remainder before the final float
+    conversion keeps the integer TAO part exact (metagraphed#2921)."""
+    if balance is None:
+        return None
+    try:
+        rao = balance.rao
+    except AttributeError:
+        return to_float(balance)  # not a Balance (e.g. already a plain number) — fall back
+    whole = rao // 1_000_000_000
+    remainder = (rao % 1_000_000_000) / 1e9
+    return whole + remainder
 
 
 def u16_ratio(value):
@@ -170,8 +186,8 @@ def build_subnet_rows(info, vtrust_vec, netuid, block, captured_at, snapshot_dat
                 "consensus": to_float(_at(consensus, uid)),
                 "incentive": to_float(_at(incentives, uid)),
                 "dividends": to_float(_at(dividends, uid)),
-                "emission_tao": to_float(_at(emission, uid)),
-                "stake_tao": to_float(_at(stake, uid)),  # THE point of this pass
+                "emission_tao": to_tao_exact(_at(emission, uid)),
+                "stake_tao": to_tao_exact(_at(stake, uid)),  # THE point of this pass
                 "registered_at_block": reg,
                 "is_immunity_period": 1
                 if (reg is not None and block - reg < immunity)
@@ -235,6 +251,9 @@ def main():
     args = p.parse_args()
     if not SECRET and not args.dry_run:
         sys.exit("METAGRAPH_BACKFILL_SECRET is required (or use --dry-run)")
+
+    import bittensor as bt  # lazy: keeps this module loadable (e.g. for unit tests)
+    # without the heavy SDK installed, matching fetch-events.py's convention.
 
     # bittensor 10.4.x: metagraph helpers live on api.metagraphs (NOT api.subnets).
     api = bt.SubtensorApi(network=NETWORK)
