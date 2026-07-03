@@ -237,6 +237,109 @@ describe("handleEconomicsTrends", () => {
     assert.equal(day.miner_count, null);
     assert.equal(day.mean_emission_share, null);
   });
+
+  test("returns CSV response when ?format=csv is requested", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+      ],
+    });
+    const res = await handleEconomicsTrends(req("/"), env, url("/?format=csv"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    assert.ok(
+      res.headers
+        .get("content-disposition")
+        .includes('filename="economics-trends.csv"'),
+    );
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+    );
+    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+  });
+
+  test("returns CSV response when Accept: text/csv header is present", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleEconomicsTrends(request, env, url("/"));
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(lines[1], "2026-06-02,1,300,0.02,0.02,8,50,0.04");
+  });
+
+  test("returns empty/header-only CSV when rollup is cold", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?format=csv"));
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    const lines = text.split("\r\n");
+    assert.equal(
+      lines[0],
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+    );
+    assert.equal(lines.length, 1);
+  });
+
+  test("rejects an unsupported format value", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?format=pdf"));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("rejects an empty format parameter", async () => {
+    const res = await handleEconomicsTrends(req("/"), {}, url("/?format="));
+    const body = await errorJson(res);
+    assert.equal(res.status, 400);
+    assert.equal(body.meta.parameter, "format");
+  });
+
+  test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
+    const env = d1Env({
+      "FROM subnet_snapshots": [
+        {
+          snapshot_date: "2026-06-02",
+          total_stake_tao: 300,
+          alpha_price_tao: 0.02,
+          validator_count: 8,
+          miner_count: 50,
+          emission_share: 0.04,
+        },
+      ],
+    });
+    const request = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const res = await handleEconomicsTrends(request, env, url("/?format=json"));
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/json/);
+    const body = await res.json();
+    assert.equal(body.data.day_count, 1);
+  });
 });
 
 describe("handleUptime", () => {
@@ -600,6 +703,49 @@ describe("canonicalEconomicsTrendsCachePath", () => {
 
   test("falls back to raw search on invalid window value", () => {
     const raw = "/api/v1/economics/trends?window=bogus";
+    assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
+  });
+
+  test("adds format=csv to the cache key when CSV is requested", () => {
+    assert.equal(
+      canonicalEconomicsTrendsCachePath(
+        url("/api/v1/economics/trends?window=7d&format=csv"),
+      ),
+      "/api/v1/economics/trends?window=7d&format=csv",
+    );
+  });
+
+  test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+    const csv = canonicalEconomicsTrendsCachePath(
+      url("/api/v1/economics/trends?format=csv"),
+    );
+    assert.equal(csv, "/api/v1/economics/trends?window=30d&format=csv");
+
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    const json = canonicalEconomicsTrendsCachePath(
+      url("/api/v1/economics/trends?format=json"),
+      csvAccept,
+    );
+    assert.equal(json, "/api/v1/economics/trends?window=30d");
+  });
+
+  test("adds format=csv when only Accept: text/csv is present", () => {
+    const csvAccept = new Request("https://api.metagraph.sh/", {
+      headers: { accept: "text/csv" },
+    });
+    assert.equal(
+      canonicalEconomicsTrendsCachePath(
+        url("/api/v1/economics/trends?window=7d"),
+        csvAccept,
+      ),
+      "/api/v1/economics/trends?window=7d&format=csv",
+    );
+  });
+
+  test("falls back to raw search on invalid format", () => {
+    const raw = "/api/v1/economics/trends?format=pdf";
     assert.equal(canonicalEconomicsTrendsCachePath(url(raw)), raw);
   });
 });

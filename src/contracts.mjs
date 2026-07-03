@@ -1547,12 +1547,12 @@ export const API_ROUTES = [
     "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup (the same source the per-subnet /trajectory reads). ?window=7d|30d|90d|1y|all (default 30d). Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
-    ],
+    ]),
     [],
   ),
   route(
@@ -3187,6 +3187,12 @@ function csvExampleForRoute(entry) {
     return [
       "uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
       "0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
+    ].join("\r\n");
+  }
+  if (entry.id === "economics-trends") {
+    return [
+      "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

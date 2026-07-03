@@ -9,6 +9,7 @@
 // injected once at module-init so this file never imports api.mjs back.
 
 import { DAY_MS, MAX_UPTIME_ROWS, UPTIME_WINDOWS } from "../config.mjs";
+import { csvRequested, csvResponse } from "../csv.mjs";
 import { errorResponse } from "../http.mjs";
 import { readArtifact } from "../storage.mjs";
 import { contractVersion, envelopeResponse } from "../responses.mjs";
@@ -45,6 +46,39 @@ let readHealthMetaKv = () => {
 let readEconomicsCurrentKv = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
+
+const RESPONSE_FORMATS = ["json", "csv"];
+
+const ECONOMICS_TRENDS_CSV_COLUMNS = [
+  "snapshot_date",
+  "subnet_count",
+  "total_stake_tao",
+  "alpha_price_tao_weighted",
+  "alpha_price_tao_median",
+  "validator_count",
+  "miner_count",
+  "mean_emission_share",
+];
+
+function validateFormatParam(url) {
+  const raw = url.searchParams.get("format");
+  if (raw === null && !url.searchParams.has("format")) return null;
+  const normalized = String(raw || "").toLowerCase();
+  if (RESPONSE_FORMATS.includes(normalized)) return null;
+  return {
+    parameter: "format",
+    message: `format must be one of: ${RESPONSE_FORMATS.join(", ")}.`,
+  };
+}
+
+function economicsTrendsCacheVariant(url, request, canonicalPath) {
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const wantsCsv =
+    format === "csv" || (request != null && csvRequested(url, request));
+  if (!wantsCsv) return canonicalPath;
+  // canonicalEconomicsTrendsCachePath always supplies ?window=…, so & is safe.
+  return `${canonicalPath}&format=csv`;
+}
 
 export function configureAnalyticsRoutes(deps) {
   readHealthMetaKv = deps.readHealthMetaKv;
@@ -102,8 +136,10 @@ export async function handleTrajectory(request, env, netuid, url) {
 // BY) so the weighted/median price is computed in the pure builder. Schema-stable
 // (day_count:0, days:[]) on a cold rollup. Bounded by ECONOMICS_TRENDS_ROW_CAP.
 export async function handleEconomicsTrends(request, env, url) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const { label, days, error } = parseHistoryWindow(
     url.searchParams.get("window"),
   );
@@ -112,6 +148,15 @@ export async function handleEconomicsTrends(request, env, url) {
     (sql, params) => d1All(env, sql, params),
     { windowLabel: label, windowDays: days },
   );
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.days,
+      "economics-trends",
+      "short",
+      request,
+      ECONOMICS_TRENDS_CSV_COLUMNS,
+    );
+  }
   return envelopeWithD1Fallback(
     request,
     {
@@ -214,12 +259,18 @@ export function canonicalUptimeCachePath(url) {
 // Normalises the economics-trends URL so that a bare ?-free request and an explicit
 // ?window=30d request both resolve to the same edge-cache entry — mirrors
 // canonicalSubnetHistoryCachePath in entities.mjs.
-export function canonicalEconomicsTrendsCachePath(url) {
-  const validationError = validateQueryParams(url, ["window"]);
+export function canonicalEconomicsTrendsCachePath(url, request = null) {
+  const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateFormatParam(url);
+  if (formatError) return `${url.pathname}${url.search}`;
   const { label, error } = parseHistoryWindow(url.searchParams.get("window"));
   if (error) return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${encodeURIComponent(label)}`;
+  return economicsTrendsCacheVariant(
+    url,
+    request,
+    `${url.pathname}?window=${encodeURIComponent(label)}`,
+  );
 }
 
 // Normalises the leaderboards URL so that a bare ?-free request and an explicit
