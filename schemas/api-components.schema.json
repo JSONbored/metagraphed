@@ -3162,6 +3162,62 @@
         ],
         "type": "object"
       },
+      "ChainPerformanceArtifact": {
+        "additionalProperties": true,
+        "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",
+        "properties": {
+          "active_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "captured_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "consensus": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          },
+          "dividends": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "incentive": {
+            "$ref": "#/components/schemas/ConcentrationMetrics"
+          },
+          "neuron_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "subnet_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          },
+          "validator_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "validator_trust": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          }
+        },
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "incentive",
+          "dividends",
+          "trust",
+          "consensus"
+        ],
+        "type": "object"
+      },
       "ChainSignerEntry": {
         "additionalProperties": false,
         "description": "One leaderboard row: an account (extrinsic signer) with its windowed activity.",
@@ -10930,7 +10986,7 @@
       },
       "ScoreDistribution": {
         "additionalProperties": true,
-        "description": "Distribution summary of a 0–1 per-UID score across a subnet's neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty subnet).",
+        "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
         "properties": {
           "count": {
             "minimum": 0,

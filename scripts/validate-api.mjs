@@ -478,6 +478,23 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/performance",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      // each lens is a metrics/distribution object or null on a cold store.
+      assert.equal(
+        body.data.incentive === null || typeof body.data.incentive === "object",
+        true,
+      );
+      assert.equal(
+        body.data.trust === null || typeof body.data.trust === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);

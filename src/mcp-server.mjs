@@ -121,6 +121,7 @@ import { loadSubnetIdentityHistory } from "./subnet-identity-history.mjs";
 import { loadSubnetTurnover } from "./turnover.mjs";
 import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
+import { loadChainPerformance } from "./chain-performance.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -276,6 +277,8 @@ export const MCP_INSTRUCTIONS =
   "fee/tip market series plus top payers, get_chain_transfers network-wide " +
   "native-TAO transfer volume plus top senders/receivers, get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
+  "get_chain_performance the network-wide reward-distribution and trust/consensus " +
+  "score spread across all subnets, " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1864,6 +1867,27 @@ export const MCP_TOOLS = [
     },
     async handler(_args, ctx) {
       return loadChainConcentration(mcpD1Runner(ctx));
+    },
+  },
+  {
+    name: "get_chain_performance",
+    title: "Get network-wide reward distribution & score spread",
+    description:
+      "Fetch the network-wide reward-distribution scorecard aggregated across " +
+      "ALL subnets' neurons: the concentration (Gini, HHI, Nakamoto coefficient, " +
+      "top-percentile shares, entropy) of the actual rewards — incentive across " +
+      "all neurons and dividends across validators — plus the p10–p90 spread of " +
+      "the 0–1 trust, consensus, and validator_trust scores, and the subnet_count " +
+      "the snapshot spans. The network-level companion of get_subnet_performance " +
+      "and the reward-flow companion of get_chain_concentration. Mirrors GET " +
+      "/api/v1/chain/performance.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainPerformance(mcpD1Runner(ctx));
     },
   },
   {
@@ -5064,6 +5088,24 @@ const TOOL_OUTPUT_SCHEMAS = {
       entity_stake: { type: ["object", "null"] },
       entity_emission: { type: ["object", "null"] },
       validator_stake: { type: ["object", "null"] },
+    },
+  },
+  get_chain_performance: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer" },
+      neuron_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      active_count: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      incentive: { type: ["object", "null"] },
+      dividends: { type: ["object", "null"] },
+      trust: { type: ["object", "null"] },
+      consensus: { type: ["object", "null"] },
+      validator_trust: { type: ["object", "null"] },
     },
   },
   get_subnet_concentration_history: {

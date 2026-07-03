@@ -907,6 +907,51 @@
         },
         "additionalProperties": true
       },
+      "ChainPerformanceArtifact": {
+        "type": "object",
+        "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons, computed live from the neurons D1 tier: reward concentration for incentive (across all neurons) and dividends (across the permitted validators) — the same Gini/HHI/Nakamoto/top-share/entropy scorecard as concentration — plus the percentile spread of the 0–1 trust, consensus, and validator_trust scores. subnet_count reports how many subnets the snapshot spans. The network-wide reward-flow companion to ChainConcentrationArtifact.",
+        "required": [
+          "schema_version",
+          "subnet_count",
+          "neuron_count",
+          "incentive",
+          "dividends",
+          "trust",
+          "consensus"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "subnet_count": { "type": "integer", "minimum": 0 },
+          "neuron_count": { "type": "integer", "minimum": 0 },
+          "validator_count": { "type": "integer", "minimum": 0 },
+          "active_count": { "type": "integer", "minimum": 0 },
+          "captured_at": { "type": ["string", "null"] },
+          "incentive": { "$ref": "#/components/schemas/ConcentrationMetrics" },
+          "dividends": { "$ref": "#/components/schemas/ConcentrationMetrics" },
+          "trust": { "$ref": "#/components/schemas/ScoreDistribution" },
+          "consensus": { "$ref": "#/components/schemas/ScoreDistribution" },
+          "validator_trust": {
+            "$ref": "#/components/schemas/ScoreDistribution"
+          }
+        },
+        "additionalProperties": true
+      },
+      "ScoreDistribution": {
+        "type": ["object", "null"],
+        "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean": { "type": ["number", "null"] },
+          "min": { "type": ["number", "null"] },
+          "max": { "type": ["number", "null"] },
+          "p10": { "type": ["number", "null"] },
+          "p25": { "type": ["number", "null"] },
+          "p50": { "type": ["number", "null"] },
+          "p75": { "type": ["number", "null"] },
+          "p90": { "type": ["number", "null"] }
+        },
+        "additionalProperties": true
+      },
       "SubnetConcentrationHistoryArtifact": {
         "type": "object",
         "description": "Per-day stake & emission concentration trend for one subnet (newest first) over a 7d/30d/90d window, computed live from the neuron_daily D1 rollup.",

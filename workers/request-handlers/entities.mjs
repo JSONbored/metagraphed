@@ -97,6 +97,7 @@ import {
   loadChainConcentration,
   parseConcentrationHistoryWindow,
 } from "../../src/concentration.mjs";
+import { loadChainPerformance } from "../../src/chain-performance.mjs";
 import {
   PERFORMANCE_READ_COLUMNS,
   buildSubnetPerformance,
@@ -505,6 +506,30 @@ export async function handleChainConcentration(request, env, url) {
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/performance: network-wide reward-distribution & score-spread
+// across EVERY subnet's neurons — reward concentration (Gini/HHI/Nakamoto/
+// top-share/entropy) for incentive across all neurons and dividends across
+// validators, plus the p10–p90 spread of the 0–1 trust/consensus/validator_trust
+// scores, computed live from the neurons D1 tier. The reward-flow companion to
+// /chain/concentration. No params; a cold/absent store → 200 with null blocks.
+export async function handleChainPerformance(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadChainPerformance(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/performance.json",
         data.captured_at,
       ),
     },
