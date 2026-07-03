@@ -388,6 +388,31 @@
       "schema_status": "not-captured",
       "source_urls": ["https://chutes.ai/llms.txt"],
       "url": "https://llm.chutes.ai/v1/models"
+    },
+    {
+      "auth_required": true,
+      "authority": "community",
+      "id": "sn-64-chutes-sse",
+      "kind": "sse",
+      "name": "Chutes streaming chat completions",
+      "notes": "POST /v1/chat/completions with `stream: true` yields line-streamed chunks. Endpoint requires API key in X-API-Key or Authorization header.",
+      "probe": {
+        "enabled": false,
+        "expect": "sse",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "chutes",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://chutes.ai/docs/getting-started/running-a-chute",
+        "https://chutes.ai/llms.txt"
+      ],
+      "url": "https://llm.chutes.ai/v1/chat/completions"
     }
   ],
   "website_url": "https://chutes.ai/"
