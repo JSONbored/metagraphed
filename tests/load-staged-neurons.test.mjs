@@ -359,6 +359,7 @@ function statefulEnv(
     failBatchOnPrune = false,
     failPruneUntil = 0,
     failUpsertOnBatch = 0,
+    failRollbackRun = false,
   } = {},
 ) {
   const deleted = [];
@@ -407,6 +408,9 @@ function statefulEnv(
                     throw new Error("simulated prune failure");
                   }
                   if (sql.includes("captured_at =")) {
+                    if (failRollbackRun) {
+                      throw new Error("simulated rollback failure");
+                    }
                     return {
                       meta: {
                         changes: applyNeuronSnapshotRollback(table, sql, v),
@@ -439,10 +443,7 @@ function statefulEnv(
           );
           if (hasUpsert && !hasPrune) {
             upsertBatchesDone += 1;
-            if (
-              failUpsertOnBatch &&
-              upsertBatchesDone === failUpsertOnBatch
-            ) {
+            if (failUpsertOnBatch && upsertBatchesDone === failUpsertOnBatch) {
               throw new Error("simulated multi-batch upsert failure");
             }
           }
@@ -614,10 +615,81 @@ test("loadStagedNeurons rolls back partial multi-batch upserts on mid-load failu
   assert.equal(r.ok, false);
   assert.equal(r.reason, "load_failed");
   assert.equal(
-    [...table.values()].some((row) => row.netuid === 1 && row.captured_at === T2),
+    [...table.values()].some(
+      (row) => row.netuid === 1 && row.captured_at === T2,
+    ),
     false,
     "partial snapshot rows at T2 must be rolled back",
   );
-  assert.equal(table.get("1:1").captured_at, T1, "prior snapshot stays until retry");
+  assert.equal(
+    table.get("1:1").captured_at,
+    T1,
+    "prior snapshot stays until retry",
+  );
   assert.deepEqual(m.deleted, [], "staged R2 object kept for retry");
+});
+
+test("loadStagedNeurons returns purge_failed when upserts finish but prune never succeeds", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  const m = statefulEnv(table, { failPruneUntil: 999 });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "purge_failed");
+  assert.deepEqual(m.deleted, [], "staged object kept for re-prune retry");
+});
+
+test("loadStagedNeurons rolls back legacy bare-array snapshots on mid-load failure", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  const m = statefulEnv(table, { failUpsertOnBatch: 2 });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedEnvelope(snap2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "load_failed");
+  assert.equal(
+    [...table.values()].some((row) => row.captured_at === T2),
+    false,
+    "partial legacy snapshot rows must be rolled back",
+  );
+});
+
+test("loadStagedNeurons survives rollback failure after mid-load upsert failure", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  const m = statefulEnv(table, {
+    failUpsertOnBatch: 2,
+    failRollbackRun: true,
+  });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "load_failed");
+  assert.deepEqual(
+    m.deleted,
+    [],
+    "staged object kept even when rollback throws",
+  );
 });
