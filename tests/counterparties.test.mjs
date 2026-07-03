@@ -324,6 +324,26 @@ describe("buildCounterpartyRelationship", () => {
     assert.equal(data.transfers[2].amount_tao, 7.5);
   });
 
+  test("drops blank block_number cells that would coerce to block 0", () => {
+    const data = buildCounterpartyRelationship(
+      [
+        {
+          block_number: "",
+          event_index: 0,
+          hotkey: ME,
+          coldkey: "A",
+          netuid: 7,
+          amount_tao: 1,
+          observed_at: Date.UTC(2026, 5, 1),
+        },
+      ],
+      ME,
+      "A",
+      {},
+    );
+    assert.equal(data.transfers[0].block_number, null);
+  });
+
   test("blank or out-of-range observed_at cells stay null on relationship evidence (not epoch 1970)", () => {
     const data = buildCounterpartyRelationship(
       [
