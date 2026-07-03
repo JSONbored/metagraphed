@@ -1175,6 +1175,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainTurnoverArtifact",
   ),
   artifact(
+    "chain-yield",
+    "/metagraph/chain/yield.json",
+    "Network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, and the subnet_count the snapshot spans — the return-rate companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/yield (no static file).",
+    "ChainYieldArtifact",
+  ),
+  artifact(
     "subnet-uptime",
     "/metagraph/subnets/{netuid}/uptime.json",
     "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
@@ -2470,6 +2476,17 @@ export const API_ROUTES = [
         schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
       },
     ],
+    [],
+  ),
+  route(
+    "chain-yield",
+    "GET",
+    "/api/v1/chain/yield",
+    "/metagraph/chain/yield.json",
+    "Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [],
     [],
   ),
   route(

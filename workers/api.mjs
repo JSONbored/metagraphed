@@ -80,6 +80,7 @@ import {
   handleChainPerformance,
   handleChainTurnover,
   canonicalChainTurnoverCachePath,
+  handleChainYield,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -1730,6 +1731,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         canonicalChainTurnoverCachePath(resolved.url),
       );
     }
+    // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
+    // — edge-cache busts on the newest neuron captured_at across ALL subnets (like
+    // chain/performance, but the emission/stake return-rate lens).
+    if (resolved.url.pathname === "/api/v1/chain/yield") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-yield",
+        () => handleChainYield(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1792,6 +1807,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/turnover" ||
+    pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

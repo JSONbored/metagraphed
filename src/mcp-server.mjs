@@ -32,6 +32,12 @@ import {
   loadGlobalOperationalHealth,
 } from "./global-operational-health.mjs";
 import {
+  GET_HEALTH_HISTORY_INSTRUCTIONS,
+  GET_HEALTH_HISTORY_MCP_TOOL,
+  GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
+  loadHealthHistory,
+} from "./health-history-mcp.mjs";
+import {
   loadChainConcentration,
   loadSubnetConcentration,
   loadSubnetConcentrationHistory,
@@ -135,6 +141,7 @@ import { loadSubnetYield } from "./subnet-yield.mjs";
 import { loadSubnetPerformance } from "./subnet-performance.mjs";
 import { loadChainPerformance } from "./chain-performance.mjs";
 import { loadChainTurnover } from "./chain-turnover.mjs";
+import { loadChainYield } from "./chain-yield.mjs";
 import {
   loadSubnetStakeFlow,
   STAKE_FLOW_WINDOWS,
@@ -193,7 +200,7 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 //   - change or remove a tool's I/O       → MAJOR
 //   - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
-export const MCP_SERVER_VERSION = "1.20.0";
+export const MCP_SERVER_VERSION = "1.21.0";
 
 // Window labels accepted by get_chain_transfers — derived from the loader constant
 // so input/output schemas and runtime validation cannot drift.
@@ -262,6 +269,7 @@ export const MCP_INSTRUCTIONS =
   "get_subnet_trajectory its week-over-week trend, get_subnet_uptime its " +
   "long-term surface uptime history, " +
   GET_NETWORK_HEALTH_INSTRUCTIONS +
+  GET_HEALTH_HISTORY_INSTRUCTIONS +
   "get_health_trends the all-subnet 7d/30d " +
   "uptime + latency matrix, get_subnet_health_trends one subnet's per-surface " +
   "health trends, get_subnet_health_percentiles its " +
@@ -303,6 +311,8 @@ export const MCP_INSTRUCTIONS =
   "score spread across all subnets, get_chain_turnover the network-wide " +
   "validator-set and registration churn (retention/stability) across all subnets " +
   "between two boundary snapshots, " +
+  "get_chain_yield the network-wide emission-yield (return rate) and its " +
+  "distribution across all subnets, " +
   "get_network_activity the daily " +
   "network-activity time series (blocks/extrinsics/events/signers), and " +
   "get_chain_activity the recent pallet.method event distribution, and " +
@@ -1561,6 +1571,21 @@ export const MCP_TOOLS = [
     },
   },
   {
+    ...GET_HEALTH_HISTORY_MCP_TOOL,
+    async handler(args, ctx) {
+      try {
+        return await loadHealthHistory(ctx, args, {
+          readArtifact: loadArtifactData,
+        });
+      } catch (err) {
+        if (err?.healthHistoryMcp) {
+          throw toolError(err.code, err.message);
+        }
+        throw err;
+      }
+    },
+  },
+  {
     name: "get_subnet_health",
     title: "Get subnet health",
     description:
@@ -1928,6 +1953,26 @@ export const MCP_TOOLS = [
         windowLabel: label,
         windowDays: days,
       });
+    },
+  },
+  {
+    name: "get_chain_yield",
+    title: "Get network-wide emission yield (return rate)",
+    description:
+      "Fetch the network-wide emission-yield scorecard aggregated across ALL " +
+      "subnets' neurons: the aggregate network return (total emission / total " +
+      "stake), the same split by validator vs miner role, and the count/mean/" +
+      "median/min/max plus p10–p90 spread of the per-neuron emission/stake return, " +
+      "and the subnet_count the snapshot spans. The network-level companion of " +
+      "get_subnet_yield and the return-rate companion of get_chain_performance. " +
+      "Mirrors GET /api/v1/chain/yield.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+    async handler(_args, ctx) {
+      return loadChainYield(mcpD1Runner(ctx));
     },
   },
   {
@@ -5200,6 +5245,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   },
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
+  get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
   get_subnet_trajectory: {
     type: "object",
     additionalProperties: true,
@@ -5335,6 +5381,25 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+    },
+  },
+  get_chain_yield: {
+    type: "object",
+    additionalProperties: true,
+    required: ["subnet_count", "neuron_count"],
+    properties: {
+      schema_version: { type: "integer" },
+      subnet_count: { type: "integer" },
+      neuron_count: { type: "integer" },
+      validator_count: { type: "integer" },
+      miner_count: { type: "integer" },
+      captured_at: NULLABLE_STRING,
+      total_stake_tao: { type: "number" },
+      total_emission_tao: { type: "number" },
+      network_yield: { type: ["number", "null"] },
+      validator_yield: { type: ["number", "null"] },
+      miner_yield: { type: ["number", "null"] },
+      distribution: { type: ["object", "null"] },
     },
   },
   get_subnet_concentration_history: {
