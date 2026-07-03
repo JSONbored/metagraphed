@@ -109,11 +109,13 @@ function rowsForSql(sql) {
     ];
   }
   if (sql.includes("FROM surface_uptime_daily")) {
+    const day7 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const day30 = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     return [
       {
         netuid: NETUID,
-        day: "2026-06-24",
-        date: "2026-06-24",
+        day: day7,
+        date: day7,
         total: 100,
         ok_count: 98,
         latency_samples: 96,
@@ -122,8 +124,8 @@ function rowsForSql(sql) {
       },
       {
         netuid: NETUID,
-        day: "2026-06-01",
-        date: "2026-06-01",
+        day: day30,
+        date: day30,
         total: 50,
         ok_count: 45,
         latency_samples: 48,
