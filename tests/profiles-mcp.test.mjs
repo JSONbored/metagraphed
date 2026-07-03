@@ -118,8 +118,7 @@ describe("profiles-mcp — loadProfilesList", () => {
 
   test("throws not_found when profiles.json is absent", async () => {
     await assert.rejects(
-      () =>
-        loadProfilesList(makeCtx(), {}, makeDeps({ listBlob: null })),
+      () => loadProfilesList(makeCtx(), {}, makeDeps({ listBlob: null })),
       (err) => {
         assert.equal(err.profilesMcp, true);
         assert.equal(err.code, "not_found");
