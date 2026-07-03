@@ -21,6 +21,26 @@
 > remains the cheaper dev/interim fallback (`SUBTENSOR_PRUNING=2000`). Everything
 > else in this ADR (CF edge · Postgres · Hyperdrive cutover · sequencing) stands.
 
+> **Amendment (2026-07-03): the continuous indexer is Rust, not Python, and the
+> schema's TimescaleDB section had a real bug (now fixed).** `scripts/index-chain.py`
+> and `scripts/backfill-chain.py` (referenced below and in `deploy/README.md`)
+> are retired — a Rust implementation (live-follow + sharded historical backfill
+> in one binary) replaces both, verified faster and handling more event
+> coverage. Its source has no git remote yet (tracked as a real, still-open
+> risk — production-adjacent code should not live in exactly one place with no
+> backup). Separately: `deploy/postgres/schema.sql`'s TimescaleDB hypertable
+> section, as originally committed, could never actually apply —
+> `create_hypertable()` requires the partition column (`observed_at`) in every
+> unique constraint, and none of the original primary keys included it. Fixed
+> by making `observed_at` part of each composite PK (functionally a no-op for
+> real-world uniqueness, since `observed_at` is already determined by
+> `block_number`) and moving the TimescaleDB section into its own optional
+> `deploy/postgres/schema-timescaledb.sql`, now that it's verified working —
+> unconditionally running `CREATE EXTENSION timescaledb` from inside
+> `schema.sql` itself would break the plain-Postgres/Railway path the base
+> schema is supposed to support. JSO-2054/#2518's option (a) decision
+> (Postgres/TimescaleDB, no columnar sibling) stands unchanged.
+
 ## Context
 
 The explorer's chain data is structurally a **rolling cache, not an archive**, and

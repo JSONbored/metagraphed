@@ -10,8 +10,9 @@ import {
   listToolDefinitions,
   handleMcpRequest,
 } from "../src/mcp-server.mjs";
+import * as healthHistoryMcp from "../src/health-history-mcp.mjs";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.mjs";
-import { createLocalArtifactEnv } from "../scripts/lib.mjs";
+import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.mjs";
 
@@ -20,6 +21,31 @@ const MCP_URL = "https://api.metagraph.sh/mcp";
 // Fresh prober run time for live KV fixtures — resolveLiveHealth rejects a
 // health:current whose last_run_at is older than the 25-min freshness window.
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
+const HEALTH_HISTORY_DATE = await latestArtifactDate("health/history");
+const HEALTH_HISTORY_BLOB = {
+  date: HEALTH_HISTORY_DATE || "2026-06-06",
+  summary: { incident_count: 0, surface_count: 2 },
+  surfaces: [
+    {
+      netuid: 7,
+      surface_id: "sn-7-example",
+      kind: "openapi",
+      provider: "allways",
+      status: "ok",
+      classification: "live",
+      latency_ms: 120,
+    },
+    {
+      netuid: 1,
+      surface_id: "sn-1-example",
+      kind: "openapi",
+      provider: "other",
+      status: "ok",
+      classification: "live",
+      latency_ms: 100,
+    },
+  ],
+};
 
 // Build injectable deps with controlled artifact + KV responses.
 function makeDeps(artifacts = {}, kv = {}) {
@@ -5683,6 +5709,53 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_trust.count, 1);
   });
 
+  test("get_chain_yield returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_chain_yield", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.network_yield, null);
+    assert.equal(out.validator_yield, null);
+    assert.equal(out.distribution, null);
+  });
+
+  test("get_chain_yield summarizes network return + distribution", async () => {
+    const res = await callTool(
+      "get_chain_yield",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              {
+                ...ROW,
+                netuid: 1,
+                validator_permit: 1,
+                stake_tao: 1000,
+                emission_tao: 50,
+              },
+              {
+                ...MINER,
+                netuid: 2,
+                validator_permit: 0,
+                stake_tao: 100,
+                emission_tao: 10,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1); // only ROW carries a permit
+    assert.ok(Math.abs(out.network_yield - 60 / 1100) < 1e-6);
+    assert.equal(out.validator_yield, 0.05); // 50 / 1000
+    assert.equal(out.miner_yield, 0.1); // 10 / 100
+    assert.equal(out.distribution.count, 2);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",
@@ -6052,6 +6125,157 @@ describe("MCP economics + metagraph data tools", () => {
     };
     const deps = makeDeps({}, { "health:current": globalLiveKv });
     const res = await callTool("get_network_health", {}, { deps });
+    const validate = new Ajv2020().compile(schema);
+    assert.ok(validate(res.body.result.structuredContent));
+  });
+
+  test("get_health_history serves a dated snapshot with list-query filters", async () => {
+    const deps = makeDeps({
+      [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
+        HEALTH_HISTORY_BLOB,
+    });
+    const res = await callTool(
+      "get_health_history",
+      {
+        date: HEALTH_HISTORY_BLOB.date,
+        netuid: 7,
+        limit: 10,
+      },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.date, HEALTH_HISTORY_BLOB.date);
+    assert.equal(out.surfaces.length, 1);
+    assert.equal(out.surfaces[0].netuid, 7);
+  });
+
+  test("get_health_history rejects malformed dates", async () => {
+    const res = await callTool("get_health_history", { date: "June" });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /date must be a YYYY-MM-DD day/,
+    );
+  });
+
+  test("get_health_history rejects invalid sort fields", async () => {
+    const deps = makeDeps({
+      [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
+        HEALTH_HISTORY_BLOB,
+    });
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date, sort: "not_a_field" },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("get_health_history surfaces not_found when the dated artifact is absent", async () => {
+    const res = await callTool("get_health_history", {
+      date: HEALTH_HISTORY_BLOB.date,
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /No resource at the requested identifier/,
+    );
+  });
+
+  test("get_health_history maps loader not_found when artifact data is empty", async () => {
+    const path = `/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`;
+    const deps = {
+      ...makeDeps(),
+      readArtifact(_env, artifactPath) {
+        if (artifactPath === path) {
+          return Promise.resolve({ ok: true, data: null, source: "test" });
+        }
+        return makeDeps().readArtifact(_env, artifactPath);
+      },
+    };
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date },
+      { deps },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /No health-history snapshot/);
+  });
+
+  test("get_health_history callTool rethrows unexpected readArtifact failures", async () => {
+    const deps = {
+      ...makeDeps({
+        [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
+          HEALTH_HISTORY_BLOB,
+      }),
+      readArtifact() {
+        return Promise.reject(new Error("kaboom"));
+      },
+    };
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date },
+      { deps },
+    );
+    assert.equal(res.body.error?.message || res.body.result?.isError, true);
+  });
+
+  test("get_health_history handler rethrows unexpected loader failures", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
+    await assert.rejects(
+      () =>
+        tool.handler(
+          { date: HEALTH_HISTORY_BLOB.date },
+          {
+            env: {},
+            readArtifact: async () => {
+              throw new Error("kaboom");
+            },
+          },
+        ),
+      /kaboom/,
+    );
+  });
+
+  test("get_health_history handler maps healthHistoryMcp loader errors", async () => {
+    const tool = MCP_TOOLS.find((t) => t.name === "get_health_history");
+    const err = healthHistoryMcp.healthHistoryMcpError(
+      "invalid_params",
+      "bad filter",
+    );
+    const spy = vi
+      .spyOn(healthHistoryMcp, "loadHealthHistory")
+      .mockRejectedValue(err);
+    try {
+      await assert.rejects(
+        () => tool.handler({ date: HEALTH_HISTORY_BLOB.date }, { env: {} }),
+        (thrown) => {
+          assert.equal(thrown.toolError, true);
+          assert.equal(thrown.code, "invalid_params");
+          assert.match(thrown.message, /bad filter/);
+          return true;
+        },
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("get_health_history payload validates against its declared outputSchema", async () => {
+    const schema = listToolDefinitions().find(
+      (t) => t.name === "get_health_history",
+    )?.outputSchema;
+    const deps = makeDeps({
+      [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
+        HEALTH_HISTORY_BLOB,
+    });
+    const res = await callTool(
+      "get_health_history",
+      { date: HEALTH_HISTORY_BLOB.date },
+      { deps },
+    );
     const validate = new Ajv2020().compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });

@@ -315,12 +315,43 @@ function normalizeChainTransfersSample(out) {
   return out;
 }
 
+function normalizeChainTransferPairsSample(out) {
+  if (
+    !out ||
+    typeof out !== "object" ||
+    !("top_pair_share" in out) ||
+    !Array.isArray(out.pairs) ||
+    typeof out.total_volume_tao !== "number"
+  ) {
+    return out;
+  }
+  // An internally consistent worked example: the highest-volume full-window
+  // pair moved 80 of a 100 total, so top_pair_share = 0.8.
+  out.total_volume_tao = 100;
+  out.transfer_count = 10;
+  out.unique_pairs = 2;
+  out.pair_count = 1;
+  out.top_pair_share = 0.8;
+  out.pairs = [
+    {
+      from: SAMPLE_SS58,
+      to: SAMPLE_COUNTERPARTY_SS58,
+      volume_tao: 80,
+      transfer_count: 5,
+      last_block: 5000000,
+      last_observed_at: ISO,
+    },
+  ];
+  return out;
+}
+
 function normalizeObjectSample(out) {
   normalizeCounterpartyRelationshipSample(out);
   normalizeAccountCounterpartiesSample(out);
   normalizeAccountStakeFlowSample(out);
   normalizeSubnetYieldSample(out);
   normalizeChainTransfersSample(out);
+  normalizeChainTransferPairsSample(out);
   return out;
 }
 

@@ -50,6 +50,7 @@ import {
   handleChainCalls,
   handleChainFees,
   handleChainSigners,
+  handleChainTransferPairs,
   handleChainTransfers,
   handleGlobalIncidents,
   loadGlobalIncidentsLedger,
@@ -78,6 +79,7 @@ import {
   handleSubnetConcentrationHistory,
   handleChainConcentration,
   handleChainPerformance,
+  handleChainYield,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -1686,6 +1688,9 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/transfers") {
       return handleChainTransfers(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/transfer-pairs") {
+      return handleChainTransferPairs(request, env, resolved.url, ctx);
+    }
     // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
     // busts on the newest neuron captured_at across ALL subnets, not the health
     // prober tick (like the per-subnet concentration route, but network-scoped).
@@ -1710,6 +1715,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         env,
         "chain-performance",
         () => handleChainPerformance(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
+    // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
+    // — edge-cache busts on the newest neuron captured_at across ALL subnets (like
+    // chain/performance, but the emission/stake return-rate lens).
+    if (resolved.url.pathname === "/api/v1/chain/yield") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-yield",
+        () => handleChainYield(request, env, resolved.url),
         null,
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
@@ -1773,8 +1792,10 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
     pathname === "/api/v1/chain/transfers" ||
+    pathname === "/api/v1/chain/transfer-pairs" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
+    pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

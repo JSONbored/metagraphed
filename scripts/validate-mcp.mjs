@@ -18,7 +18,11 @@ import {
   buildAnthropicToolSpecs,
   buildOpenAIToolSpecs,
 } from "../src/agent-tool-specs.mjs";
-import { artifactFilePath, createLocalArtifactEnv } from "./lib.mjs";
+import {
+  artifactFilePath,
+  createLocalArtifactEnv,
+  latestArtifactDate,
+} from "./lib.mjs";
 
 const env = createLocalArtifactEnv();
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -603,6 +607,21 @@ assert.ok(
     networkHealthCold.global &&
     Array.isArray(networkHealthCold.subnets),
   "get_network_health must return scope + global + subnets[] on cold KV",
+);
+const latestHealthHistoryDate = await latestArtifactDate("health/history");
+assert.ok(
+  latestHealthHistoryDate,
+  "validate:mcp requires a local health/history/YYYY-MM-DD.json artifact; run `npm run build` first",
+);
+const healthHistory = await callOk("get_health_history", {
+  date: latestHealthHistoryDate,
+  limit: 2,
+});
+assert.ok(
+  healthHistory.date === latestHealthHistoryDate &&
+    Array.isArray(healthHistory.surfaces) &&
+    healthHistory.surfaces.length <= 2,
+  "get_health_history must return date + surfaces[] for the staged snapshot",
 );
 const blockExtrinsicsCold = await callOk("list_block_extrinsics", {
   ref: "4200000",

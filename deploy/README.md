@@ -46,7 +46,9 @@ and you lose internal DNS + cross-service vars and must wire public URLs by hand
   repo-root path (it does **not** follow Root Directory):
   - `metagraphed-streamer` → `/railway.json`
   - `wss-lb` → `/deploy/wss-lb/railway.json`
-  - `indexer` → `/deploy/indexer.railway.json`
+  - `indexer` → no config yet; the Python `scripts/index-chain.py`/`backfill-chain.py`
+    it used to point at are retired in favor of a faster Rust implementation whose
+    source doesn't have a git home in this repo yet (see the Bare-metal section below)
 
   Each builds its Dockerfile from the **repo-root** build context (leave Root
   Directory unset) and scopes redeploys with `watchPatterns`, so a streamer change
@@ -71,9 +73,9 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 
 That starts:
 
-- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` on first
-  boot; never binds a public port (Cloudflare reaches it via Hyperdrive over a
-  tunnel).
+- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` then the
+  optional `deploy/postgres/schema-timescaledb.sql` on first boot; never binds
+  a public port (Cloudflare reaches it via Hyperdrive over a tunnel).
 - **`redis`** — the indexer cursor + heartbeat mirror.
 - **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
   complete state from genesis), the head source + first-party RPC origin + the
@@ -81,11 +83,14 @@ That starts:
   full sync takes days, so seed the volume from an opentensor archive snapshot when
   available. (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp` for a small pruned
   node; deep backfill then comes from the public archive via `EVENTS_RPC_URL`.)
-- **`indexer`** (`scripts/index-chain.py`) — follows the finalized head from the
-  durable cursor and idempotently writes `blocks` / `extrinsics` /
-  `account_events` into Postgres. Its pure transforms are unit-tested
-  (`scripts/test_index_chain.py`); **verify ~100% capture vs D1 before any
-  serving cutover** (the ADR 0013 gate).
+- **`indexer`** — not defined in `docker-compose.yml` yet. The real implementation
+  is Rust (live-follow + sharded historical backfill in one binary, faster and
+  more capable than the retired Python `scripts/index-chain.py`/`backfill-chain.py`),
+  but its source has no git remote yet — give it one, add its service back to
+  the compose file with a real Dockerfile, then bring it up here. It follows the
+  finalized head from the durable cursor and idempotently writes `blocks` /
+  `extrinsics` / `account_events` / `chain_events` into Postgres; **verify ~100%
+  capture vs D1 before any serving cutover** (the ADR 0013 gate).
 
 To use **managed Railway Postgres** instead of the in-stack one (for managed
 backups/HA), delete the `postgres` service and point the indexer's
@@ -109,15 +114,20 @@ mkdir -p ~/metagraphed-core && cd ~/metagraphed-core
 railway init --name metagraphed-core --workspace aethereal --json
 railway add -d postgres          # managed Postgres (enable TimescaleDB, or use the Timescale template)
 railway add -d redis             # indexer cursor + dedup + queue
-# apply the portable schema:
+# apply the portable base schema (always):
 railway connect postgres < /path/to/metagraphed/deploy/postgres/schema.sql
+# only if this Postgres actually has the TimescaleDB extension (the Timescale
+# template, or an extension explicitly enabled) — plain Railway Postgres does
+# NOT have it, and applying this file there will fail on CREATE EXTENSION:
+railway connect postgres < /path/to/metagraphed/deploy/postgres/schema-timescaledb.sql
 ```
 
 Each compute service is added from the monorepo with its own root/Dockerfile and
-cross-service variable references, e.g.:
+cross-service variable references. The indexer example below is illustrative —
+it needs the Rust indexer's own repo/Dockerfile once that project has a home:
 
 ```bash
-railway add -s indexer --repo JSONbored/metagraphed --branch main \
+railway add -s indexer --repo <indexer-repo-once-it-exists> --branch main \
   -v DATABASE_URL='${{Postgres.DATABASE_URL}}' \
   -v REDIS_URL='${{Redis.REDIS_URL}}' \
   -v EVENTS_RPC_URL='wss://archive.chain.opentensor.ai:443'   # archive, NOT pruned entrypoint

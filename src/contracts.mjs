@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-07-03.1";
+export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1151,6 +1151,12 @@ export const PUBLIC_ARTIFACTS = [
     "ChainTransfersArtifact",
   ),
   artifact(
+    "chain-transfer-pairs",
+    "/metagraph/chain/transfer-pairs.json",
+    "Network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by volume or count, computed live from the account_events Transfer feed at /api/v1/chain/transfer-pairs (no static file).",
+    "ChainTransferPairsArtifact",
+  ),
+  artifact(
     "chain-fees",
     "/metagraph/chain/fees.json",
     "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
@@ -1167,6 +1173,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/performance.json",
     "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, and the subnet_count the snapshot spans — the network-wide reward-flow companion to chain-concentration, computed live from the neurons D1 tier at /api/v1/chain/performance (no static file).",
     "ChainPerformanceArtifact",
+  ),
+  artifact(
+    "chain-yield",
+    "/metagraph/chain/yield.json",
+    "Network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, and the subnet_count the snapshot spans — the return-rate companion to chain-performance, computed live from the neurons D1 tier at /api/v1/chain/yield (no static file).",
+    "ChainYieldArtifact",
   ),
   artifact(
     "subnet-uptime",
@@ -2414,6 +2426,24 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-transfer-pairs",
+    "GET",
+    "/api/v1/chain/transfer-pairs",
+    "/metagraph/chain/transfer-pairs.json",
+    "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      {
+        name: "sort",
+        schema: { type: "string", enum: ["volume", "count"] },
+      },
+    ],
+    [],
+  ),
+  route(
     "chain-fees",
     "GET",
     "/api/v1/chain/fees",
@@ -2445,6 +2475,17 @@ export const API_ROUTES = [
     "/api/v1/chain/performance",
     "/metagraph/chain/performance.json",
     "Fetch network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, computed live from the neurons D1 tier; schema-stable nulls when cold.",
+    "short",
+    ["chain", "analytics"],
+    [],
+    [],
+  ),
+  route(
+    "chain-yield",
+    "GET",
+    "/api/v1/chain/yield",
+    "/metagraph/chain/yield.json",
+    "Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold.",
     "short",
     ["chain", "analytics"],
     [],

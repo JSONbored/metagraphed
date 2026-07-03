@@ -281,6 +281,25 @@
         "https://huggingface.co/api/spaces/macrocosm-os/sn13-dashboard"
       ],
       "url": "https://huggingface.co/spaces/macrocosm-os/sn13-dashboard"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-13-macrocosmos-ts-sdk",
+      "kind": "sdk",
+      "name": "Macrocosmos TypeScript SDK",
+      "notes": "Official Macrocosmos TypeScript SDK (npm: macrocosmos). Ships the Sn13Client interface to the SN13 Data Universe Validator API; the TypeScript counterpart to the already-listed Python SDK (macrocosmos-py). In the team's macrocosm-os org.",
+      "provider": "macrocosmos",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "glorydavid03023"
+      },
+      "source_urls": [
+        "https://github.com/macrocosm-os/macrocosmos-ts/blob/main/README.md",
+        "https://www.npmjs.com/package/macrocosmos"
+      ],
+      "url": "https://github.com/macrocosm-os/macrocosmos-ts"
     }
   ],
   "website_url": "https://datauniverse.macrocosmos.ai/"
