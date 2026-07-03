@@ -43,8 +43,10 @@ function toNumber(value) {
 
 // A non-negative integer netuid, or null for a malformed/absent cell. Guard null
 // explicitly so a null netuid is skipped rather than coerced to subnet 0 (Number(null) === 0).
+// Blank D1 cells coerce via Number("") → 0; trim rejects "" / whitespace-only (#2813 parity).
 function normalizedNetuid(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }

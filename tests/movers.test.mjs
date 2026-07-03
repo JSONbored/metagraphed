@@ -196,6 +196,53 @@ describe("computeMovers", () => {
     assert.equal(m[0].stake_delta_tao, 50);
   });
 
+  test("skips blank and whitespace-only netuid cells (does not coerce to subnet 0)", () => {
+    const m = computeMovers(
+      [
+        agg(7, "s", { neurons: 1, validators: 0, stake: 100, emission: 0 }),
+        {
+          netuid: "",
+          snapshot_date: "s",
+          neuron_count: 1,
+          validator_count: 0,
+          total_stake_tao: 50,
+          total_emission_tao: 0,
+        },
+        {
+          netuid: "   ",
+          snapshot_date: "s",
+          neuron_count: 1,
+          validator_count: 0,
+          total_stake_tao: 25,
+          total_emission_tao: 0,
+        },
+      ],
+      [agg(7, "e", { neurons: 1, validators: 0, stake: 110, emission: 0 })],
+      { sort: "stake" },
+    );
+    assert.equal(m.length, 1);
+    assert.equal(m[0].netuid, 7);
+  });
+
+  test("counts root subnet (netuid 0) when explicitly present", () => {
+    const m = computeMovers(
+      [
+        agg(0, "s", { neurons: 1, validators: 0, stake: 10, emission: 0 }),
+        agg("0", "s", { neurons: 1, validators: 0, stake: 5, emission: 0 }),
+        agg(7, "s", { neurons: 1, validators: 0, stake: 1, emission: 0 }),
+      ],
+      [
+        agg(0, "e", { neurons: 1, validators: 0, stake: 12, emission: 0 }),
+        agg(7, "e", { neurons: 1, validators: 0, stake: 2, emission: 0 }),
+      ],
+      { sort: "stake" },
+    );
+    assert.deepEqual(
+      m.map((x) => x.netuid),
+      [0, 7],
+    );
+  });
+
   test("non-array inputs yield an empty ranking", () => {
     assert.deepEqual(computeMovers(null, undefined, { sort: "stake" }), []);
   });

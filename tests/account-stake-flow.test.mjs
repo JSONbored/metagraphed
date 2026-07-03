@@ -71,6 +71,28 @@ describe("buildAccountStakeFlow", () => {
     assert.equal(d.subnet_count, 2);
   });
 
+  test("skips blank and whitespace-only netuid rows (does not coerce to subnet 0)", () => {
+    const d = buildAccountStakeFlow(
+      [
+        added(7, 100),
+        row("", STAKE_ADDED_KIND, 50, 1, 1000),
+        row("   ", STAKE_REMOVED_KIND, 25, 1, 1000),
+      ],
+      ADDR,
+    );
+    assert.equal(d.subnet_count, 1);
+    assert.equal(d.subnets.length, 1);
+    assert.equal(d.subnets[0].netuid, 7);
+    assert.equal(d.total_staked_tao, 100);
+  });
+
+  test("counts root subnet (netuid 0) when explicitly present", () => {
+    const d = buildAccountStakeFlow([added(0, 10), added("0", 5)], ADDR);
+    assert.equal(d.subnet_count, 1);
+    assert.equal(d.subnets[0].netuid, 0);
+    assert.equal(d.subnets[0].staked_tao, 15);
+  });
+
   test("classifies direction by the net/gross lean", () => {
     // accumulating: net>0 past the ratio
     assert.equal(

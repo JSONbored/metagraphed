@@ -33,8 +33,11 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-// A non-negative integer netuid, or null for a malformed cell.
+// A non-negative integer netuid, or null for a malformed cell. Blank D1 cells coerce
+// via Number("") → 0; trim rejects "" / whitespace-only before coercion (#2813 parity).
 function normalizedNetuid(value) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const netuid = Number(value);
   return Number.isSafeInteger(netuid) && netuid >= 0 ? netuid : null;
 }
