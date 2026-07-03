@@ -117,6 +117,26 @@
         "https://github.com/GraphiteAI/subnet_tools/blob/main/.example.env"
       ],
       "url": "https://huggingface.co/datasets/Graphite-AI/Graphite_Past_Problems"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-ai-subnet-api",
+      "kind": "subnet-api",
+      "name": "Graphite SN43 subnet stats API",
+      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet.",
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "confidence": "medium",
+        "state": "community-submitted",
+        "submitted_by": "boskodev790"
+      },
+      "source_urls": [
+        "https://api.graphite-ai.net/openapi.json",
+        "https://api.graphite-ai.net/docs"
+      ],
+      "url": "https://api.graphite-ai.net/api/v1/stats/subnet"
     }
   ],
   "website_url": "https://graphite-ai.net/"
