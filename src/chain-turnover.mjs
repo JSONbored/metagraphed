@@ -42,6 +42,9 @@ function jaccard(setA, setB) {
 
 function normalizedUid(value) {
   if (value == null) return null;
+  // A blank / whitespace-only cell must not collapse to slot 0 the way Number("")
+  // and Number("   ") do — guard it before coercion, mirroring normalizedNetuid.
+  if (typeof value === "string" && value.trim() === "") return null;
   const uid = Number(value);
   return Number.isSafeInteger(uid) && uid >= 0 ? uid : null;
 }

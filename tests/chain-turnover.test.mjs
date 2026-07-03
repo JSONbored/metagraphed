@@ -472,6 +472,20 @@ describe("buildChainTurnover", () => {
         validator_permit: 0,
       },
       {
+        snapshot_date: "2026-05-01",
+        netuid: 1,
+        uid: "", // blank uid → must NOT collapse to slot 0
+        hotkey: "Z",
+        validator_permit: 0,
+      },
+      {
+        snapshot_date: "2026-05-01",
+        netuid: 1,
+        uid: "   ", // whitespace-only uid → must NOT collapse to slot 0
+        hotkey: "W",
+        validator_permit: 0,
+      },
+      {
         snapshot_date: "2026-06-01",
         netuid: 1,
         uid: 0,
@@ -484,7 +498,7 @@ describe("buildChainTurnover", () => {
       startDate: "2026-05-01",
       endDate: "2026-06-01",
     });
-    assert.equal(data.neurons_start, 1); // only uid 0; null and -1 dropped
+    assert.equal(data.neurons_start, 1); // only uid 0; null/-1/blank/whitespace dropped
     assert.equal(data.neurons_end, 1);
     assert.equal(data.neuron_retention, 1);
   });
