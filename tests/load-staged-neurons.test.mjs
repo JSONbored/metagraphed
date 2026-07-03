@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { loadStagedNeurons } from "../workers/api.mjs";
 
 function neuronRow(netuid, uid) {
@@ -66,6 +66,7 @@ function mockEnv({
   runs = [],
   size,
 }) {
+  const jsonCalls = [];
   return {
     env: {
       METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
@@ -76,6 +77,7 @@ function mockEnv({
           return {
             size: size ?? JSON.stringify(rows).length,
             async json() {
+              jsonCalls.push(1);
               if (bad) throw new Error("bad json");
               return rows;
             },
@@ -115,6 +117,7 @@ function mockEnv({
     prepared,
     batches,
     runs,
+    jsonCalls,
   };
 }
 
@@ -204,6 +207,7 @@ test("loadStagedNeurons accepts full-network snapshots above the old 2 MB cap", 
 });
 
 test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
+  const warn = vi.spyOn(console, "warn");
   const oversized = mockEnv({
     rows: signedEnvelope([neuronRow(1, 0)]),
     size: 32_000_001,
@@ -212,11 +216,45 @@ test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
   assert.equal(oversizedResult.reason, "too_large");
   assert.equal(oversizedResult.size, 32_000_001);
   assert.equal(oversized.batches.length, 0);
+  assert.equal(
+    oversized.jsonCalls.length,
+    0,
+    "oversized payloads must return before object.json()",
+  );
+  assert.equal(warn.mock.calls.length, 1);
+  assert.match(String(warn.mock.calls[0][0]), /32000001/);
   assert.deepEqual(
     oversized.deleted,
     [],
     "must NOT delete — that would drop staged rows",
   );
+  warn.mockRestore();
+
+  const missingSizeJsonCalls = [];
+  const missingSizeDeleted = [];
+  const missingSizeRows = signedEnvelope([neuronRow(1, 0)]);
+  const missingSizeEnv = {
+    METAGRAPH_STAGING_SIGNING_KEY: SIGNING_KEY,
+    METAGRAPH_ARCHIVE: {
+      async get(key) {
+        assert.equal(key, "metagraph/neurons-pending.json");
+        return {
+          async json() {
+            missingSizeJsonCalls.push(1);
+            return missingSizeRows;
+          },
+        };
+      },
+      async delete(key) {
+        missingSizeDeleted.push(key);
+      },
+    },
+    METAGRAPH_HEALTH_DB: mockEnv({ rows: missingSizeRows }).env
+      .METAGRAPH_HEALTH_DB,
+  };
+  const missingSizeResult = await loadStagedNeurons(missingSizeEnv);
+  assert.equal(missingSizeResult.ok, true);
+  assert.equal(missingSizeJsonCalls.length, 1);
 
   const m = mockEnv({ rows: signedEnvelope([neuronRow(999999, -7)]) });
   const r = await loadStagedNeurons(m.env);

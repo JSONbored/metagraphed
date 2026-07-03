@@ -258,7 +258,7 @@ export async function loadStagedNeurons(env) {
     console.warn(
       `loadStagedNeurons: staged file ${object.size} bytes exceeds ${MAX_STAGED_NEURONS_BYTES}; skipping (poller overlap self-heals)`,
     );
-    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
+    return { ok: false, reason: "too_large", size: Number(object.size) };
   }
   let envelope;
   try {
