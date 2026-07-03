@@ -1088,6 +1088,7 @@ function diff(now, then) {
 // strings compared lexically (valid for ISO dates).
 function pointAtOrBefore(points, latestDate, days) {
   const target = shiftDate(latestDate, -days);
+  if (target == null) return null;
   let chosen = null;
   for (const point of points) {
     if (String(point.date) <= target) chosen = point;
@@ -1098,8 +1099,13 @@ function pointAtOrBefore(points, latestDate, days) {
 
 function shiftDate(isoDate, days) {
   const [y, m, d] = String(isoDate).split("-").map(Number);
-  const base = Date.UTC(y, (m || 1) - 1, d || 1) + days * 24 * 60 * 60 * 1000;
-  return new Date(base).toISOString().slice(0, 10);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return null;
+  }
+  const base = Date.UTC(y, m - 1, d) + days * 24 * 60 * 60 * 1000;
+  const date = new Date(base);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
 }
 
 // Long-term daily uptime series per surface, from surface_uptime_daily rows

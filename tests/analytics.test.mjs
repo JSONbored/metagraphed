@@ -687,6 +687,21 @@ describe("formatTrajectory", () => {
     assert.deepEqual(out.points, []);
     assert.equal(out.deltas["7d"], null);
   });
+  test("returns null deltas when latest snapshot_date is not ISO-shaped", () => {
+    const out = formatTrajectory({
+      netuid: 7,
+      rows: [
+        {
+          snapshot_date: "not-a-date",
+          completeness_score: 50,
+          surface_count: 1,
+          endpoint_count: 1,
+        },
+      ],
+    });
+    assert.equal(out.deltas["7d"], null);
+    assert.equal(out.deltas["30d"], null);
+  });
   test("coerces D1 numeric-string snapshot cells to schema types", () => {
     const out = formatTrajectory({
       netuid: 3,
