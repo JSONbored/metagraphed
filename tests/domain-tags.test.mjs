@@ -118,4 +118,70 @@ describe("deriveDomainTags", () => {
     assert.deepEqual(first, ["compute", "media"]);
     assert.equal(first.length, new Set(first).size);
   });
+
+  test("fires at least one keyword per DOMAIN_TAG_RULE", () => {
+    const cases = [
+      ["agents", "autonomous agent network"],
+      ["compute", "GPU cuda compute network"],
+      ["data", "web scraping datasets pipeline"],
+      ["finance", "defi trading and liquidity"],
+      ["inference", "llm text-generation completion"],
+      ["media", "text-to-speech and computer vision"],
+      ["prediction", "probabilistic forecast markets"],
+      ["privacy", "zero-knowledge proof privacy"],
+      ["robotics", "embodied ai robotics drones"],
+      ["science", "protein folding drug discovery"],
+      ["search", "retrieval-augmented semantic search"],
+      ["security", "malware vulnerability detection"],
+      ["storage", "decentralized storage on ipfs"],
+      ["training", "reinforcement learning model training"],
+    ];
+    for (const [tag, description] of cases) {
+      const tags = deriveDomainTags({ description });
+      assert.ok(
+        tags.includes(tag),
+        `expected "${tag}" from ${JSON.stringify(description)}, got ${JSON.stringify(tags)}`,
+      );
+    }
+  });
+
+  test("drops non-string description and additional values", () => {
+    assert.deepEqual(
+      deriveDomainTags({
+        description: 42,
+        additional: { not: "a string" },
+        categories: ["finance"],
+      }),
+      ["finance"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({ description: null, additional: undefined }),
+      [],
+    );
+  });
+
+  test("ignores non-array categories and non-tag category strings", () => {
+    assert.deepEqual(
+      deriveDomainTags({
+        description: "gpu compute",
+        categories: "not-an-array",
+      }),
+      ["compute"],
+    );
+    assert.deepEqual(
+      deriveDomainTags({
+        categories: ["Not-A-Domain-Tag", "also-fake"],
+      }),
+      [],
+    );
+  });
+
+  test("de-duplicates when the same tag matches text and a curated category", () => {
+    const tags = deriveDomainTags({
+      description: "decentralized storage network",
+      categories: ["Storage"],
+    });
+    assert.deepEqual(tags, ["storage"]);
+    assert.equal(tags.length, new Set(tags).size);
+  });
 });
