@@ -80,6 +80,14 @@ jobs:
             printf '%s' "$flat" | jq -R -s -c 'split("\n") | map(select(length > 0))'
           }
 
+          # `checked` is the single source of truth for "a real comparison
+          # actually ran": it is set true immediately before EVERY has_overlap
+          # write below (the only two paths that follow a genuine file-list
+          # comparison), and left unset on every early-exit skip path (API
+          # failure, rate limiting, zero other open PRs). The upsert step is
+          # gated on `checked == 'true'`, so a skip can never be misread as
+          # "no overlap" and clear an existing, still-valid overlap-notice
+          # comment.
           this_pr_files_json=$(files_json_for_pr "$PR_NUMBER") || {
             echo "Could not fetch this PR's changed files; skipping overlap check." >&2
             exit 0
@@ -113,9 +121,10 @@ jobs:
           fi
 
           if [ "${#other_pr_numbers[@]}" -eq 0 ]; then
+            # No `checked` output -- same as every other early-exit skip, this
+            # leaves the upsert step correctly un-run rather than posting or
+            # clearing a comment with nothing actually compared.
             echo "No other open PRs to compare against; skipping."
-            echo "has_overlap=false" >> "$GITHUB_OUTPUT"
-            echo "no_other_prs=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -136,10 +145,12 @@ jobs:
           done
 
           if [ "${#overlap_lines[@]}" -eq 0 ]; then
+            echo "checked=true" >> "$GITHUB_OUTPUT"
             echo "has_overlap=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          echo "checked=true" >> "$GITHUB_OUTPUT"
           echo "has_overlap=true" >> "$GITHUB_OUTPUT"
           # Random per-run delimiter for the multiline $GITHUB_OUTPUT body -- the
           # shared file-path list embedded below ultimately derives from PR-
@@ -156,7 +167,13 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Upsert overlap-notice comment
-        if: steps.overlap.outputs.no_other_prs != 'true'
+        # Gate strictly on `checked == 'true'` -- set only after a genuine
+        # file-list comparison completed. Every early-exit skip in the
+        # detection step (API failure, rate limiting, zero other open PRs)
+        # leaves `checked` unset, so this step is correctly skipped rather
+        # than misreading "no output yet" as "no overlap" and clearing an
+        # existing, still-valid notice.
+        if: steps.overlap.outputs.checked == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
