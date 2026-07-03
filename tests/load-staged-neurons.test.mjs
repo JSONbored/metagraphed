@@ -210,7 +210,13 @@ test("loadStagedNeurons rejects oversized and out-of-range rows", async () => {
   });
   const oversizedResult = await loadStagedNeurons(oversized.env);
   assert.equal(oversizedResult.reason, "too_large");
+  assert.equal(oversizedResult.size, 32_000_001);
   assert.equal(oversized.batches.length, 0);
+  assert.deepEqual(
+    oversized.deleted,
+    [],
+    "must NOT delete — that would drop staged rows",
+  );
 
   const m = mockEnv({ rows: signedEnvelope([neuronRow(999999, -7)]) });
   const r = await loadStagedNeurons(m.env);

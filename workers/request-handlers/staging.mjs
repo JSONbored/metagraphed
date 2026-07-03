@@ -249,9 +249,16 @@ export async function loadStagedNeurons(env) {
   }
   const object = await bucket.get(STAGED_NEURONS_KEY);
   if (!object) return { ok: false, reason: "none" };
+  // Byte cap: never materialize a pathological body. `size` is object metadata,
+  // available before the body is streamed. Do NOT delete — that would drop rows the
+  // producer staged; leave it (loud) and let the overlapping poller's next window
+  // self-heal it. A misconfigured backfill exceeding this should be chunked by the
+  // producer, not parsed here.
   if (Number(object.size || 0) > MAX_STAGED_NEURONS_BYTES) {
-    await bucket.delete(STAGED_NEURONS_KEY);
-    return { ok: false, reason: "too_large" };
+    console.warn(
+      `loadStagedNeurons: staged file ${object.size} bytes exceeds ${MAX_STAGED_NEURONS_BYTES}; skipping (poller overlap self-heals)`,
+    );
+    return { ok: false, reason: "too_large", size: Number(object.size || 0) };
   }
   let envelope;
   try {
