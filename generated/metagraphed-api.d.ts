@@ -514,6 +514,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/yield": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide emission-yield (return rate) aggregated across all subnets' neurons: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the count/mean/median/min/max plus p10–p90 spread of the per-neuron emission/stake return, computed live from the neurons D1 tier; schema-stable nulls when cold. */
+        get: operations["chainYield"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/changelog": {
         parameters: {
             query?: never;
@@ -2671,6 +2688,23 @@ export interface components {
             unique_receivers: number;
             unique_senders: number;
             window: string | null;
+        };
+        /** @description Network-wide emission-yield (return rate) aggregated across all subnets' neurons, computed live from the neurons D1 tier: the aggregate network return (total emission / total stake), the same split by validator vs miner role, and the distribution of the per-neuron emission/stake return across the whole network. subnet_count reports how many subnets the snapshot spans. The return-rate companion to ChainPerformanceArtifact. */
+        ChainYieldArtifact: {
+            captured_at?: string | null;
+            distribution: components["schemas"]["YieldDistribution"];
+            miner_count?: number;
+            miner_yield?: number | null;
+            network_yield: number | null;
+            neuron_count: number;
+            schema_version: number;
+            subnet_count: number;
+            total_emission_tao?: number;
+            total_stake_tao?: number;
+            validator_count?: number;
+            validator_yield?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         ChangelogArtifact: components["schemas"]["ArtifactBase"] & ({
             artifacts: {
@@ -5690,6 +5724,20 @@ export interface components {
             url: string;
             verified_at: string;
         };
+        /** @description Distribution summary of the per-neuron emission/stake return rate across the network: count, mean, median, min, max, and the p10/p25/p75/p90 nearest-rank percentiles. Null when no neuron carries a defined yield (a cold store, an empty network, or every neuron zero-stake). */
+        YieldDistribution: ({
+            count?: number;
+            max?: number | null;
+            mean?: number | null;
+            median?: number | null;
+            min?: number | null;
+            p10?: number | null;
+            p25?: number | null;
+            p75?: number | null;
+            p90?: number | null;
+        } & {
+            [key: string]: unknown;
+        }) | null;
     };
     responses: never;
     parameters: never;
@@ -9423,6 +9471,126 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainTransfersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainYield: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "distribution": {
+                     *           "count": 1,
+                     *           "max": 0.5,
+                     *           "mean": 0.5,
+                     *           "median": 0.5,
+                     *           "min": 0.5,
+                     *           "p10": 0.5,
+                     *           "p25": 0.5,
+                     *           "p75": 0.5,
+                     *           "p90": 0.5
+                     *         },
+                     *         "miner_count": 1,
+                     *         "miner_yield": 0.5,
+                     *         "network_yield": 0.5,
+                     *         "neuron_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "total_emission_tao": 0.5,
+                     *         "total_stake_tao": 0.5,
+                     *         "validator_count": 1,
+                     *         "validator_yield": 0.5
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainYieldArtifact"];
                     };
                 };
             };
