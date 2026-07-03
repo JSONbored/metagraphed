@@ -2462,7 +2462,10 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d", "90d"] } },
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
       {
         name: "sort",
         schema: {
