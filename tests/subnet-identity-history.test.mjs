@@ -550,6 +550,51 @@ describe("recordSubnetIdentityChanges", () => {
     assert.equal(result.rows, 0);
   });
 
+  test("skips unchanged identities when D1 returns netuid as a string (coercion)", async () => {
+    // D1 hands the INTEGER netuid back as the string "7" on the GROUP BY read
+    // path. The dedup map must key on 7 so the integer profile.netuid lookup
+    // hits — otherwise the "unchanged" guard never fires and the cron re-inserts
+    // an identical row every run, growing the append-only table unbounded.
+    const snapshot = identitySnapshotFromProfile({
+      netuid: 7,
+      symbol: "T",
+      native_identity: { subnet_name: "Subnet" },
+    });
+    const hash = await identityHash(snapshot);
+    const db = {
+      prepare() {
+        return {
+          bind() {
+            return this;
+          },
+          all: async () => ({
+            results: [
+              { netuid: "bad", identity_hash: "junk" }, // non-numeric → skipped
+              { netuid: "7", identity_hash: hash }, // string netuid
+            ],
+          }),
+        };
+      },
+      batch: async () => {
+        throw new Error("should not write for an unchanged identity");
+      },
+    };
+    const result = await recordSubnetIdentityChanges(
+      {},
+      {
+        profiles: [
+          {
+            netuid: 7,
+            symbol: "T",
+            native_identity: { subnet_name: "Subnet" },
+          },
+        ],
+        db,
+      },
+    );
+    assert.equal(result.rows, 0);
+  });
+
   test("returns unavailable when profiles are missing", async () => {
     assert.deepEqual(await recordSubnetIdentityChanges({}, { profiles: [] }), {
       recorded: false,
@@ -842,6 +887,28 @@ describe("loadPreviouslyKnownAsForNetuids", () => {
     ]);
     assert.deepEqual(map.get(86), ["MIAO"]);
     assert.deepEqual(map.get(7), ["Old7"]);
+  });
+
+  test("keys on the integer netuid when D1 returns it as a string (coercion)", async () => {
+    // D1 hands the INTEGER netuid back as the string "1" on this GROUP BY read
+    // path. Without coercion the map keys on "1", so the caller's integer
+    // aliasMap.get(1) misses (alias never attached) AND currentByNetuid.get("1")
+    // misses, leaking the current name into previously_known_as.
+    const d1 = async () => [
+      { netuid: "1", subnet_name: "OldName", observed_at: 1000 },
+      { netuid: "1", subnet_name: "CurrentName", observed_at: 2000 },
+      { netuid: "bad", subnet_name: "Junk", observed_at: 3000 }, // malformed → dropped
+    ];
+    const map = await loadPreviouslyKnownAsForNetuids(d1, [
+      { netuid: 1, name: "CurrentName" },
+    ]);
+    // Attached under the integer key (not the string "1")...
+    assert.deepEqual(map.get(1), ["OldName"]);
+    assert.equal(map.get("1"), undefined);
+    // ...and the current name is excluded, not leaked.
+    assert.ok(!(map.get(1) || []).includes("CurrentName"));
+    // A non-numeric netuid cell is dropped, not keyed under a junk string.
+    assert.equal(map.get("bad"), undefined);
   });
 
   test("merges multiple rows for the same netuid", async () => {

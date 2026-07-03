@@ -179,6 +179,21 @@ describe("analytics-live projections", () => {
       [{ netuid: 7, delta: 60 }],
     );
   });
+
+  test("growthRowsFromSamples emits an integer netuid when D1 returns a string", () => {
+    // D1 hands the INTEGER netuid back as the string "5" on this GROUP BY read
+    // path. The emitted netuid keys the integer-keyed subnetMeta map in
+    // formatLeaderboards, so a raw string netuid drops the fastest-growing
+    // entry's slug/name metadata and breaks the integer netuid contract.
+    const rows = growthRowsFromSamples([
+      { netuid: "5", completeness_score: 20 },
+      { netuid: "5", completeness_score: 50 },
+      { netuid: "not-a-number", completeness_score: 10 }, // dropped
+      { netuid: -1, completeness_score: 10 }, // dropped
+    ]);
+    assert.deepEqual(rows, [{ netuid: 5, delta: 30 }]);
+    assert.equal(typeof rows[0].netuid, "number");
+  });
 });
 
 describe("analytics-live loaders", () => {
