@@ -21,6 +21,20 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// Sum a subnet's per-UID stake_tao/emission_tao in rao-integer BigInt space, not
+// float space -- a subnet's neuron set is often hundreds to thousands of rows, and
+// plain `+=` float accumulation compounds rounding error across the sum even when
+// each individual value is itself exact (metagraphed#2922, the per-subnet analog of
+// the network-wide chain-yield fix in #2933; mirrors the toRao pattern proven in
+// src/account-balance.mjs for #2070). Convert back to TAO only once, at the end.
+// Callers always pass an already-finite toNumber() result, so no isFinite guard here.
+function toRaoBig(tao) {
+  return BigInt(Math.round(tao * 1e9));
+}
+function raoBigToTao(rao) {
+  return Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+}
+
 // A non-negative integer uid, or null for a malformed/absent cell (Number(null) === 0,
 // so guard null explicitly rather than coercing it to uid 0).
 function normalizedUid(value) {
@@ -79,8 +93,8 @@ function median(ascending) {
 export function buildSubnetYield(rows, netuid) {
   const list = Array.isArray(rows) ? rows : [];
   const neurons = [];
-  let totalStake = 0;
-  let totalEmission = 0;
+  let totalStakeRao = 0n;
+  let totalEmissionRao = 0n;
   let validatorCount = 0;
   let capturedAt = null;
   let blockNumber = null;
@@ -102,8 +116,8 @@ export function buildSubnetYield(rows, netuid) {
     // Match the sibling neuron formatter's SQLite 0/1 convention: only an integer 1
     // is a validator, so a numeric-string "0" cannot slip through as truthy.
     const isValidator = Number(row?.validator_permit) === 1;
-    totalStake += stake;
-    totalEmission += emission;
+    totalStakeRao += toRaoBig(stake);
+    totalEmissionRao += toRaoBig(emission);
     if (isValidator) validatorCount += 1;
     neurons.push({
       uid,
@@ -114,6 +128,10 @@ export function buildSubnetYield(rows, netuid) {
       yield: computeYieldValue(emission, stake),
     });
   }
+
+  // Convert the exact rao-space accumulators back to TAO once, at the end.
+  const totalStake = raoBigToTao(totalStakeRao);
+  const totalEmission = raoBigToTao(totalEmissionRao);
 
   // Distribution over the UIDs that actually have a defined yield (stake > 0).
   const definedYields = neurons

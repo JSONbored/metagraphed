@@ -68,6 +68,34 @@ describe("buildSubnetYield", () => {
     assert.equal(u3.role, "miner");
   });
 
+  test("sums thousands of UIDs in exact rao space, not compounding float error (#2922)", () => {
+    // Each UID's stake/emission carries a real sub-TAO fractional component (not a
+    // round number) -- plain `+=` float accumulation across a large neuron set would
+    // drift from the true sum. Summing in rao BigInt space (the per-subnet analog of
+    // the network-wide chain-yield fix #2933) must not.
+    const rows = [];
+    let expectedStakeRao = 0n;
+    let expectedEmissionRao = 0n;
+    for (let i = 0; i < 5000; i += 1) {
+      const stakeTao = 1234.987654321 + i * 0.000000001;
+      const emissionTao = 12.345678901 + i * 0.000000001;
+      rows.push(neuron(i, { stake: stakeTao, emission: emissionTao }));
+      expectedStakeRao += BigInt(Math.round(stakeTao * 1e9));
+      expectedEmissionRao += BigInt(Math.round(emissionTao * 1e9));
+    }
+    const raoToTao = (rao) =>
+      Number(rao / 1_000_000_000n) + Number(rao % 1_000_000_000n) / 1e9;
+    const d = buildSubnetYield(rows, 7);
+    assert.equal(
+      d.total_stake_tao,
+      Math.round(raoToTao(expectedStakeRao) * 1e9) / 1e9,
+    );
+    assert.equal(
+      d.total_emission_tao,
+      Math.round(raoToTao(expectedEmissionRao) * 1e9) / 1e9,
+    );
+  });
+
   test("computes mean, conventional median, and nearest-rank percentiles", () => {
     const d = buildSubnetYield(set, 7);
     assert.equal(d.mean_yield, 0.25); // (0.1+0.2+0.3+0.4)/4
