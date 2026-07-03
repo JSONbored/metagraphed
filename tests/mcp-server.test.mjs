@@ -1276,6 +1276,28 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.netuid, 7);
   });
 
+  test("get_agent_resources returns the AI-resources index artifact", async () => {
+    const deps = makeDeps({
+      "/metagraph/agent-resources.json": {
+        resources: [{ id: "agent", title: "Copyable AI agent" }],
+        mcp: { endpoint: "https://api.metagraph.sh/mcp", tools: [] },
+      },
+    });
+    const res = await callTool("get_agent_resources", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.resources[0].id, "agent");
+    assert.equal(out.mcp.endpoint, "https://api.metagraph.sh/mcp");
+  });
+
+  test("get_agent_resources reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_agent_resources", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /AI-resources index is unavailable/,
+    );
+  });
+
   test("get_best_rpc_endpoint dedupes, exposes url/network, applies live health", async () => {
     const res = await callTool("get_best_rpc_endpoint", { limit: 5 }, { deps });
     const out = res.body.result.structuredContent;

@@ -267,6 +267,7 @@ assert.ok(
 
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
+await callOk("get_agent_resources", {});
 const curationPage = await callOk("list_curation", { limit: 3 });
 assert.ok(
   Array.isArray(curationPage.curation),
