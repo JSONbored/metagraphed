@@ -126,7 +126,9 @@ export function csvBodyStream(rows, columns) {
         index += 1;
       }
       const chunkText =
-        index < safeRows.length ? `${lines.join("\r\n")}\r\n` : lines.join("\r\n");
+        index < safeRows.length
+          ? `${lines.join("\r\n")}\r\n`
+          : lines.join("\r\n");
       if (chunkText.length > 0) {
         controller.enqueue(encoder.encode(chunkText));
       }
