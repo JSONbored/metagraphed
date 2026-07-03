@@ -86,6 +86,24 @@
         "timeout_ms": 10000
       },
       "notes": "Official Trishool phase two source repository."
+    },
+    {
+      "id": "sn-23-trishool-docs",
+      "name": "Trishool documentation",
+      "kind": "docs",
+      "url": "https://docs.trishool.ai",
+      "provider": "trishool",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://trishool.ai/"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "devmixa702"
+      },
+      "notes": "Official Trishool documentation site (docs.trishool.ai), hosted on the subnet's own domain and linked from the official website trishool.ai."
     }
   ],
   "social": { "x": "https://x.com/trishoolai" },
