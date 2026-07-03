@@ -328,6 +328,35 @@ describe("/health readiness", () => {
     assert.equal(body.chain_events.age_seconds, null);
   });
 
+  test("chain_events survives an out-of-range observed_at (no RangeError)", async () => {
+    const env = createLocalArtifactEnv({
+      METAGRAPH_CONTROL: makeKv({
+        "metagraph:latest": { published_at: new Date().toISOString() },
+      }),
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              return {
+                async all() {
+                  return {
+                    results: [{ block: 8461200, at: 8640000000000001 }],
+                  };
+                },
+              };
+            },
+          };
+        },
+      },
+    });
+    const res = await handleRequest(req("/health"), env, {});
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.chain_events.latest_indexed_block, 8461200);
+    assert.equal(body.chain_events.latest_event_at, null);
+    assert.equal(body.chain_events.age_seconds, null);
+  });
+
   test("chain_events is null when no health DB is bound (#1361)", async () => {
     const env = {
       ASSETS: {
