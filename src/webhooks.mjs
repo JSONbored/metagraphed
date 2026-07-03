@@ -662,7 +662,7 @@ export async function dispatchChangeEvent({
 // --- at-least-once delivery (persisted redelivery + dead-letter) --------------
 // Fold one failed round into a parked record: bump the round, schedule the next
 // attempt with bounded backoff, and dead-letter at the cap or on a hard failure.
-function nextDeliveryRecord({
+export function nextDeliveryRecord({
   existing,
   result,
   bodyText,
@@ -686,7 +686,15 @@ function nextDeliveryRecord({
     status_code: result.status_code ?? null,
     first_failed_at: existing?.first_failed_at || nowIso,
     last_attempt_at: nowIso,
-    next_attempt_at: dead ? null : new Date(nowMs + delayMs).toISOString(),
+    next_attempt_at:
+      dead || !Number.isFinite(nowMs)
+        ? null
+        : (() => {
+            const date = new Date(nowMs + delayMs);
+            return Number.isFinite(date.getTime())
+              ? date.toISOString()
+              : null;
+          })(),
   };
 }
 
