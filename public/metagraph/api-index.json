@@ -4924,7 +4924,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "cache": "short",
-      "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "description": "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-neuron-history",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/neurons/{uid}/history",
@@ -4944,13 +4944,24 @@
             ],
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
     {
       "artifact_path": "/metagraph/subnets/{netuid}/history.json",
       "cache": "short",
-      "description": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
+      "description": "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all. Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-history",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/history",
@@ -4967,6 +4978,17 @@
               "90d",
               "1y",
               "all"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
             ],
             "type": "string"
           }
@@ -5083,7 +5105,7 @@
     {
       "artifact_path": "/metagraph/accounts/{ss58}/history.json",
       "cache": "short",
-      "description": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
+      "description": "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset. Pass ?format=csv to download the per-day series as CSV.",
       "id": "account-history",
       "method": "GET",
       "path": "/api/v1/accounts/{ss58}/history",
@@ -5125,6 +5147,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -5904,7 +5937,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/uptime.json",
       "cache": "short",
-      "description": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
+      "description": "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history. Pass ?format=csv to download the per-surface per-day series as CSV.",
       "id": "subnet-uptime",
       "method": "GET",
       "path": "/api/v1/subnets/{netuid}/uptime",
@@ -5927,6 +5960,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]

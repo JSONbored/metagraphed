@@ -579,7 +579,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file).",
+      "description": "Per-UID daily metagraph history (stake/trust/emission/rank over time) for one UID, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/neurons/{uid}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-neuron-history",
       "path": "/metagraph/subnets/{netuid}/neurons/{uid}/history.json",
       "schema_ref": "#/components/schemas/NeuronHistoryArtifact",
@@ -588,7 +588,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file).",
+      "description": "Per-subnet daily aggregate history (neuron/validator counts + stake/emission totals) for one subnet, served live from the neuron_daily D1 rollup tier at /api/v1/subnets/{netuid}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
       "id": "subnet-history",
       "path": "/metagraph/subnets/{netuid}/history.json",
       "schema_ref": "#/components/schemas/SubnetHistoryArtifact",
@@ -624,7 +624,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file).",
+      "description": "Durable per-day activity series for one account (hotkey-keyed, newest day first), served live from the account_events_daily rollup at /api/v1/accounts/{ss58}/history (no static file). Pass ?format=csv to download the per-day series as CSV.",
       "id": "account-history",
       "path": "/metagraph/accounts/{ss58}/history.json",
       "schema_ref": "#/components/schemas/AccountHistoryArtifact",
@@ -831,7 +831,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file).",
+      "description": "Long-term daily uptime history per operational surface for one subnet (90d/1y window), served live from the surface_uptime_daily D1 rollup (no static file). Pass ?format=csv to download the per-surface per-day series as CSV.",
       "id": "subnet-uptime",
       "path": "/metagraph/subnets/{netuid}/uptime.json",
       "schema_ref": "#/components/schemas/UptimeArtifact",
