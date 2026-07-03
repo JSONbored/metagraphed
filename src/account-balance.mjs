@@ -96,6 +96,10 @@ export async function loadAccountBalance(env, ss58) {
     const rpcResp = await fetch(FINNEY_RPC_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // Never auto-follow upstream redirects: only the finney entrypoint was chosen,
+      // so a 3xx would re-POST the JSON-RPC body to an unvetted host. Mirrors the
+      // redirect:"manual" invariant in rpc-proxy.mjs / health-probe-core.mjs.
+      redirect: "manual",
       signal: AbortSignal.timeout(BALANCE_RPC_TIMEOUT_MS),
       body: JSON.stringify({
         jsonrpc: "2.0",

@@ -126,6 +126,26 @@ describe("loadAccountBalance", () => {
     }
   });
 
+  test("does not follow redirects from the finney RPC upstream", async () => {
+    const fetchCalls = [];
+    const orig = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      fetchCalls.push({ url, init });
+      return new Response(null, {
+        status: 302,
+        headers: { location: "http://169.254.169.254/rpc" },
+      });
+    };
+    try {
+      const data = await loadAccountBalance({}, SS58);
+      assert.equal(data.balance_tao, null);
+      assert.equal(fetchCalls.length, 1, "must not follow the redirect hop");
+      assert.equal(fetchCalls[0].init.redirect, "manual");
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
   test("returns balance_tao:null when finney RPC times out (#2075)", async () => {
     const orig = globalThis.fetch;
     globalThis.fetch = async (_url, init) => {
@@ -145,10 +165,10 @@ describe("loadAccountBalance", () => {
   });
 
   test("passes AbortSignal.timeout to the finney fetch", async () => {
-    let seenSignal;
+    let seenInit;
     const orig = globalThis.fetch;
     globalThis.fetch = async (_url, init) => {
-      seenSignal = init?.signal;
+      seenInit = init;
       return {
         ok: true,
         json: async () => ({
@@ -160,8 +180,9 @@ describe("loadAccountBalance", () => {
     };
     try {
       await loadAccountBalance({}, SS58);
-      assert.ok(seenSignal);
-      assert.equal(typeof seenSignal.aborted, "boolean");
+      assert.ok(seenInit?.signal);
+      assert.equal(seenInit.redirect, "manual");
+      assert.equal(typeof seenInit.signal.aborted, "boolean");
       assert.equal(BALANCE_RPC_TIMEOUT_MS, 5000);
     } finally {
       globalThis.fetch = orig;
