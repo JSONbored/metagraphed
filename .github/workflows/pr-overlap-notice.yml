@@ -144,7 +144,14 @@ jobs:
           fi
 
           if [ "${#other_pr_numbers[@]}" -eq 0 ]; then
-            echo "No other open PRs to compare against; skipping."
+            # Zero other open PRs IS a completed comparison (trivially: nothing
+            # to overlap with), not a skip -- must write checked=true so the
+            # comment workflow can clear a stale overlap-notice comment left
+            # over from when other conflicting PRs were still open (e.g. they
+            # since merged or closed). Leaving checked=false here (the
+            # unwritten default) would make that stale comment un-clearable.
+            echo "No other open PRs to compare against."
+            write_result true false ""
             exit 0
           fi
 
