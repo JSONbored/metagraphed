@@ -281,6 +281,8 @@ test("formatAccountEvent rejects non-integer or negative netuid/uid cells to nul
   assert.equal(formatAccountEvent({ netuid: -1 }).netuid, null);
   assert.equal(formatAccountEvent({ uid: 1.5 }).uid, null);
   assert.equal(formatAccountEvent({ netuid: "abc" }).netuid, null);
+  assert.equal(formatAccountEvent({ netuid: "" }).netuid, null);
+  assert.equal(formatAccountEvent({ netuid: "   " }).netuid, null);
 });
 
 test("formatAccountEvent coerces string-typed amount_tao and alpha_amount cells to Numbers", () => {
@@ -326,6 +328,24 @@ test("utcDayBounds returns the UTC day window", () => {
   assert.equal(b.date, "2026-06-21");
   assert.equal(b.start, Date.UTC(2026, 5, 21));
   assert.equal(b.end - b.start, 86400000);
+});
+
+test("utcDayBounds returns null for non-finite timestamps", () => {
+  assert.equal(utcDayBounds(Number.NaN), null);
+});
+
+test("rollupAccountEventsDaily skips invalid run timestamps", async () => {
+  const db = {
+    prepare: () => ({ bind: () => ({}) }),
+    async batch() {
+      throw new Error("batch should not run");
+    },
+  };
+  const result = await rollupAccountEventsDaily(
+    { METAGRAPH_HEALTH_DB: db },
+    { now: () => Number.NaN },
+  );
+  assert.deepEqual(result, { rolled: false, error: "invalid run timestamp" });
 });
 
 test("rollupAccountEventsDaily rolls today + yesterday via upsert", async () => {

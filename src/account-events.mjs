@@ -103,6 +103,7 @@ function toIso(ms) {
 // missing, non-finite, or negative — chain positions are never negative.
 function toBlockNumber(value) {
   if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : null;
 }
@@ -149,10 +150,14 @@ export function formatAccountEvent(row) {
 // epoch ms. The rollup re-rolls the two active days each hour (past days are
 // already finalized + unchanged), keyed by these bounds.
 export function utcDayBounds(ms) {
+  if (!Number.isFinite(ms)) return null;
   const d = new Date(ms);
+  if (!Number.isFinite(d.getTime())) return null;
   const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const startDate = new Date(start);
+  if (!Number.isFinite(startDate.getTime())) return null;
   return {
-    date: new Date(start).toISOString().slice(0, 10),
+    date: startDate.toISOString().slice(0, 10),
     start,
     end: start + 24 * 60 * 60 * 1000,
   };
@@ -167,7 +172,12 @@ export async function rollupAccountEventsDaily(env, overrides = {}) {
   const db = overrides.db || env.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return { rolled: false };
   const runAt = now();
-  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)];
+  const days = [utcDayBounds(runAt), utcDayBounds(runAt - 24 * 60 * 60 * 1000)].filter(
+    Boolean,
+  );
+  if (!days.length) {
+    return { rolled: false, error: "invalid run timestamp" };
+  }
   try {
     const stmt = db.prepare(
       `INSERT INTO account_events_daily
