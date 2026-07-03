@@ -146,6 +146,25 @@
         "https://api.oroagents.com/openapi.json"
       ],
       "url": "https://api.oroagents.com/v1/public/top"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-15-oro-subnet-api-api-oroagents-com",
+      "kind": "subnet-api",
+      "name": "ORO public evaluation-suites API",
+      "notes": "Public no-auth GET returning the ORO evaluation-suite catalog. Documented in the subnet's own OpenAPI (api.oroagents.com/openapi.json); same host as the existing openapi + subnet-api + data-artifact surfaces.",
+      "provider": "oro",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.oroagents.com/openapi.json",
+        "https://oroagents.com/"
+      ],
+      "url": "https://api.oroagents.com/v1/public/suites"
     }
   ],
   "website_url": "https://oroagents.com/"
