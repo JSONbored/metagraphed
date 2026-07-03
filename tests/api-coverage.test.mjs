@@ -1320,16 +1320,19 @@ describe("registry list CSV export", () => {
 });
 
 describe("coverage-depth CSV export", () => {
-  const parseCsvLine = (line) => {
-    const values = [];
-    let current = "";
+  const parseCsvRows = (text) => {
+    const rows = [];
+    let currentRow = [];
+    let currentField = "";
     let inQuotes = false;
 
-    for (let i = 0; i < line.length; i += 1) {
-      const char = line[i];
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      const next = text[i + 1];
+
       if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
+        if (inQuotes && next === '"') {
+          currentField += '"';
           i += 1;
           continue;
         }
@@ -1337,32 +1340,63 @@ describe("coverage-depth CSV export", () => {
         continue;
       }
 
-      if (char === "," && !inQuotes) {
-        values.push(current);
-        current = "";
+      if (!inQuotes && char === ",") {
+        currentRow.push(currentField);
+        currentField = "";
         continue;
       }
 
-      current += char;
+      if (!inQuotes && char === "\r") {
+        if (next === "\n") {
+          i += 1;
+        }
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      if (!inQuotes && char === "\n") {
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      currentField += char;
     }
 
-    values.push(current);
-    return values;
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField);
+    }
+
+    if (currentRow.length > 0 && currentRow.some((value) => value !== "")) {
+      rows.push(currentRow);
+    }
+
+    return rows;
   };
 
   const parseCoverageCsv = async (res) => {
     assert.match(res.headers.get("content-type"), /^text\/csv/);
-    const lines = (await res.text())
-      .split(/\r\n|\r|\n/)
-      .filter((line) => line !== "");
-    const header = parseCsvLine(lines[0]);
-    const rows = lines.slice(1).map((line) => {
-      const values = parseCsvLine(line);
+    const text = await res.text();
+    const lines = parseCsvRows(text).filter(
+      (line) => line.length !== 0 && !line.every((value) => value === ""),
+    );
+    const header = lines[0];
+    const rows = lines.slice(1).map((values, index) => {
+      assert.equal(
+        values.length,
+        header.length,
+        `row ${index + 1} should have the same number of columns as header`,
+      );
       return Object.fromEntries(
         header.map((name, index) => [name, values[index] ?? ""]),
       );
     });
-    return { header, rows };
+    return { header, rows, text };
   };
 
   test("?format=csv returns projected coverage-depth rows", async () => {
@@ -1412,7 +1446,12 @@ describe("coverage-depth CSV export", () => {
       {},
     );
     assert.equal(res.status, 200);
-    const { header, rows } = await parseCoverageCsv(res);
+    const { header, rows, text } = await parseCoverageCsv(res);
+    assert.equal(
+      text.includes('"Allways, ""callable""'),
+      true,
+      "escaped name must be emitted as quoted CSV text",
+    );
     assert.equal(header.join(","), "netuid,tier,name");
     assert.deepEqual(rows, [
       {
