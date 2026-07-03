@@ -127,11 +127,6 @@ export function csvBodyStream(rows, columns) {
         return;
       }
 
-      if (index >= safeRows.length) {
-        controller.close();
-        return;
-      }
-
       const lines = [];
       while (
         index < safeRows.length &&

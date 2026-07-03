@@ -197,6 +197,73 @@ test("csvBodyStream emits the header before row chunks", async () => {
   assert.equal(done.done, true);
 });
 
+test("csvBodyStream closes immediately when no header can be derived", async () => {
+  const stream = csvBodyStream([]);
+  const done = await stream.getReader().read();
+  assert.equal(done.done, true);
+  assert.equal(done.value, undefined);
+});
+
+test("csvBodyStream emits a header-only export for explicit empty columns", async () => {
+  const stream = csvBodyStream([], ["netuid", "name"]);
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const first = await reader.read();
+  assert.equal(decoder.decode(first.value), "netuid,name");
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
+});
+
+test("csvBodyStream tolerates non-array rows when explicit columns are provided", async () => {
+  const stream = csvBodyStream(null, ["netuid"]);
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const first = await reader.read();
+  assert.equal(decoder.decode(first.value), "netuid");
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
+});
+
+test("csvBodyStream serializes malformed row entries as empty cells", async () => {
+  const stream = csvBodyStream([null], ["netuid"]);
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const first = await reader.read();
+  assert.equal(decoder.decode(first.value), "netuid\r\n");
+
+  const second = await reader.read();
+  assert.equal(decoder.decode(second.value), "");
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
+});
+
+test("csvBodyStream emits continuation newlines when a large export spans multiple chunks", async () => {
+  const rows = Array.from({ length: 129 }, (_, index) => ({ netuid: index }));
+  const stream = csvBodyStream(rows, ["netuid"]);
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+
+  const header = await reader.read();
+  assert.equal(decoder.decode(header.value), "netuid\r\n");
+
+  const firstChunk = await reader.read();
+  const firstChunkText = decoder.decode(firstChunk.value);
+  assert.equal(firstChunkText.startsWith("0\r\n1\r\n2"), true);
+  assert.equal(firstChunkText.endsWith("\r\n"), true);
+
+  const secondChunk = await reader.read();
+  assert.equal(decoder.decode(secondChunk.value), "128");
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
+});
+
 test("csvResponse can stream endpoint-sized exports without eager ETags", async () => {
   const response = await csvResponse(
     [
@@ -223,4 +290,43 @@ test("csvResponse can stream endpoint-sized exports without eager ETags", async 
     decoder.decode(second.value),
     "7,allways,ok\r\n8,templar,degraded",
   );
+});
+
+test("csvResponse falls back to the buffered ETag path on HEAD even when streaming is requested", async () => {
+  const response = await csvResponse(
+    [{ netuid: 7, provider: "allways", status: "ok" }],
+    "endpoints",
+    "short",
+    req({}, "HEAD"),
+    ["netuid", "provider", "status"],
+    {},
+    { stream: true },
+  );
+  assert.equal(response.status, 200);
+  assert.ok(response.headers.get("etag"));
+  assert.equal(await response.text(), "");
+});
+
+test("csvResponse keeps conditional requests on the buffered ETag path when streaming is requested", async () => {
+  const first = await csvResponse(
+    [{ netuid: 7, provider: "allways", status: "ok" }],
+    "endpoints",
+    "short",
+    req(),
+    ["netuid", "provider", "status"],
+  );
+  const etag = first.headers.get("etag");
+  assert.ok(etag);
+
+  const matched = await csvResponse(
+    [{ netuid: 7, provider: "allways", status: "ok" }],
+    "endpoints",
+    "short",
+    req({ "if-none-match": etag }),
+    ["netuid", "provider", "status"],
+    {},
+    { stream: true },
+  );
+  assert.equal(matched.status, 304);
+  assert.equal(await matched.text(), "");
 });
