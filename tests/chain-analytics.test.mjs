@@ -996,6 +996,15 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 });
 
 test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL fees", async () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // Use yesterday UTC so the mocked day stays inside handleChainFees' 7d window
+  // and the median safe-day scan (utcDayFloor(cutoff)..now). A fixed 2026-06-25
+  // label ages out of that loop and skips the ROW_NUMBER median query entirely.
+  const windowDay = new Date(
+    Math.floor((Date.now() - DAY_MS) / DAY_MS) * DAY_MS,
+  )
+    .toISOString()
+    .slice(0, 10);
   const captured = [];
   const env = {
     ...createLocalArtifactEnv(),
@@ -1007,7 +1016,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
             const rows = /ROW_NUMBER\(\) OVER/.test(sql)
               ? [
                   {
-                    day: "2026-06-25",
+                    day: windowDay,
                     median_fee_tao: 0.006,
                     median_tip_tao: 0,
                   },
@@ -1015,7 +1024,7 @@ test("GET /api/v1/chain/fees returns daily series + top payers, COALESCEs NULL f
               : /GROUP BY day/.test(sql)
                 ? [
                     {
-                      day: "2026-06-25",
+                      day: windowDay,
                       extrinsic_count: 50,
                       total_fee_tao: 0.5,
                       total_tip_tao: 0,
