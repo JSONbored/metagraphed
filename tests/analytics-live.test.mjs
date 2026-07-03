@@ -179,6 +179,17 @@ describe("analytics-live projections", () => {
       [{ netuid: 7, delta: 60 }],
     );
   });
+
+  test("growthRowsFromSamples skips blank netuid cells that would coerce to subnet 0", () => {
+    assert.deepEqual(
+      growthRowsFromSamples([
+        { netuid: "", completeness_score: 10 },
+        { netuid: 7, completeness_score: 20 },
+        { netuid: 7, completeness_score: 40 },
+      ]),
+      [{ netuid: 7, delta: 20 }],
+    );
+  });
 });
 
 describe("analytics-live loaders", () => {

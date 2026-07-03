@@ -64,7 +64,11 @@ export function profilesProjectionFromRows(profiles) {
 export function growthRowsFromSamples(growthSamples) {
   const growthByNetuid = new Map();
   for (const row of growthSamples || []) {
-    const entry = growthByNetuid.get(row.netuid) || {
+    const rawNetuid = row.netuid;
+    if (typeof rawNetuid === "string" && rawNetuid.trim() === "") continue;
+    const netuid = Number(rawNetuid);
+    if (!Number.isInteger(netuid) || netuid < 0) continue;
+    const entry = growthByNetuid.get(netuid) || {
       first: null,
       last: null,
     };
@@ -83,7 +87,7 @@ export function growthRowsFromSamples(growthSamples) {
       if (entry.first == null) entry.first = score;
       entry.last = score;
     }
-    growthByNetuid.set(row.netuid, entry);
+    growthByNetuid.set(netuid, entry);
   }
   return [...growthByNetuid.entries()].map(([netuid, entry]) => ({
     netuid,
