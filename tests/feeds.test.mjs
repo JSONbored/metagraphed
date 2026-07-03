@@ -425,6 +425,26 @@ describe("feeds — item builders", () => {
     assert.ok(Number.isFinite(Date.parse(item.timestamp)));
   });
 
+  test("incidentItems survives a string-typed out-of-range started_at (no RangeError)", () => {
+    // D1 can return INTEGER observed_at/captured_at as a numeric string; the
+    // string branch of toIso must apply the same Date-range guard as the number
+    // branch — Date.parse succeeds but toISOString() would throw on 9e15 ms.
+    const incidents = {
+      surfaces: [
+        {
+          netuid: 1,
+          surface_id: "api",
+          incidents: [{ started_at: "9000000000000000" }],
+        },
+      ],
+    };
+    let item;
+    assert.doesNotThrow(() => {
+      item = incidentItems(incidents)[0];
+    });
+    assert.ok(Number.isFinite(Date.parse(item.timestamp)));
+  });
+
   test("gapsItems builds ranked enrichment targets with lane/kind tags", () => {
     const items = gapsItems(ENRICHMENT_QUEUE);
     assert.equal(items.length, 3);
