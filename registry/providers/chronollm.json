@@ -1,0 +1,10 @@
+{
+  "authority": "community",
+  "github_url": "https://github.com/chronollm/sn38",
+  "id": "chronollm",
+  "kind": "subnet-team",
+  "name": "ChronoLLM",
+  "notes": "Provider entry for ChronoLLM SN38, seeded from the public source repository listed in native subnet metadata.",
+  "schema_version": 1,
+  "website_url": "https://github.com/chronollm/sn38"
+}
