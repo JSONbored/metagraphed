@@ -95,7 +95,12 @@ function clamp(value, max = 500) {
 // Accept an ISO string or epoch-ms; return a normalized ISO string or null.
 function toIso(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
-    return new Date(value).toISOString();
+    // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
+    // toISOString() throw a RangeError, which would 500 the whole feed on a
+    // single corrupt incident/changelog timestamp. Guard the Date range and drop
+    // it to null instead, matching the string branch's NaN guard below.
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   if (typeof value === "string") {
     const t = Date.parse(value);

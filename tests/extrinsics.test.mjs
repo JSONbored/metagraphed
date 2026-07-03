@@ -144,6 +144,30 @@ test("formatExtrinsic maps a D1 row to an API extrinsic (ISO time, bool success)
   assert.equal(out.observed_at, new Date(1750000000000).toISOString());
 });
 
+test("formatExtrinsic drops an out-of-range observed_at instead of throwing", () => {
+  // A finite but out-of-range epoch (beyond the ±8.64e15 ms JS Date limit) would
+  // make new Date(n).toISOString() throw a RangeError and 500 the extrinsics feed.
+  // A single corrupt observed_at cell must degrade to null, not crash the row.
+  let out;
+  assert.doesNotThrow(() => {
+    out = formatExtrinsic({
+      block_number: 5,
+      extrinsic_index: 0,
+      observed_at: 9e15,
+    });
+  });
+  assert.equal(out.observed_at, null);
+  // A valid timestamp still renders as ISO (no regression).
+  assert.equal(
+    formatExtrinsic({
+      block_number: 5,
+      extrinsic_index: 0,
+      observed_at: 1750000000000,
+    }).observed_at,
+    new Date(1750000000000).toISOString(),
+  );
+});
+
 test("formatExtrinsic coerces D1 numeric-string fee_tao/tip_tao and rounds to rao", () => {
   // D1 can return the REAL fee/tip columns as numeric strings; a bare `?? null`
   // would leak the string into the ["number","null"] contract field. Coercion

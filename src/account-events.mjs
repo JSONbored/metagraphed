@@ -76,6 +76,8 @@ export const INGESTED_EVENT_KINDS = [
   "HotkeySwapped",
   "ColdkeySwapped",
   "ColdkeySwapScheduled",
+  // #2555 forward-compat: absent finney spec 424 today; ?kind= accepts once runtime emits
+  "AxonInfoRemoved",
   "Transfer",
 ];
 

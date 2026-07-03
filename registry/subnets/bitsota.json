@@ -25,6 +25,27 @@
       },
       "source_urls": ["https://bitsota.ai/docs/autoresearch-backend-routes"],
       "url": "https://autoresearch.bitsota.com/api/v1/tasks"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-94-alveus-labs-openapi",
+      "kind": "openapi",
+      "name": "Bitsota AutoResearch coordinator OpenAPI spec",
+      "notes": "OpenAPI 3.1 spec for the Bitsota AutoResearch coordinator API. Host autoresearch.bitsota.com is the SN94 coordinator operated by Alveus Labs (referenced across the official AlveusLabs/SN94-BitSota repo docs); same host as the existing subnet-api surface.",
+      "provider": "alveus-labs",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://autoresearch.bitsota.com/openapi.json",
+      "source_urls": [
+        "https://github.com/AlveusLabs/SN94-BitSota/blob/a2d7a45e4f668232c435306911faf2608ffd196b/docs/guides/how-to-mine.md",
+        "https://bitsota.ai/"
+      ],
+      "url": "https://autoresearch.bitsota.com/openapi.json"
     }
   ]
 }

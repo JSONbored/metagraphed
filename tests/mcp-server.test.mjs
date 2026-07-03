@@ -5674,6 +5674,41 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.stake.holders, 2);
   });
 
+  test("get_chain_performance returns schema-stable null blocks on cold D1", async () => {
+    const res = await callTool("get_chain_performance", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.equal(out.neuron_count, 0);
+    assert.equal(out.incentive, null);
+    assert.equal(out.trust, null);
+    assert.equal(out.validator_trust, null);
+  });
+
+  test("get_chain_performance summarizes reward + score spread network-wide", async () => {
+    const res = await callTool(
+      "get_chain_performance",
+      {},
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            neurons: [
+              { ...ROW, netuid: 1, incentive: 0.6, trust: 0.9 },
+              { ...MINER, netuid: 2, incentive: 0.2, trust: 0.4 },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 2); // spans netuids 1 and 2
+    assert.equal(out.neuron_count, 2);
+    assert.equal(out.validator_count, 1); // only ROW carries a permit
+    assert.equal(out.incentive.holders, 2);
+    assert.equal(out.trust.count, 2);
+    assert.equal(out.trust.max, 0.9);
+    assert.equal(out.validator_trust.count, 1);
+  });
+
   test("get_subnet_concentration_history defaults to 30d and returns points", async () => {
     const res = await callTool(
       "get_subnet_concentration_history",

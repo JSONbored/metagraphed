@@ -9,6 +9,7 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  validateListQueryParams,
 } from "./list-query.mjs";
 import { csvRequested, csvResponse } from "./csv.mjs";
 import {
@@ -76,6 +77,7 @@ import {
   handleSubnetConcentration,
   handleSubnetConcentrationHistory,
   handleChainConcentration,
+  handleChainPerformance,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -89,6 +91,7 @@ import {
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
+  canonicalSubnetValidatorsCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -1193,7 +1196,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
   // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
-    const validatorsCache = canonicalGlobalValidatorsCachePath(url);
+    const validatorsCache = canonicalGlobalValidatorsCachePath(url, request);
     if (validatorsCache.response) return validatorsCache.response;
     return withEdgeCache(
       request,
@@ -1216,7 +1219,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       env,
       "subnet-movers",
       () => handleSubnetMovers(request, env, url),
-      canonicalSubnetMoversCachePath(url),
+      canonicalSubnetMoversCachePath(url, request),
     );
   }
 
@@ -1492,7 +1495,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(metagraphMatch[1]),
             resolved.url,
           ),
-        canonicalSubnetMetagraphCachePath(resolved.url),
+        canonicalSubnetMetagraphCachePath(resolved.url, request),
       );
     }
     const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1522,6 +1525,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(validatorsMatch[1]),
             resolved.url,
           ),
+        canonicalSubnetValidatorsCachePath(resolved.url, request),
       );
     }
     // Per-subnet chain-event stream (#1345): account_events filtered by netuid.
@@ -1696,6 +1700,20 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
       );
     }
+    // GET /api/v1/chain/performance: network-wide reward-distribution & score-spread
+    // aggregate — edge-cache busts on the newest neuron captured_at across ALL
+    // subnets (like chain/concentration, but the reward-flow lens).
+    if (resolved.url.pathname === "/api/v1/chain/performance") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-performance",
+        () => handleChainPerformance(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
     // (GROUP-BY-day over subnet_snapshots) — edge-cache on last_run_at like the
     // sibling history/trajectory routes; ?window rides the search into the key.
@@ -1756,6 +1774,7 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/fees" ||
     pathname === "/api/v1/chain/transfers" ||
     pathname === "/api/v1/chain/concentration" ||
+    pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||
@@ -2364,6 +2383,19 @@ async function handleApiRequest(
   if (!matched) {
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
+  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
+  const queryError = validateListQueryParams(
+    url,
+    matched.queryCollection,
+    matched.queryFilterNames,
+    { csvResponse: matched.csvResponse === true },
+  );
+  if (queryError) {
+    return errorResponse("invalid_query", queryError.message, 400, {
+      artifact_path: artifactPath,
+      parameter: queryError.parameter,
+    });
+  }
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,
@@ -2434,7 +2466,6 @@ async function handleApiRequest(
   }
   // Mainnet (default) reads the unprefixed artifact (no-op); non-default networks
   // read metagraph/{prefix}/… — see artifactPathForNetwork.
-  const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
 
   // Live operational-health overlay (Phase 3): current health is live-only.
   // Static current-health artifacts are not read for mainnet health routes, so
@@ -2587,6 +2618,7 @@ async function handleApiRequest(
     url,
     matched.queryCollection,
     matched.queryFilterNames,
+    { csvResponse: matched.csvResponse === true },
   );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {

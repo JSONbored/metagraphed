@@ -43,7 +43,13 @@ function toIso(ms) {
   // cell stays null instead of epoch 1970. Mirrors the blocks toIso fix (#2708).
   if (ms == null) return null;
   const n = Number(ms);
-  return Number.isFinite(n) && n > 0 ? new Date(n).toISOString() : null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
+  // new Date(n).toISOString() throw a RangeError, which would 500 the whole
+  // extrinsics feed on a single corrupt observed_at cell. Drop it to null
+  // instead, mirroring the getTime() range guard in the stake-flow coerceEpochMs.
+  const date = new Date(n);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
 // Coerce a chain-position cell (block_number / extrinsic_index) to a

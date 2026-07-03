@@ -787,6 +787,32 @@ describe("invalid query handling", () => {
     assert.equal((await res.json()).meta.parameter, "order");
   });
 
+  test("400 invalid_query for an unknown list query parameter", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?statuss=active"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.error.message, "unknown query parameter.");
+    assert.equal(body.meta.parameter, "statuss");
+  });
+
+  test("400 invalid_query for an unsupported format value on CSV list routes", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets?format=xml"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.error.message, "format must be json or csv.");
+    assert.equal(body.meta.parameter, "format");
+  });
+
   test("400 invalid_query for an unsupported projected field", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets?fields=netuid,not_a_field"),
@@ -970,8 +996,10 @@ describe("subnets CSV export", () => {
   });
 
   test("Accept: text/csv is ignored for collection routes without CSV contracts", async () => {
+    // /api/v1/providers is a list route that intentionally has no CSV contract,
+    // so content negotiation must fall through to the JSON envelope.
     const res = await handleRequest(
-      req("/api/v1/profiles?limit=1", {
+      req("/api/v1/providers?limit=1", {
         headers: { accept: "text/csv" },
       }),
       createLocalArtifactEnv(),
@@ -982,7 +1010,7 @@ describe("subnets CSV export", () => {
 
     const body = await res.json();
     assert.equal(body.ok, true);
-    assert.equal(Array.isArray(body.data.profiles), true);
+    assert.equal(Array.isArray(body.data.providers), true);
   });
 
   test("empty projected CSV exports retain the requested header row", async () => {
@@ -1028,6 +1056,194 @@ describe("subnets CSV export", () => {
   });
 });
 
+// --- Review enrichment list CSV export (#2527) --------------------------------
+describe("review enrichment list CSV export", () => {
+  const parseCsv = async (res) => {
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const lines = (await res.text()).split("\r\n");
+    const header = lines[0].split(",");
+    const rows = lines
+      .slice(1)
+      .filter(Boolean)
+      .map((line) => {
+        const values = line.split(",");
+        return Object.fromEntries(
+          header.map((name, index) => [name, values[index]]),
+        );
+      });
+    return { header, rows, lines };
+  };
+
+  test("review/gaps ?format=csv exports priority_score and honors curation_level", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/review/gaps?format=csv&fields=netuid,priority_score,curation_level&sort=priority_score&limit=5&curation_level=candidate-discovered",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const { header, rows } = await parseCsv(res);
+    assert.equal(header.join(","), "netuid,priority_score,curation_level");
+    assert.ok(rows.length > 0);
+    assert.ok(
+      rows.every((row) => row.curation_level === "candidate-discovered"),
+    );
+    assert.ok(rows.every((row) => /^\d+$/.test(row.netuid)));
+    assert.ok(rows.every((row) => row.priority_score !== ""));
+  });
+
+  test("review/profile-completeness ?format=csv exports priority_score and honors identity_level", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/review/profile-completeness?format=csv&fields=netuid,priority_score,identity_level&sort=priority_score&limit=5&identity_level=partial",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const { header, rows } = await parseCsv(res);
+    assert.equal(header.join(","), "netuid,priority_score,identity_level");
+    assert.ok(rows.length > 0);
+    assert.ok(rows.every((row) => row.identity_level === "partial"));
+    assert.ok(rows.every((row) => row.priority_score !== ""));
+  });
+
+  test("review/adapter-candidates ?format=csv exports priority_score and honors operational_kinds", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/review/adapter-candidates?format=csv&fields=netuid,priority_score,operational_kinds&sort=priority_score&limit=5&operational_kinds=openapi",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const { header, rows } = await parseCsv(res);
+    assert.equal(header.join(","), "netuid,priority_score,operational_kinds");
+    assert.ok(rows.length > 0);
+    assert.ok(rows.every((row) => row.operational_kinds.includes("openapi")));
+    assert.ok(rows.every((row) => row.priority_score !== ""));
+  });
+
+  test("review/enrichment-queue ?format=csv exports priority_score and honors lane", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/review/enrichment-queue?format=csv&fields=netuid,priority_score,lane&sort=priority_score&limit=5&lane=direct-submission",
+      ),
+      createLocalArtifactEnv(),
+      {},
+    );
+    const { header, rows } = await parseCsv(res);
+    assert.equal(header.join(","), "netuid,priority_score,lane");
+    assert.ok(rows.length > 0);
+    assert.ok(rows.every((row) => row.lane === "direct-submission"));
+    assert.ok(rows.every((row) => row.priority_score !== ""));
+  });
+});
+
+// --- registry list CSV export (#2521-#2526) -----------------------------------
+describe("registry list CSV export", () => {
+  const CSV_ROUTES = [
+    "economics",
+    "surfaces",
+    "subnet-surfaces",
+    "endpoints",
+    "subnet-endpoints",
+    "provider-endpoints",
+    "candidates",
+    "subnet-candidates",
+    "profiles",
+    "coverage-depth",
+  ];
+
+  test("every wired registry route advertises the CSV contract", () => {
+    for (const id of CSV_ROUTES) {
+      const entry = API_ROUTES.find((route) => route.id === id);
+      assert.ok(entry, `route ${id} should exist`);
+      assert.equal(entry.csv_response, true, `${id} should set csv_response`);
+      const formatParam = (entry.query_parameters || []).find(
+        (param) => param.name === "format",
+      );
+      assert.ok(formatParam, `${id} should expose a format parameter`);
+      assert.deepEqual(formatParam.schema.enum, ["json", "csv"]);
+    }
+  });
+
+  test("list routes without a CSV contract stay JSON-only", () => {
+    for (const id of ["providers", "rpc-endpoints", "source-snapshots"]) {
+      const entry = API_ROUTES.find((route) => route.id === id);
+      assert.ok(entry, `route ${id} should exist`);
+      assert.notEqual(entry.csv_response, true, `${id} must stay JSON-only`);
+    }
+  });
+
+  // Each top-level route resolves a real local artifact, so ?format=csv returns
+  // a text/csv attachment named after the route id with a header row.
+  for (const [path, filename] of [
+    ["/api/v1/economics", "economics.csv"],
+    ["/api/v1/surfaces", "surfaces.csv"],
+    ["/api/v1/endpoints", "endpoints.csv"],
+    ["/api/v1/candidates", "candidates.csv"],
+    ["/api/v1/profiles", "profiles.csv"],
+    ["/api/v1/coverage-depth", "coverage-depth.csv"],
+  ]) {
+    test(`${path}?format=csv returns a named text/csv download`, async () => {
+      const res = await handleRequest(
+        req(`${path}?format=csv&limit=3`),
+        createLocalArtifactEnv(),
+        {},
+      );
+      assert.equal(res.status, 200);
+      assert.match(res.headers.get("content-type"), /^text\/csv/);
+      assert.equal(
+        res.headers.get("content-disposition"),
+        `attachment; filename="${filename}"`,
+      );
+      const [header] = (await res.text()).split("\r\n");
+      assert.ok(header.length > 0, "CSV must include a header row");
+      assert.ok(header.includes(","), "header should list multiple columns");
+    });
+  }
+
+  test("subnet-scoped surfaces export CSV for one netuid", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets/0/surfaces?format=csv"),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="subnet-surfaces.csv"',
+    );
+  });
+
+  test("Accept: text/csv negotiates CSV on a registry route", async () => {
+    const res = await handleRequest(
+      req("/api/v1/economics?limit=1", { headers: { accept: "text/csv" } }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+  });
+
+  test("?format=json keeps the JSON envelope on a registry route", async () => {
+    const res = await handleRequest(
+      req("/api/v1/economics?format=json&limit=1", {
+        headers: { accept: "text/csv" },
+      }),
+      createLocalArtifactEnv(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /^application\/json/);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    // The economics collection projects onto the shared `subnets` data key.
+    assert.equal(Array.isArray(body.data.subnets), true);
+  });
+});
+
 // --- RFC 8288 pagination Link header (#1686) ----------------------------------
 // /api/v1/subnets is the only end-to-end list fixture; the header is built once
 // for every cursor-paginated collection in workers/list-query.mjs, so proving it
@@ -1067,19 +1283,15 @@ describe("pagination Link header", () => {
     assert.match(res.headers.get("access-control-expose-headers"), /\blink\b/);
   });
 
-  test("page links drop ignored/tracker query params end-to-end (#1932 cache-key safety)", async () => {
-    // Drive the canonicalization through the real Worker: tracker/attacker params
-    // the edge cache key ignores must not ride along in the cacheable Link header,
-    // while the body-affecting sort/cursor/limit are preserved.
-    const { res, links } = await page(
+  test("page links reject ignored/tracker query params end-to-end", async () => {
+    const { res } = await page(
       "limit=50&cursor=0&utm_campaign=evil&token=SECRET123",
     );
-    assert.equal(res.status, 200);
-    assert.equal(links.next.searchParams.has("utm_campaign"), false);
-    assert.equal(links.next.searchParams.has("token"), false);
-    assert.equal(links.next.searchParams.get("sort"), "netuid");
-    assert.equal(links.next.searchParams.get("cursor"), "50");
-    assert.equal(links.next.searchParams.get("limit"), "50");
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.error.message, "unknown query parameter.");
+    assert.equal(body.meta.parameter, "utm_campaign");
   });
 
   test("middle page advertises all four relations", async () => {
