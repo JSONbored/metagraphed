@@ -294,7 +294,7 @@
       "description": "A captured, sanitized live request/response sample for one surface.",
       "id": "fixture-detail",
       "path": "/metagraph/fixtures/{surface_id}.json",
-      "schema_ref": "#/components/schemas/JsonObject",
+      "schema_ref": "#/components/schemas/FixtureArtifact",
       "storage_tier": "r2"
     },
     {

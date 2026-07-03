@@ -180,11 +180,11 @@ describe("contracts — compileRoutePattern per token type", () => {
       token: "{surface_id}",
       group: "surface_id",
       template: "/metagraph/schemas/{surface_id}.json",
-      validPath: "/metagraph/schemas/sn-56-gradients-openapi.json",
-      captured: "sn-56-gradients-openapi",
+      validPath: "/metagraph/schemas/7:Subnet_API.new-v2.json",
+      captured: "7:Subnet_API.new-v2",
       invalid: [
-        "/metagraph/schemas/SN-56.json", // uppercase
         "/metagraph/schemas/.json", // empty id
+        "/metagraph/schemas/../secrets.json", // traversal-like path
       ],
     },
     {
