@@ -6599,6 +6599,30 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.match(res.body.result.content[0].text, /block_start/i);
   });
 
+  test("get_account_events rejects an unknown event kind before D1", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              called = true;
+              return { all: () => Promise.resolve({ results: [] }) };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_account_events",
+      { ss58: SS58, kind: "Nonexistent" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /supported event kind/i);
+    assert.equal(called, false);
+  });
+
   test("get_account_events emits next_cursor for a full page", async () => {
     const env = accountD1({
       events: [
@@ -7841,6 +7865,65 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
     const q = capture.find((c) => /FROM account_events/.test(c.sql));
     assert.ok(/AND event_kind = \?/.test(q.sql));
     assert.ok(q.params.includes("WeightsSet"));
+  });
+
+  test("get_subnet_events rejects an unknown event kind before D1", async () => {
+    let called = false;
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            bind() {
+              called = true;
+              return { all: () => Promise.resolve({ results: [] }) };
+            },
+          };
+        },
+      },
+    };
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, kind: "Nonexistent" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /supported event kind/i);
+    assert.equal(called, false);
+  });
+
+  test("get_subnet_events accepts an ingested non-indexed kind (Transfer)", async () => {
+    const capture = [];
+    const env = parityD1(
+      {
+        events: [
+          {
+            block_number: 100,
+            event_index: 1,
+            event_kind: "Transfer",
+            hotkey: "5Hk",
+            coldkey: "5Ck",
+            netuid: 1,
+            uid: null,
+            amount_tao: 1,
+            observed_at: 1750009000000,
+            extrinsic_index: null,
+          },
+        ],
+      },
+      capture,
+    );
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, kind: "Transfer" },
+      { env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.equal(
+      res.body.result.structuredContent.events[0].event_kind,
+      "Transfer",
+    );
+    const q = capture.find((c) => /FROM account_events/.test(c.sql));
+    assert.ok(/event_kind = \?/.test(q.sql));
   });
 
   test("get_subnet_events applies block_start/block_end and cursor pagination", async () => {

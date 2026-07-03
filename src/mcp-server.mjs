@@ -102,6 +102,7 @@ import {
   loadSubnetValidators,
 } from "./metagraph-neurons.mjs";
 import {
+  INGESTED_EVENT_KINDS,
   loadAccountSummary,
   loadAccountEvents,
   loadSubnetEvents,
@@ -912,6 +913,18 @@ function optionalDayArg(args, key) {
     throw toolError("invalid_params", "from/to must be YYYY-MM-DD dates.");
   }
   return value;
+}
+
+// Reject unknown event-kind filters before D1, parity with the REST event feeds
+// (handleSubnetEvents / handleAccountEvents) so a typo cannot force a scan.
+function requireKnownEventKind(kind) {
+  if (kind == null) return;
+  if (!INGESTED_EVENT_KINDS.includes(kind)) {
+    throw toolError(
+      "invalid_params",
+      `"${kind}" is not a supported event kind. Supported: ${INGESTED_EVENT_KINDS.join(", ")}.`,
+    );
+  }
 }
 
 // Require a bare SS58 address (hotkey or coldkey) — the same shape the REST
@@ -2401,7 +2414,7 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'WeightsSet'. " +
-            "Omit for all kinds; an unknown kind simply matches nothing.",
+            "Omit for all kinds; unsupported kinds are rejected.",
         },
         block_start: {
           type: "integer",
@@ -2439,6 +2452,7 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
+      requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadSubnetEvents(mcpD1Runner(ctx), netuid, {
         kind,
@@ -2548,7 +2562,7 @@ export const MCP_TOOLS = [
           type: "string",
           description:
             "Optional event-kind filter, e.g. 'StakeAdded' or 'NeuronRegistered'. " +
-            "Omit for all kinds; an unknown kind simply matches nothing.",
+            "Omit for all kinds; unsupported kinds are rejected.",
         },
         block_start: {
           type: "integer",
@@ -2586,6 +2600,7 @@ export const MCP_TOOLS = [
     async handler(args, ctx) {
       const ss58 = requireSs58(args);
       const kind = optionalString(args, "kind");
+      requireKnownEventKind(kind);
       const cursor = optionalString(args, "cursor");
       return loadAccountEvents(mcpD1Runner(ctx), ss58, {
         blockStart: optionalNonNegativeInt(args, "block_start"),

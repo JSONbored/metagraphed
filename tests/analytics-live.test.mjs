@@ -756,6 +756,7 @@ describe("loadChainFees", () => {
     assert.match(calls[1].sql, /ORDER BY total_fee_tao DESC, signer ASC/);
     assert.deepEqual(calls[1].params, [now - 7 * dayMs, "SubtensorModule", 10]);
     assert.match(calls[2].sql, /ROW_NUMBER\(\) OVER/);
+    assert.match(calls[2].sql, /INDEXED BY idx_extrinsics_module_observed/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY fee_tao/);
     assert.match(calls[2].sql, /PARTITION BY day ORDER BY tip_tao/);
     assert.doesNotMatch(calls[2].sql, /GROUP BY day,\s*fee_tao,\s*tip_tao/);
@@ -816,6 +817,39 @@ describe("loadChainFees", () => {
       return [start, start + dayMs];
     });
     assert.deepEqual(medianCall.params, expectedParams);
+  });
+
+  test("scoped median day blocks force the call_module observed_at index", () => {
+    // Regression for scoped chain-fee medians: without a composite
+    // call_module/observed_at path, SQLite can scan every row for the module
+    // once per safe day and apply the day range as a residual filter.
+    const db = new DatabaseSync(":memory:");
+    db.exec(`
+      CREATE TABLE extrinsics (
+        block_number INTEGER NOT NULL, extrinsic_index INTEGER NOT NULL,
+        observed_at INTEGER NOT NULL, fee_tao REAL, tip_tao REAL, call_module TEXT,
+        PRIMARY KEY (block_number, extrinsic_index)
+      );
+      CREATE INDEX idx_extrinsics_observed ON extrinsics (observed_at);
+      CREATE INDEX idx_extrinsics_module_block
+        ON extrinsics (call_module, block_number DESC, extrinsic_index DESC);
+      CREATE INDEX idx_extrinsics_module_observed
+        ON extrinsics (call_module, observed_at);
+    `);
+    const dayStart = Date.UTC(2026, 5, 25);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const sql = `SELECT strftime('%Y-%m-%d', observed_at / 1000, 'unixepoch') AS day,
+                COALESCE(fee_tao, 0) AS fee_tao, COALESCE(tip_tao, 0) AS tip_tao
+         FROM extrinsics INDEXED BY idx_extrinsics_module_observed
+         WHERE observed_at >= ?2 AND observed_at < ?3 AND call_module = ?1`;
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .all("SubtensorModule", dayStart, dayStart + dayMs);
+    assert.equal(plan.length, 1);
+    assert.match(
+      plan[0].detail,
+      /SEARCH extrinsics USING INDEX idx_extrinsics_module_observed \(call_module=\? AND observed_at>\? AND observed_at<\?\)/,
+    );
   });
 
   test("each included day's median block is an index-assisted range scan, not a full sort", () => {
