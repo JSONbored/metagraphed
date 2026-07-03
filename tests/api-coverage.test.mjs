@@ -54,6 +54,63 @@ const RPC_POOL = {
   ],
 };
 
+const PROFILES_ARTIFACT = {
+  captured_at: "1970-01-01T00:00:00.000Z",
+  profiles: [
+    {
+      netuid: 7,
+      slug: "allways",
+      name: 'Allways, "verified"',
+      completeness_score: 82,
+      curation_level: "machine-verified",
+      profile_level: "operational",
+      review_state: "verified",
+      confidence: "high",
+    },
+    {
+      netuid: 1,
+      slug: "alpha",
+      name: "Alpha",
+      completeness_score: 60,
+      curation_level: "community-seeded",
+      profile_level: "identity-partial",
+      review_state: "pending",
+      confidence: "medium",
+    },
+    {
+      netuid: 42,
+      slug: "beta",
+      name: "Beta",
+      completeness_score: 95,
+      curation_level: "maintainer-reviewed",
+      profile_level: "adapter-backed",
+      review_state: "verified",
+      confidence: "high",
+    },
+  ],
+};
+
+function withProfilesArchive(overrides = {}) {
+  const env = createLocalArtifactEnv(overrides);
+  const originalGet = env.METAGRAPH_ARCHIVE.get;
+  env.METAGRAPH_ARCHIVE.get = async (key) => {
+    const normalized = String(key).replace(/^latest\//, "");
+    if (normalized === "profiles.json") {
+      const text = JSON.stringify(PROFILES_ARTIFACT);
+      return {
+        async json() {
+          return JSON.parse(text);
+        },
+        async text() {
+          return text;
+        },
+      };
+    }
+    return originalGet(key);
+  };
+  return env;
+}
+
 // RPC-proxy env that serves the pool artifact through ASSETS + R2.
 function rpcEnv(overrides = {}) {
   return {
@@ -1241,6 +1298,153 @@ describe("registry list CSV export", () => {
     assert.equal(body.ok, true);
     // The economics collection projects onto the shared `subnets` data key.
     assert.equal(Array.isArray(body.data.subnets), true);
+  });
+});
+
+describe("profiles CSV export", () => {
+  const parseCsvRows = (text) => {
+    const rows = [];
+    let currentRow = [];
+    let currentField = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      const next = text[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && next === '"') {
+          currentField += '"';
+          i += 1;
+          continue;
+        }
+        inQuotes = !inQuotes;
+        continue;
+      }
+
+      if (!inQuotes && char === ",") {
+        currentRow.push(currentField);
+        currentField = "";
+        continue;
+      }
+
+      if (!inQuotes && char === "\r") {
+        if (next === "\n") {
+          i += 1;
+        }
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      if (!inQuotes && char === "\n") {
+        currentRow.push(currentField);
+        currentField = "";
+        rows.push(currentRow);
+        currentRow = [];
+        continue;
+      }
+
+      currentField += char;
+    }
+
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField);
+    }
+
+    if (currentRow.length > 0 && currentRow.some((value) => value !== "")) {
+      rows.push(currentRow);
+    }
+
+    return rows;
+  };
+
+  const parseProfilesCsv = async (res) => {
+    assert.match(res.headers.get("content-type"), /^text\/csv/);
+    const text = await res.text();
+    const lines = parseCsvRows(text).filter(
+      (line) => line.length !== 0 && !line.every((value) => value === ""),
+    );
+    const header = lines[0];
+    const rows = lines.slice(1).map((values, index) => {
+      assert.equal(
+        values.length,
+        header.length,
+        `row ${index + 1} should have the same number of columns as header`,
+      );
+      return Object.fromEntries(
+        header.map((name, index) => [name, values[index] ?? ""]),
+      );
+    });
+    return { header, rows, text };
+  };
+
+  test("?format=csv returns projected profile completeness columns", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/profiles?format=csv&fields=netuid,completeness_score,curation_level,profile_level,name&sort=netuid&limit=3",
+      ),
+      withProfilesArchive(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(
+      res.headers.get("content-disposition"),
+      'attachment; filename="profiles.csv"',
+    );
+
+    const { header, rows } = await parseProfilesCsv(res);
+    assert.equal(
+      header.join(","),
+      "netuid,completeness_score,curation_level,profile_level,name",
+    );
+    assert.equal(rows.length, 3);
+    assert.deepEqual(rows[0], {
+      netuid: "1",
+      completeness_score: "60",
+      curation_level: "community-seeded",
+      profile_level: "identity-partial",
+      name: "Alpha",
+    });
+    assert.deepEqual(rows[1], {
+      netuid: "7",
+      completeness_score: "82",
+      curation_level: "machine-verified",
+      profile_level: "operational",
+      name: 'Allways, "verified"',
+    });
+    assert.deepEqual(rows[2], {
+      netuid: "42",
+      completeness_score: "95",
+      curation_level: "maintainer-reviewed",
+      profile_level: "adapter-backed",
+      name: "Beta",
+    });
+  });
+
+  test("?sort=completeness_score&order=desc&format=csv preserves descending score order", async () => {
+    const res = await handleRequest(
+      req(
+        "/api/v1/profiles?sort=completeness_score&order=desc&format=csv&fields=netuid,completeness_score,name",
+      ),
+      withProfilesArchive(),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const { header, rows, text } = await parseProfilesCsv(res);
+    assert.equal(
+      text.includes('"Allways, ""verified""'),
+      true,
+      "escaped name must be emitted as quoted CSV text",
+    );
+    assert.equal(header.join(","), "netuid,completeness_score,name");
+    assert.deepEqual(rows, [
+      { netuid: "42", completeness_score: "95", name: "Beta" },
+      { netuid: "7", completeness_score: "82", name: 'Allways, "verified"' },
+      { netuid: "1", completeness_score: "60", name: "Alpha" },
+    ]);
   });
 });
 
