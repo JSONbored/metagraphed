@@ -234,6 +234,16 @@ def _transfer(a):  # Balances.Transfer: [from, to, amount] or {from, to, amount}
     return {"hotkey": _ss58(sender), "coldkey": _ss58(recipient), "amount_tao": _tao(amount)}
 
 
+def _faucet(a):  # Faucet: [account, amount_rao] - finney spec 424 (2026-07-03)
+    if isinstance(a, dict):
+        account = a.get("account", a.get("coldkey", a.get("who")))
+        amount = a.get("amount", a.get("amount_rao"))
+    else:
+        account = a[0] if len(a) > 0 else None
+        amount = a[1] if len(a) > 1 else None
+    return {"coldkey": _ss58(account), "amount_tao": _tao(amount)}
+
+
 def _net(a):  # NetworkAdded/NetworkRemoved: {netuid, ...} or [netuid, ...]
     netuid = a.get("netuid") if isinstance(a, dict) else (a[0] if len(a) > 0 else None)
     return {"netuid": _idx(netuid)}
@@ -331,6 +341,9 @@ EXTRACTORS = {
     "HotkeySwapped": _hotkey_swapped,
     "ColdkeySwapped": _coldkey_swap,
     "ColdkeySwapScheduled": _coldkey_swap,  # historical: v161–v377; extra execution_block/swap_cost ignored
+    # Testnet faucet account credits (#2560). Live finney spec 424 names this
+    # SubtensorModule.Faucet, not FaucetMinted: (T::AccountId, u64 amount_rao).
+    "Faucet": _faucet,
     # Balances pallet — native TAO transfers between accounts (#1814)
     "Transfer": _transfer,
 }

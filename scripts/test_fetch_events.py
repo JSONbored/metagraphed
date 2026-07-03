@@ -337,6 +337,57 @@ class TransferExtractorTest(unittest.TestCase):
         self.assertIsNone(result["amount_tao"])
 
 
+class FaucetExtractorTest(unittest.TestCase):
+    """Tests for SubtensorModule.Faucet (#2560).
+
+    Live finney spec 424 names the event `Faucet` and exposes positional fields
+    (T::AccountId, u64 amount_rao). The metadata docs describe it as the testnet
+    faucet call.
+    """
+
+    def test_list_form_positional_account_and_amount(self):
+        result = _extract("Faucet", [_SS58_A, _RAO_100])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+        self.assertIsNone(result["hotkey"])
+        self.assertIsNone(result["netuid"])
+        self.assertIsNone(result["uid"])
+
+    def test_dict_form_named_account_and_amount(self):
+        result = _extract("Faucet", {"account": _SS58_B, "amount": _RAO_100})
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_dict_form_accepts_coldkey_alias(self):
+        result = _extract("Faucet", {"coldkey": _SS58_B, "amount_rao": 500_000_000})
+        self.assertEqual(result["coldkey"], _SS58_B)
+        self.assertAlmostEqual(result["amount_tao"], 0.5)
+
+    def test_zero_amount(self):
+        result = _extract("Faucet", [_SS58_A, 0])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertAlmostEqual(result["amount_tao"], 0.0)
+
+    def test_invalid_recipient_gives_null_coldkey(self):
+        result = _extract("Faucet", ["not-an-address", _RAO_100])
+        self.assertIsNone(result["coldkey"])
+        self.assertAlmostEqual(result["amount_tao"], 100.0)
+
+    def test_missing_amount_gives_null(self):
+        result = _extract("Faucet", [_SS58_A])
+        self.assertEqual(result["coldkey"], _SS58_A)
+        self.assertIsNone(result["amount_tao"])
+
+    def test_empty_shape_drift_never_raises(self):
+        result = _extract("Faucet", [])
+        self.assertIsNotNone(result)
+        self.assertIsNone(result["coldkey"])
+        self.assertIsNone(result["amount_tao"])
+
+    def test_unconfirmed_faucet_minted_alias_is_not_indexed(self):
+        self.assertIsNone(_extract("FaucetMinted", [_SS58_A, _RAO_100]))
+
+
 class NeuronDeregisteredExtractorTest(unittest.TestCase):
     """Tests for SubtensorModule.NeuronDeregistered (#2553).
 
