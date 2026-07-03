@@ -79,7 +79,9 @@ describe("global-operational-health", () => {
       {
         env: {},
         readHealthKv: async (_env, key) =>
-          key === "health:current" ? { generated_at: "2026-06-11T00:00:00.000Z" } : null,
+          key === "health:current"
+            ? { generated_at: "2026-06-11T00:00:00.000Z" }
+            : null,
       },
       { contractVersion: () => 5 },
     );
@@ -98,7 +100,11 @@ describe("global-operational-health", () => {
     try {
       const explicitDb = { prepare: () => ({}) };
       await loadGlobalOperationalHealth(
-        { env: { METAGRAPH_HEALTH_DB: { prepare: () => ({}) } }, readHealthKv: async () => null, db: explicitDb },
+        {
+          env: { METAGRAPH_HEALTH_DB: { prepare: () => ({}) } },
+          readHealthKv: async () => null,
+          db: explicitDb,
+        },
         { contractVersion: () => 1 },
       );
       assert.equal(seen.db, explicitDb);
@@ -114,7 +120,9 @@ describe("global-operational-health", () => {
       Object.keys(GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties),
       [],
     );
-    assert.ok(new Ajv2020({ strict: false }).compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA));
+    assert.ok(
+      new Ajv2020({ strict: false }).compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA),
+    );
   });
 
   test("MCP server exports wire get_network_health at the bumped SemVer", () => {
