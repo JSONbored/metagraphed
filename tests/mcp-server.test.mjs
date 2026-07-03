@@ -1296,6 +1296,28 @@ describe("MCP tools (injected deps)", () => {
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
   });
 
+  test("get_coverage returns the coverage artifact", async () => {
+    const coverageDeps = makeDeps({
+      "/metagraph/coverage.json": {
+        surface_count: 99,
+        completeness: { average_score: 55 },
+      },
+    });
+    const res = await callTool("get_coverage", {}, { deps: coverageDeps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.surface_count, 99);
+    assert.equal(out.completeness.average_score, 55);
+  });
+
+  test("get_coverage reports not_found when the artifact is absent", async () => {
+    const res = await callTool("get_coverage", {}, { deps: makeDeps() });
+    assert.equal(res.body.result.isError, true);
+    assert.match(
+      res.body.result.content[0].text,
+      /No resource at the requested/,
+    );
+  });
+
   test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
     const res = await callTool(
       "list_enrichment_targets",

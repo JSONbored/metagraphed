@@ -264,6 +264,7 @@ assert.ok(
 await callOk("get_agent_catalog", {});
 await callOk("get_agent_catalog", { netuid: 7 });
 await callOk("registry_summary", {});
+await callOk("get_coverage", {});
 
 // Per-subnet gap artifacts are R2-only (review/gaps/{netuid}.json); the cold
 // env has them only after `npm run build` stages dist/. Exercise the happy path
