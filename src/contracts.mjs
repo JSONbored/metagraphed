@@ -2309,7 +2309,18 @@ export const API_ROUTES = [
     "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
     "short",
     ["chain", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
@@ -2320,15 +2331,27 @@ export const API_ROUTES = [
     "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
     "short",
     ["chain", "analytics"],
-    [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      {
-        name: "group_by",
-        schema: { type: "string", enum: ["module", "module_function"] },
-      },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "call_module", schema: { type: "string", maxLength: 100 } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "group_by",
+          schema: { type: "string", enum: ["module", "module_function"] },
+        },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 100 },
+        },
+        { name: "call_module", schema: { type: "string", maxLength: 100 } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
@@ -2339,15 +2362,27 @@ export const API_ROUTES = [
     "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
     "short",
     ["chain", "analytics"],
-    [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      {
-        name: "sort",
-        schema: { type: "string", enum: ["tx_count", "total_fee_tao"] },
-      },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "call_module", schema: { type: "string", maxLength: 100 } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "sort",
+          schema: { type: "string", enum: ["tx_count", "total_fee_tao"] },
+        },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 100 },
+        },
+        { name: "call_module", schema: { type: "string", maxLength: 100 } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(
@@ -2372,11 +2407,23 @@ export const API_ROUTES = [
     "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, averages, and exact ordered-offset medians) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
     "short",
     ["chain", "analytics"],
-    [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "call_module", schema: { type: "string", maxLength: 100 } },
-    ],
+    {
+      csvResponse: true,
+      parameters: [
+        { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+        {
+          name: "limit",
+          schema: { type: "integer", minimum: 1, maximum: 100 },
+        },
+        { name: "call_module", schema: { type: "string", maxLength: 100 } },
+        {
+          name: "format",
+          description:
+            "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
+          schema: { type: "string", enum: ["json", "csv"] },
+        },
+      ],
+    },
     [],
   ),
   route(

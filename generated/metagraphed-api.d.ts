@@ -8378,6 +8378,8 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d";
+                /** @description Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8385,7 +8387,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8442,6 +8444,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainActivityArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -8496,6 +8503,8 @@ export interface operations {
                 group_by?: "module" | "module_function";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8503,7 +8512,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8559,6 +8568,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainCallsArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -8786,6 +8800,8 @@ export interface operations {
                 window?: "7d" | "30d";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers). */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8793,7 +8809,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8859,6 +8875,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainFeesArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -8913,6 +8934,8 @@ export interface operations {
                 sort?: "tx_count" | "total_fee_tao";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8920,7 +8943,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8976,6 +8999,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainSignersArtifact"];
                     };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

@@ -19403,6 +19403,19 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -19467,9 +19480,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "netuid,name\r\n7,Allways",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -19579,6 +19598,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -19642,9 +19674,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "netuid,name\r\n7,Allways",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -19935,6 +19973,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20008,9 +20059,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "netuid,name\r\n7,Allways",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -20120,6 +20177,19 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -20183,9 +20253,15 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "example": "netuid,name\r\n7,Allways",
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"

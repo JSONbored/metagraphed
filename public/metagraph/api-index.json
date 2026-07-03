@@ -5381,6 +5381,17 @@
             ],
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -5429,6 +5440,17 @@
             "maxLength": 100,
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -5475,6 +5497,17 @@
           "name": "call_module",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
@@ -5544,6 +5577,17 @@
           "name": "call_module",
           "schema": {
             "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
             "type": "string"
           }
         }
