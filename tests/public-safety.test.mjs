@@ -394,6 +394,25 @@ describe("captured-fixture body scan", () => {
     );
   });
 
+  test("allows generated CSV headers with a coldkey column", async () => {
+    await fs.writeFile(
+      TEST_PUBLIC_PATH,
+      [
+        "uid,hotkey,coldkey,active,validator_permit",
+        "hotkey,coldkey,coldkey_count,subnet_count,uid_count",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+    const output = runScanOutput();
+    assert.equal(
+      output.includes(TEST_PUBLIC_FILE),
+      false,
+      `generated CSV headers should be exempt; got:\n${output}`,
+    );
+
+    await import("../scripts/scan-public-safety.mjs");
+  });
+
   test("still flags suspicious coldkey prose that a hyphen can't smuggle past", async () => {
     // The coldkey-only exemption is the exact phrase, not a blanket `coldkey-`
     // strip: a hyphenated secret attempt must still trip the terminology guard.

@@ -95,6 +95,24 @@
         "timeout_ms": 10000
       },
       "notes": "Project-linked public Grafana metagraph dashboard. The originally discovered bactensor.io URL redirects to bittensor.church."
+    },
+    {
+      "id": "sn-12-compute-horde-sdk",
+      "name": "Compute Horde Python SDK",
+      "kind": "sdk",
+      "url": "https://pypi.org/project/compute-horde-sdk/",
+      "provider": "compute-horde",
+      "auth_required": false,
+      "authority": "community",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/backend-developers-ltd/ComputeHorde/tree/master/compute_horde_sdk"
+      ],
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "devmixa702"
+      },
+      "notes": "Official Python SDK (pip install compute-horde-sdk, module compute_horde_sdk.v1) for submitting organic compute jobs to the SN12 Compute Horde subnet, developed and published from the subnet's registered source repository."
     }
   ]
 }

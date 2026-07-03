@@ -161,6 +161,50 @@ describe("isUnsafePublicUrl", () => {
     }
   });
 
+  test("blocks non-global special-use IPv4 the webhook guard already rejects", () => {
+    // The probe literal guard drifted out of parity with the webhook + build SSRF
+    // guards (src/webhooks.mjs PRIVATE_IPV4_PATTERNS), letting these through:
+    //   192.0.0.0/24  IETF protocol assignments
+    //   198.18.0.0/15 benchmarking (RFC 2544)
+    //   224.0.0.0/3   multicast 224/4 + reserved 240/4 + 255/8 broadcast
+    for (const url of [
+      "http://192.0.0.1/x",
+      "http://192.0.0.171/x",
+      "http://198.18.0.1/x",
+      "http://198.19.255.255/x",
+      "http://224.0.0.1/x", // all-hosts multicast
+      "http://239.255.255.255/x", // admin-scoped multicast
+      "http://240.0.0.1/x", // reserved 240/4
+      "http://255.255.255.255/x", // limited broadcast
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
+  test("blocks ff00::/8 IPv6 multicast (webhook-guard parity)", () => {
+    for (const url of [
+      "http://[ff02::1]/x", // all-nodes link-local multicast
+      "http://[ff05::c]/x", // site-local SSDP multicast
+      "http://[ff0e::1]/x", // global-scope multicast
+    ]) {
+      assert.equal(isUnsafePublicUrl(url), true, url);
+    }
+  });
+
+  test("blocks a reserved/multicast v4 tunnelled inside an IPv6 literal host", () => {
+    for (const url of [
+      "http://[2002:e000:1::]/x", // 6to4 of 224.0.0.1 multicast
+      "http://[2002:ffff:ffff::]/x", // 6to4 of 255.255.255.255 broadcast
+      "http://[2002:c600:2::]/x", // 6to4 of 198.0.0.2 → 198.x not in range, see below
+      "http://[::ffff:198.18.0.1]/x", // IPv4-mapped benchmarking range
+    ]) {
+      // Only the genuinely special-use targets must be blocked; the 198.0.0.2
+      // 6to4 case is a control that must NOT be blocked (198.0/16 ≠ 198.18/15).
+      const expected = url.includes("2002:c600") ? false : true;
+      assert.equal(isUnsafePublicUrl(url), expected, url);
+    }
+  });
+
   test("allows public http(s)/ws(s)", () => {
     for (const url of [
       "https://entrypoint-finney.opentensor.ai",
@@ -168,6 +212,9 @@ describe("isUnsafePublicUrl", () => {
       "wss://lite.chain.opentensor.ai:443",
       "https://172.15.0.1/x", // just outside the private 172.16-31 range
       "https://[2002:808:808::]/x", // 6to4 of public 8.8.8.8 stays allowed
+      "https://197.17.0.1/x", // just below the 198.18/15 benchmarking range
+      "https://199.20.0.1/x", // just above the 198.18/15 benchmarking range
+      "https://223.255.255.1/x", // just below the 224/3 multicast/reserved block
     ]) {
       assert.equal(isUnsafePublicUrl(url), false, url);
     }

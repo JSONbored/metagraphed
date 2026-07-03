@@ -2,7 +2,8 @@
 // and cursor pagination over in-memory artifact collections. Extracted from
 // workers/api.mjs (issue #510, de-monolith) as a leaf module: it imports only
 // the query-collection contract and nothing from api.mjs, so there is no cycle.
-// `applyQueryFilters` is the single public entry; the rest are internal helpers.
+// `applyQueryFilters` is the main public entry; route preflight uses the same
+// validator before artifact/cache reads.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.mjs";
 import { linkHeader } from "./http.mjs";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.mjs";
@@ -14,6 +15,7 @@ export function applyQueryFilters(
   url,
   queryCollection,
   queryFilterNames = [],
+  { csvResponse = false } = {},
 ) {
   const params = url.searchParams;
   const config = API_QUERY_COLLECTIONS[queryCollection];
@@ -23,15 +25,48 @@ export function applyQueryFilters(
   if (!Array.isArray(data?.[config.data_key])) {
     return { data, meta: {} };
   }
-  return applyListTransform(data, params, {
+  return applyListTransform(
+    data,
+    params,
+    listQueryConfig(config, queryFilterNames),
+    { csvResponse },
+  );
+}
+
+export function validateListQueryParams(
+  url,
+  queryCollection,
+  queryFilterNames = [],
+  { csvResponse = false } = {},
+) {
+  const config = API_QUERY_COLLECTIONS[queryCollection];
+  if (!config) {
+    return null;
+  }
+  return validateListQuery(
+    url.searchParams,
+    listQueryConfig(config, queryFilterNames),
+    { csvResponse },
+  );
+}
+
+function listQueryConfig(config, queryFilterNames = []) {
+  return {
     ...config,
     filters: Object.fromEntries(
-      (queryFilterNames.length > 0
-        ? queryFilterNames
-        : Object.keys(config.filters)
-      ).map((name) => [name, config.filters[name]]),
+      effectiveFilterNames(config, queryFilterNames).map((name) => [
+        name,
+        config.filters[name],
+      ]),
     ),
-  });
+  };
+}
+
+function effectiveFilterNames(config, queryFilterNames = []) {
+  const filters = config.filters || {};
+  return queryFilterNames.length > 0
+    ? queryFilterNames.filter((name) => Object.hasOwn(filters, name))
+    : Object.keys(filters);
 }
 
 // RFC 8288 Link header for a cursor-paginated response (window from
@@ -43,17 +78,25 @@ export function applyQueryFilters(
 function listQueryParamNames(queryCollection, queryFilterNames = []) {
   const config = API_QUERY_COLLECTIONS[queryCollection];
   if (!config) return [];
+  return listQueryParamNamesForConfig(config, queryFilterNames);
+}
+
+function listQueryParamNamesForConfig(
+  config,
+  queryFilterNames = [],
+  { csvResponse = false } = {},
+) {
   const filterNames =
     queryFilterNames.length > 0
-      ? queryFilterNames
-      : Object.keys(config.filters);
+      ? effectiveFilterNames(config, queryFilterNames)
+      : Object.keys(config.filters || {});
   const rangeNames = (config.range_filters || []).flatMap((field) => [
     `min_${field}`,
     `max_${field}`,
   ]);
   const csvNames = Object.keys(config.csv_filters || {});
   const arrayNames = Object.keys(config.array_filters || {});
-  return [
+  const names = [
     "q",
     "fields",
     "limit",
@@ -65,6 +108,10 @@ function listQueryParamNames(queryCollection, queryFilterNames = []) {
     ...arrayNames,
     ...rangeNames,
   ];
+  if (csvResponse) {
+    names.push("format");
+  }
+  return names;
 }
 
 export function canonicalListSearch(
@@ -189,8 +236,8 @@ function rangeFilterRows(rows, params, rangeFields) {
   );
 }
 
-function applyListTransform(data, params, config) {
-  const queryError = validateListQuery(params, config);
+function applyListTransform(data, params, config, options = {}) {
+  const queryError = validateListQuery(params, config, options);
   if (queryError) {
     return { error: queryError };
   }
@@ -322,7 +369,31 @@ function paginateRows(rows, params) {
   };
 }
 
-function validateListQuery(params, config) {
+function validateListQuery(params, config, { csvResponse = false } = {}) {
+  const allowedParams = new Set(
+    listQueryParamNamesForConfig(config, [], { csvResponse }),
+  );
+  for (const key of params.keys()) {
+    if (!allowedParams.has(key)) {
+      return {
+        parameter: key,
+        message: "unknown query parameter.",
+      };
+    }
+  }
+
+  const format = params.get("format");
+  if (
+    format !== null &&
+    csvResponse &&
+    !["json", "csv"].includes(format.toLowerCase())
+  ) {
+    return {
+      parameter: "format",
+      message: "format must be json or csv.",
+    };
+  }
+
   const limit = params.get("limit");
   if (
     limit !== null &&
@@ -357,7 +428,7 @@ function validateListQuery(params, config) {
   }
 
   const sort = params.get("sort");
-  if (sort !== null && !config.sort_fields.includes(sort)) {
+  if (sort !== null && !(config.sort_fields || []).includes(sort)) {
     return {
       parameter: "sort",
       message: `sort is not supported for ${config.data_key}.`,
@@ -399,7 +470,7 @@ function validateListQuery(params, config) {
     }
   }
 
-  for (const field of config.range_filters) {
+  for (const field of config.range_filters || []) {
     for (const bound of ["min", "max"]) {
       const key = `${bound}_${field}`;
       if (params.has(key) && numberParam(params.get(key)) === null) {

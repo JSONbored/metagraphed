@@ -30,6 +30,10 @@
 // inclusive of the whole UTC day (end-of-day), so `?until=2026-06-30` keeps
 // every item from June 30 rather than only the midnight tick — symmetric with
 // the inclusive start-of-day a bare-date `?since=` resolves to.
+//
+// Optional `?limit=<1..50>` caps the number of returned items (default/max 50);
+// it composes with `?since=`/`?until=`/`?tag=` and clamps a larger value to the
+// 50-item hard cap. A non-integer or `< 1` value is a 400.
 
 import {
   EXPOSED_RESPONSE_HEADERS_VALUE,
@@ -91,7 +95,12 @@ function clamp(value, max = 500) {
 // Accept an ISO string or epoch-ms; return a normalized ISO string or null.
 function toIso(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
-    return new Date(value).toISOString();
+    // A finite but out-of-range epoch (|ms| > 8.64e15, the JS Date limit) makes
+    // toISOString() throw a RangeError, which would 500 the whole feed on a
+    // single corrupt incident/changelog timestamp. Guard the Date range and drop
+    // it to null instead, matching the string branch's NaN guard below.
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
   }
   if (typeof value === "string") {
     const t = Date.parse(value);
@@ -304,10 +313,22 @@ function incidentItems(incidents, netuid) {
 
 // ── serializers ─────────────────────────────────────────────────────────────
 
-function sortAndCap(items) {
+function sortAndCap(items, max = FEED_MAX_ITEMS) {
   return [...items]
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
-    .slice(0, FEED_MAX_ITEMS);
+    .slice(0, max);
+}
+
+// Optional `?limit=` cap on the number of returned items: a positive integer,
+// clamped to the FEED_MAX_ITEMS hard cap (so `?limit=100` yields at most 50).
+// Returns NaN for a non-integer or < 1 value (→ 400), mirroring the strict
+// `?since=`/`?until=` parsing.
+function parseFeedLimit(raw) {
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) return Number.NaN;
+  const n = Number(value);
+  if (!Number.isSafeInteger(n) || n < 1) return Number.NaN;
+  return Math.min(n, FEED_MAX_ITEMS);
 }
 
 // Optional `?tag=` filter: keep only items whose tags array includes the value.
@@ -601,6 +622,21 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
     }
   }
 
+  // Optional `?limit=` cap (1..FEED_MAX_ITEMS), parsed up front like the window
+  // bounds so a malformed value is rejected before any artifact work.
+  let limit = FEED_MAX_ITEMS;
+  const limitParam = url.searchParams.get("limit");
+  if (limitParam != null) {
+    limit = parseFeedLimit(limitParam);
+    if (Number.isNaN(limit)) {
+      return fail(
+        "invalid_limit",
+        `\`limit\` must be an integer between 1 and ${FEED_MAX_ITEMS}.`,
+        400,
+      );
+    }
+  }
+
   let items;
   let title;
   let description;
@@ -655,7 +691,7 @@ export async function handleFeedRequest(request, env, url, deps = {}) {
   items = filterByTag(items, url.searchParams.get("tag"));
   items = filterSince(items, sinceMs);
   items = filterUntil(items, untilMs);
-  items = sortAndCap(items);
+  items = sortAndCap(items, limit);
   const meta = {
     title,
     description,
