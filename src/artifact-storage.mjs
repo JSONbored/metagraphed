@@ -81,6 +81,9 @@ export const R2_ONLY_PATTERNS = [
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.
   /^blocks\.json$/,
+  // Block-production analytics summary, computed live from the blocks D1 tier at
+  // /api/v1/blocks/summary — never a file.
+  /^blocks\/summary\.json$/,
   /^blocks\/(?:\d+|0x[0-9a-fA-F]{64}|\{ref\})\.json$/,
   // Per-block extrinsics sub-resource (#1845): computed live from the extrinsics
   // D1 tier at /api/v1/blocks/{ref}/extrinsics — never written as a file.

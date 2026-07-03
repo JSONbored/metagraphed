@@ -85,6 +85,7 @@ import {
   buildBlock,
   loadBlocks,
 } from "../../src/blocks.mjs";
+import { loadBlocksSummary } from "../../src/blocks-summary.mjs";
 import {
   EXTRINSICS_CSV_COLUMNS,
   extrinsicsToCsvRows,
@@ -1746,6 +1747,29 @@ export async function handleBlocks(request, env, url) {
         env,
         "/metagraph/blocks.json",
         data.blocks[0]?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/blocks/summary: block-production analytics over the most recent
+// blocks — inter-block time distribution, extrinsic/event throughput, block-author
+// decentralization (concentration over each author's block count), and the runtime
+// spec-version spread, computed live from the `blocks` D1 tier. No params; a
+// cold/absent store → 200 with a schema-stable zeroed card.
+export async function handleBlocksSummary(request, env, url) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  const data = await loadBlocksSummary(d1Runner(env));
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        "/metagraph/blocks/summary.json",
+        data.last_observed_at,
       ),
     },
     "short",

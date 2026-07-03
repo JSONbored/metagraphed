@@ -417,6 +417,22 @@ const checks = [
     },
   ],
   [
+    "/api/v1/blocks/summary",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.block_count, "number");
+      // block_time / throughput are an object or null on a cold store.
+      assert.ok(
+        body.data.block_time === null ||
+          typeof body.data.block_time === "object",
+      );
+      assert.ok(
+        body.data.throughput === null ||
+          typeof body.data.throughput === "object",
+      );
+    },
+  ],
+  [
     "/api/v1/blocks/1000000",
     (body) => {
       assert.equal(body.data.ref, "1000000");

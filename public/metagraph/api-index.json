@@ -548,6 +548,13 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "blocks-summary",
+      "path": "/metagraph/blocks/summary.json",
+      "schema_ref": "#/components/schemas/BlocksSummaryArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "block-detail",
       "path": "/metagraph/blocks/{ref}.json",
       "schema_ref": "#/components/schemas/BlockDetailArtifact",
@@ -5473,6 +5480,18 @@
           }
         }
       ]
+    },
+    {
+      "artifact_path": "/metagraph/blocks/summary.json",
+      "cache": "short",
+      "description": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
+      "id": "blocks-summary",
+      "method": "GET",
+      "path": "/api/v1/blocks/summary",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
     },
     {
       "artifact_path": "/metagraph/blocks/{ref}.json",

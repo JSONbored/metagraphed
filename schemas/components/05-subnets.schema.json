@@ -2402,6 +2402,70 @@
           }
         }
       },
+      "BlockTimeDistribution": {
+        "type": ["object", "null"],
+        "description": "Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present.",
+        "properties": {
+          "count": { "type": "integer", "minimum": 0 },
+          "mean_ms": { "type": ["integer", "null"] },
+          "min_ms": { "type": ["integer", "null"] },
+          "max_ms": { "type": ["integer", "null"] },
+          "p50_ms": { "type": ["integer", "null"] },
+          "p90_ms": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": true
+      },
+      "BlocksSummaryArtifact": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file).",
+        "required": [
+          "schema_version",
+          "block_count",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at",
+          "block_time",
+          "throughput",
+          "distinct_authors",
+          "author_concentration",
+          "distinct_spec_versions",
+          "latest_spec_version"
+        ],
+        "properties": {
+          "schema_version": { "type": "integer" },
+          "block_count": { "type": "integer", "minimum": 0 },
+          "first_block": { "type": ["integer", "null"] },
+          "last_block": { "type": ["integer", "null"] },
+          "first_observed_at": { "type": ["string", "null"] },
+          "last_observed_at": { "type": ["string", "null"] },
+          "block_time": {
+            "$ref": "#/components/schemas/BlockTimeDistribution"
+          },
+          "throughput": {
+            "type": ["object", "null"],
+            "properties": {
+              "total_extrinsics": { "type": "integer", "minimum": 0 },
+              "total_events": { "type": "integer", "minimum": 0 },
+              "mean_extrinsics_per_block": { "type": "number" },
+              "mean_events_per_block": { "type": "number" },
+              "max_extrinsics_in_block": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": true
+          },
+          "distinct_authors": { "type": "integer", "minimum": 0 },
+          "author_concentration": {
+            "description": "Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site.",
+            "anyOf": [
+              { "$ref": "#/components/schemas/ConcentrationMetrics" },
+              { "type": "null" }
+            ]
+          },
+          "distinct_spec_versions": { "type": "integer", "minimum": 0 },
+          "latest_spec_version": { "type": ["integer", "null"] }
+        }
+      },
       "ChainActivityDay": {
         "type": "object",
         "additionalProperties": false,

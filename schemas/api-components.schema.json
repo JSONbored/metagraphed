@@ -2219,6 +2219,157 @@
         ],
         "type": "object"
       },
+      "BlocksSummaryArtifact": {
+        "additionalProperties": true,
+        "description": "Block-production analytics over the most recent blocks from the first-party blocks D1 tier: inter-block time distribution, extrinsic/event throughput, block-author decentralization (the concentration of block production across authors — the block-producer analog of the stake/emission concentration scorecards), and the runtime spec-version spread. Served live at /api/v1/blocks/summary (no static file).",
+        "properties": {
+          "author_concentration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Concentration of block production across authors, or null for a cold store / a window in which no block carried an author. ConcentrationMetrics is itself nullable; the explicit null branch documents the empty case at the call site."
+          },
+          "block_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_time": {
+            "$ref": "#/components/schemas/BlockTimeDistribution"
+          },
+          "distinct_authors": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "distinct_spec_versions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "first_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "first_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_block": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "last_observed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "latest_spec_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "throughput": {
+            "additionalProperties": true,
+            "properties": {
+              "max_extrinsics_in_block": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mean_events_per_block": {
+                "type": "number"
+              },
+              "mean_extrinsics_per_block": {
+                "type": "number"
+              },
+              "total_events": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "total_extrinsics": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "block_count",
+          "first_block",
+          "last_block",
+          "first_observed_at",
+          "last_observed_at",
+          "block_time",
+          "throughput",
+          "distinct_authors",
+          "author_concentration",
+          "distinct_spec_versions",
+          "latest_spec_version"
+        ],
+        "type": "object"
+      },
+      "BlockTimeDistribution": {
+        "additionalProperties": true,
+        "description": "Distribution of inter-block intervals in milliseconds over consecutive blocks in the window: count, mean, min, max, and the p50/p90 nearest-rank percentiles. Null when fewer than two consecutive blocks are present.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mean_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "min_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p50_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p90_ms": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ]
+      },
       "BuildSummaryArtifact": {
         "allOf": [
           {
