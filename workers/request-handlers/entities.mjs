@@ -111,6 +111,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.mjs";
 import { loadAccountStakeFlow } from "../../src/account-stake-flow.mjs";
+import { loadChainStakeFlow } from "../../src/chain-stake-flow.mjs";
 import {
   loadSubnetMovers,
   MOVERS_WINDOWS,
@@ -703,6 +704,27 @@ export function canonicalSubnetStakeFlowCachePath(url) {
   return path;
 }
 
+// Canonical edge-cache key for the chain-stake-flow route. ?window= and ?direction=
+// behave like the per-subnet stake-flow sibling.
+export function canonicalChainStakeFlowCachePath(url) {
+  const validationError = validateQueryParams(url, ["window", "direction"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
+  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+    return `${url.pathname}${url.search}`;
+  }
+  const direction = url.searchParams.get("direction");
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
+    return `${url.pathname}${url.search}`;
+  }
+  let path = `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
+  if (direction === "in" || direction === "out") {
+    path += `&direction=${encodeURIComponent(direction)}`;
+  }
+  return path;
+}
+
 // Canonical edge-cache key for the cross-subnet movers route: window/sort/limit, each
 // canonicalized to its default when omitted, so equivalent requests share one slot.
 export function canonicalSubnetMoversCachePath(url, request = null) {
@@ -885,6 +907,48 @@ export async function handleSubnetStakeFlow(request, env, netuid, url) {
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/stake-flow.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/stake-flow?window=7d|30d|90d&direction=all|in|out:
+// network-wide net stake flow over the window — TAO staked (StakeAdded) vs unstaked
+// (StakeRemoved) and the net, summed live from the account_events stream across every
+// subnet. The network companion of /subnets/{netuid}/stake-flow and /chain/transfers.
+export async function handleChainStakeFlow(request, env, url) {
+  const validationError = validateQueryParams(url, ["window", "direction"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const windowParam =
+    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
+  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
+    });
+  }
+  const direction = url.searchParams.get("direction");
+  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
+    return analyticsQueryError({
+      parameter: "direction",
+      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
+    });
+  }
+  const normalizedDirection =
+    direction === "in" || direction === "out" ? direction : undefined;
+  const { data, generatedAt } = await loadChainStakeFlow(d1Runner(env), {
+    windowLabel: windowParam,
+    direction: normalizedDirection ?? DEFAULT_STAKE_FLOW_DIRECTION,
+  });
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await accountMeta(
+        env,
+        "/metagraph/chain/stake-flow.json",
         generatedAt,
       ),
     },

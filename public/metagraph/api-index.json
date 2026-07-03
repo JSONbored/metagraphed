@@ -625,6 +625,13 @@
     },
     {
       "contract_version": "2026-07-03.1",
+      "id": "chain-stake-flow",
+      "path": "/metagraph/chain/stake-flow.json",
+      "schema_ref": "#/components/schemas/ChainStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.1",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",
       "schema_ref": "#/components/schemas/ChainFeesArtifact",
@@ -5823,6 +5830,41 @@
             "maximum": 100,
             "minimum": 1,
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/stake-flow.json",
+      "cache": "short",
+      "description": "Fetch network-wide net stake flow over a 7d/30d/90d window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and stake/unstake event counts. ?direction=all|in|out narrows to one side. Computed live from the account_events stream; schema-stable zeros when cold.",
+      "id": "chain-stake-flow",
+      "method": "GET",
+      "path": "/api/v1/chain/stake-flow",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "direction",
+          "schema": {
+            "enum": [
+              "all",
+              "in",
+              "out"
+            ],
+            "type": "string"
           }
         }
       ]

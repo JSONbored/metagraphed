@@ -804,6 +804,15 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
+      "description": "Network-wide net stake flow over a 7d/30d/90d window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream at /api/v1/chain/stake-flow (no static file).",
+      "id": "chain-stake-flow",
+      "path": "/metagraph/chain/stake-flow.json",
+      "schema_ref": "#/components/schemas/ChainStakeFlowArtifact",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.1",
       "description": "Fee/tip market analytics (daily totals, averages, exact medians, and a top-fee-payer list) over a 7d or 30d window for the block explorer (#1988), computed live from the first-party extrinsics D1 tier at /api/v1/chain/fees (no static file).",
       "id": "chain-fees",
       "path": "/metagraph/chain/fees.json",

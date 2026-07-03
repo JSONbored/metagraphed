@@ -27,6 +27,7 @@ import {
   handleSubnetConcentrationHistory,
   handleSubnetTurnover,
   handleSubnetStakeFlow,
+  handleChainStakeFlow,
   handleSubnetMovers,
   handleAccount,
   handleAccountEvents,
@@ -47,6 +48,7 @@ import {
   canonicalSubnetHistoryCachePath,
   canonicalSubnetTurnoverCachePath,
   canonicalSubnetStakeFlowCachePath,
+  canonicalChainStakeFlowCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
   canonicalSubnetValidatorsCachePath,
@@ -1902,6 +1904,145 @@ describe("handleSubnetStakeFlow", () => {
         "/api/v1/subnets/7/stake-flow?window=7d&direction=out",
       );
     });
+  });
+});
+
+describe("handleChainStakeFlow", () => {
+  test("rejects an unsupported query param with 400", async () => {
+    const res = await handleChainStakeFlow(
+      req("/api/v1/chain/stake-flow"),
+      emptyEnv(),
+      url("/api/v1/chain/stake-flow?bogus=1"),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an out-of-retention window with 400", async () => {
+    const res = await handleChainStakeFlow(
+      req("/api/v1/chain/stake-flow"),
+      emptyEnv(),
+      url("/api/v1/chain/stake-flow?window=1y"),
+    );
+    await errorJson(res);
+  });
+
+  test("rejects an unsupported direction enum value with 400", async () => {
+    const res = await handleChainStakeFlow(
+      req("/api/v1/chain/stake-flow"),
+      emptyEnv(),
+      url("/api/v1/chain/stake-flow?direction=invalid"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "direction");
+  });
+
+  test("returns schema-stable zeros on cold D1", async () => {
+    const body = await assertColdSchema(
+      handleChainStakeFlow,
+      req("/api/v1/chain/stake-flow"),
+      emptyEnv(),
+      url("/api/v1/chain/stake-flow"),
+    );
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.total_staked_tao, 0);
+    assert.equal(body.data.net_flow_tao, 0);
+    await assertValidComponent("ChainStakeFlowArtifact", body.data);
+    assert.equal(body.meta.artifact_path, "/metagraph/chain/stake-flow.json");
+    assert.equal(body.meta.source, "chain-events");
+    assert.equal(body.meta.generated_at, null);
+  });
+
+  test("sums StakeAdded vs StakeRemoved without a netuid filter", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717000000000,
+        },
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717900000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleChainStakeFlow(
+        req("/api/v1/chain/stake-flow"),
+        env,
+        url("/api/v1/chain/stake-flow?window=90d"),
+      ),
+    );
+    assert.equal(body.data.net_flow_tao, 150);
+    const idx = captures.sql.findIndex(
+      (s) =>
+        /FROM account_events/.test(s) &&
+        /GROUP BY event_kind/.test(s) &&
+        !/netuid/.test(s),
+    );
+    assert.ok(idx !== -1);
+    assert.equal(captures.params[idx][0], "StakeAdded");
+    assert.equal(captures.params[idx][1], "StakeRemoved");
+    assert.equal(body.meta.generated_at, new Date(1717900000000).toISOString());
+  });
+
+  test("direction=in binds StakeAdded only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 200,
+          event_count: 5,
+          last_observed: 1717000000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleChainStakeFlow(
+        req("/api/v1/chain/stake-flow"),
+        env,
+        url("/api/v1/chain/stake-flow?direction=in"),
+      ),
+    );
+    assert.equal(body.data.net_flow_tao, 200);
+    const idx = captures.sql.findIndex(
+      (s) => /FROM account_events/.test(s) && !/netuid/.test(s),
+    );
+    assert.equal(captures.params[idx][0], "StakeAdded");
+    assert.equal(captures.params[idx].length, 2);
+  });
+});
+
+describe("canonicalChainStakeFlowCachePath", () => {
+  test("canonicalizes omitted and explicit default window to one cache key", () => {
+    const omitted = canonicalChainStakeFlowCachePath(
+      new URL("https://api.metagraph.sh/api/v1/chain/stake-flow"),
+    );
+    const explicit = canonicalChainStakeFlowCachePath(
+      new URL("https://api.metagraph.sh/api/v1/chain/stake-flow?window=30d"),
+    );
+    assert.equal(omitted, explicit);
+    assert.equal(omitted, "/api/v1/chain/stake-flow?window=30d");
+  });
+
+  test("includes direction=in|out in the cache key", () => {
+    const inPath = canonicalChainStakeFlowCachePath(
+      new URL(
+        "https://api.metagraph.sh/api/v1/chain/stake-flow?window=7d&direction=in",
+      ),
+    );
+    assert.equal(inPath, "/api/v1/chain/stake-flow?window=7d&direction=in");
+  });
+
+  test("passes an invalid window through unchanged", () => {
+    const path = canonicalChainStakeFlowCachePath(
+      new URL("https://api.metagraph.sh/api/v1/chain/stake-flow?window=bogus"),
+    );
+    assert.equal(path, "/api/v1/chain/stake-flow?window=bogus");
   });
 });
 

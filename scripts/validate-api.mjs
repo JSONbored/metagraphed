@@ -500,6 +500,18 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/stake-flow?window=30d",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(body.data.window, "30d");
+      assert.equal(typeof body.data.total_staked_tao, "number");
+      assert.equal(typeof body.data.total_unstaked_tao, "number");
+      assert.equal(typeof body.data.net_flow_tao, "number");
+      assert.equal(typeof body.data.stake_events, "number");
+      assert.equal(typeof body.data.unstake_events, "number");
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);

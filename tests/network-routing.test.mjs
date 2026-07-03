@@ -337,6 +337,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/chain/fees",
       "/api/v1/testnet/chain/signers",
       "/api/v1/testnet/chain/transfers",
+      "/api/v1/testnet/chain/stake-flow",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",
     ]) {

@@ -2459,6 +2459,115 @@ describe("MCP get_chain_transfers", () => {
   });
 });
 
+describe("MCP get_chain_stake_flow", () => {
+  function chainStakeFlowD1(rows = [], capture = []) {
+    return {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql) {
+          return {
+            bind(...params) {
+              capture.push({ sql, params });
+              return {
+                async all() {
+                  if (
+                    /FROM account_events/.test(sql) &&
+                    /GROUP BY event_kind/.test(sql) &&
+                    !/netuid/.test(sql)
+                  ) {
+                    return { results: rows };
+                  }
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("aggregates network-wide StakeAdded and StakeRemoved", async () => {
+    const capture = [];
+    const env = chainStakeFlowD1(
+      [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 80,
+          event_count: 3,
+          last_observed: 1_700_000_000_000,
+        },
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 30,
+          event_count: 1,
+          last_observed: 1_700_000_000_000,
+        },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { window: "30d" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.window, "30d");
+    assert.equal(out.total_staked_tao, 80);
+    assert.equal(out.total_unstaked_tao, 30);
+    assert.equal(out.net_flow_tao, 50);
+    assert.doesNotMatch(capture[0].sql, /netuid =/);
+  });
+
+  test("rejects an unsupported window", async () => {
+    const res = await callTool("get_chain_stake_flow", { window: "1y" }, {});
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /window/);
+  });
+
+  test("rejects an unsupported direction", async () => {
+    const res = await callTool("get_chain_stake_flow", {
+      window: "30d",
+      direction: "sideways",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /direction/);
+  });
+
+  test("direction=in narrows to StakeAdded inflow only", async () => {
+    const capture = [];
+    const env = chainStakeFlowD1(
+      [
+        {
+          event_kind: "StakeAdded",
+          total_tao: 60,
+          event_count: 2,
+          last_observed: 1_700_000_000_000,
+        },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { window: "7d", direction: "in" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_staked_tao, 60);
+    assert.equal(out.total_unstaked_tao, 0);
+    assert.equal(capture[0].params[0], "StakeAdded");
+    assert.equal(capture[0].params.length, 2);
+  });
+
+  test("degrades to zeros on cold D1", async () => {
+    const res = await callTool("get_chain_stake_flow", { window: "7d" });
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.total_staked_tao, 0);
+    assert.equal(out.net_flow_tao, 0);
+  });
+});
+
 describe("MCP stake-flow and movers economics tools", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
