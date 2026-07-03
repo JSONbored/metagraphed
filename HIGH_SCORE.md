@@ -8,7 +8,7 @@ This file is a **supplement** to the canonical workflow in:
 
 Use these commands only to detect open PR overlap for update work.
 
-## Duplicate-path pre-flight (open PRs)
+## Duplicate-path overlap (open PRs)
 
 ```bash
 for pr in $(gh api 'repos/JSONbored/metagraphed/pulls?state=open' --paginate --jq '.[].number'); do
@@ -18,7 +18,7 @@ for pr in $(gh api 'repos/JSONbored/metagraphed/pulls?state=open' --paginate --j
 done
 ```
 
-## Scoped subnet overlap check
+## Scoped subnet overlap helper
 
 If your target is `registry/subnets/<slug>.json`, confirm no open PR touches that same file:
 
