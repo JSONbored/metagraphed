@@ -304,12 +304,45 @@ function applyNeuronSnapshotPrune(table, sql, values) {
     }
     return changes;
   }
-  if (sql.startsWith("DELETE FROM neurons WHERE netuid IN")) {
+  if (
+    sql.startsWith("DELETE FROM neurons WHERE netuid IN") &&
+    sql.includes("captured_at <")
+  ) {
     const cutoff = values.at(-1);
     const refreshed = new Set(values.slice(0, -1));
     let changes = 0;
     for (const [k, row] of table) {
       if (refreshed.has(row.netuid) && row.captured_at < cutoff) {
+        table.delete(k);
+        changes += 1;
+      }
+    }
+    return changes;
+  }
+  return 0;
+}
+
+function applyNeuronSnapshotRollback(table, sql, values) {
+  if (sql.startsWith("DELETE FROM neurons WHERE captured_at =")) {
+    const target = values[0];
+    let changes = 0;
+    for (const [k, row] of table) {
+      if (row.captured_at === target) {
+        table.delete(k);
+        changes += 1;
+      }
+    }
+    return changes;
+  }
+  if (
+    sql.startsWith("DELETE FROM neurons WHERE netuid IN") &&
+    sql.includes("captured_at =")
+  ) {
+    const target = values.at(-1);
+    const refreshed = new Set(values.slice(0, -1));
+    let changes = 0;
+    for (const [k, row] of table) {
+      if (refreshed.has(row.netuid) && row.captured_at === target) {
         table.delete(k);
         changes += 1;
       }
@@ -325,10 +358,12 @@ function statefulEnv(
     signingKey = SIGNING_KEY,
     failBatchOnPrune = false,
     failPruneUntil = 0,
+    failUpsertOnBatch = 0,
   } = {},
 ) {
   const deleted = [];
   let pruneAttempts = 0;
+  let upsertBatchesDone = 0;
   function applyInsert(sql, values) {
     // Columns from "INSERT OR REPLACE INTO neurons (a,b,...) VALUES ..."
     const cols = sql.slice(sql.indexOf("(") + 1, sql.indexOf(")")).split(",");
@@ -371,6 +406,13 @@ function statefulEnv(
                   if (pruneAttempts <= failPruneUntil) {
                     throw new Error("simulated prune failure");
                   }
+                  if (sql.includes("captured_at =")) {
+                    return {
+                      meta: {
+                        changes: applyNeuronSnapshotRollback(table, sql, v),
+                      },
+                    };
+                  }
                   return {
                     meta: {
                       changes: applyNeuronSnapshotPrune(table, sql, v),
@@ -389,6 +431,21 @@ function statefulEnv(
           ) {
             throw new Error("simulated atomic upsert+prune batch failure");
           }
+          const hasUpsert = stmts.some((stmt) =>
+            stmt.sql.startsWith("INSERT OR REPLACE INTO neurons"),
+          );
+          const hasPrune = stmts.some((stmt) =>
+            stmt.sql.startsWith("DELETE FROM neurons"),
+          );
+          if (hasUpsert && !hasPrune) {
+            upsertBatchesDone += 1;
+            if (
+              failUpsertOnBatch &&
+              upsertBatchesDone === failUpsertOnBatch
+            ) {
+              throw new Error("simulated multi-batch upsert failure");
+            }
+          }
           const results = [];
           for (const stmt of stmts) {
             if (stmt.sql.startsWith("INSERT OR REPLACE INTO neurons")) {
@@ -403,7 +460,9 @@ function statefulEnv(
               }
               results.push({
                 meta: {
-                  changes: applyNeuronSnapshotPrune(table, stmt.sql, stmt.v),
+                  changes: stmt.sql.includes("captured_at =")
+                    ? applyNeuronSnapshotRollback(table, stmt.sql, stmt.v)
+                    : applyNeuronSnapshotPrune(table, stmt.sql, stmt.v),
                 },
               });
             }
@@ -536,4 +595,29 @@ test("loadStagedNeurons retries a failed multi-batch prune before giving up", as
   assert.equal(m.pruneAttempts, 3, "two failed prune attempts then success");
   assert.equal(table.has("1:1"), false, "deregistered ghost UID is pruned");
   assert.equal(table.get("1:0").captured_at, T2);
+});
+
+test("loadStagedNeurons rolls back partial multi-batch upserts on mid-load failure", async () => {
+  const table = new Map();
+  const T1 = 1_700_000_000_000;
+  table.set("1:0", { ...neuronRow(1, 0), captured_at: T1 });
+  table.set("1:1", { ...neuronRow(1, 1), captured_at: T1 });
+  const m = statefulEnv(table, { failUpsertOnBatch: 2 });
+
+  const T2 = T1 + 60_000;
+  const snap2 = Array.from({ length: 255 }, (_, i) => {
+    const uid = i === 0 ? 0 : i + 1;
+    return { ...neuronRow(1, uid), captured_at: T2 };
+  });
+  m.env.METAGRAPH_ARCHIVE._staged = signedCoverageEnvelope(snap2, [1], T2);
+  const r = await loadStagedNeurons(m.env);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "load_failed");
+  assert.equal(
+    [...table.values()].some((row) => row.netuid === 1 && row.captured_at === T2),
+    false,
+    "partial snapshot rows at T2 must be rolled back",
+  );
+  assert.equal(table.get("1:1").captured_at, T1, "prior snapshot stays until retry");
+  assert.deepEqual(m.deleted, [], "staged R2 object kept for retry");
 });
