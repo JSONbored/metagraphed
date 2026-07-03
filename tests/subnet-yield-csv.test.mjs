@@ -4,6 +4,8 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { buildOpenApiArtifact } from "../src/contracts.mjs";
+import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.mjs";
 import {
   canonicalSubnetYieldCachePath,
   handleSubnetYield,
@@ -47,6 +49,23 @@ function neuronEnv(rows) {
     },
   };
 }
+
+describe("subnet yield OpenAPI CSV contract", () => {
+  test("documents the CSV header on the yield route", async () => {
+    const openapi = buildOpenApiArtifact(
+      "1970-01-01T00:00:00.000Z",
+      await loadOpenApiComponentSchemas(),
+    );
+    const csvContent =
+      openapi.paths["/api/v1/subnets/{netuid}/yield"].get.responses["200"]
+        .content["text/csv"];
+    assert.equal(csvContent.schema.type, "string");
+    assert.equal(
+      csvContent.example.split("\r\n")[0],
+      "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
+    );
+  });
+});
 
 describe("handleSubnetYield CSV export", () => {
   test("returns CSV response when ?format=csv is present", async () => {

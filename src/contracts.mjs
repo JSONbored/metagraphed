@@ -1,4 +1,5 @@
 import { artifactStorageTierForPath } from "./artifact-storage.mjs";
+import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
@@ -3174,6 +3175,8 @@ function csvRouteQuery(parameters = []) {
 }
 
 function csvExampleForRoute(entry) {
+  const supplemental = ROUTE_CSV_EXAMPLES[entry.id];
+  if (supplemental) return supplemental;
   if (entry.id === "subnet-movers") {
     return [
       "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta",
@@ -3196,12 +3199,6 @@ function csvExampleForRoute(entry) {
     return [
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
-    ].join("\r\n");
-  }
-  if (entry.id === "subnet-yield") {
-    return [
-      "uid,hotkey,role,stake_tao,emission_tao,yield,vs_median",
-      "0,hk_sample,validator,1000,22.1,0.0221,above",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";
