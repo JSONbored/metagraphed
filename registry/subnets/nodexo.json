@@ -15,7 +15,7 @@
   "website_url": "https://nodexo.ai/",
   "docs_url": "https://docs.nodexo.ai/",
   "dashboard_url": "https://console.nodexo.ai/",
-  "source_repo": null,
+  "source_repo": "https://github.com/nodexo-ai/nodexo",
   "baseline_excluded_surface_ids": [
     "sn-106-taomarketcap-source-repo",
     "sn-106-taomarketcap-website",

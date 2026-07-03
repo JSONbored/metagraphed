@@ -47,6 +47,14 @@ describe("queryTerms", () => {
       Array.from({ length: MAX_QUERY_TERMS }, (_, i) => `t${i}`),
     );
   });
+
+  test("preserves original order while deduplicating", () => {
+    assert.deepEqual(queryTerms("gpu compute gpu vision"), [
+      "gpu",
+      "compute",
+      "vision",
+    ]);
+  });
 });
 
 describe("keywordScore — substring noise is gone (whole-word / prefix only)", () => {
@@ -147,6 +155,48 @@ describe("keywordScore — precision boosts", () => {
       "Stable Diffusion",
       "Art Engine",
     ]);
+  });
+
+  test("full coverage boost applies when every term matches", () => {
+    const both = {
+      name: "Image Engine",
+      slug: "image-engine",
+      text: ["render", "generation"],
+    };
+    const partialOnly = {
+      name: "Image Engine",
+      slug: "image-engine",
+      text: ["render"],
+    };
+
+    assert.ok(score(both, "render generation") > score(partialOnly, "render"));
+    assert.equal(
+      keywordScore(both, ["render", "generation"]),
+      keywordScore(both, ["render", "generation", "unknown"]) + 2,
+      "full query coverage should add the documented boost",
+    );
+  });
+
+  test("exact-name and exact-slug boosts are applied after term matching", () => {
+    const nameMatch = {
+      name: "Targon Search",
+      slug: "targon-search",
+      text: ["targon", "search"],
+    };
+    const byText = {
+      name: "Searcher",
+      slug: "searcher",
+      text: ["targon", "search"],
+    };
+
+    // Exact name token sequence gets the larger name boost than a mention-only match.
+    assert.ok(
+      score(nameMatch, "targon search") > score(byText, "targon search"),
+    );
+    // Exact slug token sequence also receives the same boost.
+    assert.ok(
+      score(nameMatch, "targon-search") > score(byText, "targon-search"),
+    );
   });
 });
 

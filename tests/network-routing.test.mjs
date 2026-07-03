@@ -311,6 +311,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
     const env = createLocalArtifactEnv();
     for (const path of [
       "/api/v1/testnet/blocks",
+      "/api/v1/testnet/blocks/summary",
       "/api/v1/testnet/blocks/12345",
       "/api/v1/testnet/extrinsics",
       `/api/v1/testnet/accounts/${SS58}`,
@@ -339,6 +340,7 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/chain/transfers",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",
+      "/api/v1/testnet/chain/yield",
     ]) {
       const { res, body } = await get(env, path);
       assert.equal(res.status, 404, path);

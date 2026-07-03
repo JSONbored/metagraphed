@@ -3,17 +3,23 @@
 -- The durable replacement for the D1 chain tiers (blocks / extrinsics /
 -- account_events / neurons / neuron_daily / economics) once they outgrow D1's
 -- ~10GB cap and 90-day prune. Portable VANILLA Postgres — runs as-is on Railway
--- Postgres OR a self-hosted Hetzner box (the ADR 0013 escape hatch). The
--- TimescaleDB section at the bottom is OPTIONAL: it upgrades the time-series
--- tables to compressed hypertables; skip it on plain Postgres and everything
--- still works.
+-- Postgres OR a self-hosted Hetzner box (the ADR 0013 escape hatch) with no
+-- extensions required. The companion `schema-timescaledb.sql` in this same
+-- directory is OPTIONAL: apply it separately, only on a Postgres that actually
+-- has the TimescaleDB extension available, to upgrade the time-series tables
+-- to compressed hypertables. This file alone is a complete, working schema.
 --
 -- Key invariants preserved from the D1 era so the Worker serving code
 -- (src/blocks.mjs / extrinsics.mjs / account-events.mjs) changes only its
 -- binding, not its queries:
---   * idempotent keys: block_number / (block_number, extrinsic_index) /
---     (block_number, event_index) — overlapping ingest windows re-insert
---     harmlessly via ON CONFLICT DO NOTHING.
+--   * idempotent keys: (block_number, observed_at) / (block_number,
+--     extrinsic_index, observed_at) / (block_number, event_index,
+--     observed_at) — overlapping ingest windows re-insert harmlessly via
+--     ON CONFLICT DO NOTHING. observed_at rides along in each key only to
+--     satisfy TimescaleDB's requirement that the partition column appear in
+--     every unique constraint on a hypertable — it's functionally determined
+--     by block_number (one timestamp per block), so real-world uniqueness is
+--     unchanged.
 --   * observed_at = block timestamp in epoch milliseconds (BIGINT), matching D1.
 --   * tao/alpha amounts as NUMERIC (exact; no float drift on balances/yield).
 
@@ -22,14 +28,26 @@
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS blocks (
-  block_number     BIGINT PRIMARY KEY,
-  block_hash       TEXT UNIQUE,
+  block_number     BIGINT NOT NULL,
+  -- NOT `TEXT UNIQUE` — TimescaleDB rejects ANY unique constraint (not just
+  -- the PK) that omits the partition column. block_hash is already unique in
+  -- practice (cryptographically derived from block content); idx_blocks_hash
+  -- below still makes lookups fast, just without a DB-enforced guarantee.
+  block_hash       TEXT,
   parent_hash      TEXT,
   author           TEXT,
   extrinsic_count  INTEGER,
   event_count      INTEGER,
   spec_version     INTEGER,
-  observed_at      BIGINT NOT NULL          -- epoch ms
+  observed_at      BIGINT NOT NULL,         -- epoch ms
+  -- observed_at is part of the PK (not just block_number) because a
+  -- TimescaleDB hypertable partitioned on observed_at requires the partition
+  -- column in every unique constraint. block_number already functionally
+  -- determines observed_at (one timestamp per block), so this doesn't loosen
+  -- real-world uniqueness — verified 2026-07-03 against a live TimescaleDB
+  -- (create_hypertable() fails otherwise: "cannot create a unique index
+  -- without the column ... used in partitioning").
+  PRIMARY KEY (block_number, observed_at)
 );
 CREATE INDEX IF NOT EXISTS idx_blocks_hash     ON blocks (block_hash);
 CREATE INDEX IF NOT EXISTS idx_blocks_observed ON blocks (observed_at DESC);
@@ -46,7 +64,8 @@ CREATE TABLE IF NOT EXISTS extrinsics (
   tip_tao          NUMERIC,
   call_args        JSONB,
   observed_at      BIGINT NOT NULL,
-  PRIMARY KEY (block_number, extrinsic_index)
+  -- observed_at in the PK for the same TimescaleDB reason as `blocks` above.
+  PRIMARY KEY (block_number, extrinsic_index, observed_at)
 );
 CREATE INDEX IF NOT EXISTS idx_extrinsics_hash     ON extrinsics (extrinsic_hash);
 CREATE INDEX IF NOT EXISTS idx_extrinsics_observed ON extrinsics (observed_at DESC);
@@ -69,7 +88,8 @@ CREATE TABLE IF NOT EXISTS account_events (
   amount_tao       NUMERIC,                 -- tao field / 1e9 where applicable
   alpha_amount     NUMERIC,                 -- subnet alpha leg for stake swaps
   observed_at      BIGINT NOT NULL,
-  PRIMARY KEY (block_number, event_index)
+  -- observed_at in the PK for the same TimescaleDB reason as `blocks` above.
+  PRIMARY KEY (block_number, event_index, observed_at)
 );
 CREATE INDEX IF NOT EXISTS idx_ae_hotkey   ON account_events (hotkey, block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_ae_coldkey  ON account_events (coldkey, block_number DESC);
@@ -90,7 +110,8 @@ CREATE TABLE IF NOT EXISTS chain_events (
   phase            TEXT,
   extrinsic_index  INTEGER,
   observed_at      BIGINT NOT NULL,
-  PRIMARY KEY (block_number, event_index)
+  -- observed_at in the PK for the same TimescaleDB reason as `blocks` above.
+  PRIMARY KEY (block_number, event_index, observed_at)
 );
 CREATE INDEX IF NOT EXISTS idx_ce_pallet_method ON chain_events (pallet, method, block_number DESC);
 -- Pallet-only feed (pallet= without method=): serves the ORDER BY without a full PK scan.
@@ -202,27 +223,7 @@ CREATE TABLE IF NOT EXISTS indexer_cursor (
   CONSTRAINT indexer_cursor_singleton CHECK (id = 1)
 );
 
--- ===========================================================================
--- TimescaleDB (OPTIONAL) — compressed hypertables for the time-series tiers.
--- Safe to skip on vanilla Postgres. Integer-time hypertables on observed_at
--- (epoch ms): chunk interval = 1 day = 86_400_000 ms. Daily tables partition on
--- their DATE column. Compression on chunks older than 7 days (~10-20x on chain
--- data); cold partitions are exported to R2 Parquet (see deploy/README.md).
--- ===========================================================================
--- CREATE EXTENSION IF NOT EXISTS timescaledb;
---
--- SELECT create_hypertable('blocks',         'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
--- SELECT create_hypertable('extrinsics',     'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
--- SELECT create_hypertable('account_events', 'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
--- SELECT create_hypertable('chain_events',   'observed_at', chunk_time_interval => 86400000, migrate_data => true, if_not_exists => true);
--- SELECT create_hypertable('neuron_daily',   'snapshot_date', chunk_time_interval => INTERVAL '30 days', migrate_data => true, if_not_exists => true);
---
--- ALTER TABLE blocks         SET (timescaledb.compress, timescaledb.compress_orderby = 'observed_at DESC');
--- ALTER TABLE extrinsics     SET (timescaledb.compress, timescaledb.compress_segmentby = 'signer', timescaledb.compress_orderby = 'observed_at DESC');
--- ALTER TABLE account_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'hotkey', timescaledb.compress_orderby = 'observed_at DESC');
--- ALTER TABLE chain_events   SET (timescaledb.compress, timescaledb.compress_segmentby = 'pallet', timescaledb.compress_orderby = 'observed_at DESC');
---
--- SELECT add_compression_policy('blocks',         BIGINT '604800000');  -- 7d in ms
--- SELECT add_compression_policy('extrinsics',     BIGINT '604800000');
--- SELECT add_compression_policy('account_events', BIGINT '604800000');
--- SELECT add_compression_policy('chain_events',   BIGINT '604800000');
+-- TimescaleDB hypertables/compression are OPTIONAL and live in the companion
+-- schema-timescaledb.sql in this same directory — apply it separately, only
+-- on a Postgres that actually has the TimescaleDB extension. This file is a
+-- complete, working schema on its own (plain tables, no extensions needed).

@@ -8,6 +8,8 @@
   "netuid": 94,
   "schema_version": 1,
   "slug": "sn-94",
+  "social": { "x": "https://x.com/bitsota" },
+  "source_repo": "https://github.com/AlveusLabs/SN94-BitSota",
   "status": "active",
   "surfaces": [
     {

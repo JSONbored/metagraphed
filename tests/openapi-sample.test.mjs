@@ -450,6 +450,85 @@ describe("sampleFromSchema", () => {
     assert.notEqual(untouched.total_volume_tao, 100);
   });
 
+  test("chain transfer-pair samples keep the top-pair share consistent", () => {
+    const ss58Pattern = "^[1-9A-HJ-NP-Za-km-z]{47,48}$";
+    const pairSchema = {
+      type: "object",
+      required: [
+        "from",
+        "to",
+        "volume_tao",
+        "transfer_count",
+        "last_block",
+        "last_observed_at",
+      ],
+      properties: {
+        from: { type: "string", pattern: ss58Pattern },
+        to: { type: "string", pattern: ss58Pattern },
+        volume_tao: { type: "number" },
+        transfer_count: { type: "integer" },
+        last_block: { type: ["integer", "null"] },
+        last_observed_at: { type: ["string", "null"], format: "date-time" },
+      },
+    };
+    const pairsSchema = {
+      type: "object",
+      required: [
+        "schema_version",
+        "window",
+        "sort",
+        "observed_at",
+        "total_volume_tao",
+        "transfer_count",
+        "unique_pairs",
+        "pair_count",
+        "top_pair_share",
+        "pairs",
+      ],
+      properties: {
+        schema_version: { type: "integer" },
+        window: { type: "string" },
+        sort: { type: "string", enum: ["volume", "count"] },
+        observed_at: { type: "string", format: "date-time" },
+        total_volume_tao: { type: "number" },
+        transfer_count: { type: "integer" },
+        unique_pairs: { type: "integer" },
+        pair_count: { type: "integer" },
+        top_pair_share: { type: ["number", "null"] },
+        pairs: { type: "array", items: pairSchema },
+      },
+    };
+    const sample = s(pairsSchema, "data");
+
+    assert.equal(sample.total_volume_tao, 100);
+    assert.equal(sample.top_pair_share, 0.8);
+    assert.equal(sample.transfer_count, 10);
+    assert.equal(sample.unique_pairs, 2);
+    assert.equal(sample.pair_count, 1);
+    assert.deepEqual(sample.pairs, [
+      {
+        from: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        to: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        volume_tao: 80,
+        transfer_count: 5,
+        last_block: 5000000,
+        last_observed_at: "2026-06-01T00:00:00.000Z",
+      },
+    ]);
+    assert.equal(
+      sample.pairs[0].volume_tao / sample.total_volume_tao,
+      sample.top_pair_share,
+    );
+
+    const notPairsSchema = JSON.parse(JSON.stringify(pairsSchema));
+    delete notPairsSchema.properties.pairs;
+    notPairsSchema.required = notPairsSchema.required.filter(
+      (key) => key !== "pairs",
+    );
+    const untouched = s(notPairsSchema, "data");
+    assert.notEqual(untouched.total_volume_tao, 100);
+  });
+
   test("bounds recursion: deep objects drop optionals, deep arrays bottom out", () => {
     // Nest optional objects past OPTIONAL_DEPTH -> deep optionals are dropped.
     let obj = { type: "string" };

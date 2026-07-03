@@ -327,6 +327,16 @@ const checks = [
     },
   ],
   [
+    "/api/v1/subnets/7/event-summary",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.categories), true);
+      assert.equal(Array.isArray(body.data.event_kinds), true);
+      assert.equal(Array.isArray(body.data.recent_events), true);
+      assert.equal(typeof body.data.total_events, "number");
+    },
+  ],
+  [
     "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
     (body) => {
       assert.equal(
@@ -404,6 +414,22 @@ const checks = [
     (body) => {
       assert.equal(Array.isArray(body.data.blocks), true);
       assert.equal(typeof body.data.block_count, "number");
+    },
+  ],
+  [
+    "/api/v1/blocks/summary",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.block_count, "number");
+      // block_time / throughput are an object or null on a cold store.
+      assert.ok(
+        body.data.block_time === null ||
+          typeof body.data.block_time === "object",
+      );
+      assert.ok(
+        body.data.throughput === null ||
+          typeof body.data.throughput === "object",
+      );
     },
   ],
   [
@@ -500,6 +526,29 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/transfer-pairs?window=7d&limit=5",
+    (body) => {
+      assert.equal(typeof body.data.total_volume_tao, "number");
+      assert.equal(typeof body.data.transfer_count, "number");
+      assert.equal(typeof body.data.unique_pairs, "number");
+      assert.equal(Array.isArray(body.data.pairs), true);
+    },
+  ],
+  [
+    "/api/v1/chain/stake-flow?window=7d&limit=5",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.network, "object");
+      assert.equal(
+        body.data.net_flow_distribution === null ||
+          typeof body.data.net_flow_distribution === "object",
+        true,
+      );
+      assert.equal(Array.isArray(body.data.subnets), true);
+    },
+  ],
+  [
     "/api/v1/chain/fees",
     (body) => {
       assert.equal(Array.isArray(body.data.daily), true);
@@ -525,6 +574,25 @@ const checks = [
     },
   ],
   [
+    "/api/v1/chain/yield",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.neuron_count, "number");
+      // aggregate yield + distribution are a number/object or null on cold store.
+      assert.equal(
+        body.data.network_yield === null ||
+          typeof body.data.network_yield === "number",
+        true,
+      );
+      assert.equal(
+        body.data.distribution === null ||
+          typeof body.data.distribution === "object",
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/concentration",
     (body) => {
       assert.equal(body.data.schema_version, 1);
@@ -536,6 +604,21 @@ const checks = [
         body.data.stake === null || typeof body.data.stake === "object",
         true,
       );
+    },
+  ],
+  [
+    "/api/v1/chain/turnover",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.comparable, "boolean");
+      assert.equal(typeof body.data.network, "object");
+      assert.equal(
+        body.data.stability_distribution === null ||
+          typeof body.data.stability_distribution === "object",
+        true,
+      );
+      assert.equal(Array.isArray(body.data.subnets), true);
     },
   ],
   [

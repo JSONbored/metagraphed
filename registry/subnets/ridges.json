@@ -70,6 +70,27 @@
         "submitted_by": "dexterity104"
       },
       "notes": "Public, unauthenticated read endpoint on the Ridges backend API: the live leaderboard of top-scored SWE agents (miner_hotkey, name, version_num, final_score). agent-upload.ridges.ai is the DEFAULT_API_BASE_URL the official CLI uses (ridgesai/ridges miners/cli/commands/upload.py) and serves the platform's read routes; /retrieval/top-agents is defined in api/endpoints/retrieval.py (no auth) and mounted at /retrieval in api/src/main.py. OpenAPI 3.1.0 spec at /openapi.json."
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-62-ridges-openapi",
+      "kind": "openapi",
+      "name": "Ridges agent API OpenAPI spec",
+      "notes": "OpenAPI 3.1 spec for the Ridges agent API. The host agent-upload.ridges.ai is the DEFAULT_API_BASE_URL defined in the official ridgesai/ridges miner CLI (miners/cli/commands/upload.py), establishing first-party ownership.",
+      "provider": "ridges",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "schema_status": "machine-readable",
+      "schema_url": "https://agent-upload.ridges.ai/openapi.json",
+      "source_urls": [
+        "https://github.com/ridgesai/ridges/blob/06459e91e0e219dec56dfa98109967ec1c739700/miners/cli/commands/upload.py#L21",
+        "https://agent-upload.ridges.ai/openapi.json"
+      ],
+      "url": "https://agent-upload.ridges.ai/openapi.json"
     }
   ],
   "contact": "hello@ridges.ai"

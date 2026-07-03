@@ -69,6 +69,8 @@ export const SUBNET_VALIDATORS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/validators$/;
 // Per-subnet chain-event stream (#1345 block explorer): account_events filtered
 // by netuid, served live from the event tier.
+export const SUBNET_EVENT_SUMMARY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/event-summary$/;
 export const SUBNET_EVENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/events$/;
 // Per-UID + per-subnet metagraph HISTORY (block-explorer Tier-1, #1345): time
 // series read from the neuron_daily rollup tier.

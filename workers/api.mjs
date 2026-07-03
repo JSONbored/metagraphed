@@ -50,7 +50,9 @@ import {
   handleChainCalls,
   handleChainFees,
   handleChainSigners,
+  handleChainTransferPairs,
   handleChainTransfers,
+  handleChainStakeFlow,
   handleGlobalIncidents,
   loadGlobalIncidentsLedger,
   handleHealthIncidents,
@@ -59,6 +61,7 @@ import {
   withEdgeCache,
   withNeuronsEdgeCache,
   readNeuronsCacheStamp,
+  readNeuronDailyCacheStamp,
 } from "./request-handlers/analytics.mjs";
 import {
   loadStagedNeurons,
@@ -70,6 +73,7 @@ import {
   handleSubnetMetagraph,
   handleNeuron,
   handleSubnetValidators,
+  handleSubnetEventSummary,
   handleSubnetEvents,
   handleNeuronHistory,
   handleSubnetHistory,
@@ -78,6 +82,7 @@ import {
   handleSubnetConcentrationHistory,
   handleChainConcentration,
   handleChainPerformance,
+  handleChainYield,
   canonicalSubnetHistoryCachePath,
   canonicalSubnetConcentrationHistoryCachePath,
   handleSubnetTurnover,
@@ -88,6 +93,8 @@ import {
   handleSubnetPerformance,
   handleSubnetMovers,
   canonicalSubnetMoversCachePath,
+  handleChainTurnover,
+  canonicalChainTurnoverCachePath,
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
@@ -102,6 +109,7 @@ import {
   handleAccountStakeFlow,
   handleAccountSubnets,
   handleBlocks,
+  handleBlocksSummary,
   handleBlock,
   handleBlockExtrinsics,
   handleBlockEvents,
@@ -267,6 +275,7 @@ import {
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
   SUBNET_NEURON_PATH_PATTERN,
   SUBNET_VALIDATORS_PATH_PATTERN,
+  SUBNET_EVENT_SUMMARY_PATH_PATTERN,
   SUBNET_EVENTS_PATH_PATTERN,
   TRAJECTORY_PATH_PATTERN,
   SUBNET_CONCENTRATION_PATH_PATTERN,
@@ -1535,6 +1544,21 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         canonicalSubnetValidatorsCachePath(resolved.url, request),
       );
     }
+    // Per-subnet event summary: compact windowed account_events aggregates with
+    // a small evidence slice, sibling to the raw /events feed.
+    const subnetEventSummaryMatch = SUBNET_EVENT_SUMMARY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (subnetEventSummaryMatch) {
+      return withEdgeCache(request, ctx, env, "subnet-event-summary", () =>
+        handleSubnetEventSummary(
+          request,
+          env,
+          Number(subnetEventSummaryMatch[1]),
+          resolved.url,
+        ),
+      );
+    }
     // Per-subnet chain-event stream (#1345): account_events filtered by netuid.
     // Live + continuously appended, so served direct (no edge cache) like the
     // account-events route — envelopeResponse's ETag + "short" cache govern it.
@@ -1652,6 +1676,14 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (blockEventsMatch) {
       return handleBlockEvents(request, env, blockEventsMatch[1], resolved.url);
     }
+    // Exact-match the block-production summary BEFORE the {ref} detail pattern so
+    // "summary" is never parsed as a block reference. Edge-cached like the sibling
+    // live analytics routes (busts on the prober tick).
+    if (resolved.url.pathname === "/api/v1/blocks/summary") {
+      return withEdgeCache(request, ctx, env, "blocks-summary", () =>
+        handleBlocksSummary(request, env, resolved.url),
+      );
+    }
     const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -1693,6 +1725,12 @@ export async function handleRequest(request, env = {}, ctx = {}) {
     if (resolved.url.pathname === "/api/v1/chain/transfers") {
       return handleChainTransfers(request, env, resolved.url, ctx);
     }
+    if (resolved.url.pathname === "/api/v1/chain/transfer-pairs") {
+      return handleChainTransferPairs(request, env, resolved.url, ctx);
+    }
+    if (resolved.url.pathname === "/api/v1/chain/stake-flow") {
+      return handleChainStakeFlow(request, env, resolved.url, ctx);
+    }
     // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
     // busts on the newest neuron captured_at across ALL subnets, not the health
     // prober tick (like the per-subnet concentration route, but network-scoped).
@@ -1719,6 +1757,37 @@ export async function handleRequest(request, env = {}, ctx = {}) {
         () => handleChainPerformance(request, env, resolved.url),
         null,
         (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
+    // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
+    // — edge-cache busts on the newest neuron captured_at across ALL subnets (like
+    // chain/performance, but the emission/stake return-rate lens).
+    if (resolved.url.pathname === "/api/v1/chain/yield") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-yield",
+        () => handleChainYield(request, env, resolved.url),
+        null,
+        (edgeEnv) => readNeuronsCacheStamp(edgeEnv),
+      );
+    }
+    // GET /api/v1/chain/turnover: network-wide validator-set churn across all subnets,
+    // neuron_daily-derived — edge-cache keyed on the resolved window/limit AND busted on the
+    // newest neuron captured_at across ALL subnets (like chain/concentration + chain/performance),
+    // so a neuron_daily refresh invalidates the cached scorecard instead of serving stale churn.
+    if (resolved.url.pathname === "/api/v1/chain/turnover") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "chain-turnover",
+        () => handleChainTurnover(request, env, resolved.url),
+        canonicalChainTurnoverCachePath(resolved.url),
+        // neuron_daily-derived: stamp on the neuron_daily rollup (not the live neurons tier), so a
+        // new daily snapshot invalidates the cached scorecard on the same cadence as its source.
+        (edgeEnv) => readNeuronDailyCacheStamp(edgeEnv),
       );
     }
     // Network-wide economics time series (#1307): deterministic per cron snapshot
@@ -1780,8 +1849,13 @@ function isMainnetOnlyApiPath(pathname) {
     pathname === "/api/v1/chain/signers" ||
     pathname === "/api/v1/chain/fees" ||
     pathname === "/api/v1/chain/transfers" ||
+    pathname === "/api/v1/chain/transfer-pairs" ||
+    pathname === "/api/v1/chain/stake-flow" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
+    pathname === "/api/v1/chain/yield" ||
+    pathname === "/api/v1/chain/turnover" ||
+    pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     BULK_TRENDS_PATH_PATTERN.test(pathname) ||

@@ -217,6 +217,25 @@
       },
       "source_urls": ["https://api.gradients.io/docs"],
       "url": "https://api.gradients.io/v1/network/status"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-56-gradients-subnet-api",
+      "kind": "subnet-api",
+      "name": "Gradients network status API",
+      "notes": "Public no-auth GET returning live network job counts for the Gradients (rayon) subnet. Documented in the subnet's own OpenAPI (api.gradients.io/openapi.json); same host as the existing subnet-api surfaces.",
+      "provider": "gradients",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "dhgoal"
+      },
+      "source_urls": [
+        "https://api.gradients.io/openapi.json",
+        "https://www.gradients.io/"
+      ],
+      "url": "https://api.gradients.io/v1/network/status"
     }
   ],
   "website_url": "https://www.gradients.io/"

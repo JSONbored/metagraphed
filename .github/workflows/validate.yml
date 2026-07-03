@@ -22,11 +22,11 @@ concurrency:
 # private-boundary, all below).
 #
 # The DOCS FAST-LANE below is a narrower, separate thing: it does not skip any
-# job or reduce the safety/contract/registry gates for anything that could
-# plausibly need them. It only lets a diff that is PURELY prose (**/*.md +
-# .claude/skills/**) — which cannot touch registry data, schemas, code, or CI
-# config — finish `checks` in seconds instead of minutes, while still reporting
-# a real `success` conclusion (not `skipped`) on every step.
+# job or reduce the safety/security gates, including validate:private-boundary,
+# for anything that could plausibly need them. It only lets a diff that is
+# PURELY prose (**/*.md + .claude/skills/**) — which cannot touch registry data,
+# schemas, code, or CI config — skip build/contract/registry/deploy work, while
+# still reporting a real `success` conclusion (not `skipped`) on every step.
 #
 # The work splits across two parallel jobs that both build: `test` builds then
 # runs the suite + coverage; `checks` builds then runs lint + the ~20 contract /
@@ -371,11 +371,12 @@ jobs:
       - name: Install
         run: npm ci
 
-      # Lint + format + the documentation/intake/safety scans below run
-      # UNCONDITIONALLY, docs fast lane or not — they're cheap (no build, no
-      # network), and directly relevant to a docs-only diff (a stray secret,
-      # broken doc-contract reference, or malformed intake template can land in
-      # a "docs-only" PR just as easily as in a code PR).
+      # Lint + format + the documentation/intake/safety/security scans below
+      # run UNCONDITIONALLY, docs fast lane or not — they're cheap (no build,
+      # no network), and directly relevant to a docs-only diff (a stray secret,
+      # private-boundary leak, broken doc-contract reference, or malformed
+      # intake template can land in a "docs-only" PR just as easily as in a
+      # code PR).
       - name: Lint + format
         run: |
           npm run lint
@@ -581,8 +582,10 @@ jobs:
       - name: Public-safety scan
         run: npm run scan:public-safety
 
+      # Always runs, docs fast lane or not: this scans all tracked files,
+      # including Markdown, for private review internals and provider-private
+      # routes. It is a security boundary, not a build/contract gate.
       - name: Validate private boundary
-        if: env.DOCS_ONLY != 'true'
         run: npm run validate:private-boundary
 
   # The Python SDK (python/) ships its own hermetic unittest suite (37 cases) but
