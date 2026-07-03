@@ -5707,6 +5707,96 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.validator_retention, 1);
   });
 
+  test("get_subnet_turnover omits changes detail unless changes=true", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "30d" },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    assert.equal("changes" in res.body.result.structuredContent, false);
+  });
+
+  test("get_subnet_turnover with changes=true returns schema-stable empty detail on cold D1", async () => {
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 7,
+      changes: true,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.comparable, false);
+    assert.deepEqual(out.changes.validators_entered, []);
+    assert.deepEqual(out.changes.validators_exited, []);
+    assert.deepEqual(out.changes.uid_reassignments, []);
+  });
+
+  test("get_subnet_turnover with changes=true returns entry, exit, and UID reassignment detail", async () => {
+    const res = await callTool(
+      "get_subnet_turnover",
+      { netuid: 9, window: "30d", changes: true },
+      {
+        env: {
+          METAGRAPH_HEALTH_DB: metagraphD1({
+            turnoverBounds: [
+              { start_date: "2026-06-01", end_date: "2026-06-30" },
+            ],
+            turnoverRows: [
+              {
+                snapshot_date: "2026-06-01",
+                uid: 1,
+                hotkey: "V2",
+                validator_permit: 1,
+              },
+              {
+                snapshot_date: "2026-06-30",
+                uid: 1,
+                hotkey: "V3",
+                validator_permit: 1,
+              },
+            ],
+          }),
+        },
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.changes.validators_entered, [
+      { hotkey: "V3", uid: 1 },
+    ]);
+    assert.deepEqual(out.changes.validators_exited, [{ hotkey: "V2", uid: 1 }]);
+    assert.deepEqual(out.changes.uid_reassignments, [
+      { uid: 1, from_hotkey: "V2", to_hotkey: "V3" },
+    ]);
+  });
+
+  test("get_subnet_turnover rejects a non-boolean changes flag", async () => {
+    const res = await callTool("get_subnet_turnover", {
+      netuid: 7,
+      changes: "true",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /changes.*boolean/);
+  });
+
   test("get_subnet_yield returns schema-stable empty on cold D1", async () => {
     const res = await callTool("get_subnet_yield", { netuid: 7 });
     const out = res.body.result.structuredContent;

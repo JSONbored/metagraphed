@@ -1914,8 +1914,10 @@ export const MCP_TOOLS = [
       "start and end neuron_daily snapshots in the requested window (7d, 30d, " +
       "90d, 1y, or all; default 30d): validators entered/exited, Jaccard " +
       "retention for validators and neurons, UID deregistrations, and a 0–100 " +
-      "stability score. Use it to see how stable a subnet's participation base " +
-      "is over time. Mirrors GET /api/v1/subnets/{netuid}/turnover.",
+      "stability score. Set changes to true to include entered/exited validator " +
+      "hotkeys and UID reassignment detail (mirrors ?changes=true on REST). " +
+      "Use it to see how stable a subnet's participation base is over time. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/turnover.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1924,6 +1926,12 @@ export const MCP_TOOLS = [
           type: "string",
           enum: ["7d", "30d", "90d", "1y", "all"],
           description: "History window (default 30d).",
+        },
+        changes: {
+          type: "boolean",
+          description:
+            "When true, include entered/exited validator hotkeys and UID " +
+            "reassignment detail under `changes` (REST ?changes=true parity).",
         },
       },
       required: ["netuid"],
@@ -1935,6 +1943,7 @@ export const MCP_TOOLS = [
       return loadSubnetTurnover(mcpD1Runner(ctx), netuid, {
         windowLabel: label,
         windowDays: days,
+        includeChanges: optionalBoolean(args, "changes"),
       });
     },
   },
@@ -5242,6 +5251,17 @@ const TOOL_OUTPUT_SCHEMAS = {
       uids_deregistered: { type: "integer" },
       neuron_retention: { type: ["number", "null"] },
       stability_score: { type: ["integer", "null"] },
+      changes: {
+        type: "object",
+        properties: {
+          validators_entered_count: { type: "integer" },
+          validators_exited_count: { type: "integer" },
+          uid_reassignment_count: { type: "integer" },
+          validators_entered: { type: "array", items: { type: "object" } },
+          validators_exited: { type: "array", items: { type: "object" } },
+          uid_reassignments: { type: "array", items: { type: "object" } },
+        },
+      },
     },
   },
   get_subnet_uptime: {
