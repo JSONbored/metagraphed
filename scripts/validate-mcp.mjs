@@ -488,6 +488,15 @@ assert.equal(
   SS58,
   "get_account_stake_flow must echo the address",
 );
+const accountStakeFlowIn = await callOk("get_account_stake_flow", {
+  ss58: SS58,
+  direction: "in",
+});
+assert.equal(
+  accountStakeFlowIn.address,
+  SS58,
+  "get_account_stake_flow must accept the direction filter",
+);
 const accountBalance = await callOk("get_account_balance", { ss58: SS58 });
 assert.ok(
   "balance_tao" in accountBalance && accountBalance.ss58 === SS58,

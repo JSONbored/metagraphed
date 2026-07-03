@@ -2670,6 +2670,43 @@ describe("MCP stake-flow and movers economics tools", () => {
     assert.match(res.body.result.content[0].text, /window must be one of/);
   });
 
+  test("get_account_stake_flow narrows to one side with direction=in", async () => {
+    const capture = [];
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: SS58, window: "30d", direction: "in" },
+      {
+        env: stakeFlowD1(
+          [
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              total_tao: 200,
+              event_count: 4,
+              last_observed: 1_717_000_000_000,
+            },
+          ],
+          capture,
+        ),
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_staked_tao, 200);
+    assert.equal(out.total_unstaked_tao, 0);
+    // direction=in binds only the StakeAdded kind, not StakeRemoved.
+    assert.ok(capture[0].params.includes("StakeAdded"));
+    assert.ok(!capture[0].params.includes("StakeRemoved"));
+  });
+
+  test("get_account_stake_flow rejects an unsupported direction", async () => {
+    const res = await callTool("get_account_stake_flow", {
+      ss58: SS58,
+      direction: "sideways",
+    });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /direction must be one of/);
+  });
+
   test("get_account_stake_flow degrades to zeros on cold D1", async () => {
     const res = await callTool("get_account_stake_flow", { ss58: SS58 });
     const out = res.body.result.structuredContent;
