@@ -79,17 +79,18 @@ const patterns = [
     // TS type member) is legitimate metagraph vocabulary (#1304) — an ss58 coldkey
     // is public on-chain data, not a secret. Also allow the "hotkey or coldkey" /
     // "hotkey/coldkey" field-pair phrase (account routes #1347 doc text + the
-    // generated MCP server-card prose), the "coldkey-only" behaviour descriptor (a
-    // coldkey-only ss58 address has no hotkey-attributed rollup), and the
-    // `coldkey =` SQL column comparison. Strip those legitimate spans so only
-    // suspicious prose ("your coldkey seed phrase" — still caught here and by the
+    // generated MCP server-card prose), generated CSV headers for public exports,
+    // the "coldkey-only" behaviour descriptor (a coldkey-only ss58 address has no
+    // hotkey-attributed rollup), and the `coldkey =` SQL column comparison. Strip
+    // those legitimate spans so only suspicious prose ("your coldkey seed phrase"
+    // — still caught here and by the
     // wallet/key-wording rule) trips. The "coldkey-only" exemption is the exact
     // hyphenated phrase, NOT a blanket `coldkey-` strip, so a hyphen can't be used
     // to smuggle a secret ("coldkey-seedphrase: …" still trips). Same rationale as
     // the isMirroredExternalSpec exemption, scoped to the safe forms so the guard
     // stays active everywhere else.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*=/gi,
+      /"coldkey"\s*:?|\bcoldkey(?=,)|\bcoldkey\s*\??\s*:|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*=/gi,
     soft: true,
   },
   {

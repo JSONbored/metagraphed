@@ -90,6 +90,7 @@ import {
   handleGlobalValidators,
   canonicalGlobalValidatorsCachePath,
   canonicalSubnetMetagraphCachePath,
+  canonicalSubnetValidatorsCachePath,
   handleAccount,
   handleAccountHistory,
   handleAccountBalance,
@@ -1194,7 +1195,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
   // validator's permit=1 row wouldn't touch a filtered MAX(captured_at), leaving this
   // leaderboard's edge cache stale for that change.
   if (url.pathname === "/api/v1/validators") {
-    const validatorsCache = canonicalGlobalValidatorsCachePath(url);
+    const validatorsCache = canonicalGlobalValidatorsCachePath(url, request);
     if (validatorsCache.response) return validatorsCache.response;
     return withEdgeCache(
       request,
@@ -1217,7 +1218,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
       env,
       "subnet-movers",
       () => handleSubnetMovers(request, env, url),
-      canonicalSubnetMoversCachePath(url),
+      canonicalSubnetMoversCachePath(url, request),
     );
   }
 
@@ -1493,7 +1494,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(metagraphMatch[1]),
             resolved.url,
           ),
-        canonicalSubnetMetagraphCachePath(resolved.url),
+        canonicalSubnetMetagraphCachePath(resolved.url, request),
       );
     }
     const neuronMatch = SUBNET_NEURON_PATH_PATTERN.exec(resolved.url.pathname);
@@ -1523,6 +1524,7 @@ export async function handleRequest(request, env = {}, ctx = {}) {
             Number(validatorsMatch[1]),
             resolved.url,
           ),
+        canonicalSubnetValidatorsCachePath(resolved.url, request),
       );
     }
     // Per-subnet chain-event stream (#1345): account_events filtered by netuid.

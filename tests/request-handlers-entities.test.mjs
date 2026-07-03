@@ -49,6 +49,7 @@ import {
   canonicalSubnetStakeFlowCachePath,
   canonicalSubnetMoversCachePath,
   canonicalSubnetMetagraphCachePath,
+  canonicalSubnetValidatorsCachePath,
   canonicalGlobalValidatorsCachePath,
 } from "../workers/request-handlers/entities.mjs";
 
@@ -823,6 +824,31 @@ describe("canonicalGlobalValidatorsCachePath", () => {
     assert.equal(omitted.response, undefined);
     assert.equal(omitted.cachePathAndSearch, explicit.cachePathAndSearch);
   });
+
+  test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+    const csv = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?format=csv"),
+    );
+    assert.equal(
+      csv.cachePathAndSearch,
+      "/api/v1/validators?sort=subnet_count&limit=20&format=csv",
+    );
+
+    const csvAccept = new Request(
+      "https://api.metagraph.sh/api/v1/validators",
+      {
+        headers: { accept: "text/csv" },
+      },
+    );
+    const json = canonicalGlobalValidatorsCachePath(
+      url("/api/v1/validators?format=json"),
+      csvAccept,
+    );
+    assert.equal(
+      json.cachePathAndSearch,
+      "/api/v1/validators?sort=subnet_count&limit=20",
+    );
+  });
 });
 
 describe("handleNeuronHistory", () => {
@@ -1540,12 +1566,66 @@ describe("handleSubnetTurnover", () => {
       assert.equal(key, "/api/v1/subnets/1/metagraph?validator_permit=true");
     });
 
+    test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+      const csv = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?format=csv",
+        ),
+      );
+      assert.equal(csv, "/api/v1/subnets/1/metagraph?format=csv");
+
+      const filteredCsv = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?validator_permit=true&format=csv",
+        ),
+      );
+      assert.equal(
+        filteredCsv,
+        "/api/v1/subnets/1/metagraph?validator_permit=true&format=csv",
+      );
+
+      const csvAccept = new Request(
+        "https://api.metagraph.sh/api/v1/subnets/1/metagraph",
+        { headers: { accept: "text/csv" } },
+      );
+      const json = canonicalSubnetMetagraphCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/metagraph?format=json",
+        ),
+        csvAccept,
+      );
+      assert.equal(json, "/api/v1/subnets/1/metagraph");
+    });
+
     test("returns raw search on an unsupported query parameter", () => {
       const raw = "/api/v1/subnets/1/metagraph?unknown=1";
       const key = canonicalSubnetMetagraphCachePath(
         new URL(`https://api.metagraph.sh${raw}`),
       );
       assert.equal(key, raw);
+    });
+  });
+
+  describe("canonicalSubnetValidatorsCachePath", () => {
+    test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+      const csv = canonicalSubnetValidatorsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/validators?format=csv",
+        ),
+      );
+      assert.equal(csv, "/api/v1/subnets/1/validators?format=csv");
+
+      const csvAccept = new Request(
+        "https://api.metagraph.sh/api/v1/subnets/1/validators",
+        { headers: { accept: "text/csv" } },
+      );
+      const json = canonicalSubnetValidatorsCachePath(
+        new URL(
+          "https://api.metagraph.sh/api/v1/subnets/1/validators?format=json",
+        ),
+        csvAccept,
+      );
+      assert.equal(json, "/api/v1/subnets/1/validators");
     });
   });
 });
@@ -1900,6 +1980,29 @@ describe("handleSubnetMovers", () => {
       assert.equal(omitted, explicit);
       assert.equal(
         omitted,
+        "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
+      );
+    });
+
+    test("explicit CSV and JSON format overrides produce distinct cache variants", () => {
+      const csv = canonicalSubnetMoversCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/movers?format=csv"),
+      );
+      assert.equal(
+        csv,
+        "/api/v1/subnets/movers?window=30d&sort=stake&limit=20&format=csv",
+      );
+
+      const csvAccept = new Request(
+        "https://api.metagraph.sh/api/v1/subnets/movers",
+        { headers: { accept: "text/csv" } },
+      );
+      const json = canonicalSubnetMoversCachePath(
+        new URL("https://api.metagraph.sh/api/v1/subnets/movers?format=json"),
+        csvAccept,
+      );
+      assert.equal(
+        json,
         "/api/v1/subnets/movers?window=30d&sort=stake&limit=20",
       );
     });

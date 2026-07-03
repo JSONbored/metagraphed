@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-07-02.1";
+export const CONTRACT_VERSION = "2026-07-03.1";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1874,7 +1874,7 @@ export const API_ROUTES = [
     "Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, and validator count between the window's start and end neuron_daily snapshots, with start/end values, deltas, and percentage changes. Sort by stake (default), emission, or validators; limit caps the list (default 20, max 100). Computed live from the neuron_daily D1 rollup.",
     "short",
     ["subnets", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
@@ -1887,7 +1887,7 @@ export const API_ROUTES = [
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 100 },
       },
-    ],
+    ]),
     [],
   ),
   route(
@@ -1898,7 +1898,7 @@ export const API_ROUTES = [
     "Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default 20, max 100). Computed live from the neurons D1 tier.",
     "short",
     ["validators", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "sort",
         schema: {
@@ -1918,7 +1918,7 @@ export const API_ROUTES = [
         name: "limit",
         schema: { type: "integer", minimum: 1, maximum: 100 },
       },
-    ],
+    ]),
     [],
   ),
   route(
@@ -1929,7 +1929,9 @@ export const API_ROUTES = [
     "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "validator_permit", schema: { type: "string", enum: ["true"] } }],
+    csvRouteQuery([
+      { name: "validator_permit", schema: { type: "string", enum: ["true"] } },
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -1954,7 +1956,7 @@ export const API_ROUTES = [
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier.",
     "short",
     ["subnets", "analytics"],
-    [],
+    csvRouteQuery(),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2807,7 +2809,7 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         ? {
             "text/csv": {
               schema: { type: "string" },
-              example: "netuid,name\r\n7,Allways",
+              example: csvExampleForRoute(entry),
             },
           }
         : {}),
@@ -2836,7 +2838,7 @@ export function buildOpenApiArtifact(generatedAt, componentSchemas) {
         responses: {
           200: {
             description: entry.csv_response
-              ? "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested."
+              ? csvResponseDescriptionForRoute(entry)
               : "Canonical artifact wrapped in the Metagraphed API envelope.",
             headers: apiResponseHeaders(),
             content: successContent,
@@ -3149,6 +3151,52 @@ function csvListQuery(collection, options = {}) {
       },
     ],
   };
+}
+
+function csvRouteQuery(parameters = []) {
+  return {
+    collection: null,
+    filterNames: [],
+    csvResponse: true,
+    parameters: [
+      ...parameters,
+      {
+        name: "format",
+        description:
+          "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+        schema: { type: "string", enum: ["json", "csv"] },
+      },
+    ],
+  };
+}
+
+function csvExampleForRoute(entry) {
+  if (entry.id === "subnet-movers") {
+    return [
+      "netuid,stake_start_tao,stake_end_tao,stake_delta_tao,stake_pct_change,emission_start_tao,emission_end_tao,emission_delta_tao,emission_pct_change,validators_start,validators_end,validators_delta,neurons_start,neurons_end,neurons_delta",
+      "7,1000,1250,250,25,10,12,2,20,16,18,2,256,256,0",
+    ].join("\r\n");
+  }
+  if (entry.id === "global-validators") {
+    return [
+      "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
+      'hk_sample,ck_sample,1,3,3,1234.5,10.25,0.12,0.98,0.99,2026-07-03T00:00:00.000Z,8454388,"[{""netuid"":1,""uid"":0}]"',
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-metagraph" || entry.id === "subnet-validators") {
+    return [
+      "uid,hotkey,coldkey,active,validator_permit,rank,trust,validator_trust,consensus,incentive,dividends,emission_tao,stake_tao,registered_at_block,is_immunity_period,axon",
+      "0,hk_sample,ck_sample,true,true,1,0.5,0.99,0.4,0.1,0.2,22.1,1000.5,6702485,false,1.2.3.4:8091",
+    ].join("\r\n");
+  }
+  return "netuid,name\r\n7,Allways";
+}
+
+function csvResponseDescriptionForRoute(entry) {
+  if (entry.query_collection) {
+    return "Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested.";
+  }
+  return "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.";
 }
 
 function normalizeQueryParameters(queryParameters) {
