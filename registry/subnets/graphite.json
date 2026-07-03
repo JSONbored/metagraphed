@@ -137,6 +137,24 @@
         "https://api.graphite-ai.net/docs"
       ],
       "url": "https://api.graphite-ai.net/api/v1/stats/subnet"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-43-graphite-ai-coverage-stats",
+      "kind": "data-artifact",
+      "name": "Graphite coverage stats",
+      "provider": "graphite-ai",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "statxc"
+      },
+      "source_urls": [
+        "https://api.graphite-ai.net/openapi.json",
+        "https://api.graphite-ai.net/docs"
+      ],
+      "url": "https://api.graphite-ai.net/api/v1/stats/coverage"
     }
   ],
   "website_url": "https://graphite-ai.net/"
