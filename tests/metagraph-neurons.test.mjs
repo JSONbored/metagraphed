@@ -260,6 +260,36 @@ describe("metagraph-neurons builders", () => {
     );
   });
 
+  test("coerces a string-typed D1 captured_at to an ISO timestamp in the snapshot stamp + neuron detail", () => {
+    // captured_at is a D1 INTEGER (epoch ms) that can come back as a numeric
+    // string; the old Number.isFinite(string) guard dropped a real timestamp to
+    // null. Coerce it like block_number beside it. Mirrors #2714/#2725.
+    const iso = new Date(1750000000000).toISOString();
+    const meta = buildSubnetMetagraph(
+      [{ ...ROW, captured_at: "1750000000000" }],
+      7,
+    );
+    assert.equal(meta.captured_at, iso);
+    const vals = buildSubnetValidators(
+      [{ ...ROW, captured_at: "1750000000000" }],
+      7,
+    );
+    assert.equal(vals.captured_at, iso);
+    const detail = buildNeuronDetail(
+      { ...ROW, captured_at: "1750000000000" },
+      7,
+    );
+    assert.equal(detail.captured_at, iso);
+    // null / blank / invalid stay null (never epoch 1970).
+    for (const captured_at of [null, "", "not-a-date"]) {
+      assert.equal(
+        buildNeuronDetail({ ...ROW, captured_at }, 7).captured_at,
+        null,
+        `captured_at=${JSON.stringify(captured_at)}`,
+      );
+    }
+  });
+
   test("buildGlobalValidators groups validator identities across subnets", () => {
     const data = buildGlobalValidators(
       [
