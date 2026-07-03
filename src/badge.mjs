@@ -18,6 +18,8 @@
 //   style=flat-square  square corners, no gradient (default: flat)
 //   style=for-the-badge  taller (28px), uppercase bold, letter-spaced, matte
 //   label=…            override the left "metagraphed" segment text
+//   labelColor=…       override the left segment color: a #hex code or a
+//                      shields-style color name (default: #555)
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
 // entities or missing data render an "n/a" badge (200) so an <img> never breaks.
@@ -43,6 +45,42 @@ const BADGE_METRICS = {
 };
 // Allow-listed render styles; an unknown value falls back to "flat".
 const BADGE_STYLES = new Set(["flat", "flat-square", "for-the-badge"]);
+
+// The default left ("metagraphed") segment color; overridable via ?labelColor=.
+const DEFAULT_LABEL_COLOR = "#555";
+// Shields-style named colors that are safe to drop straight into a fill="".
+const NAMED_BADGE_COLORS = new Set([
+  "brightgreen",
+  "green",
+  "yellowgreen",
+  "yellow",
+  "orange",
+  "red",
+  "blue",
+  "lightgrey",
+  "lightgray",
+  "grey",
+  "gray",
+  "black",
+  "white",
+  "success",
+  "important",
+  "critical",
+  "informational",
+  "inactive",
+]);
+const HEX_COLOR = /^#?(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+// Sanitize a user-supplied badge color to a #hex code or an allow-listed name,
+// falling back to `fallback`. The result is ALWAYS a hex code or a known safe
+// word, so it can never break out of the SVG `fill="…"` attribute (no escaping
+// needed) — the same defensive stance as the allow-listed style/metric params.
+export function sanitizeBadgeColor(value, fallback = DEFAULT_LABEL_COLOR) {
+  if (typeof value !== "string") return fallback;
+  const v = value.trim().toLowerCase();
+  if (HEX_COLOR.test(v)) return v.startsWith("#") ? v : `#${v}`;
+  return NAMED_BADGE_COLORS.has(v) ? v : fallback;
+}
 const FOR_THE_BADGE_HEIGHT = 28;
 const FOR_THE_BADGE_PAD = 12;
 const FOR_THE_BADGE_LETTER_SPACING = 1.25;
@@ -153,7 +191,11 @@ export function gradeColor(grade) {
 // (rounded + glossy gradient), "flat-square" (square, matte), or "for-the-badge"
 // (28px tall, uppercase bold, letter-spaced, matte).
 export function renderBadge(message, color, options = {}) {
-  const { label = BADGE_LABEL, style = "flat" } = options;
+  const {
+    label = BADGE_LABEL,
+    style = "flat",
+    labelColor = DEFAULT_LABEL_COLOR,
+  } = options;
   if (style === "for-the-badge") {
     const displayLabel = String(label).toUpperCase();
     const displayMessage = String(message).toUpperCase();
@@ -171,7 +213,7 @@ export function renderBadge(message, color, options = {}) {
       `<title>${eLabel}: ${eMsg}</title>`,
       `<clipPath id="r"><rect width="${total}" height="${FOR_THE_BADGE_HEIGHT}" rx="0" fill="#fff"/></clipPath>`,
       `<g clip-path="url(#r)">`,
-      `<rect width="${labelW}" height="${FOR_THE_BADGE_HEIGHT}" fill="#555"/>`,
+      `<rect width="${labelW}" height="${FOR_THE_BADGE_HEIGHT}" fill="${labelColor}"/>`,
       `<rect x="${labelW}" width="${msgW}" height="${FOR_THE_BADGE_HEIGHT}" fill="${color}"/>`,
       `</g>`,
       `<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="10" font-weight="bold">`,
@@ -201,7 +243,7 @@ export function renderBadge(message, color, options = {}) {
       : `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>`,
     `<clipPath id="r"><rect width="${total}" height="20" rx="${rx}" fill="#fff"/></clipPath>`,
     `<g clip-path="url(#r)">`,
-    `<rect width="${labelW}" height="20" fill="#555"/>`,
+    `<rect width="${labelW}" height="20" fill="${labelColor}"/>`,
     `<rect x="${labelW}" width="${msgW}" height="20" fill="${color}"/>`,
     square ? null : `<rect width="${total}" height="20" fill="url(#s)"/>`,
     `</g>`,
@@ -313,7 +355,8 @@ export function parseBadgeOptions(searchParams) {
   const style = BADGE_STYLES.has(styleParam) ? styleParam : "flat";
   const rawLabel = searchParams.get("label");
   const label = rawLabel == null ? BADGE_LABEL : sanitizeLabel(rawLabel);
-  return { metric, style, label };
+  const labelColor = sanitizeBadgeColor(searchParams.get("labelColor"));
+  return { metric, style, label, labelColor };
 }
 
 // Completeness: the subnet's coverage completeness_score, or a provider's mean.
@@ -459,7 +502,9 @@ function badgeHeaders() {
 export async function handleBadgeRequest(request, env, url, deps = {}) {
   const readArtifact = deps.readArtifact;
   const target = parseBadgePath(url.pathname);
-  const { metric, style, label } = parseBadgeOptions(url.searchParams);
+  const { metric, style, label, labelColor } = parseBadgeOptions(
+    url.searchParams,
+  );
   const ctx = {
     target,
     readArtifact,
@@ -481,7 +526,11 @@ export async function handleBadgeRequest(request, env, url, deps = {}) {
     }
   }
 
-  const svg = renderBadge(content.message, content.color, { label, style });
+  const svg = renderBadge(content.message, content.color, {
+    label,
+    style,
+    labelColor,
+  });
   return new Response(request.method === "HEAD" ? null : svg, {
     status: 200,
     headers: badgeHeaders(),

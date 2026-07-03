@@ -8,6 +8,7 @@ import {
   parseBadgePath,
   parseBadgeOptions,
   formatUptimePercent,
+  sanitizeBadgeColor,
 } from "../src/badge.mjs";
 import { handleRequest } from "../workers/api.mjs";
 import { createLocalArtifactEnv } from "../scripts/lib.mjs";
@@ -145,6 +146,47 @@ describe("badge — rendering", () => {
     assert.match(square, /rx="0"/);
     // Still a valid two-segment badge with both text layers.
     assert.ok((square.match(/<text /g) || []).length === 4);
+  });
+
+  test("renderBadge applies a valid labelColor to the left segment only", () => {
+    const svg = renderBadge("92/100", "#2ea44f", { labelColor: "#0a0" });
+    assert.match(svg, /<rect width="\d+" height="20" fill="#0a0"\/>/); // left
+    assert.match(svg, /fill="#2ea44f"/); // right (message) untouched
+    // default stays #555 when labelColor is omitted (backward-compatible).
+    assert.match(renderBadge("x", "#000"), /fill="#555"/);
+  });
+
+  test("sanitizeBadgeColor accepts hex + named colors, rejects everything else", () => {
+    assert.equal(sanitizeBadgeColor("#0a0"), "#0a0");
+    assert.equal(sanitizeBadgeColor("00aa00"), "#00aa00"); // # optional
+    assert.equal(sanitizeBadgeColor("BrightGreen"), "brightgreen"); // named, ci
+    assert.equal(sanitizeBadgeColor("blue"), "blue");
+    // invalid / SVG-injection attempts fall back to the safe default.
+    assert.equal(sanitizeBadgeColor('"/><script>'), "#555");
+    assert.equal(sanitizeBadgeColor("red; fill:url(#x)"), "#555");
+    assert.equal(sanitizeBadgeColor("notacolor"), "#555");
+    assert.equal(sanitizeBadgeColor(null), "#555");
+  });
+
+  test("parseBadgeOptions parses ?labelColor and defaults an unsafe value", () => {
+    const opts = (query) =>
+      parseBadgeOptions(
+        new URL(`https://api.metagraph.sh/?${query}`).searchParams,
+      );
+    assert.equal(opts("labelColor=%23112233").labelColor, "#112233");
+    assert.equal(
+      opts(`labelColor=${encodeURIComponent('"><script>')}`).labelColor,
+      "#555",
+    );
+    assert.equal(opts("").labelColor, "#555");
+  });
+
+  test("renderBadge with an injection labelColor stays script-free", () => {
+    const svg = renderBadge("92/100", "#2ea44f", {
+      labelColor: sanitizeBadgeColor('"/><script>alert(1)</script>'),
+    });
+    assert.ok(!svg.includes("<script"));
+    assert.match(svg, /fill="#555"/);
   });
 
   test("renderBadge flat + flat-square output is unchanged (regression)", () => {
