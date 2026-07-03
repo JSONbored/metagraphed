@@ -217,7 +217,14 @@ describe("loadChainStakeFlow", () => {
   });
 
   test("generatedAt stays null for invalid last_observed values", async () => {
-    for (const last_observed of ["", "not-a-date", null]) {
+    for (const last_observed of [
+      "",
+      "not-a-date",
+      null,
+      0,
+      -1,
+      "8640000000000001",
+    ]) {
       const d1 = async () => [
         {
           event_kind: STAKE_ADDED_KIND,
@@ -231,6 +238,27 @@ describe("loadChainStakeFlow", () => {
       });
       assert.equal(generatedAt, null, `last_observed=${last_observed}`);
     }
+  });
+
+  test("generatedAt picks the newest observed_at across multiple rows", async () => {
+    const d1 = async () => [
+      {
+        event_kind: STAKE_ADDED_KIND,
+        total_tao: 10,
+        event_count: 1,
+        last_observed: 1717900000000,
+      },
+      {
+        event_kind: STAKE_REMOVED_KIND,
+        total_tao: 5,
+        event_count: 1,
+        last_observed: 1717000000000,
+      },
+    ];
+    const { generatedAt } = await loadChainStakeFlow(d1, {
+      windowLabel: "7d",
+    });
+    assert.equal(generatedAt, new Date(1717900000000).toISOString());
   });
 });
 
@@ -316,6 +344,26 @@ describe("GET /api/v1/chain/stake-flow", () => {
     const body = await res.json();
     assert.equal(body.data.total_staked_tao, 40);
     assert.equal(body.data.total_unstaked_tao, 0);
+  });
+
+  test("direction=out narrows to StakeRemoved outflow only", async () => {
+    const res = await handleRequest(
+      req("?direction=out"),
+      stakeFlowEnv([
+        {
+          event_kind: STAKE_REMOVED_KIND,
+          total_tao: 15,
+          event_count: 1,
+          last_observed: 1_700_000_000_000,
+        },
+      ]),
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.total_staked_tao, 0);
+    assert.equal(body.data.total_unstaked_tao, 15);
+    assert.equal(body.data.net_flow_tao, -15);
   });
 
   test("returns schema-stable zeros on cold D1", async () => {

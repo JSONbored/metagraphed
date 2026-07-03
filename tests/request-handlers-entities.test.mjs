@@ -2015,6 +2015,33 @@ describe("handleChainStakeFlow", () => {
     assert.equal(captures.params[idx][0], "StakeAdded");
     assert.equal(captures.params[idx].length, 2);
   });
+
+  test("direction=out binds StakeRemoved only", async () => {
+    const { env, captures } = dbWith({
+      stakeFlow: [
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 50,
+          event_count: 2,
+          last_observed: 1717900000000,
+        },
+      ],
+    });
+    const body = await json(
+      await handleChainStakeFlow(
+        req("/api/v1/chain/stake-flow"),
+        env,
+        url("/api/v1/chain/stake-flow?direction=out"),
+      ),
+    );
+    assert.equal(body.data.total_unstaked_tao, 50);
+    assert.equal(body.data.net_flow_tao, -50);
+    const idx = captures.sql.findIndex(
+      (s) => /FROM account_events/.test(s) && !/netuid/.test(s),
+    );
+    assert.equal(captures.params[idx][0], "StakeRemoved");
+    assert.equal(captures.params[idx].length, 2);
+  });
 });
 
 describe("canonicalChainStakeFlowCachePath", () => {
@@ -2036,6 +2063,24 @@ describe("canonicalChainStakeFlowCachePath", () => {
       ),
     );
     assert.equal(inPath, "/api/v1/chain/stake-flow?window=7d&direction=in");
+    const outPath = canonicalChainStakeFlowCachePath(
+      new URL(
+        "https://api.metagraph.sh/api/v1/chain/stake-flow?window=7d&direction=out",
+      ),
+    );
+    assert.equal(outPath, "/api/v1/chain/stake-flow?window=7d&direction=out");
+  });
+
+  test("canonicalizes omitted and explicit default direction to one cache key", () => {
+    const omitted = canonicalChainStakeFlowCachePath(
+      new URL("https://api.metagraph.sh/api/v1/chain/stake-flow?window=30d"),
+    );
+    const explicit = canonicalChainStakeFlowCachePath(
+      new URL(
+        "https://api.metagraph.sh/api/v1/chain/stake-flow?window=30d&direction=all",
+      ),
+    );
+    assert.equal(omitted, explicit);
   });
 
   test("passes an invalid window through unchanged", () => {
@@ -2043,6 +2088,22 @@ describe("canonicalChainStakeFlowCachePath", () => {
       new URL("https://api.metagraph.sh/api/v1/chain/stake-flow?window=bogus"),
     );
     assert.equal(path, "/api/v1/chain/stake-flow?window=bogus");
+  });
+
+  test("passes an invalid direction through unchanged", () => {
+    const path = canonicalChainStakeFlowCachePath(
+      new URL(
+        "https://api.metagraph.sh/api/v1/chain/stake-flow?direction=bogus",
+      ),
+    );
+    assert.equal(path, "/api/v1/chain/stake-flow?direction=bogus");
+  });
+
+  test("passes an unsupported query param through unchanged", () => {
+    const path = canonicalChainStakeFlowCachePath(
+      new URL("https://api.metagraph.sh/api/v1/chain/stake-flow?bogus=1"),
+    );
+    assert.equal(path, "/api/v1/chain/stake-flow?bogus=1");
   });
 });
 

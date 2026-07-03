@@ -2559,6 +2559,32 @@ describe("MCP get_chain_stake_flow", () => {
     assert.equal(capture[0].params.length, 2);
   });
 
+  test("direction=out narrows to StakeRemoved outflow only", async () => {
+    const capture = [];
+    const env = chainStakeFlowD1(
+      [
+        {
+          event_kind: "StakeRemoved",
+          total_tao: 25,
+          event_count: 1,
+          last_observed: 1_700_000_000_000,
+        },
+      ],
+      capture,
+    );
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { window: "7d", direction: "out" },
+      { env },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.total_staked_tao, 0);
+    assert.equal(out.total_unstaked_tao, 25);
+    assert.equal(capture[0].params[0], "StakeRemoved");
+    assert.equal(capture[0].params.length, 2);
+  });
+
   test("degrades to zeros on cold D1", async () => {
     const res = await callTool("get_chain_stake_flow", { window: "7d" });
     const out = res.body.result.structuredContent;
