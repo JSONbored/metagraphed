@@ -1660,7 +1660,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). */
+        /** Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV. */
         get: operations["subnetTrajectory"];
         put?: never;
         post?: never;
@@ -19417,7 +19417,10 @@ export interface operations {
     };
     subnetTrajectory: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
             header?: never;
             path: {
                 netuid: number;
@@ -19426,7 +19429,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -19479,6 +19482,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetTrajectoryArtifact"];
                     };
+                    /**
+                     * @example date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share
+                     *     2026-06-01,35,1,1,8,60,90,0.01,0.02
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

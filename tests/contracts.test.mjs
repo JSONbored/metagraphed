@@ -216,6 +216,10 @@ describe("public contract registry", () => {
         "/api/v1/economics/trends",
         "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       ],
+      [
+        "/api/v1/subnets/{netuid}/trajectory",
+        "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+      ],
     ];
     for (const [path, expectedHeader] of csvExamples) {
       const csvContent =

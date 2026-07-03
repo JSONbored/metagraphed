@@ -60,6 +60,18 @@ const ECONOMICS_TRENDS_CSV_COLUMNS = [
   "mean_emission_share",
 ];
 
+const TRAJECTORY_CSV_COLUMNS = [
+  "date",
+  "completeness_score",
+  "surface_count",
+  "endpoint_count",
+  "validator_count",
+  "miner_count",
+  "total_stake_tao",
+  "alpha_price_tao",
+  "emission_share",
+];
+
 function validateFormatParam(url) {
   const raw = url.searchParams.get("format");
   if (raw === null && !url.searchParams.has("format")) return null;
@@ -78,6 +90,14 @@ function economicsTrendsCacheVariant(url, request, canonicalPath) {
   if (!wantsCsv) return canonicalPath;
   // canonicalEconomicsTrendsCachePath always supplies ?window=…, so & is safe.
   return `${canonicalPath}&format=csv`;
+}
+
+function trajectoryCacheVariant(url, request, canonicalPath) {
+  const format = url.searchParams.get("format")?.toLowerCase();
+  const wantsCsv =
+    format === "csv" || (request != null && csvRequested(url, request));
+  if (!wantsCsv) return canonicalPath;
+  return `${canonicalPath}?format=csv`;
 }
 
 export function configureAnalyticsRoutes(deps) {
@@ -100,8 +120,10 @@ async function envelopeWithD1Fallback(request, payload, cacheProfile, rowSets) {
 
 // Week-over-week structural trajectory from daily snapshots.
 export async function handleTrajectory(request, env, netuid, url) {
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
+  const formatError = validateFormatParam(url);
+  if (formatError) return analyticsQueryError(formatError);
   const rows = await d1All(
     env,
     `SELECT snapshot_date, completeness_score, surface_count, endpoint_count,
@@ -114,6 +136,15 @@ export async function handleTrajectory(request, env, netuid, url) {
     [netuid],
   );
   const data = formatTrajectory({ netuid, rows });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.points,
+      `subnet-${netuid}-trajectory`,
+      "short",
+      request,
+      TRAJECTORY_CSV_COLUMNS,
+    );
+  }
   return envelopeWithD1Fallback(
     request,
     {
@@ -271,6 +302,16 @@ export function canonicalEconomicsTrendsCachePath(url, request = null) {
     request,
     `${url.pathname}?window=${encodeURIComponent(label)}`,
   );
+}
+
+// Normalises the per-subnet trajectory URL so JSON and CSV variants get distinct
+// edge-cache entries — mirrors canonicalEconomicsTrendsCachePath.
+export function canonicalTrajectoryCachePath(url, request = null) {
+  const validationError = validateQueryParams(url, ["format"]);
+  if (validationError) return `${url.pathname}${url.search}`;
+  const formatError = validateFormatParam(url);
+  if (formatError) return `${url.pathname}${url.search}`;
+  return trajectoryCacheVariant(url, request, url.pathname);
 }
 
 // Normalises the leaderboards URL so that a bare ?-free request and an explicit

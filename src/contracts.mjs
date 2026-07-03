@@ -925,7 +925,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-trajectory",
     "/metagraph/subnets/{netuid}/trajectory.json",
-    "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory (no static file).",
+    "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory; pass ?format=csv to download the per-day series as CSV (no static file).",
     "SubnetTrajectoryArtifact",
   ),
   artifact(
@@ -1785,10 +1785,10 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/trajectory",
     "/metagraph/subnets/{netuid}/trajectory.json",
-    "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1).",
+    "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    [],
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3196,6 +3196,12 @@ function csvExampleForRoute(entry) {
     return [
       "snapshot_date,subnet_count,total_stake_tao,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
       "2026-06-02,129,1250000.5,0.03125,0.028,2048,28672,0.007752",
+    ].join("\r\n");
+  }
+  if (entry.id === "subnet-trajectory") {
+    return [
+      "date,completeness_score,surface_count,endpoint_count,validator_count,miner_count,total_stake_tao,alpha_price_tao,emission_share",
+      "2026-06-01,35,1,1,8,60,90,0.01,0.02",
     ].join("\r\n");
   }
   return "netuid,name\r\n7,Allways";

@@ -462,7 +462,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.1",
-      "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory (no static file).",
+      "description": "Week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots, served live from D1 at /api/v1/subnets/{netuid}/trajectory; pass ?format=csv to download the per-day series as CSV (no static file).",
       "id": "subnet-trajectory",
       "path": "/metagraph/subnets/{netuid}/trajectory.json",
       "schema_ref": "#/components/schemas/SubnetTrajectoryArtifact",
