@@ -4,8 +4,20 @@ name: PR Overlap Notice
 # least one of the same file paths, so either author can check for conflicts
 # before merging. Never a required/blocking check — the job only ever posts a
 # comment (or does nothing); it does not fail the PR's checks list.
+#
+# Uses `pull_request_target`, not `pull_request` -- deliberately. GitHub
+# downgrades GITHUB_TOKEN to read-only for `pull_request` on a forked PR
+# (the normal case for external contributors here), which would silently
+# break the `pull-requests: write` comment upsert below for exactly the PRs
+# this workflow exists to help. `pull_request_target` runs in the BASE repo's
+# context, so the token keeps its declared permissions regardless of fork
+# origin. This is safe ONLY because this workflow never checks out or
+# executes the contributor's head commit/code -- every input comes from
+# already-public PR metadata over the GitHub REST API (gh api), and the one
+# checkout step below has no `ref:` override, so it pulls the TRUSTED base
+# branch's copy of this very workflow file, never the PR's own version.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
