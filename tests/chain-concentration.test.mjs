@@ -68,6 +68,38 @@ describe("buildChainConcentration", () => {
     assert.equal(out.validator_stake.total, 30);
   });
 
+  test("sums one coldkey's per-UID stake and the network total in exact rao space (#2922)", () => {
+    // groupByEntity's per-entity pre-sum and computeConcentration's own
+    // distribution total both now accumulate in rao-BigInt space rather than
+    // plain float `+=` (metagraphed#2922). The `total` field is only surfaced
+    // at 4dp, so a handful of thousand rows won't visibly drift past that
+    // rounding either way -- this asserts the rao-exact value the BigInt path
+    // is now guaranteed to produce, rather than relying on rounding to mask
+    // (or reveal) any accumulation error.
+    const rows = [];
+    let expectedTotalRao = 0n;
+    for (let i = 0; i < 5000; i += 1) {
+      const stakeTao = 1234.987654321 + i * 0.000000001;
+      rows.push({
+        stake_tao: stakeTao,
+        emission_tao: 0,
+        coldkey: "ck-precision",
+        validator_permit: 0,
+        netuid: i,
+      });
+      expectedTotalRao += BigInt(Math.round(stakeTao * 1e9));
+    }
+    const out = buildChainConcentration(rows);
+    const expectedTotal =
+      Number(expectedTotalRao / 1_000_000_000n) +
+      Number(expectedTotalRao % 1_000_000_000n) / 1e9;
+    const rounded = Math.round(expectedTotal * 1e4) / 1e4; // computeConcentration rounds `total` to 4dp
+    // one coldkey -> one entity, so the entity total equals the per-UID total.
+    assert.equal(out.stake.total, rounded);
+    assert.equal(out.entity_stake.total, rounded);
+    assert.equal(out.entity_stake.holders, 1);
+  });
+
   test("takes the newest captured_at across mixed epoch-ms / ISO stamps", () => {
     const out = buildChainConcentration([
       { stake_tao: 5, coldkey: "a", netuid: 1, captured_at: 1_700_000_000_000 },
