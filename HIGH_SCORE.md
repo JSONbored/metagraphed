@@ -6,7 +6,7 @@ This file is a **supplement** to the canonical workflow in:
 - `.claude/skills/metagraphed/SKILL.md`
 - `.claude/skills/metagraphed/reference.md`
 
-Use these commands only for duplicate-surface overlap detection before submitting an update PR.
+Use these commands only to detect open PR overlap for update work.
 
 ## Duplicate-path pre-flight (open PRs)
 
