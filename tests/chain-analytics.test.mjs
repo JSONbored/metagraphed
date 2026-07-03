@@ -824,6 +824,135 @@ test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
   }
 });
 
+test("GET /api/v1/chain/transfer-pairs ranks directed transfer corridors", async () => {
+  const captured = [];
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind(...params) {
+            captured.push({ sql, params });
+            return {
+              all: () => {
+                if (/WITH pair_totals/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        transfer_count: 10,
+                        total_volume_tao: 100,
+                        unique_pairs: 4,
+                        top_pair_volume_tao: 80,
+                      },
+                    ],
+                  });
+                }
+                if (/ORDER BY/.test(sql)) {
+                  return Promise.resolve({
+                    results: [
+                      {
+                        from: "5Sa",
+                        to: "5Rx",
+                        volume_tao: 80,
+                        transfer_count: 5,
+                        last_block: "8454388",
+                        last_observed_at: Date.parse(
+                          "2026-07-03T00:00:00.000Z",
+                        ),
+                      },
+                    ],
+                  });
+                }
+                return Promise.resolve({ results: [] });
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d&limit=5&sort=count",
+    ),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.window, "7d");
+  assert.equal(body.data.sort, "count");
+  assert.equal(body.data.total_volume_tao, 100);
+  assert.equal(body.data.unique_pairs, 4);
+  assert.equal(body.data.pair_count, 1);
+  assert.equal(body.data.top_pair_share, 0.8);
+  assert.equal(body.data.pairs[0].from, "5Sa");
+  assert.equal(body.data.pairs[0].to, "5Rx");
+  assert.equal(body.data.pairs[0].last_block, 8454388);
+  assert.equal(body.meta.source, "live-cron-prober");
+  const pairs = captured.find((c) => /ORDER BY/.test(c.sql));
+  assert.match(pairs.sql, /hotkey <> coldkey/);
+  assert.match(pairs.sql, /amount_tao IS NOT NULL AND amount_tao >= 0/);
+  assert.match(pairs.sql, /ORDER BY transfer_count DESC, volume_tao DESC/);
+  assert.equal(pairs.params.at(-1), 5);
+});
+
+test("HEAD /api/v1/chain/transfer-pairs returns headers without a body", async () => {
+  const env = {
+    ...createLocalArtifactEnv(),
+    METAGRAPH_HEALTH_DB: {
+      prepare(sql) {
+        return {
+          bind() {
+            return {
+              all: () =>
+                Promise.resolve({
+                  results: /WITH pair_totals/.test(sql)
+                    ? [
+                        {
+                          transfer_count: 0,
+                          total_volume_tao: 0,
+                          unique_pairs: 0,
+                          top_pair_volume_tao: 0,
+                        },
+                      ]
+                    : [],
+                }),
+            };
+          },
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    new Request("https://api.metagraph.sh/api/v1/chain/transfer-pairs", {
+      method: "HEAD",
+    }),
+    env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), "");
+});
+
+test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", async () => {
+  const env = createLocalArtifactEnv();
+  for (const path of [
+    "/api/v1/chain/transfer-pairs?sort=fee",
+    "/api/v1/chain/transfer-pairs?limit=001",
+    "/api/v1/chain/transfer-pairs?bogus=1",
+  ]) {
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      env,
+      {},
+    );
+    assert.equal(res.status, 400, path);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+  }
+});
+
 test("GET /api/v1/chain/fees scopes every extrinsics query by call_module", async () => {
   // The median query only runs for days the daily aggregate already proved
   // are within the sample cap, so the daily response must report a real day

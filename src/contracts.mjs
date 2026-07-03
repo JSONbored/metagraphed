@@ -2,7 +2,7 @@ import { artifactStorageTierForPath } from "./artifact-storage.mjs";
 import { DOMAIN_TAGS } from "./domain-tags.mjs";
 import { sampleFromSchema } from "./openapi-sample.mjs";
 
-export const CONTRACT_VERSION = "2026-07-03.1";
+export const CONTRACT_VERSION = "2026-07-03.2";
 export const SCHEMA_VERSION = 1;
 // The API + artifacts are served from the api subdomain; the bare apex
 // (metagraph.sh) is the metagraphed-ui UI. PRIMARY_DOMAIN drives the OpenAPI
@@ -1149,6 +1149,12 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/transfers.json",
     "Network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume, and the top senders' share of total volume (a concentration signal), computed live from the account_events Transfer feed at /api/v1/chain/transfers (no static file).",
     "ChainTransfersArtifact",
+  ),
+  artifact(
+    "chain-transfer-pairs",
+    "/metagraph/chain/transfer-pairs.json",
+    "Network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by volume or count, computed live from the account_events Transfer feed at /api/v1/chain/transfer-pairs (no static file).",
+    "ChainTransferPairsArtifact",
   ),
   artifact(
     "chain-fees",
@@ -2416,6 +2422,24 @@ export const API_ROUTES = [
     [
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+    ],
+    [],
+  ),
+  route(
+    "chain-transfer-pairs",
+    "GET",
+    "/api/v1/chain/transfer-pairs",
+    "/metagraph/chain/transfer-pairs.json",
+    "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold.",
+    "short",
+    ["chain", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
+      {
+        name: "sort",
+        schema: { type: "string", enum: ["volume", "count"] },
+      },
     ],
     [],
   ),

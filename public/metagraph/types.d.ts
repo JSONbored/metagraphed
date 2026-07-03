@@ -497,6 +497,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/transfer-pairs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. */
+        get: operations["chainTransferPairs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/transfers": {
         parameters: {
             query?: never;
@@ -2668,6 +2685,33 @@ export interface components {
             window: string;
         } & {
             [key: string]: unknown;
+        };
+        /** @description One directed sender -> receiver pair on the chain-transfer-pairs leaderboard. Rows are well-formed non-self Balances.Transfer events with both account addresses and a non-negative amount. */
+        ChainTransferPair: {
+            from: string;
+            last_block: number | null;
+            /** Format: date-time */
+            last_observed_at: string | null;
+            to: string;
+            transfer_count: number;
+            volume_tao: number;
+        };
+        /** @description Network-wide directed native-TAO transfer-pair analytics over a 7d/30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share of total pairable volume, and top sender -> receiver pairs ranked by volume or transfer count. Served live from the account_events D1 tier at /api/v1/chain/transfer-pairs (no static file); zeros + an empty pairs list when cold. */
+        ChainTransferPairsArtifact: {
+            /** Format: date-time */
+            observed_at: string | null;
+            /** @description Number of pair rows returned after applying limit. unique_pairs is the full-window pair count. */
+            pair_count: number;
+            pairs: components["schemas"]["ChainTransferPair"][];
+            schema_version: number;
+            /** @enum {string} */
+            sort: "volume" | "count";
+            /** @description Highest-volume pair's full-window volume divided by total pairable volume, independent of sort and limit; null when the window has no pairable volume. */
+            top_pair_share: number | null;
+            total_volume_tao: number;
+            transfer_count: number;
+            unique_pairs: number;
+            window: string | null;
         };
         /** @description One account on a chain-transfers leaderboard: its total transfer volume and count over the window. */
         ChainTransferParty: {
@@ -9386,6 +9430,127 @@ export interface operations {
             };
         };
     };
+    chainTransferPairs: {
+        parameters: {
+            query?: {
+                window?: "7d" | "30d";
+                limit?: number;
+                sort?: "volume" | "count";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "pair_count": 1,
+                     *         "pairs": [
+                     *           {
+                     *             "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+                     *             "last_block": 5000000,
+                     *             "last_observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "transfer_count": 5,
+                     *             "volume_tao": 80
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "sort": "volume",
+                     *         "top_pair_share": 0.8,
+                     *         "total_volume_tao": 100,
+                     *         "transfer_count": 10,
+                     *         "unique_pairs": 2,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainTransferPairsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainTransfers: {
         parameters: {
             query?: {
@@ -11783,7 +11948,7 @@ export interface operations {
                      *       "meta": {
                      *         "artifact_path": "/metagraph/fixtures/7:subnet-api:new_v2.json",
                      *         "cache": "standard",
-                     *         "contract_version": "2026-07-03.1",
+                     *         "contract_version": "2026-07-03.2",
                      *         "generated_at": "1970-01-01T00:00:00.000Z",
                      *         "published_at": null,
                      *         "source": "r2"
