@@ -88,13 +88,24 @@ jobs:
             exit 0
           }
 
+          # Build the request body as JSON via jq --arg (which JSON-encodes the
+          # value regardless of content -- quotes, backticks, `$(...)`-shaped
+          # text from a PR-controlled file name, anything) and pipe it in with
+          # `gh api --input -`, rather than `-f body="$body"`. Empirically
+          # verified (mocked-argv test) that `-f body="$var"` already passes
+          # the value through as a single opaque argument with no shell
+          # re-parsing of its contents -- this is not fixing a reachable
+          # exploit -- but --input - is the more obviously-safe idiom and
+          # removes any doubt for a future reader or scanner.
           if [ "$has_overlap" = "true" ]; then
             if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
-              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
-                -f body="$body" >/dev/null 2>&1 || echo "Failed to update overlap comment; skipping." >&2
+              jq -n --arg body "$body" '{body: $body}' \
+                | gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" --input - \
+                >/dev/null 2>&1 || echo "Failed to update overlap comment; skipping." >&2
             else
-              gh api --method POST "repos/$REPO/issues/$pr_number/comments" \
-                -f body="$body" >/dev/null 2>&1 || echo "Failed to post overlap comment; skipping." >&2
+              jq -n --arg body "$body" '{body: $body}' \
+                | gh api --method POST "repos/$REPO/issues/$pr_number/comments" --input - \
+                >/dev/null 2>&1 || echo "Failed to post overlap comment; skipping." >&2
             fi
           else
             # No overlap now. If a prior overlap-notice comment exists (from an
@@ -103,7 +114,8 @@ jobs:
             # never post an empty/no-op comment.
             if [ -n "$existing_comment_id" ] && [ "$existing_comment_id" != "null" ]; then
               cleared_body=$(printf '%s\nThis PR no longer overlaps with any other open PR'"'"'s changed files.' "$MARKER")
-              gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" \
-                -f body="$cleared_body" >/dev/null 2>&1 || echo "Failed to clear overlap comment; skipping." >&2
+              jq -n --arg body "$cleared_body" '{body: $body}' \
+                | gh api --method PATCH "repos/$REPO/issues/comments/$existing_comment_id" --input - \
+                >/dev/null 2>&1 || echo "Failed to clear overlap comment; skipping." >&2
             fi
           fi
