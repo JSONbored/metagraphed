@@ -218,6 +218,8 @@ export async function csvResponse(
     request?.method !== "HEAD" &&
     !request?.headers?.get("if-none-match");
   if (shouldStream) {
+    // Stream plain GET exports without precomputing the full body; HEAD and
+    // conditional requests stay buffered so they keep the weak ETag path.
     return new Response(csvBodyStream(rows, columns), {
       status: 200,
       headers,

@@ -1285,6 +1285,7 @@ describe("registry list CSV export", () => {
       res.headers.get("content-disposition"),
       'attachment; filename="endpoints.csv"',
     );
+    assert.equal(res.headers.get("etag"), null);
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

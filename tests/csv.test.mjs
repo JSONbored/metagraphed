@@ -290,6 +290,9 @@ test("csvResponse can stream endpoint-sized exports without eager ETags", async 
     decoder.decode(second.value),
     "7,allways,ok\r\n8,templar,degraded",
   );
+
+  const done = await reader.read();
+  assert.equal(done.done, true);
 });
 
 test("csvResponse falls back to the buffered ETag path on HEAD even when streaming is requested", async () => {
