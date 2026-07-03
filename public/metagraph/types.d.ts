@@ -8744,6 +8744,8 @@ export interface operations {
         parameters: {
             query?: {
                 window?: "7d" | "30d";
+                /** @description Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8751,7 +8753,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8808,6 +8810,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainActivityArtifact"];
                     };
+                    /**
+                     * @example day,block_count,extrinsic_count,event_count,successful_extrinsics,success_rate,unique_signers
+                     *     2026-07-01,7200,15000,42000,14950,0.9967,320
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -8862,6 +8869,8 @@ export interface operations {
                 group_by?: "module" | "module_function";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -8869,7 +8878,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -8925,6 +8934,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainCallsArtifact"];
                     };
+                    /**
+                     * @example call_module,count,share
+                     *     SubtensorModule,8200,0.5467
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -9152,6 +9166,8 @@ export interface operations {
                 window?: "7d" | "30d";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers). */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -9159,7 +9175,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -9225,6 +9241,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainFeesArtifact"];
                     };
+                    /**
+                     * @example day,extrinsic_count,total_fee_tao,avg_fee_tao,median_fee_tao,total_tip_tao,avg_tip_tao,median_tip_tao
+                     *     2026-07-01,15000,42.5,0.002833,0.0025,0,0,0
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -9444,6 +9465,8 @@ export interface operations {
                 sort?: "tx_count" | "total_fee_tao";
                 limit?: number;
                 call_module?: string;
+                /** @description Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path?: never;
@@ -9451,7 +9474,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -9507,6 +9530,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainSignersArtifact"];
                     };
+                    /**
+                     * @example signer,tx_count,total_fee_tao,total_tip_tao,last_tx_block
+                     *     5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY,1200,3.42,0,8454388
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
